@@ -107,7 +107,7 @@ Agents list :
 =================================
 {{INPUT.agents}}`;
 
-export type WorkspaceTagSuggestion = {
+type WorkspaceTagSuggestion = {
   name: string;
   agentIds: string[];
 };

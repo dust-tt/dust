@@ -8,7 +8,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import { WebhookSourceModel } from "./webhook_source";
 
 // Single source of truth for webhook request statuses
-export const WEBHOOK_REQUEST_STATUSES = [
+const WEBHOOK_REQUEST_STATUSES = [
   "received",
   "processed",
   "failed",

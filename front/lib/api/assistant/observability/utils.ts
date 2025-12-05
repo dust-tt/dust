@@ -35,7 +35,7 @@ export function buildAgentAnalyticsBaseQuery({
   };
 }
 
-export function buildFeedbackQuery({
+function buildFeedbackQuery({
   dismissed,
 }: {
   dismissed: boolean;

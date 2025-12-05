@@ -16,7 +16,7 @@ import type { WorkspaceType } from "@app/types";
 
 export type ThumbReaction = "up" | "down";
 
-export type FeedbackType = {
+type FeedbackType = {
   thumb: ThumbReaction;
   feedbackContent: string | null;
   isConversationShared: boolean;

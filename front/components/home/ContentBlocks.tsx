@@ -304,7 +304,7 @@ interface QuoteProps {
 }
 
 // Collection of all quotes from across the site
-export const AllQuotes: QuoteProps[] = [
+const AllQuotes: QuoteProps[] = [
   {
     quote:
       "It’s not just about retrieving information from one place. Our sales team needs information that’s often scattered across multiple internal applications. Dust brings it all together.",

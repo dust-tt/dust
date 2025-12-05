@@ -120,7 +120,7 @@ function buildWebCrawlerConfig(
   };
 }
 
-export interface SpaceWebsiteModalProps {
+interface SpaceWebsiteModalProps {
   dataSourceView: DataSourceViewType | null;
   isOpen: boolean;
   onClose: () => void;

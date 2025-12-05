@@ -32,7 +32,7 @@ const GROUP_BY_KEY_TO_ES_FIELD: Record<GroupByType, string> = {
 
 const FilterSchema = z.record(z.enum(GROUP_BY_KEYS), z.string().array());
 
-export const QuerySchema = z.object({
+const QuerySchema = z.object({
   groupBy: z.enum(GROUP_BY_KEYS).optional(),
   groupByCount: z.number().optional().default(5),
   filter: z
@@ -53,7 +53,7 @@ export const QuerySchema = z.object({
   billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
 
-export type WorkspaceProgrammaticCostPoint = {
+type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
   groups: {
     groupKey: string;

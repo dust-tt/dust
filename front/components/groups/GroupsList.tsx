@@ -73,7 +73,7 @@ const filterColumn = (shownColumns: GroupColumnIDs) => {
   };
 };
 
-export type GroupsListProps = {
+type GroupsListProps = {
   searchTerm?: string;
   isLoading?: boolean;
   groups: GroupType[];

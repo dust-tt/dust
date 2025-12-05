@@ -17,7 +17,7 @@ export type WebhookConfig = {
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
-export type TriggerConfiguration =
+type TriggerConfiguration =
   | {
       kind: "schedule";
       configuration: ScheduleConfig;

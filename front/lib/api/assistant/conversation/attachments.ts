@@ -26,7 +26,7 @@ import {
   isFileContentFragment,
 } from "@app/types";
 
-export type BaseConversationAttachmentType = {
+type BaseConversationAttachmentType = {
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
@@ -37,7 +37,7 @@ export type BaseConversationAttachmentType = {
   isQueryable: boolean;
 };
 
-export type FileAttachmentType = BaseConversationAttachmentType & {
+type FileAttachmentType = BaseConversationAttachmentType & {
   fileId: string;
 };
 
@@ -106,7 +106,7 @@ export function getAttachmentFromContentFragment(
   assertNever(cf);
 }
 
-export function getAttachmentFromContentNodeContentFragment(
+function getAttachmentFromContentNodeContentFragment(
   cf: ContentNodeContentFragmentType & { expiredReason: null }
 ): ContentNodeAttachmentType {
   const isQueryable =
@@ -147,7 +147,7 @@ export function getAttachmentFromContentNodeContentFragment(
   };
 }
 
-export function getAttachmentFromFileContentFragment(
+function getAttachmentFromFileContentFragment(
   cf: FileContentFragmentType
 ): FileAttachmentType | null {
   const fileId = cf.fileId;

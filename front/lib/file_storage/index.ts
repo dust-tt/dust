@@ -15,7 +15,7 @@ interface FileStorageOptions {
   useServiceAccount?: boolean;
 }
 
-export class FileStorage {
+class FileStorage {
   private readonly bucket: Bucket;
   private readonly storage: Storage;
 

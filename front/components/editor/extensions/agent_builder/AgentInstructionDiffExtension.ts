@@ -5,7 +5,7 @@ import { diffWords } from "diff";
 
 import { AdditionMark, DeletionMark } from "./AgentDiffMarks";
 
-export interface AgentInstructionDiffOptions {
+interface AgentInstructionDiffOptions {
   onDiffApplied?: () => void;
 }
 

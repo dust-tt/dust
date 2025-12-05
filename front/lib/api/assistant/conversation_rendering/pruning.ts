@@ -21,7 +21,7 @@ export type InteractionWithTokens = {
  * Prunes all tool results in an interaction.
  * Returns a new interaction with all tool results replaced by placeholders.
  */
-export function pruneAllToolResults(
+function pruneAllToolResults(
   interaction: InteractionWithTokens
 ): InteractionWithTokens {
   const prunedMessages = interaction.messages.map((msg) => {

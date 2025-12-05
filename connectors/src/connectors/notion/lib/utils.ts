@@ -8,11 +8,11 @@ import { getParents } from "@connectors/connectors/notion/lib/parents";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 
 // Define the type codec for the Notion OAuth response
-export const NotionOAuthResponse = t.type({
+const NotionOAuthResponse = t.type({
   workspace_id: t.string,
 });
 
-export type NotionOAuthResponseType = t.TypeOf<typeof NotionOAuthResponse>;
+type NotionOAuthResponseType = t.TypeOf<typeof NotionOAuthResponse>;
 
 /**
  * Validates a Notion OAuth response to ensure it contains a workspace_id

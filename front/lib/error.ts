@@ -1,4 +1,4 @@
-export type DustErrorCode =
+type DustErrorCode =
   | "core_api_error"
   | "internal_error"
   | "invalid_id"

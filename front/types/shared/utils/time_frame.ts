@@ -1,6 +1,6 @@
 import { ioTsEnum } from "./iots_utils";
 
-export const TIME_FRAME_UNITS = [
+const TIME_FRAME_UNITS = [
   "hour",
   "day",
   "week",

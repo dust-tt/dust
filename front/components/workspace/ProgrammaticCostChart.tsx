@@ -48,7 +48,7 @@ interface ProgrammaticCostChartProps {
   billingCycleStartDay: number;
 }
 
-export interface BaseProgrammaticCostChartProps {
+interface BaseProgrammaticCostChartProps {
   programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
   isProgrammaticCostLoading: boolean;
   isProgrammaticCostError: boolean;

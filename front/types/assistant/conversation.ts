@@ -169,7 +169,7 @@ export interface CitationType {
  * them together in case of error of either. We store an error only here whether it's an error
  * coming from the action or from the message generation.
  */
-export type BaseAgentMessageType = {
+type BaseAgentMessageType = {
   type: "agent_message";
   sId: string;
   version: number;
@@ -288,7 +288,7 @@ export interface AgentParticipantType {
   pictureUrl: string;
 }
 
-export interface UserParticipantType {
+interface UserParticipantType {
   sId: string;
   fullName: string | null;
   pictureUrl: string | null;
@@ -345,7 +345,7 @@ export type UserMessageNewEvent = {
 };
 
 // Event sent when the user message is created.
-export type UserMessageErrorEvent = {
+type UserMessageErrorEvent = {
   type: "user_message_error";
   created: number;
   error: {

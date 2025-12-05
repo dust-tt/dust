@@ -12,7 +12,7 @@ import {
 
 export const ANTHROPIC_PROVIDER_ID = "anthropic";
 
-export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
+const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
@@ -31,7 +31,7 @@ const THINKING_OVERWRITES: Partial<LLMParameters> = {
   temperature: 1,
 };
 
-export const ANTHROPIC_MODEL_CONFIGS: Record<
+const ANTHROPIC_MODEL_CONFIGS: Record<
   AnthropicWhitelistedModelId,
   { overwrites: Omit<LLMParameters, "modelId"> }
 > = {

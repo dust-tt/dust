@@ -1,6 +1,6 @@
 import { LegendDot } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 
-export type LegendEntry = {
+type LegendEntry = {
   key: string;
   label: string;
   colorClassName: string;

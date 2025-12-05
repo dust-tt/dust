@@ -10,11 +10,11 @@ import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/ve
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import type { UserMessageOrigin } from "@app/types";
 
-export type VersionMarker = { version: string; timestamp: number };
+type VersionMarker = { version: string; timestamp: number };
 
 export type ValuesPayload = { values: Record<string, number> };
 
-export type SourceBucket = { origin: string; count: number };
+type SourceBucket = { origin: string; count: number };
 
 export function isUserMessageOrigin(
   origin?: string | null
@@ -155,14 +155,14 @@ export function filterTimeSeriesByVersionWindow<
   });
 }
 
-export function formatUTCDateString(d: Date): string {
+function formatUTCDateString(d: Date): string {
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
-export function getTimeRangeBounds(periodDays: number): [string, string] {
+function getTimeRangeBounds(periodDays: number): [string, string] {
   const endUTC = Date.now();
   const startUTC = endUTC - periodDays * 24 * 60 * 60 * 1000;
   return [

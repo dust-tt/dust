@@ -14,7 +14,7 @@ const Operations = [
 ] as const;
 export type Operation = (typeof Operations)[number];
 
-export const LogicalOps = ["and", "or", "not"] as const;
+const LogicalOps = ["and", "or", "not"] as const;
 export type LogicalOp = (typeof LogicalOps)[number];
 
 export const OperationDisplayNames: Record<Operation | LogicalOp, string> = {

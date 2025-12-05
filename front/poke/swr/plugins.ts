@@ -177,7 +177,7 @@ export function useRunPokePlugin({
   return { doRunPlugin };
 }
 
-export interface PokePluginRunsFetchProps {
+interface PokePluginRunsFetchProps {
   disabled?: boolean;
   owner?: { sId: string }; // Optional for global plugins
   resourceType?: string;

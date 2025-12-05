@@ -58,7 +58,7 @@ const GongCallTranscriptCodec = t.type({
 
 export type GongCallTranscript = t.TypeOf<typeof GongCallTranscriptCodec>;
 
-export const GongParticipantCodec = t.intersection([
+const GongParticipantCodec = t.intersection([
   t.type({
     speakerId: t.union([t.string, t.null]),
     userId: t.union([t.string, t.undefined]),
@@ -131,7 +131,7 @@ const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-export type GongTranscriptMetadataWithoutTrackers = t.TypeOf<
+type GongTranscriptMetadataWithoutTrackers = t.TypeOf<
   typeof GongTranscriptMetadataWithoutTrackersCodec
 >;
 

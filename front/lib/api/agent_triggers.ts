@@ -11,7 +11,7 @@ import type { AgentsUsageType, ModelId } from "@app/types";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type WebhookSourcesUsage = Record<ModelId, AgentsUsageType>;
+type WebhookSourcesUsage = Record<ModelId, AgentsUsageType>;
 
 async function getAccessibleAgentsInfoBySId({
   auth,

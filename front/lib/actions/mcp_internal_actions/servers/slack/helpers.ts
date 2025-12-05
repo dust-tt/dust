@@ -16,12 +16,12 @@ import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
 // Constants for Slack API limits and pagination.
-export const SLACK_API_PAGE_SIZE = 100;
-export const MAX_CHANNELS_LIMIT = 500;
-export const MAX_THREAD_MESSAGES = 200;
-export const DEFAULT_THREAD_MESSAGES = 20;
+const SLACK_API_PAGE_SIZE = 100;
+const MAX_CHANNELS_LIMIT = 500;
+const MAX_THREAD_MESSAGES = 200;
+const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
-export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
+const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
 
 export function isSlackMissingScope(error: unknown): boolean {
   return (
@@ -66,7 +66,7 @@ type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
 };
 
 // Minimal channel information returned to reduce context window usage.
-export type MinimalChannelInfo = {
+type MinimalChannelInfo = {
   id: string;
   name: string;
   created: number;
@@ -80,7 +80,7 @@ export type MinimalChannelInfo = {
 };
 
 // Clean channel payload to keep only essential fields.
-export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
+function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
   return {
     id: channel.id ?? "",
     name: channel.name ?? "",
@@ -96,7 +96,7 @@ export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
 }
 
 // Minimal user information returned to reduce context window usage.
-export type MinimalUserInfo = {
+type MinimalUserInfo = {
   id: string;
   name: string;
   real_name: string;
@@ -105,7 +105,7 @@ export type MinimalUserInfo = {
 };
 
 // Clean user payload to keep only essential fields.
-export function cleanUserPayload(user: Member): MinimalUserInfo {
+function cleanUserPayload(user: Member): MinimalUserInfo {
   return {
     id: user.id ?? "",
     name: user.name ?? "",
@@ -115,7 +115,7 @@ export function cleanUserPayload(user: Member): MinimalUserInfo {
   };
 }
 
-export const getPublicChannels = async ({
+const getPublicChannels = async ({
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
   const channels: Channel[] = [];
@@ -154,7 +154,7 @@ export const getPublicChannels = async ({
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getChannels = async ({
+const getChannels = async ({
   slackClient,
   types = "public_channel",
   memberOnly = false,
@@ -201,7 +201,7 @@ export const getChannels = async ({
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getCachedPublicChannels = cacheWithRedis(
+const getCachedPublicChannels = cacheWithRedis(
   getPublicChannels,
   ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
@@ -381,7 +381,7 @@ function buildFilteredListResponse<T, U = T>(
   ]);
 }
 
-export async function hasSlackScope(
+async function hasSlackScope(
   accessToken: string,
   scope: string
 ): Promise<boolean> {

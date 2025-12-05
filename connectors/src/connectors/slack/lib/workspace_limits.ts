@@ -51,7 +51,7 @@ async function getVerifiedDomainsForWorkspace(
   return workspaceVerifiedDomainsRes.value;
 }
 
-export const getVerifiedDomainsForWorkspaceMemoized = cacheWithRedis(
+const getVerifiedDomainsForWorkspaceMemoized = cacheWithRedis(
   getVerifiedDomainsForWorkspace,
   (connector: ConnectorResource) => {
     return `workspace-verified-domains-${connector.id}`;

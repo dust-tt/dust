@@ -122,14 +122,14 @@ export type ConversationPartType = {
   redacted: boolean;
 };
 
-export type IntercomAuthor = {
+type IntercomAuthor = {
   id: string;
   type: "user" | "admin" | "bot" | "team";
   name: string;
   email: string;
 };
 
-export const INTERCOM_SYNC_ALL_CONVO_STATUSES = [
+const INTERCOM_SYNC_ALL_CONVO_STATUSES = [
   "activated",
   "disabled",
   "scheduled_activate",

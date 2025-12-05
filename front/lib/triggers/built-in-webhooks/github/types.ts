@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-export const GithubOrganizationSchema = z
+const GithubOrganizationSchema = z
   .object({
     name: z.string().describe("A GitHub organization name"),
   })
   .passthrough();
 
-export const GithubRepositorySchema = z
+const GithubRepositorySchema = z
   .object({
     fullName: z
       .string()

@@ -20,7 +20,7 @@ export const VOICE_LANGUAGES = [
   "chinese",
 ] as const;
 
-export type VoiceLanguage = (typeof VOICE_LANGUAGES)[number];
+type VoiceLanguage = (typeof VOICE_LANGUAGES)[number];
 
 export const VOICE_USE_CASES = [
   "narrative_story",

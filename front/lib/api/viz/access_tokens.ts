@@ -18,7 +18,7 @@ const VizAccessTokenPayloadSchema = z.object({
   workspaceId: z.string(),
 });
 
-export type VizAccessTokenPayload = z.infer<typeof VizAccessTokenPayloadSchema>;
+type VizAccessTokenPayload = z.infer<typeof VizAccessTokenPayloadSchema>;
 
 export function generateVizAccessToken({
   fileToken,

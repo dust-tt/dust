@@ -3,7 +3,7 @@ import { datadogLogs } from "@datadog/browser-logs";
 import localLogger from "@app/logger/logger";
 
 // Keep the exported Logger type for compatibility with existing imports.
-export type { Logger } from "pino";
+;
 
 // Pino-like levels we expose
 type Level = "trace" | "debug" | "info" | "warn" | "error";

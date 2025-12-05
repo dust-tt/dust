@@ -155,7 +155,7 @@ export function useWebhookFilterGenerator({
   return generateFilter;
 }
 
-export function useTriggerSubscribers({
+function useTriggerSubscribers({
   workspaceId,
   agentConfigurationId,
   triggerId,

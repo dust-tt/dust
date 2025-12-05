@@ -17,7 +17,7 @@ import {
   OPENING_TAG_REGEX,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
-export interface InstructionBlockAttributes {
+interface InstructionBlockAttributes {
   type: string;
 }
 

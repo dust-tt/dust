@@ -5,7 +5,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { v4 as uuidv4 } from "uuid";
 
-export function ioTsEnum<EnumType>(
+function ioTsEnum<EnumType>(
   enumValues: readonly string[],
   enumName?: string
 ) {
@@ -26,7 +26,7 @@ interface BrandedRange {
 }
 
 // Defines a function to generate a branded codec for validating numbers within a specific range.
-export function createRangeCodec(min: number, max: number) {
+function createRangeCodec(min: number, max: number) {
   return t.brand(
     t.number,
     (n): n is t.Branded<number, BrandedRange> => n >= min && n <= max,
@@ -34,7 +34,7 @@ export function createRangeCodec(min: number, max: number) {
   );
 }
 
-export function ioTsParsePayload<T>(
+function ioTsParsePayload<T>(
   payload: unknown,
   codec: t.Type<T>
 ): Result<T, string[]> {

@@ -9,7 +9,7 @@ import type {
   ConnectorSyncStatus,
 } from "@connectors/types";
 
-export interface ConnectorMetadata {
+interface ConnectorMetadata {
   rateLimited?: { at: Date } | null;
 }
 

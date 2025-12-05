@@ -78,7 +78,7 @@ export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
 
-export function fileSizeToHumanReadable(
+function fileSizeToHumanReadable(
   size: number,
   decimals: number = 0
 ): string {

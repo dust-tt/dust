@@ -94,7 +94,7 @@ const isCustomColumn = (column: ColumnDefinition) => {
   ); // Not a standard column
 };
 
-export const getCachedListColumns = cacheWithRedis(
+const getCachedListColumns = cacheWithRedis(
   _getListColumns,
   ({ siteId, listId }) => {
     return `${siteId}-${listId}`;
@@ -104,7 +104,7 @@ export const getCachedListColumns = cacheWithRedis(
   }
 );
 
-export async function _getListColumns({
+async function _getListColumns({
   logger,
   client,
   siteId,

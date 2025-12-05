@@ -162,7 +162,7 @@ const MODJO_API_URL = "https://api.modjo.ai";
 const MAX_PAGES_PER_BATCH = 50;
 const MODJO_PAGE_SIZE = 15;
 
-export interface ModjoTranscriptsResult {
+interface ModjoTranscriptsResult {
   fileIds: string[];
   nextCursor: number | null;
   isFirstSync: boolean;

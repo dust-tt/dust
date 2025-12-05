@@ -4,7 +4,7 @@ import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type ContextOriginBucket = {
+type ContextOriginBucket = {
   origin: string;
   count: number;
 };

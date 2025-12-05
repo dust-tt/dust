@@ -396,7 +396,7 @@ type MicrosoftEntity = {
   worksheet: WorkbookWorksheet;
 };
 
-export type MicrosoftEntityMapping = {
+type MicrosoftEntityMapping = {
   [K in keyof MicrosoftEntity]: MicrosoftEntity[K];
 };
 

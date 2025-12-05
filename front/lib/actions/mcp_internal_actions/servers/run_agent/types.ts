@@ -11,7 +11,7 @@ export interface ChildAgentBlob {
 
 // Resume state for run_agent.
 
-export type RunAgentResumeState = Record<string, unknown> & {
+type RunAgentResumeState = Record<string, unknown> & {
   conversationId: string;
   userMessageId: string;
 };

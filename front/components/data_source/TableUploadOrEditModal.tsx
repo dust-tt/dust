@@ -42,7 +42,7 @@ interface Table {
   description: string;
   file: File | null;
 }
-export interface TableUploadOrEditModalProps {
+interface TableUploadOrEditModalProps {
   contentNode?: LightContentNode;
   dataSourceView: DataSourceViewType;
   isOpen: boolean;

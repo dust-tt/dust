@@ -4,9 +4,9 @@ import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
-export const FEEDBACK_MODAL_SUBMIT = "feedback_modal_submit";
+const FEEDBACK_MODAL_SUBMIT = "feedback_modal_submit";
 
-export interface FeedbackModalMetadata {
+interface FeedbackModalMetadata {
   conversationId: string;
   messageId: string;
   workspaceId: string;

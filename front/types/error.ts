@@ -5,7 +5,7 @@ import type { ConnectorsAPIError } from "@dust-tt/client";
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
 
-export type InternalErrorWithStatusCode = {
+type InternalErrorWithStatusCode = {
   status_code: number;
 };
 

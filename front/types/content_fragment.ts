@@ -29,7 +29,7 @@ export type SupportedContentFragmentType =
   | DustMimeType
   | "dust-application/slack"; // Legacy
 
-export type ContentFragmentNodeData = {
+type ContentFragmentNodeData = {
   nodeId: string;
   nodeDataSourceViewId: string;
   nodeType: ContentNodeType;
@@ -98,7 +98,7 @@ export type ContentFragmentType =
   | FileContentFragmentType
   | ContentNodeContentFragmentType;
 
-export type UploadedContentFragment = {
+type UploadedContentFragment = {
   fileId: string;
   title: string;
   contentType: SupportedContentFragmentType;

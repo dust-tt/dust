@@ -92,7 +92,7 @@ type AgentGridProps = {
   owner: WorkspaceType;
 };
 
-export const AgentGrid = ({
+const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
   handleMoreClick,

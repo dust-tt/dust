@@ -19,7 +19,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-export async function formatCodeContentForUpsert(
+async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,
   sourceUrl: string,
   content: Buffer

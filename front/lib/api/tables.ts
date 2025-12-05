@@ -17,7 +17,7 @@ type NotFoundError = {
   message: string;
 };
 
-export type TableOperationError =
+type TableOperationError =
   | {
       type: "internal_server_error";
       coreAPIError: CoreAPIError;

@@ -29,13 +29,13 @@ export type AgentMessageFeedbackType = {
   dismissed: boolean;
 };
 
-export type FeedbackUserInfo = {
+type FeedbackUserInfo = {
   userName: string;
   userEmail: string;
   userImageUrl: string | null;
 };
 
-export type FeedbackConversationInfo = {
+type FeedbackConversationInfo = {
   conversationId: string | null;
 };
 

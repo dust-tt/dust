@@ -22,7 +22,7 @@ import {
 
 export const OPENAI_PROVIDER_ID = "openai";
 
-export const OPENAI_WHITELISTED_MODEL_IDS = [
+const OPENAI_WHITELISTED_MODEL_IDS = [
   O1_MODEL_ID,
   O3_MINI_MODEL_ID,
   O3_MODEL_ID,

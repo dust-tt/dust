@@ -1,6 +1,6 @@
 import z from "zod";
 
-export const AshbyCandidateSchema = z
+const AshbyCandidateSchema = z
   .object({
     id: z.string(),
     name: z.string(),
@@ -34,7 +34,7 @@ export const AshbyCandidateSchema = z
 
 export type AshbyCandidate = z.infer<typeof AshbyCandidateSchema>;
 
-export const AshbyReportSynchronousRequestSchema = z.object({
+const AshbyReportSynchronousRequestSchema = z.object({
   reportId: z.string().uuid(),
 });
 
@@ -65,7 +65,7 @@ export type AshbyReportSynchronousResponse = z.infer<
   typeof AshbyReportSynchronousResponseSchema
 >;
 
-export const AshbyCandidateSearchRequestSchema = z.object({
+const AshbyCandidateSearchRequestSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional(),
 });
@@ -78,11 +78,11 @@ export const AshbyCandidateSearchResponseSchema = z.object({
   results: z.array(AshbyCandidateSchema),
 });
 
-export type AshbyCandidateSearchResponse = z.infer<
+type AshbyCandidateSearchResponse = z.infer<
   typeof AshbyCandidateSearchResponseSchema
 >;
 
-export const AshbyApplicationFeedbackListRequestSchema = z.object({
+const AshbyApplicationFeedbackListRequestSchema = z.object({
   applicationId: z.string(),
 });
 
@@ -90,7 +90,7 @@ export type AshbyApplicationFeedbackListRequest = z.infer<
   typeof AshbyApplicationFeedbackListRequestSchema
 >;
 
-export const AshbyFeedbackSubmissionSchema = z
+const AshbyFeedbackSubmissionSchema = z
   .object({
     id: z.string(),
     submittedAt: z.string().optional().nullable(),
@@ -151,11 +151,11 @@ export const AshbyApplicationFeedbackListResponseSchema = z.object({
   results: z.array(AshbyFeedbackSubmissionSchema),
 });
 
-export type AshbyApplicationFeedbackListResponse = z.infer<
+type AshbyApplicationFeedbackListResponse = z.infer<
   typeof AshbyApplicationFeedbackListResponseSchema
 >;
 
-export const AshbyCandidateCreateNoteRequestSchema = z.object({
+const AshbyCandidateCreateNoteRequestSchema = z.object({
   candidateId: z.string(),
   note: z.object({
     type: z.literal("text/html"),
@@ -176,6 +176,6 @@ export const AshbyCandidateCreateNoteResponseSchema = z.object({
     .passthrough(),
 });
 
-export type AshbyCandidateCreateNoteResponse = z.infer<
+type AshbyCandidateCreateNoteResponse = z.infer<
   typeof AshbyCandidateCreateNoteResponseSchema
 >;

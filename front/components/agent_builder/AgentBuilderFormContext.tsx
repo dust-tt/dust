@@ -18,7 +18,7 @@ const supportedModelSchema = z.object({
   providerId: providerIdSchema,
 });
 
-export const generationSettingsSchema = z.object({
+const generationSettingsSchema = z.object({
   modelSettings: supportedModelSchema,
   temperature: z.number().min(0).max(1),
   reasoningEffort: reasoningEffortSchema,
@@ -86,7 +86,7 @@ export const dataSourceConfigurationSchema = z
   .record(z.string(), dataSourceViewSelectionConfigurationSchema)
   .nullable();
 
-export const timeFrameSchema = z
+const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
     unit: z.enum(["hour", "day", "week", "month", "year"]),

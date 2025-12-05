@@ -43,7 +43,7 @@ import {
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
-export type SlackSearchMatch = {
+type SlackSearchMatch = {
   author_name?: string;
   channel_name?: string;
   message_ts?: string;
@@ -54,7 +54,7 @@ export type SlackSearchMatch = {
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SLACK_TOOL_LOG_NAME = "slack";
 
-export const slackSearch = async (
+const slackSearch = async (
   query: string,
   accessToken: string
 ): Promise<SlackSearchMatch[]> => {

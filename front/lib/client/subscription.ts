@@ -12,7 +12,7 @@ export const getPriceWithCurrency = (price: number): string => {
   return isLikelyInUS ? `$${price}` : `${price}€`;
 };
 
-export interface BillingCycle {
+interface BillingCycle {
   cycleStart: Date;
   cycleEnd: Date;
 }

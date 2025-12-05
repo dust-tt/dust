@@ -6,14 +6,14 @@ import { isDevelopment } from "@connectors/types";
 
 const WEBHOOK_ROUTER_CONFIG_FILE = "webhook-router-config.json";
 
-export interface WebhookRouterEntry {
+interface WebhookRouterEntry {
   signingSecret: string;
   regions: {
     [region: string]: number[]; // region name -> connector IDs
   };
 }
 
-export interface WebhookRouterConfig {
+interface WebhookRouterConfig {
   [provider: string]: {
     [providerWorkspaceId: string]: WebhookRouterEntry;
   };
@@ -22,7 +22,7 @@ export interface WebhookRouterConfig {
 /**
  * Error thrown when a webhook router entry is not found.
  */
-export class WebhookRouterEntryNotFoundError extends Error {
+class WebhookRouterEntryNotFoundError extends Error {
   constructor(
     public readonly provider: string,
     public readonly providerWorkspaceId: string
@@ -37,7 +37,7 @@ export class WebhookRouterEntryNotFoundError extends Error {
 /**
  * Error thrown when a concurrent modification is detected during a write operation.
  */
-export class ConcurrentModificationError extends Error {
+class ConcurrentModificationError extends Error {
   constructor(message: string = "Concurrent modification detected") {
     super(message);
     this.name = "ConcurrentModificationError";

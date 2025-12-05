@@ -64,7 +64,7 @@ type ConnectorPermissionsConfigurable =
       isPermissionsConfigurableBlocked?: never;
     };
 
-export type ConnectorProviderUIDetails = {
+type ConnectorProviderUIDetails = {
   hide: boolean;
   getLogoComponent: (
     isDark?: boolean

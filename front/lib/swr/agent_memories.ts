@@ -35,7 +35,7 @@ export function useAgentMemoriesForUser({
   };
 }
 
-export function useUpdateAgentMemory({
+function useUpdateAgentMemory({
   owner,
   agentConfiguration,
 }: {

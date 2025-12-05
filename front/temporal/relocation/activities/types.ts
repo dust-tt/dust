@@ -44,7 +44,7 @@ export interface CreateDataSourceProjectResult {
   dustAPIDataSourceId: string;
 }
 
-export interface APIRelocationBlob<
+interface APIRelocationBlob<
   T extends string = string,
   V extends object = object,
 > {

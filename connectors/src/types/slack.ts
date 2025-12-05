@@ -6,7 +6,7 @@ const SlackAutoReadPatternSchema = z.object({
   pattern: z.string(),
   spaceId: z.string(),
 });
-export const SlackAutoReadPatternsSchema = z.array(SlackAutoReadPatternSchema);
+const SlackAutoReadPatternsSchema = z.array(SlackAutoReadPatternSchema);
 
 export type SlackAutoReadPattern = z.infer<typeof SlackAutoReadPatternSchema>;
 

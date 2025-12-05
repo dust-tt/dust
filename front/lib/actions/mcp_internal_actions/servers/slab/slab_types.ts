@@ -1,4 +1,4 @@
-export interface SlabUser {
+interface SlabUser {
   id: string;
   name: string;
   email: string;
@@ -35,7 +35,7 @@ export interface SlabSearchResult {
   post: SlabPost;
 }
 
-export interface SlabPostSummary {
+interface SlabPostSummary {
   id: string;
   title: string;
   url: string;

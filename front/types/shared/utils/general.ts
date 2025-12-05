@@ -15,7 +15,7 @@ export function isStringArray(value: unknown): value is string[] {
   );
 }
 
-export function isRecord(value: object): value is Record<string, unknown> {
+function isRecord(value: object): value is Record<string, unknown> {
   return !Array.isArray(value);
 }
 

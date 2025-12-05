@@ -276,7 +276,7 @@ export async function searchMembers(
   return { members: usersWithWorkspace, total };
 }
 
-export async function getMembersCount(
+async function getMembersCount(
   auth: Authenticator,
   { activeOnly = false }: { activeOnly?: boolean } = {}
 ): Promise<number> {
@@ -397,7 +397,7 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export interface WorkspaceMetadata {
+interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
   allowContentCreationFileSharing?: boolean;
@@ -428,7 +428,7 @@ export async function setWorkspaceRelocated(
   return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
 }
 
-export function isWorkspaceRelocationOngoing(
+function isWorkspaceRelocationOngoing(
   owner: LightWorkspaceType
 ): boolean {
   return owner.metadata?.maintenance === "relocation";

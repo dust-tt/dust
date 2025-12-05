@@ -6,7 +6,7 @@ import type { LightWorkspaceType } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
-export interface SearchUsersResult {
+interface SearchUsersResult {
   users: UserSearchDocument[];
   total: number;
 }

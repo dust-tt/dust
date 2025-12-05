@@ -23,7 +23,7 @@ const CodeEditor = dynamic(
   { ssr: false }
 );
 
-export interface TableConfig {
+interface TableConfig {
   workspace_id: string;
   data_source_id: string;
   table_id: string;

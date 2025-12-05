@@ -10,18 +10,18 @@ import {
   MISTRAL_LARGE_MODEL_ID,
 } from "@app/types";
 
-export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
+const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_5_MODEL_ID,
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
 ] as const;
 
-export function isBestPerformingModel(modelId: ModelIdType): boolean {
+function isBestPerformingModel(modelId: ModelIdType): boolean {
   return BEST_PERFORMING_MODELS_ID.includes(modelId);
 }
 
-export function categorizeModels(models: ModelConfigurationType[]): {
+function categorizeModels(models: ModelConfigurationType[]): {
   bestPerformingModelConfigs: ModelConfigurationType[];
   otherModelConfigs: ModelConfigurationType[];
 } {
@@ -44,7 +44,7 @@ export function getModelKey(modelConfig: ModelConfigurationType): string {
 }
 
 // Enhanced categorization for new UI structure
-export interface ModelCategories {
+interface ModelCategories {
   bestGeneralModels: ModelConfigurationType[];
   providerGroups: Map<
     ModelProviderIdType,

@@ -9,7 +9,7 @@ interface ParserState {
   currentPageBuffer: string;
 }
 
-export function createPageMetadataPrefix({
+function createPageMetadataPrefix({
   pageNumber,
   prefix,
 }: {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const LinearTeamSchema = z.object({
+const LinearTeamSchema = z.object({
   id: z.string(),
   name: z.string(),
   key: z.string(),
@@ -8,22 +8,22 @@ export const LinearTeamSchema = z.object({
 
 export type LinearTeam = z.infer<typeof LinearTeamSchema>;
 
-export const LinearAdditionalDataSchema = z.object({
+const LinearAdditionalDataSchema = z.object({
   teams: z.array(LinearTeamSchema),
 });
 
 export type LinearAdditionalData = z.infer<typeof LinearAdditionalDataSchema>;
 
-export function isLinearTeam(data: unknown): data is LinearTeam {
+function isLinearTeam(data: unknown): data is LinearTeam {
   const result = LinearTeamSchema.safeParse(data);
   return result.success;
 }
 
-export type LinearWebhookCreateMetadata = {
+type LinearWebhookCreateMetadata = {
   teams: LinearTeam[];
 };
 
-export type LinearWebhookMetadata = {
+type LinearWebhookMetadata = {
   webhookIds: Record<string, string>;
   teams?: LinearTeam[];
 };

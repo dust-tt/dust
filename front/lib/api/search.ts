@@ -27,7 +27,7 @@ export type DataSourceContentNode = ContentNodeWithParent & {
   dataSourceViews: DataSourceViewType[];
 };
 
-export type SearchResult = {
+type SearchResult = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
@@ -118,7 +118,7 @@ const NodeIdSearchBody = t.intersection([
 
 export const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
 
-export type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
+type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
 
 export async function handleSearch(
   req: NextApiRequest,

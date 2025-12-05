@@ -8,7 +8,7 @@ import type { Logger } from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-export async function retrieveRecentGoogleTranscripts(
+async function retrieveRecentGoogleTranscripts(
   {
     auth,
     userId,

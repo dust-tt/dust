@@ -22,7 +22,7 @@ interface ImgProps {
   alt: string;
   owner: LightWorkspaceType;
 }
-export function Img({ src, alt, owner }: ImgProps) {
+function Img({ src, alt, owner }: ImgProps) {
   if (!src) {
     return null;
   }

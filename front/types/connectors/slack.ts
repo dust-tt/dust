@@ -32,9 +32,9 @@ export type SlackConfigurationType = t.TypeOf<
 
 // Whitelist.
 
-export type SlackbotWhitelistType = "summon_agent" | "index_messages";
+type SlackbotWhitelistType = "summon_agent" | "index_messages";
 
-export function isSlackbotWhitelistType(
+function isSlackbotWhitelistType(
   value: unknown
 ): value is SlackbotWhitelistType {
   return value === "summon_agent" || value === "index_messages";

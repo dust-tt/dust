@@ -33,7 +33,7 @@ import type { SpaceType, WorkspaceType } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DETAILS_TABS = ["info", "sharing"] as const;
-export type TabType = (typeof DETAILS_TABS)[number];
+type TabType = (typeof DETAILS_TABS)[number];
 
 interface MCPServerDetailsSheetProps {
   owner: WorkspaceType;

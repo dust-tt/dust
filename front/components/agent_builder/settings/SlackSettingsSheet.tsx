@@ -29,7 +29,7 @@ import { isAdmin } from "@app/types/user";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
-export type SlackChannel = {
+type SlackChannel = {
   slackChannelId: string;
   slackChannelName: string;
   sourceUrl?: string | null;

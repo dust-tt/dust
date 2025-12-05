@@ -59,17 +59,17 @@ export async function transcribeFile(
   }
 }
 
-export type TranscriptionDeltaEvent = {
+type TranscriptionDeltaEvent = {
   delta: string;
   type: "delta";
 };
 
-export type TranscriptionFullTranscriptEvent = {
+type TranscriptionFullTranscriptEvent = {
   fullTranscript: string;
   type: "fullTranscript";
 };
 
-export type TranscriptionStreamEvent =
+type TranscriptionStreamEvent =
   | TranscriptionDeltaEvent
   | TranscriptionFullTranscriptEvent;
 

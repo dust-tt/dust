@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
 // SEO config type
-export interface SeoConfig {
+interface SeoConfig {
   title: string;
   description: string;
 }
 
 // Basic config types
-export interface ChipConfig {
+interface ChipConfig {
   label: string;
   color:
     | "primary"
@@ -22,7 +22,7 @@ export interface ChipConfig {
   icon: React.ComponentType;
 }
 
-export interface CTAButtonsConfig {
+interface CTAButtonsConfig {
   primary: {
     label: string;
     href: string;
@@ -33,7 +33,7 @@ export interface CTAButtonsConfig {
   };
 }
 
-export interface TestimonialCardConfig {
+interface TestimonialCardConfig {
   quote: string;
   author: {
     name: string;
@@ -48,7 +48,7 @@ export interface TestimonialCardConfig {
 }
 
 // Hero Section Config
-export interface HeroSectionConfig {
+interface HeroSectionConfig {
   chip: ChipConfig;
   title: ReactNode;
   description: string;
@@ -65,52 +65,52 @@ export interface HeroSectionConfig {
 }
 
 // AI Agents Section Config
-export interface AIAgentsSectionConfig {
+interface AIAgentsSectionConfig {
   title: string;
   description: string;
   bgColor?: string;
 }
 
 // Trusted By Section Config
-export interface TrustedBySectionConfig {
+interface TrustedBySectionConfig {
   title: string;
   logoSet: string;
 }
 
 // Pain Points Section Config
-export interface PainPointConfig {
+interface PainPointConfig {
   icon: string;
   title: string;
   description: string;
   color: string;
 }
 
-export interface PainPointsSectionConfig {
+interface PainPointsSectionConfig {
   title: string;
   painPoints: PainPointConfig[];
 }
 
 // Use Case Feature Config
-export interface UseCaseFeatureConfig {
+interface UseCaseFeatureConfig {
   icon: string;
   title: string;
   description: string;
 }
 
-export interface UseCaseConfig {
+interface UseCaseConfig {
   title: string;
   image: string;
   bgColor: string;
   features: UseCaseFeatureConfig[];
 }
 
-export interface DustInActionSectionConfig {
+interface DustInActionSectionConfig {
   title: string;
   useCases: UseCaseConfig[];
 }
 
 // Impact Metrics Section Config
-export interface ImpactMetricConfig {
+interface ImpactMetricConfig {
   value: string;
   unit: string;
   type: string;
@@ -121,21 +121,21 @@ export interface ImpactMetricConfig {
   borderRadius?: string;
 }
 
-export interface ImpactMetricsSectionConfig {
+interface ImpactMetricsSectionConfig {
   title?: string;
   metrics: ImpactMetricConfig[];
   bgColor?: string;
 }
 
 // Demo Video Section Config
-export interface DemoVideoSectionConfig {
+interface DemoVideoSectionConfig {
   sectionTitle: string;
   videoUrl: string;
   showCaptions?: boolean;
 }
 
 // Testimonial Section Config
-export interface TestimonialSectionConfig {
+interface TestimonialSectionConfig {
   quote: string;
   author: {
     name: string;
@@ -150,20 +150,20 @@ export interface TestimonialSectionConfig {
 }
 
 // Customer Story Config
-export interface CustomerStoryConfig {
+interface CustomerStoryConfig {
   title: string;
   content: string;
   href: string;
   src: string;
 }
 
-export interface CustomerStoriesSectionConfig {
+interface CustomerStoriesSectionConfig {
   title: string;
   stories: CustomerStoryConfig[];
 }
 
 // Just Use Dust Section Config
-export interface JustUseDustSectionConfig {
+interface JustUseDustSectionConfig {
   title: string;
   titleColor?: string;
   ctaButtons: CTAButtonsConfig;
@@ -185,12 +185,12 @@ export type SectionType =
   | "customerStories"
   | "justUseDust";
 
-export interface SectionConfig {
+interface SectionConfig {
   type: SectionType;
   enabled?: boolean; // Allows sections to be disabled
 }
 
-export interface LayoutConfig {
+interface LayoutConfig {
   sections: SectionConfig[];
 }
 
@@ -217,7 +217,7 @@ export interface IndustryPageConfig {
 }
 
 // Utility functions for section management
-export const defaultSectionOrder: SectionType[] = [
+const defaultSectionOrder: SectionType[] = [
   "hero",
   "aiAgents",
   "trustedBy",

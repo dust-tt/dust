@@ -11,7 +11,7 @@ export const ERROR_MESSAGES = {
 } as const;
 
 // HubSpot object type mappings
-export const HUBSPOT_OBJECT_TYPE_TO_ID = {
+const HUBSPOT_OBJECT_TYPE_TO_ID = {
   appointments: "0-421",
   calls: "0-48",
   communications: "0-18",
@@ -47,7 +47,7 @@ export const HUBSPOT_ID_TO_OBJECT_TYPE = Object.entries(
   {}
 );
 
-export const getObjectTypeId = (objectType: string): string | null => {
+const getObjectTypeId = (objectType: string): string | null => {
   return (
     HUBSPOT_OBJECT_TYPE_TO_ID[
       objectType as keyof typeof HUBSPOT_OBJECT_TYPE_TO_ID
@@ -55,7 +55,7 @@ export const getObjectTypeId = (objectType: string): string | null => {
   );
 };
 
-export const convertObjectTypeToId = (objectTypeId: string): string => {
+const convertObjectTypeToId = (objectTypeId: string): string => {
   if (objectTypeId.startsWith("0-") || objectTypeId.startsWith("2-")) {
     return objectTypeId;
   }
@@ -87,7 +87,7 @@ export const withAuth = async ({
   }
 };
 
-export const logAndReturnError = ({
+const logAndReturnError = ({
   error,
   params,
   message,
@@ -136,7 +136,7 @@ const PageRequestSchema = z.object({
     ),
 });
 
-export const GetHubspotLinkSchema = z.object({
+const GetHubspotLinkSchema = z.object({
   portalId: z.string().describe("The HubSpot portal/account ID"),
   uiDomain: z
     .string()
@@ -188,7 +188,7 @@ export const validateRequests = (pageRequests: PageRequest[]) => {
   return { errors, invalidObjectTypeIds };
 };
 
-export type PageRequest = z.infer<typeof PageRequestSchema>;
+type PageRequest = z.infer<typeof PageRequestSchema>;
 
 export const generateUrls = (
   portalId: string,

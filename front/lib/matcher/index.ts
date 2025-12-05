@@ -2,11 +2,11 @@
 
 // Export types.
 export type {
-  LogicalExpression,
+  
   LogicalOp,
   MatcherExpression,
   Operation,
-  OperationExpression,
+  
 } from "./types";
 
 // Export type guards.

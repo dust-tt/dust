@@ -55,7 +55,7 @@ export function isAgentFunctionCallContent(
   return content.type === "function_call";
 }
 
-export function isAgentErrorContent(
+function isAgentErrorContent(
   content: AgentContentItemType
 ): content is AgentErrorContentType {
   return content.type === "error";

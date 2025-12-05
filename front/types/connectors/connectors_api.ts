@@ -27,11 +27,11 @@ export const UpdateConnectorConfigurationTypeSchema = t.type({
   configuration: ConnectorConfigurationTypeSchema,
 });
 
-export type UpdateConnectorConfigurationType = t.TypeOf<
+type UpdateConnectorConfigurationType = t.TypeOf<
   typeof UpdateConnectorConfigurationTypeSchema
 >;
 
-export const ConnectorCreateRequestBodySchema = t.type({
+const ConnectorCreateRequestBodySchema = t.type({
   workspaceAPIKey: t.string,
   dataSourceId: t.string,
   workspaceId: t.string,
@@ -39,7 +39,7 @@ export const ConnectorCreateRequestBodySchema = t.type({
   configuration: ConnectorConfigurationTypeSchema,
 });
 
-export type ConnectorCreateRequestBody = t.TypeOf<
+type ConnectorCreateRequestBody = t.TypeOf<
   typeof ConnectorCreateRequestBodySchema
 >;
 
@@ -53,7 +53,7 @@ export type UpdateConnectorRequestBody = t.TypeOf<
 >;
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
-export type ConnectorSyncStatus = "succeeded" | "failed";
+type ConnectorSyncStatus = "succeeded" | "failed";
 export const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "workspace_quota_exceeded",
@@ -67,8 +67,8 @@ export const CONNECTORS_ERROR_TYPES = [
   "remote_database_network_error",
 ] as const;
 
-export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
-export function isConnectorError(val: string): val is ConnectorErrorType {
+type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
+function isConnectorError(val: string): val is ConnectorErrorType {
   return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
 }
 
@@ -146,14 +146,14 @@ export interface ContentNodeWithParent extends ContentNode {
   parentTitle: string | null;
 }
 
-export type GoogleDriveFolderType = {
+type GoogleDriveFolderType = {
   id: string;
   name: string;
   parent: string | null;
   children: string[];
 };
 
-export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
+type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
   selected: boolean;
 };
 

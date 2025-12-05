@@ -20,7 +20,7 @@ export type LLMClientMetadata = {
   modelId: ModelIdType;
 };
 
-export type ForceToolCall = string;
+type ForceToolCall = string;
 
 export interface LLMStreamParameters {
   conversation: ModelConversationTypeMultiActions;

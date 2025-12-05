@@ -7,12 +7,12 @@ const TIKTOKEN_TOKENIZER_BASE = [
   "anthropic_base",
 ] as const;
 
-export type TiktokenTokenizerBase = (typeof TIKTOKEN_TOKENIZER_BASE)[number];
+type TiktokenTokenizerBase = (typeof TIKTOKEN_TOKENIZER_BASE)[number];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SENTENCEPIECE_BASE = ["model_v1", "model_v2", "model_v3"] as const;
 
-export type SentencePieceTokenizerBase = (typeof SENTENCEPIECE_BASE)[number];
+type SentencePieceTokenizerBase = (typeof SENTENCEPIECE_BASE)[number];
 
 export type TokenizerConfig =
   | { type: "tiktoken"; base: TiktokenTokenizerBase }

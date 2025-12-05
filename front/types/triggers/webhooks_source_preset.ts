@@ -14,7 +14,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
-export type EventCheck = {
+type EventCheck = {
   type: "headers" | "body";
   field: string;
 };

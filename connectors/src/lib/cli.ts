@@ -91,7 +91,7 @@ export async function runCommand(adminCommand: AdminCommandType) {
   }
 }
 
-export async function getConnectorOrThrow({
+async function getConnectorOrThrow({
   workspaceId,
   dataSourceId,
 }: {
@@ -126,7 +126,7 @@ export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
   return res;
 }
 
-export const connectors = async ({
+const connectors = async ({
   command,
   args,
 }: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
@@ -291,7 +291,7 @@ export const connectors = async ({
   }
 };
 
-export const batch = async ({
+const batch = async ({
   command,
   args,
 }: BatchCommandType): Promise<
@@ -440,7 +440,7 @@ export const batch = async ({
   }
 };
 
-export const webcrawler = async ({
+const webcrawler = async ({
   command,
   args,
 }: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
@@ -480,7 +480,7 @@ export const webcrawler = async ({
   }
 };
 
-export const temporal = async ({
+const temporal = async ({
   command,
   args,
 }: TemporalCommandType): Promise<

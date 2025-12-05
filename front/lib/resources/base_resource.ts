@@ -21,7 +21,7 @@ export interface ResourceWithId {
   id: ModelId;
 }
 
-export type ResourceLogValue = string | number | null;
+type ResourceLogValue = string | number | null;
 export type ResourceLogJSON = Record<string, ResourceLogValue>;
 
 /**

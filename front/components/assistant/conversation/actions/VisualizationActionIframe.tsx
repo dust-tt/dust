@@ -48,7 +48,7 @@ type ProtectedVisualization = BaseVisualization & {
   code: string;
 };
 
-export type Visualization = PublicVisualization | ProtectedVisualization;
+type Visualization = PublicVisualization | ProtectedVisualization;
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -201,7 +201,7 @@ function useVisualizationDataHandler({
   ]);
 }
 
-export function CodeDrawer({
+function CodeDrawer({
   isOpened,
   onClose,
   code,

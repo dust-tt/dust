@@ -3,16 +3,16 @@ type BaseState = {
   currentBlockIndex: number;
 };
 
-export type TextState = BaseState & {
+type TextState = BaseState & {
   accumulatorType: "text";
 };
 
-export type ReasoningState = BaseState & {
+type ReasoningState = BaseState & {
   accumulatorType: "reasoning";
   signature?: string;
 };
 
-export type ToolUseState = BaseState & {
+type ToolUseState = BaseState & {
   accumulatorType: "tool_use";
   toolInfo: {
     id: string;

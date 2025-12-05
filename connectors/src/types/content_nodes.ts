@@ -11,7 +11,7 @@ import * as t from "io-ts";
 // Define a codec for ContentNodesViewType using io-ts.
 // WARNING: when changing this codec, search and map for comments on ContentNodesViewTypeCodec
 // because parts of the codebase could not use this type directly (and as such commented)
-export const ContentNodesViewTypeCodec = t.union([
+const ContentNodesViewTypeCodec = t.union([
   t.literal("table"),
   t.literal("document"),
   t.literal("all"),

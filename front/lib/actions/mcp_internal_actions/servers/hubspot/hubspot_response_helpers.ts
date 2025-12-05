@@ -1,7 +1,7 @@
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
-export interface HubSpotObjectSummary {
+interface HubSpotObjectSummary {
   id: string;
   type: string;
   title: string;
@@ -11,7 +11,7 @@ export interface HubSpotObjectSummary {
   updated_at?: string;
 }
 
-export interface HubSpotPropertySummary {
+interface HubSpotPropertySummary {
   name: string;
   label: string;
   type: string;
@@ -26,7 +26,7 @@ const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   deals: ["closedate", "createdate", "lastmodifieddate"],
 };
 
-export function formatHubSpotObject(
+function formatHubSpotObject(
   object: SimplePublicObject,
   objectType: string,
   portalId?: string
@@ -103,7 +103,7 @@ export function formatHubSpotObject(
   };
 }
 
-export function formatHubSpotProperty(
+function formatHubSpotProperty(
   property: Property
 ): HubSpotPropertySummary {
   return {
@@ -153,7 +153,7 @@ export function formatHubSpotObjectsAsText(
   return `Found ${objects.length} ${objectType}:\n\n${formatted}`;
 }
 
-export function formatHubSpotPropertiesAsText(
+function formatHubSpotPropertiesAsText(
   properties: Property[],
   objectType: string,
   creatableOnly: boolean = false

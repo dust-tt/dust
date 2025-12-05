@@ -57,7 +57,7 @@ export const INPUT_BAR_ACTIONS = [
   "fullscreen",
 ] as const;
 
-export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
+type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
   allAgents: LightAgentConfigurationType[];

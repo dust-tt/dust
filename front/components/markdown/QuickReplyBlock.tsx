@@ -15,7 +15,7 @@ interface QuickReplyBlockProps {
   onSend: (message: string) => Promise<void>;
 }
 
-export function QuickReplyBlock({
+function QuickReplyBlock({
   label,
   message,
   disabled,

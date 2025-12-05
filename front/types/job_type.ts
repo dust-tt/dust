@@ -1,4 +1,4 @@
-export const JOB_TYPES = [
+const JOB_TYPES = [
   "customer_success",
   "customer_support",
   "data",
@@ -20,7 +20,7 @@ export function isJobType(value: unknown): value is JobType {
   return JOB_TYPES.includes(value as JobType);
 }
 
-export const JOB_TYPE_LABELS: Record<JobType, string> = {
+const JOB_TYPE_LABELS: Record<JobType, string> = {
   customer_success: "Customer Success",
   customer_support: "Customer Support",
   data: "Data",

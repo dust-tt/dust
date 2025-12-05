@@ -252,7 +252,7 @@ function createServer(
   return server;
 }
 
-export async function getFileFromConversation(
+async function getFileFromConversation(
   auth: Authenticator,
   fileId: string,
   conversation: ConversationType,

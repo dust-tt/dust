@@ -20,7 +20,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
-export type RunModelAndCreateActionsResult = {
+type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
   runId: string | null;
 };

@@ -26,7 +26,7 @@ export const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
 // the garbageCollect function will be stopped if it runs longer than this
 // (a bit less than 2 hours). This includes retries.
-export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
+const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
   1000 * 60 * 60 * 2 * 0.9
 );
 

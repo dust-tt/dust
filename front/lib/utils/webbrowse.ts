@@ -20,7 +20,7 @@ type BrowserScrapeMetadata = {
   url: string;
 };
 
-export type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
+type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
   markdown?: string;
   html?: string;
   screenshots?: string[];
@@ -29,7 +29,7 @@ export type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
   description: string | undefined;
 };
 
-export type BrowseScrapeErrorResponse = BrowserScrapeMetadata & {
+type BrowseScrapeErrorResponse = BrowserScrapeMetadata & {
   error: string;
 };
 
@@ -42,7 +42,7 @@ export function isBrowseScrapeSuccessResponse(
 /**
  * Fetches the content of a URL and returns it as markdown, HTML, or extracted data using Firecrawl
  */
-export const browseUrl = async (
+const browseUrl = async (
   url: string,
   format: "markdown" | "html" = "markdown",
   options?: {

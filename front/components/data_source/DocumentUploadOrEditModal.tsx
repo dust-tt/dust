@@ -61,7 +61,7 @@ interface Document {
   sourceUrl: string;
   mimeType: string | null;
 }
-export interface DocumentUploadOrEditModalProps {
+interface DocumentUploadOrEditModalProps {
   contentNode?: LightContentNode;
   dataSourceView: DataSourceViewType;
   isOpen: boolean;

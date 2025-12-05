@@ -64,7 +64,7 @@ import {
   isWebsiteOrFolderCategory,
 } from "@app/types";
 
-export interface RowData {
+interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
   label: string;
   icon: React.ComponentType;

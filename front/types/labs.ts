@@ -2,7 +2,7 @@ import type { ModelId, WhitelistableFeature } from "@app/types";
 
 // Constants
 
-export const labsTranscriptsProviders = [
+const labsTranscriptsProviders = [
   "google_drive",
   "gong",
   "modjo",
@@ -10,13 +10,13 @@ export const labsTranscriptsProviders = [
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
-export const labsFeatures = [
+const labsFeatures = [
   "transcripts",
   "trackers",
   "mcp_actions",
   "transcription",
 ] as const;
-export type LabsFeatureType = (typeof labsFeatures)[number];
+type LabsFeatureType = (typeof labsFeatures)[number];
 
 // Types
 
@@ -43,7 +43,7 @@ export type LabsFeatureItemType = {
   onlyAdminCanManage?: boolean;
 };
 
-export enum SyncStatus {
+enum SyncStatus {
   IDLE = "idle",
   IN_PROGRESS = "running",
   COMPLETED = "completed",

@@ -47,11 +47,11 @@ export type MCPToolType = {
   inputSchema?: JSONSchema;
 };
 
-export type MCPToolWithAvailabilityType = MCPToolType & {
+type MCPToolWithAvailabilityType = MCPToolType & {
   availability: MCPServerAvailability;
 };
 
-export type WithStakeLevelType<T> = T & {
+type WithStakeLevelType<T> = T & {
   stakeLevel: MCPToolStakeLevelType;
 };
 
@@ -65,7 +65,7 @@ export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
 export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
-export type MCPToolWithStakeLevelType =
+type MCPToolWithStakeLevelType =
   | ServerSideMCPToolTypeWithStakeAndRetryPolicy
   | ClientSideMCPToolTypeWithStakeLevel;
 
@@ -96,7 +96,7 @@ export type RemoteMCPServerType = MCPServerType & {
   allowMultipleInstances: true;
 };
 
-export type MCPServerViewTypeType = "remote" | "internal";
+type MCPServerViewTypeType = "remote" | "internal";
 
 export interface MCPServerViewType {
   id: ModelId;

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 
-export const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
+const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
   name: z.string(),
   workspace: z.object({
     id: z.string(),

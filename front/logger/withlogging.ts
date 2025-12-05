@@ -29,7 +29,7 @@ import { isString, normalizeError } from "@app/types";
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
 
-export type RequestContext = {
+type RequestContext = {
   [key: string]: ResourceLogJSON;
 };
 

@@ -61,7 +61,7 @@ export const timeAgoFrom = (
   return "<1m";
 };
 
-export function getWeekBoundaries(date: Date): {
+function getWeekBoundaries(date: Date): {
   startDate: Date;
   endDate: Date;
 } {
@@ -151,7 +151,7 @@ export const isDomain = (domain: string | null): boolean => {
   return DOMAIN_REGEX.test(domain);
 };
 
-export const objectToMarkdown = (obj: any, indent = 0) => {
+const objectToMarkdown = (obj: any, indent = 0) => {
   let markdown = "";
 
   for (const key in obj) {
@@ -338,7 +338,7 @@ export function removeDiacritics(input: string): string {
  * Compares two 2D arrays for equality, ignoring the order of elements.
  * Does not mutate input arrays.
  */
-export function isArrayEqual2DUnordered(
+function isArrayEqual2DUnordered(
   first: unknown[][],
   second: unknown[][]
 ): boolean {
@@ -357,7 +357,7 @@ export function isArrayEqual2DUnordered(
 // This function ensures that all subarrays are of the same length
 // by repeating the last element of each subarray until all subarrays have the same length.
 // Make sure that it's okay to use this function for your use case.
-export function normalizeArrays<T>(array2D: T[][]): T[][] {
+function normalizeArrays<T>(array2D: T[][]): T[][] {
   // Copy the array to avoid mutating the original array.
   const array2DCopy = array2D.map((array) => [...array]);
 
@@ -388,7 +388,7 @@ export const isMobile = (navigator: Navigator) =>
 /**
  * Bridge a push-based callback to a pull-based `.next()` promise stream.
  */
-export type CallbackReader<T> = {
+type CallbackReader<T> = {
   /** Push endpoint fed by the producer (e.g. Redis subscription). */
   callback: (v: T) => void;
   /** Pull endpoint for the consumer; resolves with the next value. */

@@ -15,7 +15,7 @@ import type { ContentNodeType } from "@connectors/types";
 const MAX_REDIRECTS = 20;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
-export type WebCrawlerErrorName =
+type WebCrawlerErrorName =
   | "PRIVATE_IP"
   | "NOT_IP_V4"
   | "MAX_REDIRECTS"
@@ -23,7 +23,7 @@ export type WebCrawlerErrorName =
   | "CIRCULAR_REDIRECT"
   | "PROTOCOL_DOWNGRADE";
 
-export class WebCrawlerError extends NonRetryableError {
+class WebCrawlerError extends NonRetryableError {
   constructor(
     message: string,
     readonly type: WebCrawlerErrorName,
@@ -151,12 +151,12 @@ export function getDisplayNameForFolder(folder: WebCrawlerFolder): string {
   );
 }
 
-export async function getIpAddressForUrl(url: string) {
+async function getIpAddressForUrl(url: string) {
   const host = new URL(url).hostname;
   return dns.promises.lookup(host);
 }
 
-export function isPrivateIp(ip: string) {
+function isPrivateIp(ip: string) {
   // Simple patterns for common private ranges.
   const simpleRanges = /^(0|127|10|192\.168|169\.254)\./;
 
@@ -229,7 +229,7 @@ async function checkIp(url: URL): Promise<Result<void, WebCrawlerError>> {
  * a NonRetryableError. Otherwise return the last
  * url that is not a redirect
  */
-export async function verifyRedirect(
+async function verifyRedirect(
   initUrl: string | URL
 ): Promise<Result<string | URL, WebCrawlerError>> {
   let url = initUrl;

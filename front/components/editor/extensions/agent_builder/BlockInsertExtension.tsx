@@ -2,7 +2,7 @@ import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion from "@tiptap/suggestion";
 
-export interface BlockInsertOptions {
+interface BlockInsertOptions {
   suggestion: Omit<Parameters<typeof Suggestion>[0], "editor">;
 }
 

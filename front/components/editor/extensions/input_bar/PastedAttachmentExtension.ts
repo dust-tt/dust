@@ -3,7 +3,7 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { PastedAttachmentComponent } from "../../input_bar/PastedAttachmentComponent";
 
-export interface PastedAttachmentOptions {
+interface PastedAttachmentOptions {
   onInlineText?: (fileId: string, textContent: string) => void;
 }
 

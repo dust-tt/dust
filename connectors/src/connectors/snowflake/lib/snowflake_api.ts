@@ -75,7 +75,7 @@ export class TestConnectionError extends Error {
   }
 }
 
-export function isTestConnectionError(
+function isTestConnectionError(
   error: Error
 ): error is TestConnectionError {
   return error.name === "TestSnowflakeConnectionError";

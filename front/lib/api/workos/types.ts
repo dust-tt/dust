@@ -1,4 +1,4 @@
-export type OrganizationSelectionRequiredError = {
+type OrganizationSelectionRequiredError = {
   code: "organization_selection_required";
   pending_authentication_token: string;
 };

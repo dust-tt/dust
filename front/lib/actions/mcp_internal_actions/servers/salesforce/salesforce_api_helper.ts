@@ -17,7 +17,7 @@ function isValidSalesforceId(id: string): boolean {
   return salesforceIdPattern.test(id);
 }
 
-export interface AttachmentMetadata {
+interface AttachmentMetadata {
   id: string;
   filename: string;
   mimeType: string;

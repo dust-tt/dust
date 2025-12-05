@@ -14,7 +14,7 @@ import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
 import type { TemplateTagCodeType, TemplateVisibility } from "@app/types";
 import { isDevelopment, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
-export interface TemplatesDisplayType {
+interface TemplatesDisplayType {
   id: string;
   name: string;
   visibility: TemplateVisibility;
@@ -35,7 +35,7 @@ function prepareTemplatesForDisplay(
   }));
 }
 
-export function makeColumnsForTemplates() {
+function makeColumnsForTemplates() {
   return [
     {
       accessorKey: "id",

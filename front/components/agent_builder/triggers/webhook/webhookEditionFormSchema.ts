@@ -25,7 +25,7 @@ export const WebhookFormSchema = z.object({
   executionMode: z.enum(["fair_use", "programmatic"]).default("fair_use"),
 });
 
-export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
+type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
 
 export function getWebhookFormDefaultValues({
   trigger,

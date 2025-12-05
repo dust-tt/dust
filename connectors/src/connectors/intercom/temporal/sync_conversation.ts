@@ -134,7 +134,7 @@ export async function fetchAndSyncConversation({
   });
 }
 
-export async function syncConversation({
+async function syncConversation({
   connectorId,
   dataSourceConfig,
   conversation,

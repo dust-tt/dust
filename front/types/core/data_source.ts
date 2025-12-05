@@ -1,6 +1,6 @@
 import type { ProviderVisibility } from "../connectors/connectors_api";
 
-export type QdrantCluster = "cluster-0";
+type QdrantCluster = "cluster-0";
 export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 
 export interface EmbedderType {
@@ -122,7 +122,7 @@ export type CoreAPIFolder = {
   parents: string[];
 };
 
-export type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";
+type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";
 
 export type CoreAPIDocumentVersion = {
   hash: string;

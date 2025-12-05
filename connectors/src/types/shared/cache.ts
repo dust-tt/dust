@@ -19,7 +19,7 @@ type IsNever<T> = [T] extends [never] ? true : false;
  * Ensures that a type is strictly JSON-serializable.
  * If T is not JSON-serializable, this type resolves to 'never'.
  */
-export type JsonSerializable<T> =
+type JsonSerializable<T> =
   IsNever<Exclude<RecursiveJsonSerializable<T>, T>> extends true ? T : never;
 
 type CacheableFunction<T, Args extends unknown[]> = (

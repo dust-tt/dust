@@ -8,7 +8,7 @@ import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/a
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
-export type RetrievalTimeframe =
+type RetrievalTimeframe =
   | "auto"
   | "none"
   | {

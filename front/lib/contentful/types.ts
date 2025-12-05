@@ -1,7 +1,7 @@
 import type { Document } from "@contentful/rich-text-types";
 import type { Asset, Entry, EntrySkeletonType } from "contentful";
 
-export interface AuthorFields {
+interface AuthorFields {
   name?: string;
   image?: Asset;
   email?: string;
@@ -9,7 +9,7 @@ export interface AuthorFields {
 
 export type AuthorSkeleton = EntrySkeletonType<AuthorFields, "author">;
 
-export interface BlogPageFields {
+interface BlogPageFields {
   title: string;
   slug?: string;
   body: Document;
@@ -69,7 +69,7 @@ export interface BlogPostPageProps {
 
 // Customer Story types
 
-export interface CustomerStoryFields {
+interface CustomerStoryFields {
   // Required
   title: string;
   slug: string;

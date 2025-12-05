@@ -95,7 +95,7 @@ type BotAnswerParams = {
   slackThreadTs?: string;
 };
 
-export async function getSlackConnector(params: BotAnswerParams) {
+async function getSlackConnector(params: BotAnswerParams) {
   const { slackTeamId } = params;
 
   const slackConfig =

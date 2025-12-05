@@ -6,7 +6,7 @@ import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { usePokeRegion } from "@app/lib/swr/poke";
 
-export interface PokeLayoutProps {
+interface PokeLayoutProps {
   currentRegion: RegionType;
 }
 

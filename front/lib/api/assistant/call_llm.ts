@@ -8,7 +8,7 @@ import type { ModelProviderIdType } from "@app/lib/resources/storage/models/work
 import type { ModelIdType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export interface LLMConfig {
+interface LLMConfig {
   functionCall?: string | null;
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
@@ -17,7 +17,7 @@ export interface LLMConfig {
   useStream?: boolean;
 }
 
-export interface LLMOptions {
+interface LLMOptions {
   tracingRecords?: Record<string, string>;
   context?: LLMTraceContext;
 }
@@ -36,7 +36,7 @@ const _LLMOutputSchema = z.object({
   generation: z.string().nullable().optional(),
 });
 
-export type LLMOutput = z.infer<typeof _LLMOutputSchema>;
+type LLMOutput = z.infer<typeof _LLMOutputSchema>;
 
 /**
  * Temporary wrapper around assistant-v2-multi-actions-agent Dust app to consolidate LLM interactions.

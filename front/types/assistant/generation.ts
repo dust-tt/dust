@@ -7,13 +7,13 @@ import type {
  * Model rendering of conversations.
  */
 
-export interface ModelMessageType {
+interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment";
   name: string;
   content: string;
 }
 
-export interface ModelConversationType {
+interface ModelConversationType {
   messages: ModelMessageType[];
 }
 
@@ -110,7 +110,7 @@ export type ModelConversationTypeMultiActions = {
  */
 
 // Event sent when tokens are streamed as the the agent is generating a message.
-export type TokensClassification = "tokens" | "chain_of_thought";
+type TokensClassification = "tokens" | "chain_of_thought";
 export type GenerationTokensEvent = {
   type: "generation_tokens";
   created: number;
@@ -127,7 +127,7 @@ export type GenerationTokensEvent = {
     }
 );
 
-export type GenerationErrorEvent = {
+type GenerationErrorEvent = {
   type: "generation_error";
   created: number;
   configurationId: string;
@@ -138,7 +138,7 @@ export type GenerationErrorEvent = {
   };
 };
 
-export type GenerationSuccessEvent = {
+type GenerationSuccessEvent = {
   type: "generation_success";
   created: number;
   configurationId: string;
@@ -148,7 +148,7 @@ export type GenerationSuccessEvent = {
   runId: string;
 };
 
-export type GenerationCancelEvent = {
+type GenerationCancelEvent = {
   type: "generation_cancel";
   created: number;
   configurationId: string;

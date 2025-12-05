@@ -5,10 +5,10 @@ import type { Result } from "../result";
 import { Err, Ok } from "../result";
 import { slugify } from "./string_utils";
 
-export class InvalidStructuredDataHeaderError extends Error {}
+class InvalidStructuredDataHeaderError extends Error {}
 class ParsingCsvError extends Error {}
 
-export function getSanitizedHeaders(
+function getSanitizedHeaders(
   rawHeaders: string[]
 ): Result<string[], Error> {
   try {
@@ -47,7 +47,7 @@ export function getSanitizedHeaders(
   }
 }
 
-export async function guessDelimiter(csv: string): Promise<string | undefined> {
+async function guessDelimiter(csv: string): Promise<string | undefined> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,
   // keep the one that works for both lines and has the most columns.
   let delimiter: string | undefined = undefined;
@@ -89,7 +89,7 @@ export async function guessDelimiter(csv: string): Promise<string | undefined> {
 
 // This function is used by connectors to turn a , ; \t separated file into a comma separated file.
 // It also will raise if the file can't be parsed.
-export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
+async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
   const delimiter = await guessDelimiter(tableCsv);
   const records: unknown[] = [];
 

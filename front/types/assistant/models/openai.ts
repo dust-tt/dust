@@ -162,7 +162,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
-export const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
+const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
 SYSTEM STYLE: Rich Markdown by default
 - Always respond using rich Markdown unless the user explicitly requests another format.
 - Default to clear narrative prose in connected, multi-sentence paragraphs when the answer is more than a couple of sentences.
@@ -178,7 +178,7 @@ SYSTEM STYLE: Rich Markdown by default
 NEVER:
 - Return a response that is just a list of bullet points.
 - Add headings or titles for trivial, one-line answers.`;
-export const OPENAI_TOOL_USE_META_PROMPT =
+const OPENAI_TOOL_USE_META_PROMPT =
   `CRITICAL: When calling functions or tools, ` +
   `you MUST be extremely careful with accented characters. ` +
   `Always use the actual accented character in the JSON, ` +

@@ -108,7 +108,7 @@ export const Benefits: BenefitsProps = {
   ],
 };
 
-export const Metrics: MetricProps = {
+const Metrics: MetricProps = {
   metrics: [
     {
       value: "90%",

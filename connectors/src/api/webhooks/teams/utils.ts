@@ -9,7 +9,7 @@ import { MicrosoftBotConfigurationResource } from "@connectors/resources/microso
  * Zod schema for validating tool approval data from Teams adaptive cards
  * This ensures all fields are present, non-empty, and of the correct type
  */
-export const ToolApprovalDataSchema = z.object({
+const ToolApprovalDataSchema = z.object({
   agentName: z.string().min(1, "Agent name is required"),
   toolName: z.string().min(1, "Tool name is required"),
   conversationId: z.string().min(1, "Conversation ID is required"),
@@ -22,7 +22,7 @@ export const ToolApprovalDataSchema = z.object({
 /**
  * Type definition for tool approval data (inferred from schema)
  */
-export type ToolApprovalData = z.infer<typeof ToolApprovalDataSchema>;
+type ToolApprovalData = z.infer<typeof ToolApprovalDataSchema>;
 
 export async function getConnector(context: TurnContext) {
   // Extract tenant ID from Teams context

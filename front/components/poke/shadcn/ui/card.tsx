@@ -78,9 +78,9 @@ CardFooter.displayName = "CardFooter";
 
 export {
   Card as PokeCard,
-  CardContent as PokeCardContent,
+  
   CardDescription as PokeCardDescription,
-  CardFooter as PokeCardFooter,
+  
   CardHeader as PokeCardHeader,
   CardTitle as PokeCardTitle,
 };

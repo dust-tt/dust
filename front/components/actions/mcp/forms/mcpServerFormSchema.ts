@@ -20,13 +20,13 @@ import type { HeaderRow } from "@app/types";
 import { sanitizeHeadersArray } from "@app/types";
 
 // Tool settings for a single tool.
-export type ToolSettings = {
+type ToolSettings = {
   enabled: boolean;
   permission: MCPToolStakeLevelType;
 };
 
 // Server settings fields (Info tab).
-export type ServerSettings = {
+type ServerSettings = {
   name: string;
   description: string;
   icon?: string;

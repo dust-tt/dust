@@ -60,7 +60,7 @@ function compareByImportance(
 }
 
 // Order in the following format : connectorProvider > empty > webcrawler
-export function orderDatasourceByImportance<Type extends ComparableByProvider>(
+function orderDatasourceByImportance<Type extends ComparableByProvider>(
   dataSources: Type[]
 ) {
   return dataSources.sort(compareByImportance);
@@ -74,7 +74,7 @@ export function orderDatasourceViewByImportance<
   });
 }
 
-export function orderDatasourceViewSelectionConfigurationByImportance<
+function orderDatasourceViewSelectionConfigurationByImportance<
   Type extends { dataSourceView: { dataSource: ComparableByProvider } },
 >(dataSourceViews: Type[]) {
   return dataSourceViews.sort((a, b) => {

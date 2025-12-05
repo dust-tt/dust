@@ -42,7 +42,7 @@ export function isWebhookProvider(
   return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
 }
 
-export const NoAdditionalDataSchema = z.object({});
+const NoAdditionalDataSchema = z.object({});
 export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
 
 type WebhookProviderServiceDataMap = {

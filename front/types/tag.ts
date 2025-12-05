@@ -15,13 +15,13 @@ export type TagTypeWithUsage = TagType & {
   usage: number;
 };
 
-export const MAX_TAG_LENGTH = 100;
+const MAX_TAG_LENGTH = 100;
 
-export const tagSchema = z.object({
+const tagSchema = z.object({
   tag: z
     .string()
     .min(1, "Tag name is required")
     .max(MAX_TAG_LENGTH, `Tag name cannot exceed ${MAX_TAG_LENGTH} characters`),
 });
 
-export type TagForm = z.infer<typeof tagSchema>;
+type TagForm = z.infer<typeof tagSchema>;

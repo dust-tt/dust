@@ -15,7 +15,7 @@ import type {
 } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 
-export function getDataSourceViewIdsFromActions(
+function getDataSourceViewIdsFromActions(
   actions: UnsavedMCPServerConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
@@ -45,7 +45,7 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-export function groupsFromRequestedPermissions(
+function groupsFromRequestedPermissions(
   requestedPermissions: CombinedResourcePermissions[]
 ) {
   return (
@@ -148,7 +148,7 @@ export async function getAgentConfigurationRequirementsFromActions(
   };
 }
 
-export async function getContentFragmentGroupIds(
+async function getContentFragmentGroupIds(
   auth: Authenticator,
   contentFragment: ContentFragmentInputWithContentNode
 ): Promise<ModelId[][]> {

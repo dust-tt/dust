@@ -26,7 +26,7 @@ export class TestConnectionError extends Error {
   }
 }
 
-export function isTestConnectionError(
+function isTestConnectionError(
   error: Error
 ): error is TestConnectionError {
   return error.name === "TestBigQueryConnectionError";
@@ -58,7 +58,7 @@ export const testConnection = async ({
   }
 };
 
-export function connectToBigQuery(
+function connectToBigQuery(
   credentials: BigQueryCredentialsWithLocation
 ): BigQuery {
   return new BigQuery({

@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 
-export function isValidDate(date: Date) {
+function isValidDate(date: Date) {
   return !isNaN(date.valueOf());
 }
 

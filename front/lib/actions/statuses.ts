@@ -12,7 +12,7 @@ export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_child_action_input_required",
 ] as const;
 
-export type ToolExecutionBlockedStatus =
+type ToolExecutionBlockedStatus =
   (typeof TOOL_EXECUTION_BLOCKED_STATUSES)[number];
 
 const TOOL_EXECUTION_TRANSIENT_STATUSES = [
@@ -37,7 +37,7 @@ export function isToolExecutionStatusFinal(
   );
 }
 
-export function isToolExecutionStatusTransient(
+function isToolExecutionStatusTransient(
   state: ToolExecutionStatus
 ): state is ToolExecutionTransientStatus {
   return TOOL_EXECUTION_TRANSIENT_STATUSES.includes(

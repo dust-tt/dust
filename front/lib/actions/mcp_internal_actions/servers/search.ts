@@ -43,7 +43,7 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-export async function searchFunction({
+async function searchFunction({
   query,
   relativeTimeFrame,
   dataSources,

@@ -57,7 +57,7 @@ export const FreshserviceTicketSchema = z.object({
 
 export type FreshserviceTicket = z.infer<typeof FreshserviceTicketSchema>;
 
-export interface FreshserviceRequester {
+interface FreshserviceRequester {
   id: number;
   first_name: string;
   last_name: string;
@@ -70,7 +70,7 @@ export interface FreshserviceRequester {
   updated_at: string;
 }
 
-export interface FreshserviceDepartment {
+interface FreshserviceDepartment {
   id: number;
   name: string;
   description?: string;
@@ -80,7 +80,7 @@ export interface FreshserviceDepartment {
   updated_at: string;
 }
 
-export interface FreshserviceProduct {
+interface FreshserviceProduct {
   id: number;
   name: string;
   description?: string;
@@ -92,7 +92,7 @@ export interface FreshserviceProduct {
   updated_at: string;
 }
 
-export interface FreshserviceServiceItem {
+interface FreshserviceServiceItem {
   id: number;
   name: string;
   display_id: number;
@@ -108,7 +108,7 @@ export interface FreshserviceServiceItem {
   updated_at: string;
 }
 
-export interface FreshserviceServiceItemFieldChoice {
+interface FreshserviceServiceItemFieldChoice {
   id: number;
   value: string;
   display_id?: number;
@@ -143,7 +143,7 @@ export interface FreshserviceServiceItemField {
   date_only?: boolean;
 }
 
-export interface FreshserviceSolutionArticle {
+interface FreshserviceSolutionArticle {
   id: number;
   title: string;
   description: string;
@@ -161,7 +161,7 @@ export interface FreshserviceSolutionArticle {
   updated_at: string;
 }
 
-export interface FreshserviceOnCallSchedule {
+interface FreshserviceOnCallSchedule {
   id: number;
   name: string;
   description?: string;
@@ -171,11 +171,11 @@ export interface FreshserviceOnCallSchedule {
 }
 
 // API Response interfaces
-export interface FreshserviceListResponse<T> {
+interface FreshserviceListResponse<T> {
   [key: string]: T[];
 }
 
-export interface FreshserviceTicketFieldChoice {
+interface FreshserviceTicketFieldChoice {
   id: number;
   value: string;
   display_id?: number;
@@ -211,7 +211,7 @@ export interface FreshserviceTicketField {
 }
 
 // Error codes
-export const FRESHSERVICE_ERROR_MESSAGES = {
+const FRESHSERVICE_ERROR_MESSAGES = {
   AUTHENTICATION_REQUIRED:
     "Authentication required. Please connect your Freshservice account.",
   DOMAIN_NOT_CONFIGURED: "Freshservice domain not configured.",

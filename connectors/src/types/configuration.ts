@@ -28,7 +28,7 @@ export type ConnectorConfiguration =
   | DiscordBotConfigurationType
   | null;
 
-export function isWebCrawlerConfiguration(
+function isWebCrawlerConfiguration(
   config: ConnectorConfiguration | null
 ): config is WebCrawlerConfigurationType {
   const maybeWebCrawlerConfig = config as WebCrawlerConfigurationType;
@@ -43,7 +43,7 @@ export function isWebCrawlerConfiguration(
   );
 }
 
-export type ConnectorConfigurations = {
+type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
   notion: null;
   slack: SlackConfigurationType;

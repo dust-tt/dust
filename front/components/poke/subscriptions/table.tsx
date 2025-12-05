@@ -70,7 +70,7 @@ function prepareSubscriptionsForDisplay(
   });
 }
 
-export function SubscriptionsDataTable({
+function SubscriptionsDataTable({
   owner,
   subscriptions,
 }: SubscriptionsDataTableProps) {

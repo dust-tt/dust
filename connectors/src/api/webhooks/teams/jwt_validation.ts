@@ -2,7 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 
 import logger from "@connectors/logger/logger";
 
-export interface BotFrameworkClaims {
+interface BotFrameworkClaims {
   iss: string; // issuer
   aud: string; // audience (bot's Microsoft App ID)
   exp: number; // expiration time

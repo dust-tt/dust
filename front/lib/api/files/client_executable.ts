@@ -389,7 +389,7 @@ export async function getClientExecutableFileContent(
   }
 }
 
-export function isCreateFileActionType(
+function isCreateFileActionType(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
   augmentedInputs: {
@@ -671,7 +671,7 @@ export function getRevertedContent(
   return revertedContent;
 }
 
-export function getRevertedFileName(
+function getRevertedFileName(
   createFileAction: AgentMCPActionModel,
   actionsToApply: AgentMCPActionModel[]
 ) {

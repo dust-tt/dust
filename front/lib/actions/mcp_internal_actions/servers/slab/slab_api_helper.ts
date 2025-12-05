@@ -8,7 +8,7 @@ import type {
   SlabTopic,
 } from "./slab_types";
 
-export const SLAB_GRAPHQL_URL = "https://api.slab.com/v1/graphql";
+const SLAB_GRAPHQL_URL = "https://api.slab.com/v1/graphql";
 export const MAX_LIMIT = 100;
 
 function normalizePost(post: RawPost): SlabPost {

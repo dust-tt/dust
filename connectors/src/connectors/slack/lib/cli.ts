@@ -39,7 +39,7 @@ import {
   normalizeError,
 } from "@connectors/types";
 
-export async function maybeLaunchSlackSyncWorkflowForChannelId(
+async function maybeLaunchSlackSyncWorkflowForChannelId(
   connectorId: number,
   slackChannelId: string
 ) {

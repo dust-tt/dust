@@ -3,7 +3,7 @@ import * as t from "io-ts";
 export const ErrorPayloadSchema = t.type({
   errors: t.array(t.unknown),
 });
-export type ErrorPayload = t.TypeOf<typeof ErrorPayloadSchema>;
+type ErrorPayload = t.TypeOf<typeof ErrorPayloadSchema>;
 
 const PageInfoSchema = t.type({
   endCursor: t.union([t.string, t.null]),
@@ -55,7 +55,7 @@ export const GetRepoDiscussionsPayloadSchema = t.type({
   }),
 });
 
-export type GetRepoDiscussionsPayload = t.TypeOf<
+type GetRepoDiscussionsPayload = t.TypeOf<
   typeof GetRepoDiscussionsPayloadSchema
 >;
 
@@ -70,7 +70,7 @@ export const GetDiscussionCommentsPayloadSchema = t.type({
   }),
 });
 
-export type GetDiscussionCommentsPayload = t.TypeOf<
+type GetDiscussionCommentsPayload = t.TypeOf<
   typeof GetDiscussionCommentsPayloadSchema
 >;
 
@@ -83,7 +83,7 @@ export const GetDiscussionCommentRepliesPayloadSchema = t.type({
   }),
 });
 
-export type GetDiscussionCommentRepliesPayload = t.TypeOf<
+type GetDiscussionCommentRepliesPayload = t.TypeOf<
   typeof GetDiscussionCommentRepliesPayloadSchema
 >;
 
@@ -93,4 +93,4 @@ export const GetDiscussionPayloadSchema = t.type({
   }),
 });
 
-export type GetDiscussionPayload = t.TypeOf<typeof GetDiscussionPayloadSchema>;
+type GetDiscussionPayload = t.TypeOf<typeof GetDiscussionPayloadSchema>;

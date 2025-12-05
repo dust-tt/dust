@@ -47,7 +47,7 @@ import type {
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
-export type FetchConversationOptions = {
+type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;

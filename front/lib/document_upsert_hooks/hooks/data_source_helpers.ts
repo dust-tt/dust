@@ -7,7 +7,7 @@ import logger from "@app/logger/logger";
 import type { Diff } from "@app/types";
 import { CoreAPI } from "@app/types";
 
-export async function getPreviousDocumentVersion({
+async function getPreviousDocumentVersion({
   dataSource,
   documentId,
   documentHash,
@@ -37,7 +37,7 @@ export async function getPreviousDocumentVersion({
   return versions.value.versions[0];
 }
 
-export async function getDiffBetweenDocumentVersions({
+async function getDiffBetweenDocumentVersions({
   dataSource,
   documentId,
   hash1,
@@ -101,7 +101,7 @@ export async function getDocumentDiff({
   });
 }
 
-export async function getDatasource(
+async function getDatasource(
   auth: Authenticator,
   dataSourceId: string
 ): Promise<DataSourceResource> {

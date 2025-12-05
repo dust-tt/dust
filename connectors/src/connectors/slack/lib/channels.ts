@@ -32,7 +32,7 @@ import {
   withSlackErrorHandling,
 } from "./slack_client";
 
-export type SlackChannelType = {
+type SlackChannelType = {
   id: number;
   connectorId: number;
 

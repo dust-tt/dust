@@ -23,7 +23,7 @@ export function isWebCrawlerConfiguration(
   );
 }
 
-export type ConnectorConfigurations = {
+type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
   notion: null;
   slack: SlackConfigurationType;

@@ -3,7 +3,7 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { normalizeError } from "@app/types";
 
-export type LLMErrorType =
+type LLMErrorType =
   // LLM errors
   | "stop_error"
   | "refusal_error"

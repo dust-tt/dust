@@ -87,7 +87,7 @@ export class HTTPError extends Error {
   }
 }
 
-export interface NotFoundError extends HTTPError {
+interface NotFoundError extends HTTPError {
   statusCode: 404;
 }
 
@@ -137,7 +137,7 @@ export class TablesError extends Error {
 }
 
 // Error for malicious or invalid URLs in webcrawler configuration
-export class WebcrawlerUrlValidationError extends Error {
+class WebcrawlerUrlValidationError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message || "Invalid or malicious URL detected");
     this.name = "WebcrawlerUrlValidationError";

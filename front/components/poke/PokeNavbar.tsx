@@ -78,7 +78,7 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
 
 export default PokeNavbar;
 
-export function PokeSearchCommand() {
+function PokeSearchCommand() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
