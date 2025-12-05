@@ -83,7 +83,7 @@ function UserMessageEditor({
     >
       <EditorContent
         editor={editor}
-        className={`inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide`}
+        className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
       <BubbleMenu editor={editor} className="hidden sm:flex">
