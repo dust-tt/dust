@@ -11,7 +11,10 @@ import { PuzzleIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 interface ManageDropdownMenuProps {
@@ -45,8 +48,15 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
             void router.push(getAgentBuilderRoute(owner.sId, "manage"));
           }}
         />
-        {/* TODO(skills 2025-12-05): use the right icon */}
-        <DropdownMenuItem label="skills" icon={PuzzleIcon} />
+        <DropdownMenuItem
+          label="skills"
+          // TODO(skills 2025-12-05): use the right icon
+          icon={PuzzleIcon}
+          onClick={() => {
+            setIsLoading(true);
+            void router.push(getSkillBuilderRoute(owner.sId, "manage"));
+          }}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );
