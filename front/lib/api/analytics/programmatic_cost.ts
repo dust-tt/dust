@@ -285,7 +285,13 @@ export async function handleProgrammaticCostRequest(
       const { cycleStart: periodStart, cycleEnd: periodEnd } =
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      const timestamps = getTimestampsInRange(periodStart, periodEnd);
+      // Cap periodEnd to 5 days in the future to avoid empty chart areas.
+      const FIVE_DAYS_IN_MS = 5 * 24 * 60 * 60 * 1000;
+      const cappedPeriodEnd = new Date(
+        Math.min(periodEnd.getTime(), Date.now() + FIVE_DAYS_IN_MS)
+      );
+
+      const timestamps = getTimestampsInRange(periodStart, cappedPeriodEnd);
 
       // Fetch all credits for the workspace (including free credits and fully consumed ones)
       // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
