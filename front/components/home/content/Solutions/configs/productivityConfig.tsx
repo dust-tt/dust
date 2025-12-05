@@ -173,7 +173,7 @@ export const Stories: CustomerStory[] = [
     title: "Kyriba's adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-    href: "/blog/kyriba-accelerating-innovation-with-dust",
+    href: "/customers/kyriba-accelerating-innovation-with-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },
   {
@@ -181,14 +181,14 @@ export const Stories: CustomerStory[] = [
       "PayFit Accelerates Content Creation and Knowledge Sharing with Dust",
     content:
       "PayFit leverages Dust AI assistants to improve their internal processes across the board.",
-    href: "/blog/dust-ai-payfit-efficiency",
+    href: "/customers/dust-ai-payfit-efficiency",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_payfit.png",
   },
   {
     title: "November Five's journey to minimizing routine tasks with Dust",
     content:
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
-    href: "/blog/november-five-ai-transformation-dust",
+    href: "/customers/november-five-ai-transformation-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
   },
 ];

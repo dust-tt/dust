@@ -528,7 +528,6 @@ export default function IndustryTemplate({
         return config.trustedBy ? (
           <TrustedBy
             key="trustedBy"
-            title={config.trustedBy.title}
             logoSet={config.trustedBy.logoSet as any}
           />
         ) : null;
@@ -572,7 +571,6 @@ export default function IndustryTemplate({
         return config.trustedBySecond ? (
           <TrustedBy
             key="trustedBySecond"
-            title={config.trustedBySecond.title}
             logoSet={config.trustedBySecond.logoSet as any}
           />
         ) : null;

@@ -175,28 +175,28 @@ export const Stories: CustomerStory[] = [
     title: "Blueground accelerates customer support resolution time with Dust",
     content:
       "Discover how Blueground boosted satisfaction and cut resolution time using Dust agents.",
-    href: "/blog/customer-support-blueground",
+    href: "/customers/customer-support-blueground",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/Blueground_dust.jpg",
   },
   {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
       "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
-    href: "/blog/malt-customer-support",
+    href: "/customers/malt-customer-support",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/malt_dust.png",
   },
   {
     title: "Pennylane's journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
-    href: "/blog/pennylane-customer-support-journey",
+    href: "/customers/pennylane-customer-support-journey",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
   },
   {
     title: "Lifen uses Dust AI agents to boost team productivity",
     content:
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "/blog/customer-story-lifen",
+    href: "/customers/customer-story-lifen",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Lifen-__-Dust.png",
   },
 ];

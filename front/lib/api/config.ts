@@ -285,6 +285,9 @@ const config = {
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
+  getApolloApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
+  },
   getContentfulSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
   },
