@@ -21,6 +21,7 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -64,7 +65,6 @@ import type {
   Result,
   UserMessageContext,
   UserMessageType,
-  WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
@@ -79,9 +79,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-
-import { isProgrammaticUsage } from "../programmatic_usage_tracking";
-
 /**
  * Conversation Creation, update and deletion
  */
@@ -417,7 +414,6 @@ export async function postUserMessage(
 
   // Check plan and rate limit.
   const messageLimit = await isMessagesLimitReached(auth, {
-    owner,
     plan,
     mentions,
     context,
@@ -1222,26 +1218,26 @@ export interface MessageLimit {
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
-    owner,
     plan,
     mentions,
     context,
   }: {
-    owner: WorkspaceType;
     plan: PlanType;
     mentions: MentionType[];
     context: UserMessageContext;
   }
 ): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(owner);
-  // Programmatic Usage is tracked and billed separately
-  // we don't want to count it towards fair usage
+
+  // We block programmatic usage at the api level and track
+  // it in agent loop, so it is excluded from fair use
   if (
     featureFlags.includes("ppul") &&
     isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
   ) {
     return {
-      isLimitReached: true,
+      isLimitReached: false,
       limitType: null,
     };
   }
