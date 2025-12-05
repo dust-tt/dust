@@ -19,6 +19,7 @@ import {
   ZendeskTicketResponseSchema,
   ZendeskUsersResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -93,7 +94,7 @@ class ZendeskClient {
     }
   ): Promise<Result<z.infer<T>, Error>> {
     const url = `https://${this.subdomain}.zendesk.com/api/v2/${endpoint}`;
-    const response = await fetch(url, {
+    const response = await untrustedFetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
