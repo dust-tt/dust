@@ -128,12 +128,12 @@ function mapCountryToRegion(country: string | null): string | null {
 // Docs: https://docs.apollo.io/reference/organization-enrichment
 async function enrichCompanyFromDomain(
   domain: string
-): Promise<{ size: number | null; name: string | null; region: string | null }> {
+): Promise<{ size: number | null; name: string | null; region: string | null; funding: string | null; revenue: string | null }> {
   const apiKey = config.getApolloApiKey();
 
   if (!apiKey) {
     console.warn("APOLLO_API_KEY not configured, using fallback");
-    return { size: null, name: null, region: null };
+    return { size: null, name: null, region: null, funding: null, revenue: null };
   }
 
   try {
@@ -152,7 +152,7 @@ async function enrichCompanyFromDomain(
     if (!response.ok) {
       if (response.status === 404) {
         // Company not found
-        return { size: null, name: null, region: null };
+        return { size: null, name: null, region: null, funding: null, revenue: null };
       }
       throw new Error(`Apollo API error: ${response.status}`);
     }
@@ -163,12 +163,16 @@ async function enrichCompanyFromDomain(
         estimated_num_employees?: number;
         employee_count_range?: string;
         country?: string;
+        total_funding?: number;
+        total_funding_printed?: string;
+        annual_revenue?: number;
+        annual_revenue_printed?: string;
       };
     };
     const org = data.organization;
 
     if (!org) {
-      return { size: null, name: null, region: null };
+      return { size: null, name: null, region: null, funding: null, revenue: null };
     }
 
     // Apollo returns estimated_num_employees (number) or employee_count_range (string)
@@ -184,10 +188,12 @@ async function enrichCompanyFromDomain(
       size,
       name: org.name ?? null,
       region: mapCountryToRegion(org.country ?? null),
+      funding: org.total_funding_printed ?? null,
+      revenue: org.annual_revenue_printed ?? null,
     };
   } catch (error) {
     console.error("Enrichment error:", error);
-    return { size: null, name: null, region: null };
+    return { size: null, name: null, region: null, funding: null, revenue: null };
   }
 }
 
@@ -235,7 +241,7 @@ export default async function handler(
   }
 
   // Enrich company data for work emails
-  const { size, name, region } = await enrichCompanyFromDomain(domain);
+  const { size, name, region, funding, revenue } = await enrichCompanyFromDomain(domain);
 
   // Determine redirect based on company size
   let redirectUrl: string;
@@ -285,6 +291,8 @@ export default async function handler(
     `*Company:* ${name ?? "Unknown"}`,
     `*Company size:* ${size !== null ? `${size} employees` : "Unknown"}`,
     `*Region:* ${region ?? "Unknown"}`,
+    `*Funding:* ${funding ?? "Unknown"}`,
+    `*Revenue:* ${revenue ?? "Unknown"}`,
     `*Routed to:* ${destinationLabel}`,
   ].join("\n");
 
