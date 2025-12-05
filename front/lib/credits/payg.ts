@@ -55,7 +55,13 @@ async function createPAYGCreditForPeriod({
     invoiceOrLineItemId: null,
   });
 
-  await credit.start(periodStart, periodEnd);
+  const startResult = await credit.start(auth, {
+    startDate: periodStart,
+    expirationDate: periodEnd,
+  });
+  if (startResult.isErr()) {
+    return new Err(startResult.error);
+  }
   return new Ok(credit);
 }
 
@@ -240,10 +246,7 @@ export async function stopEnterprisePAYG({
   );
 
   if (paygCredit) {
-    const freezeResult = await CreditResource.freezePAYGCreditById(
-      auth,
-      paygCredit.id
-    );
+    const freezeResult = await paygCredit.freeze(auth);
     if (freezeResult.isErr()) {
       logger.warn(
         { workspaceId: workspace.sId, error: freezeResult.error.message },
