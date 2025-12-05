@@ -13,6 +13,7 @@ import type {
   RichUserMention,
 } from "@app/types";
 import { compareAgentsForSort } from "@app/types";
+import shuffle from "lodash/shuffle";
 
 function reorderByIds<T extends { id: string }>(
   items: T[],
@@ -170,5 +171,19 @@ export const suggestionsOfMentions = async (
   const selectedUsers = userSuggestions.slice(0, targetUserCount);
   const selectedAgents = filteredAgents.slice(0, targetAgentCount);
 
-  return [...selectedUsers, ...selectedAgents];
+  // Mix users and agents with a simple shuffle while:
+  // - preserving the 30/70 counts
+  // - keeping the first item as a user when possible.
+  if (selectedUsers.length === 0) {
+    return [...selectedAgents];
+  }
+
+  const [firstUser, ...remainingUsers] = selectedUsers;
+
+  const rest: RichMention[] = shuffle<RichMention>([
+    ...remainingUsers,
+    ...selectedAgents,
+  ]);
+
+  return [firstUser, ...rest];
 };
