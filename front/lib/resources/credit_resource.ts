@@ -273,6 +273,19 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new Ok(undefined);
   }
 
+  async updateInitialAmountMicroUsd(
+    auth: Authenticator,
+    initialAmountMicroUsd: number,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<[affectedCount: number]> {
+    return this.update(
+      {
+        initialAmountMicroUsd,
+      },
+      transaction
+    );
+  }
+
   async delete(
     _auth: Authenticator,
     { transaction }: { transaction?: Transaction }
