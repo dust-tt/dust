@@ -25,6 +25,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 }
 
 export const OAUTH_PROVIDERS = [
+  "asana",
   "confluence",
   "confluence_tools",
   "discord",
@@ -50,6 +51,7 @@ export const OAUTH_PROVIDERS = [
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
+  asana: "Asana",
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
   discord: "Discord",
@@ -199,6 +201,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "asana":
     case "hubspot":
     case "slack":
     case "gong":
