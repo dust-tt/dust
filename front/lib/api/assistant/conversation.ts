@@ -61,7 +61,6 @@ import type {
   LightAgentConfigurationType,
   MentionType,
   ModelId,
-  PlanType,
   Result,
   UserMessageContext,
   UserMessageType,
@@ -414,7 +413,6 @@ export async function postUserMessage(
 
   // Check plan and rate limit.
   const messageLimit = await isMessagesLimitReached(auth, {
-    plan,
     mentions,
     context,
   });
@@ -1218,16 +1216,15 @@ export interface MessageLimit {
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
-    plan,
     mentions,
     context,
   }: {
-    plan: PlanType;
     mentions: MentionType[];
     context: UserMessageContext;
   }
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
   const featureFlags = await getFeatureFlags(owner);
 
   // We block programmatic usage at the api level and track
