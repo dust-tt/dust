@@ -17,6 +17,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import type { SkillConfigurationModel } from "@app/lib/models/skill";
+import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -132,6 +134,57 @@ export class GroupResource extends BaseResource<GroupModel> {
     return defaultGroup;
   }
 
+  /**
+   * Creates a new skill editors group for the given skill and adds the creating
+   * user to it.
+   */
+  static async makeNewSkillEditorsGroup(
+    auth: Authenticator,
+    skill: SkillConfigurationModel,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (skill.workspaceId !== workspace.id) {
+      throw new DustError(
+        "internal_error",
+        "Unexpected: skill and workspace mismatch"
+      );
+    }
+
+    const defaultGroup = await GroupResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        name: `${AGENT_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
+        kind: "agent_editors",
+      },
+      { transaction }
+    );
+
+    await GroupMembershipModel.create(
+      {
+        groupId: defaultGroup.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: new Date(),
+        status: "active" as const,
+      },
+      { transaction }
+    );
+
+    await GroupSkillModel.create(
+      {
+        groupId: defaultGroup.id,
+        skillConfigurationId: skill.id,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    return defaultGroup;
+  }
+
   static async findAgentIdsForGroups(
     auth: Authenticator,
     groupIds: ModelId[]
@@ -213,6 +266,75 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Associated group is not an agent_editors group."
+        )
+      );
+    }
+
+    return new Ok(group);
+  }
+
+  /**
+   * Finds the specific editor group associated with a skill configuration.
+   */
+  static async findEditorGroupForSkill(
+    auth: Authenticator,
+    skill: SkillConfigurationModel
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<
+        "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
+      >
+    >
+  > {
+    const owner = auth.getNonNullableWorkspace();
+
+    const groupSkills = await GroupSkillModel.findAll({
+      where: {
+        skillConfigurationId: skill.id,
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: GroupModel,
+          as: "group",
+        },
+      ],
+      attributes: ["groupId"],
+    });
+
+    if (groupSkills.length === 0) {
+      return new Err(
+        new DustError(
+          "group_not_found",
+          "Editor group association not found for skill."
+        )
+      );
+    }
+
+    if (groupSkills.length > 1) {
+      return new Err(
+        new DustError(
+          "internal_error",
+          "Multiple editor group associations found for skill."
+        )
+      );
+    }
+
+    const groupSkill = groupSkills[0];
+    const groupModel = await groupSkill.getGroup();
+    if (!groupModel) {
+      return new Err(
+        new DustError("group_not_found", "Editor group not found for skill.")
+      );
+    }
+
+    const group = new GroupResource(GroupModel, groupModel.get());
+    if (group.kind !== "agent_editors") {
       return new Err(
         new DustError(
           "internal_error",
