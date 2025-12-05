@@ -29,7 +29,6 @@ import type {
   LightAgentMessageType,
   MessageType,
   Result,
-  RichMention,
   UserMessageType,
 } from "@app/types";
 import {
@@ -40,6 +39,8 @@ import {
   Ok,
   removeNulls,
   toMentionType,
+  toRichAgentMentionType,
+  toRichUserMentionType,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -203,24 +204,12 @@ async function batchRenderUserMessages(
             m.agentConfigurationId
           );
           if (agentConfiguration) {
-            return {
-              id: m.agentConfigurationId,
-              type: "agent",
-              label: agentConfiguration.name,
-              pictureUrl: agentConfiguration.pictureUrl ?? "",
-              description: agentConfiguration.description ?? "",
-            } satisfies RichMention;
+            return toRichAgentMentionType(agentConfiguration);
           }
         } else if (m.userId) {
           const mentionnedUser = usersById.get(m.userId);
           if (mentionnedUser) {
-            return {
-              id: mentionnedUser.sId,
-              type: "user",
-              label: mentionnedUser.fullName,
-              pictureUrl: mentionnedUser.image ?? "",
-              description: "",
-            } satisfies RichMention;
+            return toRichUserMentionType(mentionnedUser);
           }
         } else {
           throw new Error(

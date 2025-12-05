@@ -63,7 +63,7 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
@@ -101,9 +101,9 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
-  const { agentConfigurations } = useAgentConfigurations({
+  // Use the same hook as the input bar and the new conversation page to avoid concurrent calls to getAgentConfigurations.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "list",
   });
   const editableAgents = useMemo(
     () => agentConfigurations.filter((agent) => agent.canEdit),

@@ -45,7 +45,14 @@ export function HelpDropdown({
     if (router.pathname === "/w/[wId]/conversation/[cId]") {
       // If we're on /conversation/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
-      setSelectedAgent({ configurationId: GLOBAL_AGENTS_SID.HELPER });
+      setSelectedAgent({
+        type: "agent",
+        id: GLOBAL_AGENTS_SID.HELPER,
+        label: "Help",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/helper_avatar_full.png",
+        description: "Help on how to use Dust",
+      });
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
