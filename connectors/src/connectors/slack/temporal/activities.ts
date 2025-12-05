@@ -28,6 +28,7 @@ import {
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
+import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import {
   getSlackClient,
@@ -1310,9 +1311,19 @@ export async function autoReadChannelActivity(
     remoteChannel = await slackClient.conversations.info({
       channel: channelId,
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    if (error?.data?.error === "channel_not_found") {
+  } catch (error) {
+    if (
+      isWebAPIPlatformError(error) &&
+      error.data.error === "channel_not_found"
+    ) {
+      logger.warn(
+        {
+          connectorId,
+          channelId,
+        },
+        "Channel not found, skipping auto-read activity."
+      );
+      // We gracefully exit the activity if the channel is not found.
       return false;
     }
     throw error;
