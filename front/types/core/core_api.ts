@@ -277,6 +277,13 @@ export interface CoreAPIDataSourceStatsResponse {
   overall_total_size: number;
 }
 
+interface CoreAPIBulkDataSourceSearch {
+  project_id: string;
+  data_source_id: string;
+  documents: CoreAPIDocument[];
+  error?: string;
+}
+
 export interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
   dataSourceId: string;
@@ -1004,15 +1011,27 @@ export class CoreAPI {
     const searchResults = await concurrentExecutor(
       searches,
       async (search) => {
-        return this.searchDataSource(search.projectId, search.dataSourceId, {
-          query: query,
-          topK: topK,
-          filter: search.filter,
-          view_filter: search.view_filter,
-          fullText: fullText,
-          credentials: credentials,
-          target_document_tokens: target_document_tokens,
-        });
+        const r = await this.searchDataSource(
+          search.projectId,
+          search.dataSourceId,
+          {
+            query: query,
+            topK: topK,
+            filter: search.filter,
+            view_filter: search.view_filter,
+            fullText: fullText,
+            credentials: credentials,
+            target_document_tokens: target_document_tokens,
+          }
+        );
+
+        console.log(
+          "Search result for data source",
+          search.dataSourceId,
+          JSON.stringify(r, null, 2)
+        );
+
+        return r;
       },
       { concurrency: 10 }
     );
@@ -1027,6 +1046,69 @@ export class CoreAPI {
     const allDocuments = searchResults.flatMap((r) =>
       r.isOk() ? r.value.documents : []
     );
+
+    const sortedDocuments = topKSortedDocuments(query, topK, allDocuments);
+
+    return new Ok({
+      documents: sortedDocuments,
+    });
+  }
+
+  async bulkSearchDataSources(
+    query: string,
+    topK: number,
+    credentials: { [key: string]: string },
+    fullText: boolean,
+    searches: {
+      projectId: string;
+      dataSourceId: string;
+      filter?: CoreAPISearchFilter | null;
+      view_filter: CoreAPISearchFilter;
+    }[],
+    target_document_tokens?: number | null
+  ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/data_sources/search/bulk`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: query,
+          full_text: fullText,
+          credentials: credentials,
+          searches: searches.map((search) => ({
+            project_id: parseInt(search.projectId),
+            data_source_id: search.dataSourceId,
+            top_k: topK,
+            filter: search.filter,
+            view_filter: search.view_filter,
+            target_document_tokens: target_document_tokens,
+          })),
+        }),
+      }
+    );
+
+    const result = await this._resultFromResponse<{
+      results: CoreAPIBulkDataSourceSearch[];
+    }>(response);
+    if (result.isErr()) {
+      return result;
+    }
+
+    // Check for errors in individual search results.
+    const errors = result.value.results.filter((r) => r.error);
+    if (errors.length > 0) {
+      // Return the first error if any individual search failed.
+      return new Err({
+        code: "search_failed",
+        message: `Search failed: ${errors[0].error}`,
+      });
+    }
+
+    // Extract documents from the bulk search results.
+    const allDocuments = result.value.results.flatMap((r) => r.documents);
 
     const sortedDocuments = topKSortedDocuments(query, topK, allDocuments);
 
