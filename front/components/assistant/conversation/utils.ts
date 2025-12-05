@@ -29,13 +29,8 @@ export function getGroupConversationsByUnreadAndActionRequired(
         return acc;
       }
 
-      if (conversation.unread) {
-        acc.unreadConversations.push(conversation);
-        return acc;
-      }
-
-      if (conversation.actionRequired) {
-        acc.actionRequiredConversations.push(conversation);
+      if (conversation.unread || conversation.actionRequired) {
+        acc.inboxConversations.push(conversation);
         return acc;
       }
 
@@ -44,12 +39,10 @@ export function getGroupConversationsByUnreadAndActionRequired(
     },
     {
       readConversations: [],
-      unreadConversations: [],
-      actionRequiredConversations: [],
+      inboxConversations: [],
     } as {
       readConversations: ConversationWithoutContentType[];
-      unreadConversations: ConversationWithoutContentType[];
-      actionRequiredConversations: ConversationWithoutContentType[];
+      inboxConversations: ConversationWithoutContentType[];
     }
   );
 }

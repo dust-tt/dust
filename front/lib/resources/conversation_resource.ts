@@ -51,6 +51,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;
+  includeParticipant?: boolean;
 };
 
 interface UserParticipation {
@@ -187,8 +188,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
+    let resultConversations: ConversationResource[] = [];
+
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      return conversations.map(
+      resultConversations = conversations.map(
         (c) =>
           new this(
             this.model,
@@ -222,7 +225,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-    const spaceBasedAccessible = validConversations.filter((c) =>
+    resultConversations = validConversations.filter((c) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
@@ -232,7 +235,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    return spaceBasedAccessible;
+    if (fetchConversationOptions?.includeParticipant) {
+      const participations = await this.fetchParticipationsForUser(
+        auth,
+        resultConversations.map((c) => c.id)
+      );
+
+      const participationMap = new Map(
+        participations.map((p) => [
+          p.conversationId,
+          {
+            actionRequired: p.actionRequired,
+            unread: p.unread,
+            updated: p.updatedAt.getTime(),
+          },
+        ])
+      );
+
+      resultConversations.forEach((c) => {
+        const participation = participationMap.get(c.id);
+        if (participation) {
+          c.userParticipation = participation;
+        }
+      });
+    }
+
+    return resultConversations;
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
@@ -246,6 +274,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       this.triggerId,
       this.workspaceId
     );
+  }
+
+  static async fetchParticipationsForUser(
+    auth: Authenticator,
+    conversationIds?: number[]
+  ) {
+    const user = auth.getNonNullableUser();
+
+    const whereClause: WhereOptions<ConversationParticipantModel> = {
+      userId: user.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (conversationIds && conversationIds.length > 0) {
+      whereClause.conversationId = { [Op.in]: conversationIds };
+    }
+
+    return ConversationParticipantModel.findAll({
+      where: whereClause,
+      attributes: [
+        "actionRequired",
+        "conversationId",
+        "unread",
+        "updatedAt",
+        "userId",
+      ],
+    });
   }
 
   static async fetchByIds(
@@ -548,31 +603,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listConversationsForUser(
     auth: Authenticator
   ): Promise<ConversationResource[]> {
-    const user = auth.getNonNullableUser();
-
     // First get all participations for the user to get conversation IDs and metadata.
-    const participations = await ConversationParticipantModel.findAll({
-      attributes: [
-        "actionRequired",
-        "conversationId",
-        "unread",
-        "updatedAt",
-        "userId",
-      ],
-      where: {
-        userId: user.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      order: [["updatedAt", "DESC"]],
-    });
-
-    if (participations.length === 0) {
-      return [];
-    }
-
+    const participations = await this.fetchParticipationsForUser(auth);
     const conversationIds = participations.map((p) => p.conversationId);
 
-    // Use baseFetchWithAuthorization to get conversations with proper authorization.
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
@@ -796,6 +830,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired: participant?.actionRequired ?? false,
       unread: participant?.unread ?? false,
     };
+  }
+
+  getUserParticipation(): UserParticipation | undefined {
+    return this.userParticipation;
   }
 
   static async upsertParticipation(
@@ -1398,6 +1436,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return spaceIds;
+  }
+
+  static async batchMarkAsReadAndClearActionRequired(
+    auth: Authenticator,
+    conversationIds: number[]
+  ) {
+    const result = await ConversationParticipantModel.update(
+      { unread: false, actionRequired: false },
+      {
+        where: {
+          conversationId: { [Op.in]: conversationIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    return result[0];
   }
 
   toJSON(): ConversationWithoutContentType {
