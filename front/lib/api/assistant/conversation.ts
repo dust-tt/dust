@@ -1,6 +1,3 @@
-import assert from "assert";
-import type { Transaction } from "sequelize";
-
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -21,6 +18,7 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { getUserForWorkspace } from "@app/lib/api/user";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -74,11 +72,14 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
+  isUserMention,
   isUserMessageType,
   md5,
   Ok,
   removeNulls,
 } from "@app/types";
+import assert from "assert";
+import type { Transaction } from "sequelize";
 
 /**
  * Conversation Creation, update and deletion
@@ -686,36 +687,36 @@ export async function editUserMessage(
     });
   }
 
-  if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Editing a message that already has agent mentions is not yet supported",
-      },
-    });
-  }
+  // if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
+  //   return new Err({
+  //     status_code: 400,
+  //     api_error: {
+  //       type: "invalid_request_error",
+  //       message:
+  //         "Editing a message that already has agent mentions is not yet supported",
+  //     },
+  //   });
+  // }
 
-  if (
-    !conversation.content[conversation.content.length - 1].some(
-      (m) => m.sId === message.sId
-    ) &&
-    mentions.filter((m) => isAgentMention(m)).length > 0
-  ) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Adding agent mentions when editing is only supported for the last message " +
-          "of the conversation",
-      },
-    });
-  }
+  // if (
+  //   !conversation.content[conversation.content.length - 1].some(
+  //     (m) => m.sId === message.sId
+  //   ) &&
+  //   mentions.filter((m) => isAgentMention(m)).length > 0
+  // ) {
+  //   return new Err({
+  //     status_code: 400,
+  //     api_error: {
+  //       type: "invalid_request_error",
+  //       message:
+  //         "Adding agent mentions when editing is only supported for the last message " +
+  //         "of the conversation",
+  //     },
+  //   });
+  // }
 
   let userMessage: UserMessageType | null = null;
-  let agentMessages: AgentMessageType[] = [];
+  const agentMessages: AgentMessageType[] = [];
 
   const results = await Promise.all([
     Promise.all(
@@ -763,7 +764,7 @@ export async function editUserMessage(
   }
 
   try {
-    // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
+    // In one big transaction create all Message, UserMessage and Mention rows.
     const result = await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
@@ -785,11 +786,13 @@ export async function editUserMessage(
         ],
         transaction: t,
       });
+
       if (!messageRow || !messageRow.userMessage) {
         throw new Error(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
+
       const newerMessage = await Message.findOne({
         where: {
           workspaceId: owner.id,
@@ -799,6 +802,7 @@ export async function editUserMessage(
         },
         transaction: t,
       });
+
       if (newerMessage) {
         throw new UserMessageError(
           "Invalid user message edit request, this message was already edited."
@@ -817,7 +821,7 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      // Mark the conversation as unread for all participants except the user.
+      // TODO (yuka: 12-05-2025) We should only mark as unread the users that are new in the mentions.
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
         conversation,
         excludedUser: user?.toJSON(),
@@ -826,13 +830,13 @@ export async function editUserMessage(
       // For now agent messages are appended at the end of conversation
       // it is fine since for now editing with new mentions is only supported
       // for the last user message
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
+      // const nextMessageRank =
+      //   ((await Message.max<number | null, Message>("rank", {
+      //     where: {
+      //       conversationId: conversation.id,
+      //     },
+      //     transaction: t,
+      //   })) ?? -1) + 1;
 
       await createUserMentions(auth, {
         mentions,
@@ -841,28 +845,27 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      const agentMessages = await createAgentMessages(auth, {
-        conversation,
-        metadata: {
-          type: "create",
-          mentions,
-          agentConfigurations,
-          skipToolsValidation,
-          nextMessageRank,
-          userMessage,
-        },
-        transaction: t,
-      });
+      // const agentMessages = await createAgentMessages(auth, {
+      //   conversation,
+      //   metadata: {
+      //     type: "create",
+      //     mentions,
+      //     agentConfigurations,
+      //     skipToolsValidation,
+      //     nextMessageRank,
+      //     userMessage,
+      //   },
+      //   transaction: t,
+      // });
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
         userMessage,
-        agentMessages,
       };
     });
     userMessage = result.userMessage;
-    agentMessages = result.agentMessages;
+    // agentMessages = result.agentMessages;
 
     if (!userMessage) {
       throw new UserMessageError("Unreachable: userMessage is null");
