@@ -275,7 +275,7 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     owner,
     conversationId,
-    preferredAgentId: selectedAgent?.sId ?? null,
+    preferredAgentId: selectedAgent?.configurationId ?? null,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";

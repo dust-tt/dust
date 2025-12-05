@@ -35,10 +35,9 @@ export const suggestionsOfMentions = async (
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
-  const currentUserSId = auth.getNonNullableUser().sId;
 
   const agentSuggestions: RichAgentMention[] = [];
-  let userSuggestions: RichUserMention[] = [];
+  const userSuggestions: RichUserMention[] = [];
 
   if (select.agents) {
     // Fetch agent configurations.
@@ -73,7 +72,7 @@ export const suggestionsOfMentions = async (
     }
   }
 
-  let filteredAgents = filterAndSortEditorSuggestionAgents(
+  const filteredAgents = filterAndSortEditorSuggestionAgents(
     normalizedQuery,
     agentSuggestions
   );
