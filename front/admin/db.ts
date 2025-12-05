@@ -48,7 +48,10 @@ import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -196,6 +199,7 @@ async function main() {
 
   await SkillConfigurationModel.sync({ alter: true });
   await GroupSkillModel.sync({ alter: true });
+  await SkillMCPServerConfigurationModel.sync({ alter: true });
 
   process.exit(0);
 }

@@ -14,6 +14,7 @@ import {
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
@@ -28,21 +29,13 @@ import {
   getDefaultMCPAction,
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
+import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 import { pluralize } from "@app/types";
-
-const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
-const BACKGROUND_IMAGE_STYLE_PROPS = {
-  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 14px",
-  backgroundSize: "auto 60px",
-  paddingTop: "90px",
-};
 
 function actionIcon(
   action: AgentBuilderAction,
@@ -66,13 +59,13 @@ function actionDisplayName(
   }`;
 }
 
-interface ActionCardProps {
+export interface ActionCardProps {
   action: AgentBuilderAction;
   onRemove: () => void;
   onEdit?: () => void;
 }
 
-function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
+export function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -124,6 +117,7 @@ interface AgentBuilderCapabilitiesBlockProps {
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
 }: AgentBuilderCapabilitiesBlockProps) {
+  const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -321,6 +315,7 @@ export function AgentBuilderCapabilitiesBlock({
         presetActionData={knowledgeAction?.presetData}
       />
       <MCPServerViewsSheet
+        owner={owner}
         addTools={append}
         mode={dialogMode}
         onModeChange={setDialogMode}

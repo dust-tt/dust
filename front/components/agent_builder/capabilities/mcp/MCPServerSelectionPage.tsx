@@ -16,7 +16,7 @@ import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { WhitelistableFeature } from "@app/types";
 
-interface MCPServerCardProps {
+export interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
@@ -24,7 +24,7 @@ interface MCPServerCardProps {
   featureFlags?: WhitelistableFeature[];
 }
 
-function MCPServerCard({
+export function MCPServerCard({
   view,
   isSelected,
   onClick,

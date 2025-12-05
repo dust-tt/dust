@@ -17,6 +17,7 @@ export type SkillConfiguration = {
   instructions: string;
   authorId: number;
   requestedSpaceIds: number[];
+  tools: { mcpServerViewId: string }[];
 };
 
 export type SkillConfigurationWithAuthor = Omit<

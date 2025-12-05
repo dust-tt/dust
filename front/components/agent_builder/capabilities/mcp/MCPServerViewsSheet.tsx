@@ -13,12 +13,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
-  AgentBuilderFormData,
   MCPFormData,
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -74,6 +71,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { WorkspaceType } from "@app/types";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
@@ -125,24 +123,28 @@ function isMCPActionWithConfiguration(
 }
 
 interface MCPServerViewsSheetProps {
-  addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
+  owner: WorkspaceType;
+  addTools: (action: AgentBuilderAction | AgentBuilderAction[]) => void;
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   selectedActions: AgentBuilderAction[];
   getAgentInstructions: () => string;
+  /** Optional filter to restrict which MCP server views are shown */
+  filterMCPServerViews?: (view: MCPServerViewTypeWithLabel) => boolean;
 }
 
 export function MCPServerViewsSheet({
+  owner,
   addTools,
   mode,
   onModeChange,
   onActionUpdate,
   selectedActions,
   getAgentInstructions,
+  filterMCPServerViews,
 }: MCPServerViewsSheetProps) {
   const confirm = React.useContext(ConfirmContext);
-  const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -199,16 +201,18 @@ export function MCPServerViewsSheet({
   );
 
   const topMCPServerViews = useMemo(() => {
-    return mcpServerViewsWithoutKnowledge.filter((view) =>
+    const views = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-  }, [mcpServerViewsWithoutKnowledge]);
+    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
+  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const nonTopMCPServerViews = useMemo(() => {
-    return mcpServerViewsWithoutKnowledge.filter(
+    const views = mcpServerViewsWithoutKnowledge.filter(
       (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-  }, [mcpServerViewsWithoutKnowledge]);
+    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
+  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const selectableTopMCPServerViews = useMemo(() => {
     const filteredList = topMCPServerViews.filter(
@@ -623,7 +627,10 @@ export function MCPServerViewsSheet({
       description: getInfoPageDescription(infoMCPServerView),
       icon: getInfoPageIcon(infoMCPServerView),
       content: infoMCPServerView ? (
-        <MCPServerInfoPage infoMCPServerView={infoMCPServerView} />
+        <MCPServerInfoPage
+          infoMCPServerView={infoMCPServerView}
+          owner={owner}
+        />
       ) : (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />

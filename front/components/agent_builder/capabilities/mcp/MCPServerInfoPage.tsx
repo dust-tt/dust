@@ -2,19 +2,19 @@ import { Chip, ContentMessage } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { WorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
 
 interface MCPServerInfoPageProps {
   infoMCPServerView: MCPServerViewType;
+  owner: WorkspaceType;
 }
 
 export function MCPServerInfoPage({
   infoMCPServerView,
+  owner,
 }: MCPServerInfoPageProps) {
-  const { owner } = useAgentBuilderContext();
-
   const nbTools = (infoMCPServerView.server.tools ?? []).length;
 
   return (
