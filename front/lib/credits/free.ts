@@ -126,7 +126,7 @@ export async function getCustomerStatus(
   return null;
 }
 
-export async function grantFreeCreditsOnSubscriptionRenewal({
+export async function grantFreeCreditsFromSubscriptionStateChange({
   auth,
   stripeSubscription,
 }: {

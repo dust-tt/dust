@@ -18,7 +18,7 @@ import {
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
-import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
+import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -569,6 +569,37 @@ async function handler(
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
           }
+
+          const subscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: stripeSubscription.id },
+            include: [WorkspaceModel],
+          });
+
+          if (subscription) {
+            const auth = await Authenticator.internalAdminForWorkspace(
+              subscription.workspace.sId
+            );
+
+            const freeCreditsResult =
+              await grantFreeCreditsFromSubscriptionStateChange({
+                auth,
+                stripeSubscription,
+              });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  panic: true,
+                  stripeError: true,
+                  error: freeCreditsResult.error,
+                  subscriptionId: stripeSubscription.id,
+                  workspaceId: subscription.workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits on subscription created"
+              );
+            }
+          }
+
           break;
         }
 
@@ -601,7 +632,7 @@ async function handler(
               );
 
               const freeCreditsResult =
-                await grantFreeCreditsOnSubscriptionRenewal({
+                await grantFreeCreditsFromSubscriptionStateChange({
                   auth,
                   stripeSubscription,
                 });
