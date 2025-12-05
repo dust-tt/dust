@@ -2,6 +2,7 @@ import type { DataSourceViewType } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type {
   CodedError,
+  ConversationsInfoResponse,
   WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
@@ -1304,9 +1305,22 @@ export async function autoReadChannelActivity(
     channelId,
   });
 
-  const remoteChannel = await slackClient.conversations.info({
-    channel: channelId,
-  });
+  let remoteChannel: ConversationsInfoResponse | undefined;
+  try {
+    remoteChannel = await slackClient.conversations.info({
+      channel: channelId,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    if (error?.data?.error === "channel_not_found") {
+      return false;
+    }
+    throw error;
+  }
+
+  if (!remoteChannel) {
+    throw new Error("Could not get the Slack channel information.");
+  }
 
   const channelName = remoteChannel.channel?.name;
   const isPrivate = remoteChannel.channel?.is_private ?? false;
