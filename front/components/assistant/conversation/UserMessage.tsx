@@ -19,6 +19,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
+import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
@@ -51,8 +52,6 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
-
-import { Toolbar } from "./input_bar/toolbar/Toolbar";
 
 // TODO (yuka:2025-12-04): we should show editing UI when the message is editable
 const showEditing = false;
