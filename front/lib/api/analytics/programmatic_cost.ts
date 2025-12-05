@@ -177,7 +177,7 @@ function getTimestampsInRange(startOfMonth: Date, endDate: Date): number[] {
   for (
     let timestamp = current;
     timestamp < endDate;
-    timestamp.setHours(timestamp.getHours() + 4)
+    timestamp.setUTCHours(timestamp.getUTCHours() + 4)
   ) {
     timestamps.push(timestamp.getTime());
   }

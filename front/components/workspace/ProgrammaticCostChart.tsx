@@ -64,7 +64,6 @@ export interface BaseProgrammaticCostChartProps {
 }
 
 type ChartDataPoint = {
-  date: string;
   timestamp: number;
   totalInitialCreditsMicroUsd: number;
   [key: string]: string | number | undefined;
@@ -152,8 +151,12 @@ function GroupedTooltip(
     value: `$${(data.totalInitialCreditsMicroUsd / 1_000_000).toFixed(2)}`,
     colorClassName: COST_PALETTE.totalCredits,
   });
-
-  return <ChartTooltipCard title={data.date} rows={rows} />;
+  const date = new Date(data.timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+  });
+  return <ChartTooltipCard title={date} rows={rows} />;
 }
 
 export function formatMonth(date: Date): string {
@@ -352,12 +355,7 @@ export function BaseProgrammaticCostChart({
 
   // Transform points into chart data using labels from availableGroups
   const chartData = points.map((point) => {
-    const date = new Date(point.timestamp);
     const dataPoint: ChartDataPoint = {
-      date: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
       timestamp: point.timestamp,
       totalInitialCreditsMicroUsd: point.totalInitialCreditsMicroUsd,
     };
@@ -372,6 +370,13 @@ export function BaseProgrammaticCostChart({
   });
 
   const ChartComponent = groupBy ? AreaChart : LineChart;
+
+  // Filter to only show ticks for midnight dates
+  const midnightTicks = useMemo(() => {
+    return chartData
+      .map((point) => point.timestamp)
+      .filter((timestamp) => new Date(timestamp).getUTCHours() === 0);
+  }, [chartData]);
 
   // Check if any filters are applied
   const hasFilters = useMemo(() => {
@@ -538,13 +543,20 @@ export function BaseProgrammaticCostChart({
           className="stroke-border dark:stroke-border-night"
         />
         <XAxis
-          dataKey="date"
+          dataKey="timestamp"
           type="category"
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
+          tickLine={true}
           axisLine={false}
           tickMargin={8}
-          minTickGap={16}
+          minTickGap={8}
+          ticks={midnightTicks}
+          tickFormatter={(value) =>
+            new Date(value).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })
+          }
         />
         <YAxis
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
