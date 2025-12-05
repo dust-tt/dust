@@ -60,6 +60,8 @@ export const suggestionsOfMentions = async (
     conversation?: ConversationWithoutContentType | null;
   }
 ): Promise<RichMention[]> => {
+  const normalizedQuery = query.toLowerCase();
+
   const agentSuggestions: RichAgentMention[] = [];
   let userSuggestions: RichUserMention[] = [];
 
@@ -97,7 +99,7 @@ export const suggestionsOfMentions = async (
   }
 
   let filteredAgents = filterAndSortEditorSuggestionAgents(
-    query,
+    normalizedQuery,
     agentSuggestions
   );
 
@@ -112,11 +114,36 @@ export const suggestionsOfMentions = async (
     if (participantsRes.isOk()) {
       const participants = participantsRes.value;
 
-      if (select.users && userSuggestions.length > 0) {
+      if (select.users) {
         const participantUserIds = new Set(
           participants.users.map((u) => u.sId)
         );
-        userSuggestions = reorderByIds(userSuggestions, participantUserIds);
+
+        const participantUserMentions: RichUserMention[] = participants.users
+          .map(
+            (u) =>
+              ({
+                type: "user",
+                id: u.sId,
+                label: u.fullName || u.username,
+                pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+                description: u.username,
+              }) satisfies RichUserMention
+          )
+          .filter((m) =>
+            normalizedQuery
+              ? m.label.toLowerCase().includes(normalizedQuery)
+              : true
+          );
+
+        const existingUserIds = new Set(userSuggestions.map((u) => u.id));
+
+        const enrichedUsers: RichUserMention[] = [
+          ...participantUserMentions.filter((m) => !existingUserIds.has(m.id)),
+          ...userSuggestions,
+        ];
+
+        userSuggestions = reorderByIds(enrichedUsers, participantUserIds);
       }
 
       if (select.agents && filteredAgents.length > 0) {
@@ -138,7 +165,7 @@ export const suggestionsOfMentions = async (
   }
 
   // Both agents and users are requested.
-  // If we have no users, fall back to agents
+  // If we have no users, fall back to agents.
   if (userSuggestions.length === 0) {
     return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
