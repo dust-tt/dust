@@ -122,7 +122,10 @@ function calculateCreditTotalsPerTimestamp(
     const dayStart = new Date(timestamp);
     dayStart.setUTCHours(0, 0, 0, 0);
     // Use current time for today so credits created today are included.
-    const cutoffTime = dayStart.getTime() === new Date().setUTCHours(0, 0, 0, 0) ? now : dayStart.getTime();
+    const cutoffTime =
+      dayStart.getTime() === new Date().setUTCHours(0, 0, 0, 0)
+        ? now
+        : dayStart.getTime();
 
     const activeCredits = credits.filter((credit) => {
       if (!credit.startDate || credit.startDate.getTime() > cutoffTime) {

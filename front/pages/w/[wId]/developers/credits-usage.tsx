@@ -51,7 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   let isEnterprise = false;
   if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId,
+      subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
@@ -92,7 +92,7 @@ function ProgressBar({ consumed, total }: ProgressBarProps) {
           "h-full rounded-full transition-all",
           percentage > 80
             ? "bg-warning-700"
-            : "bg-primary dark:bg-primary-night",
+            : "bg-primary dark:bg-primary-night"
         )}
         style={{ width: `${percentage}%` }}
       />
@@ -173,7 +173,7 @@ function UsageSection({
 }: UsageSectionProps) {
   const billingCycle = useMemo(
     () => getBillingCycle(subscription.startDate),
-    [subscription.startDate],
+    [subscription.startDate]
   );
 
   const formatDateShort = (date: Date) => {
@@ -235,7 +235,7 @@ function UsageSection({
           <Page.P variant="secondary">
             {formatDateShort(billingCycle.cycleStart)} →{" "}
             {formatDateShort(
-              new Date(billingCycle.cycleEnd.getTime() - 24 * 60 * 60 * 1000),
+              new Date(billingCycle.cycleEnd.getTime() - 24 * 60 * 60 * 1000)
             )}
           </Page.P>
         )}
@@ -266,7 +266,7 @@ function UsageSection({
           consumed={creditsByType.committed.consumed}
           total={creditsByType.committed.total}
           renewalDate={formatExpirationDate(
-            creditsByType.committed.expirationDate,
+            creditsByType.committed.expirationDate
           )}
           action={
             !subscription.trialing && (
