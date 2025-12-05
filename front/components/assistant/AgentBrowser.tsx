@@ -34,6 +34,7 @@ import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
+import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
@@ -233,6 +234,8 @@ export function AgentBrowser({
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
+
+  const hasSkills = featureFlags.includes("skills");
 
   const sortAgents = useCallback(
     (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
@@ -475,16 +478,20 @@ export function AgentBrowser({
               </div>
             )}
 
-            <Button
-              href={getAgentBuilderRoute(owner.sId, "manage")}
-              variant="primary"
-              icon={ContactsRobotIcon}
-              label="Manage agents"
-              data-gtm-label="assistantManagementButton"
-              data-gtm-location="homepage"
-              size="sm"
-              onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
-            />
+            {hasSkills && isBuilder(owner) ? (
+              <ManageDropdownMenu owner={owner} />
+            ) : (
+              <Button
+                href={getAgentBuilderRoute(owner.sId, "manage")}
+                variant="primary"
+                icon={ContactsRobotIcon}
+                label="Manage agents"
+                data-gtm-label="assistantManagementButton"
+                data-gtm-location="homepage"
+                size="sm"
+                onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
+              />
+            )}
           </div>
         </div>
       </div>
