@@ -1316,6 +1316,8 @@ export async function autoReadChannelActivity(
       isWebAPIPlatformError(error) &&
       error.data.error === "channel_not_found"
     ) {
+      // If the channel is not found, we can't auto-read it.
+      // We gracefully exit the activity in this case, with a warning log.
       logger.warn(
         {
           connectorId,
@@ -1323,7 +1325,6 @@ export async function autoReadChannelActivity(
         },
         "Channel not found, skipping auto-read activity."
       );
-      // We gracefully exit the activity if the channel is not found.
       return false;
     }
     throw error;
