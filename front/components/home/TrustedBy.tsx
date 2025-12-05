@@ -1,3 +1,4 @@
+import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -247,14 +248,15 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
           })}
         </div>
       </div>
-      <button
+      <Button
+        variant="highlight"
+        size="md"
+        label="Join them"
+        className="mt-8"
         onClick={() => {
           window.location.href = "/api/workos/login?screenHint=sign-up";
         }}
-        className="mt-8 rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
-      >
-        Join them
-      </button>
+      />
     </div>
   );
 }

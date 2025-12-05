@@ -85,7 +85,7 @@ const HeroContent = () => {
       </P>
       {/* Email input */}
       <form onSubmit={handleSubmit} className="mt-12 w-full max-w-xl">
-        <div className="flex w-full items-center gap-2 rounded-full bg-white py-1.5 pl-6 pr-1.5 shadow-sm">
+        <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white py-1.5 pl-6 pr-1.5 shadow-sm">
           <input
             type="email"
             value={email}
@@ -97,7 +97,7 @@ const HeroContent = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex items-center gap-2 rounded-full bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
+            className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
           >
             {isLoading && <Spinner size="xs" />}
             Start with Dust
