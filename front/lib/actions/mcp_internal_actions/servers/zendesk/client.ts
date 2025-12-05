@@ -24,6 +24,18 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+export class ZendeskApiError extends Error {
+  public readonly isInvalidInput: boolean;
+
+  constructor(
+    message: string,
+    { isInvalidInput }: { isInvalidInput: boolean }
+  ) {
+    super(message);
+    this.isInvalidInput = isInvalidInput;
+  }
+}
+
 const MAX_CUSTOM_FIELDS_TO_FETCH = 50;
 
 export function getUniqueCustomFieldIds(
@@ -106,8 +118,9 @@ class ZendeskClient {
     if (!response.ok) {
       const errorText = await response.text();
       return new Err(
-        new Error(
-          `Zendesk API error (${response.status}): ${errorText || response.statusText}`
+        new ZendeskApiError(
+          `Zendesk API error (${response.status}): ${errorText || response.statusText}`,
+          { isInvalidInput: response.status === 422 }
         )
       );
     }

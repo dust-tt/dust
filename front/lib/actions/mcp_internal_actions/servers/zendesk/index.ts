@@ -5,6 +5,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getUniqueCustomFieldIds,
   getZendeskClient,
+  ZendeskApiError,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
   renderTicket,
@@ -18,6 +19,10 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
+
+function isTrackedError(error: Error): boolean {
+  return !(error instanceof ZendeskApiError && error.isInvalidInput);
+}
 
 const ZENDESK_TOOL_NAME = "zendesk";
 
@@ -73,7 +78,8 @@ function createServer(
         if (ticketResult.isErr()) {
           return new Err(
             new MCPError(
-              `Failed to retrieve ticket: ${ticketResult.error.message}`
+              `Failed to retrieve ticket: ${ticketResult.error.message}`,
+              { tracked: isTrackedError(ticketResult.error) }
             )
           );
         }
@@ -91,7 +97,8 @@ function createServer(
           if (metricsResult.isErr()) {
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`
+                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`,
+                { tracked: isTrackedError(metricsResult.error) }
               )
             );
           }
@@ -105,7 +112,8 @@ function createServer(
           if (commentsResult.isErr()) {
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket conversation: ${commentsResult.error.message}`
+                `Failed to retrieve ticket conversation: ${commentsResult.error.message}`,
+                { tracked: isTrackedError(commentsResult.error) }
               )
             );
           }
@@ -185,7 +193,9 @@ function createServer(
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to search tickets: ${result.error.message}`)
+            new MCPError(`Failed to search tickets: ${result.error.message}`, {
+              tracked: isTrackedError(result.error),
+            })
           );
         }
 
@@ -253,7 +263,9 @@ function createServer(
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to draft reply: ${result.error.message}`)
+            new MCPError(`Failed to draft reply: ${result.error.message}`, {
+              tracked: isTrackedError(result.error),
+            })
           );
         }
 
