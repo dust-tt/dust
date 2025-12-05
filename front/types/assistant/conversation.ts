@@ -5,6 +5,7 @@ import type {
   ContentFragmentType,
   MentionType,
   ModelId,
+  RichMention,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
@@ -124,6 +125,7 @@ export type UserMessageType = {
   rank: number;
   user: UserType | null;
   mentions: MentionType[];
+  richMentions: RichMention[];
   content: string;
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;

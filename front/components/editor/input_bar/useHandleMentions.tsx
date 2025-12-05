@@ -7,10 +7,10 @@ import type {
   RichMention,
 } from "@app/types";
 
-const useHandleAgentMentions = (
+const useHandleMentions = (
   editorService: EditorService,
   agentConfigurations: LightAgentConfigurationType[],
-  stickyMentions: AgentMention[] | undefined,
+  stickyMentions: RichMention[] | undefined,
   selectedAgent: AgentMention | null,
   disableAutoFocus: boolean
 ) => {
@@ -33,22 +33,7 @@ const useHandleAgentMentions = (
     if (editorIsEmpty || onlyContainsPreviousStickyMention) {
       const mentionsToInsert: RichMention[] = [];
 
-      for (const configurationId of stickyMentions.map(
-        (mention) => mention.configurationId
-      )) {
-        const agentConfiguration = agentConfigurations.find(
-          (agent) => agent.sId === configurationId
-        );
-        if (agentConfiguration) {
-          mentionsToInsert.push({
-            type: "agent",
-            id: agentConfiguration.sId,
-            label: agentConfiguration.name,
-            description: agentConfiguration.description,
-            pictureUrl: agentConfiguration.pictureUrl,
-          });
-        }
-      }
+      mentionsToInsert.push(...stickyMentions);
 
       if (mentionsToInsert.length !== 0) {
         queueMicrotask(() => {
@@ -58,7 +43,7 @@ const useHandleAgentMentions = (
         });
       }
     }
-  }, [agentConfigurations, editorService, stickyMentions, disableAutoFocus]);
+  }, [editorService, stickyMentions, disableAutoFocus]);
 
   useEffect(() => {
     if (selectedAgent) {
@@ -86,4 +71,4 @@ const useHandleAgentMentions = (
   }, [selectedAgent, editorService, disableAutoFocus, agentConfigurations]);
 };
 
-export default useHandleAgentMentions;
+export default useHandleMentions;
