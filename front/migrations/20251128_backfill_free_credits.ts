@@ -191,7 +191,11 @@ async function removeFreeCredits(
     "Removing free credits"
   );
 
-  const whereClause: { type: "free"; expirationDate?: Date; workspaceId?: number } = { type: "free" };
+  const whereClause: {
+    type: "free";
+    expirationDate?: Date;
+    workspaceId?: number;
+  } = { type: "free" };
   if (!isAll) {
     whereClause.expirationDate = expirationDate;
   }
@@ -258,8 +262,7 @@ makeScript(
     wId: {
       type: "string",
       demandOption: false,
-      describe:
-        "Workspace sId to process (optional, processes all if omitted)",
+      describe: "Workspace sId to process (optional, processes all if omitted)",
     },
   },
   async ({ execute, action, amountCents, endDate, wId }) => {
