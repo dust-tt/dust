@@ -1,6 +1,6 @@
 import { Input } from "@dust-tt/sparkle";
 
-import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 
 export function SkillBuilderSettingsSection() {
   return (

@@ -1,7 +1,8 @@
-import { Input } from "@dust-tt/sparkle";
 import { forwardRef } from "react";
 
-import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
+import { Input } from "@dust-tt/sparkle";
+
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 
 interface NameSectionProps {
   title?: string;
