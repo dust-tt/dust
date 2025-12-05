@@ -112,6 +112,7 @@ interface ContentNodeTreeChildrenProps {
   parentId: string | null;
   parentIds: string[];
   parentIsSelected?: boolean;
+  additionalActions?: (contentNode: ContentNode) => ReactNode;
 }
 
 function ContentNodeTreeChildren({
@@ -121,6 +122,7 @@ function ContentNodeTreeChildren({
   parentId,
   parentIds,
   parentIsSelected,
+  additionalActions = undefined,
 }: ContentNodeTreeChildrenProps) {
   const { onDocumentViewClick, selectedNodes, setSelectedNodes, showExpand } =
     useContentNodeTreeContext();
@@ -253,6 +255,7 @@ function ContentNodeTreeChildren({
             }
             actions={
               <div className="mr-8 flex grow flex-row justify-between gap-2">
+                {additionalActions && additionalActions(n)}
                 {n.sourceUrl && (
                   <Button
                     href={n.sourceUrl}
@@ -288,6 +291,7 @@ function ContentNodeTreeChildren({
                   parentId={n.internalId}
                   parentIds={[n.internalId, ...parentIds]}
                   parentIsSelected={getCheckedState(n) === true}
+                  additionalActions={additionalActions}
                 />
               );
             }}
@@ -409,6 +413,10 @@ interface ContentNodeTreeProps {
    * The ids of the nodes to be expanded by default.
    */
   defaultExpandedIds?: string[];
+  /**
+   * Additional actions to display on for each node.
+   */
+  additionalActionsForContentNode?: (contentNode: ContentNode) => ReactNode;
 }
 
 export function ContentNodeTree({
@@ -422,6 +430,7 @@ export function ContentNodeTree({
   useResourcesHook,
   emptyComponent,
   defaultExpandedIds,
+  additionalActionsForContentNode,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -442,6 +451,7 @@ export function ContentNodeTree({
         parentId={null}
         parentIds={[]}
         parentIsSelected={parentIsSelected ?? false}
+        additionalActions={additionalActionsForContentNode}
       />
     </ContentNodeTreeContextProvider>
   );
