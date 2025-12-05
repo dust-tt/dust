@@ -73,7 +73,35 @@ export const suggestionsOfMentions = async (
     agentSuggestions
   );
 
-  // Combine results: agents first, then users.
-  const totalResults = [...filteredAgents, ...userSuggestions];
-  return totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  // If only one type is requested, keep the simple ordering.
+  if (!select.agents && select.users) {
+    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+  if (select.agents && !select.users) {
+    return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  // Both agents and users are requested.
+  // If we have no users, fall back to agents
+  if (userSuggestions.length === 0) {
+    return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  // Compute a target 30% / 70% split over the first N items.
+  const totalAvailable = filteredAgents.length + userSuggestions.length;
+  const maxResults = Math.min(SUGGESTION_DISPLAY_LIMIT, totalAvailable);
+
+  const targetUserCount = Math.min(
+    userSuggestions.length,
+    Math.max(1, Math.round(0.3 * maxResults))
+  );
+  const targetAgentCount = Math.min(
+    filteredAgents.length,
+    maxResults - targetUserCount
+  );
+
+  const selectedUsers = userSuggestions.slice(0, targetUserCount);
+  const selectedAgents = filteredAgents.slice(0, targetAgentCount);
+
+  return [...selectedUsers, ...selectedAgents];
 };
