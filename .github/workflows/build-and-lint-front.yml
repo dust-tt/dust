@@ -17,8 +17,8 @@ jobs:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [ 1, 2, 3 ]
-        shardTotal: [ 3 ]
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -65,14 +65,20 @@ jobs:
       - name: Typecheck
         working-directory: front
         run: npx tsgo --version && npm run tsgo
+  circular:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Biome - Circular Dependency Check
+        working-directory: front
+        run: |
+          npm run lint:circular
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-      - name: Fetch main branch
-        run: git fetch origin main --depth=1
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
@@ -88,13 +94,10 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
         run: npm run lint
-      - name: Format Check & Circular Dependency Check
+      - name: Format Check
         working-directory: front
         run: |
-          set -e
           npm run format:check &
-          npm run lint:circular -- --changed --no-errors-on-unmatched &
-          wait -n
       - name: Knip
         uses: ./.github/actions/knip
         with:
