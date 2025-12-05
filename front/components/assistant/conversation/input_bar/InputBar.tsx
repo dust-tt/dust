@@ -1,5 +1,5 @@
 import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
@@ -26,7 +26,6 @@ import { classNames } from "@app/lib/utils";
 import type {
   ContentFragmentsType,
   DataSourceViewContentNode,
-  LightAgentConfigurationType,
   Result,
   RichMention,
   WorkspaceType,
@@ -45,7 +44,6 @@ interface InputBarProps {
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: RichMention[];
-  additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
@@ -54,18 +52,11 @@ interface InputBarProps {
   disable?: boolean;
 }
 
-/**
- *
- * @param additionalAgentConfiguration when trying an agent in a modal or drawer we
- * need to pass the agent configuration to the input bar (it may not be in the
- * user's list of agents)
- */
 export const InputBar = React.memo(function InputBar({
   owner,
   onSubmit,
   conversationId,
   stickyMentions,
-  additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
@@ -79,10 +70,9 @@ export const InputBar = React.memo(function InputBar({
   >([]);
 
   // We use this specific hook because this component is involved in the new conversation page.
-  const { agentConfigurations: baseAgentConfigurations } =
-    useUnifiedAgentConfigurations({
-      workspaceId: owner.sId,
-    });
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   // Files upload.
 
@@ -103,19 +93,6 @@ export const InputBar = React.memo(function InputBar({
       setDroppedFiles([]);
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
-
-  const agentConfigurations = useMemo(() => {
-    if (
-      baseAgentConfigurations.find(
-        (a) => a.sId === additionalAgentConfiguration?.sId
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      ) ||
-      !additionalAgentConfiguration
-    ) {
-      return baseAgentConfigurations;
-    }
-    return [...baseAgentConfigurations, additionalAgentConfiguration];
-  }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, setAnimate, selectedAgent } = useContext(InputBarContext);
@@ -341,7 +318,6 @@ export const InputBar = React.memo(function InputBar({
             actions={actions}
             disableAutoFocus={disableAutoFocus}
             allAgents={activeAgents}
-            agentConfigurations={agentConfigurations}
             owner={owner}
             conversationId={conversationId}
             selectedAgent={selectedAgent}

@@ -29,7 +29,7 @@ import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { RichMention } from "@app/types";
-import { conjugate, pluralize } from "@app/types";
+import { conjugate, pluralize, toRichAgentMentionType } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -79,15 +79,7 @@ export const AgentInputBar = ({
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
     if (draftAgent) {
-      return [
-        {
-          id: draftAgent.sId,
-          type: "agent",
-          label: draftAgent.name,
-          pictureUrl: draftAgent.pictureUrl ?? "",
-          description: draftAgent.description ?? "",
-        } satisfies RichMention,
-      ];
+      return [toRichAgentMentionType(draftAgent)];
     }
     if (
       !lastUserMessage ||
@@ -246,7 +238,6 @@ export const AgentInputBar = ({
         owner={context.owner}
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
-        additionalAgentConfiguration={context.agentBuilderContext?.draftAgent}
         conversationId={context.conversationId}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}

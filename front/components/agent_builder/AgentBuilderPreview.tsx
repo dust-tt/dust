@@ -28,6 +28,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { toRichAgentMentionType } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
 interface EmptyStateProps {
@@ -115,20 +116,9 @@ function PreviewContent({
               owner={owner}
               onSubmit={createConversation}
               stickyMentions={
-                draftAgent
-                  ? [
-                      {
-                        id: draftAgent.sId,
-                        type: "agent",
-                        label: draftAgent.name,
-                        pictureUrl: draftAgent.pictureUrl,
-                        description: draftAgent.description,
-                      } satisfies RichMention,
-                    ]
-                  : []
+                draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
               conversationId={null}
-              additionalAgentConfiguration={draftAgent ?? undefined}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
