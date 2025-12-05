@@ -21,6 +21,7 @@ import type {
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
+import { useConversationParticipants } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 export const MentionDropdown = forwardRef<
@@ -57,19 +58,50 @@ export const MentionDropdown = forwardRef<
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
+    const { conversationParticipants } = useConversationParticipants({
+      conversationId,
+      workspaceId: owner.sId,
+      options: { disabled: !conversationId },
+    });
+
     const orderedSuggestions = useMemo(() => {
-      if (!preferredAgentId) {
-        return suggestions;
+      let base = suggestions;
+
+      // Promote conversation participants first (up to 5).
+      if (conversationParticipants) {
+        const participantUserIds = new Set(
+          conversationParticipants.users.map((u) => u.sId)
+        );
+        const participantAgentIds = new Set(
+          conversationParticipants.agents.map((a) => a.configurationId)
+        );
+
+        const participantItems = base.filter(
+          (s) =>
+            (s.type === "user" && participantUserIds.has(s.id)) ||
+            (s.type === "agent" && participantAgentIds.has(s.id))
+        );
+        const nonParticipantItems = base.filter(
+          (s) => !participantItems.includes(s)
+        );
+
+        const cappedParticipants = participantItems.slice(0, 5);
+        base = [...cappedParticipants, ...nonParticipantItems];
       }
-      const preferredIndex = suggestions.findIndex(
+
+      // Then move the preferred agent (last used) to the very first position if present.
+      if (!preferredAgentId) {
+        return base;
+      }
+      const preferredIndex = base.findIndex(
         (s) => s.type === "agent" && s.id === preferredAgentId
       );
       if (preferredIndex <= 0) {
-        return suggestions;
+        return base;
       }
-      const preferred = suggestions[preferredIndex];
-      return [preferred, ...suggestions.filter((_, i) => i !== preferredIndex)];
-    }, [suggestions, preferredAgentId]);
+      const preferred = base[preferredIndex];
+      return [preferred, ...base.filter((_, i) => i !== preferredIndex)];
+    }, [suggestions, preferredAgentId, conversationParticipants]);
 
     const selectItem = (index: number) => {
       const item = orderedSuggestions[index];
