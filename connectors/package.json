@@ -5,7 +5,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "build": "tsc --noEmit && tsx esbuild.config.ts",
+    "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",
     "start:worker": "tsx ./src/start_worker.ts",
@@ -14,7 +14,7 @@
     "start:dev:worker": "tsx ./src/start_worker.ts",
     "test": "vitest",
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
-    "tsc": "tsc",
+    "tsgo": "tsgo",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
@@ -95,6 +95,7 @@
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20251201.1",
     "@types/eslint": "^8.56.10",
     "@types/gunzip-maybe": "^1.4.2",
     "@types/lodash": "^4.17.7",
