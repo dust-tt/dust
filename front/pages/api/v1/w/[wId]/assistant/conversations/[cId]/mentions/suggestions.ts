@@ -145,7 +145,6 @@ async function handler(
   const suggestions = await suggestionsOfMentions(auth, {
     query,
     select,
-    conversation: conversationRes.toJSON(),
   });
 
   return res.status(200).json({ suggestions });
