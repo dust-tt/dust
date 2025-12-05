@@ -215,9 +215,10 @@ export class GongClient {
           )
         );
 
-        // Convert Retry-After header (in seconds) to milliseconds.
+        // Gong docs says the Retry-After header is in seconds, our findings show it is actually
+        // in milliseconds.
         const retryAfterMs = response.headers.get("Retry-After")
-          ? parseInt(response.headers.get("Retry-After")!, 10) * 1000
+          ? parseInt(response.headers.get("Retry-After")!, 10)
           : undefined;
 
         logger.info(
