@@ -15,9 +15,9 @@ import { useController } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { EditorsSheet } from "@app/components/agent_builder/settings/EditorsSheet";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
+import { EditorsSheetBase } from "@app/components/shared/EditorsSheet";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isBuilder } from "@app/types";
 
@@ -33,6 +33,12 @@ export function AccessSection() {
     field: { value: slackProvider },
   } = useController<AgentBuilderFormData, "agentSettings.slackProvider">({
     name: "agentSettings.slackProvider",
+  });
+
+  const {
+    field: { value: editors, onChange: onChangeEditors },
+  } = useController<AgentBuilderFormData, "agentSettings.editors">({
+    name: "agentSettings.editors",
   });
 
   const [showSlackSettings, setShowSlackSettings] = useState(false);
@@ -64,7 +70,12 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <EditorsSheet />
+        <EditorsSheetBase
+          owner={owner}
+          editors={editors || []}
+          onChangeEditors={onChangeEditors}
+          description="People who can use and edit the agent."
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
