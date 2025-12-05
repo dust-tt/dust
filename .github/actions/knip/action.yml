@@ -22,6 +22,7 @@ runs:
         * Unpredictable resolution: Package managers may hoist different versions than you expect, causing inconsistent behavior across environments
 
         *Always explicitly declare what you directly import/use.*
+        
         EOF
         )
         npm run knip -- --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
@@ -32,14 +33,14 @@ runs:
         explanations=$(cat << 'EOF'
 
         Keeping unused (dev) dependencies is problematic because:
-
         1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
         2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
         3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
         4. Maintenance burden: You'll waste time updating packages you don't actually use
+        
         EOF
         )
-        npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
+        npm run knip -- --include dependencies,devDependencies,binaries,catalog || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
     - name: Knip - unused files
       shell: bash
       working-directory: ${{ inputs.working_directory }}
@@ -47,7 +48,6 @@ runs:
         explanations=$(cat << 'EOF'
 
         Keeping unused files in your codebase is problematic because:
-
         1. Cognitive overhead: Developers waste time reading, searching through, and trying to understand code that isn't actually used
         2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
         3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding

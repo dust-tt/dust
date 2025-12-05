@@ -26,6 +26,7 @@ const config: KnipConfig = {
     "sqlite3", // used during the build process by sequelize
     "@dust-tt/client",
   ],
+  ignoreBinaries: ["sleep"],
   paths: {
     "@app/*": ["./*"],
   },
