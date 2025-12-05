@@ -1025,12 +1025,6 @@ export class CoreAPI {
           }
         );
 
-        console.log(
-          "Search result for data source",
-          search.dataSourceId,
-          JSON.stringify(r, null, 2)
-        );
-
         return r;
       },
       { concurrency: 10 }
