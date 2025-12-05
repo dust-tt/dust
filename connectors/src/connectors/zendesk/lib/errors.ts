@@ -9,17 +9,28 @@ export class ZendeskApiError extends Error {
   }
 }
 
+function isZendesk401WithError(
+  err: ZendeskApiError,
+  errorMessage: string
+): boolean {
+  return (
+    err.status === 401 &&
+    typeof err.data === "object" &&
+    err.data !== null &&
+    "response" in err.data &&
+    typeof err.data.response === "object" &&
+    err.data.response !== null &&
+    "error" in err.data.response &&
+    err.data.response.error === errorMessage
+  );
+}
+
 export function isZendeskForbiddenError(err: unknown): err is ZendeskApiError {
   return (
     err instanceof ZendeskApiError &&
     (err.status === 403 ||
-      (err.status === 401 &&
-        typeof err.data === "object" &&
-        "response" in err.data &&
-        typeof err.data.response === "object" &&
-        err.data.response !== null &&
-        "error" in err.data.response &&
-        err.data?.response.error === "invalid_token"))
+      isZendesk401WithError(err, "invalid_token") ||
+      isZendesk401WithError(err, "Couldn't authenticate you"))
   );
 }
 
