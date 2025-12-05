@@ -1,7 +1,7 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DocumentIcon, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
@@ -16,11 +16,6 @@ import {
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import {
-  getIcon,
-  isCustomResourceIconType,
-  isInternalAllowedIcon,
-} from "@app/components/resources/resources_icons";
 import type {
   FileBlob,
   FileUploaderService,
@@ -79,33 +74,6 @@ export function InputBarAttachments({
 
   const fileService = files.service;
 
-  const createNodeAttachment = useCallback(
-    (blob: FileBlob): NodeAttachment => {
-      const info = blob.nodeAttachmentInfo;
-      const iconName = info?.iconName;
-      const logo =
-        iconName &&
-        (isCustomResourceIconType(iconName) || isInternalAllowedIcon(iconName))
-          ? getIcon(iconName)
-          : DocumentIcon;
-
-      return {
-        type: "node",
-        id: blob.id,
-        title: blob.filename,
-        url: blob.sourceUrl ?? null,
-        spaceName: info?.label ?? "External",
-        spaceIcon: logo,
-        path: "",
-        visual: (
-          <DoubleIcon mainIcon={DocumentIcon} secondaryIcon={logo} size="md" />
-        ),
-        onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
-      };
-    },
-    [disable, fileService]
-  );
-
   const createFileAttachment = useCallback(
     (blob: FileBlob): FileAttachment => {
       const isPasted = isPastedFile(blob.contentType);
@@ -124,24 +92,18 @@ export function InputBarAttachments({
         contentType: blob.contentType,
         isUploading: blob.isUploading,
         description: uploadDate,
+        iconName: blob.iconName,
+        fileId: blob.fileId,
         onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
       };
     },
     [disable, fileService]
   );
 
-  // Convert file blobs to attachments.
-  // Files with nodeAttachmentInfo become NodeAttachments (open in new tab).
-  // Regular files become FileAttachments (open in viewer dialog).
-  const blobAttachments: Attachment[] = useMemo(() => {
-    return (
-      fileService.fileBlobs.map((blob) =>
-        blob.nodeAttachmentInfo
-          ? createNodeAttachment(blob)
-          : createFileAttachment(blob)
-      ) ?? []
-    );
-  }, [fileService, createFileAttachment, createNodeAttachment]);
+  // Convert file blobs to FileAttachments (open in viewer dialog).
+  const fileAttachments: FileAttachment[] = useMemo(() => {
+    return fileService.fileBlobs.map((blob) => createFileAttachment(blob));
+  }, [fileService, createFileAttachment]);
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
@@ -182,7 +144,7 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap, disable]);
 
-  const allAttachments: Attachment[] = [...blobAttachments, ...nodeAttachments];
+  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
   if (allAttachments.length === 0) {
     return null;

@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { downloadAndUploadToolFile } from "@app/lib/search/tools/search";
+import {
+  downloadAndUploadToolFile,
+  getToolAccessToken,
+} from "@app/lib/search/tools/search";
 import { apiError } from "@app/logger/withlogging";
 import type { FileType, WithAPIErrorResponse } from "@app/types";
 
@@ -25,7 +28,7 @@ async function handler(
     });
   }
 
-  const { serverViewId, internalId } = req.body;
+  const { serverViewId, externalId, conversationId } = req.body;
 
   if (typeof serverViewId !== "string" || serverViewId.length < 1) {
     return apiError(req, res, {
@@ -37,20 +40,44 @@ async function handler(
     });
   }
 
-  if (typeof internalId !== "string" || internalId.length < 1) {
+  if (typeof externalId !== "string" || externalId.length < 1) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "internalId parameter is required.",
+        message: "externalId parameter is required.",
       },
     });
   }
 
+  if (conversationId !== undefined && typeof conversationId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "conversationId must be a string.",
+      },
+    });
+  }
+
+  const tokenResult = await getToolAccessToken({ auth, serverViewId });
+  if (tokenResult.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: tokenResult.error.message,
+      },
+    });
+  }
+
+  const { tool, accessToken } = tokenResult.value;
   const result = await downloadAndUploadToolFile({
     auth,
-    serverViewId,
-    internalId,
+    tool,
+    accessToken,
+    externalId,
+    conversationId,
   });
 
   if (result.isErr()) {

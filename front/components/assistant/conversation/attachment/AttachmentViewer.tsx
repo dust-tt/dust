@@ -50,19 +50,24 @@ export const AttachmentViewer = ({
 
   const isAudio = isAudioContentType(attachmentCitation);
 
-  // Yes this is weird, but for fragments we have the fileId directly
-  // For input bar attachments, we need to get the file blob first
-  // because the attachment fileId is actually the blob id
-  // TODO: to fix
-  const fileBlob = fileUploaderService.getFileBlob(attachmentCitation.fileId);
+  // For input bar attachments, try to get the local file blob for reading content directly.
+  // For fragments/mcp, we always fetch from server.
+  const fileBlob =
+    attachmentCitation.attachmentCitationType === "inputBar"
+      ? fileUploaderService.getFileBlob(attachmentCitation.id)
+      : undefined;
 
+  // Fetch from server if:
+  // - It's a fragment or mcp attachment (always server-side)
+  // - It's an input bar attachment but we don't have local content (e.g., tool uploads)
+  const hasLocalContent = fileBlob && fileBlob.file.size > 0;
   const shouldFetchFromServer =
     attachmentCitation.attachmentCitationType === "fragment" ||
-    attachmentCitation.attachmentCitationType === "mcp";
+    attachmentCitation.attachmentCitationType === "mcp" ||
+    !hasLocalContent;
 
-  const fileId = shouldFetchFromServer
-    ? attachmentCitation.fileId
-    : fileBlob?.fileId;
+  // Use the fileId from the citation (which is the real server file sId).
+  const fileId = attachmentCitation.fileId;
 
   const { fileContent, isFileContentLoading } = useFileContent({
     fileId,
@@ -119,7 +124,7 @@ export const AttachmentViewer = ({
 
       setText(
         await fileUploaderService
-          .getFileBlob(attachmentCitation.fileId)
+          .getFileBlob(attachmentCitation.id)
           ?.file.text()
       );
     };
