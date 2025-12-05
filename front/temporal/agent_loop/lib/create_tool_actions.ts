@@ -231,6 +231,7 @@ async function createActionForTool(
             type: "tool_approve_execution",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
+            userId: auth.getNonNullableUser().sId,
             messageId: agentMessage.sId,
             conversationId: conversation.sId,
             actionId: action.sId,

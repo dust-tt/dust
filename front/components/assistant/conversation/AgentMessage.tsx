@@ -201,6 +201,7 @@ export function AgentMessage({
                 messageId: eventPayload.data.messageId,
                 conversationId: eventPayload.data.conversationId,
                 actionId: eventPayload.data.actionId,
+                userId: eventPayload.data.userId,
                 inputs: eventPayload.data.inputs,
                 stake: eventPayload.data.stake,
                 metadata: eventPayload.data.metadata,
