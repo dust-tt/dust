@@ -17,7 +17,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { EditorsSheetBase } from "@app/components/shared/EditorsSheet";
+import { EditorsSheet } from "@app/components/shared/EditorsSheet";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isBuilder } from "@app/types";
 
@@ -70,7 +70,7 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <EditorsSheetBase
+        <EditorsSheet
           owner={owner}
           editors={editors || []}
           onChangeEditors={onChangeEditors}

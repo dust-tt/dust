@@ -1,6 +1,6 @@
 import { useController } from "react-hook-form";
 
-import { EditorsSheetBase } from "@app/components/shared/EditorsSheet";
+import { EditorsSheet } from "@app/components/shared/EditorsSheet";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 
@@ -14,7 +14,7 @@ export function SkillEditorsSheet() {
   });
 
   return (
-    <EditorsSheetBase
+    <EditorsSheet
       owner={owner}
       editors={editors || []}
       onChangeEditors={onChange}
