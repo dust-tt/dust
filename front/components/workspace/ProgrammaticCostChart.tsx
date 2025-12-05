@@ -192,7 +192,7 @@ export function BaseProgrammaticCostChart({
   const billingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     currentDate,
-    false
+    true
   );
 
   const formatDate = (date: Date) =>
