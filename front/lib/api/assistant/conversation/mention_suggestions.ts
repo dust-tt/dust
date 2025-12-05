@@ -1,3 +1,5 @@
+import shuffle from "lodash/shuffle";
+
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -11,7 +13,6 @@ import type {
   RichUserMention,
 } from "@app/types";
 import { compareAgentsForSort } from "@app/types";
-import shuffle from "lodash/shuffle";
 
 export const suggestionsOfMentions = async (
   auth: Authenticator,
@@ -88,7 +89,7 @@ export const suggestionsOfMentions = async (
     }
   }
 
-  let filteredAgents = filterAndSortEditorSuggestionAgents(
+  const filteredAgents = filterAndSortEditorSuggestionAgents(
     normalizedQuery,
     agentSuggestions
   );
