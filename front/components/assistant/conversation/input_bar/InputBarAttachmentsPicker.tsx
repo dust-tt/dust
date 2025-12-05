@@ -85,7 +85,7 @@ export const InputBarAttachmentsPicker = ({
   const isToolNodeAttached = useCallback(
     (node: ToolSearchNode) => {
       return fileUploaderService.fileBlobs.some(
-        (blob) => blob.id === `tool-${node.serverViewId}-${node.internalId}`
+        (blob) => blob.id === `tool-${node.serverViewId}-${node.externalId}`
       );
     },
     [fileUploaderService.fileBlobs]
@@ -93,7 +93,7 @@ export const InputBarAttachmentsPicker = ({
 
   const handleToolNodeUpload = useCallback(
     async (node: ToolSearchNode) => {
-      const nodeKey = `${node.serverViewId}-${node.internalId}`;
+      const nodeKey = `${node.serverViewId}-${node.externalId}`;
 
       setUploadingToolNodes((prev) => new Set(prev).add(nodeKey));
 
@@ -107,7 +107,7 @@ export const InputBarAttachmentsPicker = ({
             },
             body: JSON.stringify({
               serverViewId: node.serverViewId,
-              internalId: node.internalId,
+              externalId: node.externalId,
             }),
           }
         );
@@ -126,10 +126,7 @@ export const InputBarAttachmentsPicker = ({
           contentType: file.contentType,
           size: file.fileSize,
           sourceUrl: node.sourceUrl ?? undefined,
-          nodeAttachmentInfo: {
-            label: node.serverName,
-            iconName: node.serverIcon,
-          },
+          iconName: node.serverIcon,
         });
       } catch (error) {
         sendNotification({
@@ -335,7 +332,7 @@ export const InputBarAttachmentsPicker = ({
               </NodePathTooltip>
             ))}
             {toolContentNodes.map((item, index) => {
-              const nodeKey = `${item.serverViewId}-${item.internalId}`;
+              const nodeKey = `${item.serverViewId}-${item.externalId}`;
               const isAttached = isToolNodeAttached(item);
               const isUploading = uploadingToolNodes.has(nodeKey);
 

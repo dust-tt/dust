@@ -35,12 +35,7 @@ export interface FileBlob {
   sourceUrl?: string;
   size: number;
   publicUrl?: string;
-  // When set, this file blob will render as a NodeAttachment (opens in new tab)
-  // instead of a FileAttachment (opens in viewer dialog).
-  nodeAttachmentInfo?: {
-    label: string;
-    iconName: string;
-  };
+  iconName?: string;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
@@ -383,10 +378,7 @@ export function useFileUploaderService({
     size: number;
     id?: string;
     sourceUrl?: string;
-    nodeAttachmentInfo?: {
-      label: string;
-      iconName: string;
-    };
+    iconName?: string;
   }) => {
     const blob: FileBlob = {
       contentType: fileData.contentType,
@@ -397,7 +389,7 @@ export function useFileUploaderService({
       isUploading: false,
       size: fileData.size,
       sourceUrl: fileData.sourceUrl,
-      nodeAttachmentInfo: fileData.nodeAttachmentInfo,
+      iconName: fileData.iconName,
     };
 
     setFileBlobs((prevFiles) => [...prevFiles, blob]);

@@ -5,7 +5,7 @@ import type {
 import type { ContentNodeType } from "@app/types";
 
 export type ToolSearchRawNode = {
-  internalId: string;
+  externalId: string;
   title: string;
   mimeType: string;
   type: ContentNodeType;
@@ -31,7 +31,7 @@ export type ToolSearchParams = {
 
 export type ToolDownloadParams = {
   accessToken: string;
-  internalId: string;
+  externalId: string;
 };
 
 export type ToolDownloadResult = {

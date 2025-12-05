@@ -21,6 +21,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
   "application/vnd.google-apps.presentation",
+  "application/vnd.google-apps.spreadsheet",
   "text/plain",
   "text/markdown",
   "text/csv",
@@ -402,7 +403,7 @@ export async function search({
       type = "table";
     }
     return {
-      internalId: file.id ?? "",
+      externalId: file.id ?? "",
       mimeType,
       title: file.name ?? "Untitled",
       type,
@@ -413,13 +414,13 @@ export async function search({
 
 export async function download({
   accessToken,
-  internalId,
+  externalId,
 }: ToolDownloadParams): Promise<ToolDownloadResult> {
   const drive = getClient(accessToken);
 
   // Get file metadata.
   const fileMetadata = await drive.files.get({
-    fileId: internalId,
+    fileId: externalId,
     supportsAllDrives: true,
     fields: "id, name, mimeType, size",
   });
@@ -444,16 +445,26 @@ export async function download({
     file.mimeType === "application/vnd.google-apps.presentation"
   ) {
     const exportRes = await drive.files.export({
-      fileId: internalId,
+      fileId: externalId,
       mimeType: "text/plain",
     });
     if (typeof exportRes.data !== "string") {
       throw new Error("Failed to export file content.");
     }
     content = exportRes.data;
+  } else if (file.mimeType === "application/vnd.google-apps.spreadsheet") {
+    // Export Google Sheets as CSV.
+    const exportRes = await drive.files.export({
+      fileId: externalId,
+      mimeType: "text/csv",
+    });
+    if (typeof exportRes.data !== "string") {
+      throw new Error("Failed to export spreadsheet content.");
+    }
+    content = exportRes.data;
   } else if (SUPPORTED_MIMETYPES.includes(file.mimeType)) {
     const downloadRes = await drive.files.get({
-      fileId: internalId,
+      fileId: externalId,
       alt: "media",
     });
     if (typeof downloadRes.data !== "string") {

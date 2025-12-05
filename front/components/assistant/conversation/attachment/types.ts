@@ -15,6 +15,8 @@ export type FileAttachment = {
   onRemove?: () => void;
   description?: string;
   sourceUrl?: string;
+  iconName?: string;
+  fileId: string | null;
 };
 
 export type NodeAttachment = {

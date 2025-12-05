@@ -25,7 +25,7 @@ async function handler(
     });
   }
 
-  const { serverViewId, internalId } = req.body;
+  const { serverViewId, externalId } = req.body;
 
   if (typeof serverViewId !== "string" || serverViewId.length < 1) {
     return apiError(req, res, {
@@ -37,12 +37,12 @@ async function handler(
     });
   }
 
-  if (typeof internalId !== "string" || internalId.length < 1) {
+  if (typeof externalId !== "string" || externalId.length < 1) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "internalId parameter is required.",
+        message: "externalId parameter is required.",
       },
     });
   }
@@ -50,7 +50,7 @@ async function handler(
   const result = await downloadAndUploadToolFile({
     auth,
     serverViewId,
-    internalId,
+    externalId,
   });
 
   if (result.isErr()) {

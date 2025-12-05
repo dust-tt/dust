@@ -129,11 +129,11 @@ export async function searchToolNodes({
 export async function downloadAndUploadToolFile({
   auth,
   serverViewId,
-  internalId,
+  externalId,
 }: {
   auth: Authenticator;
   serverViewId: string;
-  internalId: string;
+  externalId: string;
 }): Promise<Result<FileType, Error>> {
   // Fetch the MCP server view and gets its acess token.
   const serverView = await MCPServerViewResource.fetchById(auth, serverViewId);
@@ -173,7 +173,7 @@ export async function downloadAndUploadToolFile({
   try {
     downloadResult = await tool.download({
       accessToken: connectionResult.access_token,
-      internalId,
+      externalId,
     });
   } catch (error) {
     logger.error(
@@ -181,7 +181,7 @@ export async function downloadAndUploadToolFile({
         error,
         workspaceId: owner.sId,
         serverViewId,
-        internalId,
+        externalId,
       },
       "Error downloading tool file"
     );
