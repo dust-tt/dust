@@ -534,9 +534,9 @@ export function AgentMessage({
         .filter(
           (msg): msg is UserMessageType =>
             msg.type === "user_message" &&
-            msg.context.origin === "agent_handover"
+            msg.agenticMessageData?.type === "agent_handover"
         )
-        .map((msg) => msg.context.originMessageId)
+        .map((msg) => msg.agenticMessageData?.originMessageId)
     );
     const handingOver = handoverOrigins.has(message.sId);
 
