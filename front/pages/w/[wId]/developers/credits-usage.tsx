@@ -20,6 +20,8 @@ import {
   getBillingCycle,
   getPriceAsString,
 } from "@app/lib/client/subscription";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   getStripeSubscription,
@@ -34,6 +36,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isEnterprise: boolean;
+  creditPurchaseLimits: CreditPurchaseLimits | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -49,12 +52,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   let isEnterprise = false;
+  let creditPurchaseLimits: CreditPurchaseLimits | null = null;
+
   if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
+      creditPurchaseLimits = await getCreditPurchaseLimits(
+        auth,
+        stripeSubscription
+      );
     }
   }
 
@@ -63,6 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       isEnterprise,
+      creditPurchaseLimits,
     },
   };
 });
@@ -299,6 +309,7 @@ export default function CreditsUsagePage({
   owner,
   subscription,
   isEnterprise,
+  creditPurchaseLimits,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { hasFeature, featureFlags } = useFeatureFlags({
@@ -381,7 +392,7 @@ export default function CreditsUsagePage({
         isOpen={showBuyCreditDialog}
         onClose={() => setShowBuyCreditDialog(false)}
         workspaceId={owner.sId}
-        isEnterprise={isEnterprise}
+        creditPurchaseLimits={creditPurchaseLimits}
       />
 
       <Page.Vertical gap="xl" align="stretch">
@@ -412,13 +423,24 @@ export default function CreditsUsagePage({
         )}
 
         {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
-        {subscription.trialing && (
-          <ContentMessage title="Available after trial" variant="info">
-            Credit purchases are available once you upgrade to a paid plan. If
-            you would like to purchase credits before upgrading, please contact
-            support.
-          </ContentMessage>
-        )}
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "trialing" && (
+            <ContentMessage title="Available after trial" variant="info">
+              Credit purchases are available once you upgrade to a paid plan. If
+              you would like to purchase credits before upgrading, please contact
+              support.
+            </ContentMessage>
+          )}
+
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "payment_issue" && (
+            <ContentMessage title="Subscription issue" variant="warning">
+              Credit purchases require an active subscription. Please ensure
+              your payment method is up to date.
+            </ContentMessage>
+          )}
 
         {/* Usage Section */}
         <UsageSection
