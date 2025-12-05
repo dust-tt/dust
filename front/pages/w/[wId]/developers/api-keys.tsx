@@ -39,6 +39,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
@@ -118,7 +119,7 @@ export function APIKeys({
     useSubmitFunction(
       async ({ name, group }: { name: string; group: GroupType | null }) => {
         const globalGroup = groups.find((g) => g.kind === "global");
-        const response = await fetch(`/api/w/${owner.sId}/keys`, {
+        const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -152,7 +153,7 @@ export function APIKeys({
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (key: KeyType) => {
-      await fetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
+      await clientFetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

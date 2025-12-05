@@ -15,6 +15,7 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { createWebsite, updateWebsite } from "@app/lib/api/website";
+import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
@@ -268,7 +269,7 @@ export default function SpaceWebsiteModal({
     }
     setIsSaving(true);
     try {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
         { method: "DELETE" }
       );

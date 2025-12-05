@@ -8,6 +8,7 @@ import {
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import {
@@ -241,7 +242,7 @@ async function processTriggers({
   // Process triggers in order: DELETE -> PATCH -> POST (batch operations)
   // 1. Batch delete triggers
   if (formData.triggersToDelete.length > 0) {
-    const deleteRes = await fetch(
+    const deleteRes = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
       {
         method: "DELETE",
@@ -272,7 +273,7 @@ async function processTriggers({
 
   // 2. Batch update existing triggers
   if (formData.triggersToUpdate.length > 0) {
-    const updateRes = await fetch(
+    const updateRes = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
       {
         method: "PATCH",
@@ -324,7 +325,7 @@ async function processTriggers({
 
   // 3. Batch create new triggers
   if (formData.triggersToCreate.length > 0) {
-    const createRes = await fetch(
+    const createRes = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
       {
         method: "POST",
@@ -490,7 +491,7 @@ export async function submitAgentBuilderForm({
   const method = agentConfigurationId ? "PATCH" : "POST";
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await clientFetch(endpoint, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -578,7 +579,7 @@ export async function submitAgentBuilderForm({
         ),
         auto_respond_without_mention: autoRespondWithoutMention,
       });
-      const slackLinkRes = await fetch(
+      const slackLinkRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
           method: "PATCH",

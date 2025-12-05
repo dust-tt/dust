@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 
 export function useDismissFeedback({
   workspaceId,
@@ -19,7 +20,7 @@ export function useDismissFeedback({
   const toggleDismiss = useCallback(
     async (dismissed: boolean) => {
       setIsDismissing(true);
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks/${feedbackId}`,
         {
           method: "PATCH",

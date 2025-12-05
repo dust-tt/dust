@@ -2,6 +2,7 @@ import { useSWRConfig } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { normalizeError } from "@app/types";
 
 export function useDeleteMessage({
@@ -16,7 +17,7 @@ export function useDeleteMessage({
 
   const { submit: deleteMessage, isSubmitting } = useSubmitFunction(
     async (messageId: string) => {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}`,
         {
           method: "DELETE",

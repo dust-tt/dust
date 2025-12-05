@@ -46,6 +46,7 @@ import {
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
@@ -479,7 +480,7 @@ function TemplatesPage({
           const url = assistantTemplate
             ? `/api/poke/templates/${assistantTemplate.sId}`
             : "/api/poke/templates";
-          const r = await fetch(url, {
+          const r = await clientFetch(url, {
             method,
             headers: {
               "Content-Type": "application/json",
@@ -530,12 +531,15 @@ function TemplatesPage({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/templates/${assistantTemplate.sId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const r = await clientFetch(
+        `/api/poke/templates/${assistantTemplate.sId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (!r.ok) {
         throw new Error("Failed to delete template.");
       }

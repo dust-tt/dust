@@ -51,6 +51,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -388,7 +389,7 @@ export const SpaceDataSourceViewContentList = ({
       try {
         let res;
         if (existingViewForSpace) {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
             {
               method: "PATCH",
@@ -401,7 +402,7 @@ export const SpaceDataSourceViewContentList = ({
             }
           );
         } else {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
             {
               method: "POST",
