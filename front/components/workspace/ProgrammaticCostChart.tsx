@@ -546,10 +546,10 @@ export function BaseProgrammaticCostChart({
           dataKey="timestamp"
           type="category"
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
+          tickLine={true}
           axisLine={false}
           tickMargin={8}
-          minTickGap={16}
+          minTickGap={8}
           ticks={midnightTicks}
           tickFormatter={(value) =>
             new Date(value).toLocaleDateString("en-US", {
