@@ -49,6 +49,7 @@ import {
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
+  SupabaseLogo,
   ValTownLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
@@ -127,6 +128,7 @@ export const InternalActionIcons = {
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
+  SupabaseLogo,
   ValTownLogo,
   ZendeskLogo,
 };
