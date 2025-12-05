@@ -16,7 +16,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { checkProvider } from "@app/lib/providers";
 import type { WorkspaceType } from "@app/types";
 
-export type ProviderField = {
+type ProviderField = {
   name: string;
   label?: string;
   placeholder: string;
@@ -278,7 +278,7 @@ export const SERVICE_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
 };
 
-export interface ProviderSetupProps {
+interface ProviderSetupProps {
   owner: WorkspaceType;
   providerId: string;
   title: string;

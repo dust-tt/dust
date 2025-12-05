@@ -15,9 +15,9 @@ import {
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
-export const STATIC_AGENT_CONFIG = "static_agent_config";
-export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
-export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
+const STATIC_AGENT_CONFIG = "static_agent_config";
+const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
+const REJECT_TOOL_EXECUTION = "reject_tool_execution";
 
 const ToolValidationActionsCodec = t.union([
   t.literal(APPROVE_TOOL_EXECUTION),
@@ -46,7 +46,7 @@ const ToolValidationActionsSchema = t.type({
   value: t.string,
 });
 
-export type RequestToolPermissionActionValueParsed = {
+type RequestToolPermissionActionValueParsed = {
   status: "approved" | "rejected";
   agentName: string;
   toolName: string;
@@ -116,7 +116,7 @@ const ViewSubmissionPayloadSchema = t.type({
   }),
 });
 
-export const SlackInteractionPayloadSchema = t.union([
+const SlackInteractionPayloadSchema = t.union([
   BlockActionsPayloadSchema,
   ViewSubmissionPayloadSchema,
 ]);

@@ -241,7 +241,7 @@ export const FEATURE_FLAG_STAGE_LABELS: Record<FeatureFlagStage, string> = {
   on_demand: "On demand",
 };
 
-export type FeatureFlag = {
+type FeatureFlag = {
   description: string;
   stage: FeatureFlagStage;
 };

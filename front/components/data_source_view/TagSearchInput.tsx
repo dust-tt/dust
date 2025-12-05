@@ -10,7 +10,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import type { DataSourceTag } from "@app/types";
 
-export interface TagSearchProps {
+interface TagSearchProps {
   searchInputValue: string;
   setSearchInputValue: (search: string) => void;
   availableTags: DataSourceTag[];

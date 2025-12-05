@@ -89,7 +89,7 @@ export type TestStructuredOutputSchema =
   | typeof UserProfileStructuredOutputSchema
   | typeof DataExtractionStructuredOutputSchema;
 
-export const TEST_STRUCTURED_OUTPUT_KEYS = [
+const TEST_STRUCTURED_OUTPUT_KEYS = [
   "user-profile",
   "data-extraction",
 ] as const;

@@ -946,7 +946,7 @@ export async function getRestrictedSpaceAgentsEnabled(
   return new Ok(slackConfiguration.restrictedSpaceAgentsEnabled.toString());
 }
 
-export async function getPrivateIntegrationCredentialId(
+async function getPrivateIntegrationCredentialId(
   connectorId: ModelId
 ): Promise<Result<string | null, Error>> {
   const slackConfig =

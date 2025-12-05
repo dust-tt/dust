@@ -81,7 +81,7 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   return new Ok(undefined);
 }
 
-export type TagSearchParams = {
+type TagSearchParams = {
   query: string;
   queryType: string;
   dataSourceViews: DataSourceViewType[];

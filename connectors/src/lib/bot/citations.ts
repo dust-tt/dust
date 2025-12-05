@@ -4,7 +4,7 @@ import {
   isWebsearchResultResourceType,
 } from "@dust-tt/client";
 
-export interface MessageFootnote {
+interface MessageFootnote {
   index: number;
   link: string;
   text: string;

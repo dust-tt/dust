@@ -52,7 +52,7 @@ const updateMessageThrottled = _.throttle(
   100
 );
 
-export function updateMessageWithAction(
+function updateMessageWithAction(
   m: LightAgentMessageWithActionsType,
   action: AgentMCPActionWithOutputType
 ): LightAgentMessageWithActionsType {
@@ -63,7 +63,7 @@ export function updateMessageWithAction(
   };
 }
 
-export function updateProgress(
+function updateProgress(
   state: MessageTemporaryState,
   event: ToolNotificationEvent
 ): MessageTemporaryState {

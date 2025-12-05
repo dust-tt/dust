@@ -79,7 +79,7 @@ export type SlackWebhookReqBody = {
   team_id: string;
 };
 
-export type SlackWebhookEventReqBody = SlackWebhookReqBody & {
+type SlackWebhookEventReqBody = SlackWebhookReqBody & {
   event: SlackWebhookEvent;
 };
 

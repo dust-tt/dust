@@ -32,7 +32,7 @@ import type {
 } from "@app/types";
 import { DocumentDeletionKey, DocumentViewRawContentKey } from "@app/types";
 
-export type UploadOrEditContentActionKey =
+type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
   | "TableUploadOrEdit";
 
@@ -41,7 +41,7 @@ export type ContentActionKey =
   | "MultipleFilesUpload"
   | "DeleteContentNode";
 
-export type ContentAction = {
+type ContentAction = {
   action?: ContentActionKey;
   contentNode?: DataSourceViewContentNode;
 };

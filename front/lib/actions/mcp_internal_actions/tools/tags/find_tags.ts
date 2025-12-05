@@ -18,7 +18,7 @@ import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
-export const findTagsSchema = {
+const findTagsSchema = {
   query: z
     .string()
     .describe(

@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-export type FathomWebhookConfig = {
+type FathomWebhookConfig = {
   destinationUrl: string;
   triggeredFor: TriggeredFor[];
   includeTranscript?: boolean;

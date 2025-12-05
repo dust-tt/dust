@@ -94,7 +94,7 @@ export function renderSearchResults(
   };
 }
 
-export function renderMimeType(mimeType: string) {
+function renderMimeType(mimeType: string) {
   return mimeType
     .replace("application/vnd.dust.", "")
     .replace("-", " ")

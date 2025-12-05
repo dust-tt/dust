@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 const POKE_FAVORITES_KEY = "poke-favorites";
 
-export interface PokeFavorite {
+interface PokeFavorite {
   url: string;
   data: {
     type: string;

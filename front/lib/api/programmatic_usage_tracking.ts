@@ -19,7 +19,7 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 
-export const USAGE_ORIGINS_CLASSIFICATION: Record<
+const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
   "programmatic" | "user"
 > = {

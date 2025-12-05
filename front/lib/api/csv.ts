@@ -10,7 +10,7 @@ interface ColumnTypeInfo {
   possibleValues?: string[];
 }
 
-export interface CSVRow {
+interface CSVRow {
   [key: string]: string;
 }
 
@@ -94,7 +94,7 @@ function detectColumnType(columnValues: Iterable<string>): ColumnTypeInfo {
 /**
  * Analyze each column of a CSV row by row to determine column types incrementally.
  */
-export function analyzeCSVColumns(
+function analyzeCSVColumns(
   rows: CSVRow[]
 ): Record<string, ColumnTypeInfo> {
   const columnSamples: Record<string, Set<string>> = {};

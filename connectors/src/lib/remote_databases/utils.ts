@@ -46,7 +46,7 @@ export type RemoteDBTree = {
 };
 
 // Helper functions to get connector and credentials
-export const getConnector = async ({
+const getConnector = async ({
   connectorId,
   logger,
 }: {

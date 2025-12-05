@@ -143,7 +143,7 @@ async function getBotName({
   }
 }
 
-export const getBotNameMemoized = cacheWithRedis(
+const getBotNameMemoized = cacheWithRedis(
   getBotName,
   ({ botId, connectorId }) => `slack-bot-name-${connectorId}-${botId}`,
   {
@@ -151,7 +151,7 @@ export const getBotNameMemoized = cacheWithRedis(
   }
 );
 
-export async function isWhitelistedBotOrWorkflow(
+async function isWhitelistedBotOrWorkflow(
   slackConfiguration: SlackConfigurationResource,
   messageElement: MessageElement,
   slackClient: WebClient

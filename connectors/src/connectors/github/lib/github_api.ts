@@ -53,7 +53,7 @@ type GithubOrg = {
   login: string;
 };
 
-export type GithubRepo = {
+type GithubRepo = {
   id: number;
   name: string;
   private: boolean;
@@ -655,7 +655,7 @@ export async function getOctokit(
   return new Octokit({ auth: token.access_token });
 }
 
-export async function cleanUpProcessRepository(tempDir: string) {
+async function cleanUpProcessRepository(tempDir: string) {
   // Delete the temp directory.
   await rm(tempDir, { recursive: true });
 }

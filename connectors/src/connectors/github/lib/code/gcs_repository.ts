@@ -11,8 +11,8 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
 
-export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
-export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
+const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
+const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
 const DUST_INTERNAL_MARKER = "dustInternalMarker";
 const DUST_INTERNAL_INDEX_FILE = "DUST_INTERNAL_INDEX_v1";
 

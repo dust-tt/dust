@@ -22,9 +22,9 @@ export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
 export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
   "claude-opus-4-5-20251101" as const;
 
-export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
+const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
-export const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
+const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
   `
 When executing multiple tool calls, output text only after all tools have completed.
 

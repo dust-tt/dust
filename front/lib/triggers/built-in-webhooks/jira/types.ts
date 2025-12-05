@@ -13,7 +13,7 @@ export const JiraResourceSchema = z.object({
 
 export type JiraResourceType = z.infer<typeof JiraResourceSchema>;
 
-export const JiraProjectSchema = z.object({
+const JiraProjectSchema = z.object({
   id: z.string(),
   key: z.string(),
   name: z.string(),
@@ -22,7 +22,7 @@ export const JiraProjectSchema = z.object({
 
 export type JiraProjectType = z.infer<typeof JiraProjectSchema>;
 
-export function isJiraProject(data: unknown): data is JiraProjectType {
+function isJiraProject(data: unknown): data is JiraProjectType {
   const result = JiraProjectSchema.safeParse(data);
   return result.success;
 }
@@ -31,7 +31,7 @@ export const JiraProjectsResponseSchema = z.object({
   values: z.array(JiraProjectSchema),
 });
 
-export const JiraWebhookRegistrationResultSchema = z.object({
+const JiraWebhookRegistrationResultSchema = z.object({
   createdWebhookId: z.number().optional(),
   errors: z.array(z.string()).optional(),
 });
@@ -46,7 +46,7 @@ export const JiraAdditionalDataSchema = z.object({
 
 export type JiraAdditionalData = z.infer<typeof JiraAdditionalDataSchema>;
 
-export const JiraWebhookSchema = z.object({
+const JiraWebhookSchema = z.object({
   id: z.number(),
   url: z.string(),
   events: z.array(z.string()),
@@ -66,7 +66,7 @@ export const JiraWebhooksResponseSchema = z.object({
   values: z.array(JiraWebhookSchema),
 });
 
-export type JiraWebhooksResponseType = z.infer<
+type JiraWebhooksResponseType = z.infer<
   typeof JiraWebhooksResponseSchema
 >;
 

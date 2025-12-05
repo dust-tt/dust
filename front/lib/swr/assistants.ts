@@ -937,7 +937,7 @@ export function useAgentLatency({
   };
 }
 
-export function useAgentErrorRate({
+function useAgentErrorRate({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,

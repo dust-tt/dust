@@ -1,6 +1,6 @@
 import type { RocketIcon } from "@dust-tt/sparkle";
 
-export interface SeoConfig {
+interface SeoConfig {
   title: string;
   description: string;
 }

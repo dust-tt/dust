@@ -41,7 +41,7 @@ export const PatchSpaceRequestBodySchema = t.type({
   content: t.union([t.array(ContentSchema), t.undefined]),
 });
 
-export const PostDataSourceViewSchema = ContentSchema;
+const PostDataSourceViewSchema = ContentSchema;
 
 export const PostNotionSyncPayloadSchema = t.type({
   urls: t.array(t.string),

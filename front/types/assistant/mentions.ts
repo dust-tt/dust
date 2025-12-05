@@ -123,7 +123,7 @@ export function toMentionType(rich: RichMention): MentionType {
  * Converts an API MentionType to a rich mention with display metadata.
  * Requires additional metadata to be provided.
  */
-export function toRichMention(
+function toRichMention(
   mention: MentionType,
   metadata: {
     label: string;

@@ -16,7 +16,7 @@ import {
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { AgentConfigurationType } from "@app/types";
 
-export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
+const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
@@ -37,7 +37,7 @@ export const MCP_SPECIFICATION: ActionSpecification = {
  * actions in the same step we get the maximum topK and divide it by the number of retrieval actions
  * in the step.
  */
-export function getRetrievalTopK({
+function getRetrievalTopK({
   agentConfiguration,
   stepActions,
 }: {
@@ -74,7 +74,7 @@ export function getRetrievalTopK({
  * websearch actions in the same step we get the maximum number of results and divide it by The
  * number of websearch actions in the step.
  */
-export function getWebsearchNumResults({
+function getWebsearchNumResults({
   stepActions,
 }: {
   stepActions: MCPToolConfigurationType[];
@@ -98,7 +98,7 @@ export function getWebsearchNumResults({
  * - Returns the shared topK for retrieval actions.
  * - Returns the shared number of results for websearch actions.
  */
-export function getCitationsCount({
+function getCitationsCount({
   agentConfiguration,
   stepActions,
   stepActionIndex,

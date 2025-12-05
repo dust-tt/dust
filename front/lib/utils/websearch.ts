@@ -17,13 +17,13 @@ const credentials = dustManagedCredentials();
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";
 
-export type BaseWebSearchParams = {
+type BaseWebSearchParams = {
   query: string;
   num?: number;
   page?: number;
 };
 
-export type SerpapiParams = {
+type SerpapiParams = {
   provider: "serpapi";
   engine?: "google";
   location?: string;
@@ -31,12 +31,12 @@ export type SerpapiParams = {
   api_key?: string;
 };
 
-export type SerperParams = {
+type SerperParams = {
   provider: "serper";
   api_key: string;
 };
 
-export type FirecrawlParams = {
+type FirecrawlParams = {
   provider: "firecrawl";
   api_key?: string;
 };
@@ -48,15 +48,15 @@ const serpapiDefaultOptions = {
   num: 10,
 } satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
-export type SearchParams = BaseWebSearchParams &
+type SearchParams = BaseWebSearchParams &
   (SerpapiParams | SerperParams | FirecrawlParams);
 
-export type SearchResultItem = {
+type SearchResultItem = {
   title: string;
   snippet: string;
   link: string;
 };
-export type SearchResponse = SearchResultItem[];
+type SearchResponse = SearchResultItem[];
 
 const serpapiSearch = async (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

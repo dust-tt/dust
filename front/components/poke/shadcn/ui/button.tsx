@@ -34,7 +34,7 @@ const buttonVariants = cva(
   }
 );
 
-export interface PokeButtonProps
+interface PokeButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
@@ -54,4 +54,4 @@ const PokeButton = React.forwardRef<HTMLButtonElement, PokeButtonProps>(
 );
 PokeButton.displayName = "Button";
 
-export { buttonVariants, PokeButton };
+export {  PokeButton };

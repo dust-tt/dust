@@ -2,7 +2,7 @@ import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
 // Supported operations for resource permissions.
-export const SUPPORTED_OPERATIONS = ["admin", "read", "write"] as const;
+const SUPPORTED_OPERATIONS = ["admin", "read", "write"] as const;
 
 export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
 
@@ -32,7 +32,7 @@ export type RolePermission = {
  * Defines group-based permissions for a resource.
  * Used when access control is managed through group assignments.
  */
-export type GroupResourcePermissions = {
+type GroupResourcePermissions = {
   groups: GroupPermission[];
 };
 

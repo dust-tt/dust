@@ -15,7 +15,7 @@ export function isMaxMessagesTimeframeType(
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.
  * */
-export type ManageDataSourcesLimitsType = {
+type ManageDataSourcesLimitsType = {
   isConfluenceAllowed: boolean;
   isSlackAllowed: boolean;
   isNotionAllowed: boolean;
@@ -25,7 +25,7 @@ export type ManageDataSourcesLimitsType = {
   isWebCrawlerAllowed: boolean;
   isSalesforceAllowed: boolean;
 };
-export type LimitsType = {
+type LimitsType = {
   assistant: {
     isSlackBotAllowed: boolean;
     maxMessages: number;
@@ -93,7 +93,7 @@ export type SubscriptionPerSeatPricing = {
   quantity: number;
 };
 
-export const CreatePlanFormSchema = t.type({
+const CreatePlanFormSchema = t.type({
   code: NonEmptyString,
   name: NonEmptyString,
   isSlackbotAllowed: t.boolean,
@@ -117,7 +117,7 @@ export const CreatePlanFormSchema = t.type({
   maxVaults: t.union([t.number, NumberFromString]),
 });
 
-export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
+type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
 
 export const EnterpriseUpgradeFormSchema = t.type({
   stripeSubscriptionId: NonEmptyString,

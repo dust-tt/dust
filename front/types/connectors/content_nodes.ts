@@ -30,7 +30,7 @@ export function isValidContentNodesViewType(
 
 // Check if a Content Node ID is a valid Content Node ID for a sheet within a
 // Google Spreadsheet.
-export function isGoogleSheetContentNodeInternalId(
+function isGoogleSheetContentNodeInternalId(
   internalId: string
 ): boolean {
   return (

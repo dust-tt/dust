@@ -35,7 +35,7 @@ import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
-export type FetchDataSourceOrigin =
+type FetchDataSourceOrigin =
   | "registry_lookup"
   | "v1_data_sources_search"
   | "v1_data_sources_check_upsert_queue"
@@ -50,7 +50,7 @@ export type FetchDataSourceOrigin =
   | "v1_data_sources_tables_table_rows_row"
   | "v1_data_sources_tokenize";
 
-export type FetchDataSourceOptions = {
+type FetchDataSourceOptions = {
   includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;

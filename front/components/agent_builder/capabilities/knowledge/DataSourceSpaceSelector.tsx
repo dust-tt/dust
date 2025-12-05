@@ -8,7 +8,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 import { SPACE_KINDS } from "@app/types";
 
-export interface DataSourceSpaceSelectorProps {
+interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
 }
 

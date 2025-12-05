@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import type { IntersectionOptions } from "react-intersection-observer";
 import { useInView } from "react-intersection-observer";
 
-export type InfiniteScrollProps = {
+type InfiniteScrollProps = {
   nextPage: () => void;
   hasMore: boolean;
   showLoader: boolean;

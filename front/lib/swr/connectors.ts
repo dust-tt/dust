@@ -185,7 +185,7 @@ export function useToggleChatBot({
   return doToggle;
 }
 
-export function useToggleDiscordChatBot({
+function useToggleDiscordChatBot({
   dataSource,
   owner,
 }: {

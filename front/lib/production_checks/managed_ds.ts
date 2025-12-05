@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok, withRetries } from "@app/types";
 
-export type CoreDSDocument = {
+type CoreDSDocument = {
   id: number;
   document_id: string;
 };

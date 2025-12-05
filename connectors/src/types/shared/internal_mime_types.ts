@@ -148,43 +148,43 @@ export const INTERNAL_MIME_TYPES = {
   }),
 };
 
-export type BigQueryMimeType =
+type BigQueryMimeType =
   (typeof INTERNAL_MIME_TYPES.BIGQUERY)[keyof typeof INTERNAL_MIME_TYPES.BIGQUERY];
 
-export type ConfluenceMimeType =
+type ConfluenceMimeType =
   (typeof INTERNAL_MIME_TYPES.CONFLUENCE)[keyof typeof INTERNAL_MIME_TYPES.CONFLUENCE];
 
-export type GithubMimeType =
+type GithubMimeType =
   (typeof INTERNAL_MIME_TYPES.GITHUB)[keyof typeof INTERNAL_MIME_TYPES.GITHUB];
 
-export type GoogleDriveMimeType =
+type GoogleDriveMimeType =
   (typeof INTERNAL_MIME_TYPES.GOOGLE_DRIVE)[keyof typeof INTERNAL_MIME_TYPES.GOOGLE_DRIVE];
 
-export type IntercomMimeType =
+type IntercomMimeType =
   (typeof INTERNAL_MIME_TYPES.INTERCOM)[keyof typeof INTERNAL_MIME_TYPES.INTERCOM];
 
-export type MicrosoftMimeType =
+type MicrosoftMimeType =
   (typeof INTERNAL_MIME_TYPES.MICROSOFT)[keyof typeof INTERNAL_MIME_TYPES.MICROSOFT];
 
-export type NotionMimeType =
+type NotionMimeType =
   (typeof INTERNAL_MIME_TYPES.NOTION)[keyof typeof INTERNAL_MIME_TYPES.NOTION];
 
-export type SlackMimeType =
+type SlackMimeType =
   (typeof INTERNAL_MIME_TYPES.SLACK)[keyof typeof INTERNAL_MIME_TYPES.SLACK];
 
-export type SnowflakeMimeType =
+type SnowflakeMimeType =
   (typeof INTERNAL_MIME_TYPES.SNOWFLAKE)[keyof typeof INTERNAL_MIME_TYPES.SNOWFLAKE];
 
-export type WebcrawlerMimeType =
+type WebcrawlerMimeType =
   (typeof INTERNAL_MIME_TYPES.WEBCRAWLER)[keyof typeof INTERNAL_MIME_TYPES.WEBCRAWLER];
 
-export type ZendeskMimeType =
+type ZendeskMimeType =
   (typeof INTERNAL_MIME_TYPES.ZENDESK)[keyof typeof INTERNAL_MIME_TYPES.ZENDESK];
 
-export type SalesforceMimeType =
+type SalesforceMimeType =
   (typeof INTERNAL_MIME_TYPES.SALESFORCE)[keyof typeof INTERNAL_MIME_TYPES.SALESFORCE];
 
-export type DustMimeType =
+type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
   | GithubMimeType

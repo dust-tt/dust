@@ -1,9 +1,9 @@
 import type { ModelIdType } from "@app/types";
 import { NOOP_MODEL_ID } from "@app/types";
 
-export const NOOP_WHITELISTED_MODEL_IDS = [NOOP_MODEL_ID] as const;
+const NOOP_WHITELISTED_MODEL_IDS = [NOOP_MODEL_ID] as const;
 
-export type NoopWhitelistedModelId =
+type NoopWhitelistedModelId =
   (typeof NOOP_WHITELISTED_MODEL_IDS)[number];
 
 export function isNoopWhitelistedModelId(

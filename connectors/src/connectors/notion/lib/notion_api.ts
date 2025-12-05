@@ -904,7 +904,7 @@ export async function validateAccessToken(notionAccessToken: string) {
   return true;
 }
 
-export function parsePropertyValue(
+function parsePropertyValue(
   property: PageObjectProperties[PropertyKeys]
 ): string | string[] | null {
   const parseDateProp = (d?: { start: string; end: string | null } | null) => {
@@ -1511,7 +1511,7 @@ interface IPaginatedList<T> {
   has_more: boolean;
 }
 
-export async function* iteratePaginatedAPIWithRetries<
+async function* iteratePaginatedAPIWithRetries<
   Args extends {
     start_cursor?: string;
   },

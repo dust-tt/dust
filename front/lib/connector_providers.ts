@@ -260,7 +260,7 @@ export function getDefaultDataSourceDescription(
     : `Managed Data Source for ${provider}`;
 }
 
-export function isConnectorTypeTrackable(
+function isConnectorTypeTrackable(
   connectorType: ConnectorProvider
 ): boolean {
   switch (connectorType) {

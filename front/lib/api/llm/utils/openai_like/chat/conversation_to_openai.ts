@@ -174,7 +174,7 @@ export function toTools(
   });
 }
 
-export type ReasoningParam = "low" | "medium" | "high";
+type ReasoningParam = "low" | "medium" | "high";
 
 const REASONING_EFFORT_TO_OPENAI: {
   [key in ReasoningEffort]: "low" | "medium" | "high" | undefined;

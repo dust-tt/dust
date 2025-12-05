@@ -142,7 +142,7 @@ const ViewSubmissionPayloadSchema = t.type({
   }),
 });
 
-export const SlackInteractionPayloadSchema = t.union([
+const SlackInteractionPayloadSchema = t.union([
   BlockActionsPayloadSchema,
   ViewSubmissionPayloadSchema,
 ]);

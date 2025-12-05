@@ -4,7 +4,7 @@ import type { MessageStreamEvent } from "@anthropic-ai/sdk/resources/messages.mj
 
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
 
-export function validateHasState(
+function validateHasState(
   state: StreamState
 ): asserts state is Exclude<StreamState, null> {
   assert(state !== null, "No content block is currently being processed");

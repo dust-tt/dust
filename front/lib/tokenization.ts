@@ -69,7 +69,7 @@ export async function tokenCountForTexts(
   }
 }
 
-export async function tokenSplit(
+async function tokenSplit(
   text: string,
   model: { providerId: string; modelId: string; tokenizer: TokenizerConfig },
   splitAt: number

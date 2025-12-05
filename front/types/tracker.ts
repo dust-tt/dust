@@ -39,7 +39,7 @@ export type TrackerDataSourceConfigurationType = {
   };
 };
 
-export type TrackerConfigurationStateType = {
+type TrackerConfigurationStateType = {
   name: string | null;
   status: TrackerStatus;
   nameError: string | null;
@@ -59,7 +59,7 @@ export type TrackerConfigurationStateType = {
   watchedDataSources: DataSourceViewSelectionConfigurations;
 };
 
-export const TRACKER_FREQUENCIES = [
+const TRACKER_FREQUENCIES = [
   { label: "Daily (Mon-Fri)", value: "0 17 * * 1-5" },
   { label: "Weekly on Monday", value: "0 17 * * 1" },
   { label: "Weekly on Tuesday", value: "0 17 * * 2" },
@@ -73,7 +73,7 @@ export type TrackerIdWorkspaceId = {
   workspaceId: string;
 };
 
-export type TrackerDataSource = {
+type TrackerDataSource = {
   id: ModelId;
   name: string;
   dustAPIProjectId: string;

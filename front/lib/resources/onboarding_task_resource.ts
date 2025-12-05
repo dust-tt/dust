@@ -16,9 +16,9 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result, UserType } from "@app/types";
 import { Ok, removeNulls } from "@app/types";
 
-export type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
+type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
 
-export type OnboardingTaskType = {
+type OnboardingTaskType = {
   sId: string;
   context: string;
   kind: OnboardingTaskKind;

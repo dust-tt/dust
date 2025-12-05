@@ -2,7 +2,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Size limits for MCP tool outputs
 export const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
-export const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
+const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
 export const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024; // 10MB.
 
 export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 64_000; // Approximately 16K tokens.
@@ -11,7 +11,7 @@ export function computeTextByteSize(text: string): number {
   return text.length * 2; // UTF-8 approximate
 }
 
-export function computeBase64ByteSize(base64: string): number {
+function computeBase64ByteSize(base64: string): number {
   return Math.ceil((base64.length * 3) / 4);
 }
 

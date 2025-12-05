@@ -41,7 +41,7 @@ export function AppLayoutSimpleCloseTitle({
   );
 }
 
-export function AppLayoutSimpleSaveCancelTitle({
+function AppLayoutSimpleSaveCancelTitle({
   title,
   onSave,
   onCancel,

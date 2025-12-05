@@ -11,11 +11,11 @@ import type logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
 /** An Activity Context with an attached logger */
-export interface ContextWithLogger extends Context {
+interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-export type WorkflowErrorType =
+type WorkflowErrorType =
   | "unhandled_internal_activity_error"
   | "upsert_queue_upsert_document_error"
   | "upsert_queue_upsert_table_error";

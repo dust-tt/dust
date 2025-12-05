@@ -1211,7 +1211,7 @@ export async function postNewContentFragment(
   return new Ok(render);
 }
 
-export interface MessageLimit {
+interface MessageLimit {
   isLimitReached: boolean;
   limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
 }

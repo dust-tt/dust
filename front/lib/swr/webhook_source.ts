@@ -162,7 +162,7 @@ export function useCreateWebhookSource({
   return createWebhookSource;
 }
 
-export function useUpdateWebhookSourceView({
+function useUpdateWebhookSourceView({
   owner,
 }: {
   owner: LightWorkspaceType;
@@ -280,7 +280,7 @@ export function useDeleteWebhookSource({
   };
 }
 
-export function useWebhookSourceViewsByWebhookSource({
+function useWebhookSourceViewsByWebhookSource({
   owner,
   webhookSourceId,
   disabled,
@@ -306,7 +306,7 @@ export function useWebhookSourceViewsByWebhookSource({
   };
 }
 
-export function useAddWebhookSourceViewToSpace({
+function useAddWebhookSourceViewToSpace({
   owner,
 }: {
   owner: LightWorkspaceType;
@@ -363,7 +363,7 @@ export function useAddWebhookSourceViewToSpace({
   return { addToSpace: createView };
 }
 
-export function useRemoveWebhookSourceViewFromSpace({
+function useRemoveWebhookSourceViewFromSpace({
   owner,
 }: {
   owner: LightWorkspaceType;

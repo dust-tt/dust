@@ -68,7 +68,7 @@ export function isInternalPageId(
   return internalId.startsWith(ConfluenceInternalIdPrefix.Page);
 }
 
-export function isInternalFolderId(
+function isInternalFolderId(
   internalId: string
 ): internalId is `${ConfluenceInternalIdPrefix.Folder}${string}` {
   return internalId.startsWith(ConfluenceInternalIdPrefix.Folder);

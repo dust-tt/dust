@@ -46,7 +46,7 @@ export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
 // ConnectorProvider to Configuration Model mapping used to define the type of the
 // ConfigurationResource.
 
-export interface ConnectorProviderModelM {
+interface ConnectorProviderModelM {
   confluence: ConfluenceConfiguration;
   discord_bot: DiscordConfigurationModel;
   github: GithubConnectorState;
@@ -71,7 +71,7 @@ export type ConnectorProviderModelMapping = {
   >;
 };
 
-export type ConnectorProviderBlob =
+type ConnectorProviderBlob =
   ConnectorProviderModelMapping[keyof ConnectorProviderModelMapping];
 
 export type ConnectorProviderModelResourceMapping = {
@@ -86,7 +86,7 @@ export type ConnectorProviderConfigurationResource =
 // ConnectorProvider to ConfigurationType mapping used to define the type of the toJSON method of
 // the ConnectorProviderStrategy.
 
-export interface ConnectorProviderConfigurationTypeM {
+interface ConnectorProviderConfigurationTypeM {
   confluence: null;
   discord_bot: null;
   github: null;
@@ -105,7 +105,7 @@ export interface ConnectorProviderConfigurationTypeM {
   gong: null;
 }
 
-export type ConnectorProviderConfigurationTypeMapping = {
+type ConnectorProviderConfigurationTypeMapping = {
   [K in keyof ConnectorProviderConfigurationTypeM]: ConnectorProviderConfigurationTypeM[K];
 };
 

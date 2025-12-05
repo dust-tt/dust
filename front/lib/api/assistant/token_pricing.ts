@@ -418,7 +418,7 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
 
 // Combined pricing record for all models (current + legacy).
 // This is the exported record used throughout the codebase.
-export const MODEL_PRICING: Record<string, PricingEntry> = {
+const MODEL_PRICING: Record<string, PricingEntry> = {
   ...CURRENT_MODEL_PRICING,
   ...LEGACY_MODEL_PRICING,
 };
@@ -462,7 +462,7 @@ export function computeTokensCostForUsageInMicroUsd({
   return basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 }
 
-export function calculateTokenUsageCostInMicroUsd(
+function calculateTokenUsageCostInMicroUsd(
   usages: RunUsageType[]
 ): number {
   return usages.reduce(

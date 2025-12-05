@@ -206,7 +206,7 @@ export async function fetchTableDataSourceConfigurations(
   return new Ok(results);
 }
 
-export type CoreSearchArgs = {
+type CoreSearchArgs = {
   projectId: string;
   dataSourceId: string;
 
@@ -234,7 +234,7 @@ type DataSourceConfigInfo =
       configuration: DataSourceConfiguration;
     };
 
-export function parseDataSourceConfigurationURI(
+function parseDataSourceConfigurationURI(
   uri: string
 ): Result<DataSourceConfigInfo, Error> {
   const match = uri.match(DATA_SOURCE_CONFIGURATION_URI_PATTERN);
@@ -272,7 +272,7 @@ export function parseDataSourceConfigurationURI(
   }
 }
 
-export async function getDataSourceConfiguration(
+async function getDataSourceConfiguration(
   dataSourceToolConfiguration: DataSourcesToolConfigurationType[number]
 ): Promise<Result<DataSourceConfiguration, Error>> {
   const configInfoRes = parseDataSourceConfigurationURI(

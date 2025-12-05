@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export interface FAQItem {
+interface FAQItem {
   question: string;
   answer: React.ReactNode; // Now accepts React components, JSX, or strings
 }

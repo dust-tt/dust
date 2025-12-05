@@ -213,7 +213,7 @@ export type SlackMessageUpdate = {
   messageId?: string;
 };
 
-export function makeFooterBlock({
+function makeFooterBlock({
   state,
   assistantName,
   conversationUrl,

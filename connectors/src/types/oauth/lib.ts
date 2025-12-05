@@ -1,18 +1,18 @@
 import * as t from "io-ts";
 
-export const OAUTH_USE_CASES = [
+const OAUTH_USE_CASES = [
   "connection",
   "labs_transcripts",
   "platform_actions",
 ] as const;
 
-export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
+type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
 
-export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
+function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
   return OAUTH_USE_CASES.includes(obj as OAuthUseCase);
 }
 
-export const OAUTH_PROVIDERS = [
+const OAUTH_PROVIDERS = [
   "confluence",
   "discord",
   "github",
@@ -29,7 +29,7 @@ export const OAUTH_PROVIDERS = [
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
-export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
+function isOAuthProvider(obj: unknown): obj is OAuthProvider {
   return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
 }
 
@@ -41,7 +41,7 @@ export type OAuthConnectionType = {
   status: "pending" | "finalized";
 };
 
-export function isOAuthConnectionType(
+function isOAuthConnectionType(
   obj: unknown
 ): obj is OAuthConnectionType {
   const connection = obj as OAuthConnectionType;
@@ -55,7 +55,7 @@ export function isOAuthConnectionType(
 
 // OAuth Providers utils
 
-export function isValidZendeskSubdomain(s: unknown): s is string {
+function isValidZendeskSubdomain(s: unknown): s is string {
   return (
     typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
   );
@@ -69,22 +69,22 @@ export function isValidSalesforceDomain(s: unknown): s is string {
   );
 }
 
-export function isValidSalesforceClientId(s: unknown): s is string {
+function isValidSalesforceClientId(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 
-export function isValidSalesforceClientSecret(s: unknown): s is string {
+function isValidSalesforceClientSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["modjo"] as const;
+const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["modjo"] as const;
 
-export type ProvidersWithWorkspaceConfigurations =
+type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
 
-export const CREDENTIALS_PROVIDERS = [
+const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
   "salesforce",
@@ -97,11 +97,11 @@ export const CREDENTIALS_PROVIDERS = [
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
-export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
+function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
   return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
 }
 
-export function isProviderWithDefaultWorkspaceConfiguration(
+function isProviderWithDefaultWorkspaceConfiguration(
   obj: string
 ): obj is ProvidersWithWorkspaceConfigurations {
   return PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
@@ -120,14 +120,14 @@ const SnowflakeBaseCredentialsSchema = t.type({
 });
 
 // Legacy schema for backward compatibility
-export const SnowflakeLegacyCredentialsSchema = t.intersection([
+const SnowflakeLegacyCredentialsSchema = t.intersection([
   SnowflakeBaseCredentialsSchema,
   t.type({
     password: t.string,
   }),
 ]);
 
-export const SnowflakePasswordCredentialsSchema = t.intersection([
+const SnowflakePasswordCredentialsSchema = t.intersection([
   SnowflakeBaseCredentialsSchema,
   t.type({
     auth_type: t.literal("password"),
@@ -135,7 +135,7 @@ export const SnowflakePasswordCredentialsSchema = t.intersection([
   }),
 ]);
 
-export const SnowflakeKeyPairCredentialsSchema = t.intersection([
+const SnowflakeKeyPairCredentialsSchema = t.intersection([
   SnowflakeBaseCredentialsSchema,
   t.type({
     auth_type: t.literal("keypair"),
@@ -144,7 +144,7 @@ export const SnowflakeKeyPairCredentialsSchema = t.intersection([
   }),
 ]);
 
-export const SnowflakeCredentialsSchema = t.union([
+const SnowflakeCredentialsSchema = t.union([
   SnowflakeLegacyCredentialsSchema,
   SnowflakePasswordCredentialsSchema,
   SnowflakeKeyPairCredentialsSchema,
@@ -152,7 +152,7 @@ export const SnowflakeCredentialsSchema = t.union([
 
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
-export const CheckBigQueryCredentialsSchema = t.type({
+const CheckBigQueryCredentialsSchema = t.type({
   type: t.string,
   project_id: t.string,
   private_key_id: t.string,
@@ -166,11 +166,11 @@ export const CheckBigQueryCredentialsSchema = t.type({
   universe_domain: t.string,
 });
 
-export type CheckBigQueryCredentials = t.TypeOf<
+type CheckBigQueryCredentials = t.TypeOf<
   typeof CheckBigQueryCredentialsSchema
 >;
 
-export const BigQueryCredentialsWithLocationSchema = t.type({
+const BigQueryCredentialsWithLocationSchema = t.type({
   type: t.string,
   project_id: t.string,
   private_key_id: t.string,
@@ -189,29 +189,29 @@ export type BigQueryCredentialsWithLocation = t.TypeOf<
   typeof BigQueryCredentialsWithLocationSchema
 >;
 
-export const ApiKeyCredentialsSchema = t.type({
+const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
-export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
-export const SalesforceCredentialsSchema = t.type({
+const SalesforceCredentialsSchema = t.type({
   client_id: t.string,
   client_secret: t.string,
 });
-export type SalesforceCredentials = t.TypeOf<
+type SalesforceCredentials = t.TypeOf<
   typeof SalesforceCredentialsSchema
 >;
 
-export const SlackCredentialsSchema = t.type({
+const SlackCredentialsSchema = t.type({
   client_id: t.string,
   client_secret: t.string,
 });
 export type SlackCredentials = t.TypeOf<typeof SlackCredentialsSchema>;
 
-export const NotionCredentialsSchema = t.type({
+const NotionCredentialsSchema = t.type({
   integration_token: t.string,
 });
-export type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
+type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
 
 export type ConnectionCredentials =
   | SnowflakeCredentials
@@ -238,7 +238,7 @@ export function isSnowflakeCredentials(
   );
 }
 
-export function isModjoCredentials(
+function isModjoCredentials(
   credentials: ConnectionCredentials
 ): credentials is ModjoCredentials {
   return "api_key" in credentials;
@@ -254,7 +254,7 @@ export function isBigQueryWithLocationCredentials(
   );
 }
 
-export function isSalesforceCredentials(
+function isSalesforceCredentials(
   credentials: ConnectionCredentials
 ): credentials is SalesforceCredentials {
   return "client_id" in credentials && "client_secret" in credentials;

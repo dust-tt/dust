@@ -38,7 +38,7 @@ import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
 import type { LightWorkspaceType } from "@app/types/user";
 
-export const MAX_CHUNK_SIZE = 512;
+const MAX_CHUNK_SIZE = 512;
 
 export const EMBEDDING_CONFIGS: Record<EmbeddingProviderIdType, EmbedderType> =
   {
@@ -61,7 +61,7 @@ export type CoreAPIError = {
   code: string;
 };
 
-export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
+function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -72,14 +72,14 @@ export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   );
 }
 
-export type CoreAPIResponse<T> = Result<T, CoreAPIError>;
+type CoreAPIResponse<T> = Result<T, CoreAPIError>;
 
-export type CoreAPIDatasetVersion = {
+type CoreAPIDatasetVersion = {
   hash: string;
   created: number;
 };
 
-export type CoreAPIDatasetWithoutData = CoreAPIDatasetVersion & {
+type CoreAPIDatasetWithoutData = CoreAPIDatasetVersion & {
   dataset_id: string;
   keys: string[];
 };
@@ -89,7 +89,7 @@ export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
   data: { [key: string]: any }[];
 };
 
-export type CoreAPIRun = {
+type CoreAPIRun = {
   run_id: string;
   created: number;
   run_type: RunRunType;
@@ -100,7 +100,7 @@ export type CoreAPIRun = {
   traces: Array<[[BlockType, string], Array<Array<TraceType>>]>;
 };
 
-export type CoreAPITokenType = [number, string];
+type CoreAPITokenType = [number, string];
 
 type CoreAPICreateRunParams = {
   projectId: string;
@@ -125,7 +125,7 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
-export type CoreAPITableSchema = {
+type CoreAPITableSchema = {
   name: string;
   value_type: "int" | "float" | "text" | "bool" | "datetime";
   possible_values: string[] | null;
@@ -148,19 +148,19 @@ export type CoreAPITable = {
   remote_database_secret_id: string | null;
 };
 
-export type CoreAPIRowValue =
+type CoreAPIRowValue =
   | number
   | string
   | boolean
   | { type: "datetime"; epoch: number; string_value?: string }
   | null;
 
-export type CoreAPIRow = {
+type CoreAPIRow = {
   row_id: string;
   value: Record<string, CoreAPIRowValue>;
 };
 
-export type CoreAPIQueryResult = {
+type CoreAPIQueryResult = {
   value: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -179,12 +179,12 @@ export type CoreAPISearchFilter = {
   } | null;
 };
 
-export type CoreAPISortSpec = {
+type CoreAPISortSpec = {
   field: string;
   direction: "asc" | "desc";
 };
 
-export type CoreAPISearchOptions = {
+type CoreAPISearchOptions = {
   cursor?: string;
   limit?: number;
   search_source_urls?: boolean;
@@ -215,7 +215,7 @@ export interface CoreAPISearchTagsResponse {
   }[];
 }
 
-export const CoreAPISearchScopeSchema = t.union([
+const CoreAPISearchScopeSchema = t.union([
   t.literal("nodes_titles"),
   t.literal("data_source_name"),
   t.literal("both"),
@@ -223,7 +223,7 @@ export const CoreAPISearchScopeSchema = t.union([
 
 export type CoreAPISearchScope = t.TypeOf<typeof CoreAPISearchScopeSchema>;
 
-export const CoreAPIDatasourceViewFilterSchema = t.intersection([
+const CoreAPIDatasourceViewFilterSchema = t.intersection([
   t.type({
     data_source_id: t.string,
     view_filter: t.array(t.string),
@@ -245,7 +245,7 @@ export type CoreAPIDatasourceViewFilter = t.TypeOf<
 // Edge-ngram starts at 2 characters.
 export const MIN_SEARCH_QUERY_SIZE = 2;
 
-export const CoreAPINodesSearchFilterSchema = t.intersection([
+const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({
     data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
   }),
@@ -265,7 +265,7 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
   typeof CoreAPINodesSearchFilterSchema
 >;
 
-export interface CoreAPIDataSourceStatsResponse {
+interface CoreAPIDataSourceStatsResponse {
   data_sources: {
     data_source_id: string;
     data_source_internal_id: string;
@@ -277,7 +277,7 @@ export interface CoreAPIDataSourceStatsResponse {
   overall_total_size: number;
 }
 
-export interface CoreAPIUpsertDataSourceDocumentPayload {
+interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
   dataSourceId: string;
   documentId: string;

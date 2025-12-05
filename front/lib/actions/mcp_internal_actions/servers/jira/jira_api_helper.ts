@@ -381,7 +381,7 @@ async function getJiraResourceInfo(accessToken: string): Promise<{
   return null;
 }
 
-export async function getJiraBaseUrl(
+async function getJiraBaseUrl(
   accessToken: string
 ): Promise<string | null> {
   const resourceInfo = await getJiraResourceInfo(accessToken);
@@ -709,7 +709,7 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
-export async function getAllFields(
+async function getAllFields(
   baseUrl: string,
   accessToken: string
 ): Promise<

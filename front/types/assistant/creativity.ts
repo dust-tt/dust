@@ -8,11 +8,11 @@ export const AGENT_CREATIVITY_LEVEL_TEMPERATURES: Record<
   creative: 1.0,
 };
 
-export const AGENT_CREATIVITY_LEVELS = [
+const AGENT_CREATIVITY_LEVELS = [
   "deterministic",
   "factual",
   "balanced",
   "creative",
 ] as const;
 
-export type AgentCreativityLevel = (typeof AGENT_CREATIVITY_LEVELS)[number];
+type AgentCreativityLevel = (typeof AGENT_CREATIVITY_LEVELS)[number];

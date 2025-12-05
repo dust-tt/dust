@@ -397,7 +397,7 @@ export type SupportedImageContentType = {
     : never;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedDelimitedTextContentType = {
+type SupportedDelimitedTextContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "delimited";
   }
@@ -405,7 +405,7 @@ export type SupportedDelimitedTextContentType = {
     : never;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedNonImageContentType = {
+type SupportedNonImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "image";
   }
@@ -413,7 +413,7 @@ export type SupportedNonImageContentType = {
     : K;
 }[keyof typeof FILE_FORMATS];
 
-export type SupportedAudioContentType = {
+type SupportedAudioContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "audio";
   }
@@ -422,7 +422,7 @@ export type SupportedAudioContentType = {
 }[keyof typeof FILE_FORMATS];
 
 // All the ones listed above
-export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
+const supportedUploadableContentType = Object.keys(FILE_FORMATS);
 
 export const DEFAULT_FILE_CONTENT_TYPE: SupportedFileContentType =
   "application/octet-stream";
@@ -441,7 +441,7 @@ export function isInteractiveContentFileContentType(
   ];
 }
 
-export function isAllSupportedFileContentType(
+function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (

@@ -41,7 +41,7 @@ async function getActiveMemberEmails(
   return activeMemberEmailsRes.value;
 }
 
-export const getActiveMemberEmailsMemoized = cacheWithRedis(
+const getActiveMemberEmailsMemoized = cacheWithRedis(
   getActiveMemberEmails,
   (connector: ConnectorResource) => {
     return `active-member-emails-connector-${connector.id}`;

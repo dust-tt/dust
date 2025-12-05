@@ -28,7 +28,7 @@ export const extractUTMParams = (searchParams: {
 };
 
 // Get stored UTM parameters from sessionStorage
-export const getStoredUTMParams = (): { [key: string]: string } => {
+const getStoredUTMParams = (): { [key: string]: string } => {
   if (typeof window === "undefined") {
     return {};
   }

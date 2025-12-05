@@ -50,7 +50,7 @@ export const TRACKING_AREAS = {
   TRIGGERS: "triggers",
 } as const;
 
-export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];
+type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];
 
 /**
  * Common actions
@@ -66,10 +66,10 @@ export const TRACKING_ACTIONS = {
   CLOSE: "close",
 } as const;
 
-export type TrackingAction =
+type TrackingAction =
   (typeof TRACKING_ACTIONS)[keyof typeof TRACKING_ACTIONS];
 
-export type TrackingExtra = Record<string, string | number | boolean>;
+type TrackingExtra = Record<string, string | number | boolean>;
 
 interface TrackEventParams {
   area: TrackingArea | string;

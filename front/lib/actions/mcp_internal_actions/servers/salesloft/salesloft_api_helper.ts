@@ -349,7 +349,7 @@ async function getPeopleByIds(
   return peopleMap;
 }
 
-export async function getUserByEmail(
+async function getUserByEmail(
   accessToken: string,
   email: string
 ): Promise<SalesloftUser | null> {
@@ -410,7 +410,7 @@ async function getActionDetails(
   }
 }
 
-export async function getStepsByIds(
+async function getStepsByIds(
   accessToken: string,
   stepIds: number[]
 ): Promise<Map<number, SalesloftStep>> {
@@ -433,7 +433,7 @@ export async function getStepsByIds(
   return stepMap;
 }
 
-export async function getActions(
+async function getActions(
   accessToken: string,
   userGuid: string,
   options?: {

@@ -8,36 +8,36 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Microsoft Teams Message Types
 
-export interface TeamsUser {
+interface TeamsUser {
   id: string;
   displayName: string;
   userIdentityType: string;
 }
 
-export interface TeamsIdentitySet {
+interface TeamsIdentitySet {
   application: unknown | null;
   device: unknown | null;
   user: TeamsUser | null;
 }
 
-export interface TeamsMessageBody {
+interface TeamsMessageBody {
   contentType: "html" | "text";
   content: string;
 }
 
-export interface TeamsChannelIdentity {
+interface TeamsChannelIdentity {
   teamId: string;
   channelId: string;
 }
 
-export interface TeamsMentionedIdentity {
+interface TeamsMentionedIdentity {
   application: unknown | null;
   device: unknown | null;
   conversation: unknown | null;
   user: TeamsUser | null;
 }
 
-export interface TeamsMention {
+interface TeamsMention {
   id: number;
   mentionText: string;
   mentioned: TeamsMentionedIdentity;

@@ -1,7 +1,7 @@
 import { EnvironmentConfig } from "@connectors/types";
 
-export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
-export type RegionType = (typeof SUPPORTED_REGIONS)[number];
+const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
+type RegionType = (typeof SUPPORTED_REGIONS)[number];
 
 export const connectorsConfig = {
   getDustTmpSyncBucketName: (): string => {

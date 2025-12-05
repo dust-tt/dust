@@ -32,7 +32,7 @@ function isConfluenceSpaceModel(
   );
 }
 
-export function createContentNodeFromSpace(
+function createContentNodeFromSpace(
   space: ConfluenceSpace | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
@@ -56,7 +56,7 @@ export function createContentNodeFromSpace(
   };
 }
 
-export function createContentNodeFromPage(
+function createContentNodeFromPage(
   parent: { id: string; type: "page" | "space" },
   baseUrl: string,
   page: ConfluencePage,
@@ -78,7 +78,7 @@ export function createContentNodeFromPage(
   };
 }
 
-export async function checkPageHasChildren(
+async function checkPageHasChildren(
   connectorId: ModelId,
   pageId: string
 ) {

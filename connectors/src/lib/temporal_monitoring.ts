@@ -44,7 +44,7 @@ function redactErrorForLogs(err: unknown) {
 }
 
 /** An Activity Context with an attached logger */
-export interface ContextWithLogger extends Context {
+interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 

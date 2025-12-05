@@ -39,7 +39,7 @@ export type ActionApprovalStateType =
   | "rejected"
   | "always_approved";
 
-export type BaseMCPServerConfigurationType = {
+type BaseMCPServerConfigurationType = {
   id: ModelId;
 
   sId: string;
@@ -78,7 +78,7 @@ export type MCPServerConfigurationType =
   | ServerSideMCPServerConfigurationType
   | ClientSideMCPServerConfigurationType;
 
-export type ServerSideMCPToolType = Omit<
+type ServerSideMCPToolType = Omit<
   ServerSideMCPServerConfigurationType,
   "type"
 > & {
@@ -91,7 +91,7 @@ export type ServerSideMCPToolType = Omit<
   retryPolicy: MCPToolRetryPolicyType;
 };
 
-export type ClientSideMCPToolType = Omit<
+type ClientSideMCPToolType = Omit<
   ClientSideMCPServerConfigurationType,
   "type"
 > & {
@@ -137,7 +137,7 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
-export type ToolExecution = {
+type ToolExecution = {
   conversationId: string;
   messageId: string;
   actionId: string;

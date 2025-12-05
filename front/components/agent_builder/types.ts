@@ -172,7 +172,7 @@ export interface ActionSpecification {
 }
 
 // MCP configuration types used by the agent builder.
-export type AgentBuilderMCPServerConfiguration = {
+type AgentBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;

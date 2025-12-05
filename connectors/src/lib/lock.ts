@@ -51,7 +51,7 @@ export async function distributedUnlock(
 
 const WAIT_BETWEEN_RETRIES = 100;
 
-export const executeWithLock = async <T>(
+const executeWithLock = async <T>(
   lockName: string,
   callback: () => Promise<T>,
   timeoutMs: number = 30000

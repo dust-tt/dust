@@ -8,7 +8,7 @@ type TermBucket = {
   doc_count: number;
 };
 
-export type ConfigBucket = TermBucket;
+type ConfigBucket = TermBucket;
 
 export function buildConfigBreakdown(
   buckets?: estypes.AggregationsMultiBucketAggregateBase<ConfigBucket>

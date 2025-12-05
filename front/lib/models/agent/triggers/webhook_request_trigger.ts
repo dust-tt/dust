@@ -8,7 +8,7 @@ import { TriggerModel } from "./triggers";
 import { WebhookRequestModel } from "./webhook_request";
 
 // Single source of truth for webhook request trigger statuses
-export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
+const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
   "workflow_start_succeeded",
   "workflow_start_failed",
   "not_matched",

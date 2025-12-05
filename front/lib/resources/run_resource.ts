@@ -32,7 +32,7 @@ import { Err, normalizeError, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
-export type FetchRunOptions<T extends boolean> = {
+type FetchRunOptions<T extends boolean> = {
   includeApp?: T;
   since?: Date;
   order?: [string, "ASC" | "DESC"][];

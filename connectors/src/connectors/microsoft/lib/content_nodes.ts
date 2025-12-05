@@ -11,11 +11,11 @@ import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_reso
 import type { ContentNode, ContentNodeType } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-export function getRootNodes(): ContentNode[] {
+function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode()];
 }
 
-export function getSitesRootAsContentNode(): ContentNode {
+function getSitesRootAsContentNode(): ContentNode {
   return {
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",

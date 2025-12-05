@@ -46,7 +46,7 @@ export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
  * - 'visible' scope are published agents
  * - 'hidden' scope are unpuiblished agents, visible by editors only
  */
-export const AGENT_CONFIGURATION_SCOPES = [
+const AGENT_CONFIGURATION_SCOPES = [
   "global",
   "visible",
   "hidden",
@@ -175,7 +175,7 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
-export function isTemplateAgentConfiguration(
+function isTemplateAgentConfiguration(
   agentConfiguration:
     | LightAgentConfigurationType
     | TemplateAgentConfigurationType
@@ -195,7 +195,7 @@ export const MAX_ACTIONS_PER_STEP = 16;
  * Agent events
  */
 
-export const AgentErrorCategories = [
+const AgentErrorCategories = [
   "retryable_model_error",
   "context_window_exceeded",
   "provider_internal_error",
@@ -213,7 +213,7 @@ export function isAgentErrorCategory(
 }
 
 // Event sent when an agent error occurred before we have an agent message in the database.
-export type AgentMessageErrorEvent = {
+type AgentMessageErrorEvent = {
   type: "agent_message_error";
   created: number;
   configurationId: string;
@@ -230,7 +230,7 @@ export type GenericErrorContent = {
   metadata: Record<string, string | number | boolean> | null;
 };
 
-export type MCPServerPersonalAuthenticationRequiredMetadata = {
+type MCPServerPersonalAuthenticationRequiredMetadata = {
   mcp_server_id: string;
   provider: OAuthProvider;
   scope?: string;
@@ -238,7 +238,7 @@ export type MCPServerPersonalAuthenticationRequiredMetadata = {
   messageId: string;
 };
 
-export function isMCPServerPersonalAuthenticationRequiredMetadata(
+function isMCPServerPersonalAuthenticationRequiredMetadata(
   metadata: unknown
 ): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
   return (
@@ -310,7 +310,7 @@ export type ToolErrorEvent = {
   };
 };
 
-export type AgentDisabledErrorEvent = {
+type AgentDisabledErrorEvent = {
   type: "agent_disabled_error";
   created: number;
   configurationId: string;
@@ -357,7 +357,7 @@ export type AgentActionsEvent = {
   }>;
 };
 
-export type AgentChainOfThoughtEvent = {
+type AgentChainOfThoughtEvent = {
   type: "agent_chain_of_thought";
   created: number;
   configurationId: string;
@@ -368,7 +368,7 @@ export type AgentChainOfThoughtEvent = {
 
 // Deprecated
 // TODO(agent-step-content): Remove this event
-export type AgentContentEvent = {
+type AgentContentEvent = {
   type: "agent_message_content";
   created: number;
   configurationId: string;
@@ -377,7 +377,7 @@ export type AgentContentEvent = {
   processedContent: string;
 };
 
-export type AgentStepContentEvent = {
+type AgentStepContentEvent = {
   type: "agent_step_content";
   created: number;
   configurationId: string;

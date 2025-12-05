@@ -128,7 +128,7 @@ export async function launchNotionSyncWorkflow(
   await launchProcessDatabaseUpsertQueueWorkflow(connectorId);
 }
 
-export async function launchNotionGarbageCollectorWorkflow(
+async function launchNotionGarbageCollectorWorkflow(
   connectorId: ModelId
 ) {
   const client = await getTemporalClient();
@@ -278,7 +278,7 @@ export async function stopNotionGarbageCollectorWorkflow(
   );
 }
 
-export async function stopProcessDatabaseUpsertQueueWorkflow(
+async function stopProcessDatabaseUpsertQueueWorkflow(
   connectorId: ModelId
 ): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -323,7 +323,7 @@ export async function stopProcessDatabaseUpsertQueueWorkflow(
   );
 }
 
-export async function stopNotionDeletionCrawlWorkflow(
+async function stopNotionDeletionCrawlWorkflow(
   connectorId: ModelId
 ): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -388,7 +388,7 @@ export async function launchUpdateOrphanedResourcesParentsWorkflow(
   });
 }
 
-export async function launchProcessDatabaseUpsertQueueWorkflow(
+async function launchProcessDatabaseUpsertQueueWorkflow(
   connectorId: ModelId
 ) {
   const client = await getTemporalClient();
@@ -497,7 +497,7 @@ export async function sendDeletionCrawlSignal(
   }
 }
 
-export async function getSyncWorkflow(connectorId: ModelId): Promise<{
+async function getSyncWorkflow(connectorId: ModelId): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {
@@ -518,7 +518,7 @@ export async function getSyncWorkflow(connectorId: ModelId): Promise<{
   }
 }
 
-export async function getGarbageCollectorWorkflow(
+async function getGarbageCollectorWorkflow(
   connectorId: ModelId
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
@@ -543,7 +543,7 @@ export async function getGarbageCollectorWorkflow(
   }
 }
 
-export async function getProcessDatabaseUpsertQueueWorkflow(
+async function getProcessDatabaseUpsertQueueWorkflow(
   connectorId: ModelId
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
@@ -566,7 +566,7 @@ export async function getProcessDatabaseUpsertQueueWorkflow(
   }
 }
 
-export async function getDeletionCrawlWorkflow(connectorId: ModelId): Promise<{
+async function getDeletionCrawlWorkflow(connectorId: ModelId): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {

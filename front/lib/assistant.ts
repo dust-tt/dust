@@ -9,7 +9,7 @@ import type {
 } from "@app/types";
 import { isProviderWhitelisted, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
-export function isLargeModel(model: unknown): model is SupportedModel {
+function isLargeModel(model: unknown): model is SupportedModel {
   const maybeSupportedModel = model as SupportedModel;
   const m = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>

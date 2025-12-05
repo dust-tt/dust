@@ -26,7 +26,7 @@ export function getWeekEnd(date: Date): Date {
   return new Date(dateCopy.setDate(diff + 7));
 }
 
-export const timeAgoFrom = (millisSinceEpoch: number) => {
+const timeAgoFrom = (millisSinceEpoch: number) => {
   // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
   const now = new Date().getTime();
   const diff = now - millisSinceEpoch;
@@ -54,23 +54,23 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
   return seconds + "s";
 };
 
-export type SlackChannelInternalId = string;
-export type SlackThreadInternalId = string;
-export type SlackNonThreadedMessagesInternalId = string;
+type SlackChannelInternalId = string;
+type SlackThreadInternalId = string;
+type SlackNonThreadedMessagesInternalId = string;
 
-export function isSlackChannelInternalId(
+function isSlackChannelInternalId(
   internalId: string
 ): internalId is SlackChannelInternalId {
   return internalId.startsWith("slack-channel-");
 }
 
-export function isSlackThreadInternalId(
+function isSlackThreadInternalId(
   internalId: string
 ): internalId is SlackThreadInternalId {
   return internalId.startsWith("slack-") && internalId.includes("-thread-");
 }
 
-export function isSlackNonThreadedMessagesInternalId(
+function isSlackNonThreadedMessagesInternalId(
   internalId: string
 ): internalId is SlackNonThreadedMessagesInternalId {
   return internalId.startsWith("slack-") && internalId.includes("-messages-");
@@ -86,7 +86,7 @@ export function slackChannelIdFromInternalId(nodeId: SlackChannelInternalId) {
   return _.last(nodeId.split("slack-channel-"))!;
 }
 
-export type SlackThreadIdentifier = {
+type SlackThreadIdentifier = {
   channelId: string;
   threadTs: string;
 };
@@ -98,7 +98,7 @@ export function slackThreadInternalIdFromSlackThreadIdentifier({
   return `slack-${channelId}-thread-${threadTs}`;
 }
 
-export type SlackNonThreadedMessagesIdentifier = {
+type SlackNonThreadedMessagesIdentifier = {
   channelId: string;
   startDate: Date;
   endDate: Date;

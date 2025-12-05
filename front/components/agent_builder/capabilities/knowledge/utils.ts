@@ -21,7 +21,7 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
-export interface CapabilityConfig {
+interface CapabilityConfig {
   icon: ComponentType;
   configPageTitle: string;
   configPageDescription: string;

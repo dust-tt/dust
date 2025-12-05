@@ -4,7 +4,7 @@ import type { OauthAPIGetCredentialsResponse } from "../lib";
 import type { OAuthAPIError } from "../oauth_api";
 import { OAuthAPI } from "../oauth_api";
 
-export async function getConnectionCredentials({
+async function getConnectionCredentials({
   config,
   logger,
   credentialsId,

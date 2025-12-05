@@ -47,7 +47,7 @@ export interface MessageTemporaryState {
   useFullChainOfThought: boolean;
 }
 
-export type AgentMessageStateEvent = (
+type AgentMessageStateEvent = (
   | AgentMessageEvents
   | ToolNotificationEvent
 ) & { step: number };

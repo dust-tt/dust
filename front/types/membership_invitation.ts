@@ -29,9 +29,9 @@ export interface PendingInvitationOption {
 
 // Types for the invite form in Poke.
 
-export const InviteMemberFormSchema = t.type({
+const InviteMemberFormSchema = t.type({
   email: NonEmptyString,
   role: ActiveRoleSchema,
 });
 
-export type InviteMemberFormType = t.TypeOf<typeof InviteMemberFormSchema>;
+type InviteMemberFormType = t.TypeOf<typeof InviteMemberFormSchema>;

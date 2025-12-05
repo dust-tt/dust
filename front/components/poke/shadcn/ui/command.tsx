@@ -286,5 +286,5 @@ export {
   CommandItem as PokeCommandItem,
   CommandList as PokeCommandList,
   CommandSeparator as PokeCommandSeparator,
-  CommandShortcut as PokeCommandShortcut,
+  
 };

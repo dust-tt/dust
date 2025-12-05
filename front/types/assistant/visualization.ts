@@ -86,7 +86,7 @@ export type VisualizationRPCRequest = z.infer<
 export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 
 // Define a mapped type for backward compatibility.
-export type VisualizationRPCRequestMap = {
+type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -106,37 +106,37 @@ export interface CommandResultMap {
 }
 
 // Zod-based type guards.
-export function isGetFileRequest(
+function isGetFileRequest(
   value: unknown
 ): value is z.infer<typeof GetFileRequestSchema> {
   return GetFileRequestSchema.safeParse(value).success;
 }
 
-export function isGetCodeToExecuteRequest(
+function isGetCodeToExecuteRequest(
   value: unknown
 ): value is z.infer<typeof GetCodeToExecuteRequestSchema> {
   return GetCodeToExecuteRequestSchema.safeParse(value).success;
 }
 
-export function isSetContentHeightRequest(
+function isSetContentHeightRequest(
   value: unknown
 ): value is z.infer<typeof SetContentHeightRequestSchema> {
   return SetContentHeightRequestSchema.safeParse(value).success;
 }
 
-export function isSetErrorMessageRequest(
+function isSetErrorMessageRequest(
   value: unknown
 ): value is z.infer<typeof SetErrorMessageRequestSchema> {
   return SetErrorMessageRequestSchema.safeParse(value).success;
 }
 
-export function isDownloadFileRequest(
+function isDownloadFileRequest(
   value: unknown
 ): value is z.infer<typeof DownloadFileRequestSchema> {
   return DownloadFileRequestSchema.safeParse(value).success;
 }
 
-export function isDisplayCodeRequest(
+function isDisplayCodeRequest(
   value: unknown
 ): value is z.infer<typeof DisplayCodeRequestSchema> {
   return DisplayCodeRequestSchema.safeParse(value).success;

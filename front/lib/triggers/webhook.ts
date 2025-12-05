@@ -54,7 +54,7 @@ export const HEADERS_ALLOWED_LIST = [
   "webhook-signature",
 ];
 
-export function checkSignature({
+function checkSignature({
   headerName,
   algorithm,
   secret,
@@ -129,7 +129,7 @@ export function checkSignature({
   return new Ok(undefined);
 }
 
-export async function validateEventSubscription({
+async function validateEventSubscription({
   webhookSource,
   headers,
   body,
@@ -381,7 +381,7 @@ function matchesPayloadFilter({
   return false;
 }
 
-export async function filterTriggers({
+async function filterTriggers({
   auth,
   webhookSource,
   receivedEventValue,
@@ -490,7 +490,7 @@ export async function filterTriggers({
   return new Ok(filteredTriggers);
 }
 
-export async function launchTriggersWorkflows({
+async function launchTriggersWorkflows({
   auth,
   filteredTriggers,
   webhookSource,

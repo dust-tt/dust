@@ -41,7 +41,7 @@ export type Step = {
 /**
  * Renders an action result for multi-actions model
  */
-export function renderActionForMultiActionsModel(
+function renderActionForMultiActionsModel(
   action: AgentMCPActionWithOutputType
 ): FunctionMessageTypeModel {
   if (action.status === "denied") {

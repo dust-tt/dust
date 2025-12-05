@@ -3,8 +3,8 @@ import { z } from "zod";
 export const WEBCRAWLER_MAX_DEPTH = 5;
 export const WEBCRAWLER_MAX_PAGES = 1024;
 
-export const CrawlingModes = ["child", "website"] as const;
-export type CrawlingMode = (typeof CrawlingModes)[number];
+const CrawlingModes = ["child", "website"] as const;
+type CrawlingMode = (typeof CrawlingModes)[number];
 
 export const CrawlingFrequencies = [
   "never",
@@ -47,7 +47,7 @@ export type WebCrawlerConfiguration = z.infer<
 
 export const WebCrawlerHeaderRedactedValue = "<REDACTED>";
 
-export const WEBCRAWLER_DEFAULT_CONFIGURATION: WebCrawlerConfigurationType = {
+const WEBCRAWLER_DEFAULT_CONFIGURATION: WebCrawlerConfigurationType = {
   url: "",
   depth: 2,
   maxPageToCrawl: 50,

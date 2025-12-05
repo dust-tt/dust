@@ -40,7 +40,7 @@ import type {
 } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 
-export type OAuthError = {
+type OAuthError = {
   code:
     | "connection_creation_failed"
     | "connection_not_implemented"

@@ -1,5 +1,5 @@
 import { defineSignal } from "@temporalio/workflow";
 
-export interface ResyncSignal {}
+interface ResyncSignal {}
 
 export const resyncSignal = defineSignal<ResyncSignal[]>("resyncSignal");

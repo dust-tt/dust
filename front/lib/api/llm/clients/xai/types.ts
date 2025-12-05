@@ -11,14 +11,14 @@ import {
   GROK_4_MODEL_ID,
 } from "@app/types";
 
-export const XAI_MODEL_FAMILIES = [
+const XAI_MODEL_FAMILIES = [
   "no-vision",
   "non-reasoning",
   "reasoning",
 ] as const;
-export type XaiModelFamily = (typeof XAI_MODEL_FAMILIES)[number];
+type XaiModelFamily = (typeof XAI_MODEL_FAMILIES)[number];
 
-export const XAI_MODEL_FAMILIES_CONFIGS: Record<
+const XAI_MODEL_FAMILIES_CONFIGS: Record<
   XaiModelFamily,
   {
     modelIds: ModelIdType[];
@@ -46,7 +46,7 @@ export const XAI_MODEL_FAMILIES_CONFIGS: Record<
 export type XaiWhitelistedModelId = {
   [K in XaiModelFamily]: (typeof XAI_MODEL_FAMILIES_CONFIGS)[K]["modelIds"][number];
 }[XaiModelFamily];
-export const XAI_WHITELISTED_MODEL_IDS = flatMap<XaiWhitelistedModelId>(
+const XAI_WHITELISTED_MODEL_IDS = flatMap<XaiWhitelistedModelId>(
   Object.values(XAI_MODEL_FAMILIES_CONFIGS).map((config) => config.modelIds)
 );
 
@@ -56,7 +56,7 @@ export function isXaiWhitelistedModelId(
   return new Set<string>(XAI_WHITELISTED_MODEL_IDS).has(modelId);
 }
 
-export function getXaiModelFamilyFromModelId(
+function getXaiModelFamilyFromModelId(
   modelId: XaiWhitelistedModelId
 ): XaiModelFamily {
   const family = XAI_MODEL_FAMILIES.find((family) =>

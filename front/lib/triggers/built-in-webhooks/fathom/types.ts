@@ -1,6 +1,6 @@
 import type { TriggeredFor } from "fathom-typescript/sdk/models/shared";
 
-export type FathomWebhookMetadata = {
+type FathomWebhookMetadata = {
   webhookId: string;
   triggered_for: TriggeredFor[];
   include_transcript: boolean;
@@ -9,7 +9,7 @@ export type FathomWebhookMetadata = {
   include_crm_matches: boolean;
 };
 
-export type FathomWebhookCreateMetadata = {
+type FathomWebhookCreateMetadata = {
   triggered_for: TriggeredFor[];
   include_transcript: boolean;
   include_summary: boolean;

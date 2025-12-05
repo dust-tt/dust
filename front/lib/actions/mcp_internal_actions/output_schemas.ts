@@ -86,7 +86,7 @@ export function isThinkingOutput(
 
 // Final output of the reasoning when successful with the non-CoT tokens.
 
-export const ReasoningSuccessOutputSchema = z.object({
+const ReasoningSuccessOutputSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS),
   text: z.string(),
   uri: z.literal(""),
@@ -136,7 +136,7 @@ export const isResourceWithName = (
   return "name" in resource && typeof resource.name === "string";
 };
 
-export const DatabaseSchemaResourceSchema = z.object({
+const DatabaseSchemaResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATABASE_SCHEMA),
   text: z.string(),
   uri: z.string(),
@@ -158,7 +158,7 @@ export const isDatabaseSchemaResourceType = (
   );
 };
 
-export const QueryWritingInstructionsResourceSchema = z.object({
+const QueryWritingInstructionsResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.QUERY_WRITING_INSTRUCTIONS
   ),
@@ -170,7 +170,7 @@ export type QueryWritingInstructionsResourceType = z.infer<
   typeof QueryWritingInstructionsResourceSchema
 >;
 
-export const isQueryWritingInstructionsResourceType = (
+const isQueryWritingInstructionsResourceType = (
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
@@ -183,7 +183,7 @@ export const isQueryWritingInstructionsResourceType = (
   );
 };
 
-export const ExampleRowsResourceSchema = z.object({
+const ExampleRowsResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXAMPLE_ROWS),
   text: z.string(),
   uri: z.string(),
@@ -200,7 +200,7 @@ export const isExampleRowsResourceType = (
   );
 };
 
-export const ToolMarkerResourceSchema = z.object({
+const ToolMarkerResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER),
   text: z.string(),
   uri: z.literal(""),
@@ -222,7 +222,7 @@ export function isToolMarkerResourceType(
 
 export const GET_DATABASE_SCHEMA_MARKER = "get_database_schema_marker" as const;
 
-export function isGetDatabaseSchemaMarkerResourceType(
+function isGetDatabaseSchemaMarkerResourceType(
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
@@ -239,7 +239,7 @@ export function isGetDatabaseSchemaMarkerResourceType(
 export const EXECUTE_TABLES_QUERY_MARKER =
   "execute_tables_query_marker" as const;
 
-export function isExecuteTablesQueryMarkerResourceType(
+function isExecuteTablesQueryMarkerResourceType(
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
@@ -253,7 +253,7 @@ export function isExecuteTablesQueryMarkerResourceType(
   );
 }
 
-export const ExecuteTablesQueryErrorResourceSchema = z.object({
+const ExecuteTablesQueryErrorResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR
   ),
@@ -261,7 +261,7 @@ export const ExecuteTablesQueryErrorResourceSchema = z.object({
   uri: z.literal(""),
 });
 
-export type ExecuteTablesQueryErrorResourceType = z.infer<
+type ExecuteTablesQueryErrorResourceType = z.infer<
   typeof ExecuteTablesQueryErrorResourceSchema
 >;
 
@@ -278,7 +278,7 @@ export const isExecuteTablesQueryErrorResourceType = (
   );
 };
 
-export const SearchResultResourceSchema = z.object({
+const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
   ),
@@ -308,7 +308,7 @@ export const isSearchResultResourceType = (
   );
 };
 
-export const WarningResourceSchema = z.object({
+const WarningResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
   warningTitle: z.string(),
   text: z.string(),
@@ -330,7 +330,7 @@ export const isWarningResourceType = (
   );
 };
 
-export const IncludeResultResourceSchema = z.object({
+const IncludeResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_RESULT
   ),
@@ -363,7 +363,7 @@ export const isIncludeResultResourceType = (
 
 // Websearch results.
 
-export const WebsearchResultResourceSchema = z.object({
+const WebsearchResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT),
   title: z.string(),
   text: z.string(),
@@ -389,7 +389,7 @@ export const isWebsearchResultResourceType = (
 
 // Browse results.
 
-export const BrowseResultResourceSchema = z.object({
+const BrowseResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT),
   requestedUrl: z.string(),
   uri: z.string(), // Browsed url, might differ from the requested url
@@ -419,14 +419,14 @@ export const isBrowseResultResourceType = (
 
 // RunAgent results.
 
-export const RunAgentQueryResourceSchema = z.object({
+const RunAgentQueryResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY),
   text: z.string(),
   childAgentId: z.string(),
   uri: z.literal(""),
 });
 
-export type RunAgentQueryResourceType = z.infer<
+type RunAgentQueryResourceType = z.infer<
   typeof RunAgentQueryResourceSchema
 >;
 
@@ -444,7 +444,7 @@ export const isRunAgentQueryResourceType = (
 
 // Toolsets results.
 
-export const ToolsetsResultResourceSchema = z.object({
+const ToolsetsResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOLSET_LIST_RESULT),
   text: z.string(),
   uri: z.literal(""),
@@ -452,7 +452,7 @@ export const ToolsetsResultResourceSchema = z.object({
   description: z.string(),
 });
 
-export type ToolsetsResultResourceType = z.infer<
+type ToolsetsResultResourceType = z.infer<
   typeof ToolsetsResultResourceSchema
 >;
 
@@ -470,7 +470,7 @@ export const isToolsetsResultResourceType = (
 
 // Agent creation results.
 
-export const AgentCreationResultResourceSchema = z.object({
+const AgentCreationResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT),
   text: z.string(), // Required by MCP SDK
   uri: z.string(),
@@ -508,7 +508,7 @@ export const isAgentCreationResultResourceType = (
   );
 };
 
-export const RunAgentResultResourceSchema = z.object({
+const RunAgentResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
   conversationId: z.string(),
   text: z.string(),
@@ -528,7 +528,7 @@ export const RunAgentResultResourceSchema = z.object({
     .optional(),
 });
 
-export type RunAgentResultResourceType = z.infer<
+type RunAgentResultResourceType = z.infer<
   typeof RunAgentResultResourceSchema
 >;
 
@@ -544,17 +544,17 @@ export const isRunAgentResultResourceType = (
   );
 };
 
-export const RunAgentHandoverResourceSchema = z.object({
+const RunAgentHandoverResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
   text: z.string(),
   uri: z.string(),
 });
 
-export type RunAgentHandoverResourceType = z.infer<
+type RunAgentHandoverResourceType = z.infer<
   typeof RunAgentHandoverResourceSchema
 >;
 
-export const isRunAgentHandoverResourceType = (
+const isRunAgentHandoverResourceType = (
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
@@ -568,7 +568,7 @@ export const isRunAgentHandoverResourceType = (
 
 // Extract data outputs: query and results.
 
-export const ExtractQueryResourceSchema = z.object({
+const ExtractQueryResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY),
   text: z.string(),
   uri: z.literal(""),
@@ -587,7 +587,7 @@ export const isExtractQueryResourceType = (
   );
 };
 
-export const ExtractResultResourceSchema = z.object({
+const ExtractResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT),
   uri: z.string(),
   text: z.string(),
@@ -625,7 +625,7 @@ const RenderedNodeSchema = z.object({
   connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
 });
 
-export const DataSourceNodeListSchema = z.object({
+const DataSourceNodeListSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST),
   uri: z.literal(""),
   text: z.string(),
@@ -684,7 +684,7 @@ export const isWarehousesBrowseType = (
   );
 };
 
-export const DataSourceNodeContentSchema = z.object({
+const DataSourceNodeContentSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT),
   uri: z.string(),
   text: z.string(),
@@ -692,7 +692,7 @@ export const DataSourceNodeContentSchema = z.object({
   ref: z.string().optional(),
 });
 
-export type DataSourceNodeContentType = z.infer<
+type DataSourceNodeContentType = z.infer<
   typeof DataSourceNodeContentSchema
 >;
 
@@ -717,7 +717,7 @@ const FilesystemPathItemSchema = z.object({
   isCurrentNode: z.boolean(),
 });
 
-export const FilesystemPathSchema = z.object({
+const FilesystemPathSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH),
   uri: z.literal(""),
   text: z.string(),
@@ -898,7 +898,7 @@ export function isRunAgentGenerationTokensProgressOutput(
   );
 }
 
-export function isRunAgentProgressOutput(
+function isRunAgentProgressOutput(
   output: ProgressNotificationOutput
 ): output is
   | RunAgentQueryProgressOutput
@@ -921,7 +921,7 @@ export function isStoreResourceProgressOutput(
   return output !== undefined && output.type === "store_resource";
 }
 
-export const ProgressNotificationOutputSchema = z
+const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationInteractiveContentFileContentSchema,
@@ -938,7 +938,7 @@ type ProgressNotificationOutput = z.infer<
   typeof ProgressNotificationOutputSchema
 >;
 
-export const ProgressNotificationContentSchema = z.object({
+const ProgressNotificationContentSchema = z.object({
   // Required for the MCP protocol.
   progress: z.number(),
   total: z.number(),
@@ -954,7 +954,7 @@ export type ProgressNotificationContentType = z.infer<
   typeof ProgressNotificationContentSchema
 >;
 
-export const MCPProgressNotificationSchema = NotificationSchema.extend({
+const MCPProgressNotificationSchema = NotificationSchema.extend({
   method: z.literal("notifications/progress"),
   params: ProgressNotificationContentSchema,
 });
@@ -1009,7 +1009,7 @@ export const getOutputText = (
 
 // Internal tool output.
 
-export const AuthRequiredOutputResourceSchema = z.object({
+const AuthRequiredOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_personal_auth_required"),
   provider: z.string(),
@@ -1018,7 +1018,7 @@ export const AuthRequiredOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
-export const BlockedAwaitingInputOutputResourceSchema = z.object({
+const BlockedAwaitingInputOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_blocked_awaiting_input"),
   text: z.string(),
@@ -1027,7 +1027,7 @@ export const BlockedAwaitingInputOutputResourceSchema = z.object({
   state: z.any(),
 });
 
-export const EarlyExitOutputResourceSchema = z.object({
+const EarlyExitOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_early_exit"),
   text: z.string(),
@@ -1035,13 +1035,13 @@ export const EarlyExitOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
-export const AgentPauseOutputResourceSchema = z.union([
+const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
 ]);
 
-export type AgentPauseOutputResourceType = z.infer<
+type AgentPauseOutputResourceType = z.infer<
   typeof AgentPauseOutputResourceSchema
 >;
 

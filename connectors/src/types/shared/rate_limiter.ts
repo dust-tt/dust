@@ -7,9 +7,9 @@ import { normalizeError } from "@connectors/types";
 import { redisClient } from "./redis_client";
 import { getStatsDClient } from "./statsd";
 
-export class RateLimitError extends Error {}
+class RateLimitError extends Error {}
 
-export const RATE_LIMITER_PREFIX = "rate_limiter";
+const RATE_LIMITER_PREFIX = "rate_limiter";
 
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 
@@ -77,7 +77,7 @@ export async function rateLimiter({
   }
 }
 
-export async function expireRateLimiterKey({
+async function expireRateLimiterKey({
   key,
 }: RateLimiterOptionsBase): Promise<Result<boolean, Error>> {
   const redis = await redisClient({ origin: "rate_limiter" });

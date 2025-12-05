@@ -10,7 +10,7 @@ const AgentMentionSchema = t.type({
 });
 const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
 
-export const MessageBaseSchema = t.type({
+const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
     (s): s is string => s.length > 0,
@@ -42,7 +42,7 @@ const ContentFragmentBaseSchema = t.intersection([
   }),
 ]);
 
-export const getSupportedInlinedContentType = () => {
+const getSupportedInlinedContentType = () => {
   const [first, second, ...rest] = getSupportedNonImageMimeTypes();
   return t.union([
     t.literal(first),
@@ -55,7 +55,7 @@ const [first, second, ...rest] = [
   ...INTERNAL_MIME_TYPES_VALUES,
   ...getSupportedNonImageMimeTypes(),
 ];
-export const getSupportedContentNodeContentTypeSchema = () => {
+const getSupportedContentNodeContentTypeSchema = () => {
   return t.union([
     t.literal(first),
     t.literal(second),
@@ -67,11 +67,11 @@ export type SupportedContentNodeContentType = t.TypeOf<
   ReturnType<typeof getSupportedContentNodeContentTypeSchema>
 >;
 
-export type SupportedInlinedContentFragmentTypeSchema = t.TypeOf<
+type SupportedInlinedContentFragmentTypeSchema = t.TypeOf<
   ReturnType<typeof getSupportedInlinedContentType>
 >;
 
-export const isSupportedInlinedFragmentContentType = (
+const isSupportedInlinedFragmentContentType = (
   contentType: string
 ): contentType is SupportedInlinedContentFragmentTypeSchema => {
   return (
@@ -129,7 +129,7 @@ export type ContentFragmentInputWithFileIdType = t.TypeOf<
   typeof ContentFragmentInputWithFileIdSchema
 >;
 
-export type ContentFragmentInputType =
+type ContentFragmentInputType =
   | ContentFragmentInputWithInlinedContent
   | ContentFragmentInputWithFileIdType
   | ContentFragmentInputWithContentNode;
@@ -182,7 +182,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.intersection([
   ]),
 ]);
 
-export type InternalPostContentFragmentRequestBodyType = t.TypeOf<
+type InternalPostContentFragmentRequestBodyType = t.TypeOf<
   typeof InternalPostContentFragmentRequestBodySchema
 >;
 
@@ -237,7 +237,7 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
   }),
 ]);
 
-export type BuilderSuggestionsRequestType = t.TypeOf<
+type BuilderSuggestionsRequestType = t.TypeOf<
   typeof InternalPostBuilderSuggestionsRequestBodySchema
 >;
 

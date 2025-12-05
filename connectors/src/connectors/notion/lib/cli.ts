@@ -81,7 +81,7 @@ async function listSkippedDatabaseIdsForConnectorId(connectorId: ModelId) {
   return new Set(skippedDatabases.map((db) => db.notionDatabaseId));
 }
 
-export async function searchNotionPagesForQuery({
+async function searchNotionPagesForQuery({
   connectorId,
   query,
 }: {
@@ -152,7 +152,7 @@ export async function findNotionUrl({
   return { page: null, db: null };
 }
 
-export async function deleteNotionUrl({
+async function deleteNotionUrl({
   connector,
   url,
 }: {

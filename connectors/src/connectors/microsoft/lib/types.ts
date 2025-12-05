@@ -24,7 +24,7 @@ export type DriveItem = Pick<
 export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
   "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields)&select=@microsoft.graph.downloadUrl";
 
-export const MICROSOFT_NODE_TYPES = [
+const MICROSOFT_NODE_TYPES = [
   "sites-root",
   "site",
   "drive",

@@ -2,7 +2,7 @@ import assert from "assert";
 import { hash as blake3 } from "blake3/esm/node/hash-fn";
 import { join } from "path";
 
-export const GITHUB_CONTENT_NODE_TYPES = [
+const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_FULL",
   "REPO_ISSUES",
   "REPO_DISCUSSIONS",
@@ -13,13 +13,13 @@ export const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_DISCUSSION",
 ] as const;
 
-export type GithubContentNodeType = (typeof GITHUB_CONTENT_NODE_TYPES)[number];
+type GithubContentNodeType = (typeof GITHUB_CONTENT_NODE_TYPES)[number];
 
 export function isGithubCodeDirId(internalId: string): boolean {
   return /^github-code-\d+-dir-[a-f0-9]+$/.test(internalId);
 }
 
-export function isGithubCodeFileId(internalId: string): boolean {
+function isGithubCodeFileId(internalId: string): boolean {
   return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
 }
 
@@ -139,7 +139,7 @@ export function getCodeDirInternalId(
     .substring(0, 16)}`;
 }
 
-export function getCodeFileInternalId(
+function getCodeFileInternalId(
   repoId: string | number,
   codePath: string
 ): string {
@@ -163,7 +163,7 @@ export function getDiscussionsUrl(repoUrl: string): string {
   return `${repoUrl}/discussions`;
 }
 
-export function getFileUrl(
+function getFileUrl(
   repoLogin: string,
   repoName: string,
   branch: string,

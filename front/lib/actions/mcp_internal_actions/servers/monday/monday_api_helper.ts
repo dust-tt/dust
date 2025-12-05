@@ -3,7 +3,7 @@ import { normalizeError } from "@app/types";
 
 const localLogger = logger.child({ module: "monday_api_helper" });
 
-export interface MondayBoard {
+interface MondayBoard {
   id: string;
   name: string;
   description?: string;
@@ -13,7 +13,7 @@ export interface MondayBoard {
   workspace_id?: string;
 }
 
-export interface MondayItem {
+interface MondayItem {
   id: string;
   name: string;
   state: string;
@@ -35,7 +35,7 @@ export interface MondayItem {
   };
 }
 
-export interface MondayColumnValue {
+interface MondayColumnValue {
   id: string;
   column: {
     title: string;
@@ -45,7 +45,7 @@ export interface MondayColumnValue {
   text?: string;
 }
 
-export interface MondayUser {
+interface MondayUser {
   id: string;
   name: string;
   email: string;
@@ -53,7 +53,7 @@ export interface MondayUser {
   phone?: string;
 }
 
-export interface MondayWorkspace {
+interface MondayWorkspace {
   id: string;
   name: string;
   kind: string;
@@ -1462,7 +1462,7 @@ export const createMultipleItems = async (
   return Object.values(data);
 };
 
-export interface ActivityLog {
+interface ActivityLog {
   id: string;
   event: string;
   data: any;
@@ -1509,7 +1509,7 @@ export const getActivityLogs = async (
   return data.boards?.[0]?.activity_logs || [];
 };
 
-export interface BoardAnalytics {
+interface BoardAnalytics {
   boardId: string;
   boardName: string;
   totalItems: number;

@@ -60,7 +60,7 @@ export function getHelpCenterCollectionIdFromInternalId(
 ): string | null {
   return _getIdFromInternal(internalId, `intercom-collection-${connectorId}-`);
 }
-export function getHelpCenterArticleIdFromInternalId(
+function getHelpCenterArticleIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ): string | null {

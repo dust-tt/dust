@@ -59,7 +59,7 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
-export async function generateParsedContents(
+async function generateParsedContents(
   actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,

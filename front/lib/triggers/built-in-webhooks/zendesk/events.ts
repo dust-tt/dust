@@ -28,7 +28,7 @@ import {
 } from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/user_created";
 import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
-export const ZENDESK_TICKET_CREATED_EVENT: WebhookEvent = {
+const ZENDESK_TICKET_CREATED_EVENT: WebhookEvent = {
   name: "ticket.created",
   value: "zen:event-type:ticket.created",
   description: "A ticket was created",
@@ -36,7 +36,7 @@ export const ZENDESK_TICKET_CREATED_EVENT: WebhookEvent = {
   sample: ticketCreatedExample,
 };
 
-export const ZENDESK_TICKET_COMMENT_ADDED_EVENT: WebhookEvent = {
+const ZENDESK_TICKET_COMMENT_ADDED_EVENT: WebhookEvent = {
   name: "ticket.comment_added",
   value: "zen:event-type:ticket.comment_added",
   description: "A comment was added to a ticket",
@@ -44,7 +44,7 @@ export const ZENDESK_TICKET_COMMENT_ADDED_EVENT: WebhookEvent = {
   sample: ticketCommentAddedExample,
 };
 
-export const ZENDESK_TICKET_STATUS_CHANGED_EVENT: WebhookEvent = {
+const ZENDESK_TICKET_STATUS_CHANGED_EVENT: WebhookEvent = {
   name: "ticket.status_changed",
   value: "zen:event-type:ticket.status_changed",
   description: "A ticket's status changed",
@@ -52,7 +52,7 @@ export const ZENDESK_TICKET_STATUS_CHANGED_EVENT: WebhookEvent = {
   sample: ticketStatusChangedExample,
 };
 
-export const ZENDESK_TICKET_PRIORITY_CHANGED_EVENT: WebhookEvent = {
+const ZENDESK_TICKET_PRIORITY_CHANGED_EVENT: WebhookEvent = {
   name: "ticket.priority_changed",
   value: "zen:event-type:ticket.priority_changed",
   description: "A ticket's priority changed",
@@ -60,7 +60,7 @@ export const ZENDESK_TICKET_PRIORITY_CHANGED_EVENT: WebhookEvent = {
   sample: ticketPriorityChangedExample,
 };
 
-export const ZENDESK_TICKET_AGENT_ASSIGNMENT_CHANGED_EVENT: WebhookEvent = {
+const ZENDESK_TICKET_AGENT_ASSIGNMENT_CHANGED_EVENT: WebhookEvent = {
   name: "ticket.agent_assignment_changed",
   value: "zen:event-type:ticket.agent_assignment_changed",
   description: "A ticket was reassigned to another agent",
@@ -68,7 +68,7 @@ export const ZENDESK_TICKET_AGENT_ASSIGNMENT_CHANGED_EVENT: WebhookEvent = {
   sample: ticketAgentAssignmentChangedExample,
 };
 
-export const ZENDESK_USER_CREATED_EVENT: WebhookEvent = {
+const ZENDESK_USER_CREATED_EVENT: WebhookEvent = {
   name: "user.created",
   value: "zen:event-type:user.created",
   description: "A user was created",
@@ -76,7 +76,7 @@ export const ZENDESK_USER_CREATED_EVENT: WebhookEvent = {
   sample: userCreatedExample,
 };
 
-export const ZENDESK_ORGANIZATION_CREATED_EVENT: WebhookEvent = {
+const ZENDESK_ORGANIZATION_CREATED_EVENT: WebhookEvent = {
   name: "organization.created",
   value: "zen:event-type:organization.created",
   description: "An organization was created",

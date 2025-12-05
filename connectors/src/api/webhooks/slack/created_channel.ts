@@ -32,7 +32,7 @@ export function isChannelCreatedEvent(
   );
 }
 
-export interface OnChannelCreationInterface {
+interface OnChannelCreationInterface {
   event: ChannelCreatedEvent;
   logger: Logger;
   provider?: Extract<ConnectorProvider, "slack_bot" | "slack">;

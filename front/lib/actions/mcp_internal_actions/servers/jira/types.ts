@@ -4,10 +4,10 @@ import { z } from "zod";
 export const SEARCH_ISSUES_MAX_RESULTS = 20;
 export const SEARCH_USERS_MAX_RESULTS = 200;
 
-export const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">=", "!="] as const;
-export type SupportedOperator = (typeof SUPPORTED_OPERATORS)[number];
+const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">=", "!="] as const;
+type SupportedOperator = (typeof SUPPORTED_OPERATORS)[number];
 
-export const SORT_DIRECTIONS = ["ASC", "DESC"] as const;
+const SORT_DIRECTIONS = ["ASC", "DESC"] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 
 export const FIELD_MAPPINGS = {
@@ -101,7 +101,7 @@ export const JiraSortSchema = z.object({
 });
 
 // Jira entity schemas - shared field definitions
-export const JiraIssueFieldsSchema = z
+const JiraIssueFieldsSchema = z
   .object({
     project: z.object({
       key: z.string(),
@@ -183,7 +183,7 @@ export const JiraProjectVersionSchema = z.object({
   archived: z.boolean().optional(),
 });
 
-export const JiraTransitionSchema = z.object({
+const JiraTransitionSchema = z.object({
   id: z.string(),
   name: z.string(),
 });
@@ -196,7 +196,7 @@ export const JiraCreateMetaSchema = z.object({
   fields: z.array(z.unknown()), // JIRA returns an array of field definitions, not an object
 });
 
-export const JiraFieldSchema = z.object({
+const JiraFieldSchema = z.object({
   id: z.string(),
   key: z.string().optional(),
   name: z.string(),
@@ -251,35 +251,35 @@ export const JiraTransitionIssueSchema = z.void();
 
 // Atlassian Document Format (ADF) schemas
 // Based on: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
-export const ADFMarkSchema = z.object({
+const ADFMarkSchema = z.object({
   type: z.string(),
   attrs: z.record(z.any()).optional(),
 });
 
-export type ADFMark = z.infer<typeof ADFMarkSchema>;
+type ADFMark = z.infer<typeof ADFMarkSchema>;
 
-export const ADFTextNodeSchema = z.object({
+const ADFTextNodeSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
   marks: z.array(ADFMarkSchema).optional(),
 });
 
-export type ADFTextNode = z.infer<typeof ADFTextNodeSchema>;
+type ADFTextNode = z.infer<typeof ADFTextNodeSchema>;
 
-export const ADFHardBreakNodeSchema = z.object({
+const ADFHardBreakNodeSchema = z.object({
   type: z.literal("hardBreak"),
 });
 
-export type ADFHardBreakNode = z.infer<typeof ADFHardBreakNodeSchema>;
+type ADFHardBreakNode = z.infer<typeof ADFHardBreakNodeSchema>;
 
-export const ADFRuleNodeSchema = z.object({
+const ADFRuleNodeSchema = z.object({
   type: z.literal("rule"),
 });
 
-export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
+type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
 
 // Base content node with recursive structure
-export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
+const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
   z.discriminatedUnion("type", [
     // Text nodes
     ADFTextNodeSchema,
@@ -326,7 +326,7 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
   ])
 );
 
-export type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;
+type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;
 
 export const ADFDocumentSchema = z.object({
   type: z.literal("doc"),
@@ -350,7 +350,7 @@ export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
   .passthrough(); // Allow custom fields
 
 // Schema for update operations that allows ADF format for description and any string field
-export const JiraUpdateIssueRequestSchema = z
+const JiraUpdateIssueRequestSchema = z
   .record(
     z.union([
       z.string(),
@@ -419,7 +419,7 @@ export const JiraIssueLinkTypeSchema = z.object({
   outward: z.string(),
 });
 
-export const JiraIssueLinkSchema = z.object({
+const JiraIssueLinkSchema = z.object({
   id: z.string(),
   type: JiraIssueLinkTypeSchema,
   inwardIssue: z
@@ -475,7 +475,7 @@ export const JiraIssueTypeSchema = z.object({
   subtask: z.boolean().optional(),
 });
 
-export const JiraUserSchema = z.object({
+const JiraUserSchema = z.object({
   accountId: z.string(),
   displayName: z.string(),
   emailAddress: z.string().optional(),
@@ -483,7 +483,7 @@ export const JiraUserSchema = z.object({
   active: z.boolean(),
 });
 
-export type JiraUser = z.infer<typeof JiraUserSchema>;
+type JiraUser = z.infer<typeof JiraUserSchema>;
 
 export const JiraUsersSearchResultSchema = z.array(JiraUserSchema);
 
@@ -493,7 +493,7 @@ export const JiraCommentSchema = z.object({
   body: ADFDocumentSchema,
 });
 
-export const JiraAttachmentSchema = z.object({
+const JiraAttachmentSchema = z.object({
   id: z.string(),
   filename: z.string(),
   author: z.object({
@@ -521,25 +521,25 @@ export const JiraIssueWithAttachmentsSchema = z.object({
 // Inferred types
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
 export type JiraErrorResult = string;
-export type JiraIssue = z.infer<typeof JiraIssueSchema>;
-export type JiraProject = z.infer<typeof JiraProjectSchema>;
-export type JiraTransition = z.infer<typeof JiraTransitionSchema>;
-export type JiraComment = z.infer<typeof JiraCommentSchema>;
-export type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
-export type JiraConnectionInfo = z.infer<typeof JiraConnectionInfoSchema>;
-export type JiraCreateIssueRequest = z.infer<
+type JiraIssue = z.infer<typeof JiraIssueSchema>;
+type JiraProject = z.infer<typeof JiraProjectSchema>;
+type JiraTransition = z.infer<typeof JiraTransitionSchema>;
+type JiraComment = z.infer<typeof JiraCommentSchema>;
+type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
+type JiraConnectionInfo = z.infer<typeof JiraConnectionInfoSchema>;
+type JiraCreateIssueRequest = z.infer<
   typeof JiraCreateIssueRequestSchema
 >;
-export type JiraUpdateIssueRequest = z.infer<
+type JiraUpdateIssueRequest = z.infer<
   typeof JiraUpdateIssueRequestSchema
 >;
-export type JiraIssueLink = z.infer<typeof JiraIssueLinkSchema>;
-export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
-export type JiraCreateIssueLinkRequest = z.infer<
+type JiraIssueLink = z.infer<typeof JiraIssueLinkSchema>;
+type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
+type JiraCreateIssueLinkRequest = z.infer<
   typeof JiraCreateIssueLinkRequestSchema
 >;
-export type JiraAttachment = z.infer<typeof JiraAttachmentSchema>;
-export type JiraAttachmentsResult = z.infer<typeof JiraAttachmentsResultSchema>;
-export type JiraIssueWithAttachments = z.infer<
+type JiraAttachment = z.infer<typeof JiraAttachmentSchema>;
+type JiraAttachmentsResult = z.infer<typeof JiraAttachmentsResultSchema>;
+type JiraIssueWithAttachments = z.infer<
   typeof JiraIssueWithAttachmentsSchema
 >;

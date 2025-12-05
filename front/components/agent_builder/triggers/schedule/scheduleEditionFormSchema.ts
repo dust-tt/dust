@@ -18,7 +18,7 @@ export const ScheduleFormSchema = z.object({
   timezone: z.string().min(1, "Timezone is required"),
 });
 
-export type ScheduleFormValues = z.infer<typeof ScheduleFormSchema>;
+type ScheduleFormValues = z.infer<typeof ScheduleFormSchema>;
 
 export function getScheduleFormDefaultValues(
   trigger: AgentBuilderScheduleTriggerType | null

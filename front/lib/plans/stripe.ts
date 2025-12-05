@@ -37,19 +37,19 @@ export function getBusinessProPlanProductId() {
     : PROD_BUSINESS_PRO_PLAN_PRODUCT_ID;
 }
 
-export function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
+function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
   return isBusiness ? getBusinessProPlanProductId() : getProPlanProductId();
 }
 
-export function getCreditPurchasePriceId() {
+function getCreditPurchasePriceId() {
   const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
   const prodCreditPurchasePriceId = "price_1SVYsjDKd2JRwZF6zdIW29mC";
 
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
 
-export function getPAYGCreditPriceId() {
+function getPAYGCreditPriceId() {
   const devPAYGPriceId = "price_1SZviPDKd2JRwZF6XHCzjgqp";
   const prodPAYGPriceId = "price_1SZvmdDKd2JRwZF64DE4tZ6c";
 
@@ -257,7 +257,7 @@ export const createCustomerPortalSession = async ({
 /**
  * Calls the Stripe API to retrieve a product by its ID.
  */
-export const getProduct = async (
+const getProduct = async (
   productId: string
 ): Promise<Stripe.Product> => {
   const stripe = getStripeClient();
@@ -346,7 +346,7 @@ export const extendStripeSubscriptionTrial = async (
  * subscription items with prices of type "licensed" (that is, per seat).
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
-export const updateStripeQuantityForSubscriptionItem = async (
+const updateStripeQuantityForSubscriptionItem = async (
   subscriptionItem: Stripe.SubscriptionItem,
   quantity: number
 ): Promise<void> => {
@@ -545,7 +545,7 @@ export function isEnterpriseSubscription(
  * Extracts the customer ID from a Stripe subscription.
  * Handles both string and expanded customer object.
  */
-export function getCustomerId(subscription: Stripe.Subscription): string {
+function getCustomerId(subscription: Stripe.Subscription): string {
   return typeof subscription.customer === "string"
     ? subscription.customer
     : subscription.customer.id;

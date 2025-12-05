@@ -11,14 +11,14 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 import { Err, GPT_4_1_MINI_MODEL_ID, Ok } from "@app/types";
 
-export type AgentObservabilitySummaryInput = {
+type AgentObservabilitySummaryInput = {
   auth: Authenticator;
   baseQuery: estypes.QueryDslQueryContainer;
   days: number;
   agentName: string;
 };
 
-export type AgentObservabilitySummaryResult = {
+type AgentObservabilitySummaryResult = {
   summaryText: string;
 };
 

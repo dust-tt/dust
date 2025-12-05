@@ -22,8 +22,8 @@ import type {
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 
-export const MCP_OAUTH_RESPONSE_TYPE = "code";
-export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
+const MCP_OAUTH_RESPONSE_TYPE = "code";
+const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
 
 const BaseMCPMetadataSchema = z.object({
   client_id: z.string(),

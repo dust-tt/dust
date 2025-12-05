@@ -81,7 +81,7 @@ export function buildPreviewQueryString(isPreview: boolean): string {
     : "";
 }
 
-export function isPreviewMode(resolvedUrl: string): boolean {
+function isPreviewMode(resolvedUrl: string): boolean {
   const searchParams = new URLSearchParams(resolvedUrl.split("?")[1]);
   const preview = searchParams.get("preview");
   const secret = searchParams.get("secret");

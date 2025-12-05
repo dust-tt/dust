@@ -83,7 +83,7 @@ import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
-export interface MCPActionDetailsProps {
+interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
@@ -327,7 +327,7 @@ export function MCPActionDetails({
   );
 }
 
-export function GenericActionDetails({
+function GenericActionDetails({
   owner,
   action,
   viewType,

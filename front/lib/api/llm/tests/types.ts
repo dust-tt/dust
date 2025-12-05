@@ -58,7 +58,7 @@ export interface RunnabletestConversation {
   >[];
 }
 
-export interface ConfigParams {
+interface ConfigParams {
   temperature?: number;
   reasoningEffort?: ReasoningEffort;
   testStructuredOutputKey?: TestStructuredOutputKey;

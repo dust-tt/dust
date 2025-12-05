@@ -169,7 +169,7 @@ export async function* streamLLMEvents({
   }
 }
 
-export function toLLMEvents({
+function toLLMEvents({
   delta,
   metadata,
 }: {

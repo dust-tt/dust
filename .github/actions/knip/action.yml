@@ -41,7 +41,7 @@ runs:
         EOF
         )
         npm run knip -- --include dependencies,devDependencies,binaries,catalog || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
-    - name: Knip - unused files
+    - name: Knip - unused files & exports
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
@@ -55,4 +55,4 @@ runs:
 
         EOF
         )
-        npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
+        npm run knip -- --include files,exports || (echo "You have some unused/exports files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)

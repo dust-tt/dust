@@ -10,7 +10,7 @@ import { webhookCleanupWorkflow } from "@app/temporal/triggers/webhook/workflows
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
+const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
 
 export async function createOrUpdateWebhookCleanupSchedule(): Promise<
   Result<void, Error>

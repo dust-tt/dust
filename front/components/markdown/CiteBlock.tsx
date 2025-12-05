@@ -6,7 +6,7 @@ import { IconForAttachmentCitation } from "@app/components/assistant/conversatio
 
 import type { MCPReferenceCitation } from "./MCPReferenceCitation";
 
-export type CitationsContextType = {
+type CitationsContextType = {
   references: {
     [key: string]: MCPReferenceCitation;
   };

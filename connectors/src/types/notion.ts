@@ -9,7 +9,7 @@ import type { ModelId } from "@connectors/types";
 // notion SDK types
 export type PageObjectProperties = PageObjectResponse["properties"];
 export type PropertyKeys = keyof PageObjectProperties;
-export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
+type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
 
 export function getNotionWorkflowId(
   connectorId: ModelId,
@@ -50,7 +50,7 @@ export type ParsedNotionPage = {
   parentId: string;
 };
 
-export type ParsedNotionPageProperty = {
+type ParsedNotionPageProperty = {
   key: string;
   id: string;
   type: PropertyTypes;
@@ -67,7 +67,7 @@ export type ParsedNotionBlock = {
   childDatabaseTitle: string | null;
 };
 
-export const ParsedNotionDatabaseSchema = t.type({
+const ParsedNotionDatabaseSchema = t.type({
   id: t.string,
   url: t.string,
   title: t.union([t.string, t.undefined]),
@@ -89,7 +89,7 @@ export function getNotionDatabaseTableId(notionDatabaseId: string): string {
 }
 
 // Returns the Table ID for a Notion database from the Content Node ID.
-export function getNotionDatabaseTableIdFromContentNodeInternalId(
+function getNotionDatabaseTableIdFromContentNodeInternalId(
   internalId: string
 ): string {
   // The internalId is also the notion-provided database ID

@@ -23,17 +23,17 @@ import { isAdmin, isBuilder } from "@app/types";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId =
+type TopNavigationId =
   | "conversations"
   | "assistants"
   | "admin"
   | "data_sources";
 
-export type SubNavigationConversationsId =
+type SubNavigationConversationsId =
   | "conversation"
   | "personal_assistants";
 
-export type SubNavigationAssistantsId =
+type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
   | "workspace_assistants"
@@ -44,7 +44,7 @@ export type SubNavigationAssistantsId =
   | "community"
   | "spaces";
 
-export type SubNavigationAdminId =
+type SubNavigationAdminId =
   | "subscription"
   | "workspace"
   | "members"
@@ -55,14 +55,14 @@ export type SubNavigationAdminId =
   | "actions"
   | "credits_usage";
 
-export type SubNavigationAppId =
+type SubNavigationAppId =
   | "specification"
   | "datasets"
   | "execute"
   | "runs"
   | "settings";
 
-export type AppLayoutNavigation = {
+type AppLayoutNavigation = {
   id:
     | TopNavigationId
     | SubNavigationConversationsId
@@ -82,7 +82,7 @@ export type AppLayoutNavigation = {
   featureFlag?: WhitelistableFeature;
 };
 
-export type TabAppLayoutNavigation = {
+type TabAppLayoutNavigation = {
   id:
     | TopNavigationId
     | SubNavigationConversationsId

@@ -103,7 +103,7 @@ export const WebsearchInputSchema = z.object({
     ),
 });
 
-export type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
+type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
 
 export function isWebsearchInputType(
   input: Record<string, unknown>
@@ -137,7 +137,7 @@ export const WebbrowseInputSchema = z.object({
     }),
 });
 
-export type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
+type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
 
 export function isWebbrowseInputType(
   input: Record<string, unknown>

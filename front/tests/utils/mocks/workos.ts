@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
 // Mock the findWorkOSOrganizationsForUserId function to prevent real WorkOS API calls
-export const mockWorkOSOrganizationMembership = () => {
+const mockWorkOSOrganizationMembership = () => {
   vi.mock(
     "@app/lib/api/workos/organization_membership",
     async (importOriginal) => {

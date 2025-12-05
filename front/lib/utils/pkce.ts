@@ -1,4 +1,4 @@
-export type PCKEConfig = {
+type PCKEConfig = {
   code_verifier: string;
   code_challenge: string;
 };

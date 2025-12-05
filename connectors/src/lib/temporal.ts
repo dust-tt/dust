@@ -100,7 +100,7 @@ export async function getConnectorId(
   return CONNECTOR_ID_CACHE[workflowRunId] || null;
 }
 
-export async function cancelWorkflow(workflowId: string) {
+async function cancelWorkflow(workflowId: string) {
   const client = await getTemporalClient();
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);

@@ -29,7 +29,7 @@ import type { AgentTextContentType } from "@app/types/assistant/agent_message_co
 /**
  * Renders agent message steps into model messages
  */
-export function renderAgentSteps(
+function renderAgentSteps(
   steps: Step[],
   message: AgentMessageType,
   conversation: ConversationType,

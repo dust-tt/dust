@@ -1,16 +1,16 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
-export type Delta = {
+type Delta = {
   delta: string;
 };
 
-export type Text = {
+type Text = {
   text: string;
 };
 
 // Provider response identification event
-export interface ResponseIdEvent {
+interface ResponseIdEvent {
   type: "interaction_id";
   content: { modelInteractionId: string };
   metadata: LLMClientMetadata;
@@ -76,7 +76,7 @@ export interface TokenUsageEvent {
   metadata: LLMClientMetadata;
 }
 
-export interface SuccessCompletionEvent {
+interface SuccessCompletionEvent {
   type: "success";
   aggregated: LLMOutputItem[];
   textGenerated?: TextGeneratedEvent;

@@ -7,7 +7,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { isDevelopment, isTest } from "@app/types";
 
-export type PlanAttributes = Omit<
+type PlanAttributes = Omit<
   Attributes<Plan>,
   "id" | "createdAt" | "updatedAt"
 >;

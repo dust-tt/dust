@@ -19,7 +19,7 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCreateTag, useTagsSuggestions } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 
-export const MAX_TAG_LENGTH = 100;
+const MAX_TAG_LENGTH = 100;
 
 export const TagsSuggestDialog = ({
   owner,

@@ -8,7 +8,7 @@ import type {
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 
-export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
+function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   switch (viewType) {
     case "document":
       return ["folder", "document"];
@@ -24,7 +24,7 @@ export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   }
 }
 
-export function searchScopeForDataSource({
+function searchScopeForDataSource({
   dataSource,
   includeDataSources,
   isSingleDataSource: isSingleDataSource,

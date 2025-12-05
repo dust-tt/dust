@@ -29,9 +29,9 @@ type Metrics = {
 
 export type MessageMetricsPoint = BaseMetricsPoint & Metrics;
 
-export type MetricName = keyof Metrics;
+type MetricName = keyof Metrics;
 
-export type KeyedTDigestPercentiles = Omit<
+type KeyedTDigestPercentiles = Omit<
   estypes.AggregationsTDigestPercentilesAggregate,
   "values"
 > & {

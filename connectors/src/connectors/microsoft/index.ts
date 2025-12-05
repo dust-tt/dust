@@ -634,7 +634,7 @@ export async function getMicrosoftClient(connectionId: string) {
   return client;
 }
 
-export async function retrieveChildrenNodes(
+async function retrieveChildrenNodes(
   microsoftNode: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): Promise<Result<ContentNode[], Error>> {
@@ -749,7 +749,7 @@ function siteMetadataToContentNode(
   });
 }
 
-export function extractTenantIdFromAccessToken(
+function extractTenantIdFromAccessToken(
   accessToken: string | undefined
 ) {
   if (!accessToken) {

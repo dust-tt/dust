@@ -90,7 +90,7 @@ export type PluginArgDefinition =
   | FileArgDefinition
   | DateArgDefinition;
 
-export type StrictPluginArgs = {
+type StrictPluginArgs = {
   [key: string]: PluginArgDefinition;
 };
 

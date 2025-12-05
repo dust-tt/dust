@@ -15,7 +15,7 @@ export type OAuthAPIError = {
   code: string;
 };
 
-export type MigratedCredentialsType = {
+type MigratedCredentialsType = {
   redirect_uri: string;
   access_token_expiry?: number;
   authorization_code?: string;
@@ -24,7 +24,7 @@ export type MigratedCredentialsType = {
   raw_json: unknown;
 };
 
-export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
+function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -35,7 +35,7 @@ export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
   );
 }
 
-export type OAuthAPIResponse<T> = Result<T, OAuthAPIError>;
+type OAuthAPIResponse<T> = Result<T, OAuthAPIError>;
 
 export class OAuthAPI {
   _logger: LoggerInterface;

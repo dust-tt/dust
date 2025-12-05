@@ -6,7 +6,7 @@ import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export interface TeamsUserInfo {
+interface TeamsUserInfo {
   email: string;
   displayName: string;
   userAadObjectId: string;

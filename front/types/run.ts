@@ -29,7 +29,7 @@ export type RunStatus = {
   blocks: BlockStatus[];
 };
 
-export type BlockStatus = {
+type BlockStatus = {
   block_type: BlockType;
   name: string;
   status: Status;

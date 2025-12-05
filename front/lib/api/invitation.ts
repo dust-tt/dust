@@ -31,7 +31,7 @@ import { Err, Ok, sanitizeString } from "@app/types";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
-export async function getInvitation(
+async function getInvitation(
   auth: Authenticator,
   {
     invitationId,
@@ -56,7 +56,7 @@ export async function getInvitation(
   return invitation.toJSON();
 }
 
-export async function updateOrCreateInvitation(
+async function updateOrCreateInvitation(
   auth: Authenticator,
   inviteEmail: string,
   initialRole: ActiveRoleType,
@@ -122,7 +122,7 @@ export function getMembershipInvitationUrl(
   return getMembershipInvitationUrlForToken(owner, invitationToken);
 }
 
-export async function sendWorkspaceInvitationEmail(
+async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
   invitation: MembershipInvitationType
@@ -151,7 +151,7 @@ export async function sendWorkspaceInvitationEmail(
  * @returns MenbershipInvitation[] members of the workspace
  */
 
-export async function batchUnrevokeInvitations(
+async function batchUnrevokeInvitations(
   auth: Authenticator,
   invitationIds: string[],
   transaction?: Transaction

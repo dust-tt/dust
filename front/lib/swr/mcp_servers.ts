@@ -488,7 +488,7 @@ export function useSyncRemoteMCPServer(
 /**
  * Hook to update an MCP server
  */
-export function useUpdateMCPServer(
+function useUpdateMCPServer(
   owner: LightWorkspaceType,
   // Using the view to get the proper name/description
   mcpServerView: MCPServerViewType
@@ -781,7 +781,7 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useUpdateMCPServerToolsSettings({
+function useUpdateMCPServerToolsSettings({
   owner,
   mcpServerView,
 }: {

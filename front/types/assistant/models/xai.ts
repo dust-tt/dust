@@ -76,7 +76,7 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "xai_feature",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
-export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_4_FAST_REASONING_MODEL_ID,
   displayName: "Grok 4 Fast",

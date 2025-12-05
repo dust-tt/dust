@@ -86,7 +86,7 @@ export function redactString(str: string, n: number) {
   return redacted;
 }
 
-export function isRedacted(str: string) {
+function isRedacted(str: string) {
   return str.includes("•");
 }
 

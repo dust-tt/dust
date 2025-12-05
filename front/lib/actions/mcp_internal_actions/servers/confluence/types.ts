@@ -34,7 +34,7 @@ export const ConfluenceCurrentUserSchema = z.object({
 });
 export type ConfluenceCurrentUser = z.infer<typeof ConfluenceCurrentUserSchema>;
 
-export const ConfluenceSearchRequestSchema = z.object({
+const ConfluenceSearchRequestSchema = z.object({
   cql: z.string().describe("CQL query string"),
   cursor: z.string().optional().describe("Pagination cursor for next page"),
   limit: z
@@ -47,11 +47,11 @@ export type ConfluenceSearchRequest = z.infer<
   typeof ConfluenceSearchRequestSchema
 >;
 
-export type ConfluenceListPagesResult = z.infer<
+type ConfluenceListPagesResult = z.infer<
   typeof ConfluenceListPagesResultSchema
 >;
 
-export const ConfluencePageBodySchema = z.object({
+const ConfluencePageBodySchema = z.object({
   storage: z
     .object({
       value: z.string(),
@@ -94,7 +94,7 @@ export const ConfluencePageSchema = z
 export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
 
 // Schema for v1 API search response (used for CQL queries)
-export const ConfluenceV1SearchPageSchema = z
+const ConfluenceV1SearchPageSchema = z
   .object({
     id: z.string(),
     type: z.literal("page"),
@@ -145,7 +145,7 @@ export type ConfluenceV1SearchResult = z.infer<
   typeof ConfluenceV1SearchResultSchema
 >;
 
-export const ConfluenceListPagesResultSchema = z.object({
+const ConfluenceListPagesResultSchema = z.object({
   results: z.array(ConfluencePageSchema),
   _links: z
     .object({
@@ -155,7 +155,7 @@ export const ConfluenceListPagesResultSchema = z.object({
     .optional(),
 });
 
-export const ConfluenceCreatePageRequestSchema = z.object({
+const ConfluenceCreatePageRequestSchema = z.object({
   spaceId: z
     .string()
     .describe("The ID of the space where the page will be created"),
@@ -193,9 +193,9 @@ export const CreatePagePayloadSchema = z.object({
     .optional(),
 });
 
-export type CreatePagePayload = z.infer<typeof CreatePagePayloadSchema>;
+type CreatePagePayload = z.infer<typeof CreatePagePayloadSchema>;
 
-export const ConfluenceUpdatePageRequestSchema = z.object({
+const ConfluenceUpdatePageRequestSchema = z.object({
   id: z.string().describe("The page ID"),
   status: z
     .enum(["current", "trashed", "draft", "archived"])
@@ -223,7 +223,7 @@ export type ConfluenceUpdatePageRequest = z.infer<
   typeof ConfluenceUpdatePageRequestSchema
 >;
 
-export const UpdatePagePayloadSchema = z.object({
+const UpdatePagePayloadSchema = z.object({
   id: z.string(),
   version: z.object({
     number: z.number(),
@@ -256,7 +256,7 @@ export type ConfluenceLinks = {
   tinyui?: string;
 };
 
-export type ConfluenceVersionInfo = {
+type ConfluenceVersionInfo = {
   number?: number;
   message?: string;
   authorId?: string;
@@ -264,11 +264,11 @@ export type ConfluenceVersionInfo = {
   createdBy?: ConfluenceUser;
 };
 
-export type ConfluenceLabel = {
+type ConfluenceLabel = {
   name?: string;
 };
 
-export const ConfluenceSpaceSchema = z
+const ConfluenceSpaceSchema = z
   .object({
     id: z.string(),
     key: z.string(),
@@ -295,7 +295,7 @@ export type ConfluenceListSpacesResult = z.infer<
   typeof ConfluenceListSpacesResultSchema
 >;
 
-export const ConfluenceListSpacesRequestSchema = z.object({
+const ConfluenceListSpacesRequestSchema = z.object({
   limit: z
     .number()
     .optional()
@@ -306,11 +306,11 @@ export const ConfluenceListSpacesRequestSchema = z.object({
     .describe("Pagination cursor from previous response for next page"),
 });
 
-export type ConfluenceListSpacesRequest = z.infer<
+type ConfluenceListSpacesRequest = z.infer<
   typeof ConfluenceListSpacesRequestSchema
 >;
 
-export type ConfluenceAncestor = {
+type ConfluenceAncestor = {
   id: string;
   title?: string;
 };

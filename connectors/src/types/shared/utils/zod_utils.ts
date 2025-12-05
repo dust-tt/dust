@@ -7,7 +7,7 @@ import { fromError } from "zod-validation-error";
  * Creates a zod enum schema from an array of string values.
  * Equivalent to ioTsEnum().
  */
-export function zodEnum<EnumType extends string>(
+function zodEnum<EnumType extends string>(
   enumValues: readonly EnumType[],
   enumName?: string
 ): z.ZodEnum<[EnumType, ...EnumType[]]> {

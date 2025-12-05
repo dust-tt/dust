@@ -4,17 +4,17 @@ import type { PlanType, WorkspaceType } from "@app/types";
 export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";
 export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
 export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
-export const TRIAL_PLAN_CODE = "TRIAL_PLAN_CODE";
+const TRIAL_PLAN_CODE = "TRIAL_PLAN_CODE";
 
 // Current pro plans:
 export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
-export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
+const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
 /**
  * ENT_PLAN_FAKE is not subscribable and is only used to display the Enterprise plan in the UI (hence it's not stored on the db).
  */
-export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
+const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 
 // If the plan code starts with ENT_, it's an entreprise plan
 export const isEntreprisePlanPrefix = (planCode: string) =>
@@ -43,7 +43,7 @@ export function isProPlan(plan?: PlanType) {
   );
 }
 
-export function isBusinessPlan(plan?: PlanType) {
+function isBusinessPlan(plan?: PlanType) {
   return plan?.code === PRO_PLAN_SEAT_39_CODE;
 }
 

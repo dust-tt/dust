@@ -26,10 +26,10 @@ const CONNECTORS_API_ERROR_TYPES = [
   "google_drive_webhook_not_found",
   "connector_operation_in_progress",
 ] as const;
-export type ConnectorsAPIErrorType =
+type ConnectorsAPIErrorType =
   (typeof CONNECTORS_API_ERROR_TYPES)[number];
 
-export type ConnectorsAPIError = {
+type ConnectorsAPIError = {
   type: ConnectorsAPIErrorType;
   message: string;
 };
@@ -45,7 +45,7 @@ export type ConnectorsAPIErrorWithStatusCode = {
 
 export type WithConnectorsAPIErrorReponse<T> = T | ConnectorsAPIErrorResponse;
 
-export function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
+function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -159,4 +159,4 @@ export function isScheduleAlreadyRunning(err: unknown) {
   );
 }
 
-export { errorToString, normalizeError } from "@dust-tt/client";
+export {  normalizeError } from "@dust-tt/client";

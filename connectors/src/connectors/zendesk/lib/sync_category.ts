@@ -20,7 +20,7 @@ import { INTERNAL_MIME_TYPES } from "@connectors/types";
 /**
  * Deletes all the data stored in the db and in the data source relative to a category (articles).
  */
-export async function deleteCategory({
+async function deleteCategory({
   connectorId,
   categoryId,
   brandId,

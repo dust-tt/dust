@@ -1,6 +1,6 @@
 import type { LoggerInterface } from "@dust-tt/client";
 
-export const CUSTOM_TAG_LIMITS = {
+const CUSTOM_TAG_LIMITS = {
   MAX_COUNT: 32,
   MAX_LENGTH: 64,
 } as const;

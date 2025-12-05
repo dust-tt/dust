@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-export const WorkOSJwtPayloadSchema = t.intersection([
+const WorkOSJwtPayloadSchema = t.intersection([
   t.type({
     exp: t.number,
     sub: t.string,

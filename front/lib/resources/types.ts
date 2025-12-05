@@ -10,7 +10,7 @@ import type {
 import type { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export type NonAttributeKeys<M> = {
+type NonAttributeKeys<M> = {
   [K in keyof M]: M[K] extends NonAttribute<infer T>
     ? T extends Array<BaseModel<any>>
       ? K
@@ -45,7 +45,7 @@ type InferIncludeTypeForInclude<M> = {
     : never;
 };
 
-export type TypedIncludeable<M> = {
+type TypedIncludeable<M> = {
   [K in NonAttributeKeys<M>]: {
     model: ModelStatic<InferIncludeTypeForInclude<M>[K]>;
     as: K;

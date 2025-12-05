@@ -83,7 +83,7 @@ export async function launchGithubFullSyncWorkflow({
   });
 }
 
-export async function getGithubFullSyncWorkflow(connectorId: ModelId): Promise<{
+async function getGithubFullSyncWorkflow(connectorId: ModelId): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {
