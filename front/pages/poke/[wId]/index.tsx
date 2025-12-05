@@ -62,7 +62,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
-import { WHITELISTABLE_FEATURES } from "@app/types";
+import { isString, WHITELISTABLE_FEATURES } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
@@ -140,6 +140,21 @@ const WorkspacePage = ({
   workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
+
+  const currentTab = !isString(router.query.tab)
+    ? "datasources"
+    : router.query.tab;
+
+  const handleTabChange = (value: string) => {
+    void router.push(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, tab: value },
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
 
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
@@ -268,7 +283,11 @@ const WorkspacePage = ({
               />
             </div>
           </div>
-          <Tabs defaultValue="datasources" className="min-h-[1024px] w-full">
+          <Tabs
+            value={currentTab}
+            onValueChange={handleTabChange}
+            className="min-h-[1024px] w-full"
+          >
             <TabsList>
               <TabsTrigger value="agents" label="Agents" />
               <TabsTrigger value="apps" label="Apps" />
