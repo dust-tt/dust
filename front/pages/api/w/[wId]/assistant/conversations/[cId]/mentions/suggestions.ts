@@ -40,21 +40,18 @@ async function handler(
 
   const conversationId = req.query.cId;
 
-  if (conversationId) {
-    const conversationRes = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversationRes) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: "Conversation not found",
-        },
-      });
-    }
-    conversation = conversationRes;
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
   }
 
   const { select: selectParam } = req.query;
@@ -82,6 +79,7 @@ async function handler(
   const suggestions = await suggestionsOfMentions(auth, {
     query,
     select,
+    conversation,
   });
 
   return res.status(200).json({ suggestions });
