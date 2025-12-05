@@ -169,21 +169,21 @@ export const Stories: CustomerStory[] = [
     title: "Creating an AI-first culture at Doctolib: the People team's role",
     content:
       "Doctolib's People team laid the foundations for AI transformation, driving 70% weekly usage across 3,000 employees through cultural change.",
-    href: "/blog/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
+    href: "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Doctolib-__-Dust---Part-1.jpg",
   },
   {
     title: "30% time savings in HR: How Alan's People team scaled with Dust",
     content:
       "Alan's HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
-    href: "/blog/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team",
+    href: "/customers/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1--1-.png",
   },
   {
     title: "Clay accelerates team onboarding with Dust AI agents",
     content:
       "Clay uses Dust AI agents to onboard new GTM engineers faster and reduce bottlenecks, achieving 100% adoption and saving 58 hours monthly across their growing team",
-    href: "/blog/clay-scaling-gtme-team",
+    href: "/customers/clay-scaling-gtme-team",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
 ];

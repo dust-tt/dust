@@ -17,10 +17,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 const HeroContent = () => {
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
-      <H1
-        mono
-        className="text-center text-5xl font-medium md:text-6xl lg:text-7xl"
-      >
+      <H1 className="text-center text-5xl font-medium md:text-6xl lg:text-7xl">
         The operating system
         <br />
         for{" "}
@@ -45,7 +42,7 @@ const HeroContent = () => {
         and tools.
       </P>
       {/* Email input */}
-      <div className="mt-12 flex w-full max-w-xl items-center gap-2 rounded-full bg-white py-1.5 pl-6 pr-1.5 shadow-md">
+      <div className="mt-12 flex w-full max-w-xl items-center gap-2 rounded-full bg-white py-1.5 pl-6 pr-1.5 shadow-sm">
         <input
           type="email"
           placeholder="What's your work email?"
@@ -57,7 +54,7 @@ const HeroContent = () => {
       </div>
 
       {/* Ask anything textarea */}
-      <div className="mt-10 flex w-full max-w-3xl flex-col rounded-3xl bg-white p-3 shadow-md">
+      <div className="mt-10 flex w-full max-w-3xl flex-col rounded-3xl bg-white p-3 shadow-sm">
         <textarea
           placeholder="Ask anything"
           rows={3}

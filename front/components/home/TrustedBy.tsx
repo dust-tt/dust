@@ -190,13 +190,9 @@ type RegionKey = "us" | "eu";
 interface TrustedByProps {
   logoSet?: LogoSetKey;
   region?: RegionKey;
-  title?: string;
 }
 
-export default function TrustedBy({
-  logoSet = "default",
-  title = "Trusted by 1,000+ organizations",
-}: TrustedByProps) {
+export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
   const { geoData } = useGeolocation();
   const [region, setRegion] = useState<"us" | "eu">("us");
 
@@ -217,7 +213,7 @@ export default function TrustedBy({
       )}
     >
       <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
-        {title}
+        Trusted by <span className="text-blue-500">1,000+</span> organizations
       </H4>
 
       <div className="w-full">
@@ -253,6 +249,12 @@ export default function TrustedBy({
           })}
         </div>
       </div>
+      <a
+        href="/api/workos/login?screenHint=sign-up"
+        className="mt-8 rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+      >
+        Join them
+      </a>
     </div>
   );
 }
