@@ -55,6 +55,7 @@ export { default as SalesforceLogo } from "./Salesforce";
 export { default as SlackLogo } from "./Slack";
 export { default as SnowflakeLogo } from "./Snowflake";
 export { default as StripeLogo } from "./Stripe";
+export { default as SupabaseLogo } from "./Supabase";
 export { default as TogetheraiLogo } from "./Togetherai";
 export { default as ValTownLogo } from "./ValTown";
 export { default as ZapierLogo } from "./Zapier";
