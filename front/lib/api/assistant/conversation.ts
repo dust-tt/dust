@@ -80,6 +80,8 @@ import {
   removeNulls,
 } from "@app/types";
 
+import { isProgrammaticUsage } from "../programmatic_usage_tracking";
+
 /**
  * Conversation Creation, update and deletion
  */
@@ -414,10 +416,11 @@ export async function postUserMessage(
   }
 
   // Check plan and rate limit.
-  const messageLimit = await isMessagesLimitReached({
+  const messageLimit = await isMessagesLimitReached(auth, {
     owner,
     plan,
     mentions,
+    context,
   });
   if (messageLimit.isLimitReached && messageLimit.limitType) {
     return new Err({
@@ -1216,15 +1219,33 @@ export interface MessageLimit {
   limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
 }
 
-async function isMessagesLimitReached({
-  owner,
-  plan,
-  mentions,
-}: {
-  owner: WorkspaceType;
-  plan: PlanType;
-  mentions: MentionType[];
-}): Promise<MessageLimit> {
+async function isMessagesLimitReached(
+  auth: Authenticator,
+  {
+    owner,
+    plan,
+    mentions,
+    context,
+  }: {
+    owner: WorkspaceType;
+    plan: PlanType;
+    mentions: MentionType[];
+    context: UserMessageContext;
+  }
+): Promise<MessageLimit> {
+  const featureFlags = await getFeatureFlags(owner);
+  // Programmatic Usage is tracked and billed separately
+  // we don't want to count it towards fair usage
+  if (
+    featureFlags.includes("ppul") &&
+    isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
+    return {
+      isLimitReached: true,
+      limitType: null,
+    };
+  }
+
   // Checking rate limit
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
