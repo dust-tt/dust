@@ -23,6 +23,7 @@ import type {
 import {
   hasHumansInteracting,
   isHiddenMessage,
+  isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
@@ -39,13 +40,10 @@ export const AgentInputBar = ({
 }: {
   context: VirtuosoMessageListContext;
 }) => {
+  const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const generationContext = useContext(GenerationContext);
-  const {
-    hasBlockedActions,
-    hasPendingValidations,
-    totalBlockedActions,
-    showBlockedActionsDialog,
-  } = useBlockedActionsContext();
+  const { getBlockedActions, hasPendingValidations } =
+    useBlockedActionsContext();
 
   if (!generationContext) {
     throw new Error(
@@ -102,6 +100,8 @@ export const AgentInputBar = ({
   const showStopButton = generationContext.generatingMessages.some(
     (m) => m.conversationId === context.conversationId
   );
+
+  const blockedActions = getBlockedActions(context.user.sId);
 
   const scrollToBottom = useCallback(() => {
     methods.scrollToItem({
@@ -193,25 +193,43 @@ export const AgentInputBar = ({
           />
         )}
       </div>
-      {hasBlockedActions && (
+      {blockedActions.length > 0 && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
           className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
         >
           <span className="font-bold">
-            {totalBlockedActions} action
-            {pluralize(totalBlockedActions)}
+            {blockedActions.length} action
+            {pluralize(blockedActions.length)}
           </span>{" "}
-          require{conjugate(totalBlockedActions)} a manual action
-          {/* If there are pending validations, we show a button allowing to open the dialog
-              from where they can be approved/denied */}
-          {hasPendingValidations && (
+          require{conjugate(blockedActions.length)} a manual action
+          {/* If there are pending validations, we show a button allowing to cycle through the blocked actions messages. */}
+          {hasPendingValidations(context.user.sId) && (
             <ContentMessageAction
               label="Review actions"
               variant="outline"
               size="xs"
-              onClick={() => showBlockedActionsDialog()}
+              onClick={() => {
+                const blockedActionTargetMessageId =
+                  blockedActions[blockedActionIndex].messageId;
+
+                const blockedActionMessageIndex = methods.data.findIndex(
+                  (m) =>
+                    isMessageTemporayState(m) &&
+                    blockedActionTargetMessageId === m.message.sId
+                );
+
+                methods.scrollToItem({
+                  index: blockedActionMessageIndex,
+                  behavior: "smooth",
+                  align: "end",
+                });
+
+                setBlockedActionIndex((prevIndex) =>
+                  blockedActions.length > prevIndex + 1 ? prevIndex + 1 : 0
+                );
+              }}
             />
           )}
         </ContentMessageInline>
@@ -225,7 +243,6 @@ export const AgentInputBar = ({
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
-        disable={hasBlockedActions}
       />
     </div>
   );
