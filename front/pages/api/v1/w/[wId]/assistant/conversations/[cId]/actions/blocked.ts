@@ -62,6 +62,4 @@ async function handler(
   res.status(200).json({ blockedActions });
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

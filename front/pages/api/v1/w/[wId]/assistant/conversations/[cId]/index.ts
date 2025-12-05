@@ -183,6 +183,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation", PATCH: "update:conversation" },
-});
+export default withPublicAPIAuthentication(handler);
