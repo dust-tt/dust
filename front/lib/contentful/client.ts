@@ -444,6 +444,7 @@ const CustomerStoryFiltersSchema = z.object({
   industry: z.array(z.string()).optional(),
   department: z.array(z.string()).optional(),
   companySize: z.array(z.string()).optional(),
+  region: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
 });
 
@@ -487,6 +488,9 @@ function buildCustomerStoryQuery(
       if (parsed.companySize && parsed.companySize.length > 0) {
         query["fields.companySize[in]"] = parsed.companySize.join(",");
       }
+      if (parsed.region && parsed.region.length > 0) {
+        query["fields.region[in]"] = parsed.region.join(",");
+      }
       if (parsed.featured !== undefined) {
         query["fields.featured"] = parsed.featured;
       }
@@ -510,6 +514,7 @@ const CustomerStoryFieldsSchema = z.object({
   contactTitle: z.string().nullable().optional(),
   headlineMetric: z.string().nullable().optional(),
   companySize: z.string().nullable().optional(),
+  region: z.array(z.string()).default([]),
   featured: z.boolean().default(false),
 });
 
@@ -555,6 +560,7 @@ function contentfulEntryToCustomerStory(
     industry: parsed.industry,
     department: parsed.department,
     companySize: parsed.companySize ?? null,
+    region: parsed.region ?? [],
     description: parsed.metaDescription ?? generateDescription(body),
     body,
     heroImage: contentfulAssetToBlogImage(heroImage, parsed.title),
@@ -582,6 +588,7 @@ function contentfulEntryToCustomerStorySummary(
     industry: story.industry,
     department: story.department,
     companySize: story.companySize,
+    region: story.region,
     featured: story.featured,
     createdAt: story.createdAt,
   };

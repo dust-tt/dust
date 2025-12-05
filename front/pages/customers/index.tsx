@@ -39,6 +39,7 @@ function extractFilterOptions(
   const industries = new Set<string>();
   const departments = new Set<string>();
   const companySizes = new Set<string>();
+  const regions = new Set<string>();
 
   for (const story of stories) {
     if (story.industry) {
@@ -50,12 +51,16 @@ function extractFilterOptions(
     if (story.companySize) {
       companySizes.add(story.companySize);
     }
+    for (const region of story.region) {
+      regions.add(region);
+    }
   }
 
   return {
     industries: [...industries].sort(),
     departments: [...departments].sort(),
     companySizes: sortCompanySizes([...companySizes]),
+    regions: [...regions].sort(),
   };
 }
 
@@ -72,7 +77,12 @@ export const getStaticProps: GetStaticProps<
     return {
       props: {
         stories: [],
-        filterOptions: { industries: [], departments: [], companySizes: [] },
+        filterOptions: {
+          industries: [],
+          departments: [],
+          companySizes: [],
+          regions: [],
+        },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
       revalidate: CONTENTFUL_REVALIDATE_SECONDS,
@@ -193,10 +203,23 @@ export default function CustomerStoriesListing({
     return Array.isArray(param) ? param : [param];
   }, [router.query.size]);
 
+  const selectedRegions = useMemo(() => {
+    const param = router.query.region;
+    if (!param) {
+      return [];
+    }
+    return Array.isArray(param) ? param : [param];
+  }, [router.query.region]);
+
   // Scroll to top when filters change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [selectedIndustries, selectedDepartments, selectedCompanySizes]);
+  }, [
+    selectedIndustries,
+    selectedDepartments,
+    selectedCompanySizes,
+    selectedRegions,
+  ]);
 
   // Update URL with new filters
   const updateFilters = useCallback(
@@ -240,14 +263,27 @@ export default function CustomerStoriesListing({
       ) {
         return false;
       }
+      if (
+        selectedRegions.length > 0 &&
+        !story.region.some((r) => selectedRegions.includes(r))
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [stories, selectedIndustries, selectedDepartments, selectedCompanySizes]);
+  }, [
+    stories,
+    selectedIndustries,
+    selectedDepartments,
+    selectedCompanySizes,
+    selectedRegions,
+  ]);
 
   const hasActiveFilters =
     selectedIndustries.length > 0 ||
     selectedDepartments.length > 0 ||
-    selectedCompanySizes.length > 0;
+    selectedCompanySizes.length > 0 ||
+    selectedRegions.length > 0;
 
   const clearAllFilters = useCallback(() => {
     void router.push({ pathname: router.pathname }, undefined, {
@@ -312,6 +348,13 @@ export default function CustomerStoriesListing({
                 options={filterOptions.departments}
                 selected={selectedDepartments}
                 onChange={(values) => updateFilters("department", values)}
+              />
+
+              <FilterSection
+                title="Region"
+                options={filterOptions.regions}
+                selected={selectedRegions}
+                onChange={(values) => updateFilters("region", values)}
               />
 
               <FilterSection
