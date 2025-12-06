@@ -70,7 +70,7 @@ function createServer(
         const agents = res.value;
         const formattedAgents = agents
           .map((agent) => {
-            let result = `\n\n## ${agent.name}\n`;
+            let result = `## ${agent.name}\n`;
             result += `\n**Mention:** ${serializeMention(agent)}`;
             result += `\n**Description:** ${agent.description}`;
             return result;
@@ -80,7 +80,7 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text: `# Published Agents${formattedAgents}`,
+            text: `# Published Agents\n\n${formattedAgents}`,
           },
         ]);
       }
@@ -155,7 +155,7 @@ function createServer(
                   " (truncated)"
                 : instructions;
 
-            let result = `\n\n## ${agent.name}\n`;
+            let result = `## ${agent.name}\n`;
             result += `\n**Mention:** ${serializeMention(agent)}`;
             result += `\n**Description:** ${agent.description}`;
             result += `\n**Instructions:** ${truncatedInstructions}`;
@@ -166,7 +166,7 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text: `# Suggested Agents${formattedSuggestedAgents}`,
+            text: `# Suggested Agents\n\n${formattedSuggestedAgents}`,
           },
         ]);
       }
