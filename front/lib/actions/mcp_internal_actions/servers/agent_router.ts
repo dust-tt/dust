@@ -70,12 +70,12 @@ function createServer(
         const agents = res.value;
         const formattedAgents = agents
           .map((agent) => {
-            let result = `## ${agent.name}\n`;
-            result += `\n**Mention:** ${serializeMention(agent)}`;
-            result += `\n**Description:** ${agent.description}`;
+            let result = `## ${agent.name}\n\n`;
+            result += `**Mention:** ${serializeMention(agent)}\n\n`;
+            result += `**Description:** ${agent.description}\n`;
             return result;
           })
-          .join("\n\n");
+          .join("\n");
 
         return new Ok([
           {
@@ -155,13 +155,13 @@ function createServer(
                   " (truncated)"
                 : instructions;
 
-            let result = `## ${agent.name}\n`;
-            result += `\n**Mention:** ${serializeMention(agent)}`;
-            result += `\n**Description:** ${agent.description}`;
-            result += `\n**Instructions:** ${truncatedInstructions}`;
+            let result = `## ${agent.name}\n\n`;
+            result += `**Mention:** ${serializeMention(agent)}\n\n`;
+            result += `**Description:** ${agent.description}\n\n`;
+            result += `**Instructions:** ${truncatedInstructions.trim()}\n`;
             return result;
           })
-          .join("\n\n");
+          .join("\n");
 
         return new Ok([
           {
