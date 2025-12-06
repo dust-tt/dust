@@ -132,6 +132,19 @@
  *             - github-copilot-chat
  *             - extension
  *             - email
+ *         agenticMessageData:
+ *           type: object
+ *           properties:
+ *             type:
+ *               type: string
+ *               enum:
+ *                 - run_agent
+ *                 - agent_handover
+ *               description: Type of the agentic message
+ *             originMessageId:
+ *               type: string
+ *               description: ID of the origin message
+ *               example: "2b8e4f6a0c"
  *     AgentConfiguration:
  *       type: object
  *       properties:

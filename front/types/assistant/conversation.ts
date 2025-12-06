@@ -70,8 +70,6 @@ export type LightMessageType =
  *
  */
 export type UserMessageOrigin =
-  // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
-  | "agent_handover" // soon to be removed (not a fitting origin).
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
   // below are API usages dedicated to standard product features.
   | "api"
@@ -84,7 +82,6 @@ export type UserMessageOrigin =
   | "n8n"
   | "powerpoint"
   | "raycast"
-  | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
   | "slack_workflow"
   | "teams"
@@ -103,7 +100,6 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
-  originMessageId?: string | null;
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
