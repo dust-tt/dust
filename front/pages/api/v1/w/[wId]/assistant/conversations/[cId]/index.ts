@@ -132,16 +132,6 @@ async function handler(
 
   const conversation = conversationRes.value;
 
-  // TODO(2025-11-26 PPUL): Remove this once extension is fully migrated.
-  // This is returning run_agent/agent_handover as origins in the context, as expected by the old SDKs.
-  conversation.content.flat().forEach((content) => {
-    if (isUserMessageType(content) && content.agenticMessageData) {
-      content.context.origin = content.agenticMessageData.type;
-      content.context.originMessageId =
-        content.agenticMessageData.originMessageId;
-    }
-  });
-
   switch (req.method) {
     case "GET": {
       return res.status(200).json({

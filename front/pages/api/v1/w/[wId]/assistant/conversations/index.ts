@@ -230,21 +230,6 @@ async function handler(
             },
           });
         }
-
-        if (
-          message.context.origin === "agent_handover" ||
-          message.context.origin === "run_agent" ||
-          message.context.originMessageId
-        ) {
-          logger.error(
-            {
-              panic: true,
-              origin: message.context.origin,
-              originMessageId: message.context.originMessageId,
-            },
-            "use agenticMessageData instead of origin."
-          );
-        }
       }
 
       if (depth && depth >= MAX_CONVERSATION_DEPTH) {

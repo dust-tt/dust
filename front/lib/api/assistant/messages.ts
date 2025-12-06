@@ -505,16 +505,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       let parentAgentMessage: MessageModel | null = null;
 
-      // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
-      if (
-        userMessage.userContextOrigin === "agent_handover" &&
-        userMessage.userContextOriginMessageId
-      ) {
-        parentAgentMessage =
-          messagesBySId.get(userMessage.userContextOriginMessageId) ?? null;
-      }
-      // END TODO
-
       if (
         userMessage.agenticMessageType === "agent_handover" &&
         userMessage.agenticOriginMessageId
