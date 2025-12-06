@@ -68,22 +68,19 @@ function createServer(
         }
 
         const agents = res.value;
-        const formattedAgents = agents.map((agent) => {
-          return {
-            name: agent.name,
-            mention: serializeMention(agent),
-            description: agent.description,
-          };
-        });
+        const formattedAgents = agents
+          .map((agent) => {
+            let result = `\n\n## ${agent.name}\n`;
+            result += `\n**Mention:** ${serializeMention(agent)}`;
+            result += `\n**Description:** ${agent.description}`;
+            return result;
+          })
+          .join("\n\n");
 
         return new Ok([
           {
             type: "text",
-            text: "List of published agents successfully fetched",
-          },
-          {
-            type: "text",
-            text: JSON.stringify(formattedAgents),
+            text: `# Published Agents${formattedAgents}`,
           },
         ]);
       }
@@ -147,8 +144,7 @@ function createServer(
           );
         }
 
-        const suggestedAgents = suggestedAgentsRes.value;
-        const formattedSuggestedAgents = suggestedAgents
+        const formattedSuggestedAgents = suggestedAgentsRes.value
           .filter((agent) => agent.sId !== "dust")
           .map((agent) => {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -159,21 +155,18 @@ function createServer(
                   " (truncated)"
                 : instructions;
 
-            return {
-              mention: serializeMention(agent),
-              description: agent.description,
-              instructions: truncatedInstructions,
-            };
-          });
+            let result = `\n\n## ${agent.name}\n`;
+            result += `\n**Mention:** ${serializeMention(agent)}`;
+            result += `\n**Description:** ${agent.description}`;
+            result += `\n**Instructions:** ${truncatedInstructions}`;
+            return result;
+          })
+          .join("\n\n");
 
         return new Ok([
           {
             type: "text",
-            text: "Suggested agents successfully fetched",
-          },
-          {
-            type: "text",
-            text: JSON.stringify(formattedSuggestedAgents),
+            text: `# Suggested Agents${formattedSuggestedAgents}`,
           },
         ]);
       }
