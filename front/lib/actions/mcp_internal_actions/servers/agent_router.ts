@@ -29,7 +29,9 @@ function createServer(
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,
-    "Returns a complete list of all published agents in the workspace.",
+    "Returns a complete list of all published agents in the workspace. " +
+      "Each agent includes its name, description, and mention directive " +
+      "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
     {},
     withToolLogging(
       auth,
@@ -92,7 +94,9 @@ function createServer(
     SUGGEST_AGENTS_TOOL_NAME,
     "Analyzes a user query and returns relevant specialized agents that might be better " +
       "suited to handling specific requests. The tool uses semantic matching to find agents " +
-      "whose capabilities align with the query content.",
+      "whose capabilities align with the query content. Each suggested agent includes its " +
+      "mention directive (e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link, " +
+      "along with its description and instructions.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
