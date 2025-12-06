@@ -270,16 +270,14 @@ function UpdateConnectionOAuthModal({
 
   const { connectorProvider, editedByUser } = dataSource;
 
+  // TODO(slackstorm): Remove this slack specific code when all legacy connectors have been migrated
   const isSlack = connectorProvider === "slack";
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
     dataSource,
     owner,
     disabled: !isSlack,
   });
-
   const { isLegacySlackApp } = useSlackIsLegacy({
     workspaceId: owner.sId,
     credentialId: slackCredentialId,
@@ -339,6 +337,28 @@ function UpdateConnectionOAuthModal({
               )}
             </div>
           )}
+          {isLegacySlackApp && (
+            <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
+              <div className="flex items-center gap-2 font-medium text-info-800">
+                <Icon visual={InformationCircleIcon} />
+                Migration required
+              </div>
+              <div className="copy-sm p-4 text-info-900">
+                You are using a legacy way to connect your Slack workspace.
+                Starting December 2025, all Slack connections require customers
+                to create their own Slack app. This change ensures optimal
+                performance and reliable real-time syncing. Please{" "}
+                <a
+                  href="https://docs.dust.tt/docs/slack-connection/"
+                  target="_blank"
+                  className="text-highlight-600"
+                >
+                  read the doc
+                </a>{" "}
+                to learn more and see how to migrate.
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
@@ -389,24 +409,16 @@ function UpdateConnectionOAuthModal({
                   .
                 </div>
               )}
-              {
-                isLegacySlackApp && "" // TODO(slackstorm) fabien: add message about legacy slack app
-              }
             </ContentMessage>
           </div>
         )}
-        {connectorUIConfiguration.oauthExtraConfigComponent &&
-          // TODO(slackstorm) fabien: remove flag and rely on isLegacySlackApp
-          !(
-            isSlack &&
-            !featureFlags.includes("self_created_slack_app_connector_rollout")
-          ) && (
-            <connectorUIConfiguration.oauthExtraConfigComponent
-              extraConfig={extraConfig}
-              setExtraConfig={setExtraConfig}
-              setIsExtraConfigValid={setIsExtraConfigValid}
-            />
-          )}
+        {connectorUIConfiguration.oauthExtraConfigComponent && (
+          <connectorUIConfiguration.oauthExtraConfigComponent
+            extraConfig={extraConfig}
+            setExtraConfig={setExtraConfig}
+            setIsExtraConfigValid={setIsExtraConfigValid}
+          />
+        )}
 
         <div className="flex items-center justify-center">
           <Dialog>
