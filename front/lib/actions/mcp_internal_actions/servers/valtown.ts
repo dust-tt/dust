@@ -8,7 +8,7 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

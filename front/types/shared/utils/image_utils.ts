@@ -1,4 +1,4 @@
-import { trustedFetch } from "@app/lib/egress";
+import { trustedFetch } from "@app/lib/egress/server";
 
 export interface Base64EncodedImageContent {
   mediaType: string;

@@ -38,7 +38,7 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getUntrustedEgressAgent } from "@app/lib/egress";
+import { getUntrustedEgressAgent } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
