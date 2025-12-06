@@ -88,12 +88,7 @@ export const useFileSystemServer = async (
     },
     "fs-cli",
     false,
-    365 * 24 * 60 * 60 * 1000
-    // TODO: This is kind of a hack that is ok for now,
-    // the reason we need this is because we have yaffle's event source polyfill,
-    // which doesnt allow us to turn off timeouts, so we would need to continuously
-    // send keep alive messages from server, but there is currently an
-    // optimization to stop those messages from sever when mcp tools are not being used.
+    3 * 60 * 1000 // 3 minutes
   );
 
   try {
