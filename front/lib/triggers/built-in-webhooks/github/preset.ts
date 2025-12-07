@@ -8,9 +8,18 @@ import {
   pullRequestExample,
   pullRequestSchema,
 } from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request";
-import { prReviewSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request_review";
-import { pushSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/push";
-import { releaseSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/release";
+import {
+  prReviewExample,
+  prReviewSchema,
+} from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request_review";
+import {
+  pushExample,
+  pushSchema,
+} from "@app/lib/triggers/built-in-webhooks/github/schemas/push";
+import {
+  releaseExample,
+  releaseSchema,
+} from "@app/lib/triggers/built-in-webhooks/github/schemas/release";
 import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/service";
 import type {
   PresetWebhook,
@@ -41,7 +50,7 @@ const GITHUB_PULL_REQUEST_REVIEW_EVENT: WebhookEvent = {
   description:
     "Activity related to a pull request review. The type of activity is specified in the `action` property of the payload object.",
   schema: prReviewSchema,
-  sample: null,
+  sample: prReviewExample,
 };
 
 const GITHUB_PUSH_EVENT: WebhookEvent = {
@@ -49,7 +58,7 @@ const GITHUB_PUSH_EVENT: WebhookEvent = {
   value: "push",
   description: "Activity related to code pushes.",
   schema: pushSchema,
-  sample: null,
+  sample: pushExample,
 };
 
 const GITHUB_RELEASE_EVENT: WebhookEvent = {
@@ -58,7 +67,7 @@ const GITHUB_RELEASE_EVENT: WebhookEvent = {
   description:
     "Activity related to a release. The type of activity is specified in the `action` property of the payload object.",
   schema: releaseSchema,
-  sample: null,
+  sample: releaseExample,
 };
 
 export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {

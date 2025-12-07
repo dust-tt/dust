@@ -421,3 +421,66 @@ export const prReviewSchema: JSONSchema = {
   },
   required: ["action", "review", "pull_request", "repository", "sender"],
 };
+
+export const prReviewExample = {
+  action: "submitted",
+  review: {
+    id: 1234567890,
+    user: {
+      login: "reviewer",
+      id: 9876543,
+      type: "User",
+      site_admin: false,
+    },
+    body: "Looks good! Just a few minor suggestions.",
+    state: "approved",
+    submitted_at: "2023-01-20T14:30:00Z",
+    commit_id: "07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+  },
+  pull_request: {
+    id: 1211243938,
+    number: 15,
+    state: "open",
+    locked: false,
+    title: "Add new feature",
+    user: {
+      login: "octocat",
+      id: 1234567,
+      type: "User",
+      site_admin: false,
+    },
+    body: "This PR adds a new feature to improve performance",
+    created_at: "2023-01-20T09:03:04Z",
+    updated_at: "2023-01-20T14:30:00Z",
+    closed_at: null,
+    merged_at: null,
+    draft: false,
+    head: {
+      label: "example_org:feature-branch",
+      ref: "feature-branch",
+      sha: "07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+    },
+    base: {
+      label: "example_org:main",
+      ref: "main",
+      sha: "caf87bf0162986f2874ec1b668f1d576b9f99e76",
+    },
+  },
+  repository: {
+    id: 553972582,
+    name: "example_repo",
+    full_name: "example_org/example_repo",
+    private: false,
+    owner: {
+      login: "example_org",
+      id: 2345678,
+    },
+    description: "Example repository",
+  },
+  sender: {
+    login: "reviewer",
+    id: 9876543,
+    type: "User",
+    site_admin: false,
+  },
+};

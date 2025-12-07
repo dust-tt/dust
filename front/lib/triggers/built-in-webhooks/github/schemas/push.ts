@@ -443,3 +443,81 @@ export const pushSchema: JSONSchema = {
     "sender",
   ],
 };
+
+export const pushExample = {
+  ref: "refs/heads/main",
+  before: "caf87bf0162986f2874ec1b668f1d576b9f99e76",
+  after: "07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+  created: false,
+  deleted: false,
+  forced: false,
+  base_ref: null,
+  compare:
+    "https://github.com/example_org/example_repo/compare/caf87bf01629...07a6048532c7",
+  commits: [
+    {
+      id: "07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+      tree_id: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
+      distinct: true,
+      message: "Fix bug in authentication flow",
+      timestamp: "2023-01-20T15:00:00Z",
+      url: "https://api.github.com/repos/example_org/example_repo/commits/07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+      author: {
+        name: "Octocat",
+        email: "octocat@github.com",
+        username: "octocat",
+      },
+      committer: {
+        name: "Octocat",
+        email: "octocat@github.com",
+        username: "octocat",
+      },
+      added: [],
+      modified: ["src/auth.ts"],
+      removed: [],
+    },
+  ],
+  head_commit: {
+    id: "07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+    tree_id: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
+    distinct: true,
+    message: "Fix bug in authentication flow",
+    timestamp: "2023-01-20T15:00:00Z",
+    url: "https://api.github.com/repos/example_org/example_repo/commits/07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+    author: {
+      name: "Octocat",
+      email: "octocat@github.com",
+      username: "octocat",
+    },
+    committer: {
+      name: "Octocat",
+      email: "octocat@github.com",
+      username: "octocat",
+    },
+    added: [],
+    modified: ["src/auth.ts"],
+    removed: [],
+  },
+  repository: {
+    id: 553972582,
+    name: "example_repo",
+    full_name: "example_org/example_repo",
+    private: false,
+    owner: {
+      login: "example_org",
+      id: 2345678,
+    },
+    description: "Example repository",
+    default_branch: "main",
+  },
+  pusher: {
+    name: "octocat",
+    email: "octocat@github.com",
+  },
+  sender: {
+    login: "octocat",
+    id: 1234567,
+    type: "User",
+    site_admin: false,
+  },
+};
