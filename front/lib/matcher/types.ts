@@ -3,6 +3,7 @@
 const Operations = [
   "eq",
   "starts-with",
+  "contains",
   "has",
   "has-all",
   "has-any",
@@ -19,6 +20,7 @@ export type LogicalOp = (typeof LogicalOps)[number];
 
 export const OperationDisplayNames: Record<Operation | LogicalOp, string> = {
   "starts-with": "starts with",
+  contains: "contains",
   has: "has",
   "has-all": "has all",
   "has-any": "has any",
@@ -70,6 +72,7 @@ export function isDyadicOperation(op: Operation | LogicalOp): boolean {
   return (
     op === "eq" ||
     op === "starts-with" ||
+    op === "contains" ||
     op === "has" ||
     op === "gt" ||
     op === "gte" ||
