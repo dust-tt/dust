@@ -215,16 +215,32 @@ export class GongClient {
           )
         );
 
+        // Gong docs says the Retry-After header is in seconds, our findings show it is actually
+        // in milliseconds.
+        const retryAfterMs = response.headers.get("Retry-After")
+          ? parseInt(response.headers.get("Retry-After")!, 10)
+          : undefined;
+
         logger.info(
           {
             connectorId: this.connectorId,
             endpoint,
             headers,
-            retryAfter: response.headers.get("Retry-After"),
             provider: "gong",
+            retryAfterMs,
           },
           "Rate limit hit on Gong API."
         );
+
+        // Don't attempt to parse the body in JSON.
+        const body = await response.text();
+
+        throw GongAPIError.fromAPIError(response, {
+          body,
+          connectorId: this.connectorId,
+          endpoint,
+          retryAfterMs,
+        });
       }
 
       if (response.status === 404) {

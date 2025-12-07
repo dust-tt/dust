@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   RoleType,
   UserTypeWithWorkspaces,
@@ -47,7 +48,7 @@ export function MembersDataTable({
     }
 
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
+      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +77,7 @@ export function MembersDataTable({
     }
 
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/roles`, {
+      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/roles`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

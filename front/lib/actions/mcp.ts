@@ -151,8 +151,9 @@ export type ToolExecution = {
   };
 };
 
-export type BlockedToolExecution = ToolExecution &
-  (
+export type BlockedToolExecution = ToolExecution & {
+  userId: string;
+} & (
     | {
         status: "blocked_validation_required";
         authorizationInfo: AuthorizationInfo | null;
@@ -176,6 +177,7 @@ export type BlockedToolExecution = ToolExecution &
 // TODO(durable-agents): cleanup the types of the events.
 export type MCPApproveExecutionEvent = ToolExecution & {
   type: "tool_approve_execution";
+  userId: string;
   created: number;
   configurationId: string;
   isLastBlockingEventForStep?: boolean;

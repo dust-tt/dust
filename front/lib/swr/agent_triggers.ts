@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
   emptyArray,
@@ -202,7 +203,7 @@ export function useAddTriggerSubscriber({
   const addSubscriber = useCallback(
     async (triggerId: string): Promise<boolean> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "POST",
@@ -272,7 +273,7 @@ export function useRemoveTriggerSubscriber({
         triggerAgentConfigurationId || agentConfigurationId;
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/agent_configurations/${targetAgentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "DELETE",

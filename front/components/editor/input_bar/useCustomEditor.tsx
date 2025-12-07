@@ -72,7 +72,15 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(" ") // Add an extra space after the mention.
           .run();
       },
-
+      setContent: (content: string) => {
+        editor
+          ?.chain()
+          .setContent(content, {
+            contentType: "markdown",
+          })
+          .focus()
+          .run();
+      },
       resetWithMentions: (
         mentions: RichMention[],
         disableAutoFocus: boolean

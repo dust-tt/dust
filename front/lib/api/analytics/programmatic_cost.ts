@@ -82,12 +82,12 @@ type GroupBucket = {
   key: string;
   doc_count: number;
   total_cost?: estypes.AggregationsSumAggregate;
-  by_day?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
+  by_hour?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
 };
 
 type GroupedAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
-  by_day?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
+  by_hour?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
 };
 
 /**
@@ -171,13 +171,17 @@ function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
-function getDatesInRange(startOfMonth: Date, endDate: Date): number[] {
-  const dates = [];
+function getTimestampsInRange(startOfMonth: Date, endDate: Date): number[] {
+  const timestamps = [];
   const current = new Date(startOfMonth);
-  for (let date = current; date < endDate; date.setDate(date.getDate() + 1)) {
-    dates.push(date.getTime());
+  for (
+    let timestamp = current;
+    timestamp < endDate;
+    timestamp.setUTCHours(timestamp.getUTCHours() + 4)
+  ) {
+    timestamps.push(timestamp.getTime());
   }
-  return dates;
+  return timestamps;
 }
 
 function getSelectedFilterClauses(
@@ -222,10 +226,11 @@ function buildAggregation(
         ...(includeDailyBreakdown
           ? {
               // Daily breakdown
-              by_day: {
+              by_hour: {
                 date_histogram: {
                   field: "timestamp",
-                  calendar_interval: "day",
+                  fixed_interval: "4h",
+                  time_zone: "UTC",
                 },
                 aggs: buildMetricAggregates(["costMicroUsd"]),
               },
@@ -280,7 +285,13 @@ export async function handleProgrammaticCostRequest(
       const { cycleStart: periodStart, cycleEnd: periodEnd } =
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      const timestamps = getDatesInRange(periodStart, periodEnd);
+      // Cap periodEnd to 5 days in the future to avoid empty chart areas.
+      const FIVE_DAYS_IN_MS = 5 * 24 * 60 * 60 * 1000;
+      const cappedPeriodEnd = new Date(
+        Math.min(periodEnd.getTime(), Date.now() + FIVE_DAYS_IN_MS)
+      );
+
+      const timestamps = getTimestampsInRange(periodStart, cappedPeriodEnd);
 
       // Fetch all credits for the workspace (including free credits and fully consumed ones)
       // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
@@ -322,10 +333,11 @@ export async function handleProgrammaticCostRequest(
           total_cost: {
             sum: { field: "tokens.cost_micro_usd" },
           },
-          by_day: {
+          by_hour: {
             date_histogram: {
               field: "timestamp",
-              calendar_interval: "day",
+              fixed_interval: "4h",
+              time_zone: "UTC",
             },
             aggs: buildMetricAggregates(["costMicroUsd"]),
           },
@@ -346,7 +358,7 @@ export async function handleProgrammaticCostRequest(
       }
 
       const totalBuckets = bucketsToArray<MetricsBucket>(
-        result.value.aggregations?.by_day?.buckets
+        result.value.aggregations?.by_hour?.buckets
       );
 
       // Add total points to groupValues
@@ -366,7 +378,7 @@ export async function handleProgrammaticCostRequest(
           // Parse each bucket once and store the results
           return {
             groupKey: groupBucket.key,
-            points: bucketsToArray(groupBucket.by_day?.buckets).map((bucket) =>
+            points: bucketsToArray(groupBucket.by_hour?.buckets).map((bucket) =>
               parseMetricsFromBucket(bucket, ["costMicroUsd"])
             ),
           };

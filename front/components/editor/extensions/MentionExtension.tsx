@@ -5,6 +5,7 @@ import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { MentionComponent } from "@app/components/editor/input_bar/MentionComponent";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   AGENT_MENTION_REGEX_BEGINNING,
   USER_MENTION_REGEX_BEGINNING,
@@ -271,13 +272,16 @@ async function parseMentionsOnBackend(
     return text;
   }
 
-  const response = await fetch(`/api/w/${ownerSId}/assistant/mentions/parse`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ markdown: text }),
-  });
+  const response = await clientFetch(
+    `/api/w/${ownerSId}/assistant/mentions/parse`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ markdown: text }),
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Failed to parse mentions");

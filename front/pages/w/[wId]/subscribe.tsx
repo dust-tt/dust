@@ -9,6 +9,7 @@ import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
@@ -59,7 +60,7 @@ export default function Subscribe({
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
-      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

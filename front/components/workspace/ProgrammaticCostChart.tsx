@@ -64,9 +64,8 @@ export interface BaseProgrammaticCostChartProps {
 }
 
 type ChartDataPoint = {
-  date: string;
   timestamp: number;
-  totalInitialCreditsMicroUsd: number;
+  totalInitialCreditsMicroUsd?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -152,8 +151,12 @@ function GroupedTooltip(
     value: `$${(data.totalInitialCreditsMicroUsd / 1_000_000).toFixed(2)}`,
     colorClassName: COST_PALETTE.totalCredits,
   });
-
-  return <ChartTooltipCard title={data.date} rows={rows} />;
+  const date = new Date(data.timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+  });
+  return <ChartTooltipCard title={date} rows={rows} />;
 }
 
 export function formatPeriod(date: Date): string {
@@ -192,7 +195,7 @@ export function BaseProgrammaticCostChart({
   const billingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     currentDate,
-    false
+    true
   );
 
   const formatDate = (date: Date) =>
@@ -363,26 +366,45 @@ export function BaseProgrammaticCostChart({
     };
   });
 
+  // Compute maximum cumulated cost among all groups.
+  const maxCumulatedCost = useMemo(() => {
+    return programmaticCostData?.points.reduce((max, point) => {
+      return Math.max(
+        max,
+        point.groups.reduce((max, group) => {
+          return Math.max(max, group.cumulatedCostMicroUsd ?? 0);
+        }, 0)
+      );
+    }, 0);
+  }, [programmaticCostData]);
+
+  const shouldShowTotalCredits = useMemo(() => {
+    // if all points in the future have total credits higher to twice the max cumulated cost, don't show total credits.
+    const futurePoints = points.filter((point) => point.timestamp > Date.now());
+    return !futurePoints.every(
+      (point) => point.totalInitialCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
+    );
+  }, [maxCumulatedCost]);
+
   // Add Total Credits to legend (not clickable)
-  legendItems.push({
-    key: "totalCredits",
-    label: "Total Credits",
-    colorClassName: COST_PALETTE.totalCredits,
-    isActive: true,
-  });
+  if (shouldShowTotalCredits) {
+    legendItems.push({
+      key: "totalCredits",
+      label: "Total Credits",
+      colorClassName: COST_PALETTE.totalCredits,
+      isActive: true,
+    });
+  }
 
   // Transform points into chart data using labels from availableGroups
   const chartData = points.map((point) => {
-    const date = new Date(point.timestamp);
     const dataPoint: ChartDataPoint = {
-      date: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
       timestamp: point.timestamp,
-      totalInitialCreditsMicroUsd: point.totalInitialCreditsMicroUsd,
     };
 
+    if (shouldShowTotalCredits) {
+      dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
+    }
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {
@@ -393,6 +415,13 @@ export function BaseProgrammaticCostChart({
   });
 
   const ChartComponent = groupBy ? AreaChart : LineChart;
+
+  // Filter to only show ticks for midnight dates
+  const midnightTicks = useMemo(() => {
+    return chartData
+      .map((point) => point.timestamp)
+      .filter((timestamp) => new Date(timestamp).getUTCHours() === 0);
+  }, [chartData]);
 
   // Check if any filters are applied
   const hasFilters = useMemo(() => {
@@ -559,13 +588,20 @@ export function BaseProgrammaticCostChart({
           className="stroke-border dark:stroke-border-night"
         />
         <XAxis
-          dataKey="date"
+          dataKey="timestamp"
           type="category"
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
+          tickLine={true}
           axisLine={false}
           tickMargin={8}
-          minTickGap={16}
+          minTickGap={8}
+          ticks={midnightTicks}
+          tickFormatter={(value) =>
+            new Date(value).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })
+          }
         />
         <YAxis
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"

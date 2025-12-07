@@ -153,6 +153,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

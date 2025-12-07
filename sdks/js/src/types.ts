@@ -651,6 +651,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "claude_4_5_opus_feature"
   | "confluence_tool"
+  | "databricks_tool"
   | "deepseek_feature"
   | "fireworks_new_model_feature"
   | "deepseek_r1_global_agent_feature"
@@ -697,6 +698,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "web_summarization"
   | "xai_feature"
+  | "vanta_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1279,6 +1281,7 @@ export type BlockedActionExecutionType = z.infer<
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
+  userId: z.string(),
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
@@ -2858,6 +2861,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "vanta"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<

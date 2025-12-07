@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetAgentEditorsResponseBody,
@@ -56,7 +57,7 @@ export function useUpdateEditors({
 
   const updateAgentEditors = useCallback(
     async (body: PatchAgentEditorsRequestBody) => {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`,
         {
           method: "PATCH",

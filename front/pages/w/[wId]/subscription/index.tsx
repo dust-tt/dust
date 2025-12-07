@@ -27,6 +27,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
@@ -140,7 +141,7 @@ export default function Subscription({
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -185,7 +186,7 @@ export default function Subscription({
     submit: handleUpgradeToBusiness,
     isSubmitting: isUpgradingToBusiness,
   } = useSubmitFunction(async () => {
-    const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+    const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -215,7 +216,7 @@ export default function Subscription({
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -247,7 +248,7 @@ export default function Subscription({
   const { submit: cancelFreeTrial, isSubmitting: cancelFreeTrialSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",

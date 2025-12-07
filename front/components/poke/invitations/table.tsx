@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   MembershipInvitationTypeWithLink,
   WorkspaceType,
@@ -24,15 +25,18 @@ export function InvitationsDataTable({
     }
 
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/invitations`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-        }),
-      });
+      const r = await clientFetch(
+        `/api/poke/workspaces/${owner.sId}/invitations`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+          }),
+        }
+      );
       if (!r.ok) {
         throw new Error(`Failed to revoke invitation: ${r.statusText}`);
       }
