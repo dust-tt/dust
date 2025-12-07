@@ -29,7 +29,7 @@ const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 // 5 days
 const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
 
-type CustomerStatus = "paying" | "trialing";
+type CustomerPaymentStatus = "paying" | "not_paying" | "trialing";
 
 /**
  * Returns true if
@@ -96,34 +96,33 @@ export async function countEligibleUsersForFreeCredits(
 }
 
 /**
- * Infer customer payment status to determine eligibility and credit amount.
- * - "paying": Has recent paid invoice (within 2 billing cycles) → full credits
- * - "trialing": No paid invoice but trialing or new customer → capped credits
- * - null: Not eligible (no recent payment and not trialing/new)
+ * Customer payment status.
+ * - "paying": Has recent paid invoice (within 2 billing cycles)
+ * - "trialing": No paid invoice but trialing or new customer
+ * - "not_paying": No recent payment and not trialing/new
  */
-export async function getCustomerStatus(
+export async function getCustomerPaymentStatus(
   stripeSubscription: Stripe.Subscription
-): Promise<CustomerStatus | null> {
+): Promise<CustomerPaymentStatus> {
+  // Enterprise subscriptions are always considered paying.
+  if (isEnterpriseSubscription(stripeSubscription)) {
+    return "paying";
+  }
+
   const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
     status: "paid",
-    limit: 1,
+    createdSince: new Date(Date.now() - MONTHLY_BILLING_CYCLE_SECONDS * 2 * 1000),
   });
 
   if (paidInvoices && paidInvoices.length > 0) {
-    const mostRecentInvoice = paidInvoices[0];
-    const currentPeriodStartSec = stripeSubscription.current_period_start;
-    const invoicePeriodEndSec = mostRecentInvoice.period_end;
-    const ageSec = currentPeriodStartSec - invoicePeriodEndSec;
-    if (ageSec <= MONTHLY_BILLING_CYCLE_SECONDS * 2) {
-      return "paying";
-    }
+    return "paying";
   }
 
   if (isTrialingOrNewCustomer(stripeSubscription)) {
     return "trialing";
   }
 
-  return null;
+  return "not_paying";
 }
 
 export async function grantFreeCreditsFromSubscriptionStateChange({
@@ -157,20 +156,8 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
 
   // Enterprise subscriptions are always eligible
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-  const customerStatus: CustomerStatus | null = isEnterprise
-    ? "paying"
-    : await getCustomerStatus(stripeSubscription);
-
-  if (!customerStatus) {
-    logger.info(
-      {
-        workspaceId: workspaceSId,
-        subscriptionId: stripeSubscription.id,
-      },
-      "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
-    );
-    return new Err(new Error("Pro subscription not eligible for free credits"));
-  }
+  const customerPaymentStatus: CustomerPaymentStatus =
+    await getCustomerPaymentStatus(stripeSubscription);
 
   logger.info(
     {
@@ -196,7 +183,18 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
-    switch (customerStatus) {
+    switch (customerPaymentStatus) {
+      case "not_paying":
+        logger.info(
+          {
+            workspaceId: workspaceSId,
+            subscriptionId: stripeSubscription.id,
+          },
+          "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
+        );
+        return new Err(
+          new Error("Pro subscription not eligible for free credits")
+        );
       case "trialing":
         creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
         break;
@@ -208,13 +206,13 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
             workspaceId: workspaceSId,
             userCount,
             creditAmountMicroUsd,
-            customerStatus,
+            customerPaymentStatus,
           },
           "[Free Credits] Calculated credit amount using brackets system"
         );
         break;
       default:
-        assertNever(customerStatus);
+        assertNever(customerPaymentStatus);
     }
 
     assert(

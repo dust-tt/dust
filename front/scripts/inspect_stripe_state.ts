@@ -1,4 +1,4 @@
-import { getCustomerStatus } from "@app/lib/credits/free";
+import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import {
   getStripeClient,
   getStripeSubscription,
@@ -64,7 +64,7 @@ async function inspectFromEvent(eventId: string, logger: any) {
   logger.info(`Workspace sId: ${workspace.sId}, name: ${workspace.name}`);
   logger.info(`Dust Subscription status: ${dustSubscription.status}`);
   logger.info(
-    `Customer status: ${await getCustomerStatus(stripeSubscription)}`
+    `Customer status: ${await getCustomerPaymentStatus(stripeSubscription)}`
   );
 
   const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
