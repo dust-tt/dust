@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -160,7 +160,7 @@ function GroupedTooltip(
 }
 
 export function formatPeriod(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 /**
@@ -248,38 +248,6 @@ export function BaseProgrammaticCostChart({
   );
   const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
-  // Update label cache when availableGroupsArray changes
-  // Using render-time state update pattern to avoid useEffect with setState
-  const newLabelCache = useMemo(() => {
-    if (!groupBy || availableGroupsArray.length === 0) {
-      return labelCache;
-    }
-    const newLabels: Record<string, string> = {};
-    for (const group of availableGroupsArray) {
-      newLabels[group.groupKey] = group.groupLabel;
-    }
-    // Check if labels actually changed
-    const existingLabels = labelCache[groupBy] ?? {};
-    const hasChanges = Object.keys(newLabels).some(
-      (key) => existingLabels[key] !== newLabels[key]
-    );
-    if (
-      !hasChanges &&
-      Object.keys(newLabels).length === Object.keys(existingLabels).length
-    ) {
-      return labelCache;
-    }
-    return {
-      ...labelCache,
-      [groupBy]: { ...existingLabels, ...newLabels },
-    };
-  }, [groupBy, availableGroupsArray, labelCache]);
-
-  // Sync the memoized value back to state only when it changes
-  if (newLabelCache !== labelCache) {
-    setLabelCache(newLabelCache);
-  }
-
   // Filter change
   const handleFilterChange = (group: AvailableGroup) => {
     if (groupBy) {
@@ -322,6 +290,21 @@ export function BaseProgrammaticCostChart({
   const handleClearFilters = () => {
     setFilter({});
   };
+
+  // Cache labels when availableGroupsArray changes
+  // Otherwise, labels would be lost when switching groupBy types, and would display raw keys instead
+  useEffect(() => {
+    if (groupBy && availableGroupsArray.length > 0) {
+      const newLabels: Record<string, string> = {};
+      for (const group of availableGroupsArray) {
+        newLabels[group.groupKey] = group.groupLabel;
+      }
+      setLabelCache((prev) => ({
+        ...prev,
+        [groupBy]: { ...prev[groupBy], ...newLabels },
+      }));
+    }
+  }, [groupBy, availableGroupsArray]);
 
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
