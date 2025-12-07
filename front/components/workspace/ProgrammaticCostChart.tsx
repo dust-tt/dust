@@ -299,6 +299,7 @@ export function BaseProgrammaticCostChart({
       for (const group of availableGroupsArray) {
         newLabels[group.groupKey] = group.groupLabel;
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLabelCache((prev) => ({
         ...prev,
         [groupBy]: { ...prev[groupBy], ...newLabels },
@@ -363,11 +364,13 @@ export function BaseProgrammaticCostChart({
 
   const shouldShowTotalCredits = useMemo(() => {
     // if all points in the future have total credits higher to twice the max cumulated cost, don't show total credits.
-    const futurePoints = points.filter((point) => point.timestamp > Date.now());
+    const futurePoints = points.filter(
+      (point) => point.timestamp > now.getTime()
+    );
     return !futurePoints.every(
       (point) => point.totalInitialCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
     );
-  }, [maxCumulatedCost]);
+  }, [points, maxCumulatedCost, now]);
 
   // Add Total Credits to legend (not clickable)
   if (shouldShowTotalCredits) {
