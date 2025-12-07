@@ -272,8 +272,6 @@ export async function updateOrphanedResourcesParentsWorkflow({
 
     cursor = nextCursor;
   } while (cursor);
-
-  await clearParentsLastUpdatedAt({ connectorId });
 }
 
 async function upsertParent({
