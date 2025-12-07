@@ -8,6 +8,7 @@ import { onRequest } from "firebase-functions/v2/https";
 
 import { createApp } from "./app.js";
 import { CONFIG } from "./config.js";
+import { logger } from "./logger.js";
 
 const serviceAccount = defineString("SERVICE_ACCOUNT");
 const bucket = defineString("GCP_WEBHOOK_ROUTER_CONFIG_BUCKET");
@@ -55,13 +56,13 @@ export const syncWebhookRouterConfig = onObjectFinalized(
       // We set the updated webhook router configuration at the root of Firebase Realtime Database
       await getDatabase(firebaseApp).ref().set(parsedConfig);
 
-      console.log("Webhook router configuration sync succeeded", {
+      logger.info("Webhook router configuration sync succeeded", {
         component: "webhook-router-config-sync",
       });
     } catch (error) {
-      console.error("Webhook router configuration sync failed", {
+      logger.error("Webhook router configuration sync failed", {
         component: "webhook-router-config-sync",
-        error: error instanceof Error ? error.message : String(error),
+        error,
       });
       throw error;
     }

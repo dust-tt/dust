@@ -1,6 +1,7 @@
 import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
+import { logger } from "./logger.js";
 import type { Secrets } from "./secrets.js";
 import type { Region } from "./webhook-router-config.js";
 
@@ -79,7 +80,7 @@ export class WebhookForwarder {
         rootUrlToken,
       });
 
-      console.log("Webhook forwarding succeeded", {
+      logger.info("Webhook forwarding succeeded", {
         component: "forwarder",
         region: target.region,
         endpoint,
@@ -88,11 +89,11 @@ export class WebhookForwarder {
 
       return response;
     } catch (error) {
-      console.error("Webhook forwarding failed", {
+      logger.error("Webhook forwarding failed", {
         component: "forwarder",
         region: target.region,
         endpoint,
-        error: error instanceof Error ? error.message : String(error),
+        error,
       });
 
       throw error;

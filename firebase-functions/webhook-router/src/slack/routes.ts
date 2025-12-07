@@ -1,6 +1,7 @@
 import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
+import { logger } from "../logger.js";
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
 import { ALL_REGIONS } from "../webhook-router-config.js";
@@ -77,10 +78,10 @@ async function handleSlackWebhook(
       regions: req.regions ?? ALL_REGIONS,
     });
   } catch (error) {
-    console.error("Slack webhook router error", {
+    logger.error("Slack webhook router error", {
       component: "slack-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
 
     if (!res.headersSent) {

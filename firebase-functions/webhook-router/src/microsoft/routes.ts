@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
+import { logger } from "../logger.js";
 import type { SecretManager } from "../secrets.js";
 import { ALL_REGIONS } from "../webhook-router-config.js";
 
@@ -51,10 +52,10 @@ async function handleTeamsWebhook(
       res.status(200).json(responseBody);
     }
   } catch (error) {
-    console.error("Teams webhook router error", {
+    logger.error("Teams webhook router error", {
       component: "teams-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
   } finally {
     if (!res.headersSent) {

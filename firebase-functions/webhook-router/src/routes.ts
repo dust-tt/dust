@@ -1,5 +1,6 @@
 import express from "express";
 
+import { logger } from "./logger.js";
 import { createTeamsRoutes } from "./microsoft/routes.js";
 import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
 import { createNotionRoutes } from "./notion/routes.js";
@@ -26,7 +27,7 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
 
       const secrets = await secretManager.getSecrets();
       if (webhookSecret !== secrets.webhookSecret) {
-        console.error("Invalid webhook secret provided", {
+        logger.error("Invalid webhook secret provided", {
           component: "webhook-secret-validation",
         });
         res.status(404).send("Not found");
@@ -35,9 +36,9 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
 
       next();
     } catch (error) {
-      console.error("Webhook secret validation failed", {
+      logger.error("Webhook secret validation failed", {
         component: "webhook-secret-validation",
-        error: error instanceof Error ? error.message : String(error),
+        error,
       });
       res.status(500).send("Internal server error");
     }

@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
+import { logger } from "../logger.js";
 import type { SecretManager } from "../secrets.js";
 
 interface BotFrameworkClaims {
@@ -22,7 +23,7 @@ const COOLDOWN_DURATION_MS = 30000; // 30 seconds.
 
 function getJWKS() {
   if (!jwksCache) {
-    console.log("Initializing Bot Framework JWKS", { jwksUri: JWKS_URI });
+    logger.info("Initializing Bot Framework JWKS", { jwksUri: JWKS_URI });
     jwksCache = createRemoteJWKSet(new URL(JWKS_URI), {
       timeoutDuration: TIMEOUT_DURATION_MS,
       cooldownDuration: COOLDOWN_DURATION_MS,
@@ -61,7 +62,7 @@ async function validateBotFrameworkToken(
 
     const verifiedPayload = payload as BotFrameworkClaims;
 
-    console.log("Successfully validated Bot Framework JWT token", {
+    logger.info("Successfully validated Bot Framework JWT token", {
       appId: verifiedPayload.aud,
       serviceUrl: verifiedPayload.serviceurl,
       exp: verifiedPayload.exp,
@@ -69,7 +70,7 @@ async function validateBotFrameworkToken(
 
     return verifiedPayload;
   } catch (error) {
-    console.error("Bot Framework token validation failed:", error);
+    logger.error("Bot Framework token validation failed", { error });
     return null;
   }
 }
@@ -100,7 +101,7 @@ export function createTeamsVerificationMiddleware(
       const token = extractBearerToken(authHeader);
 
       if (!token) {
-        console.error(
+        logger.error(
           "Missing or invalid Authorization header in Teams webhook",
           {
             component: "teams-verification",
@@ -112,7 +113,7 @@ export function createTeamsVerificationMiddleware(
 
       // Get Microsoft Bot ID for Bot Framework validation.
       if (!secrets.microsoftBotId) {
-        console.error("Microsoft Bot ID not configured", {
+        logger.error("Microsoft Bot ID not configured", {
           component: "teams-verification",
         });
         res.status(500).send("Bot configuration error");
@@ -125,7 +126,7 @@ export function createTeamsVerificationMiddleware(
         secrets.microsoftBotId
       );
       if (!claims) {
-        console.error("Invalid Bot Framework JWT token", {
+        logger.error("Invalid Bot Framework JWT token", {
           component: "teams-verification",
         });
         res.status(403).send("Forbidden");
@@ -134,7 +135,7 @@ export function createTeamsVerificationMiddleware(
 
       // Validate service URL.
       if (!validateServiceUrl(claims.serviceurl)) {
-        console.error("Invalid service URL in Teams webhook", {
+        logger.error("Invalid service URL in Teams webhook", {
           component: "teams-verification",
           serviceUrl: claims.serviceurl,
         });
@@ -142,7 +143,7 @@ export function createTeamsVerificationMiddleware(
         return;
       }
 
-      console.log("Teams webhook validation passed", {
+      logger.info("Teams webhook validation passed", {
         component: "teams-verification",
         appId: claims.aud,
         serviceUrl: claims.serviceurl,
@@ -150,9 +151,9 @@ export function createTeamsVerificationMiddleware(
 
       next();
     } catch (error) {
-      console.error("Teams request verification failed", {
+      logger.error("Teams request verification failed", {
         component: "teams-verification",
-        error: error instanceof Error ? error.message : String(error),
+        error,
       });
 
       res.status(500).send("Internal server error");

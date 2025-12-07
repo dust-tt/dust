@@ -2,6 +2,7 @@ import crypto from "crypto";
 import type { Request, RequestHandler } from "express";
 import rawBody from "raw-body";
 
+import { logger } from "../logger.js";
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
 import type { Region } from "../webhook-router-config.js";
@@ -99,7 +100,7 @@ export function createSlackVerificationMiddleware(
 
     try {
       if (isUrlVerification(req.body)) {
-        console.log("Handling URL verification challenge", {
+        logger.info("Handling URL verification challenge", {
           component: "slack-verification",
           endpoint: req.path,
         });
@@ -150,9 +151,9 @@ export function createSlackVerificationMiddleware(
       return next();
     } catch (error) {
       if (error instanceof ReceiverAuthenticityError) {
-        console.error("Slack request verification failed", {
+        logger.error("Slack request verification failed", {
           component: "slack-verification",
-          error: error.message,
+          error,
           ...(teamId && { teamId }),
           ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
@@ -160,9 +161,9 @@ export function createSlackVerificationMiddleware(
         return;
       }
 
-      console.error("Slack request verification failed", {
+      logger.error("Slack request verification failed", {
         component: "slack-verification",
-        error: error instanceof Error ? error.message : String(error),
+        error,
         ...(teamId && { teamId }),
         ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });

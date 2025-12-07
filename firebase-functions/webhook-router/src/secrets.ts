@@ -1,6 +1,7 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
 import { CONFIG, getProjectIds } from "./config.js";
+import { logger } from "./logger.js";
 
 export interface Secrets {
   euSecret: string;
@@ -37,7 +38,7 @@ export class SecretManager {
   private async loadSecrets(): Promise<Secrets> {
     // Try local development environment variables first.
     if (CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET) {
-      console.log("Using secrets from environment variables", {
+      logger.info("Using secrets from environment variables", {
         component: "secrets",
         source: "environment",
       });
@@ -52,7 +53,7 @@ export class SecretManager {
     }
 
     // Load from Secret Manager.
-    console.log("Loading secrets from Secret Manager", {
+    logger.info("Loading secrets from Secret Manager", {
       component: "secrets",
       source: "secret-manager",
     });
@@ -108,9 +109,9 @@ export class SecretManager {
           notionSigningSecretResponse[0].payload?.data?.toString() || "",
       };
     } catch (error) {
-      console.error("Failed to load secrets from Secret Manager", {
+      logger.error("Failed to load secrets from Secret Manager", {
         component: "secrets",
-        error: error instanceof Error ? error.message : String(error),
+        error,
       });
       throw new Error("Unable to load required secrets");
     }

@@ -3,6 +3,7 @@ import type { Request, RequestHandler } from "express";
 import type express from "express";
 import rawBody from "raw-body";
 
+import { logger } from "../logger.js";
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
 import type { Region } from "../webhook-router-config.js";
@@ -135,9 +136,9 @@ export function createNotionVerificationMiddleware(
       return next();
     } catch (error) {
       if (error instanceof ReceiverAuthenticityError) {
-        console.error("Notion request verification failed", {
+        logger.error("Notion request verification failed", {
           component: "notion-verification",
-          error: error.message,
+          error,
           ...(providerWorkspaceId && { providerWorkspaceId }),
           ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
@@ -145,9 +146,9 @@ export function createNotionVerificationMiddleware(
         return;
       }
 
-      console.error("Notion request verification failed", {
+      logger.error("Notion request verification failed", {
         component: "notion-verification",
-        error: error instanceof Error ? error.message : String(error),
+        error,
         ...(providerWorkspaceId && { providerWorkspaceId }),
         ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });
