@@ -57,7 +57,7 @@ export default function MessageGroup({
   const filteredMessages = messages.filter(
     (message) =>
       message.type !== "user_message" ||
-      message.context.origin !== "agent_handover"
+      message.agenticMessageData?.type !== "agent_handover"
   );
 
   return (

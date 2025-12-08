@@ -33,7 +33,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
-import { WithRetriesError } from "@connectors/types";
+import { FILE_ATTRIBUTES_TO_FETCH, WithRetriesError } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 
 export async function incrementalSync(
@@ -85,7 +85,7 @@ export async function incrementalSync(
     let opts: drive_v3.Params$Resource$Changes$List = {
       pageToken: nextPageToken,
       pageSize: 1000,
-      fields: "*",
+      fields: `nextPageToken, newStartPageToken, changes(changeType, fileId, time, removed, file(${FILE_ATTRIBUTES_TO_FETCH.join(",")}))`,
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,
       includeLabels: labels.map((l) => l.id).join(","),

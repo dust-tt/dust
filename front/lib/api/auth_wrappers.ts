@@ -25,26 +25,6 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const SUPPORTED_METHODS = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-] as const;
-export type MethodType = (typeof SUPPORTED_METHODS)[number];
-
-export type ScopeType =
-  | "read:user_profile"
-  | "read:conversation"
-  | "update:conversation"
-  | "create:conversation"
-  | "read:file"
-  | "update:file"
-  | "create:file"
-  | "delete:file"
-  | "read:agent";
-
 /**
  * This function is a wrapper for API routes that require session authentication.
  *
@@ -243,7 +223,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: U;
-    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
   } = {}
 ) {
   const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
@@ -277,7 +256,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       }
       const token = bearerTokenRes.value;
 
-      // Authentification with  token.
+      // Authentification with a token.
       // Straightforward since the token is attached to the user.
       if (isOAuthToken(token)) {
         try {
@@ -464,12 +443,7 @@ export function withTokenAuthentication<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     user: UserTypeWithWorkspaces
-  ) => Promise<void> | void,
-  // TODO(workos): Handle required scopes.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  opts: {
-    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
-  } = {}
+  ) => Promise<void> | void
 ) {
   return withLogging(
     async (

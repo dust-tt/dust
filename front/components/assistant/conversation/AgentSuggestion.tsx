@@ -20,6 +20,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { serializeMention } from "@app/lib/mentions/format";
 import {
   useAgentConfigurations,
@@ -31,7 +32,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -94,7 +95,7 @@ export function AgentSuggestion({
       const editedContent = contentStartsWithLineStartMarkdown
         ? `${serializeMention(agent)}\n\n${userMessage.content}`
         : `${serializeMention(agent)} ${userMessage.content}`;
-      const mRes = await fetch(
+      const mRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
         {
           method: "POST",
@@ -169,7 +170,7 @@ export function AgentSuggestion({
     }
 
     autoSelectedMessageIdRef.current = userMessage.sId;
-    setSelectedAgent({ configurationId: dustAgent.sId });
+    setSelectedAgent(toRichAgentMentionType(dustAgent));
     void handleSelectSuggestion(dustAgent);
   }, [
     dustAgent,
@@ -210,7 +211,7 @@ export function AgentSuggestion({
                   return;
                 }
                 setIsLoading(true);
-                setSelectedAgent({ configurationId: agent.sId });
+                setSelectedAgent(toRichAgentMentionType(agent));
                 await handleSelectSuggestion(agent);
                 setIsLoading(false);
               }}
@@ -232,7 +233,7 @@ export function AgentSuggestion({
               return;
             }
             setIsLoading(true);
-            setSelectedAgent({ configurationId: agent.sId });
+            setSelectedAgent(toRichAgentMentionType(agent));
             await handleSelectSuggestion(agent);
             setIsLoading(false);
           }}

@@ -87,7 +87,6 @@ makeScript(
       forcedWorkspaces = res.value;
     }
 
-    // @ts-expect-error -- Dropped column
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
       where: {
         // @ts-expect-error -- Dropped column
@@ -133,7 +132,6 @@ makeScript(
           WebCrawlerConfigurationModel.update(
             // @ts-expect-error -- Dropped column
             { customCrawler: crawler },
-            // @ts-expect-error -- Dropped column
             { where: { id: c.id } }
           ),
         { concurrency: 10 }

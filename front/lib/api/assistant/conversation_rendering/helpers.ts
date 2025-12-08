@@ -54,6 +54,29 @@ export function renderActionForMultiActionsModel(
     };
   }
 
+  if (action.status === "blocked_authentication_required") {
+    return {
+      role: "function" as const,
+      name: action.functionCallName,
+      function_call_id: action.functionCallId,
+      content:
+        "The user must manually authenticate to use this action before it can be executed.",
+    };
+  }
+
+  if (
+    action.status === "blocked_validation_required" ||
+    action.status === "blocked_child_action_input_required"
+  ) {
+    return {
+      role: "function" as const,
+      name: action.functionCallName,
+      function_call_id: action.functionCallId,
+      content:
+        "The user must manually validate this action before it can be executed.",
+    };
+  }
+
   const outputItems = removeNulls(
     action.output?.map(rewriteContentForModel) ?? []
   );

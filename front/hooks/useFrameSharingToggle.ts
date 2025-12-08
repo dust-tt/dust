@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types";
 
 interface UseFrameSharingToggleProps {
@@ -21,7 +22,7 @@ export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
   const doToggleInteractiveContentSharing = async () => {
     setIsChanging(true);
     try {
-      const res = await fetch(`/api/w/${owner.sId}`, {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

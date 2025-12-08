@@ -41,11 +41,16 @@ interface PokeLayoutContentProps {
 
 const PokeLayoutContent = ({ children }: PokeLayoutContentProps) => {
   const { regionData } = usePokeRegion();
+  const title = usePokePageTitle();
   const region = regionData?.region;
   const regionUrls = regionData?.regionUrls;
   return (
     <div className="min-h-dvh bg-muted-background dark:bg-muted-background-night dark:text-white">
-      <PokeNavbar currentRegion={region} regionUrls={regionUrls} />
+      <PokeNavbar
+        currentRegion={region}
+        regionUrls={regionUrls}
+        title={title}
+      />
       <div className="flex flex-col p-6">{children}</div>
     </div>
   );

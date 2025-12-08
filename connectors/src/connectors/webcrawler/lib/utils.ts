@@ -49,6 +49,7 @@ export function stableIdForUrl({
       : ressourceType === "table"
         ? "database"
         : "folder";
+  // @ts-expect-error -- migration to tsgo
   return Buffer.from(blake3(`${typePrefix}-${url}`)).toString("hex");
 }
 

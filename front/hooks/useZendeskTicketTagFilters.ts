@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
@@ -56,7 +57,7 @@ export function useZendeskTicketTagFilters({
         }
 
         const newTags = [...currentTags, tag];
-        const res = await fetch(
+        const res = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
           {
             headers: { "Content-Type": "application/json" },
@@ -126,7 +127,7 @@ export function useZendeskTicketTagFilters({
         }
 
         const newTags = currentTags.filter((t: string) => t !== tag);
-        const res = await fetch(
+        const res = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
           {
             headers: { "Content-Type": "application/json" },

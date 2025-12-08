@@ -14,6 +14,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
@@ -63,16 +64,19 @@ export const SpaceCreateAppModal = ({
     // Validation is already done in onChange handlers and Save button disabled logic
     // Only proceed if all validations pass (button wouldn't be enabled otherwise)
     if (name.trim() && description.trim() && !nameError) {
-      const res = await fetch(`/api/w/${owner.sId}/spaces/${space.sId}/apps`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.slice(0, MODELS_STRING_MAX_LENGTH),
-          description: description.slice(0, MODELS_STRING_MAX_LENGTH),
-        }),
-      });
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${space.sId}/apps`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: name.slice(0, MODELS_STRING_MAX_LENGTH),
+            description: description.slice(0, MODELS_STRING_MAX_LENGTH),
+          }),
+        }
+      );
       if (res.ok) {
         await mutateApps();
         const response: PostAppResponseBody = await res.json();

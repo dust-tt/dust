@@ -3,6 +3,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,6 +33,7 @@ import type {
   MentionType,
   MessageType,
   ModelId,
+  RichMention,
   UserMessageContext,
   UserType,
 } from "@app/types";
@@ -40,7 +42,15 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, isAgentMention, isUserMention } from "@app/types";
+import {
+  assertNever,
+  isAgentMention,
+  isUserMention,
+  removeNulls,
+  toMentionType,
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types";
 
 import { runAgentLoopWorkflow } from "./agent_loop";
 
@@ -198,32 +208,34 @@ export async function updateConversationRequirements(
   );
 }
 
-export async function createUserMessage({
-  workspace,
-  conversation,
-  metadata,
-  content,
-  mentions,
-  transaction,
-}: {
-  workspace: WorkspaceType;
-  conversation: ConversationWithoutContentType;
-  content: string;
-  mentions: MentionType[];
-  metadata:
-    | {
-        type: "edit";
-        message: UserMessageType;
-      }
-    | {
-        type: "create";
-        user: UserType | null;
-        rank: number;
-        context: UserMessageContext;
-        agenticMessageData?: AgenticMessageData;
-      };
-  transaction: Transaction;
-}) {
+export async function createUserMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    metadata,
+    content,
+    mentions,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    content: string;
+    mentions: MentionType[];
+    metadata:
+      | {
+          type: "edit";
+          message: UserMessageType;
+        }
+      | {
+          type: "create";
+          user: UserType | null;
+          rank: number;
+          context: UserMessageContext;
+          agenticMessageData?: AgenticMessageData;
+        };
+    transaction: Transaction;
+  }
+) {
+  const workspace = auth.getNonNullableWorkspace();
   let rank = 0;
   let version = 0;
   let parentId: ModelId | null = null;
@@ -325,6 +337,45 @@ export async function createUserMessage({
     }
   );
 
+  const mentionUserIds = mentions.filter(isUserMention).map((m) => m.userId);
+  const mentionAgentConfigurationIds = mentions
+    .filter(isAgentMention)
+    .map((m) => m.configurationId);
+
+  const [mentionnedUsers, mentionnedAgentConfigurations] = await Promise.all([
+    mentionUserIds.length > 0 ? UserResource.fetchByIds(mentionUserIds) : [],
+    mentionAgentConfigurationIds.length > 0
+      ? getAgentConfigurations(auth, {
+          agentIds: mentionAgentConfigurationIds,
+          variant: "extra_light",
+        })
+      : [],
+  ]);
+  const mentionnedUsersBySId = new Map(
+    mentionnedUsers.map((u) => [u.sId, u.toJSON()])
+  );
+  const mentionnedAgentConfigurationsBySId = new Map(
+    mentionnedAgentConfigurations.map((ac) => [ac.sId, ac])
+  );
+
+  const richMentions: RichMention[] = removeNulls(
+    mentions.map((m) => {
+      if (isUserMention(m)) {
+        const mentionnedUser = mentionnedUsersBySId.get(m.userId);
+        if (mentionnedUser) {
+          return toRichUserMentionType(mentionnedUser);
+        }
+      } else if (isAgentMention(m)) {
+        const mentionnedAgentConfiguration =
+          mentionnedAgentConfigurationsBySId.get(m.configurationId);
+        if (mentionnedAgentConfiguration) {
+          return toRichAgentMentionType(mentionnedAgentConfiguration);
+        }
+      } else {
+        assertNever(m);
+      }
+    })
+  );
   const createdUserMessage: UserMessageType = {
     id: m.id,
     created: m.createdAt.getTime(),
@@ -333,7 +384,9 @@ export async function createUserMessage({
     visibility: m.visibility,
     version: m.version,
     user,
-    mentions,
+    // Use the rich mentions to create the mentions so we exclude the one that do not exists in the database.
+    mentions: richMentions.map(toMentionType),
+    richMentions,
     content,
     context,
     agenticMessageData: agenticMessageData ?? undefined,

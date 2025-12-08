@@ -1,3 +1,4 @@
+import { clientFetch } from "@app/lib/egress/client";
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
 import type { WorkspaceType } from "@app/types";
 
@@ -133,7 +134,7 @@ export async function checkProvider(
   config: object
 ): Promise<GetProvidersCheckResponseBody> {
   try {
-    const result = await fetch(
+    const result = await clientFetch(
       `/api/w/${owner.sId}/providers/${providerId}/check`,
       {
         method: "POST",
@@ -185,7 +186,7 @@ export async function getProviderLLMModels(
   chat: boolean,
   embed: boolean
 ): Promise<{ models?: any[]; error?: any }> {
-  const modelsRes = await fetch(
+  const modelsRes = await clientFetch(
     `/api/w/${owner.sId}/providers/${providerId}/models?chat=${chat}&embed=${embed}`
   );
   if (!modelsRes.ok) {

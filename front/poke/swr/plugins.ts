@@ -1,5 +1,6 @@
 import type { Fetcher } from "swr";
 
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,
@@ -141,7 +142,7 @@ export function useRunPokePlugin({
         formData.append(key, value);
       });
 
-      res = await fetch(
+      res = await clientFetch(
         `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
         {
           method: "POST",
@@ -150,7 +151,7 @@ export function useRunPokePlugin({
       );
     } else {
       // Use JSON when no files are present
-      res = await fetch(
+      res = await clientFetch(
         `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
         {
           method: "POST",

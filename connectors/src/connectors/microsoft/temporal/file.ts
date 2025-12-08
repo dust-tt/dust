@@ -258,6 +258,7 @@ export async function syncOneFile({
     ];
 
     result = await handleCsvFile({
+      // @ts-expect-error -- migration to tsgo
       data,
       tableId: documentId,
       fileName: file.name || "",
@@ -315,6 +316,7 @@ export async function syncOneFile({
       result = handleTextFile(downloadRes.data, maxDocumentLen);
     } else {
       const data = Buffer.from(downloadRes.data);
+      // @ts-expect-error -- migration to tsgo
       result = await handleTextExtraction(data, localLogger, mimeType);
     }
 

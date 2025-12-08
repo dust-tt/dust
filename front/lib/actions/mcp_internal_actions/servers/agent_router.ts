@@ -29,7 +29,9 @@ function createServer(
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,
-    "Returns a complete list of all published agents in the workspace.",
+    "Returns a complete list of all published agents in the workspace. " +
+      "Each agent includes its name, description, and mention directive " +
+      "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
     {},
     withToolLogging(
       auth,
@@ -66,22 +68,19 @@ function createServer(
         }
 
         const agents = res.value;
-        const formattedAgents = agents.map((agent) => {
-          return {
-            name: agent.name,
-            mention: serializeMention(agent),
-            description: agent.description,
-          };
-        });
+        const formattedAgents = agents
+          .map((agent) => {
+            let result = `## ${agent.name}\n\n`;
+            result += `**Mention:** ${serializeMention(agent)}\n\n`;
+            result += `**Description:** ${agent.description}\n`;
+            return result;
+          })
+          .join("\n");
 
         return new Ok([
           {
             type: "text",
-            text: "List of published agents successfully fetched",
-          },
-          {
-            type: "text",
-            text: JSON.stringify(formattedAgents),
+            text: `# Published Agents\n\n${formattedAgents}`,
           },
         ]);
       }
@@ -92,7 +91,9 @@ function createServer(
     SUGGEST_AGENTS_TOOL_NAME,
     "Analyzes a user query and returns relevant specialized agents that might be better " +
       "suited to handling specific requests. The tool uses semantic matching to find agents " +
-      "whose capabilities align with the query content.",
+      "whose capabilities align with the query content. Each suggested agent includes its " +
+      "mention directive (e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link, " +
+      "along with its description and instructions.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
@@ -143,8 +144,7 @@ function createServer(
           );
         }
 
-        const suggestedAgents = suggestedAgentsRes.value;
-        const formattedSuggestedAgents = suggestedAgents
+        const formattedSuggestedAgents = suggestedAgentsRes.value
           .filter((agent) => agent.sId !== "dust")
           .map((agent) => {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -155,21 +155,18 @@ function createServer(
                   " (truncated)"
                 : instructions;
 
-            return {
-              mention: serializeMention(agent),
-              description: agent.description,
-              instructions: truncatedInstructions,
-            };
-          });
+            let result = `## ${agent.name}\n\n`;
+            result += `**Mention:** ${serializeMention(agent)}\n\n`;
+            result += `**Description:** ${agent.description}\n\n`;
+            result += `**Instructions:** ${truncatedInstructions.trim()}\n`;
+            return result;
+          })
+          .join("\n");
 
         return new Ok([
           {
             type: "text",
-            text: "Suggested agents successfully fetched",
-          },
-          {
-            type: "text",
-            text: JSON.stringify(formattedSuggestedAgents),
+            text: `# Suggested Agents\n\n${formattedSuggestedAgents}`,
           },
         ]);
       }

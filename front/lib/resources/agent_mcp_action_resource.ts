@@ -38,6 +38,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -208,7 +209,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
 
-    const unfilteredBlockedActions = await AgentMCPActionModel.findAll({
+    const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessage,
@@ -236,7 +237,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
 
     const parentUserMessageIds = removeNulls(
-      unfilteredBlockedActions.map((a) => a.agentMessage!.message!.parentId)
+      blockedActions.map((a) => a.agentMessage!.message!.parentId)
     );
 
     const parentUserMessages = await Message.findAll({
@@ -250,20 +251,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           model: UserMessage,
           as: "userMessage",
           required: true,
+          include: [
+            {
+              model: UserModel,
+              as: "user",
+              required: true,
+            },
+          ],
         },
       ],
     });
 
     const parentUserMessageById = _.keyBy(parentUserMessages, "id");
-
-    // Filter out the actions that are not triggered by the current user.
-    const blockedActions = unfilteredBlockedActions.filter((a) => {
-      const parentUserMessage =
-        parentUserMessageById[a.agentMessage!.message!.parentId!];
-      return (
-        parentUserMessage.userMessage?.userId === auth.getNonNullableUser().id
-      );
-    });
 
     const blockedActionsList: BlockedToolExecution[] = [];
 
@@ -347,11 +346,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? getMcpServerViewDisplayName(mcpServerView.toJSON())
         : undefined;
 
+      const parentUserMessage =
+        parentUserMessageById[agentMessage.message.parentId!];
+
+      assert(parentUserMessage.userMessage?.user?.sId, "User not found.");
+
       const baseActionParams: Omit<
         BlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         messageId: agentMessage.message.sId,
+        userId: parentUserMessage.userMessage.user.sId,
         conversationId: conversation.sId,
         actionId: this.modelIdToSId({
           id: action.id,

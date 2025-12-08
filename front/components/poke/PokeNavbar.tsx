@@ -4,7 +4,6 @@ import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 
 import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
-import { usePokePageTitle } from "@app/components/poke/PokeLayout";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -23,6 +22,7 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
+  title: string;
 }
 
 function getPokeItemChipColor(
@@ -42,9 +42,7 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
-  const title = usePokePageTitle();
-
+function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
   return (
     <nav
       className={classNames(

@@ -1,7 +1,7 @@
 import { TextArea } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
-import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 
 interface DescriptionSectionProps {
   title: string;

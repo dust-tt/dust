@@ -16,7 +16,7 @@ const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
  * - Supports workspace-scoped MCP registration only
  */
 export class DustMcpServerTransport implements Transport {
-  private eventSource: EventSource | null = null;
+  private eventSource: EventSourcePolyfill | null = null;
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private serverId: string | null = null;
@@ -178,6 +178,10 @@ export class DustMcpServerTransport implements Transport {
     };
 
     this.eventSource.onerror = (error) => {
+      // Close the existing connection to prevent automatic reconnects from polyfill.
+      // Automatic reconnection in the polyfill creates error logging noise that can't be suppressed.
+      this.eventSource?.close();
+
       this.logError("Error in MCP EventSource connection:", error);
       this.onerror?.(new Error(`SSE connection error: ${error}`));
 

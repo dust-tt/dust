@@ -1,3 +1,4 @@
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   LightWorkspaceType,
   UserType,
@@ -24,16 +25,19 @@ export async function forceUserRole(
     return new Err(`Already in the role ${role}`);
   }
 
-  const response = await fetch(`/api/w/${owner.sId}/members/${user.sId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      role,
-      force: "true",
-    }),
-  });
+  const response = await clientFetch(
+    `/api/w/${owner.sId}/members/${user.sId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role,
+        force: "true",
+      }),
+    }
+  );
 
   if (response.ok) {
     return new Ok(`Role updated to ` + role);
