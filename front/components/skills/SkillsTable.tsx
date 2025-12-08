@@ -8,7 +8,7 @@ import type { UserType } from "@app/types";
 import type { SkillConfigurationWithAuthor } from "@app/types/skill_configuration";
 
 type RowData = {
-  id: number;
+  sId: string;
   name: string;
   description: string;
   author: SkillConfigurationWithAuthor["author"];

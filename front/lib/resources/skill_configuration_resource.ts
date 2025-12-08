@@ -168,10 +168,8 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     if (this.author) {
       return {
         sId: this.sId,
-        id: this.id,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
-        workspaceId: this.workspaceId,
         version: this.version,
         status: this.status,
         scope: this.scope,
@@ -195,17 +193,14 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     return {
       sId: this.sId,
-      id: this.id,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      workspaceId: this.workspaceId,
       version: this.version,
       status: this.status,
       scope: this.scope,
       name: this.name,
       description: this.description,
       instructions: this.instructions,
-      authorId: this.authorId,
       requestedSpaceIds: this.requestedSpaceIds,
     };
   }
