@@ -8,10 +8,9 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-
-import { SKILL_ICON } from "@app/lib/skill";
 import { useState } from "react";
 
+import { SKILL_ICON } from "@app/lib/skill";
 import {
   getAgentBuilderRoute,
   getSkillBuilderRoute,
