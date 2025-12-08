@@ -739,7 +739,7 @@ export async function editUserMessage(
   }
 
   try {
-    // In one big transaction create all Message, UserMessage and Mention rows.
+    // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
