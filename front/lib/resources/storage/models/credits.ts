@@ -83,15 +83,6 @@ CreditModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    boughtByUserId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      defaultValue: null,
-      references: {
-        model: UserModel,
-        key: "id",
-      },
-    },
   },
   {
     modelName: "credit",
