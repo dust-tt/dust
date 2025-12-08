@@ -14,7 +14,12 @@ async function guessDelimiter(csv: string): Promise<string | undefined> {
     try {
       // We parse at most 8 lines with skipEmptyLines with the goal of getting 2 valid ones,
       // otherwise let's consider the file as broken beyond repair.
-      const parser = parse(csv, { delimiter: d, to: 8, skipEmptyLines: true });
+      const parser = parse(csv, {
+        bom: true, // Remove BOM if present, useful for UTF-8/16 files.
+        delimiter: d,
+        to: 8,
+        skipEmptyLines: true,
+      });
       for await (const record of parser) {
         records.push(record);
         if (records.length === 2) {
@@ -43,7 +48,7 @@ async function guessDelimiter(csv: string): Promise<string | undefined> {
   return delimiter;
 }
 
-// This function is used by connectors to turn a , ; \t separated file into a comma separated file.
+// This function is used by connectors to turn a , ; \t separated file into a comma-separated file.
 // It also will raise if the file can't be parsed.
 export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
   const delimiter = await guessDelimiter(tableCsv);
@@ -51,6 +56,7 @@ export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
 
   try {
     const parser = parse(tableCsv, {
+      bom: true, // Remove BOM if present, useful for UTF-8/16 files.
       delimiter,
       skipEmptyLines: true,
       columns: (c) => c,
