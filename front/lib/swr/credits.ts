@@ -131,9 +131,10 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
 
         const responseData = await response.json();
 
-        // If payment requires additional action, redirect to Stripe's hosted invoice page.
+        // If payment requires additional action, open Stripe's hosted invoice page in a new window.
+        // This keeps the current page open so users can return to it after payment.
         if (responseData.paymentUrl) {
-          window.location.href = responseData.paymentUrl;
+          window.open(responseData.paymentUrl, "_blank", "noopener,noreferrer");
           return true;
         }
 
