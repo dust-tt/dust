@@ -4,6 +4,8 @@ import { promisify } from "util";
 
 import config from "@app/lib/api/config";
 import { untrustedFetch } from "@app/lib/egress/server";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
@@ -37,6 +39,21 @@ interface EnrichmentResponse {
 function extractDomain(email: string): string | null {
   const match = email.match(/@([^@]+)$/);
   return match ? match[1].toLowerCase() : null;
+}
+
+async function checkExistingUser(email: string): Promise<boolean> {
+  const user = await UserResource.fetchByEmail(email);
+  return user !== null;
+}
+
+async function checkAutoJoinDomain(domain: string): Promise<boolean> {
+  const workspaceDomain = await WorkspaceHasDomainModel.findOne({
+    where: {
+      domain,
+      domainAutoJoinEnabled: true,
+    },
+  });
+  return workspaceDomain !== null;
 }
 
 // Parse employee count from Apollo's employee range strings
@@ -440,9 +457,26 @@ export default async function handler(
 
   const encodedEmail = encodeURIComponent(email);
 
+  const isExistingUser = await checkExistingUser(email);
+  if (isExistingUser) {
+    return res.status(200).json({
+      success: true,
+      redirectUrl: `/api/workos/login?loginHint=${encodedEmail}`,
+    });
+  }
+
   // Skip enrichment for personal email domains (gmail, outlook, yahoo, etc.)
   // Redirect directly to signup
   if (isPersonalEmailDomain(domain)) {
+    return res.status(200).json({
+      success: true,
+      redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
+    });
+  }
+
+  // Check if domain has auto-join enabled - redirect to sign-up (user doesn't exist yet)
+  const isAutoJoinDomain = await checkAutoJoinDomain(domain);
+  if (isAutoJoinDomain) {
     return res.status(200).json({
       success: true,
       redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
