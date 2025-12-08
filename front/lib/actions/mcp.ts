@@ -152,7 +152,8 @@ export type ToolExecution = {
 };
 
 export type BlockedToolExecution = ToolExecution & {
-  userId: string;
+  // User might be undefined if the run was initiated through the public API using an API key.
+  userId?: string;
 } & (
     | {
         status: "blocked_validation_required";
@@ -177,7 +178,7 @@ export type BlockedToolExecution = ToolExecution & {
 // TODO(durable-agents): cleanup the types of the events.
 export type MCPApproveExecutionEvent = ToolExecution & {
   type: "tool_approve_execution";
-  userId: string;
+  userId?: string;
   created: number;
   configurationId: string;
   isLastBlockingEventForStep?: boolean;
