@@ -255,7 +255,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             {
               model: UserModel,
               as: "user",
-              required: true,
             },
           ],
         },
@@ -349,14 +348,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       const parentUserMessage =
         parentUserMessageById[agentMessage.message.parentId!];
 
-      assert(parentUserMessage.userMessage?.user?.sId, "User not found.");
+      assert(parentUserMessage.userMessage, "Parent user message not found.");
 
       const baseActionParams: Omit<
         BlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         messageId: agentMessage.message.sId,
-        userId: parentUserMessage.userMessage.user.sId,
+        userId: parentUserMessage.userMessage?.user?.sId,
         conversationId: conversation.sId,
         actionId: this.modelIdToSId({
           id: action.id,

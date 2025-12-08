@@ -1281,7 +1281,7 @@ export type BlockedActionExecutionType = z.infer<
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
-  userId: z.string(),
+  userId: z.string().optional(),
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),

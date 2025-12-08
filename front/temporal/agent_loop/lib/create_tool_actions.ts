@@ -229,14 +229,14 @@ async function createActionForTool(
       status === "blocked_validation_required"
         ? {
             type: "tool_approve_execution",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            userId: auth.getNonNullableUser().sId,
-            messageId: agentMessage.sId,
-            conversationId: conversation.sId,
             actionId: action.sId,
+            configurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+            created: Date.now(),
             inputs: action.augmentedInputs,
+            messageId: agentMessage.sId,
             stake: actionConfiguration.permission,
+            userId: auth.user()?.sId,
             metadata: {
               toolName: actionConfiguration.originalName,
               mcpServerName: actionConfiguration.mcpServerName,
