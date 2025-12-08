@@ -51,23 +51,19 @@ export function useMarkAllConversationsAsRead({
           throw new Error("Failed to mark conversations as read");
         }
 
-        const { failedConversationCount } = await response.json();
+        const { success } = await response.json();
+
+        if (!success) {
+          throw new Error("Failed to mark conversations as read");
+        }
 
         void mutateConversations();
 
-        if (failedConversationCount > 0) {
-          sendNotification({
-            type: "error",
-            title: "Could not mark conversations as read",
-            description: `${failedConversationCount} conversation${failedConversationCount > 1 ? "s" : ""} could not be marked as read.`,
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "All conversations marked as read",
-            description: `${total} conversation${total > 1 ? "s" : ""} marked as read.`,
-          });
-        }
+        sendNotification({
+          type: "success",
+          title: "All conversations marked as read",
+          description: `${total} conversation${total > 1 ? "s" : ""} marked as read.`,
+        });
       } catch {
         sendNotification({
           type: "error",

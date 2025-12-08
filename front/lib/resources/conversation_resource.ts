@@ -52,7 +52,6 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;
-  includeParticipant?: boolean;
 };
 
 interface UserParticipation {
@@ -189,10 +188,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
-    let resultConversations: ConversationResource[] = [];
-
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      resultConversations = conversations.map(
+      return conversations.map(
         (c) =>
           new this(
             this.model,
@@ -200,57 +197,43 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
           )
       );
-    } else {
-      // Filter out conversations that reference missing/deleted spaces.
-      // There are two reasons why a space may be missing here:
-      // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
-      // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
+    }
 
-      // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
-      // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
-      const foundSpaceIds = new Set(spaces.map((s) => s.id));
-      const validConversations = conversations
-        .filter((c) =>
-          c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
-        )
-        .map(
-          (c) =>
-            new this(
-              this.model,
-              c.get(),
-              c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
-            )
-        );
+    // Filter out conversations that reference missing/deleted spaces.
+    // There are two reasons why a space may be missing here:
+    // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
+    // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
 
-      // Create space-to-groups mapping once for efficient permission checks.
-      const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
-      resultConversations = validConversations.filter((c) =>
-        auth.canRead(
-          createResourcePermissionsFromSpacesWithMap(
-            spaceIdToGroupsMap,
-            // Parse as Number since Sequelize array of BigInts are returned as strings.
-            c.requestedSpaceIds.map((id) => Number(id))
+    // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
+    // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
+    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+    const validConversations = conversations
+      .filter((c) =>
+        c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+      )
+      .map(
+        (c) =>
+          new this(
+            this.model,
+            c.get(),
+            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
           )
+      );
+
+    // Create space-to-groups mapping once for efficient permission checks.
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
+    const spaceBasedAccessible = validConversations.filter((c) =>
+      auth.canRead(
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          // Parse as Number since Sequelize array of BigInts are returned as strings.
+          c.requestedSpaceIds.map((id) => Number(id))
         )
-      );
-    }
+      )
+    );
 
-    if (fetchConversationOptions?.includeParticipant) {
-      const participationMap = await this.fetchParticipationMapForUser(
-        auth,
-        resultConversations.map((c) => c.id)
-      );
-
-      resultConversations.forEach((c) => {
-        const participation = participationMap.get(c.id);
-        if (participation) {
-          c.userParticipation = participation;
-        }
-      });
-    }
-
-    return resultConversations;
+    return spaceBasedAccessible;
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
@@ -1432,9 +1415,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async batchMarkAsReadAndClearActionRequired(
     auth: Authenticator,
-    conversationIds: number[]
-  ): Promise<number> {
-    const result = await ConversationParticipantModel.update(
+    conversationSIds: string[]
+  ) {
+    const conversations = await ConversationResource.fetchByIds(
+      auth,
+      conversationSIds
+    );
+
+    const conversationIds = conversations.map((c) => c.id);
+
+    await ConversationParticipantModel.update(
       { unread: false, actionRequired: false },
       {
         where: {
@@ -1445,7 +1435,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    return result[0];
+    return new Ok(undefined);
   }
 
   toJSON(): ConversationWithoutContentType {
