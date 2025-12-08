@@ -21,7 +21,7 @@ export function SalesforceOauthExtraConfig({
     }
 
     void generatePKCE();
-  }, [extraConfig.instance_url, extraConfig.code_verifier, setExtraConfig]);
+  }, [extraConfig.instance_url, setExtraConfig]);
 
   useEffect(() => {
     setIsExtraConfigValid(

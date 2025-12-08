@@ -336,18 +336,18 @@ export default function CustomerStoriesListing({
               </div>
 
               <FilterSection
-                title="Industry"
-                options={filterOptions.industries}
-                selected={selectedIndustries}
-                onChange={(values) => updateFilters("industry", values)}
-                defaultOpen={true}
-              />
-
-              <FilterSection
                 title="Department"
                 options={filterOptions.departments}
                 selected={selectedDepartments}
                 onChange={(values) => updateFilters("department", values)}
+                defaultOpen={true}
+              />
+
+              <FilterSection
+                title="Industry"
+                options={filterOptions.industries}
+                selected={selectedIndustries}
+                onChange={(values) => updateFilters("industry", values)}
               />
 
               <FilterSection

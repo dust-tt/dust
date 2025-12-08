@@ -202,7 +202,6 @@ export default function CustomerStoryPage({
 
       <article>
         <Grid>
-          {/* Header */}
           <header className={classNames(WIDE_CLASSES, "pt-16")}>
             <Link
               href="/customers"
@@ -211,7 +210,6 @@ export default function CustomerStoryPage({
               <span>&larr;</span> All Customer Stories
             </Link>
 
-            {/* Tags */}
             <div className="mb-4 flex flex-wrap gap-2">
               <span className="rounded-full bg-highlight/10 px-3 py-1 text-sm font-medium text-highlight">
                 {story.industry}
@@ -228,7 +226,6 @@ export default function CustomerStoryPage({
 
             <H1 mono>{story.title}</H1>
 
-            {/* Headline metric */}
             {story.headlineMetric && (
               <div className="mt-6">
                 <span className="inline-block rounded-lg bg-emerald-50 px-4 py-2 text-xl font-bold text-emerald-600">
@@ -238,7 +235,6 @@ export default function CustomerStoryPage({
             )}
           </header>
 
-          {/* Hero image */}
           {story.heroImage && (
             <div className={classNames(WIDE_CLASSES, "mt-8")}>
               <Image
@@ -252,8 +248,18 @@ export default function CustomerStoryPage({
             </div>
           )}
 
-          {/* Main content and sidebar */}
           <div className={classNames(CONTENT_CLASSES, "mt-12")}>
+            {story.keyHighlight && (
+              <div className="mb-8 rounded-2xl border border-highlight/20 bg-highlight/5 p-6">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-highlight">
+                  Key Highlights
+                </h3>
+                <div className="prose prose-highlight max-w-none">
+                  {renderRichTextFromContentful(story.keyHighlight)}
+                </div>
+              </div>
+            )}
+
             {/* Rich text body */}
             {renderRichTextFromContentful(story.body)}
 

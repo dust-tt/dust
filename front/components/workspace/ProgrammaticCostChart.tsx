@@ -385,9 +385,8 @@ export function BaseProgrammaticCostChart({
       timestamp: point.timestamp,
     };
 
-    if (shouldShowTotalCredits) {
-      dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
-    }
+    dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
+
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {

@@ -89,6 +89,7 @@ export interface CustomerStoryFields {
 
   // Metrics (optional)
   headlineMetric?: string;
+  keyHighlight?: Document;
 
   // Filtering (optional)
   companySize?: string;
@@ -122,6 +123,7 @@ export interface CustomerStory {
   contactTitle: string | null;
   contactPhoto: BlogImage | null;
   headlineMetric: string | null;
+  keyHighlight: Document | null;
   industry: string;
   department: string[];
   companySize: string | null;
