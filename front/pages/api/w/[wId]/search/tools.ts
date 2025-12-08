@@ -2,15 +2,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { searchToolNodes } from "@app/lib/search/tools/search";
-import type { ToolSeachResults } from "@app/lib/search/tools/types";
+import { searchToolFiles } from "@app/lib/search/tools/search";
+import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
+interface ToolSearchResponse {
+  results: ToolSearchResult[];
+  resultsCount: number;
+}
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ToolSeachResults>>,
+  res: NextApiResponse<WithAPIErrorResponse<ToolSearchResponse>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
@@ -55,11 +60,11 @@ async function handler(
   }
 
   try {
-    const nodes = await searchToolNodes({ auth, query, pageSize });
+    const results = await searchToolFiles({ auth, query, pageSize });
 
     return res.status(200).json({
-      nodes,
-      resultsCount: nodes.length,
+      results,
+      resultsCount: results.length,
     });
   } catch (error) {
     logger.error(

@@ -14,13 +14,14 @@ import {
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useToolFileUpload } from "@app/hooks/useToolFileUpload";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
@@ -28,9 +29,8 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
-import type { ToolSearchNode } from "@app/lib/search/tools/types";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
-import { useSearchTools } from "@app/lib/swr/search";
+import { useSearchToolFiles } from "@app/lib/swr/search";
 import {
   useSpaces,
   useSpacesSearchWithInfiniteScroll,
@@ -48,6 +48,7 @@ interface InputBarAttachmentsPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
+  conversationId?: string | null;
 }
 
 const PAGE_SIZE = 25;
@@ -61,6 +62,7 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
+  conversationId,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -75,16 +77,6 @@ export const InputBarAttachmentsPicker = ({
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
-
-  const isToolNodeAttached = useCallback(
-    (node: ToolSearchNode) => {
-      const nodeKey = `${node.serverViewId}-${node.internalId}`;
-      return fileUploaderService.fileBlobs.some(
-        (blob) => blob.id === nodeKey || blob.filename === node.title + ".txt"
-      );
-    },
-    [fileUploaderService.fileBlobs]
-  );
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -106,22 +98,6 @@ export const InputBarAttachmentsPicker = ({
     disabled: isSpacesLoading || !searchQuery,
     spaceIds: spaces.map((s) => s.sId),
     searchSourceUrls: true,
-  });
-
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasUniversalSearch = hasFeature("universal_search");
-
-  const {
-    searchResults: toolContentNodes,
-    isSearchLoading: isToolSearchLoading,
-    isSearchValidating: isToolSearchValidating,
-  } = useSearchTools({
-    owner,
-    query: searchQuery,
-    pageSize: PAGE_SIZE,
-    disabled: !hasUniversalSearch || isSpacesLoading || !searchQuery || !isOpen,
   });
 
   const spacesMap = useMemo(
@@ -149,6 +125,34 @@ export const InputBarAttachmentsPicker = ({
       };
     });
   }, [searchResultNodes, spacesMap]);
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasUniversalSearch = hasFeature("universal_search");
+
+  const {
+    searchResults: toolFileResults,
+    isSearchLoading: isToolSearchLoading,
+    isSearchValidating: isToolSearchValidating,
+  } = useSearchToolFiles({
+    owner,
+    query: searchQuery,
+    pageSize: PAGE_SIZE,
+    disabled: !hasUniversalSearch || isSpacesLoading || !searchQuery || !isOpen,
+  });
+
+  const {
+    getToolFileKey,
+    isToolFileAttached,
+    isToolFileUploading,
+    uploadToolFile,
+    removeToolFile,
+  } = useToolFileUpload({
+    owner,
+    fileUploaderService,
+    conversationId: conversationId ?? undefined,
+  });
 
   const showLoader =
     isSearchLoading ||
@@ -271,33 +275,41 @@ export const InputBarAttachmentsPicker = ({
                 />
               </NodePathTooltip>
             ))}
-            {toolContentNodes.map((item, index) => {
-              const nodeKey = `${item.serverViewId}-${item.internalId}`;
-              const isAttached = isToolNodeAttached(item);
+            {toolFileResults.map((item, index) => {
+              const isAttached = isToolFileAttached(item);
+              const isUploading = isToolFileUploading(item);
 
               return (
                 <DropdownMenuCheckboxItem
-                  key={`tool-${nodeKey}-${index}`}
+                  key={`tool-${getToolFileKey(item)}-${index}`}
                   label={item.title}
                   icon={
-                    <DoubleIcon
-                      size="md"
-                      mainIcon={getVisualForContentNodeType(item.type)}
-                      secondaryIcon={getIcon(item.serverIcon)}
-                    />
+                    isUploading ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      <DoubleIcon
+                        size="md"
+                        mainIcon={getVisualForContentNodeType(item.type)}
+                        secondaryIcon={getIcon(item.serverIcon)}
+                      />
+                    )
                   }
                   description={asDisplayToolName(item.serverName)}
                   checked={isAttached}
-                  disabled={isLoading}
-                  onCheckedChange={() => {
-                    // @todo. It should call an endpoit to upload the content of the doc to the conversation (useCase conversation attachments)
+                  disabled={isLoading || isUploading}
+                  onCheckedChange={(checked) => {
+                    if (checked && !isAttached && !isUploading) {
+                      void uploadToolFile(item);
+                    } else if (!checked && isAttached) {
+                      removeToolFile(item);
+                    }
                   }}
                   truncateText
                 />
               );
             })}
             {pickedSpaceNodes.length === 0 &&
-              toolContentNodes.length === 0 &&
+              toolFileResults.length === 0 &&
               !showLoader && (
                 <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   No results found

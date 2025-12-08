@@ -4,22 +4,18 @@ import type {
 } from "@app/components/resources/resources_icons";
 import type { ContentNodeType } from "@app/types";
 
-export type ToolSearchRawNode = {
-  internalId: string;
+export type ToolSearchRawResult = {
+  externalId: string;
   title: string;
   mimeType: string;
   type: ContentNodeType;
+  sourceUrl: string | null;
 };
 
-export type ToolSearchNode = ToolSearchRawNode & {
+export type ToolSearchResult = ToolSearchRawResult & {
   serverViewId: string;
   serverName: string;
   serverIcon: CustomResourceIconType | InternalAllowedIconType;
-};
-
-export type ToolSeachResults = {
-  nodes: ToolSearchNode[];
-  resultsCount: number;
 };
 
 export type ToolSearchParams = {
@@ -28,6 +24,18 @@ export type ToolSearchParams = {
   pageSize: number;
 };
 
+export type ToolDownloadParams = {
+  accessToken: string;
+  externalId: string;
+};
+
+export type ToolDownloadResult = {
+  content: string;
+  fileName: string;
+  mimeType: string;
+};
+
 export type SearchableTool = {
-  search: (params: ToolSearchParams) => Promise<ToolSearchRawNode[]>;
+  search: (params: ToolSearchParams) => Promise<ToolSearchRawResult[]>;
+  download: (params: ToolDownloadParams) => Promise<ToolDownloadResult>;
 };
