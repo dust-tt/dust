@@ -22,9 +22,12 @@ import {
 } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
+  getCreditPurchasePricing,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
+import { isSupportedCurrency } from "@app/types/currency";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { useCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -37,6 +40,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   isEnterprise: boolean;
   currency: string;
   discountPercent: number;
+  creditPricing: StripePricingData | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -59,13 +63,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     );
     if (stripeSubscription) {
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
-      currency = stripeSubscription.currency;
+      currency = isSupportedCurrency(stripeSubscription.currency)
+        ? stripeSubscription.currency
+        : "usd";
     }
   }
 
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
+
+  const creditPricing = await getCreditPurchasePricing();
 
   return {
     props: {
@@ -74,6 +82,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       isEnterprise,
       currency,
       discountPercent,
+      creditPricing,
     },
   };
 });
@@ -308,6 +317,7 @@ export default function CreditsUsagePage({
   isEnterprise,
   currency,
   discountPercent,
+  creditPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { hasFeature, featureFlags } = useFeatureFlags({
@@ -390,6 +400,7 @@ export default function CreditsUsagePage({
         isEnterprise={isEnterprise}
         currency={currency}
         discountPercent={discountPercent}
+        creditPricing={creditPricing}
       />
 
       <Page.Vertical gap="xl" align="stretch">

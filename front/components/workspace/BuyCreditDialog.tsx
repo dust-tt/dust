@@ -18,18 +18,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
-
-// Conversion rates for displaying estimated amounts (credits are always in USD)
-const CURRENCY_CONVERSION_RATES: Record<string, number> = {
-  usd: 1,
-  eur: 0.86,
-};
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  usd: "$",
-  eur: "€",
-};
+import {
+  CURRENCY_SYMBOLS,
+  isSupportedCurrency,
+} from "@app/types/currency";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 
@@ -40,6 +34,7 @@ interface BuyCreditDialogProps {
   isEnterprise: boolean;
   currency: string;
   discountPercent: number;
+  creditPricing: StripePricingData | null;
 }
 
 export function BuyCreditDialog({
@@ -49,6 +44,7 @@ export function BuyCreditDialog({
   isEnterprise,
   currency,
   discountPercent,
+  creditPricing,
 }: BuyCreditDialogProps) {
   const [amountDollars, setAmountDollars] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -94,12 +90,22 @@ export function BuyCreditDialog({
   const isValidAmount = parsedAmount > 0;
 
   const effectiveDiscount = discountPercent || 0;
-  const conversionRate = CURRENCY_CONVERSION_RATES[currency] || 1;
-  const currencySymbol = CURRENCY_SYMBOLS[currency] || "$";
-  const needsConversion = currency !== "usd";
+  const displayCurrency = isSupportedCurrency(currency) ? currency : "usd";
+  const currencySymbol = CURRENCY_SYMBOLS[displayCurrency];
+  const needsConversion = displayCurrency !== "usd";
 
-  // Convert to customer currency
-  const creditsInCurrency = parsedAmount * conversionRate;
+  // Calculate conversion using Stripe pricing data
+  let creditsInCurrency = parsedAmount;
+  if (needsConversion && creditPricing) {
+    const usdUnitAmount = creditPricing.currencyOptions.usd.unitAmount;
+    const displayUnitAmount =
+      creditPricing.currencyOptions[displayCurrency].unitAmount;
+    if (usdUnitAmount > 0 && displayUnitAmount > 0) {
+      const exchangeRate = displayUnitAmount / usdUnitAmount;
+      creditsInCurrency = parsedAmount * exchangeRate;
+    }
+  }
+
   const discountInCurrency = creditsInCurrency * (effectiveDiscount / 100);
   const totalInCurrency = creditsInCurrency - discountInCurrency;
 
