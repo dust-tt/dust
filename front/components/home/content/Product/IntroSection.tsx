@@ -53,6 +53,11 @@ const HeroContent = () => {
 
       const data = await response.json();
 
+      if (!data.success && data.error) {
+        setError(data.error);
+        return;
+      }
+
       if (data.redirectUrl) {
         window.location.href = appendUTMParams(data.redirectUrl);
       }

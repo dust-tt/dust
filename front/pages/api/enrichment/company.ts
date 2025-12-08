@@ -1,10 +1,25 @@
+import dns from "dns";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { promisify } from "util";
 
 import config from "@app/lib/api/config";
 import { untrustedFetch } from "@app/lib/egress";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
+
+const resolveMx = promisify(dns.resolveMx);
+
+// Check if domain has valid MX records
+async function hasValidMxRecords(domain: string): Promise<boolean> {
+  try {
+    const records = await resolveMx(domain);
+    return records.length > 0;
+  } catch {
+    // ENODATA, ENOTFOUND, etc. - domain has no MX records
+    return false;
+  }
+}
 
 // Company size thresholds
 const ENTERPRISE_THRESHOLD = 100;
@@ -292,9 +307,7 @@ function mapCountryToRegion(country: string | null): string | null {
 
 // Enrichment using Apollo API
 // Docs: https://docs.apollo.io/reference/organization-enrichment
-async function enrichCompanyFromDomain(
-  domain: string
-): Promise<{
+async function enrichCompanyFromDomain(domain: string): Promise<{
   size: number | null;
   name: string | null;
   region: string | null;
@@ -433,6 +446,16 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
+    });
+  }
+
+  // Check if domain has valid MX records before calling Apollo
+  const hasMx = await hasValidMxRecords(domain);
+  if (!hasMx) {
+    return res.status(400).json({
+      success: false,
+      redirectUrl: "/home/pricing",
+      error: "Please use a valid work email address",
     });
   }
 
