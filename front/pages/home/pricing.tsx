@@ -31,7 +31,7 @@ export default function Pricing() {
     <>
       <PageMetadata
         title="Dust Pricing: Pro and Enterprise Plans for AI Agents"
-        description="Explore Dust pricing plans. Pro for small teams and startups, Enterprise for 100+ members with multiple workspaces and SSO. Start with a 15-day free trial."
+        description="Explore Dust pricing plans. Pro for small teams and startups, Enterprise for 100+ members with multiple workspaces and SSO. Start with a 14-day free trial."
         pathname={router.asPath}
       />
       <HeaderContentBlock
@@ -46,7 +46,7 @@ export default function Pricing() {
             <Button
               variant="highlight"
               size="md"
-              label="Start with Pro, 15 Days free"
+              label="Start with Pro, 14 days free"
               icon={RocketIcon}
               onClick={withTracking(
                 TRACKING_AREAS.PRICING,
