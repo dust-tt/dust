@@ -1,16 +1,9 @@
-import {
-  Button,
-  Div3D,
-  DustLogo,
-  DustLogoLayer1,
-  DustLogoLayer2,
-  Hover3D,
-} from "@dust-tt/sparkle";
+import { Button, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
@@ -157,7 +150,7 @@ export default function LandingLayout({
       {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div> */}
-      <main className="z-10 flex flex-col items-center overflow-x-hidden">
+      <main className="z-10 flex w-full flex-col items-center">
         <div
           className={classNames(
             "container flex w-full flex-col",
@@ -373,35 +366,15 @@ const logoVariants = cva("", {
   },
 });
 
-const emptySubscribe = () => () => {};
-
 export const PublicWebsiteLogo = ({
   size = "default",
   utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
-  const isClient = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
 
   return (
     <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
-      {isClient ? (
-        <Hover3D className={`relative ${className}`}>
-          <Div3D depth={0} className={className}>
-            <DustLogoLayer1 className={className} />
-          </Div3D>
-          <Div3D depth={25} className="absolute top-0">
-            <DustLogoLayer2 className={className} />
-          </Div3D>
-        </Hover3D>
-      ) : (
-        <div className={`relative ${className}`}>
-          <DustLogo className={className} />
-        </div>
-      )}
+      <DustLogo className={className} />
     </Link>
   );
 };

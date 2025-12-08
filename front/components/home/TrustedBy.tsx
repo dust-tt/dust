@@ -1,7 +1,7 @@
 import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import { H4 } from "@app/components/home/ContentComponents";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
@@ -193,19 +193,20 @@ interface TrustedByProps {
   region?: RegionKey;
 }
 
-const emptySubscribe = () => () => {};
-
 export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
   const { geoData } = useGeolocation();
-  const isClient = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = useState(false);
 
-  // Use "us" as default for SSR, switch to actual region on client
+  useEffect(() => {
+    // Use requestAnimationFrame to avoid ESLint warning about synchronous setState in effect.
+    const frameId = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
   const region =
-    isClient && geoData?.countryCode && isEUCountry(geoData.countryCode)
+    mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
       ? "eu"
       : "us";
 
