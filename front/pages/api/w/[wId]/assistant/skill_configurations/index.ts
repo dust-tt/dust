@@ -14,7 +14,7 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -150,15 +150,8 @@ async function handler(
 
       const body: PostSkillConfigurationRequestBody = bodyValidation.right;
 
-      // Check for existing active skill with the same name.
-      // TODO(skills): consolidate this kind of db interaction within a resource.
-      const existingSkill = await SkillConfigurationModel.findOne({
-        where: {
-          workspaceId: owner.id,
-          name: body.name,
-          status: "active",
-        },
-      });
+      const existingSkill =
+        await SkillConfigurationResource.fetchActiveByName(auth, body.name);
 
       if (existingSkill) {
         return apiError(req, res, {
@@ -191,7 +184,7 @@ async function handler(
 
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillConfiguration = await withTransaction(async (transaction) => {
-        const skill = await SkillConfigurationModel.create(
+        const skill = await SkillConfigurationResource.makeNew(
           {
             workspaceId: owner.id,
             version: 0,
@@ -228,10 +221,7 @@ async function handler(
 
       return res.status(200).json({
         skillConfiguration: {
-          sId: makeSId("skill", {
-            id: skillConfiguration.id,
-            workspaceId: skillConfiguration.workspaceId,
-          }),
+          sId: skillConfiguration.sId,
           name: skillConfiguration.name,
           description: skillConfiguration.description,
           instructions: skillConfiguration.instructions,
