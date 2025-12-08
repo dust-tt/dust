@@ -86,21 +86,31 @@ export class CreditResource extends BaseResource<CreditModel> {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      include: [
-        {
-          model: UserModel,
-          as: "boughtByUser",
-          required: false,
-        },
-      ],
       ...rest,
     });
 
     return rows.map((r) => new this(this.model, r.get()));
   }
 
-  static async listAll(auth: Authenticator) {
-    return this.baseFetch(auth);
+  static async listAll(
+    auth: Authenticator,
+    {
+      includeBuyer = false,
+    }: {
+      includeBuyer?: boolean;
+    } = {}
+  ) {
+    return this.baseFetch(auth, {
+      includes: includeBuyer
+        ? [
+            {
+              model: UserModel,
+              as: "boughtByUser",
+              required: false,
+            },
+          ]
+        : [],
+    });
   }
 
   static async listActive(
