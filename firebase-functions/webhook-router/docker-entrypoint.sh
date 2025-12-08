@@ -3,8 +3,11 @@ set -e
 
 npm install
 
-# Build
+# Initial build (blocking) to ensure dist/ exists
 npm run build
+
+# Start watch mode for subsequent changes
+npm run build:watch &
 
 # We need to gracefully stop the firebase process so it exports on exit
 
