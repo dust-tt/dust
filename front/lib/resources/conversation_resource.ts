@@ -593,6 +593,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const participationMap = await this.fetchParticipationMapForUser(auth);
     const conversationIds = Array.from(participationMap.keys());
 
+    if (conversationIds.length === 0) {
+      return [];
+    }
+
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
