@@ -142,7 +142,7 @@ export function AssistantToolsSection({
                   className="flex flex-row items-center gap-2"
                   key={skill.sId}
                 >
-                  {/* TODO(ap): Add custom icon support (pictureUrl) */}
+                  {/* TODO(skills 2025-12-08): Add custom icon support (pictureUrl) */}
                   <Avatar icon={PuzzleIcon} size="xs" />
                   <div>{skill.name}</div>
                 </div>
