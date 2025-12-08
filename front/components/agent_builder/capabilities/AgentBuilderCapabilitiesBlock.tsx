@@ -19,7 +19,7 @@ import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/M
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";

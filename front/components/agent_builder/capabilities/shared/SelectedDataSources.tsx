@@ -13,7 +13,7 @@ import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";

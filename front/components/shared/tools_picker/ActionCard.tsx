@@ -1,6 +1,6 @@
 import { Card, CardActionButton, XMarkIcon } from "@dust-tt/sparkle";
 
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { isDefaultActionName } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";

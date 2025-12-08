@@ -6,7 +6,7 @@ import type {
   SelectedTool,
   SheetMode,
 } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
   AgentBuilderAction,
   ConfigurationPagePageId,

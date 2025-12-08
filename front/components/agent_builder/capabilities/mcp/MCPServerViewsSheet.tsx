@@ -49,8 +49,8 @@ import { NameSection } from "@app/components/agent_builder/capabilities/shared/N
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
   AgentBuilderAction,
   ConfigurationPagePageId,

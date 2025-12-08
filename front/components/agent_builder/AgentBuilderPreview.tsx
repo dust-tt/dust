@@ -7,7 +7,7 @@ import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";

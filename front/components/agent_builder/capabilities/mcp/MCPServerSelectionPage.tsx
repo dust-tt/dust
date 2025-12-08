@@ -7,7 +7,7 @@ import {
 import React, { useMemo } from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import {
   InternalActionIcons,
   isCustomResourceIconType,

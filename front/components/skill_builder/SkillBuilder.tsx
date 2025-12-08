@@ -11,7 +11,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";

@@ -12,8 +12,8 @@ import React from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
