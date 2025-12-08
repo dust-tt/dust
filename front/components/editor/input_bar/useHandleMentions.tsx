@@ -1,17 +1,12 @@
 import { useEffect, useRef } from "react";
 
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  RichMention,
-} from "@app/types";
+import type { RichAgentMention, RichMention } from "@app/types";
 
 const useHandleMentions = (
   editorService: EditorService,
-  agentConfigurations: LightAgentConfigurationType[],
   stickyMentions: RichMention[] | undefined,
-  selectedAgent: AgentMention | null,
+  selectedAgent: RichAgentMention | null,
   disableAutoFocus: boolean
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
@@ -47,28 +42,12 @@ const useHandleMentions = (
 
   useEffect(() => {
     if (selectedAgent) {
-      const agentConfiguration = agentConfigurations.find(
-        (agent) => agent.sId === selectedAgent.configurationId
-      );
-
-      if (!agentConfiguration) {
-        return;
-      }
-
-      const mention: RichMention = {
-        type: "agent",
-        id: agentConfiguration.sId,
-        label: agentConfiguration.name,
-        description: agentConfiguration.description,
-        pictureUrl: agentConfiguration.pictureUrl,
-      };
-
-      if (!editorService.hasMention(mention)) {
+      if (!editorService.hasMention(selectedAgent)) {
         // Schedule insertion to avoid synchronous editor updates during React render/effects.
-        queueMicrotask(() => editorService.insertMention(mention));
+        queueMicrotask(() => editorService.insertMention(selectedAgent));
       }
     }
-  }, [selectedAgent, editorService, disableAutoFocus, agentConfigurations]);
+  }, [selectedAgent, editorService]);
 };
 
 export default useHandleMentions;

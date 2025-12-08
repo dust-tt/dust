@@ -95,6 +95,7 @@ import type {
   LightWorkspaceType,
   PersonalAuthenticationRequiredErrorContent,
   Result,
+  RichAgentMention,
   RichMention,
   UserType,
   WorkspaceType,
@@ -641,7 +642,7 @@ export function AgentMessage({
 
   const handleQuickReply = React.useCallback(
     async (reply: string) => {
-      const mention: RichMention = {
+      const mention: RichAgentMention = {
         id: agentMessageToRender.configuration.sId,
         type: "agent",
         label: agentMessageToRender.configuration.name,

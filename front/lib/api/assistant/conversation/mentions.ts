@@ -48,6 +48,8 @@ import {
   isUserMention,
   removeNulls,
   toMentionType,
+  toRichAgentMentionType,
+  toRichUserMentionType,
 } from "@app/types";
 
 import { runAgentLoopWorkflow } from "./agent_loop";
@@ -361,25 +363,13 @@ export async function createUserMessage(
       if (isUserMention(m)) {
         const mentionnedUser = mentionnedUsersBySId.get(m.userId);
         if (mentionnedUser) {
-          return {
-            id: mentionnedUser.sId,
-            type: "user",
-            label: mentionnedUser.fullName,
-            pictureUrl: mentionnedUser.image ?? "",
-            description: "",
-          } satisfies RichMention;
+          return toRichUserMentionType(mentionnedUser);
         }
       } else if (isAgentMention(m)) {
         const mentionnedAgentConfiguration =
           mentionnedAgentConfigurationsBySId.get(m.configurationId);
         if (mentionnedAgentConfiguration) {
-          return {
-            id: mentionnedAgentConfiguration.sId,
-            type: "agent",
-            label: mentionnedAgentConfiguration.name,
-            pictureUrl: mentionnedAgentConfiguration.pictureUrl ?? "",
-            description: mentionnedAgentConfiguration.description ?? "",
-          } satisfies RichMention;
+          return toRichAgentMentionType(mentionnedAgentConfiguration);
         }
       } else {
         assertNever(m);
