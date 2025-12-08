@@ -42,11 +42,14 @@ pub enum SlackUseCase {
     PlatformActions,
 }
 
-pub struct SlackConnectionProvider {}
+#[derive(Debug, Clone)]
+pub struct SlackConnectionProvider {
+    pub is_slack_tool: bool,
+}
 
 impl SlackConnectionProvider {
-    pub fn new() -> Self {
-        SlackConnectionProvider {}
+    pub fn new(is_slack_tool: bool) -> Self {
+        SlackConnectionProvider { is_slack_tool }
     }
 
     fn basic_auth(
@@ -54,7 +57,7 @@ impl SlackConnectionProvider {
         app_type: SlackUseCase,
         related_credentials: Option<Credential>,
     ) -> Result<String> {
-        let (client_id, client_secret) = match app_type {
+        let (mut client_id, mut client_secret) = match app_type {
             // related_credentials refers to customers using their own Slack app
             SlackUseCase::Connection => match related_credentials {
                 Some(credentials) => Self::get_credentials(credentials)?,
@@ -72,6 +75,11 @@ impl SlackConnectionProvider {
                 OAUTH_SLACK_TOOLS_CLIENT_SECRET.clone(),
             ),
         };
+
+        if self.is_slack_tool {
+            client_id = OAUTH_SLACK_TOOLS_CLIENT_ID.clone();
+            client_secret = OAUTH_SLACK_TOOLS_CLIENT_SECRET.clone();
+        }
 
         Ok(general_purpose::STANDARD.encode(&format!("{}:{}", client_id, client_secret)))
     }
@@ -150,6 +158,10 @@ impl SlackConnectionProvider {
 #[async_trait]
 impl Provider for SlackConnectionProvider {
     fn id(&self) -> ConnectionProvider {
+        // Example usage of foo
+        if self.is_slack_tool {
+            // Custom logic if foo is true
+        }
         ConnectionProvider::Slack
     }
 
