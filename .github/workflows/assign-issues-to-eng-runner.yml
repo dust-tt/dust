@@ -17,8 +17,7 @@ jobs:
     name: Assign to EngRunner project
     steps:
       - name: Assign new issues to project 2 (eng runner)
-        uses: srggrs/assign-one-project-github-action@1.2.1
-        if: github.event.action == 'opened'
+        uses: actions/add-to-project@v1.0.2
         with:
-          project: 'https://github.com/orgs/dust-tt/projects/2'
-          column_name: 'Backlog'
+          project-url: 'https://github.com/orgs/dust-tt/projects/2'
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
