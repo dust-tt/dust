@@ -80,6 +80,8 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+
 /**
  * Conversation Creation, update and deletion
  */
@@ -638,7 +640,8 @@ function canAccessAgent(
 class UserMessageError extends Error {}
 
 /**
- * This method creates a new user message version, and if there are new agent mentions, run them.
+ * This method creates a new user message version. If a new message contains agent mentions, it will create new agent messages,
+ * only when there are no agent messages after the edited user message.
  */
 export async function editUserMessage(
   auth: Authenticator,
@@ -680,34 +683,6 @@ export async function editUserMessage(
       api_error: {
         type: "workspace_auth_error",
         message: "Only the author of the message can edit it",
-      },
-    });
-  }
-
-  if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Editing a message that already has agent mentions is not yet supported",
-      },
-    });
-  }
-
-  if (
-    !conversation.content[conversation.content.length - 1].some(
-      (m) => m.sId === message.sId
-    ) &&
-    mentions.filter((m) => isAgentMention(m)).length > 0
-  ) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Adding agent mentions when editing is only supported for the last message " +
-          "of the conversation",
       },
     });
   }
@@ -761,7 +736,7 @@ export async function editUserMessage(
   }
 
   try {
-    // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
+    // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
@@ -783,11 +758,13 @@ export async function editUserMessage(
         ],
         transaction: t,
       });
+
       if (!messageRow || !messageRow.userMessage) {
         throw new Error(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
+
       const newerMessage = await Message.findOne({
         where: {
           workspaceId: owner.id,
@@ -797,6 +774,7 @@ export async function editUserMessage(
         },
         transaction: t,
       });
+
       if (newerMessage) {
         throw new UserMessageError(
           "Invalid user message edit request, this message was already edited."
@@ -820,17 +798,6 @@ export async function editUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      // For now agent messages are appended at the end of conversation
-      // it is fine since for now editing with new mentions is only supported
-      // for the last user message
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-
       await createUserMentions(auth, {
         mentions,
         message: userMessage,
@@ -838,26 +805,61 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      const agentMessages = await createAgentMessages(auth, {
-        conversation,
-        metadata: {
-          type: "create",
-          mentions,
-          agentConfigurations,
-          skipToolsValidation,
-          nextMessageRank,
-          userMessage,
-        },
-        transaction: t,
-      });
+      const hasAgentMentions = mentions.some(isAgentMention);
 
-      await ConversationResource.markAsUpdated(auth, { conversation, t });
+      if (hasAgentMentions) {
+        // Check if there are any agent messages after the edited user message
+        // by checking conversation.content (which is indexed by rank)
+        const hasAgentMessagesAfter = conversation.content
+          .slice(messageRow.rank + 1)
+          .some((versions) => {
+            if (versions.length === 0) {
+              return false;
+            }
+            const latestVersion = versions[versions.length - 1];
+            return isAgentMessageType(latestVersion);
+          });
+
+        let agentMessages: AgentMessageType[] = [];
+
+        // Only create agent messages if there are no agent messages after the edited user message
+        if (!hasAgentMessagesAfter) {
+          const nextMessageRank =
+            ((await Message.max<number | null, Message>("rank", {
+              where: {
+                conversationId: conversation.id,
+              },
+              transaction: t,
+            })) ?? -1) + 1;
+
+          agentMessages = await createAgentMessages(auth, {
+            conversation,
+            metadata: {
+              type: "create",
+              mentions,
+              agentConfigurations,
+              skipToolsValidation,
+              nextMessageRank,
+              userMessage,
+            },
+            transaction: t,
+          });
+        }
+
+        await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+        return {
+          userMessage,
+          agentMessages,
+        };
+      }
 
       return {
         userMessage,
         agentMessages,
       };
     });
+
     userMessage = result.userMessage;
     agentMessages = result.agentMessages;
 

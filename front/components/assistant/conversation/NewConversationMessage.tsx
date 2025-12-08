@@ -289,12 +289,14 @@ const ConversationMessageTitle = React.forwardRef<
         className={cn("inline-flex w-full justify-between gap-0.5", className)}
         {...props}
       >
-        <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
+        <div className="inline-flex items-center gap-2 text-foreground dark:text-foreground-night">
           <span className="heading-sm">{renderName(name)}</span>
           <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
             {timestamp}
           </span>
-          {infoChip && infoChip}
+          {infoChip && (
+            <div className="inline-flex items-center gap-2">{infoChip}</div>
+          )}
         </div>
         <div className="inline-flex items-center gap-2">
           {completionStatus ?? null}
