@@ -32,7 +32,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { PuzzleIcon } from "lucide-react";
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
@@ -65,6 +64,7 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
+import { SKILL_ICON } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
@@ -477,8 +477,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                             />
                             <DropdownMenuItem
                               href={getSkillBuilderRoute(owner.sId, "manage")}
-                              // TODO(skills 2025-12-05): use the right icon
-                              icon={PuzzleIcon}
+                              icon={SKILL_ICON}
                               label="Skills"
                             />
                           </DropdownMenuSubContent>
