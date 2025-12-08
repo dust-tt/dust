@@ -63,9 +63,9 @@ export function SkillBuilderToolsSection() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="heading-lg text-foreground dark:text-foreground-night">
+          <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
             Tools
-          </h2>
+          </h3>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Add tools to enhance your skill's abilities.
           </p>
