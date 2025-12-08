@@ -662,6 +662,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         id: {
           [Op.in]: agentGroups.map((ag) => ag.groupId),
         },
+        kind: "agent_editors",
       },
     });
 
