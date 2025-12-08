@@ -630,9 +630,6 @@ export async function restoreWorkspaceAfterSubscription(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  if (!owner) {
-    throw new Error("Missing workspace on auth.");
-  }
 
   // Terminate the scheduled workspace scrub workflow if any
   const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
