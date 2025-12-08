@@ -3,6 +3,8 @@ import * as Path from "node:path";
 import fs from "fs";
 import { describe, expect, it } from "vitest";
 
+import { decodeBuffer } from "@connectors/connectors/shared/file";
+
 import { parseAndStringifyCsv } from "./structured_data";
 
 describe("parseAndStringifyCsv", () => {
@@ -51,6 +53,26 @@ Bob,25,London
       "utf-16le"
     );
     const result = await parseAndStringifyCsv(fileContent);
+
+    // The BOM is removed
+    expect(result).toBe(`name,age,city
+Alice,30,Paris
+`);
+  });
+
+  it("should handle UTF-16 encoded CSV with BOM with readBuffer", async () => {
+    const buffer = fs.readFileSync(
+      Path.join(__dirname, "test_data", "utf16.csv")
+    );
+
+    const result = await parseAndStringifyCsv(
+      decodeBuffer(
+        buffer.buffer.slice(
+          buffer.byteOffset,
+          buffer.byteOffset + buffer.byteLength
+        )
+      )
+    );
 
     // The BOM is removed
     expect(result).toBe(`name,age,city
