@@ -222,7 +222,7 @@ export function ProPriceTable({
               variant="highlight"
               size={biggerButtonSize}
               label={
-                display === "landing" ? "Start now, 15 days free" : "Start now"
+                display === "landing" ? "Start now, 14 days free" : "Start now"
               }
               icon={RocketIcon}
               disabled={isProcessing}
@@ -350,7 +350,7 @@ export function BusinessPriceTable({
               variant="highlight"
               size={biggerButtonSize}
               label={
-                display === "landing" ? "Start now, 15 days free" : "Start now"
+                display === "landing" ? "Start now, 14 days free" : "Start now"
               }
               icon={RocketIcon}
               disabled={isProcessing}
