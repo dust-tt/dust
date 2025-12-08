@@ -805,6 +805,7 @@ export async function editUserMessage(
         transaction: t,
       });
 
+      // One message can contain multiple agent mentions so we only want to check it once.
       if (!canCreateAgentMessages) {
         // Check if there are any agent messages after the edited user message
         // by checking conversation.content (which is indexed by rank)
