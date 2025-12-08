@@ -21,16 +21,15 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  hasHumansInteracting,
   isHiddenMessage,
+  isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { AgentMention } from "@app/types";
-import { conjugate, pluralize } from "@app/types";
-import { isAgentMention } from "@app/types";
+import type { RichMention } from "@app/types";
+import { conjugate, pluralize, toRichAgentMentionType } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -39,13 +38,10 @@ export const AgentInputBar = ({
 }: {
   context: VirtuosoMessageListContext;
 }) => {
+  const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const generationContext = useContext(GenerationContext);
-  const {
-    hasBlockedActions,
-    hasPendingValidations,
-    totalBlockedActions,
-    showBlockedActionsDialog,
-  } = useBlockedActionsContext();
+  const { getBlockedActions, hasPendingValidations } =
+    useBlockedActionsContext();
 
   if (!generationContext) {
     throw new Error(
@@ -77,22 +73,24 @@ export const AgentInputBar = ({
         !isHiddenMessage(m)
     );
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const agentMentions = useMemo(() => {
+  const draftAgent = context.agentBuilderContext?.draftAgent;
+
+  const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
-    if (context.agentBuilderContext?.draftAgent) {
-      return [{ configurationId: context.agentBuilderContext.draftAgent.sId }];
+    if (draftAgent) {
+      return [toRichAgentMentionType(draftAgent)];
     }
     if (
       !lastUserMessage ||
       !isUserMessage(lastUserMessage) ||
-      hasHumansInteracting(methods.data.get())
+      lastUserMessage.richMentions.length > 1
     ) {
-      return emptyArray<AgentMention>();
+      return emptyArray<RichMention>();
     }
-    return lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage, context.agentBuilderContext?.draftAgent, methods.data]);
+
+    return lastUserMessage.richMentions;
+  }, [draftAgent, lastUserMessage]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisible = 100;
@@ -102,6 +100,8 @@ export const AgentInputBar = ({
   const showStopButton = generationContext.generatingMessages.some(
     (m) => m.conversationId === context.conversationId
   );
+
+  const blockedActions = getBlockedActions(context.user.sId);
 
   const scrollToBottom = useCallback(() => {
     methods.scrollToItem({
@@ -193,25 +193,43 @@ export const AgentInputBar = ({
           />
         )}
       </div>
-      {hasBlockedActions && (
+      {blockedActions.length > 0 && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
           className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
         >
           <span className="font-bold">
-            {totalBlockedActions} action
-            {pluralize(totalBlockedActions)}
+            {blockedActions.length} action
+            {pluralize(blockedActions.length)}
           </span>{" "}
-          require{conjugate(totalBlockedActions)} a manual action
-          {/* If there are pending validations, we show a button allowing to open the dialog
-              from where they can be approved/denied */}
-          {hasPendingValidations && (
+          require{conjugate(blockedActions.length)} a manual action
+          {/* If there are pending validations, we show a button allowing to cycle through the blocked actions messages. */}
+          {hasPendingValidations(context.user.sId) && (
             <ContentMessageAction
               label="Review actions"
               variant="outline"
               size="xs"
-              onClick={() => showBlockedActionsDialog()}
+              onClick={() => {
+                const blockedActionTargetMessageId =
+                  blockedActions[blockedActionIndex].messageId;
+
+                const blockedActionMessageIndex = methods.data.findIndex(
+                  (m) =>
+                    isMessageTemporayState(m) &&
+                    blockedActionTargetMessageId === m.message.sId
+                );
+
+                methods.scrollToItem({
+                  index: blockedActionMessageIndex,
+                  behavior: "smooth",
+                  align: "end",
+                });
+
+                setBlockedActionIndex((prevIndex) =>
+                  blockedActions.length > prevIndex + 1 ? prevIndex + 1 : 0
+                );
+              }}
             />
           )}
         </ContentMessageInline>
@@ -219,13 +237,11 @@ export const AgentInputBar = ({
       <InputBar
         owner={context.owner}
         onSubmit={context.handleSubmit}
-        stickyMentions={agentMentions}
-        additionalAgentConfiguration={context.agentBuilderContext?.draftAgent}
+        stickyMentions={autoMentions}
         conversationId={context.conversationId}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
-        disable={hasBlockedActions}
       />
     </div>
   );

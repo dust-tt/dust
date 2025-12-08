@@ -1,12 +1,12 @@
 import { createContext, useCallback, useState } from "react";
 
-import type { AgentMention } from "@app/types";
+import type { RichAgentMention } from "@app/types";
 
 export const InputBarContext = createContext<{
   animate: boolean;
-  selectedAgent: AgentMention | null;
+  selectedAgent: RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
-  setSelectedAgent: (agentMention: AgentMention | null) => void;
+  setSelectedAgent: (agentMention: RichAgentMention | null) => void;
 }>({
   animate: false,
   selectedAgent: null,
@@ -18,10 +18,12 @@ export const InputBarContext = createContext<{
 
 export function InputBarProvider({ children }: { children: React.ReactNode }) {
   const [animate, setAnimate] = useState<boolean>(false);
-  const [selectedAgent, setSelectedAgent] = useState<AgentMention | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
+    null
+  );
 
   const setSelectedAgentOuter = useCallback(
-    (agentMention: AgentMention | null) => {
+    (agentMention: RichAgentMention | null) => {
       if (agentMention) {
         setAnimate(true);
       } else {

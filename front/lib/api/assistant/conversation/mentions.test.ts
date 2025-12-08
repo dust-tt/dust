@@ -1140,8 +1140,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1201,8 +1200,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1268,8 +1266,7 @@ describe("createUserMessage", () => {
     // Create the new message with rank 1 to avoid unique constraint violation
     const rank = 1;
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1318,8 +1315,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1357,8 +1353,7 @@ describe("createUserMessage", () => {
     // Create original message
     const userJson = user.toJSON();
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: originalContent,
         mentions,
@@ -1381,8 +1376,7 @@ describe("createUserMessage", () => {
 
     // Edit the message
     const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: editedContent,
         mentions,
@@ -1427,8 +1421,7 @@ describe("createUserMessage", () => {
 
     // Create original message
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: originalContent,
         mentions: originalMentions,
@@ -1451,8 +1444,7 @@ describe("createUserMessage", () => {
 
     // Edit the message with new mentions
     const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: editedContent,
         mentions: editedMentions,
@@ -1509,8 +1501,7 @@ describe("createUserMessage", () => {
 
     // Create original message with agenticMessageData
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Original agentic message",
         mentions: [],
@@ -1536,8 +1527,7 @@ describe("createUserMessage", () => {
 
     // Edit the message - agenticMessageData should be preserved
     const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Edited agentic message",
         mentions: [],
@@ -1582,8 +1572,7 @@ describe("createUserMessage", () => {
 
     // Create original message with full context
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Original message",
         mentions: [],
@@ -1599,8 +1588,7 @@ describe("createUserMessage", () => {
 
     // Edit the message - context should be preserved
     const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Edited message",
         mentions: [],
@@ -1652,8 +1640,7 @@ describe("createUserMessage", () => {
 
     // Create original message
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Original message",
         mentions: [],
@@ -1678,8 +1665,7 @@ describe("createUserMessage", () => {
 
     // First edit
     const firstEdit = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "First edit",
         mentions: [],
@@ -1700,8 +1686,7 @@ describe("createUserMessage", () => {
 
     // Second edit
     const secondEdit = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Second edit",
         mentions: [],
@@ -1722,8 +1707,7 @@ describe("createUserMessage", () => {
 
     // Third edit
     const thirdEdit = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Third edit",
         mentions: [],
@@ -1750,8 +1734,7 @@ describe("createUserMessage", () => {
 
     // Create original message with null user
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1776,8 +1759,7 @@ describe("createUserMessage", () => {
 
     // Edit the message - user should remain null
     const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: editedContent,
         mentions,
@@ -1812,8 +1794,7 @@ describe("createUserMessage", () => {
 
     // Create original message
     const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: originalContent,
         mentions,
@@ -1836,8 +1817,7 @@ describe("createUserMessage", () => {
 
     // Edit the message - user should be preserved
     const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: editedContent,
         mentions,
@@ -1884,8 +1864,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1924,8 +1903,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1976,8 +1954,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -2021,8 +1998,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage1 = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "First message",
         mentions,
@@ -2037,8 +2013,7 @@ describe("createUserMessage", () => {
     });
 
     const userMessage2 = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content: "Second message",
         mentions,
@@ -2073,8 +2048,7 @@ describe("createUserMessage", () => {
     };
 
     const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage({
-        workspace,
+      return createUserMessage(auth, {
         conversation,
         content,
         mentions,

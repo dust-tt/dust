@@ -54,6 +54,7 @@ function createMockUserMessage(rank: number): UserMessageType {
     rank,
     user: null,
     mentions: [],
+    richMentions: [],
     content: "Test message",
     context: {
       username: "testuser",

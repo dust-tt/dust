@@ -58,8 +58,8 @@ export interface BaseProgrammaticCostChartProps {
   setFilter: React.Dispatch<
     React.SetStateAction<Partial<Record<GroupByType, string[]>>>
   >;
-  selectedMonth: string;
-  setSelectedMonth: (month: string) => void;
+  selectedPeriod: string;
+  setSelectedPeriod: (period: string) => void;
   billingCycleStartDay: number;
 }
 
@@ -159,7 +159,7 @@ function GroupedTooltip(
   return <ChartTooltipCard title={date} rows={rows} />;
 }
 
-export function formatMonth(date: Date): string {
+export function formatPeriod(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
@@ -175,8 +175,8 @@ export function BaseProgrammaticCostChart({
   setGroupBy,
   filter,
   setFilter,
-  selectedMonth,
-  setSelectedMonth,
+  selectedPeriod,
+  setSelectedPeriod,
   billingCycleStartDay,
 }: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
@@ -185,10 +185,10 @@ export function BaseProgrammaticCostChart({
   >({});
 
   const now = new Date();
-  // selectedMonth is "YYYY-MM", so new Date(selectedMonth) creates day 1 of that month.
+  // selectedPeriod is "YYYY-MM", so new Date(selectedPeriod) creates day 1 of that month.
   // To get the correct billing cycle, we need a date within that cycle, so we set
   // the day to billingCycleStartDay.
-  const currentDate = new Date(selectedMonth);
+  const currentDate = new Date(selectedPeriod);
   currentDate.setDate(billingCycleStartDay);
 
   // Calculate the billing cycle for the selected month
@@ -213,10 +213,14 @@ export function BaseProgrammaticCostChart({
 
   // Calculate next and previous period dates
   const nextPeriodDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    1
   );
   const previousPeriodDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
+    currentDate.getFullYear(),
+    currentDate.getMonth() - 1,
+    1
   );
 
   // Check if we can go to next period (not in the future)
@@ -224,12 +228,12 @@ export function BaseProgrammaticCostChart({
 
   // Navigate to next period
   const handleNextPeriod = () => {
-    setSelectedMonth(formatMonth(nextPeriodDate));
+    setSelectedPeriod(formatPeriod(nextPeriodDate));
   };
 
   // Navigate to previous period
   const handlePreviousPeriod = () => {
-    setSelectedMonth(formatMonth(previousPeriodDate));
+    setSelectedPeriod(formatPeriod(previousPeriodDate));
   };
 
   // Group by change
@@ -295,6 +299,7 @@ export function BaseProgrammaticCostChart({
       for (const group of availableGroupsArray) {
         newLabels[group.groupKey] = group.groupLabel;
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLabelCache((prev) => ({
         ...prev,
         [groupBy]: { ...prev[groupBy], ...newLabels },
@@ -359,11 +364,13 @@ export function BaseProgrammaticCostChart({
 
   const shouldShowTotalCredits = useMemo(() => {
     // if all points in the future have total credits higher to twice the max cumulated cost, don't show total credits.
-    const futurePoints = points.filter((point) => point.timestamp > Date.now());
+    const futurePoints = points.filter(
+      (point) => point.timestamp > now.getTime()
+    );
     return !futurePoints.every(
       (point) => point.totalInitialCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
     );
-  }, [maxCumulatedCost]);
+  }, [points, maxCumulatedCost, now]);
 
   // Add Total Credits to legend (not clickable)
   if (shouldShowTotalCredits) {
@@ -664,8 +671,8 @@ export function ProgrammaticCostChart({
     {}
   );
 
-  // Initialize selectedMonth to a date within the current billing cycle.
-  // Using just formatMonth(now) would create a date on the 1st of the month,
+  // Initialize selectedPeriod to a date within the current billing cycle.
+  // Using just formatPeriod(now) would create a date on the 1st of the month,
   // which may fall in the previous billing cycle if billingCycleStartDay > 1.
   // By using the billing cycle's start date, we ensure we're in the correct cycle.
   const now = new Date();
@@ -674,8 +681,8 @@ export function ProgrammaticCostChart({
     now,
     false
   );
-  const [selectedMonth, setSelectedMonth] = useState<string>(
-    formatMonth(currentBillingCycle.cycleStart)
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    formatPeriod(currentBillingCycle.cycleStart)
   );
 
   const {
@@ -684,7 +691,7 @@ export function ProgrammaticCostChart({
     isProgrammaticCostError,
   } = useWorkspaceProgrammaticCost({
     workspaceId,
-    selectedMonth,
+    selectedPeriod,
     billingCycleStartDay,
     groupBy,
     filter,
@@ -699,8 +706,8 @@ export function ProgrammaticCostChart({
       setGroupBy={setGroupBy}
       filter={filter}
       setFilter={setFilter}
-      selectedMonth={selectedMonth}
-      setSelectedMonth={setSelectedMonth}
+      selectedPeriod={selectedPeriod}
+      setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
     />
   );
