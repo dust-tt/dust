@@ -442,6 +442,7 @@ export async function getRelatedPosts(
 // Zod schema for customer story filters
 const CustomerStoryFiltersSchema = z.object({
   industry: z.array(z.string()).optional(),
+  industries: z.array(z.string()).optional(),
   department: z.array(z.string()).optional(),
   companySize: z.array(z.string()).optional(),
   region: z.array(z.string()).optional(),
@@ -454,6 +455,7 @@ function buildCustomerStoryQuery(
     limit?: number;
     slug?: string;
     industry?: string;
+    industriesIn?: string[];
     departmentIn?: string[];
   }
 ): Record<string, string | number | boolean> {
@@ -470,6 +472,10 @@ function buildCustomerStoryQuery(
     query["fields.industry"] = options.industry;
   }
 
+  if (options?.industriesIn && options.industriesIn.length > 0) {
+    query["fields.industries[in]"] = options.industriesIn.join(",");
+  }
+
   if (options?.departmentIn && options.departmentIn.length > 0) {
     query["fields.department[in]"] = options.departmentIn.join(",");
   }
@@ -481,6 +487,9 @@ function buildCustomerStoryQuery(
       const parsed = result.data;
       if (parsed.industry && parsed.industry.length > 0) {
         query["fields.industry[in]"] = parsed.industry.join(",");
+      }
+      if (parsed.industries && parsed.industries.length > 0) {
+        query["fields.industries[in]"] = parsed.industries.join(",");
       }
       if (parsed.department && parsed.department.length > 0) {
         query["fields.department[in]"] = parsed.department.join(",");
@@ -506,6 +515,7 @@ const CustomerStoryFieldsSchema = z.object({
   slug: z.string().optional(),
   companyName: z.string().default(""),
   industry: z.string().default(""),
+  industries: z.array(z.string()).default([]),
   department: z.array(z.string()).default([]),
   publishedAt: z.string().optional(),
   metaDescription: z.string().optional(),
@@ -562,6 +572,7 @@ function contentfulEntryToCustomerStory(
     headlineMetric: parsed.headlineMetric ?? null,
     keyHighlight,
     industry: parsed.industry,
+    industries: parsed.industries,
     department: parsed.department,
     companySize: parsed.companySize ?? null,
     region: parsed.region ?? [],
@@ -590,6 +601,7 @@ function contentfulEntryToCustomerStorySummary(
     description: story.description,
     heroImage: story.heroImage,
     industry: story.industry,
+    industries: story.industries,
     department: story.department,
     companySize: story.companySize,
     region: story.region,
@@ -647,7 +659,7 @@ export async function getCustomerStoryBySlug(
 
 export async function getRelatedCustomerStories(
   currentSlug: string,
-  industry: string,
+  industries: string[],
   department: string[],
   limit: number,
   resolvedUrl: string
@@ -655,21 +667,27 @@ export async function getRelatedCustomerStories(
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
 
-    // First try to find stories in the same industry
-    const industryQuery = buildCustomerStoryQuery(undefined, {
-      industry,
-      limit: limit + 1,
-    });
+    let stories: CustomerStorySummary[] = [];
 
-    const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(industryQuery);
+    // First try to find stories in the same industries
+    if (industries.length > 0) {
+      const industriesQuery = buildCustomerStoryQuery(undefined, {
+        industriesIn: industries,
+        limit: limit + 1,
+      });
 
-    const stories = response.items
-      .map(contentfulEntryToCustomerStory)
-      .filter(isNonNull)
-      .filter((story) => story.slug !== currentSlug)
-      .slice(0, limit)
-      .map(contentfulEntryToCustomerStorySummary);
+      const response =
+        await contentfulClient.getEntries<CustomerStorySkeleton>(
+          industriesQuery
+        );
+
+      stories = response.items
+        .map(contentfulEntryToCustomerStory)
+        .filter(isNonNull)
+        .filter((story) => story.slug !== currentSlug)
+        .slice(0, limit)
+        .map(contentfulEntryToCustomerStorySummary);
+    }
 
     // If we don't have enough stories, try by department
     if (stories.length < limit && department.length > 0) {
