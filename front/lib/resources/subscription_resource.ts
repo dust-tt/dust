@@ -5,10 +5,7 @@ import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
-import {
-  getWorkspaceInfos,
-  restoreWorkspaceAfterSubscription,
-} from "@app/lib/api/workspace";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
@@ -413,9 +410,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       stripeSubscriptionId: enterpriseDetails.stripeSubscriptionId,
       endDate: null,
     });
-
-    // Restore workspace functionality: unpause connectors, re-enable triggers, cancel scrub workflow
-    await restoreWorkspaceAfterSubscription(auth);
   }
 
   /**
@@ -505,9 +499,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     if (isUpgraded(newSubscription.getPlan())) {
       await getOrCreateWorkOSOrganization(owner);
     }
-
-    // Restore workspace functionality: unpause connectors, re-enable triggers, cancel scrub workflow
-    await restoreWorkspaceAfterSubscription(auth);
   }
 
   /**
