@@ -129,7 +129,7 @@ export async function searchFunction({
   }
 
   // Now we can search each data source.
-  const searchResults = await coreAPI.bulkSearchDataSources(
+  const searchResults = await coreAPI.searchDataSources(
     query,
     retrievalTopK,
     credentials,
