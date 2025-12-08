@@ -14,6 +14,7 @@ import {
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {

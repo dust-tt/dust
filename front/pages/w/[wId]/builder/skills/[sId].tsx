@@ -11,8 +11,17 @@ import { SkillConfigurationResource } from "@app/lib/resources/skill_configurati
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import type { SkillConfiguration } from "@app/types/skill_configuration";
 
+// Serialized version with Date objects converted to timestamps
+type SerializedSkillConfiguration = Omit<
+  SkillConfiguration,
+  "createdAt" | "updatedAt"
+> & {
+  createdAt: number;
+  updatedAt: number;
+};
+
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skillConfiguration: SkillConfiguration;
+  skillConfiguration: SerializedSkillConfiguration;
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
@@ -33,7 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const skillResource = await SkillConfigurationResource.fetchBySIdWithAuth(
+  const skillResource = await SkillConfigurationResource.fetchBySId(
     auth,
     context.params.sId as string
   );
@@ -54,9 +63,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const user = auth.getNonNullableUser().toJSON();
   const skillConfiguration = skillResource.toJSON();
 
+  // Serialize dates for Next.js
+  const serializedSkillConfiguration = {
+    ...skillConfiguration,
+    createdAt: skillConfiguration.createdAt.getTime(),
+    updatedAt: skillConfiguration.updatedAt.getTime(),
+  };
+
   return {
     props: {
-      skillConfiguration,
+      skillConfiguration: serializedSkillConfiguration,
       owner,
       subscription,
       user,
@@ -65,13 +81,20 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function EditSkill({
-  skillConfiguration,
+  skillConfiguration: serializedSkillConfiguration,
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (skillConfiguration.status === "archived") {
+  if (serializedSkillConfiguration.status === "archived") {
     throw new Error("Cannot edit archived skill");
   }
+
+  // Convert timestamps back to Date objects for SkillBuilder
+  const skillConfiguration: SkillConfiguration = {
+    ...serializedSkillConfiguration,
+    createdAt: new Date(serializedSkillConfiguration.createdAt),
+    updatedAt: new Date(serializedSkillConfiguration.updatedAt),
+  };
 
   return (
     <SkillBuilderProvider owner={owner} user={user}>
