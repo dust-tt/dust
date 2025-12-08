@@ -10,6 +10,8 @@ import React, { useMemo, useState } from "react";
 
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import type { EditedByUser } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 
 type RowData = {
   sId: string;
@@ -19,6 +21,7 @@ type RowData = {
   remainingAmount: string;
   expirationDate: string;
   isExpired: boolean;
+  boughtByUser: EditedByUser | null;
   onClick?: () => void;
 };
 
@@ -98,6 +101,7 @@ function getTableRows(credits: CreditDisplayData[]): RowData[] {
           })
         : "Never",
     isExpired: isExpired(credit),
+    boughtByUser: credit.boughtByUser,
   }));
 }
 
@@ -149,6 +153,24 @@ const creditColumns: ColumnDef<RowData, string>[] = [
       className: "text-right",
     },
     cell: (info: Info) => Cell(info, info.row.original.expirationDate),
+  },
+  {
+    id: "by" as const,
+    header: "Bought By",
+    cell: (info: Info) => {
+      const boughtByUser = info.row.original.boughtByUser;
+      return (
+        <DataTable.CellContent
+          className={info.row.original.isExpired ? "opacity-40" : ""}
+          avatarUrl={boughtByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
+          avatarTooltipLabel={boughtByUser?.fullName ?? "System"}
+          roundedAvatar
+        />
+      );
+    },
+    meta: {
+      className: "w-10",
+    },
   },
 ];
 

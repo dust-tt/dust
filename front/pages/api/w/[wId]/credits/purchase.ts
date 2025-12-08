@@ -151,12 +151,15 @@ async function handler(
         discountPercent = undefined;
       }
 
+      const user = auth.getNonNullableUser();
+
       if (isEnterprise) {
         const result = await createEnterpriseCreditPurchase({
           auth,
           stripeSubscriptionId: subscription.stripeSubscriptionId,
           amountMicroUsd,
           discountPercent,
+          boughtByUserId: user.id,
         });
 
         if (result.isErr()) {
@@ -181,6 +184,7 @@ async function handler(
         stripeSubscriptionId: subscription.stripeSubscriptionId,
         amountMicroUsd,
         discountPercent,
+        boughtByUserId: user.id,
       });
 
       if (result.isErr()) {

@@ -45,7 +45,9 @@ async function handler(
   switch (req.method) {
     case "GET": {
       // Fetch all credits for the workspace.
-      const credits = await CreditResource.listAll(auth);
+      const credits = await CreditResource.listAll(auth, {
+        includeBuyer: true,
+      });
 
       // Transform credits to display format with computed consumed amount.
       const creditsData: CreditDisplayData[] = credits

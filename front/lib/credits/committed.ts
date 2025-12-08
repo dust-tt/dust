@@ -154,6 +154,7 @@ export async function createEnterpriseCreditPurchase({
   discountPercent,
   startDate,
   expirationDate,
+  boughtByUserId,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
@@ -161,6 +162,7 @@ export async function createEnterpriseCreditPurchase({
   discountPercent?: number;
   startDate?: Date;
   expirationDate?: Date;
+  boughtByUserId?: number;
 }): Promise<
   Result<{ credit: CreditResource; invoiceOrLineItemId: string }, Error>
 > {
@@ -223,6 +225,7 @@ export async function createEnterpriseCreditPurchase({
     consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
+    boughtByUserId,
   });
 
   const finalizeResult = await finalizeInvoice(invoice);
@@ -274,11 +277,13 @@ export async function createProCreditPurchase({
   stripeSubscriptionId,
   amountMicroUsd,
   discountPercent,
+  boughtByUserId,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
   amountMicroUsd: number;
   discountPercent?: number;
+  boughtByUserId?: number;
 }): Promise<Result<{ invoiceId: string; paymentUrl: string | null }, Error>> {
   if (discountPercent !== undefined && discountPercent > MAX_DISCOUNT_PERCENT) {
     return new Err(
@@ -336,6 +341,7 @@ export async function createProCreditPurchase({
     consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
+    boughtByUserId,
   });
 
   const finalizeResult = await finalizeInvoice(invoice);
