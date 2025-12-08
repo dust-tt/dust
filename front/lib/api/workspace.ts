@@ -1,6 +1,11 @@
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import apiConfig from "@app/lib/api/config";
+import {
+  getDataSources,
+  unpauseAllManagedDataSources,
+} from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -14,12 +19,14 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
+import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import type {
   GroupKind,
   LightWorkspaceType,
@@ -37,6 +44,7 @@ import type {
 import {
   ACTIVE_ROLES,
   assertNever,
+  ConnectorsAPI,
   Err,
   md5,
   Ok,
@@ -606,4 +614,52 @@ export async function findWorkspaceByWorkOSOrganizationId(
   }
 
   return renderLightWorkspaceType({ workspace });
+}
+
+/**
+ * Restores a workspace to full functionality after subscription activation/reactivation.
+ * This function is called when:
+ * - A new subscription is created (Stripe checkout or manual upgrade)
+ * - A subscription is reactivated after cancellation
+ *
+ * It performs the following actions:
+ * - Terminates the scheduled workspace scrub workflow (if any)
+ * - Unpauses all connectors (including webcrawler connectors)
+ * - Re-enables all triggers that point to non-archived agents
+ */
+export async function restoreWorkspaceAfterSubscription(
+  auth: Authenticator
+): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Terminate the scheduled workspace scrub workflow if any
+  const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
+    workspaceId: owner.sId,
+  });
+  if (scrubCancelRes.isErr()) {
+    logger.error(
+      { error: scrubCancelRes.error, workspaceId: owner.sId },
+      "Error terminating scrub workspace workflow."
+    );
+  }
+
+  // Unpause all connectors
+  const unpauseConnectorsRes = await unpauseAllManagedDataSources(auth);
+  if (unpauseConnectorsRes.isErr()) {
+    logger.error(
+      { workspaceId: owner.sId, error: unpauseConnectorsRes.error.message },
+      "Failed to unpause connectors after subscription activation."
+    );
+    return;
+  }
+
+  // Re-enable all triggers that point to non-archived agents
+  const enableTriggersRes = await TriggerResource.enableAllForWorkspace(auth);
+  if (enableTriggersRes.isErr()) {
+    logger.error(
+      { workspaceId: owner.sId, error: enableTriggersRes.error },
+      "Error re-enabling workspace triggers on subscription activation"
+    );
+    // Don't throw error here - we want the function to continue even if trigger re-enabling fails
+  }
 }
