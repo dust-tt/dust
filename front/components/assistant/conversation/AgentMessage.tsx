@@ -145,11 +145,8 @@ export function AgentMessage({
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const {
-    enqueueBlockedAction,
-    removeAllBlockedActionsForMessage,
-    mutateBlockedActions,
-  } = useBlockedActionsContext();
+  const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
+    useBlockedActionsContext();
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
