@@ -706,8 +706,6 @@ export async function editUserMessage(
 
   const agentConfigurations = removeNulls(results[0]);
 
-  let canCreateAgentMessages = false;
-
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
       return new Err({
@@ -805,8 +803,9 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      // One message can contain multiple agent mentions so we only want to check it once.
-      if (!canCreateAgentMessages) {
+      const hasAgentMentions = mentions.some(isAgentMention);
+
+      if (hasAgentMentions) {
         // Check if there are any agent messages after the edited user message
         // by checking conversation.content (which is indexed by rank)
         const hasAgentMessagesAfter = conversation.content
@@ -819,39 +818,42 @@ export async function editUserMessage(
             return isAgentMessageType(latestVersion);
           });
 
-        // Only create agent messages if:
-        // 1. There are agent mentions in the edited message
-        // 2. There are no agent messages after the edited user message
-        canCreateAgentMessages =
+        // Only create agent messages if there are no agent messages after the edited user message
+        const canCreateAgentMessages =
           agentConfigurations.length > 0 && !hasAgentMessagesAfter;
-      }
 
-      let agentMessages: AgentMessageType[] = [];
+        let agentMessages: AgentMessageType[] = [];
 
-      if (canCreateAgentMessages) {
-        const nextMessageRank =
-          ((await Message.max<number | null, Message>("rank", {
-            where: {
-              conversationId: conversation.id,
+        if (canCreateAgentMessages) {
+          const nextMessageRank =
+            ((await Message.max<number | null, Message>("rank", {
+              where: {
+                conversationId: conversation.id,
+              },
+              transaction: t,
+            })) ?? -1) + 1;
+
+          agentMessages = await createAgentMessages(auth, {
+            conversation,
+            metadata: {
+              type: "create",
+              mentions,
+              agentConfigurations,
+              skipToolsValidation,
+              nextMessageRank,
+              userMessage,
             },
             transaction: t,
-          })) ?? -1) + 1;
+          });
+        }
 
-        agentMessages = await createAgentMessages(auth, {
-          conversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations,
-            skipToolsValidation,
-            nextMessageRank,
-            userMessage,
-          },
-          transaction: t,
-        });
+        await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+        return {
+          userMessage,
+          agentMessages,
+        };
       }
-
-      await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
         userMessage,
