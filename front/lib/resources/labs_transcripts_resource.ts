@@ -162,14 +162,31 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async fetchById(
-    sId: string,
-    transaction?: Transaction
+    auth: Authenticator,
+    sId: string
   ): Promise<LabsTranscriptsConfigurationResource | null> {
     const resourceId = getResourceIdFromSId(sId);
     if (!resourceId) {
       return null;
     }
-    return this.fetchByModelId(resourceId, transaction);
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        id: resourceId,
+        workspaceId: owner.id,
+      },
+    });
+
+    if (!configuration) {
+      return null;
+    }
+
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   async getUser(): Promise<UserResource | null> {
@@ -372,10 +389,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return count > 0;
   }
 
-  async getMostRecentHistoryDate(): Promise<Date | null> {
+  async getMostRecentHistoryDate(auth: Authenticator): Promise<Date | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
         configurationId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       order: [["createdAt", "DESC"]],
     });

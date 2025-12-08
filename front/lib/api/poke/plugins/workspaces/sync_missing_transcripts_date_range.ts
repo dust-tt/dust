@@ -60,7 +60,7 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
       modjoConfigurations,
       async (config) => {
         const hasHistory = await config.hasAnyHistory();
-        const mostRecentDate = await config.getMostRecentHistoryDate();
+        const mostRecentDate = await config.getMostRecentHistoryDate(auth);
         const user = await config.getUser();
 
         const statusParts = [];
@@ -77,7 +77,7 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
 
         return {
           label: `[${config.provider}] ${statusParts.join(" | ")}`,
-          value: String(config.id),
+          value: config.sId,
         };
       },
       { concurrency: 8 }
@@ -89,9 +89,9 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const configurationIdStr = args.transcriptsConfigurationId[0];
+    const configurationId = args.transcriptsConfigurationId[0];
 
-    if (!configurationIdStr) {
+    if (!configurationId.trim()) {
       return new Err(new Error("No transcripts configuration selected"));
     }
 
@@ -128,11 +128,10 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
       );
     }
 
-    const configurationId = parseInt(configurationIdStr, 10);
-    const configuration =
-      await LabsTranscriptsConfigurationResource.fetchByModelId(
-        configurationId
-      );
+    const configuration = await LabsTranscriptsConfigurationResource.fetchById(
+      auth,
+      configurationId
+    );
 
     if (!configuration) {
       return new Err(
@@ -296,7 +295,12 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
             }
           }
 
-          await processTranscriptActivity(configuration.sId, transcript.callId);
+          await processTranscriptActivity({
+            fileId: transcript.callId,
+            transcriptsConfigurationId: configuration.sId,
+            workspaceId: workspace.sId,
+          });
+
           return {
             success: true,
             callId: transcript.callId,
