@@ -15,18 +15,14 @@ export function useAgentConfigurationSkills({
 }) {
   const skillsFetcher: Fetcher<GetAgentSkillsResponseBody> = fetcher;
 
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/skills`,
+  const { data, isLoading } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/skills`,
     skillsFetcher,
     { disabled }
   );
 
   return {
     skills: data?.skills ?? emptyArray(),
-    isSkillsLoading: !error && !data && !disabled,
-    isSkillsError: error,
-    isSkillsValidating: isValidating,
+    isSkillsLoading: isLoading,
   };
 }
