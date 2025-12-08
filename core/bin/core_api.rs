@@ -194,10 +194,6 @@ fn main() {
             post(data_sources::data_sources_search),
         )
         .route(
-            "/data_sources/search/bulk",
-            post(data_sources::data_sources_search_bulk),
-        )
-        .route(
             "/projects/{project_id}/data_sources/{data_source_id}/documents",
             get(data_sources::data_sources_documents_list),
         )
