@@ -13,7 +13,6 @@ import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/M
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -91,7 +90,6 @@ export function SkillBuilderToolsSection() {
               />
             }
             className="pb-5"
-            style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
           <CardGrid>
