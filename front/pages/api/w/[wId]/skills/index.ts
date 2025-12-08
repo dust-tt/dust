@@ -6,6 +6,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isBuilder } from "@app/types";
 import type { SkillConfigurationWithAuthor } from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
@@ -20,6 +21,16 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
+
+  if (!isBuilder(owner)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "User is not a builder.",
+      },
+    });
+  }
 
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
