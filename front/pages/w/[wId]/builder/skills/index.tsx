@@ -68,7 +68,7 @@ export default function WorkspaceSkills({
           <Page.Header title="Manage Skills" icon={PuzzleIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-col pt-3">
-              <SkillsTable skillsConfigurations={skillConfigurations ?? []} />
+              <SkillsTable skillsConfigurations={skillConfigurations} />
             </div>
           </Page.Vertical>
         </div>
