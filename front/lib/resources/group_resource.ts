@@ -298,12 +298,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         skillConfigurationId: skill.id,
         workspaceId: owner.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          as: "group",
-        },
-      ],
       attributes: ["groupId"],
     });
 
@@ -325,15 +319,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const groupSkill = groupSkills[0];
-    const groupModel = await groupSkill.getGroup();
-    if (!groupModel) {
+    const [groupSkill] = groupSkills;
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: groupSkill.groupId,
+      },
+    });
+
+    const [group] = groups.filter((g) => g.canRead(auth));
+    if (!group) {
       return new Err(
         new DustError("group_not_found", "Editor group not found for skill.")
       );
     }
 
-    const group = new GroupResource(GroupModel, groupModel.get());
     if (group.kind !== "agent_editors") {
       return new Err(
         new DustError(
