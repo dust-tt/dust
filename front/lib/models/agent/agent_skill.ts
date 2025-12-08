@@ -15,9 +15,8 @@ export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare customSkill: NonAttribute<SkillConfigurationModel>;
-  declare customSkillId: ForeignKey<SkillConfigurationModel["id"]>;
-
+  declare customSkill: NonAttribute<SkillConfigurationModel> | null;
+  declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
   declare agentConfiguration: NonAttribute<AgentConfiguration>;
@@ -41,7 +40,7 @@ AgentSkillModel.init(
     },
     customSkillId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     globalSkillId: {
       type: DataTypes.STRING,
@@ -55,38 +54,44 @@ AgentSkillModel.init(
   {
     modelName: "agent_skills",
     sequelize: frontSequelize,
-    indexes: [
-      {
-        unique: true,
-        fields: ["customSkillId", "agentConfigurationId"],
+    indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
+    validate: {
+      eitherGlobalOrCustomSkill() {
+        const hasCustomSkill = this.customSkillId !== null;
+        const hasGlobalSkill = this.globalSkillId !== null;
+        if (hasCustomSkill === hasGlobalSkill) {
+          throw new Error(
+            "Exactly one of customSkillId or globalSkillId must be set"
+          );
+        }
       },
-      { fields: ["workspaceId", "agentConfigurationId"] },
-    ],
+    },
   }
 );
 
-// Prevent deletion of skills that are still linked to agents.
+// Association with SkillConfiguration
 AgentSkillModel.belongsTo(SkillConfigurationModel, {
-  foreignKey: { name: "customSkillId", allowNull: false },
+  foreignKey: { name: "customSkillId", allowNull: true },
   as: "customSkill",
   onDelete: "RESTRICT",
 });
 SkillConfigurationModel.hasMany(AgentSkillModel, {
-  foreignKey: { name: "customSkillId", allowNull: false },
+  foreignKey: { name: "customSkillId", allowNull: true },
   as: "agentSkillLinks",
+  onDelete: "RESTRICT",
 });
 
-// Delete skill links when the agent is deleted.
+// Association with AgentConfiguration
 AgentSkillModel.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentConfiguration.hasMany(AgentSkillModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "agentSkillLinks",
 });
 
-// Many-to-Many associations.
+// Many-to-Many associations
 SkillConfigurationModel.belongsToMany(AgentConfiguration, {
   through: AgentSkillModel,
   foreignKey: "customSkillId",
