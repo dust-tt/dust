@@ -16,7 +16,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, formatUserFullName, normalizeError, Ok } from "@app/types";
 import type {
-  SkillConfiguration,
+  SkillConfigurationType,
   SkillConfigurationWithAuthor,
 } from "@app/types/skill_configuration";
 
@@ -163,8 +163,8 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   toJSON(
     this: SkillConfigurationResourceWithAuthor
   ): SkillConfigurationWithAuthor;
-  toJSON(this: SkillConfigurationResource): SkillConfiguration;
-  toJSON(): SkillConfiguration | SkillConfigurationWithAuthor {
+  toJSON(this: SkillConfigurationResource): SkillConfigurationType;
+  toJSON(): SkillConfigurationType | SkillConfigurationWithAuthor {
     if (this.author) {
       return {
         sId: this.sId,

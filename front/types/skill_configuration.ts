@@ -3,7 +3,7 @@ import type { UserType } from "./user";
 export type SkillStatus = "active" | "archived";
 export type SkillScope = "private" | "workspace";
 
-export type SkillConfiguration = {
+export type SkillConfigurationType = {
   sId: string;
   id: number;
   createdAt: Date;
@@ -20,7 +20,7 @@ export type SkillConfiguration = {
 };
 
 export type SkillConfigurationWithAuthor = Omit<
-  SkillConfiguration,
+  SkillConfigurationType,
   "authorId"
 > & {
   author: Omit<UserType, "lastLoginAt" | "provider">;
