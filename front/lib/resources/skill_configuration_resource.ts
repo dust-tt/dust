@@ -14,7 +14,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, formatUserFullName, normalizeError, Ok } from "@app/types";
 import type {
   SkillConfiguration,
   SkillConfigurationWithAuthor,
@@ -184,6 +184,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
           sId: this.author.sId,
           createdAt: this.author.createdAt.getTime(),
           username: this.author.username,
+          fullName: formatUserFullName(this.author),
           email: this.author.email,
           firstName: this.author.firstName,
           lastName: this.author.lastName,
