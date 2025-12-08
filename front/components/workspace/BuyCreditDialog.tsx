@@ -16,10 +16,11 @@ import {
   Spinner,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { usePurchaseCredits } from "@app/lib/swr/credits";
 import type { StripePricingData } from "@app/lib/types/stripe/pricing";
+import { assertNever } from "@app/types";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
@@ -51,18 +52,15 @@ export function BuyCreditDialog({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const { purchaseCredits } = usePurchaseCredits({ workspaceId });
 
-  useEffect(() => {
-    if (isOpen) {
-      /* eslint-disable react-hooks/set-state-in-effect */
-      setAmountDollars("");
-      setAcceptedTerms(false);
-      setAcceptedNonRefundable(false);
-      setPurchaseState("idle");
-      setErrorMessage("");
-      setPaymentUrl(null);
-      /* eslint-enable react-hooks/set-state-in-effect */
-    }
-  }, [isOpen]);
+  const resetModalStateAndClose = useCallback(() => {
+    setAmountDollars("");
+    setAcceptedTerms(false);
+    setAcceptedNonRefundable(false);
+    setPurchaseState("idle");
+    setErrorMessage("");
+    setPaymentUrl(null);
+    onClose();
+  }, [onClose]);
 
   const handlePurchase = async () => {
     setPurchaseState("processing");
@@ -80,6 +78,8 @@ export function BuyCreditDialog({
         setErrorMessage(result.message);
         setPurchaseState("error");
         break;
+      default:
+        assertNever(result);
     }
   };
 
@@ -341,7 +341,7 @@ export function BuyCreditDialog({
             rightButtonProps={{
               label: "Close",
               variant: "primary",
-              onClick: onClose,
+              onClick: resetModalStateAndClose,
             }}
           />
         );
@@ -351,7 +351,7 @@ export function BuyCreditDialog({
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
-              onClick: onClose,
+              onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
               label: "Go to Payment",
@@ -370,14 +370,18 @@ export function BuyCreditDialog({
             rightButtonProps={{
               label: "Close",
               variant: "outline",
-              onClick: onClose,
+              onClick: resetModalStateAndClose,
             }}
           />
         );
       default:
         return (
           <DialogFooter>
-            <Button label="Cancel" variant="outline" onClick={onClose} />
+            <Button
+              label="Cancel"
+              variant="outline"
+              onClick={resetModalStateAndClose}
+            />
             <Button
               label="Purchase Credits"
               variant="primary"
@@ -390,7 +394,10 @@ export function BuyCreditDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && resetModalStateAndClose()}
+    >
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Purchase Programmatic Credits</DialogTitle>
