@@ -60,7 +60,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     auth: Authenticator,
     options: ResourceFindOptions<SkillConfigurationModel>,
     config: { includeAuthor: true }
-  ): Promise<Array<SkillConfigurationResourceWithAuthor>>;
+  ): Promise<SkillConfigurationResourceWithAuthor[]>;
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<SkillConfigurationModel>,
@@ -97,7 +97,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async fetchWithAuthor(
     auth: Authenticator,
     options: ResourceFindOptions<SkillConfigurationModel> = {}
-  ): Promise<Array<SkillConfigurationResourceWithAuthor>> {
+  ): Promise<SkillConfigurationResourceWithAuthor[]> {
     return this.baseFetch(auth, options, {
       includeAuthor: true,
     });
