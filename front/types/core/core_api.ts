@@ -1061,6 +1061,14 @@ export class CoreAPI {
     }[],
     target_document_tokens?: number | null
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
+    console.log(">> bulkSearchDataSources", {
+      query,
+      topK,
+      fullText,
+      searches: JSON.stringify(searches, null, 2),
+      target_document_tokens,
+    });
+
     const response = await this._fetchWithError(
       `${this._url}/data_sources/search/bulk`,
       {
@@ -1088,8 +1096,15 @@ export class CoreAPI {
       results: CoreAPIBulkDataSourceSearch[];
     }>(response);
     if (result.isErr()) {
+      console.log(">> bulkSearchDataSources error", {
+        error: result.error,
+      });
       return result;
     }
+
+    console.log(">> bulkSearchDataSources result", {
+      result: JSON.stringify(result.value, null, 2),
+    });
 
     // Check for errors in individual search results.
     const errors = result.value.results.filter((r) => r.error);
