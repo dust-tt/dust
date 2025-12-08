@@ -112,7 +112,9 @@ export async function getCustomerPaymentStatus(
   const paidInvoices = await getSubscriptionInvoices({
     subscriptionId: stripeSubscription.id,
     status: "paid",
-    createdSince: new Date(Date.now() - MONTHLY_BILLING_CYCLE_SECONDS * 2 * 1000),
+    createdSince: new Date(
+      Date.now() - MONTHLY_BILLING_CYCLE_SECONDS * 2 * 1000
+    ),
   });
 
   if (paidInvoices && paidInvoices.length > 0) {
