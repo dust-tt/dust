@@ -287,22 +287,20 @@ export const getStripeSubscription = async (
   }
 };
 
-export async function getSubscriptionInvoices(
-  subscriptionId: string,
-  options?: {
-    status?: Stripe.InvoiceListParams["status"];
-    createdSince?: Date;
-    limit?: number;
-  }
-): Promise<Stripe.Invoice[]> {
+export async function getSubscriptionInvoices({
+  subscriptionId,
+  status,
+  createdSince,
+}: {
+  subscriptionId: string;
+  status?: Stripe.InvoiceListParams["status"];
+  createdSince: Date;
+}): Promise<Stripe.Invoice[]> {
   const stripe = getStripeClient();
   const invoices = await stripe.invoices.list({
     subscription: subscriptionId,
-    status: options?.status,
-    created: options?.createdSince
-      ? { gte: Math.floor(options.createdSince.getTime() / 1000) }
-      : undefined,
-    limit: options?.limit ?? 100,
+    status,
+    created: { gte: Math.floor(createdSince.getTime() / 1000) },
   });
   return invoices.data.filter(
     (inv) =>

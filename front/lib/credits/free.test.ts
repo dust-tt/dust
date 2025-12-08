@@ -98,7 +98,8 @@ describe("checkCustomerStatus", () => {
         makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
       );
       expect(result).toBe("paying");
-      expect(getSubscriptionInvoices).toHaveBeenCalledWith("sub_123", {
+      expect(getSubscriptionInvoices).toHaveBeenCalledWith({
+        subscriptionId: "sub_123",
         status: "paid",
         createdSince: expect.any(Date),
       });

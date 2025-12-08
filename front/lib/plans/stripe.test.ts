@@ -297,16 +297,17 @@ describe("getSubscriptionInvoices", () => {
       ],
     });
 
-    const result = await getSubscriptionInvoices("sub_123", {
+    const createdSince = new Date("2024-01-01T00:00:00Z");
+    const result = await getSubscriptionInvoices({
+      subscriptionId: "sub_123",
       status: "paid",
-      limit: 10,
+      createdSince,
     });
 
     expect(mockInvoices.list).toHaveBeenCalledWith({
       subscription: "sub_123",
       status: "paid",
-      created: undefined,
-      limit: 10,
+      created: { gte: Math.floor(createdSince.getTime() / 1000) },
     });
     expect(result).toHaveLength(2);
     expect(result.map((i) => i.id)).toEqual(["in_1", "in_2"]);
@@ -318,13 +319,15 @@ describe("getSubscriptionInvoices", () => {
     });
 
     const createdSince = new Date("2024-01-01T00:00:00Z");
-    await getSubscriptionInvoices("sub_123", { createdSince });
+    await getSubscriptionInvoices({
+      subscriptionId: "sub_123",
+      createdSince,
+    });
 
     expect(mockInvoices.list).toHaveBeenCalledWith({
       subscription: "sub_123",
       status: undefined,
       created: { gte: Math.floor(createdSince.getTime() / 1000) },
-      limit: 100,
     });
   });
 });

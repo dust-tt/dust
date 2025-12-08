@@ -67,9 +67,10 @@ async function inspectFromEvent(eventId: string, logger: any) {
     `Customer status: ${await getCustomerPaymentStatus(stripeSubscription)}`
   );
 
-  const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
+  const paidInvoices = await getSubscriptionInvoices({
+    subscriptionId: stripeSubscription.id,
     status: "paid",
-    limit: 1,
+    createdSince: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year
   });
   if (paidInvoices && paidInvoices.length > 0) {
     const mostRecentInvoice = paidInvoices[0];
