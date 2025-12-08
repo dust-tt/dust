@@ -145,8 +145,9 @@ async function createActionForTool(
     agentMessage
   );
 
-  const stepContent =
-    await AgentStepContentResource.fetchByModelId(stepContentId);
+  const [stepContent] = await AgentStepContentResource.fetchByModelIds(auth, [
+    stepContentId,
+  ]);
   assert(
     stepContent,
     `Step content not found for stepContentId: ${stepContentId}`
