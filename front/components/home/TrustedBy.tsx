@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { H4 } from "@app/components/home/ContentComponents";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 const CASE_STUDIES: Record<string, string> = {
@@ -248,6 +249,13 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() =>
+                      trackEvent({
+                        area: TRACKING_AREAS.HOME,
+                        object: "case_study",
+                        extra: { company: logo.name },
+                      })
+                    }
                   >
                     Case study &rarr;
                   </Link>

@@ -121,6 +121,9 @@ const HeroContent = () => {
           </button>
         </div>
         {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        <p className="mt-3 text-sm text-muted-foreground">
+          14 days free trial. Cancel anytime.
+        </p>
       </form>
     </div>
   );
