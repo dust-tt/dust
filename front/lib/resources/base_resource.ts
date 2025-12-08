@@ -47,6 +47,7 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
     this.id = blob.id;
   }
 
+  // @deprecated: Implement a proper fetchByModelId in each resource that accepts an Authenticator.
   static async fetchByModelId<
     T extends BaseResource<M>,
     M extends Model & ResourceWithId,
