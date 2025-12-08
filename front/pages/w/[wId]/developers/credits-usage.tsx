@@ -314,7 +314,7 @@ export default function CreditsUsagePage({
   creditPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
-  const { hasFeature, featureFlags } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
   const { credits, isCreditsLoading } = useCredits({
