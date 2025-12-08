@@ -4,9 +4,7 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-
-export type SkillStatus = "active" | "archived";
-export type SkillScope = "private" | "workspace";
+import type { SkillScope, SkillStatus } from "@app/types/skill_configuration";
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

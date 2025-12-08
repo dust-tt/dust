@@ -362,6 +362,12 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
           credit_amount_cents: "10000",
         },
         auto_advance: true,
+        automatic_tax: { enabled: true },
+        payment_settings: {
+          payment_method_options: {
+            card: { request_three_d_secure: "automatic" },
+          },
+        },
       },
       undefined
     );
@@ -410,6 +416,34 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
       expect(result.error.error_message).toContain("not found");
     }
   });
+
+  it("should create invoice with 3DS challenge when requestThreeDSecure is challenge", async () => {
+    mockSubscriptions.retrieve.mockResolvedValue({
+      id: "sub_pro",
+      customer: "cus_123",
+    });
+    mockInvoices.create.mockResolvedValue({ id: "in_pro" });
+    mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
+
+    const result = await makeCreditPurchaseOneOffInvoice({
+      stripeSubscriptionId: "sub_pro",
+      amountMicroUsd: 100_000_000,
+      collectionMethod: "charge_automatically",
+      requestThreeDSecure: "challenge",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockInvoices.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_settings: {
+          payment_method_options: {
+            card: { request_three_d_secure: "challenge" },
+          },
+        },
+      }),
+      undefined
+    );
+  });
 });
 
 describe("makeOneOffInvoice - Enterprise credit purchase", () => {
@@ -444,6 +478,7 @@ describe("makeOneOffInvoice - Enterprise credit purchase", () => {
           credit_amount_cents: "500000",
         },
         auto_advance: true,
+        automatic_tax: { enabled: true },
       },
       undefined
     );
@@ -683,6 +718,7 @@ describe("makeCreditsPAYGInvoice", () => {
           credits_period_end: periodEnd.toString(),
         },
         auto_advance: true,
+        automatic_tax: { enabled: true },
       },
       { idempotencyKey: "credits-payg-arrears-test" }
     );

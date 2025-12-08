@@ -1,7 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { Fetcher } from "swr";
 
-import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditsResponseBody } from "@app/types/credits";
@@ -81,6 +80,11 @@ export function useCredits({
   };
 }
 
+export type PurchaseResult =
+  | { status: "success" }
+  | { status: "redirect"; paymentUrl: string }
+  | { status: "error"; message: string };
+
 export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
   const isLoading = useSyncExternalStore(
     subscribeToPurchaseLoading,
@@ -93,12 +97,10 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
     workspaceId,
   });
 
-  const sendNotification = useSendNotification();
-
   const purchaseCredits = useCallback(
-    async (amountDollars: number): Promise<boolean> => {
+    async (amountDollars: number): Promise<PurchaseResult> => {
       if (getPurchaseLoading(workspaceId)) {
-        return false;
+        return { status: "error", message: "Purchase already in progress" };
       }
 
       setPurchaseLoading(workspaceId, true);
@@ -121,47 +123,29 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             errorData.error?.message || "Failed to purchase credits";
 
-          sendNotification({
-            type: "error",
-            title: "Purchase failed",
-            description: `${errorMessage}. Please contact support if the issue persists.`,
-          });
-          return false;
+          return { status: "error", message: errorMessage };
         }
 
         const responseData = await response.json();
 
-        // If payment requires additional action, redirect to Stripe's hosted invoice page.
         if (responseData.paymentUrl) {
-          window.location.href = responseData.paymentUrl;
-          return true;
+          return { status: "redirect", paymentUrl: responseData.paymentUrl };
         }
 
         resetPostPurchaseRefreshCount(workspaceId);
-
-        sendNotification({
-          type: "success",
-          title: "Credits purchased",
-          description: `Successfully added $${amountDollars} in credits`,
-        });
-
         void mutateCredits();
-        return true;
+
+        return { status: "success" };
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to purchase credits";
 
-        sendNotification({
-          type: "error",
-          title: "Purchase failed",
-          description: `${errorMessage}. Please contact support if the issue persists.`,
-        });
-        return false;
+        return { status: "error", message: errorMessage };
       } finally {
         setPurchaseLoading(workspaceId, false);
       }
     },
-    [workspaceId, mutateCredits, sendNotification]
+    [workspaceId, mutateCredits]
   );
 
   return {

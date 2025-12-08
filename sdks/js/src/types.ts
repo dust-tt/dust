@@ -1281,7 +1281,7 @@ export type BlockedActionExecutionType = z.infer<
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
-  userId: z.string(),
+  userId: z.string().optional(),
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
@@ -1540,6 +1540,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "rate_limit_error"
   | "run_error"
   | "run_not_found"
+  | "skill_not_found"
   | "space_already_exists"
   | "space_not_found"
   | "stripe_invalid_product_id_error"

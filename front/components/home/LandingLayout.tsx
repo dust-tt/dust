@@ -1,12 +1,4 @@
-import {
-  Button,
-  Div3D,
-  DustLogo,
-  DustLogoLayer1,
-  DustLogoLayer2,
-  Hover3D,
-  LoginIcon,
-} from "@dust-tt/sparkle";
+import { Button, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -129,19 +121,10 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <UTMButton
-              href="/home/contact"
-              className="hidden xs:inline-flex"
+            <Button
               variant="outline"
               size="sm"
-              label="Request a demo"
-              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "request_demo")}
-            />
-            <Button
-              variant="highlight"
-              size="sm"
               label="Sign in"
-              icon={LoginIcon}
               onClick={withTracking(
                 TRACKING_AREAS.NAVIGATION,
                 "sign_in",
@@ -151,6 +134,14 @@ export default function LandingLayout({
                 }
               )}
             />
+            <UTMButton
+              href="/home/contact"
+              className="hidden xs:inline-flex"
+              variant="highlight"
+              size="sm"
+              label="Contact sales"
+              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "contact_sales")}
+            />
           </div>
         </div>
       </ScrollingHeader>
@@ -159,7 +150,7 @@ export default function LandingLayout({
       {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div> */}
-      <main className="z-10 flex flex-col items-center">
+      <main className="z-10 flex w-full flex-col items-center">
         <div
           className={classNames(
             "container flex w-full flex-col",
@@ -383,14 +374,7 @@ export const PublicWebsiteLogo = ({
 
   return (
     <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
-      <Hover3D className={`relative ${className}`}>
-        <Div3D depth={0} className={className}>
-          <DustLogoLayer1 className={className} />
-        </Div3D>
-        <Div3D depth={25} className="absolute top-0">
-          <DustLogoLayer2 className={className} />
-        </Div3D>
-      </Hover3D>
+      <DustLogo className={className} />
     </Link>
   );
 };

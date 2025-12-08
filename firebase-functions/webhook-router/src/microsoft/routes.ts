@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import express from "express";
+import { error } from "firebase-functions/logger";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
@@ -50,11 +51,11 @@ async function handleTeamsWebhook(
       res.set("Content-Type", "application/json; charset=utf-8");
       res.status(200).json(responseBody);
     }
-  } catch (error) {
-    console.error("Teams webhook router error", {
+  } catch (e) {
+    error("Teams webhook router error", {
       component: "teams-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error: e instanceof Error ? e.message : String(e),
     });
   } finally {
     if (!res.headersSent) {

@@ -181,7 +181,7 @@ async function handler(
         const records = parseCSV(csvData, {
           columns: true, // Use first row as headers
           skip_empty_lines: true,
-        });
+        }) as unknown as any;
 
         res.setHeader("Content-Type", "application/json");
         res.status(200).json(records);

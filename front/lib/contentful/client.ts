@@ -531,8 +531,11 @@ function contentfulEntryToCustomerStory(
   const parsed = result.data;
   const slug = parsed.slug ?? slugify(parsed.title);
 
-  // Check assets directly
+  // Check assets and rich text fields
   const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const keyHighlight = isContentfulDocument(fields.keyHighlight)
+    ? fields.keyHighlight
+    : null;
   const heroImage = isContentfulAsset(fields.heroImage)
     ? fields.heroImage
     : undefined;
@@ -557,6 +560,7 @@ function contentfulEntryToCustomerStory(
     contactTitle: parsed.contactTitle ?? null,
     contactPhoto: contentfulAssetToBlogImage(contactPhoto, "Contact photo"),
     headlineMetric: parsed.headlineMetric ?? null,
+    keyHighlight,
     industry: parsed.industry,
     department: parsed.department,
     companySize: parsed.companySize ?? null,
