@@ -361,6 +361,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           id: action.id,
           workspaceId: owner.id,
         }),
+        configurationId: action.toolConfiguration.sId,
+        created: action.createdAt.getTime(),
         inputs: action.augmentedInputs,
         stake: action.toolConfiguration.permission,
         metadata: {
@@ -427,8 +429,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           childBlockedActionsList,
           metadata: {
             ...baseActionParams.metadata,
-            mcpServerId,
-            mcpServerDisplayName,
           },
           authorizationInfo: null,
         });
@@ -438,8 +438,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           status: action.status,
           metadata: {
             ...baseActionParams.metadata,
-            mcpServerId,
-            mcpServerDisplayName,
           },
           authorizationInfo: null,
         });

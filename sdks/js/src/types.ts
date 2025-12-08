@@ -1,25 +1,17 @@
 import { z } from "zod";
 
+import { FlexibleEnumSchema } from "./helpers";
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationInteractiveContentFileContentSchema } from "./output_schemas";
+import {
+  NotificationInteractiveContentFileContentSchema,
+  OAuthProviderSchema,
+} from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
-
-type StringLiteral<T> = T extends string
-  ? string extends T
-    ? never
-    : T
-  : never;
-
-// Custom schema to get a string literal type and yet allow any string when parsing
-const FlexibleEnumSchema = <T extends string>() =>
-  z.custom<StringLiteral<T>>((val) => {
-    return typeof val === "string";
-  });
 
 const ModelProviderIdSchema = FlexibleEnumSchema<
   | "openai"
@@ -1138,13 +1130,13 @@ export type ConversationMessageReactionsType = z.infer<
 const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
 
 const MCPValidationMetadataSchema = z.object({
-  mcpServerName: z.string(),
-  toolName: z.string(),
   agentName: z.string(),
-  pubsubMessageId: z.string().optional(),
   icon: z
     .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
     .optional(),
+  mcpServerName: z.string(),
+  pubsubMessageId: z.string().optional(),
+  toolName: z.string(),
 });
 
 const MCPParamsEventSchema = z.object({
@@ -1266,7 +1258,10 @@ const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
-  metadata: MCPValidationMetadataSchema,
+  metadata: MCPValidationMetadataSchema.extend({
+    mcpServerDisplayName: z.string().optional(),
+    mcpServerId: z.string().optional(),
+  }),
 });
 
 const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
@@ -1296,7 +1291,7 @@ export type MCPApproveExecutionEvent = z.infer<
 const AuthErrorSchema = z.object({
   mcpServerId: z.string(),
   message: z.string(),
-  provider: z.string(),
+  provider: OAuthProviderSchema,
   scope: z.string().optional(),
   toolName: z.string(),
 });
@@ -1309,6 +1304,10 @@ const ToolPersonalAuthRequiredEventSchema = ToolExecutionMetadataSchema.extend({
   authError: AuthErrorSchema,
   isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
+  metadata: MCPValidationMetadataSchema.extend({
+    mcpServerDisplayName: z.string(),
+    mcpServerId: z.string(),
+  }),
 });
 
 export type ToolPersonalAuthRequiredEvent = z.infer<
@@ -2860,32 +2859,6 @@ export const GetSpacesResponseSchema = z.object({
 });
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
-
-const OAuthProviderSchema = FlexibleEnumSchema<
-  | "confluence"
-  | "confluence_tools"
-  | "discord"
-  | "fathom"
-  | "freshservice"
-  | "github"
-  | "google_drive"
-  | "gmail"
-  | "intercom"
-  | "jira"
-  | "linear"
-  | "monday"
-  | "notion"
-  | "slack"
-  | "gong"
-  | "microsoft"
-  | "microsoft_tools"
-  | "zendesk"
-  | "salesforce"
-  | "hubspot"
-  | "mcp"
-  | "mcp_static"
-  | "vanta"
->();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionBrainIcon"
