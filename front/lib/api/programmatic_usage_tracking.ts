@@ -4,6 +4,7 @@ import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,11 +12,13 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
   LightWorkspaceType,
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -44,6 +47,8 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   zendesk: "programmatic",
   onboarding_conversation: "user",
 };
+
+const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
 export const USER_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
@@ -317,8 +322,6 @@ export async function trackProgrammaticCost(
     amountMicroUsd: runsCostMicroUsd,
   });
 
-  // TODO(PPUL): re-enable this after shipping.
-  /*
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
@@ -350,7 +353,7 @@ export async function trackProgrammaticCost(
         totalConsumedMicroUsd,
       });
     }
-  }*/
+  }
 }
 
 export async function resetCredits(
