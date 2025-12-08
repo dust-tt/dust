@@ -51,20 +51,11 @@ impl Provider for SlackToolsConnectionProvider {
 
     async fn finalize(
         &self,
-        connection: &Connection,
+        _connection: &Connection,
         _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let use_case = match connection.metadata()["use_case"].as_str() {
-            Some(use_case) => match use_case {
-                "platform_actions" => SlackToolsUseCase::PlatformActions,
-                "personal_actions" => SlackToolsUseCase::PersonalActions,
-                _ => Err(anyhow!("Slack tools use_case format invalid"))?,
-            },
-            None => Err(anyhow!("Slack tools use_case missing"))?,
-        };
-
         let client_id = OAUTH_SLACK_TOOLS_CLIENT_ID.clone();
 
         let req = self
@@ -102,16 +93,12 @@ impl Provider for SlackToolsConnectionProvider {
             }
         };
 
-        // For platform_actions we receive a bot token (access_token). For personal_actions
-        // (personal tools setup) we receive a user token (authed_user.access_token).
-        let access_token = match use_case {
-            SlackToolsUseCase::PlatformActions => raw_json["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
-            SlackToolsUseCase::PersonalActions => raw_json["authed_user"]["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
-        };
+        // For both platform_actions and personal_actions we receive a user token.
+        // `platform_actions` are used to setup the MCP server while `personal_actions` are used by
+        // users at time of use.
+        let access_token = raw_json["authed_user"]["access_token"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
