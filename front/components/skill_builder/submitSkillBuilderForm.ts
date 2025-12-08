@@ -60,7 +60,7 @@ export async function submitSkillBuilderForm({
 
   if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
     await clientFetch(
-      `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfiguration.id}/editors`,
+      `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfiguration.sId}/editors`,
       {
         method: "PATCH",
         headers: {

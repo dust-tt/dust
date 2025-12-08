@@ -53,9 +53,9 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const skillId = Number(req.query.sId);
+  const skillSId = req.query.sId;
 
-  if (!Number.isFinite(skillId)) {
+  if (typeof skillSId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -67,7 +67,7 @@ async function handler(
 
   const skill = await SkillConfigurationModel.findOne({
     where: {
-      id: skillId,
+      sId: skillSId,
       workspaceId: owner.id,
     },
   });
