@@ -51,7 +51,7 @@ async function handler(
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
         type: "app_auth_error",
         message: "Skill builder is not enabled for this workspace.",
