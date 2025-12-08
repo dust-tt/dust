@@ -329,7 +329,7 @@ export function UserMessage({
               infoChip={
                 <>
                   {isTriggeredOrigin(message.context.origin) && (
-                    <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
                       <TriggerChip message={message} />
                     </span>
                   )}
