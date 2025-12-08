@@ -158,10 +158,6 @@ impl SlackConnectionProvider {
 #[async_trait]
 impl Provider for SlackConnectionProvider {
     fn id(&self) -> ConnectionProvider {
-        // Example usage of foo
-        if self.is_slack_tool {
-            // Custom logic if foo is true
-        }
         ConnectionProvider::Slack
     }
 
