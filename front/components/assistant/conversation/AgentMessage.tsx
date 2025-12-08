@@ -283,18 +283,13 @@ export function AgentMessage({
     );
   }
   React.useEffect(() => {
-    const isInArray = generationContext.generatingMessages.some(
-      (m) => m.messageId === sId
-    );
-    if (shouldStream && !isInArray) {
-      generationContext.setGeneratingMessages((s) => [
-        ...s,
-        { messageId: sId, conversationId },
-      ]);
-    } else if (!shouldStream && isInArray) {
-      generationContext.setGeneratingMessages((s) =>
-        s.filter((m) => m.messageId !== sId)
-      );
+    if (shouldStream) {
+      generationContext.addGeneratingMessage({
+        messageId: sId,
+        conversationId,
+      });
+    } else {
+      generationContext.removeGeneratingMessage({ messageId: sId });
     }
   }, [shouldStream, generationContext, sId, conversationId]);
 
@@ -380,9 +375,8 @@ export function AgentMessage({
   const messageButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
-    generationContext.generatingMessages.filter(
-      (m) => m.conversationId === conversationId
-    ).length > 1;
+    generationContext.getConversationGeneratingMessages(conversationId).length >
+    1;
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {

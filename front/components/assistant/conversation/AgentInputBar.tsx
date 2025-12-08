@@ -59,7 +59,8 @@ export const AgentInputBar = ({
     conversationId: context.conversationId,
   });
 
-  const isGenerating = !!generationContext.generatingMessages.length;
+  const generatingMessages =
+    generationContext.getConversationGeneratingMessages(context.conversationId);
 
   const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
@@ -96,11 +97,9 @@ export const AgentInputBar = ({
   const distanceUntilButtonVisible = 100;
   const showScrollToBottomButton = bottomOffset >= distanceUntilButtonVisible;
   const showClearButton =
-    context.agentBuilderContext?.resetConversation && !isGenerating;
-  const showStopButton = generationContext.generatingMessages.some(
-    (m) => m.conversationId === context.conversationId
-  );
-
+    context.agentBuilderContext?.resetConversation &&
+    generatingMessages.length > 0;
+  const showStopButton = generatingMessages.length > 0;
   const blockedActions = getBlockedActions(context.user.sId);
 
   const scrollToBottom = useCallback(() => {
@@ -118,10 +117,8 @@ export const AgentInputBar = ({
     if (isStopping) {
       return "Stopping...";
     }
-    const generatingCount = generationContext.generatingMessages.filter(
-      (m) => m.conversationId === context.conversationId
-    ).length;
-    return generatingCount > 1 ? "Stop all" : "Stop";
+
+    return generatingMessages.length > 1 ? "Stop all" : "Stop";
   };
 
   const handleStopGeneration = async () => {
@@ -197,7 +194,7 @@ export const AgentInputBar = ({
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
-          className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
+          className="max-h-dvh mb-5 flex w-full"
         >
           <span className="font-bold">
             {blockedActions.length} action
