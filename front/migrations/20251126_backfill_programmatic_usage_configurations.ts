@@ -23,7 +23,7 @@ function calculateDefaultDiscountPercent(markupPercent: number): number {
   // Example: markup=20 → (1 - (100 + 20) / (100 + 30)) * 100 = (1-120/130) * 100 = 7.69%
   const discountPercent =
     (1 - (100 + markupPercent) / (100 + BASE_TOKEN_MARKUP_PERCENT)) * 100;
-  return Math.round(discountPercent); // Round, PUC model uses integer percent
+  return Math.ceil(discountPercent); // Round, PUC model uses integer percent
 }
 
 async function backfillWorkspace(
