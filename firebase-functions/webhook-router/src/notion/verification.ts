@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Request, RequestHandler } from "express";
 import type express from "express";
+import { error } from "firebase-functions/logger";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
@@ -133,11 +134,11 @@ export function createNotionVerificationMiddleware(
       });
 
       return next();
-    } catch (error) {
-      if (error instanceof ReceiverAuthenticityError) {
-        console.error("Notion request verification failed", {
+    } catch (e) {
+      if (e instanceof ReceiverAuthenticityError) {
+        error("Notion request verification failed", {
           component: "notion-verification",
-          error: error.message,
+          error: e.message,
           ...(providerWorkspaceId && { providerWorkspaceId }),
           ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
@@ -145,9 +146,9 @@ export function createNotionVerificationMiddleware(
         return;
       }
 
-      console.error("Notion request verification failed", {
+      error("Notion request verification failed", {
         component: "notion-verification",
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
         ...(providerWorkspaceId && { providerWorkspaceId }),
         ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });

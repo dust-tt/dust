@@ -1,4 +1,5 @@
 import express from "express";
+import { error } from "firebase-functions/logger";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
@@ -48,11 +49,11 @@ async function handleNotionWebhook(
 
     let body;
     let rootUrlToken;
+    const { providerWorkspaceId } = req.params;
     if (useClientCredentials && req.body.verification_token) {
       // Scenario where user has their own Notion integration, and this is the
       // initial webhook registration request that gives us the signing secret.
       // We send it to the connectors API that saves webhook router entries.
-      const { providerWorkspaceId } = req.params;
       body = {
         signingSecret: req.body.verification_token,
       };
@@ -72,12 +73,13 @@ async function handleNotionWebhook(
       method: req.method,
       regions: req.regions ?? ALL_REGIONS,
       rootUrlToken,
+      providerWorkspaceId,
     });
-  } catch (error) {
-    console.error("Notion webhook router error", {
+  } catch (e) {
+    error("Notion webhook router error", {
       component: "notion-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error: e instanceof Error ? e.message : String(e),
     });
 
     if (!res.headersSent) {

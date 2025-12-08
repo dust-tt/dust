@@ -1,3 +1,4 @@
+import { error, log } from "firebase-functions/logger";
 import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
@@ -16,6 +17,7 @@ export class WebhookForwarder {
     headers,
     regions,
     rootUrlToken = "webhooks",
+    providerWorkspaceId,
   }: {
     body: unknown;
     endpoint: string;
@@ -23,6 +25,7 @@ export class WebhookForwarder {
     headers: IncomingHttpHeaders;
     regions: readonly Region[];
     rootUrlToken?: string;
+    providerWorkspaceId?: string;
   }): Promise<PromiseSettledResult<Response>[]> {
     const targets: WebhookTarget[] = [
       {
@@ -47,6 +50,7 @@ export class WebhookForwarder {
           body,
           headers,
           rootUrlToken,
+          providerWorkspaceId,
         })
       );
 
@@ -60,6 +64,7 @@ export class WebhookForwarder {
     target,
     headers,
     rootUrlToken,
+    providerWorkspaceId,
   }: {
     body: unknown;
     endpoint: string;
@@ -67,6 +72,7 @@ export class WebhookForwarder {
     target: WebhookTarget;
     headers: IncomingHttpHeaders;
     rootUrlToken: string;
+    providerWorkspaceId?: string;
   }): Promise<Response> {
     try {
       const response = await this.createRequest({
@@ -79,23 +85,24 @@ export class WebhookForwarder {
         rootUrlToken,
       });
 
-      console.log("Webhook forwarding succeeded", {
+      log("Webhook forwarding succeeded", {
         component: "forwarder",
         region: target.region,
         endpoint,
+        providerWorkspaceId,
         status: response.status,
       });
 
       return response;
-    } catch (error) {
-      console.error("Webhook forwarding failed", {
+    } catch (e) {
+      error("Webhook forwarding failed", {
         component: "forwarder",
         region: target.region,
         endpoint,
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
       });
 
-      throw error;
+      throw e;
     }
   }
 

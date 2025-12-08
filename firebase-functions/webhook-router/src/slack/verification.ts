@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { Request, RequestHandler } from "express";
+import { error, log } from "firebase-functions/logger";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
@@ -99,7 +100,7 @@ export function createSlackVerificationMiddleware(
 
     try {
       if (isUrlVerification(req.body)) {
-        console.log("Handling URL verification challenge", {
+        log("Handling URL verification challenge", {
           component: "slack-verification",
           endpoint: req.path,
         });
@@ -148,11 +149,11 @@ export function createSlackVerificationMiddleware(
       });
 
       return next();
-    } catch (error) {
-      if (error instanceof ReceiverAuthenticityError) {
-        console.error("Slack request verification failed", {
+    } catch (e) {
+      if (e instanceof ReceiverAuthenticityError) {
+        error("Slack request verification failed", {
           component: "slack-verification",
-          error: error.message,
+          error: e.message,
           ...(teamId && { teamId }),
           ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
@@ -160,9 +161,9 @@ export function createSlackVerificationMiddleware(
         return;
       }
 
-      console.error("Slack request verification failed", {
+      error("Slack request verification failed", {
         component: "slack-verification",
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
         ...(teamId && { teamId }),
         ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });
