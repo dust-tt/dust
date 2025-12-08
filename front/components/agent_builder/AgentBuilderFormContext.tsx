@@ -7,6 +7,7 @@ import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 
 const modelIdSchema = z.enum(MODEL_IDS);
@@ -142,22 +143,6 @@ const actionSchema = baseActionSchema.extend({
   configuration: mcpServerConfigurationSchema,
 });
 
-const userSchema = z.object({
-  sId: z.string(),
-  id: z.number(),
-  createdAt: z.number(),
-  provider: z
-    .enum(["auth0", "github", "google", "okta", "samlp", "waad"])
-    .nullable(),
-  username: z.string(),
-  email: z.string(),
-  firstName: z.string(),
-  lastName: z.string().nullable(),
-  fullName: z.string(),
-  image: z.string().nullable(),
-  lastLoginAt: z.number().nullable(),
-});
-
 const agentSettingsSchema = z.object({
   name: z
     .string()
@@ -166,7 +151,7 @@ const agentSettingsSchema = z.object({
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
   scope: z.enum(["hidden", "visible"]),
-  editors: z.array(userSchema),
+  editors: z.array(editorUserSchema),
   slackProvider: z.enum(["slack", "slack_bot"]).nullable(),
   slackChannels: z.array(
     z.object({

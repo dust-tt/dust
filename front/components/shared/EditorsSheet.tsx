@@ -28,12 +28,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useController } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { UserType } from "@app/types";
+import type { UserType, WorkspaceType } from "@app/types";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -47,8 +44,19 @@ type RowData = {
   onClick?: () => void;
 };
 
-export function EditorsSheet() {
-  const { owner } = useAgentBuilderContext();
+type EditorsSheetProps = {
+  owner: WorkspaceType;
+  editors: UserType[];
+  onEditorsChange: (editors: UserType[]) => void;
+  description: string;
+};
+
+export function EditorsSheet({
+  owner,
+  editors,
+  onEditorsChange,
+  description,
+}: EditorsSheetProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -57,12 +65,6 @@ export function EditorsSheet() {
   const [localEditors, setLocalEditors] = useState<UserType[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const {
-    field: { onChange, value: editors },
-  } = useController<AgentBuilderFormData, "agentSettings.editors">({
-    name: "agentSettings.editors",
-  });
 
   useEffect(() => {
     if (isOpen) {
@@ -97,7 +99,7 @@ export function EditorsSheet() {
   }, []);
 
   const onSave = () => {
-    onChange(localEditors);
+    onEditorsChange(localEditors);
     setIsOpen(false);
   };
 
@@ -232,9 +234,7 @@ export function EditorsSheet() {
               <span>Editors</span>
             </div>
           </SheetTitle>
-          <SheetDescription>
-            People who can use and edit the agent.
-          </SheetDescription>
+          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
 
         <SheetContainer>

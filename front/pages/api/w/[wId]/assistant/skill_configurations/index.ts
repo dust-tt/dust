@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -108,6 +109,8 @@ async function handler(
         // TODO(skills): add space restrictions.
         requestedSpaceIds: [],
       });
+
+      await GroupResource.makeNewSkillEditorsGroup(auth, skillConfiguration);
 
       return res.status(200).json({
         skillConfiguration: {

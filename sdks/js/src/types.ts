@@ -1540,6 +1540,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "rate_limit_error"
   | "run_error"
   | "run_not_found"
+  | "skill_not_found"
   | "space_already_exists"
   | "space_not_found"
   | "stripe_invalid_product_id_error"
