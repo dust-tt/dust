@@ -19,6 +19,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
@@ -174,10 +175,20 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isBuilder()) {
+  // Check if the user is authorized to delete this data source.
+  // Builders can delete any data source.
+  // For folders/files, the user who created it can also delete it.
+  const currentUser = auth.user();
+  const isCreator =
+    (isFolder(dataSource) || isWebsite(dataSource)) &&
+    currentUser &&
+    dataSource.editedByUserId === currentUser.id;
+
+  if (!auth.isBuilder() && !isCreator) {
     return new Err({
       code: "unauthorized_deletion",
-      message: "Only builders can delete data sources.",
+      message:
+        "Only builders can delete data sources, or the user who added the folder/file.",
     });
   }
 
