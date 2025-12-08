@@ -147,6 +147,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       attributes: ["agentConfigurationId", "groupId"],
     });
+
     return groupAgents.map((ga) => ({
       agentConfigurationId: ga.agentConfigurationId,
       groupId: ga.groupId,
@@ -174,15 +175,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agent.id,
         workspaceId: owner.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          as: "group",
-        },
-      ],
       attributes: ["groupId"],
     });
-
     if (groupAgents.length === 0) {
       return new Err(
         new DustError(
@@ -201,15 +195,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const groupAgent = groupAgents[0];
-    const groupModel = await groupAgent.getGroup();
-    if (!groupModel) {
+    const [groupAgent] = groupAgents;
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: groupAgent.groupId,
+      },
+    });
+
+    const [group] = groups.filter((g) => g.canRead(auth));
+    if (!group) {
       return new Err(
         new DustError("group_not_found", "Editor group not found for agent.")
       );
     }
 
-    const group = new GroupResource(GroupModel, groupModel.get());
     if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
@@ -238,12 +237,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agent.map((a) => a.id),
         workspaceId: owner.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          as: "group",
-        },
-      ],
       attributes: ["groupId", "agentConfigurationId"],
     });
 
@@ -256,13 +249,28 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: groupAgents.map((ga) => ga.groupId),
+        },
+      },
+    });
+
+    const accessibleGroups = groups.filter((group) => group.canRead(auth));
+    const groupMap: Record<ModelId, GroupResource> = {};
+
+    for (const group of accessibleGroups) {
+      groupMap[group.id] = group;
+    }
+
     const r: Record<string, GroupResource> = {};
     for (const ga of groupAgents) {
       if (ga.agentConfigurationId) {
         const agentConfiguration = agent.find(
           (a) => a.id === ga.agentConfigurationId
         );
-        const group = await ga.getGroup();
+        const group = groupMap[ga.groupId];
 
         if (group.kind !== "agent_editors") {
           return new Err(
@@ -273,10 +281,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           );
         }
         if (agentConfiguration) {
-          r[agentConfiguration.sId] = new GroupResource(
-            GroupModel,
-            group.get()
-          );
+          r[agentConfiguration.sId] = group;
         }
       }
     }
