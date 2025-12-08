@@ -78,36 +78,58 @@ export const MentionDropdown = forwardRef<
         const matchesQuery = (label: string) =>
           !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
 
-        const participantMentions = [
-          // Users
-          ...conversationParticipants.users
-            .filter((u) => !user || u.sId !== user.sId)
-            .map((u) => ({
-              type: "user" as const,
-              id: u.sId,
-              label: u.fullName || u.username,
-              pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
-              description: u.username,
-            })),
-          // Agents
-          ...conversationParticipants.agents.map((a) => ({
+        const participantUsers = conversationParticipants.users
+          .filter((u) => !user || u.sId !== user.sId)
+          .map((u) => ({
+            type: "user" as const,
+            id: u.sId,
+            label: u.fullName || u.username,
+            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+            description: u.username,
+          }))
+          .filter((m) => matchesQuery(m.label));
+
+        const participantAgents = conversationParticipants.agents
+          .map((a) => ({
             type: "agent" as const,
             id: a.configurationId,
             label: a.name,
             pictureUrl: a.pictureUrl,
             description: "",
             userFavorite: false,
-          })),
-        ].filter((m) => matchesQuery(m.label));
+          }))
+          .filter((m) => matchesQuery(m.label));
 
         const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
         const existingKeys = new Set(base.map(key));
 
-        const newParticipants = participantMentions.filter(
+        const MAX_TOP_PARTICIPANTS = 5;
+        const MAX_TOP_USERS = 3;
+
+        const newUserParticipants = participantUsers.filter(
           (m) => !existingKeys.has(key(m))
         );
+        const cappedUserParticipants = newUserParticipants.slice(
+          0,
+          MAX_TOP_USERS
+        );
 
-        const cappedParticipants = newParticipants.slice(0, 5);
+        const remainingSlots =
+          MAX_TOP_PARTICIPANTS - cappedUserParticipants.length;
+
+        const newAgentParticipants = participantAgents.filter(
+          (m) => !existingKeys.has(key(m))
+        );
+        const cappedAgentParticipants =
+          remainingSlots > 0
+            ? newAgentParticipants.slice(0, remainingSlots)
+            : [];
+
+        const cappedParticipants = [
+          ...cappedUserParticipants,
+          ...cappedAgentParticipants,
+        ];
+
         base = [...cappedParticipants, ...base];
       }
 
