@@ -19,7 +19,6 @@ import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credit
 import type { Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 import type { CreditDisplayData } from "@app/types/credits";
-import type { EditedByUser } from "@app/types/user";
 import {
   CREDIT_EXPIRATION_DAYS,
   CREDIT_TYPES,
