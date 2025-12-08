@@ -133,7 +133,9 @@ async function backfillWorkspace(
     if (result.isErr()) {
       workspaceLogger.error(
         { error: result.error },
-        isUpdate ? "Failed to update configuration" : "Failed to create configuration"
+        isUpdate
+          ? "Failed to update configuration"
+          : "Failed to create configuration"
       );
       return;
     }
