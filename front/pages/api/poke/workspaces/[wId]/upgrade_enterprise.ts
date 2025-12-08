@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
@@ -155,6 +156,8 @@ async function handler(
       // If yes, we will create the new plan and attach it to the workspace with a new subscription
       try {
         await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(auth, body);
+        // Restore workspace functionality after subscription upgrade
+        await restoreWorkspaceAfterSubscription(auth);
       } catch (error) {
         const errorString =
           error instanceof Error

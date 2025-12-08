@@ -6,12 +6,12 @@ import { promisify } from "util";
 import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
 import {
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/api/email";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -284,7 +284,7 @@ async function handler(
                 subscriptionStartAt: now,
               });
             }
-            await onCancelScrub(
+            await restoreWorkspaceAfterSubscription(
               await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
 
@@ -784,7 +784,7 @@ async function handler(
             );
             if (!endDate) {
               // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
-              await onCancelScrub(auth);
+              await restoreWorkspaceAfterSubscription(auth);
 
               ServerSideTracking.trackSubscriptionReactivated({
                 workspace: renderLightWorkspaceType({
@@ -1054,53 +1054,6 @@ function _returnStripeApiError(
       message: `[Stripe Webhook][${event}] ${message}`,
     },
   });
-}
-
-/**
- * When a subscription is re-activated, we need to:
- * - Terminate the scheduled workspace scrub workflow (if any)
- * - Unpause all connectors
- * - Re-enable all triggers that point to non-archived agents
- */
-async function onCancelScrub(auth: Authenticator) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Missing workspace on auth.");
-  }
-  const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
-    workspaceId: owner.sId,
-  });
-  if (scrubCancelRes.isErr()) {
-    logger.error(
-      { stripeError: true, error: scrubCancelRes.error },
-      "Error terminating scrub workspace workflow."
-    );
-  }
-  const dataSources = await getDataSources(auth);
-  const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
-  const connectorsApi = new ConnectorsAPI(
-    apiConfig.getConnectorsAPIConfig(),
-    logger
-  );
-  for (const connectorId of connectorIds) {
-    const r = await connectorsApi.unpauseConnector(connectorId);
-    if (r.isErr()) {
-      logger.error(
-        { connectorId, stripeError: true, error: r.error },
-        "Error unpausing connector after subscription reactivation."
-      );
-    }
-  }
-
-  // Re-enable all triggers that point to non-archived agents
-  const enableTriggersRes = await TriggerResource.enableAllForWorkspace(auth);
-  if (enableTriggersRes.isErr()) {
-    logger.error(
-      { stripeError: true, error: enableTriggersRes.error },
-      "Error re-enabling workspace triggers on subscription reactivation"
-    );
-    // Don't throw error here - we want the function to continue even if trigger re-enabling fails
-  }
 }
 
 export default withLogging(handler);
