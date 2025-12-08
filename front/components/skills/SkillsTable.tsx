@@ -11,7 +11,7 @@ type RowData = {
   id: number;
   name: string;
   description: string;
-  author: Omit<UserType, "lastLoginAt" | "provider">;
+  author: SkillConfigurationWithAuthor["author"];
   updatedAt: Date;
   onClick?: () => void;
 };
