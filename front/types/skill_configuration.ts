@@ -23,5 +23,5 @@ export type SkillConfigurationWithAuthor = Omit<
   SkillConfiguration,
   "authorId"
 > & {
-  author: Omit<UserType, "fullName" | "lastLoginAt" | "provider">;
+  author: Omit<UserType, "lastLoginAt" | "provider">;
 };
