@@ -93,7 +93,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         ...where,
         workspaceId: workspace.id,
       },
-      include: includes ?? [],
+      include: includes,
     });
 
     if (skillConfigurations.length === 0) {
@@ -104,7 +104,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       await SkillMCPServerConfigurationModel.findAll({
         where: {
           workspaceId: workspace.id,
-          skillConfigurationId: skillConfigurations.map((c) => c.id),
+          skillConfigurationId: {
+            [Op.in]: skillConfigurations.map((c) => c.id),
+          },
         },
       });
 
