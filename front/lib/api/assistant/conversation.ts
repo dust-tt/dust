@@ -792,7 +792,7 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      // TODO (yuka: 12-05-2025) We should only mark as unread the users that are new in the mentions.
+      // Mark the conversation as unread for all participants except the user.
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
         conversation,
         excludedUser: user?.toJSON(),
