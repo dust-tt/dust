@@ -20,8 +20,8 @@ import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
-import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { useConversationParticipants } from "@app/lib/swr/conversations";
+import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
@@ -58,6 +58,7 @@ export const MentionDropdown = forwardRef<
     const triggerRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
+    const selectedItemRef = useRef<HTMLButtonElement>(null);
 
     const { conversationParticipants } = useConversationParticipants({
       conversationId,
@@ -79,7 +80,7 @@ export const MentionDropdown = forwardRef<
           !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
 
         const participantUsers = conversationParticipants.users
-          .filter((u) => !user || u.sId !== user.sId)
+          .filter((u) => u.sId !== user?.sId)
           .map((u) => ({
             type: "user" as const,
             id: u.sId,
@@ -182,7 +183,10 @@ export const MentionDropdown = forwardRef<
         }
 
         if (event.key === "ArrowDown") {
-          setSelectedIndex((selectedIndex + 1) % suggestions.length);
+          if (orderedSuggestions.length === 0) {
+            return false;
+          }
+          setSelectedIndex((selectedIndex + 1) % orderedSuggestions.length);
           return true;
         }
 
@@ -205,6 +209,16 @@ export const MentionDropdown = forwardRef<
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIndex(0);
     }, [suggestions]);
+
+    // Scroll selected item into view when selection changes.
+    useEffect(() => {
+      if (selectedItemRef.current) {
+        selectedItemRef.current.scrollIntoView({
+          block: "nearest",
+          behavior: "smooth",
+        });
+      }
+    }, [selectedIndex]);
 
     // Only render the dropdown if we have a valid trigger.
     if (!triggerRect) {
@@ -248,6 +262,7 @@ export const MentionDropdown = forwardRef<
               {orderedSuggestions.map((suggestion, index) => (
                 <div key={suggestion.id}>
                   <button
+                    ref={index === selectedIndex ? selectedItemRef : null}
                     className={classNames(
                       "flex items-center px-2 py-1",
                       "w-full flex-initial cursor-pointer text-left text-sm",

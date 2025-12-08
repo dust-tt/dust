@@ -1,5 +1,3 @@
-import shuffle from "lodash/shuffle";
-
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -18,6 +16,18 @@ import {
   toRichUserMentionType,
 } from "@app/types";
 
+const USER_RATIO = 0.3;
+const MIN_USER_COUNT = 1;
+
+function shuffle<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -35,9 +45,10 @@ export const suggestionsOfMentions = async (
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
+  const currentUserSId = auth.getNonNullableUser().sId;
 
   const agentSuggestions: RichAgentMention[] = [];
-  const userSuggestions: RichUserMention[] = [];
+  let userSuggestions: RichUserMention[] = [];
 
   if (select.agents) {
     // Fetch agent configurations.
@@ -66,9 +77,9 @@ export const suggestionsOfMentions = async (
     if (res.isOk()) {
       const { users } = res.value;
 
-      userSuggestions.push(
-        ...users.map((u) => toRichUserMentionType(u.toJSON()))
-      );
+      userSuggestions = users
+        .filter((u) => u.sId !== currentUserSId)
+        .map((u) => toRichUserMentionType(u.toJSON()));
     }
   }
 
@@ -97,7 +108,7 @@ export const suggestionsOfMentions = async (
 
   const targetUserCount = Math.min(
     userSuggestions.length,
-    Math.max(1, Math.round(0.3 * maxResults))
+    Math.max(MIN_USER_COUNT, Math.round(USER_RATIO * maxResults))
   );
   const targetAgentCount = Math.min(
     filteredAgents.length,
