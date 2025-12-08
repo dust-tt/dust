@@ -96,6 +96,11 @@ In addition to the exhaustive JSON Schema of the payload, you will be provided a
                       Arity: 2 (field, prefix)
                       Example: (starts-with "pull_request.head.ref" "feature/")
                       Note: Only works on string fields
+
+      "contains" : String substring check. Returns true if field contains substring.
+                   Arity: 2 (field, substring)
+                   Example: (contains "issue.title" "bug")
+                   Note: Only works on string fields
     </string>
 
     <array>
@@ -186,6 +191,10 @@ In addition to the exhaustive JSON Schema of the payload, you will be provided a
     String prefix:
       (starts-with "pull_request.head.ref" "feature/")
       Result: true if PR branch starts with "feature/"
+
+    String contains:
+      (contains "issue.title" "bug")
+      Result: true if issue title contains "bug"
 
     Field existence:
       (and
