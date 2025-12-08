@@ -57,16 +57,16 @@ import type { UserMessageType, WorkspaceType } from "@app/types";
 interface UserMessageEditorProps {
   editor: Editor | null;
   editorService: EditorService;
-  setIsEditingMode: (isEditingMode: boolean) => void;
-  isEditingMessage: boolean;
+  setShouldShowEditor: (shouldShowEditor: boolean) => void;
+  isSaving: boolean;
   onSave: () => void;
 }
 
 function UserMessageEditor({
   editor,
   editorService,
-  setIsEditingMode,
-  isEditingMessage,
+  setShouldShowEditor,
+  isSaving,
   onSave,
 }: UserMessageEditorProps) {
   if (!editor) {
@@ -85,7 +85,7 @@ function UserMessageEditor({
     >
       <EditorContent
         editor={editor}
-        disabled={isEditingMessage}
+        disabled={isSaving}
         className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
@@ -97,7 +97,7 @@ function UserMessageEditor({
         <Button
           variant="ghost-secondary"
           size="xs"
-          onClick={() => setIsEditingMode(false)}
+          onClick={() => setShouldShowEditor(false)}
           label="Cancel"
         />
         <Button
@@ -105,7 +105,7 @@ function UserMessageEditor({
           size="xs"
           onClick={onSave}
           label="Save"
-          isLoading={isEditingMessage}
+          isLoading={isSaving}
         />
       </div>
     </div>
@@ -159,7 +159,7 @@ export function UserMessage({
   message,
   owner,
 }: UserMessageProps) {
-  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
   const isAdmin = owner.role === "admin";
@@ -167,7 +167,7 @@ export function UserMessage({
     owner,
     conversationId,
   });
-  const { editMessage, isEditing: isEditingMessage } = useEditUserMessage({
+  const { editMessage, isEditing: isSaving } = useEditUserMessage({
     owner,
     conversationId,
   });
@@ -182,7 +182,7 @@ export function UserMessage({
       mentions,
     });
 
-    setIsEditingMode(false);
+    setShouldShowEditor(false);
   };
 
   const { editor, editorService } = useCustomEditor({
@@ -273,11 +273,11 @@ export function UserMessage({
   ]);
 
   const handleEditMessage = () => {
-    setIsEditingMode(true);
+    setShouldShowEditor(true);
     editorService.setContent(message.content);
   };
 
-  const showActions = !isDeleted && !isEditingMode;
+  const showActions = !isDeleted && !shouldShowEditor;
   const actions = showActions
     ? [
         ...(canEdit
@@ -310,13 +310,13 @@ export function UserMessage({
             isCurrentUser ? "items-end" : "items-start"
           )}
         >
-          {isEditingMode ? (
+          {shouldShowEditor ? (
             <UserMessageEditor
               editor={editor}
               editorService={editorService}
-              setIsEditingMode={setIsEditingMode}
+              setShouldShowEditor={setShouldShowEditor}
               onSave={handleSave}
-              isEditingMessage={isEditingMessage}
+              isSaving={isSaving}
             />
           ) : (
             <NewConversationMessage
