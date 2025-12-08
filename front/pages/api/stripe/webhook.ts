@@ -433,6 +433,12 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
+          // If the invoice is for a credit purchase, we don't mark the
+          // subscription as payment failing.
+          if (isCreditPurchaseInvoice(invoice)) {
+            return res.status(200).json({ success: true });
+          }
+
           // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have been retried.
           // Previously, there was an error in how we handled the cancellation of subscriptions.
           // This change ensures that we return a success status if the subscription is already marked as "ended".
