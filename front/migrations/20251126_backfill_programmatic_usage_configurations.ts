@@ -94,35 +94,55 @@ async function backfillWorkspace(
     return;
   }
 
+  // Check if configuration already exists.
+  const existingConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const isUpdate = !!existingConfig;
+
   workspaceLogger.info(
     {
       markup,
       monthlyLimit,
       defaultDiscountPercent,
       paygCapMicroUsd,
+      existingConfigSId: existingConfig?.sId,
       execute,
     },
     execute
-      ? "Creating programmatic usage configuration"
-      : "Would create programmatic usage configuration (dry run)"
+      ? isUpdate
+        ? "Updating existing programmatic usage configuration"
+        : "Creating programmatic usage configuration"
+      : isUpdate
+        ? "Would update existing programmatic usage configuration (dry run)"
+        : "Would create programmatic usage configuration (dry run)"
   );
 
   if (execute) {
-    const result = await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditMicroUsd,
-      defaultDiscountPercent,
-      paygCapMicroUsd,
-    });
+    const result = isUpdate
+      ? await existingConfig.updateConfiguration(auth, {
+          freeCreditMicroUsd,
+          defaultDiscountPercent,
+          paygCapMicroUsd,
+        })
+      : await ProgrammaticUsageConfigurationResource.makeNew(auth, {
+          freeCreditMicroUsd,
+          defaultDiscountPercent,
+          paygCapMicroUsd,
+        });
 
     if (result.isErr()) {
       workspaceLogger.error(
         { error: result.error },
-        "Failed to create configuration"
+        isUpdate ? "Failed to update configuration" : "Failed to create configuration"
       );
       return;
     }
 
-    workspaceLogger.info("Successfully created configuration");
+    workspaceLogger.info(
+      isUpdate
+        ? "Successfully updated configuration"
+        : "Successfully created configuration"
+    );
   }
 }
 
