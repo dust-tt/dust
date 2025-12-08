@@ -5,13 +5,13 @@ import { useMemo } from "react";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { UserType } from "@app/types";
-import type { SkillConfigurationWithAuthor } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
 
 type RowData = {
   sId: string;
   name: string;
   description: string;
-  author: SkillConfigurationWithAuthor["author"];
+  author: SkillConfigurationWithAuthorType["author"];
   updatedAt: Date;
   onClick?: () => void;
 };
@@ -86,7 +86,7 @@ const getTableColumns = () => {
 };
 
 type SkillsTableProps = {
-  skillsConfigurations: SkillConfigurationWithAuthor[];
+  skillsConfigurations: SkillConfigurationWithAuthorType[];
 };
 
 export function SkillsTable({ skillsConfigurations }: SkillsTableProps) {

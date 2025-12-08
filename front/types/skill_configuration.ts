@@ -16,6 +16,6 @@ export type SkillConfigurationType = {
   requestedSpaceIds: number[];
 };
 
-export type SkillConfigurationWithAuthor = SkillConfigurationType & {
+export type SkillConfigurationWithAuthorType = SkillConfigurationType & {
   author: Omit<UserType, "lastLoginAt" | "provider">;
 };
