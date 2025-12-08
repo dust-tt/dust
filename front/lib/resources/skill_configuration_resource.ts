@@ -12,7 +12,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import type {
   SkillConfiguration,
   SkillConfigurationWithAuthor,
@@ -138,7 +138,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
       return new Ok(affectedCount);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
