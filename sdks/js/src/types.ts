@@ -2876,6 +2876,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "monday"
   | "notion"
   | "slack"
+  | "slack_tools"
   | "gong"
   | "microsoft"
   | "microsoft_tools"
