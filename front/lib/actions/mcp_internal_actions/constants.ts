@@ -309,9 +309,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionRobotIcon",
       authorization: null,
       documentationUrl: null,
-      instructions: `These tools provide discoverability to published agents available in the workspace.
-The tools return agents with their "mention" markdown directive.
-The directive should be used to display a clickable version of the agent name in the response.`,
+      instructions: null,
     },
   },
   include_data: {
