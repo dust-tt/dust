@@ -6,8 +6,8 @@ import type {
   AgentBuilderAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMCPServerNameForTemplateAction,

@@ -13,12 +13,12 @@ import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   DATA_WAREHOUSE_SERVER_NAME,

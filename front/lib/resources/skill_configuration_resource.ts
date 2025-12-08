@@ -5,6 +5,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
