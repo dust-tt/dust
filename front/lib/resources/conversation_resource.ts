@@ -1,3 +1,4 @@
+import assert from "assert";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -236,20 +237,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (fetchConversationOptions?.includeParticipant) {
-      const participations = await this.fetchParticipationsForUser(
+      const participationMap = await this.fetchParticipationMapForUser(
         auth,
         resultConversations.map((c) => c.id)
-      );
-
-      const participationMap = new Map(
-        participations.map((p) => [
-          p.conversationId,
-          {
-            actionRequired: p.actionRequired,
-            unread: p.unread,
-            updated: p.updatedAt.getTime(),
-          },
-        ])
       );
 
       resultConversations.forEach((c) => {
@@ -276,11 +266,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  static async fetchParticipationsForUser(
+  static async fetchParticipationMapForUser(
     auth: Authenticator,
     conversationIds?: number[]
   ) {
-    const user = auth.getNonNullableUser();
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
 
     const whereClause: WhereOptions<ConversationParticipantModel> = {
       userId: user.id,
@@ -291,7 +283,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       whereClause.conversationId = { [Op.in]: conversationIds };
     }
 
-    return ConversationParticipantModel.findAll({
+    const participations = await ConversationParticipantModel.findAll({
       where: whereClause,
       attributes: [
         "actionRequired",
@@ -301,6 +293,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         "userId",
       ],
     });
+
+    return new Map(
+      participations.map((p) => [
+        p.conversationId,
+        {
+          actionRequired: p.actionRequired,
+          unread: p.unread,
+          updated: p.updatedAt.getTime(),
+        },
+      ])
+    );
   }
 
   static async fetchByIds(
@@ -604,8 +607,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator
   ): Promise<ConversationResource[]> {
     // First get all participations for the user to get conversation IDs and metadata.
-    const participations = await this.fetchParticipationsForUser(auth);
-    const conversationIds = participations.map((p) => p.conversationId);
+    const participationMap = await this.fetchParticipationMapForUser(auth);
+    const conversationIds = Array.from(participationMap.keys());
 
     const conversations = await this.baseFetchWithAuthorization(
       auth,
@@ -616,17 +619,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           visibility: { [Op.eq]: "unlisted" },
         },
       }
-    );
-
-    const participationMap = new Map(
-      participations.map((p) => [
-        p.conversationId,
-        {
-          actionRequired: p.actionRequired,
-          unread: p.unread,
-          updated: p.updatedAt.getTime(),
-        },
-      ])
     );
 
     // Attach participation data to resources.
@@ -1441,7 +1433,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async batchMarkAsReadAndClearActionRequired(
     auth: Authenticator,
     conversationIds: number[]
-  ) {
+  ): Promise<number> {
     const result = await ConversationParticipantModel.update(
       { unread: false, actionRequired: false },
       {
