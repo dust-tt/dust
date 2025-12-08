@@ -2,7 +2,10 @@ import { Mistral } from "@mistralai/mistralai";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
-import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
+import {
+  toResponseSchemaParam,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
   toTool,
@@ -29,6 +32,7 @@ export class MistralLLM extends LLM {
       context,
       modelId,
       reasoningEffort,
+      responseFormat,
       temperature,
     }: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
@@ -37,6 +41,7 @@ export class MistralLLM extends LLM {
       context,
       modelId,
       reasoningEffort,
+      responseFormat,
       temperature,
       clientId: "mistral",
     });
@@ -71,6 +76,7 @@ export class MistralLLM extends LLM {
         stream: true,
         toolChoice: toToolChoiceParam(specifications, forceToolCall),
         tools: specifications.map(toTool),
+        responseFormat: toResponseSchemaParam(this.responseFormat),
       });
 
       yield* streamLLMEvents({
