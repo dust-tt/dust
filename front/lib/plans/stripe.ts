@@ -638,8 +638,16 @@ export async function createCreditPurchaseCoupon(
 }
 
 type InvoiceCollectionParams =
-  | { collectionMethod: "charge_automatically"; daysUntilDue?: never }
-  | { collectionMethod: "send_invoice"; daysUntilDue: number };
+  | {
+      collectionMethod: "charge_automatically";
+      daysUntilDue?: never;
+      requestThreeDSecure?: "any" | "automatic" | "challenge";
+    }
+  | {
+      collectionMethod: "send_invoice";
+      daysUntilDue: number;
+      requestThreeDSecure?: never;
+    };
 
 type InvoiceLineItem = {
   priceId: string;
@@ -679,7 +687,17 @@ async function makeInvoice({
     },
   };
 
-  if (collectionParams.collectionMethod === "send_invoice") {
+  if (collectionParams.collectionMethod === "charge_automatically") {
+    invoiceParams.payment_settings = {
+      payment_method_options: {
+        card: {
+          // Stripe types are missing "challenge" but API supports it
+          request_three_d_secure: (collectionParams.requestThreeDSecure ??
+            "automatic") as Stripe.InvoiceCreateParams.PaymentSettings.PaymentMethodOptions.Card.RequestThreeDSecure,
+        },
+      },
+    };
+  } else {
     invoiceParams.days_until_due = collectionParams.daysUntilDue;
   }
 
