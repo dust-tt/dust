@@ -200,6 +200,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slab MCP server",
     stage: "on_demand",
   },
+  vanta_tool: {
+    description: "Vanta MCP tool for security and compliance testing",
+    stage: "dust_only",
+  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",

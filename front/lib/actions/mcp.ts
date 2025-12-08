@@ -275,7 +275,7 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isToolPersonalAuthRequiredEvent(
+function isLegacyToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolErrorEvent & {
   error: PersonalAuthenticationRequiredErrorContent;
@@ -290,6 +290,17 @@ function isToolPersonalAuthRequiredEvent(
   );
 }
 
+function isToolPersonalAuthRequiredEvent(
+  event: unknown
+): event is ToolPersonalAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_personal_auth_required"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
 ): event is MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent {
@@ -298,6 +309,7 @@ export function isBlockedActionEvent(
     event !== null &&
     "type" in event &&
     (isMCPApproveExecutionEvent(event) ||
-      isToolPersonalAuthRequiredEvent(event))
+      isToolPersonalAuthRequiredEvent(event) ||
+      isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

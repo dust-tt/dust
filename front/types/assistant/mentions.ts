@@ -5,7 +5,9 @@
  * the application, including API formats, UI representations, and type guards.
  */
 
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { UserType } from "@app/types/user";
 
 /**
  * Base mention structure used in API requests and database storage.
@@ -117,6 +119,28 @@ export function toMentionType(rich: RichMention): MentionType {
     default:
       assertNever(rich.type);
   }
+}
+
+export function toRichAgentMentionType(
+  agentConfiguration: LightAgentConfigurationType
+): RichAgentMention {
+  return {
+    id: agentConfiguration.sId,
+    type: "agent",
+    label: agentConfiguration.name,
+    pictureUrl: agentConfiguration.pictureUrl,
+    description: agentConfiguration.description,
+  };
+}
+
+export function toRichUserMentionType(user: UserType): RichUserMention {
+  return {
+    id: user.sId,
+    type: "user",
+    label: user.fullName,
+    pictureUrl: user.image ?? "/static/humanavatar/anonymous.png",
+    description: user.email,
+  };
 }
 
 /**

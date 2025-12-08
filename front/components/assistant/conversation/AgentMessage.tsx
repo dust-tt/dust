@@ -35,6 +35,7 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
   AgentMessageStateWithControlEvent,
@@ -83,7 +84,6 @@ import {
 } from "@app/lib/mentions/markdown/plugin";
 import {
   useCancelMessage,
-  useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -95,6 +95,7 @@ import type {
   LightWorkspaceType,
   PersonalAuthenticationRequiredErrorContent,
   Result,
+  RichAgentMention,
   RichMention,
   UserType,
   WorkspaceType,
@@ -147,17 +148,10 @@ export function AgentMessage({
   );
 
   const {
-    showBlockedActionsDialog,
     enqueueBlockedAction,
+    removeAllBlockedActionsForMessage,
     mutateBlockedActions,
   } = useBlockedActionsContext();
-
-  const { mutateMessage } = useConversationMessage({
-    conversationId,
-    workspaceId: owner.sId,
-    messageId: sId,
-    options: { disabled: true },
-  });
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -182,17 +176,14 @@ export function AgentMessage({
     messageStreamState,
     conversationId,
     owner,
-    mutateMessage,
     onEventCallback: useCallback(
       (eventPayload: {
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       }) => {
         const eventType = eventPayload.data.type;
-
-        if (isTriggeredByCurrentUser) {
-          if (eventType === "tool_approve_execution") {
-            showBlockedActionsDialog();
+        switch (eventType) {
+          case "tool_approve_execution":
             enqueueBlockedAction({
               messageId: sId,
               blockedAction: {
@@ -207,21 +198,46 @@ export function AgentMessage({
                 metadata: eventPayload.data.metadata,
               },
             });
-          } else if (
-            eventType === "tool_error" &&
-            isPersonalAuthenticationRequiredErrorContent(
-              eventPayload.data.error
-            )
-          ) {
+            break;
+          case "tool_error":
+            if (
+              isPersonalAuthenticationRequiredErrorContent(
+                eventPayload.data.error
+              )
+            ) {
+              void mutateBlockedActions();
+            }
+            break;
+
+          case "tool_personal_auth_required":
             void mutateBlockedActions();
-          }
+            break;
+
+          case "agent_message_success":
+          case "agent_generation_cancelled":
+          case "agent_error":
+          case "generation_tokens":
+            // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
+            void removeAllBlockedActionsForMessage({
+              messageId: sId,
+              conversationId,
+            });
+            break;
+          case "agent_action_success":
+          case "end-of-stream":
+          case "tool_notification":
+          case "tool_params":
+            // Do nothing
+            break;
+          default:
+            assertNever(eventType);
         }
       },
       [
-        isTriggeredByCurrentUser,
-        showBlockedActionsDialog,
         enqueueBlockedAction,
         sId,
+        removeAllBlockedActionsForMessage,
+        conversationId,
         mutateBlockedActions,
       ]
     ),
@@ -267,18 +283,13 @@ export function AgentMessage({
     );
   }
   React.useEffect(() => {
-    const isInArray = generationContext.generatingMessages.some(
-      (m) => m.messageId === sId
-    );
-    if (shouldStream && !isInArray) {
-      generationContext.setGeneratingMessages((s) => [
-        ...s,
-        { messageId: sId, conversationId },
-      ]);
-    } else if (!shouldStream && isInArray) {
-      generationContext.setGeneratingMessages((s) =>
-        s.filter((m) => m.messageId !== sId)
-      );
+    if (shouldStream) {
+      generationContext.addGeneratingMessage({
+        messageId: sId,
+        conversationId,
+      });
+    } else {
+      generationContext.removeGeneratingMessage({ messageId: sId });
     }
   }, [shouldStream, generationContext, sId, conversationId]);
 
@@ -364,9 +375,8 @@ export function AgentMessage({
   const messageButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
-    generationContext.generatingMessages.filter(
-      (m) => m.conversationId === conversationId
-    ).length > 1;
+    generationContext.getConversationGeneratingMessages(conversationId).length >
+    1;
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
@@ -630,7 +640,7 @@ export function AgentMessage({
 
   const handleQuickReply = React.useCallback(
     async (reply: string) => {
-      const mention: RichMention = {
+      const mention: RichAgentMention = {
         id: agentMessageToRender.configuration.sId,
         type: "agent",
         label: agentMessageToRender.configuration.name,
@@ -833,6 +843,10 @@ function AgentMessageContent({
     conversationId,
   });
 
+  const { getFirstBlockedActionForMessage } = useBlockedActionsContext();
+
+  const blockedAction = getFirstBlockedActionForMessage(sId);
+
   const retryHandlerWithResetState = useCallback(
     async (error: PersonalAuthenticationRequiredErrorContent) => {
       methods.data.map((m) =>
@@ -933,8 +947,23 @@ function AgentMessageContent({
     isLastMessage,
   });
 
+  if (blockedAction && blockedAction.status === "blocked_validation_required") {
+    return (
+      <MCPToolValidationRequired
+        triggeringUser={triggeringUser}
+        owner={owner}
+        blockedAction={blockedAction}
+        conversationId={conversationId}
+        messageId={sId}
+      />
+    );
+  }
+
+  // TODO: handle blocked action of personal authentication required
   if (agentMessage.status === "failed") {
     const { error } = agentMessage;
+    // TODO(2025-12-06 MENTION): Remove this once consolidated around the
+    // `tool_personal_auth_required` event.
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
         <MCPServerPersonalAuthenticationRequired

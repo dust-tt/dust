@@ -290,3 +290,43 @@ export const releaseSchema: JSONSchema = {
   },
   required: ["action", "release", "repository", "sender"],
 };
+
+export const releaseExample = {
+  action: "published",
+  release: {
+    id: 98765432,
+    tag_name: "v1.2.0",
+    target_commitish: "main",
+    name: "v1.2.0 - Performance improvements",
+    body: "## What's Changed\n\n* Improved API response times by 50%\n* Fixed memory leak in background workers\n* Added new dashboard features\n\n**Full Changelog**: https://github.com/example_org/example_repo/compare/v1.1.0...v1.2.0",
+    draft: false,
+    prerelease: false,
+    created_at: "2023-01-20T16:00:00Z",
+    published_at: "2023-01-20T16:30:00Z",
+    author: {
+      login: "octocat",
+      id: 1234567,
+      type: "User",
+      site_admin: false,
+    },
+    assets: [],
+  },
+  repository: {
+    id: 553972582,
+    name: "example_repo",
+    full_name: "example_org/example_repo",
+    private: false,
+    owner: {
+      login: "example_org",
+      id: 2345678,
+    },
+    description: "Example repository",
+    default_branch: "main",
+  },
+  sender: {
+    login: "octocat",
+    id: 1234567,
+    type: "User",
+    site_admin: false,
+  },
+};

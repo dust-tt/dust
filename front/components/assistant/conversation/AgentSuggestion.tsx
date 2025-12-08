@@ -32,7 +32,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -170,7 +170,7 @@ export function AgentSuggestion({
     }
 
     autoSelectedMessageIdRef.current = userMessage.sId;
-    setSelectedAgent({ configurationId: dustAgent.sId });
+    setSelectedAgent(toRichAgentMentionType(dustAgent));
     void handleSelectSuggestion(dustAgent);
   }, [
     dustAgent,
@@ -211,7 +211,7 @@ export function AgentSuggestion({
                   return;
                 }
                 setIsLoading(true);
-                setSelectedAgent({ configurationId: agent.sId });
+                setSelectedAgent(toRichAgentMentionType(agent));
                 await handleSelectSuggestion(agent);
                 setIsLoading(false);
               }}
@@ -233,7 +233,7 @@ export function AgentSuggestion({
               return;
             }
             setIsLoading(true);
-            setSelectedAgent({ configurationId: agent.sId });
+            setSelectedAgent(toRichAgentMentionType(agent));
             await handleSelectSuggestion(agent);
             setIsLoading(false);
           }}

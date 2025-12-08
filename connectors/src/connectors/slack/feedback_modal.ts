@@ -15,6 +15,7 @@ export interface FeedbackModalMetadata {
   slackChannelId: string;
   slackMessageTs: string;
   slackThreadTs: string;
+  responseUrl: string;
 }
 
 export async function openFeedbackModal({
@@ -28,6 +29,7 @@ export async function openFeedbackModal({
   slackChannelId,
   slackMessageTs,
   slackThreadTs,
+  responseUrl,
 }: {
   slackClient: WebClient;
   triggerId: string;
@@ -39,6 +41,7 @@ export async function openFeedbackModal({
   slackChannelId: string;
   slackMessageTs: string;
   slackThreadTs: string;
+  responseUrl: string;
 }) {
   try {
     const metadata: FeedbackModalMetadata = {
@@ -50,6 +53,7 @@ export async function openFeedbackModal({
       slackChannelId,
       slackMessageTs,
       slackThreadTs,
+      responseUrl,
     };
 
     await slackClient.views.open({

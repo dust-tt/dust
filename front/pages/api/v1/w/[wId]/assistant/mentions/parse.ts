@@ -14,6 +14,7 @@ import type {
   RichUserMention,
   WithAPIErrorResponse,
 } from "@app/types";
+import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
 
 /**
  * @swagger
@@ -94,14 +95,7 @@ async function handler(
   // Build agent mentions map.
   const agentMentions: RichAgentMention[] = agentConfigurations
     .filter((a) => a.status === "active")
-    .map((agent) => ({
-      type: "agent",
-      id: agent.sId,
-      label: agent.name,
-      pictureUrl: agent.pictureUrl,
-      userFavorite: agent.userFavorite,
-      description: agent.description,
-    }));
+    .map(toRichAgentMentionType);
 
   // Fetch workspace members if mentions_v2 is enabled.
   const userMentions: RichUserMention[] = [];
@@ -112,18 +106,7 @@ async function handler(
   if (mentions_v2_enabled) {
     const { members } = await getMembers(auth, { activeOnly: true });
 
-    userMentions.push(
-      ...members.map(
-        (member) =>
-          ({
-            type: "user",
-            id: member.sId,
-            label: member.fullName || member.email,
-            pictureUrl: member.image ?? "/static/humanavatar/anonymous.png",
-            description: member.email,
-          }) satisfies RichUserMention
-      )
-    );
+    userMentions.push(...members.map(toRichUserMentionType));
   }
 
   // Combine all mentions for matching.

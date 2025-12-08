@@ -3,20 +3,19 @@ import { useCallback, useState } from "react";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
-  ConversationWithoutContentType,
   LightWorkspaceType,
   MCPActionValidationRequest,
 } from "@app/types";
 
 interface UseValidateActionParams {
   owner: LightWorkspaceType;
-  conversation: ConversationWithoutContentType | null;
+  conversationId: string | null;
   onError: (errorMessage: string) => void;
 }
 
 export function useValidateAction({
   owner,
-  conversation,
+  conversationId,
   onError,
 }: UseValidateActionParams) {
   const [isValidating, setIsValidating] = useState(false);
@@ -67,12 +66,12 @@ export function useValidateAction({
 
         // Retry on blocked tools on the main conversation if there is one that is != from the event's.
         if (
-          conversation?.sId &&
+          conversationId &&
           messageId &&
-          conversation.sId !== validationRequest.conversationId
+          conversationId !== validationRequest.conversationId
         ) {
           const response = await clientFetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/retry?blocked_only=true`,
+            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=true`,
             {
               method: "POST",
               headers: {
@@ -95,7 +94,7 @@ export function useValidateAction({
         setIsValidating(false);
       }
     },
-    [owner.sId, conversation?.sId, onError]
+    [owner.sId, conversationId, onError]
   );
 
   return { validateAction, isValidating };

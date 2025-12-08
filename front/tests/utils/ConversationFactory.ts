@@ -140,6 +140,7 @@ export class ConversationFactory {
       version: 0,
       user: auth.getNonNullableUser().toJSON(),
       mentions: [],
+      richMentions: [],
       content: userMessageRow.content,
       context: {
         username: userMessageRow.userContextUsername,

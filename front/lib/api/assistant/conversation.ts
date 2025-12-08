@@ -21,6 +21,7 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -60,11 +61,9 @@ import type {
   LightAgentConfigurationType,
   MentionType,
   ModelId,
-  PlanType,
   Result,
   UserMessageContext,
   UserMessageType,
-  WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
@@ -415,10 +414,9 @@ export async function postUserMessage(
   }
 
   // Check plan and rate limit.
-  const messageLimit = await isMessagesLimitReached({
-    owner,
-    plan,
+  const messageLimit = await isMessagesLimitReached(auth, {
     mentions,
+    context,
   });
   if (messageLimit.isLimitReached && messageLimit.limitType) {
     return new Err({
@@ -527,8 +525,7 @@ export async function postUserMessage(
         transaction: t,
       })) ?? -1) + 1;
 
-    const userMessage = await createUserMessage({
-      workspace: owner,
+    const userMessage = await createUserMessage(auth, {
       conversation,
       content,
       mentions,
@@ -784,8 +781,7 @@ export async function editUserMessage(
         );
       }
 
-      const userMessage = await createUserMessage({
-        workspace: owner,
+      const userMessage = await createUserMessage(auth, {
         conversation,
         content,
         mentions,
@@ -1217,15 +1213,32 @@ export interface MessageLimit {
   limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
 }
 
-async function isMessagesLimitReached({
-  owner,
-  plan,
-  mentions,
-}: {
-  owner: WorkspaceType;
-  plan: PlanType;
-  mentions: MentionType[];
-}): Promise<MessageLimit> {
+async function isMessagesLimitReached(
+  auth: Authenticator,
+  {
+    mentions,
+    context,
+  }: {
+    mentions: MentionType[];
+    context: UserMessageContext;
+  }
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const featureFlags = await getFeatureFlags(owner);
+
+  // We block programmatic usage at the api level and track
+  // it in agent loop, so it is excluded from fair use
+  if (
+    featureFlags.includes("ppul") &&
+    isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
+    return {
+      isLimitReached: false,
+      limitType: null,
+    };
+  }
+
   // Checking rate limit
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 

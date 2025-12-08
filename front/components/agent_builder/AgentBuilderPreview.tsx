@@ -28,6 +28,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { toRichAgentMentionType } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
 interface EmptyStateProps {
@@ -115,10 +116,9 @@ function PreviewContent({
               owner={owner}
               onSubmit={createConversation}
               stickyMentions={
-                draftAgent ? [{ configurationId: draftAgent.sId }] : []
+                draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
               conversationId={null}
-              additionalAgentConfiguration={draftAgent ?? undefined}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}

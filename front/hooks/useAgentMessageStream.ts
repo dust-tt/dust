@@ -89,7 +89,6 @@ interface UseAgentMessageStreamParams {
   messageStreamState: MessageTemporaryState;
   conversationId: string | null;
   owner: LightWorkspaceType;
-  mutateMessage?: () => void;
   onEventCallback?: (event: {
     eventId: string;
     data: AgentMessageStateWithControlEvent;
@@ -102,7 +101,6 @@ export function useAgentMessageStream({
   messageStreamState,
   conversationId,
   owner,
-  mutateMessage,
   onEventCallback: customOnEventCallback,
   streamId,
 }: UseAgentMessageStreamParams) {
@@ -160,6 +158,8 @@ export function useAgentMessageStream({
           // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
           // end of the stream to the client. So we just return.
           return;
+
+        case "tool_personal_auth_required":
         case "tool_approve_execution":
           break;
 
@@ -299,19 +299,8 @@ export function useAgentMessageStream({
       if (customOnEventCallback) {
         customOnEventCallback(eventPayload);
       }
-
-      const shouldRefresh = [
-        "agent_action_success",
-        "agent_error",
-        "agent_message_success",
-        "agent_generation_cancelled",
-      ].includes(eventType);
-
-      if (shouldRefresh && mutateMessage) {
-        void mutateMessage();
-      }
     },
-    [customOnEventCallback, methods, mutateMessage, sId]
+    [customOnEventCallback, methods, sId]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, streamId, {

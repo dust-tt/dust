@@ -209,7 +209,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
 
-    const unfilteredBlockedActions = await AgentMCPActionModel.findAll({
+    const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessage,
@@ -237,7 +237,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
 
     const parentUserMessageIds = removeNulls(
-      unfilteredBlockedActions.map((a) => a.agentMessage!.message!.parentId)
+      blockedActions.map((a) => a.agentMessage!.message!.parentId)
     );
 
     const parentUserMessages = await Message.findAll({
@@ -263,15 +263,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
 
     const parentUserMessageById = _.keyBy(parentUserMessages, "id");
-
-    // Filter out the actions that are not triggered by the current user.
-    const blockedActions = unfilteredBlockedActions.filter((a) => {
-      const parentUserMessage =
-        parentUserMessageById[a.agentMessage!.message!.parentId!];
-      return (
-        parentUserMessage.userMessage?.userId === auth.getNonNullableUser().id
-      );
-    });
 
     const blockedActionsList: BlockedToolExecution[] = [];
 
