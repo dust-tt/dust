@@ -411,91 +411,122 @@ pub async fn data_sources_search_bulk(
             .push((search_req, ds));
     }
 
-    // Embed and search for each group.
-    let mut all_results: Vec<DataSourceSearchResultItem> = Vec::new();
+    // Embed and search for each group concurrently.
+    let group_futures: Vec<_> = groups
+        .into_iter()
+        .map(|(model_id, group)| {
+            let credentials = payload.credentials.clone();
+            let query = payload.query.clone();
+            let full_text = payload.full_text;
+            let state = state.clone();
 
-    for (model_id, group) in groups {
-        // Get embedder from first data source in group.
-        let first_ds = &group[0].1;
-        let embedder_config = first_ds.embedder_config();
-        let credentials = payload.credentials.clone();
+            async move {
+                // Get embedder from first data source in group.
+                let first_ds = &group[0].1;
+                let embedder_config = first_ds.embedder_config();
 
-        // Embed query once per group.
-        let embedder_request = EmbedderRequest::new(
-            embedder_config.provider_id,
-            &model_id,
-            vec![&payload.query],
-            first_ds.config().extras.clone(),
-        );
+                // Embed query once per group.
+                let embedder_request = EmbedderRequest::new(
+                    embedder_config.provider_id,
+                    &model_id,
+                    vec![&query],
+                    first_ds.config().extras.clone(),
+                );
 
-        // If any embedding fails, fail the entire request immediately.
-        let query_vector = match embedder_request.execute(credentials).await {
-            Ok(v) => {
-                assert!(v.len() == 1);
-                Some(v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>())
+                // If any embedding fails, return error for this group.
+                let query_vector = match embedder_request.execute(credentials).await {
+                    Ok(v) => {
+                        if v.len() != 1 {
+                            return Err(format!(
+                                "Expected exactly one embedding vector, got {}",
+                                v.len()
+                            ));
+                        }
+                        Some(v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>())
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Failed to embed query with model {}: {}",
+                            model_id, e
+                        ));
+                    }
+                };
+
+                // Search all data sources in this group with the same vector.
+                let search_futures: Vec<_> = group
+                    .into_iter()
+                    .map(|(search_req, ds)| {
+                        let vector = query_vector.clone();
+                        let store = state.store.clone();
+                        let qdrant_clients = state.qdrant_clients.clone();
+
+                        async move {
+                            let filter = match search_req.filter {
+                                Some(f) => {
+                                    Some(f.postprocess_for_data_source(&search_req.data_source_id))
+                                }
+                                None => None,
+                            };
+
+                            let view_filter = match search_req.view_filter {
+                                Some(f) => {
+                                    Some(f.postprocess_for_data_source(&search_req.data_source_id))
+                                }
+                                None => None,
+                            };
+
+                            match ds
+                                .search_with_vector(
+                                    store,
+                                    qdrant_clients,
+                                    vector,
+                                    search_req.top_k,
+                                    filter,
+                                    view_filter,
+                                    full_text,
+                                    search_req.target_document_tokens,
+                                )
+                                .await
+                            {
+                                Ok(documents) => DataSourceSearchResultItem {
+                                    project_id: search_req.project_id,
+                                    data_source_id: search_req.data_source_id.clone(),
+                                    documents,
+                                    error: None,
+                                },
+                                Err(e) => DataSourceSearchResultItem {
+                                    project_id: search_req.project_id,
+                                    data_source_id: search_req.data_source_id.clone(),
+                                    documents: vec![],
+                                    error: Some(format!("{}", e)),
+                                },
+                            }
+                        }
+                    })
+                    .collect();
+
+                Ok(futures::future::join_all(search_futures).await)
             }
+        })
+        .collect();
+
+    // Execute all group operations concurrently.
+    let group_results = futures::future::join_all(group_futures).await;
+
+    // Handle results and errors.
+    let mut all_results: Vec<DataSourceSearchResultItem> = Vec::new();
+    for group_result in group_results {
+        match group_result {
+            Ok(results) => all_results.extend(results),
             Err(e) => {
                 return error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "embedding_error",
-                    &format!("Failed to embed query with model {}", model_id),
-                    Some(e),
+                    &e,
+                    None,
                 );
             }
-        };
-
-        // Search all data sources in this group with the same vector.
-        let search_futures: Vec<_> = group
-            .into_iter()
-            .map(|(search_req, ds)| {
-                let vector = query_vector.clone();
-                let store = state.store.clone();
-                let qdrant_clients = state.qdrant_clients.clone();
-                let full_text = payload.full_text;
-
-                async move {
-                    let filter = match search_req.filter {
-                        Some(f) => Some(f.postprocess_for_data_source(&search_req.data_source_id)),
-                        None => None,
-                    };
-
-                    let view_filter = match search_req.view_filter {
-                        Some(f) => Some(f.postprocess_for_data_source(&search_req.data_source_id)),
-                        None => None,
-                    };
-
-                    match ds
-                        .search_with_vector(
-                            store,
-                            qdrant_clients,
-                            vector,
-                            search_req.top_k,
-                            filter,
-                            view_filter,
-                            full_text,
-                            search_req.target_document_tokens,
-                        )
-                        .await
-                    {
-                        Ok(documents) => DataSourceSearchResultItem {
-                            project_id: search_req.project_id,
-                            data_source_id: search_req.data_source_id.clone(),
-                            documents,
-                            error: None,
-                        },
-                        Err(e) => DataSourceSearchResultItem {
-                            project_id: search_req.project_id,
-                            data_source_id: search_req.data_source_id.clone(),
-                            documents: vec![],
-                            error: Some(format!("{}", e)),
-                        },
-                    }
-                }
-            })
-            .collect();
-
-        let results = futures::future::join_all(search_futures).await;
-        all_results.extend(results);
+        }
     }
 
     (

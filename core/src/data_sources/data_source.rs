@@ -1254,7 +1254,12 @@ impl DataSource {
                     self.config.extras.clone(),
                 );
                 let v = r.execute(credentials).await?;
-                assert!(v.len() == 1);
+                if v.len() != 1 {
+                    return Err(anyhow!(
+                        "Expected exactly one embedding vector, got {}",
+                        v.len()
+                    ));
+                }
 
                 Some(v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>())
             }
