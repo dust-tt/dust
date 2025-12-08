@@ -15,7 +15,13 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, formatUserFullName, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  formatUserFullName,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
@@ -135,14 +141,16 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         {
           model: SkillConfigurationModel,
           as: "customSkill",
-          required: true,
+          required: false,
         },
       ],
     });
 
-    return agentSkills.map(
-      (as) => new SkillConfigurationResource(this.model, as.customSkill.get())
-    );
+    // TODO(skills): Add support for global skills.
+    // When globalSkillId is set, we need to fetch the skill from the global registry
+    // and return it as a SkillConfigurationResource.
+    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
+    return customSkills.map((skill) => new this(this.model, skill.get()));
   }
 
   get sId(): string {
@@ -172,7 +180,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     try {
       const workspace = auth.getNonNullableWorkspace();
 
-      const affectedCount = await SkillConfigurationResource.model.destroy({
+      const affectedCount = await this.model.destroy({
         where: {
           id: this.id,
           workspaceId: workspace.id,
