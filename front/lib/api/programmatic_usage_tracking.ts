@@ -321,6 +321,8 @@ export async function trackProgrammaticCost(
     amountMicroUsd: runsCostMicroUsd,
   });
 
+  // TODO(PPUL): re-enable this after shipping.
+  /*
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
@@ -352,7 +354,7 @@ export async function trackProgrammaticCost(
         totalConsumedMicroUsd,
       });
     }
-  }
+  }*/
 }
 
 export async function resetCredits(
