@@ -290,17 +290,17 @@ export const getStripeSubscription = async (
 export async function getSubscriptionInvoices({
   subscriptionId,
   status,
-  createdSince,
+  createdSinceDate,
 }: {
   subscriptionId: string;
   status?: Stripe.InvoiceListParams["status"];
-  createdSince: Date;
+  createdSinceDate: Date;
 }): Promise<Stripe.Invoice[]> {
   const stripe = getStripeClient();
   const invoices = await stripe.invoices.list({
     subscription: subscriptionId,
     status,
-    created: { gte: Math.floor(createdSince.getTime() / 1000) },
+    created: { gte: Math.floor(createdSinceDate.getTime() / 1000) },
   });
   return invoices.data.filter(
     (inv) =>

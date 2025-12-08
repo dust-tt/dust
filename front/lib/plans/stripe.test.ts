@@ -301,7 +301,7 @@ describe("getSubscriptionInvoices", () => {
     const result = await getSubscriptionInvoices({
       subscriptionId: "sub_123",
       status: "paid",
-      createdSince,
+      createdSinceDate: createdSince,
     });
 
     expect(mockInvoices.list).toHaveBeenCalledWith({
@@ -321,7 +321,7 @@ describe("getSubscriptionInvoices", () => {
     const createdSince = new Date("2024-01-01T00:00:00Z");
     await getSubscriptionInvoices({
       subscriptionId: "sub_123",
-      createdSince,
+      createdSinceDate: createdSince,
     });
 
     expect(mockInvoices.list).toHaveBeenCalledWith({

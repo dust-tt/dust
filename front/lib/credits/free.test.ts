@@ -101,7 +101,7 @@ describe("checkCustomerStatus", () => {
       expect(getSubscriptionInvoices).toHaveBeenCalledWith({
         subscriptionId: "sub_123",
         status: "paid",
-        createdSince: expect.any(Date),
+        createdSinceDate: expect.any(Date),
       });
     });
 

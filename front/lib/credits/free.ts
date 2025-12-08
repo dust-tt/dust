@@ -112,7 +112,7 @@ export async function getCustomerPaymentStatus(
   const paidInvoices = await getSubscriptionInvoices({
     subscriptionId: stripeSubscription.id,
     status: "paid",
-    createdSince: new Date(
+    createdSinceDate: new Date(
       Date.now() - MONTHLY_BILLING_CYCLE_SECONDS * 2 * 1000
     ),
   });
@@ -176,7 +176,11 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
+  if (
+    programmaticConfig &&
+    programmaticConfig.freeCreditMicroUsd !== null &&
+    customerPaymentStatus === "paying"
+  ) {
     creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
     logger.info(
       {
