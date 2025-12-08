@@ -15,7 +15,6 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditsList } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   getBillingCycle,
   getPriceAsString,
@@ -47,12 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.getNonNullableSubscription();
 
   if (!auth.isAdmin()) {
-    return { notFound: true };
-  }
-
-  // Check if the feature flag is enabled
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("ppul")) {
     return { notFound: true };
   }
 
@@ -321,13 +314,11 @@ export default function CreditsUsagePage({
   creditPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
-  const { hasFeature, featureFlags } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const isApiAndProgrammaticEnabled = hasFeature("ppul");
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
-    disabled: !isApiAndProgrammaticEnabled,
   });
 
   // Get the billing cycle start day from the subscription start date

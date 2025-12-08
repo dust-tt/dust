@@ -3,7 +3,6 @@ import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
@@ -297,7 +296,6 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     auth = authenticator;
 
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getSubscriptionInvoices).mockResolvedValue([
       makeInvoice(NOW - MONTH_SECONDS * 0.5),

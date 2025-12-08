@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -24,20 +23,6 @@ async function handler(
         type: "workspace_auth_error",
         message:
           "Only users that are `admins` for the current workspace can view credits.",
-      },
-    });
-  }
-
-  // Check feature flag.
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-
-  if (!featureFlags.includes("ppul")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "This feature is not enabled for your workspace.",
       },
     });
   }

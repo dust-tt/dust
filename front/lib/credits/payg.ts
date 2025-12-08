@@ -3,7 +3,6 @@ import type Stripe from "stripe";
 
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
   isEnterpriseSubscription,
@@ -85,20 +84,6 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   const nextPeriodStartDate = new Date(nextPeriodStartSeconds * 1000);
   const nextPeriodEndDate = new Date(nextPeriodEndSeconds * 1000);
 
-  const featureFlags = await getFeatureFlags(workspace);
-  if (!featureFlags.includes("ppul")) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        initialAmountMicroUsd: config.paygCapMicroUsd,
-        periodStart: nextPeriodStartDate.toISOString(),
-        periodEnd: nextPeriodEndDate.toISOString(),
-      },
-      "[Credit PAYG] PPUL flag OFF - stopping here."
-    );
-    return;
-  }
-
   const result = await createPAYGCreditForPeriod({
     auth,
     paygCapMicroUsd: config.paygCapMicroUsd,
@@ -127,10 +112,6 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 }
 
 export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("ppul")) {
-    return false;
-  }
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   return config !== null && config.paygCapMicroUsd !== null;
@@ -167,15 +148,6 @@ export async function startOrResumeEnterprisePAYG({
   });
   if (updateResult.isErr()) {
     return updateResult;
-  }
-
-  const featureFlags = await getFeatureFlags(workspace);
-  if (!featureFlags.includes("ppul")) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "[Credit PAYG] PPUL flag OFF - config updated but no credit created"
-    );
-    return new Ok(undefined);
   }
 
   const currentPeriodStart = new Date(
