@@ -644,30 +644,30 @@ export class GroupResource extends BaseResource<GroupModel> {
     isDeletionFlow?: boolean;
   }): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
-    const groupAgents = await GroupAgentModel.findAll({
+
+    const agentGroups = await GroupAgentModel.findAll({
       where: {
         agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          where: {
-            workspaceId: workspace.id,
-            kind: "agent_editors",
-          },
-          required: true,
+    });
+
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: agentGroups.map((ag) => ag.groupId),
         },
-      ],
+      },
     });
 
     if (
       agentConfiguration.status === "draft" ||
       agentConfiguration.scope === "global"
     ) {
-      if (groupAgents.length === 0) {
+      if (groups.length === 0) {
         return null;
       }
+
       throw new Error(
         "Unexpected: draft or global agent shouldn't have an editor group."
       );
@@ -676,20 +676,24 @@ export class GroupResource extends BaseResource<GroupModel> {
     // In the case of agents deletion, it is possible that the agent has no
     // editor group associated with it, because the group may have been deleted
     // when deleting another version of the agent with the same sId.
-    if (isDeletionFlow && groupAgents.length === 0) {
+    if (isDeletionFlow && groups.length === 0) {
       return null;
     }
 
     // In other cases, the agent should always have exactly one editor group.
-    if (groupAgents.length !== 1) {
+    if (groups.length !== 1) {
       throw new Error(
         "Unexpected: agent should have exactly one editor group."
       );
     }
 
-    const group = await groupAgents[0].getGroup();
+    const [group] = groups;
 
-    return new this(GroupModel, group.get());
+    if (!group.canRead(auth)) {
+      return null;
+    }
+
+    return group;
   }
 
   static async fetchWorkspaceSystemGroup(
