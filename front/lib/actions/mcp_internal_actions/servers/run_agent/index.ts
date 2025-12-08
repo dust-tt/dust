@@ -840,14 +840,7 @@ export default async function createServer(
                 }
               }
             } else if (event.type === "tool_personal_auth_required") {
-              collectedBlockingEvents.push({
-                type: "tool_personal_auth_required",
-                created: event.created,
-                configurationId: event.configurationId,
-                messageId: event.messageId,
-                conversationId: conversation.sId,
-                authError: event.authError,
-              });
+              collectedBlockingEvents.push(event);
 
               if (event.isLastBlockingEventForStep) {
                 const blockedResponse = makeToolBlockedAwaitingInputResponse(
