@@ -10,14 +10,16 @@ import { Op, Sequelize } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 import type { CreditDisplayData } from "@app/types/credits";
+import type { EditedByUser } from "@app/types/user";
 import {
   CREDIT_EXPIRATION_DAYS,
   CREDIT_TYPES,
@@ -31,8 +33,16 @@ export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
 export class CreditResource extends BaseResource<CreditModel> {
   static model: ModelStatic<CreditModel> = CreditModel;
 
-  constructor(_model: ModelStatic<CreditModel>, blob: Attributes<CreditModel>) {
+  readonly boughtByUser?: Attributes<UserModel>;
+
+  constructor(
+    _model: ModelStatic<CreditModel>,
+    blob: Attributes<CreditModel>,
+    { boughtByUser }: { boughtByUser?: Attributes<UserModel> } = {}
+  ) {
     super(CreditModel, blob);
+
+    this.boughtByUser = boughtByUser;
   }
 
   get sId(): string {
@@ -44,7 +54,9 @@ export class CreditResource extends BaseResource<CreditModel> {
   // The credit is not consumable until start() is called (startDate is set).
   static async makeNew(
     auth: Authenticator,
-    blob: CreationAttributes<CreditModel>,
+    blob: Omit<CreationAttributes<CreditModel>, "boughtByUserId"> & {
+      boughtByUserId?: number | null;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ) {
     // Validate type field using type guard
@@ -75,8 +87,16 @@ export class CreditResource extends BaseResource<CreditModel> {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      include: [
+        {
+          model: UserModel,
+          as: "boughtByUser",
+          required: false,
+        },
+      ],
       ...rest,
     });
+
     return rows.map((r) => new this(this.model, r.get()));
   }
 
@@ -308,6 +328,23 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
   }
 
+  private makeBoughtBy(
+    editedByUser: Attributes<UserModel> | undefined,
+    editedAt: Date | undefined
+  ) {
+    if (!editedByUser || !editedAt) {
+      return null;
+    }
+
+    return {
+      editedAt: editedAt.getTime(),
+      fullName: formatUserFullName(editedByUser),
+      imageUrl: editedByUser.imageUrl,
+      email: editedByUser.email,
+      userId: editedByUser.sId,
+    };
+  }
+
   toJSON(): CreditDisplayData {
     return {
       sId: this.sId,
@@ -320,6 +357,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       expirationDate: this.expirationDate
         ? this.expirationDate.getTime()
         : null,
+      boughtByUser: this.makeBoughtBy(this.boughtByUser, this.updatedAt),
     };
   }
 

@@ -1,7 +1,8 @@
-import type { CreationOptional } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreditType } from "@app/types/credits";
 import { CREDIT_TYPES } from "@app/types/credits";
@@ -25,6 +26,10 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare discount: number | null;
   // Stripe invoice ID or line item ID for idempotency.
   declare invoiceOrLineItemId: string | null;
+  // User who purchased the credit (null for free/system-generated credits).
+  declare boughtByUserId: ForeignKey<UserModel["id"]> | null;
+
+  declare boughtByUser: NonAttribute<UserModel>;
 }
 
 CreditModel.init(
@@ -78,6 +83,15 @@ CreditModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    boughtByUserId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+      references: {
+        model: UserModel,
+        key: "id",
+      },
+    },
   },
   {
     modelName: "credit",
@@ -118,3 +132,8 @@ CreditModel.init(
     ],
   }
 );
+
+CreditModel.belongsTo(UserModel, {
+  as: "boughtByUser",
+  foreignKey: { name: "boughtByUserId", allowNull: true },
+});
