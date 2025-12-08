@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { getIdsFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
@@ -65,9 +66,22 @@ async function handler(
     });
   }
 
+  const skillIdRes = getIdsFromSId(skillSId);
+  if (skillIdRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill id.",
+      },
+    });
+  }
+
+  const { resourceModelId: skillId } = skillIdRes.value;
+
   const skill = await SkillConfigurationModel.findOne({
     where: {
-      sId: skillSId,
+      id: skillId,
       workspaceId: owner.id,
     },
   });
