@@ -1,6 +1,7 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import { DataTable, TrashIcon } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
@@ -13,6 +14,7 @@ import type {
 } from "@app/types/skill_configuration";
 
 type RowData = {
+  id: number;
   sId: string;
   name: string;
   description: string;
@@ -104,15 +106,11 @@ const getTableColumns = () => {
 
 type SkillsTableProps = {
   skillConfigurations: SkillConfigurationWithAuthorType[];
-  setSkillConfiguration: (skill: SkillConfigurationWithAuthorType) => void;
   owner: LightWorkspaceType;
 };
 
-export function SkillsTable({
-  owner,
-  skillConfigurations,
-  setSkillConfiguration,
-}: SkillsTableProps) {
+export function SkillsTable({ skillConfigurations, owner }: SkillsTableProps) {
+  const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillConfigurationToArchive, setSkillConfigurationToArchive] =
     useState<SkillConfigurationType | null>(null);
@@ -123,7 +121,9 @@ export function SkillsTable({
         return {
           ...skillConfiguration,
           onClick: () => {
-            setSkillConfiguration(skillConfiguration);
+            void router.push(
+              `/w/${owner.sId}/builder/skills/${skillConfiguration.sId}`
+            );
           },
           menuItems: [
             {
@@ -139,7 +139,7 @@ export function SkillsTable({
           ],
         };
       }),
-    [skillConfigurations, setSkillConfiguration]
+    [skillConfigurations, owner, router]
   );
 
   if (rows.length === 0) {

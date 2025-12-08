@@ -22,6 +22,7 @@ export async function submitSkillBuilderForm({
     Error
   >
 > {
+<<<<<<< HEAD
   try {
     const endpoint = skillConfigurationId
       ? `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfigurationId}`
@@ -61,6 +62,45 @@ export async function submitSkillBuilderForm({
       | PatchSkillConfigurationResponseBody = await response.json();
 
     const skillConfiguration = result.skillConfiguration;
+=======
+  const endpoint = skillConfigurationId
+    ? `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfigurationId}`
+    : `/api/w/${owner.sId}/assistant/skill_configurations`;
+
+  const method = skillConfigurationId ? "PATCH" : "POST";
+
+  const response = await clientFetch(endpoint, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: formData.name,
+      description: formData.description,
+      instructions: formData.instructions,
+      scope: formData.scope,
+      tools: formData.tools.map((tool) => ({
+        mcpServerViewId: tool.configuration.mcpServerViewId,
+      })),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    return new Err(
+      new Error(
+        errorData.error?.message ??
+          (skillConfigurationId
+            ? "Failed to update skill"
+            : "Failed to create skill")
+      )
+    );
+  }
+
+  const result:
+    | PostSkillConfigurationResponseBody
+    | PatchSkillConfigurationResponseBody = await response.json();
+>>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
 
     const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
     const creatorId = user.sId;

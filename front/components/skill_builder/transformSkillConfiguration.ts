@@ -15,7 +15,11 @@ export function transformSkillConfigurationToFormData(
     description: skillConfiguration.description,
     instructions: skillConfiguration.instructions,
     editors: [], // Will be populated reactively from useEditors hook
+<<<<<<< HEAD
     tools: [], // Will be populated reactively from MCP server views context
+=======
+    tools: skillConfiguration.tools || [],
+>>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
   };
 }
 
