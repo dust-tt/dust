@@ -22,18 +22,26 @@ import {
 } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
+  getCreditPurchasePriceId,
+  getStripePricingData,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
-import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { useCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import { isSupportedCurrency } from "@app/types/currency";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isEnterprise: boolean;
+  currency: string;
+  discountPercent: number;
+  creditPricing: StripePricingData | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -49,20 +57,33 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   let isEnterprise = false;
+  let currency = "usd";
   if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
+      currency = isSupportedCurrency(stripeSubscription.currency)
+        ? stripeSubscription.currency
+        : "usd";
     }
   }
+
+  const programmaticConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
+
+  const creditPricing = await getStripePricingData(getCreditPurchasePriceId());
 
   return {
     props: {
       owner,
       subscription,
       isEnterprise,
+      currency,
+      discountPercent,
+      creditPricing,
     },
   };
 });
@@ -157,7 +178,6 @@ interface UsageSectionProps {
   totalConsumed: number;
   totalCredits: number;
   isLoading: boolean;
-  isPurchasingCredits: boolean;
   setShowBuyCreditDialog: (show: boolean) => void;
 }
 
@@ -168,7 +188,6 @@ function UsageSection({
   totalConsumed,
   totalCredits,
   isLoading,
-  isPurchasingCredits,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
   const billingCycle = useMemo(
@@ -274,8 +293,6 @@ function UsageSection({
                 label="Buy credits"
                 variant="outline"
                 size="xs"
-                disabled={isPurchasingCredits}
-                isLoading={isPurchasingCredits}
                 onClick={() => setShowBuyCreditDialog(true)}
               />
             )
@@ -299,6 +316,9 @@ export default function CreditsUsagePage({
   owner,
   subscription,
   isEnterprise,
+  currency,
+  discountPercent,
+  creditPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { hasFeature, featureFlags } = useFeatureFlags({
@@ -308,9 +328,6 @@ export default function CreditsUsagePage({
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
     disabled: !isApiAndProgrammaticEnabled,
-  });
-  const { isLoading: isPurchasingCredits } = usePurchaseCredits({
-    workspaceId: owner.sId,
   });
 
   // Get the billing cycle start day from the subscription start date
@@ -382,6 +399,9 @@ export default function CreditsUsagePage({
         onClose={() => setShowBuyCreditDialog(false)}
         workspaceId={owner.sId}
         isEnterprise={isEnterprise}
+        currency={currency}
+        discountPercent={discountPercent}
+        creditPricing={creditPricing}
       />
 
       <Page.Vertical gap="xl" align="stretch">
@@ -403,8 +423,6 @@ export default function CreditsUsagePage({
               <Button
                 label="Buy credits"
                 variant="primary"
-                disabled={isPurchasingCredits}
-                isLoading={isPurchasingCredits}
                 onClick={() => setShowBuyCreditDialog(true)}
               />
             </div>
@@ -428,7 +446,6 @@ export default function CreditsUsagePage({
           totalConsumed={totalConsumed}
           totalCredits={totalCredits}
           isLoading={isCreditsLoading}
-          isPurchasingCredits={isPurchasingCredits}
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 

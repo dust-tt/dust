@@ -313,6 +313,7 @@ export async function createProCreditPurchase({
     amountMicroUsd,
     couponId,
     collectionMethod: "charge_automatically",
+    requestThreeDSecure: "challenge",
   });
 
   if (invoiceResult.isErr()) {
