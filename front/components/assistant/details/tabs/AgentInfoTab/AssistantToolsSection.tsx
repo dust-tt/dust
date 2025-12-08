@@ -18,6 +18,7 @@ import {
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 import {
   asDisplayName,
@@ -48,12 +49,14 @@ export function AssistantToolsSection({
   owner,
 }: AssistantToolsSectionProps) {
   const { isDark } = useTheme();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { mcpServers, isMCPServersLoading: isToolsLoading } = useMCPServers({
     owner,
   });
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationId: agentConfiguration.sId,
+    disabled: !featureFlags.includes("skills"),
   });
 
   const nonHiddenActions = agentConfiguration.actions.filter(
@@ -76,7 +79,7 @@ export function AssistantToolsSection({
 
   const filteredModels = removeNulls(models);
   const hasTools = nonHiddenActions.length > 0;
-  const hasSkills = skills.length > 0;
+  const hasSkills = featureFlags.includes("skills") && skills.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
