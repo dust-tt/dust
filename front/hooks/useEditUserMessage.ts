@@ -43,8 +43,12 @@ export function useEditUserMessage({
       );
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw normalizeError(errorData);
+        sendNotification({
+          title: "Failed to edit message",
+          description: "Please try again.",
+          type: "error",
+        });
+        return;
       }
 
       sendNotification({
