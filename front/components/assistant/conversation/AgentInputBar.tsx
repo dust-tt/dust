@@ -21,7 +21,6 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  hasHumansInteracting,
   isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
@@ -29,9 +28,8 @@ import {
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { AgentMention } from "@app/types";
+import type { RichMention } from "@app/types";
 import { conjugate, pluralize } from "@app/types";
-import { isAgentMention } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -75,22 +73,32 @@ export const AgentInputBar = ({
         !isHiddenMessage(m)
     );
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const agentMentions = useMemo(() => {
+  const draftAgent = context.agentBuilderContext?.draftAgent;
+
+  const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
-    if (context.agentBuilderContext?.draftAgent) {
-      return [{ configurationId: context.agentBuilderContext.draftAgent.sId }];
+    if (draftAgent) {
+      return [
+        {
+          id: draftAgent.sId,
+          type: "agent",
+          label: draftAgent.name,
+          pictureUrl: draftAgent.pictureUrl ?? "",
+          description: draftAgent.description ?? "",
+        } satisfies RichMention,
+      ];
     }
     if (
       !lastUserMessage ||
       !isUserMessage(lastUserMessage) ||
-      hasHumansInteracting(methods.data.get())
+      lastUserMessage.richMentions.length > 1
     ) {
-      return emptyArray<AgentMention>();
+      return emptyArray<RichMention>();
     }
-    return lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage, context.agentBuilderContext?.draftAgent, methods.data]);
+
+    return lastUserMessage.richMentions;
+  }, [draftAgent, lastUserMessage]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisible = 100;
@@ -237,7 +245,7 @@ export const AgentInputBar = ({
       <InputBar
         owner={context.owner}
         onSubmit={context.handleSubmit}
-        stickyMentions={agentMentions}
+        stickyMentions={autoMentions}
         additionalAgentConfiguration={context.agentBuilderContext?.draftAgent}
         conversationId={context.conversationId}
         disableAutoFocus={isMobile}

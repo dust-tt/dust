@@ -24,7 +24,6 @@ import {
 } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
-  AgentMention,
   ContentFragmentsType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
@@ -45,7 +44,7 @@ interface InputBarProps {
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
-  stickyMentions?: AgentMention[];
+  stickyMentions?: RichMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;

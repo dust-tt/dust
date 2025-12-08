@@ -523,8 +523,7 @@ export async function postUserMessage(
         transaction: t,
       })) ?? -1) + 1;
 
-    const userMessage = await createUserMessage({
-      workspace: owner,
+    const userMessage = await createUserMessage(auth, {
       conversation,
       content,
       mentions,
@@ -802,8 +801,7 @@ export async function editUserMessage(
         );
       }
 
-      const userMessage = await createUserMessage({
-        workspace: owner,
+      const userMessage = await createUserMessage(auth, {
         conversation,
         content,
         mentions,

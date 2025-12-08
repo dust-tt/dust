@@ -115,7 +115,17 @@ function PreviewContent({
               owner={owner}
               onSubmit={createConversation}
               stickyMentions={
-                draftAgent ? [{ configurationId: draftAgent.sId }] : []
+                draftAgent
+                  ? [
+                      {
+                        id: draftAgent.sId,
+                        type: "agent",
+                        label: draftAgent.name,
+                        pictureUrl: draftAgent.pictureUrl,
+                        description: draftAgent.description,
+                      } satisfies RichMention,
+                    ]
+                  : []
               }
               conversationId={null}
               additionalAgentConfiguration={draftAgent ?? undefined}

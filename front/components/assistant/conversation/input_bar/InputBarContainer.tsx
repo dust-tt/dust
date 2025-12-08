@@ -24,7 +24,7 @@ import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import useHandleAgentMentions from "@app/components/editor/input_bar/useHandleAgentMentions";
+import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -43,6 +43,7 @@ import type {
   AgentMention,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
+  RichMention,
   WorkspaceType,
 } from "@app/types";
 import { assertNever, normalizeError } from "@app/types";
@@ -66,7 +67,7 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   conversationId: string | null;
   selectedAgent: AgentMention | null;
-  stickyMentions?: AgentMention[];
+  stickyMentions?: RichMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   isSubmitting: boolean;
@@ -505,7 +506,7 @@ const InputBarContainer = ({
     }
   }, [animate, editorService]);
 
-  useHandleAgentMentions(
+  useHandleMentions(
     editorService,
     agentConfigurations,
     stickyMentions,
