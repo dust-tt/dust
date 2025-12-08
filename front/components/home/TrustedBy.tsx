@@ -221,7 +221,7 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
+      <H4 className="mb-6 w-full text-center text-foreground">
         Trusted by <span className="text-blue-500">2,000+</span> organizations
       </H4>
 
@@ -268,7 +268,7 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
         </div>
       </div>
       <Button
-        variant="highlight"
+        variant="primary"
         size="md"
         label="Join them"
         className="mt-8"

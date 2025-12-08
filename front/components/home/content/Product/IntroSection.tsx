@@ -75,30 +75,18 @@ const HeroContent = () => {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
-      <H1 className="text-center text-5xl font-medium md:text-6xl lg:text-7xl">
-        The operating system
-        <br />
-        for{" "}
-        <span
-          className="pr-1"
-          style={{
-            background:
-              "linear-gradient(90deg, #1C91FF 0%, #8B5CF6 35%, #E14322 65%, #6AA668 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          AI Agents
-        </span>
+      <H1 className="text-center text-5xl font-medium text-foreground md:text-6xl lg:text-7xl">
+        The operating system for <br></br>AI Agents
       </H1>
       <P
         size="lg"
         className="text-xl leading-7 tracking-tight text-muted-foreground"
       >
-        Deploy, orchestrate, and govern fleets of specialized AI agents that
-        work alongside your team, safely connected to your company's knowledge
-        and tools.
+        Deploy, orchestrate, and govern fleets of specialized AI agents
+        <br />
+        that work alongside your team, safely connected to your company's
+        <br />
+        knowledge and tools.
       </P>
       {/* Email input */}
       <form onSubmit={handleSubmit} className="mt-12 w-full max-w-xl">
@@ -108,13 +96,13 @@ const HeroContent = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="What's your work email?"
-            className="flex-1 border-none bg-transparent pl-1 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+            className="flex-1 border-none bg-transparent pl-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
             disabled={isLoading}
           />
           <button
             type="submit"
             disabled={isLoading}
-            className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
+            className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
           >
             {isLoading && <Spinner size="xs" />}
             Get started
@@ -166,10 +154,7 @@ export const HeroVisual = ({
                   width={1920}
                   height={1080}
                   className="rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
-                  style={{
-                    maxWidth: "100%",
-                    height: "auto",
-                  }}
+                  style={{ maxWidth: "100%", height: "auto" }}
                   priority
                 />
               )}
@@ -210,7 +195,7 @@ export const HeroVisual = ({
 export function IntroSection() {
   return (
     <section className="w-full">
-      <div className="flex flex-col gap-6 pt-16 sm:gap-6 md:gap-6 lg:gap-6">
+      <div className="flex flex-col gap-6 pt-24 sm:gap-6 md:gap-6 lg:gap-6">
         <div
           className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-12"
           style={{
@@ -219,7 +204,7 @@ export function IntroSection() {
           }}
         >
           <HeroContent />
-          <div className="mx-auto mt-12 max-w-5xl px-4">
+          <div className="mx-auto mt-16 max-w-5xl px-4">
             <TrustedBy logoSet="landing" />
           </div>
         </div>
