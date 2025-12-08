@@ -17,6 +17,7 @@ export class WebhookForwarder {
     headers,
     regions,
     rootUrlToken = "webhooks",
+    providerWorkspaceId,
   }: {
     body: unknown;
     endpoint: string;
@@ -24,6 +25,7 @@ export class WebhookForwarder {
     headers: IncomingHttpHeaders;
     regions: readonly Region[];
     rootUrlToken?: string;
+    providerWorkspaceId?: string;
   }): Promise<PromiseSettledResult<Response>[]> {
     const targets: WebhookTarget[] = [
       {
@@ -48,6 +50,7 @@ export class WebhookForwarder {
           body,
           headers,
           rootUrlToken,
+          providerWorkspaceId,
         })
       );
 
@@ -61,6 +64,7 @@ export class WebhookForwarder {
     target,
     headers,
     rootUrlToken,
+    providerWorkspaceId,
   }: {
     body: unknown;
     endpoint: string;
@@ -68,6 +72,7 @@ export class WebhookForwarder {
     target: WebhookTarget;
     headers: IncomingHttpHeaders;
     rootUrlToken: string;
+    providerWorkspaceId?: string;
   }): Promise<Response> {
     try {
       const response = await this.createRequest({
@@ -84,6 +89,7 @@ export class WebhookForwarder {
         component: "forwarder",
         region: target.region,
         endpoint,
+        providerWorkspaceId,
         status: response.status,
       });
 
