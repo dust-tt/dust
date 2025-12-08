@@ -264,13 +264,15 @@ export function BuyCreditDialog({
             <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
               {isEnterprise ? (
                 <p>
-                  Credits will be added immediately and invoiced at the end of
-                  your billing cycle.
+                  Credits will be added immediately, will be invoiced at the end
+                  of your billing cycle, and expire one year after purchase.
                 </p>
               ) : (
-                <p>Credits will be charged immediately.</p>
+                <p>
+                  Credits will be charged immediately, and expire one year after
+                  purchase.
+                </p>
               )}
-              <p>Unused credits will expire one year from purchase date.</p>
             </div>
 
             <div className="flex flex-col gap-3 border-t border-border pt-4 dark:border-border-night">
@@ -393,7 +395,7 @@ export function BuyCreditDialog({
         <DialogHeader>
           <DialogTitle>Purchase Programmatic Credits</DialogTitle>
           <DialogDescription>
-            Purchase credits for programmatic API usage and integrations.
+            Purchase credits for programmatic API usage.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>{renderContent()}</DialogContainer>

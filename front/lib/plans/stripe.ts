@@ -1,3 +1,4 @@
+import assert from "assert";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
@@ -70,52 +71,43 @@ export async function getStripePricingData(
   priceId: string
 ): Promise<StripePricingData | null> {
   const stripe = getStripeClient();
+  const price = await stripe.prices.retrieve(priceId, {
+    expand: ["currency_options"],
+  });
 
-  try {
-    const price = await stripe.prices.retrieve(priceId, {
-      expand: ["currency_options"],
-    });
-
-    if (!price.unit_amount || !price.currency_options) {
-      logger.error(
-        { priceId },
-        "[Stripe] Credit purchase price missing unit_amount or currency_options"
-      );
-      return null;
-    }
-
-    const currencyOptions: StripePricingData["currencyOptions"] = {
-      usd: { unitAmount: price.unit_amount },
-      eur: { unitAmount: price.unit_amount },
-    };
-
-    for (const currency of SUPPORTED_CURRENCIES) {
-      if (currency === "usd") {
-        continue;
-      }
-      const option = price.currency_options[currency];
-      if (option?.unit_amount) {
-        currencyOptions[currency] = { unitAmount: option.unit_amount };
-      } else {
-        logger.warn(
-          { priceId, currency },
-          "[Stripe] Currency option not configured, using USD amount"
-        );
-      }
-    }
-
-    return { currencyOptions };
-  } catch (error) {
+  if (!price.unit_amount || !price.currency_options) {
     logger.error(
-      {
-        priceId,
-        error: normalizeError(error).message,
-        stripeError: true,
-      },
-      "[Stripe] Failed to fetch credit purchase pricing"
+      { priceId },
+      "[Stripe] Credit purchase price missing unit_amount or currency_options"
     );
     return null;
   }
+
+  const currencyOptions: StripePricingData["currencyOptions"] = {
+    usd: { unitAmount: 0 },
+    eur: { unitAmount: 0 },
+  };
+
+  for (const currency of SUPPORTED_CURRENCIES) {
+    const currencyOption = price.currency_options[currency];
+    if (currencyOption?.unit_amount) {
+      currencyOptions[currency] = {
+        unitAmount: currencyOption.unit_amount,
+      };
+    } else {
+      logger.error(
+        { priceId, currency, stripeError: true },
+        "[Stripe] Currency option not configured"
+      );
+    }
+  }
+
+  assert(
+    currencyOptions.usd.unitAmount > 0,
+    "no USD currency option found for price"
+  );
+
+  return { currencyOptions };
 }
 
 /**
