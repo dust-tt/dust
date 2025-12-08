@@ -118,7 +118,7 @@
     "convertapi": "^1.15.0",
     "cron-parser": "^4.9.0",
     "cronstrue": "^3.2.0",
-    "csv-parse": "^5.5.2",
+    "csv-parse": "^6.1.0",
     "csv-stringify": "^6.4.5",
     "date-fns": "^3.6.0",
     "dayjs": "^1.11.13",
