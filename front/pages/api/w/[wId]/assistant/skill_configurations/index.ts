@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { SkillConfiguration } from "@app/types/skill_configuration";
@@ -111,6 +112,10 @@ async function handler(
       return res.status(200).json({
         skillConfiguration: {
           id: skillConfiguration.id,
+          sId: makeSId("skill", {
+            id: skillConfiguration.id,
+            workspaceId: skillConfiguration.workspaceId,
+          }),
           name: skillConfiguration.name,
           description: skillConfiguration.description,
           instructions: skillConfiguration.instructions,
