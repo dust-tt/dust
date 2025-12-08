@@ -4,7 +4,6 @@ import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
-import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,13 +11,11 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
   LightWorkspaceType,
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
-import { isString } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -65,7 +62,6 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
 const REDIS_ORIGIN = "public_api_limits";
-const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
 function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
