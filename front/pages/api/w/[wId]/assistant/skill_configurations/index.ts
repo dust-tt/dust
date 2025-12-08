@@ -114,6 +114,7 @@ async function handler(
 
       return res.status(200).json({
         skillConfiguration: {
+          id: skillConfiguration.id,
           sId: makeSId("skill", {
             id: skillConfiguration.id,
             workspaceId: skillConfiguration.workspaceId,
