@@ -220,7 +220,7 @@ function UsageSection({
     if (!subscription.startDate) {
       return null;
     }
-    return getBillingCycle(new Date(subscription.startDate));
+    return getBillingCycle(subscription.startDate);
   }, [subscription.startDate]);
 
   if (isLoading) {
@@ -389,6 +389,7 @@ export default function CreditsUsagePage({
 
   return (
     <AppCenteredLayout
+      owner={owner}
       subscription={subscription}
       subNavigation={subNavigationAdmin({
         owner,

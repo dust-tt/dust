@@ -141,7 +141,10 @@ export function BuyCreditDialog({
   const totalInCurrency = creditsInCurrency - discountInCurrency;
 
   const canPurchase =
-    isValidAmount && acceptedTerms && acceptedNonRefundable && !amountExceedsMax;
+    isValidAmount &&
+    acceptedTerms &&
+    acceptedNonRefundable &&
+    !amountExceedsMax;
 
   const renderContent = () => {
     switch (purchaseState) {

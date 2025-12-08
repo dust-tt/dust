@@ -96,9 +96,7 @@ async function getAlreadyPurchasedInCycle(
   auth: Authenticator,
   stripeSubscription: Stripe.Subscription
 ): Promise<number> {
-  const periodStart = new Date(
-    stripeSubscription.current_period_start * 1000
-  );
+  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
   const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
   return CreditResource.sumCommittedCreditsPurchasedInPeriod(
