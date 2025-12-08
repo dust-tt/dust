@@ -674,6 +674,9 @@ async function makeInvoice({
     collection_method: collectionParams.collectionMethod,
     metadata,
     auto_advance: true,
+    automatic_tax: {
+      enabled: true,
+    },
   };
 
   if (collectionParams.collectionMethod === "send_invoice") {
