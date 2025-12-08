@@ -103,17 +103,17 @@ export function SkillsTable({ skillsConfigurations }: SkillsTableProps) {
     [skillsConfigurations]
   );
 
+  if (rows.length === 0) {
+    return null;
+  }
+
   return (
-    <div>
-      {rows.length > 0 && (
-        <DataTable
-          className="relative"
-          data={rows}
-          columns={getTableColumns()}
-          pagination={pagination}
-          setPagination={setPagination}
-        />
-      )}
-    </div>
+    <DataTable
+      className="relative"
+      data={rows}
+      columns={getTableColumns()}
+      pagination={pagination}
+      setPagination={setPagination}
+    />
   );
 }
