@@ -68,6 +68,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "advanced_web_tools",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
@@ -124,6 +125,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
+  "advanced_web_tools",
   "web_search_&_browse",
   "http_client",
 ] as const;
@@ -142,6 +144,28 @@ export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
+  advanced_web_tools: {
+    id: 44,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("advanced_web_tools");
+    },
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "advanced_web_tools",
+      version: "1.0.0",
+      description:
+        "Agent can search (Google) and retrieve information from specific websites.",
+      icon: "ActionGlobeAltIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
   github: {
     id: 1,
     availability: "manual",

@@ -5,6 +5,7 @@ import {
   ADVANCED_SEARCH_SWITCH,
   AGENT_MEMORY_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as advancedWebtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/advanced_webtools";
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
@@ -101,6 +102,8 @@ export async function getInternalMCPServer(
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
+    case "advanced_web_tools":
+      return advancedWebtoolsServer(auth, agentLoopContext);
     case "github":
       return githubServer(auth, agentLoopContext);
     case "ashby":

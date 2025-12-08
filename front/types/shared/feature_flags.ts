@@ -225,6 +225,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
+  advanced_web_tools: {
+    description: "Advanced web tools MCP server",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
