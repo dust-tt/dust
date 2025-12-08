@@ -1,3 +1,4 @@
+import { error, log } from "firebase-functions/logger";
 import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
@@ -79,7 +80,7 @@ export class WebhookForwarder {
         rootUrlToken,
       });
 
-      console.log("Webhook forwarding succeeded", {
+      log("Webhook forwarding succeeded", {
         component: "forwarder",
         region: target.region,
         endpoint,
@@ -87,15 +88,15 @@ export class WebhookForwarder {
       });
 
       return response;
-    } catch (error) {
-      console.error("Webhook forwarding failed", {
+    } catch (e) {
+      error("Webhook forwarding failed", {
         component: "forwarder",
         region: target.region,
         endpoint,
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
       });
 
-      throw error;
+      throw e;
     }
   }
 

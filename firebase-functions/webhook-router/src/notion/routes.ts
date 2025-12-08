@@ -1,4 +1,5 @@
 import express from "express";
+import { error } from "firebase-functions/logger";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
@@ -73,11 +74,11 @@ async function handleNotionWebhook(
       regions: req.regions ?? ALL_REGIONS,
       rootUrlToken,
     });
-  } catch (error) {
-    console.error("Notion webhook router error", {
+  } catch (e) {
+    error("Notion webhook router error", {
       component: "notion-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error: e instanceof Error ? e.message : String(e),
     });
 
     if (!res.headersSent) {

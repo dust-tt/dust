@@ -1,4 +1,5 @@
 import express from "express";
+import { error } from "firebase-functions/logger";
 
 import { createTeamsRoutes } from "./microsoft/routes.js";
 import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
@@ -26,7 +27,7 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
 
       const secrets = await secretManager.getSecrets();
       if (webhookSecret !== secrets.webhookSecret) {
-        console.error("Invalid webhook secret provided", {
+        error("Invalid webhook secret provided", {
           component: "webhook-secret-validation",
         });
         res.status(404).send("Not found");
@@ -34,10 +35,10 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
       }
 
       next();
-    } catch (error) {
-      console.error("Webhook secret validation failed", {
+    } catch (e) {
+      error("Webhook secret validation failed", {
         component: "webhook-secret-validation",
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
       });
       res.status(500).send("Internal server error");
     }

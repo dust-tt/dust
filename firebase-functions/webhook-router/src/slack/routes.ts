@@ -1,4 +1,5 @@
 import express from "express";
+import { error } from "firebase-functions/logger";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
@@ -76,11 +77,11 @@ async function handleSlackWebhook(
       method: req.method,
       regions: req.regions ?? ALL_REGIONS,
     });
-  } catch (error) {
-    console.error("Slack webhook router error", {
+  } catch (e) {
+    error("Slack webhook router error", {
       component: "slack-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error: e instanceof Error ? e.message : String(e),
     });
 
     if (!res.headersSent) {
