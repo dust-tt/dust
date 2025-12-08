@@ -1218,6 +1218,77 @@ impl DataSource {
         full_text: bool,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
+        // We ensure that we have not left a `parents.is_in_map`` in the filters.
+        match &filter {
+            Some(filter) => {
+                filter.ensure_postprocessed()?;
+            }
+            None => (),
+        }
+        match &view_filter {
+            Some(filter) => {
+                filter.ensure_postprocessed()?;
+            }
+            None => (),
+        }
+
+        if top_k > DataSource::MAX_TOP_K_SEARCH {
+            return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
+        }
+
+        let query = match query {
+            Some(q) => match q.len() {
+                0 => None,
+                _ => Some(q),
+            },
+            None => None,
+        };
+
+        let vector = match query {
+            None => None,
+            Some(q) => {
+                let r = EmbedderRequest::new(
+                    self.embedder_config().provider_id,
+                    &self.embedder_config().model_id,
+                    vec![&q],
+                    self.config.extras.clone(),
+                );
+                let v = r.execute(credentials).await?;
+                if v.len() != 1 {
+                    return Err(anyhow!(
+                        "Expected exactly one embedding vector, got {}",
+                        v.len()
+                    ));
+                }
+
+                Some(v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>())
+            }
+        };
+
+        self.search_with_vector(
+            store,
+            qdrant_clients,
+            vector,
+            top_k,
+            filter,
+            view_filter,
+            full_text,
+            target_document_tokens,
+        )
+        .await
+    }
+
+    pub async fn search_with_vector(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        qdrant_clients: QdrantClients,
+        vector: Option<Vec<f32>>,
+        top_k: usize,
+        filter: Option<SearchFilter>,
+        view_filter: Option<SearchFilter>,
+        full_text: bool,
+        target_document_tokens: Option<usize>,
+    ) -> Result<Vec<Document>> {
         let time_search_start = utils::now();
 
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
@@ -1241,18 +1312,10 @@ impl DataSource {
         }
 
         let time_qdrant_start = utils::now();
-        let mut embedding_duration: u64 = 0;
         let qdrant_search_duration: u64;
+        let has_vector = vector.is_some();
 
-        let query = match query {
-            Some(q) => match q.len() {
-                0 => None,
-                _ => Some(q),
-            },
-            None => None,
-        };
-
-        let chunks = match query {
+        let chunks = match vector {
             None => {
                 let store = store.clone();
                 if !target_document_tokens.is_none() {
@@ -1272,18 +1335,7 @@ impl DataSource {
                 qdrant_search_duration = utils::now() - time_qdrant_start;
                 chunks
             }
-            Some(q) => {
-                let r = EmbedderRequest::new(
-                    self.embedder_config().provider_id,
-                    &self.embedder_config().model_id,
-                    vec![&q],
-                    self.config.extras.clone(),
-                );
-                let v = r.execute(credentials).await?;
-                assert!(v.len() == 1);
-
-                embedding_duration = utils::now() - time_qdrant_start;
-
+            Some(vec) => {
                 // Construct the filters for the search query if specified.
                 let f = build_qdrant_filter(&filter, &view_filter);
 
@@ -1292,7 +1344,7 @@ impl DataSource {
                     .search_points(
                         self.embedder_config(),
                         &self.internal_id,
-                        v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
+                        vec,
                         f,
                         top_k as u64,
                         Some(true.into()),
@@ -1579,7 +1631,7 @@ impl DataSource {
 
         let qdrant_scroll_duration = utils::now() - time_qdrant_scroll_start;
 
-        if !query.is_none() {
+        if !has_vector {
             // Sort the documents by the score of the first chunk (guaranteed ordered).
             documents.sort_by(|a, b| {
                 let b_score = b.chunks.first().unwrap().score.unwrap_or(0.0);
@@ -1603,8 +1655,7 @@ impl DataSource {
             data_source_internal_id = self.internal_id(),
             document_count = documents.len(),
             chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
-            with_query = query.is_some(),
-            embedding_duration = embedding_duration,
+            with_query = has_vector,
             qdrant_search_duration = qdrant_search_duration,
             store_duration = store_duration,
             qdrant_scroll_duration = qdrant_scroll_duration,
