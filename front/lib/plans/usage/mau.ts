@@ -23,7 +23,6 @@ async function countActiveUsersForPeriodInWorkspace({
   workspace: LightWorkspaceType;
 }): Promise<number> {
   // Use the replica database to compute this avoid impacting production performances.
-  // TODO(2025-11-24 PPUL): Remove constraints on userContextOrigin once backfilled.
   const result = await getFrontReplicaDbConnection().query(
     `
     SELECT "user_messages"."userId", COUNT(mentions.id) AS count
@@ -32,8 +31,6 @@ async function countActiveUsersForPeriodInWorkspace({
     INNER JOIN mentions ON mentions."messageId" = messages.id
     WHERE messages."workspaceId" = :workspaceId
     AND "user_messages"."userId" IS NOT NULL
-    AND "user_messages"."userContextOrigin" != 'run_agent'
-    AND "user_messages"."userContextOrigin" != 'agent_handover'
     AND "user_messages"."agenticMessageType" IS NULL
     AND "mentions"."createdAt" BETWEEN :startDate AND :endDate
     GROUP BY "user_messages"."userId"

@@ -10,7 +10,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PatchConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isUserMessageType } from "@app/types";
 
 /**
  * @swagger
@@ -131,16 +130,6 @@ async function handler(
   }
 
   const conversation = conversationRes.value;
-
-  // TODO(2025-11-26 PPUL): Remove this once extension is fully migrated.
-  // This is returning run_agent/agent_handover as origins in the context, as expected by the old SDKs.
-  conversation.content.flat().forEach((content) => {
-    if (isUserMessageType(content) && content.agenticMessageData) {
-      content.context.origin = content.agenticMessageData.type;
-      content.context.originMessageId =
-        content.agenticMessageData.originMessageId;
-    }
-  });
 
   switch (req.method) {
     case "GET": {
