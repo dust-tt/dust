@@ -1227,15 +1227,11 @@ async function isMessagesLimitReached(
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
-  const featureFlags = await getFeatureFlags(owner);
 
   // For programmatic usage, apply credit-based rate limiting.
   // This prevents close-to-0 credit attacks where many messages are sent simultaneously
   // before token usage is computed. Rate limit is based on total credit amount in dollars.
-  if (
-    featureFlags.includes("ppul") &&
-    isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
-  ) {
+  if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     const activeCredits = await CreditResource.listActive(auth);
 
     // Calculate total remaining credits in dollars (micro USD / 1,000,000).

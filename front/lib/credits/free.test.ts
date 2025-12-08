@@ -297,7 +297,6 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     auth = authenticator;
 
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getSubscriptionInvoices).mockResolvedValue([
       makeInvoice(NOW - MONTH_SECONDS * 0.5),

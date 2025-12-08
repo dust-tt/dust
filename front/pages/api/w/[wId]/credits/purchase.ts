@@ -6,7 +6,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
@@ -60,19 +59,7 @@ async function handler(
     });
   }
 
-  // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-
-  if (!featureFlags.includes("ppul")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "This feature is not enabled for your workspace.",
-      },
-    });
-  }
 
   switch (req.method) {
     case "POST": {
