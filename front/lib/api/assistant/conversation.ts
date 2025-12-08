@@ -39,7 +39,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -1258,6 +1258,20 @@ async function isMessagesLimitReached(
     });
 
     if (remainingMessages <= 0) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          totalRemainingCreditsDollars,
+        },
+        "Pre-emptive rate limit triggered for programmatic usage."
+      );
+
+      statsDClient.increment(
+        "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
+        1,
+        { workspace_id: owner.sId }
+      );
+
       return {
         isLimitReached: true,
         limitType: "rate_limit_error",
