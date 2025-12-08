@@ -84,7 +84,7 @@ export const MentionDropdown = forwardRef<
           .map((u) => ({
             type: "user" as const,
             id: u.sId,
-            label: u.fullName || u.username,
+            label: u.fullName ?? u.username,
             pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
             description: u.username,
           }))
