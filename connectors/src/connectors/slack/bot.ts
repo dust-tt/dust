@@ -495,6 +495,7 @@ async function processErrorResult(
       {
         error: res.error,
         errorMessage: res.error.message,
+        connectorId: connector.id,
         ...params,
       },
       "Failed answering to Slack Chat Bot message"
