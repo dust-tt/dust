@@ -269,7 +269,7 @@ const ConversationMessageTitle = React.forwardRef<
       infoChip,
       completionStatus,
       renderName,
-      actions,
+      // actions,
       className,
       ...props
     },
