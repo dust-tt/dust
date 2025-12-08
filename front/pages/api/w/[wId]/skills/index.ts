@@ -35,9 +35,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const skillConfigurations =
-        await SkillConfigurationResource.fetchWithAuthor(auth, {
-          order: [["createdAt", "DESC"]],
-        });
+        await SkillConfigurationResource.fetchWithAuthor(auth);
 
       return res.status(200).json({
         skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),
