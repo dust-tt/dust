@@ -1,3 +1,4 @@
+import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
@@ -59,7 +60,8 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "users:read",
           ];
         default:
-          throw new Error(
+          assert(
+            false,
             `Unsupported useCase "${useCase}" in SlackToolsOAuthProvider`
           );
       }
