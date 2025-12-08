@@ -1,9 +1,7 @@
-import { useSWRConfig } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { normalizeError, toMentionType } from "@app/types";
+import { toMentionType } from "@app/types";
 import type { RichMention } from "@app/types/assistant/mentions";
 
 export function useEditUserMessage({
@@ -14,7 +12,6 @@ export function useEditUserMessage({
   conversationId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutate } = useSWRConfig();
 
   const { submit: editMessage, isSubmitting } = useSubmitFunction(
     async ({
@@ -56,14 +53,6 @@ export function useEditUserMessage({
         description: "Message has been edited successfully.",
         type: "success",
       });
-
-      await mutate(
-        (key) =>
-          typeof key === "string" &&
-          key.includes(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-          )
-      );
     }
   );
 
