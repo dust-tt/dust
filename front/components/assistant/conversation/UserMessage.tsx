@@ -333,7 +333,7 @@ export function UserMessage({
                       <TriggerChip message={message} />
                     </span>
                   )}
-                  {message.version > 1 && (
+                  {message.version > 0 && (
                     <span className="text-xs text-faint dark:text-muted-foreground-night">
                       (edited)
                     </span>
