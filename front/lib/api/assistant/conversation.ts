@@ -1,3 +1,6 @@
+import assert from "assert";
+import type { Transaction } from "sequelize";
+
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -18,7 +21,6 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { getUserForWorkspace } from "@app/lib/api/user";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -72,14 +74,12 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
-  isUserMention,
   isUserMessageType,
   md5,
   Ok,
   removeNulls,
 } from "@app/types";
-import assert from "assert";
-import type { Transaction } from "sequelize";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 
 /**
  * Conversation Creation, update and deletion
@@ -641,7 +641,8 @@ function canAccessAgent(
 class UserMessageError extends Error {}
 
 /**
- * This method creates a new user message version, and if there are new agent mentions, run them.
+ * This method creates a new user message version. If a new message contains agent mentions, it will create new agent messages,
+ * only when there are no agent messages after the edited user message.
  */
 export async function editUserMessage(
   auth: Authenticator,
@@ -687,36 +688,8 @@ export async function editUserMessage(
     });
   }
 
-  // if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-  //   return new Err({
-  //     status_code: 400,
-  //     api_error: {
-  //       type: "invalid_request_error",
-  //       message:
-  //         "Editing a message that already has agent mentions is not yet supported",
-  //     },
-  //   });
-  // }
-
-  // if (
-  //   !conversation.content[conversation.content.length - 1].some(
-  //     (m) => m.sId === message.sId
-  //   ) &&
-  //   mentions.filter((m) => isAgentMention(m)).length > 0
-  // ) {
-  //   return new Err({
-  //     status_code: 400,
-  //     api_error: {
-  //       type: "invalid_request_error",
-  //       message:
-  //         "Adding agent mentions when editing is only supported for the last message " +
-  //         "of the conversation",
-  //     },
-  //   });
-  // }
-
   let userMessage: UserMessageType | null = null;
-  const agentMessages: AgentMessageType[] = [];
+  let agentMessages: AgentMessageType[] = [];
 
   const results = await Promise.all([
     Promise.all(
@@ -735,6 +708,8 @@ export async function editUserMessage(
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
+
+  let canCreateAgentMessages = false;
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
@@ -827,17 +802,6 @@ export async function editUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      // For now agent messages are appended at the end of conversation
-      // it is fine since for now editing with new mentions is only supported
-      // for the last user message
-      // const nextMessageRank =
-      //   ((await Message.max<number | null, Message>("rank", {
-      //     where: {
-      //       conversationId: conversation.id,
-      //     },
-      //     transaction: t,
-      //   })) ?? -1) + 1;
-
       await createUserMentions(auth, {
         mentions,
         message: userMessage,
@@ -845,27 +809,61 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      // const agentMessages = await createAgentMessages(auth, {
-      //   conversation,
-      //   metadata: {
-      //     type: "create",
-      //     mentions,
-      //     agentConfigurations,
-      //     skipToolsValidation,
-      //     nextMessageRank,
-      //     userMessage,
-      //   },
-      //   transaction: t,
-      // });
+      if (!canCreateAgentMessages) {
+        // Check if there are any agent messages after the edited user message
+        // by checking conversation.content (which is indexed by rank)
+        const hasAgentMessagesAfter = conversation.content
+          .slice(messageRow.rank + 1)
+          .some((versions) => {
+            if (versions.length === 0) {
+              return false;
+            }
+            const latestVersion = versions[versions.length - 1];
+            return isAgentMessageType(latestVersion);
+          });
+
+        // Only create agent messages if:
+        // 1. There are agent mentions in the edited message
+        // 2. There are no agent messages after the edited user message
+        canCreateAgentMessages =
+          agentConfigurations.length > 0 && !hasAgentMessagesAfter;
+      }
+
+      let agentMessages: AgentMessageType[] = [];
+
+      if (canCreateAgentMessages) {
+        const nextMessageRank =
+          ((await Message.max<number | null, Message>("rank", {
+            where: {
+              conversationId: conversation.id,
+            },
+            transaction: t,
+          })) ?? -1) + 1;
+
+        agentMessages = await createAgentMessages(auth, {
+          conversation,
+          metadata: {
+            type: "create",
+            mentions,
+            agentConfigurations,
+            skipToolsValidation,
+            nextMessageRank,
+            userMessage,
+          },
+          transaction: t,
+        });
+      }
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
         userMessage,
+        agentMessages,
       };
     });
+
     userMessage = result.userMessage;
-    // agentMessages = result.agentMessages;
+    agentMessages = result.agentMessages;
 
     if (!userMessage) {
       throw new UserMessageError("Unreachable: userMessage is null");

@@ -43,6 +43,7 @@ import {
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
+import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -53,19 +54,20 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
-// TODO (yuka:2025-12-04): we should show editing UI when the message is editable
-const showEditing = false;
-
 interface UserMessageEditorProps {
   editor: Editor | null;
   editorService: EditorService;
-  setIsEditing: (isEditing: boolean) => void;
+  setIsEditingMode: (isEditingMode: boolean) => void;
+  isEditingMessage: boolean;
+  onSave: () => void;
 }
 
 function UserMessageEditor({
   editor,
   editorService,
-  setIsEditing,
+  setIsEditingMode,
+  isEditingMessage,
+  onSave,
 }: UserMessageEditorProps) {
   if (!editor) {
     return null;
@@ -83,6 +85,7 @@ function UserMessageEditor({
     >
       <EditorContent
         editor={editor}
+        disabled={isEditingMessage}
         className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
@@ -94,14 +97,15 @@ function UserMessageEditor({
         <Button
           variant="ghost-secondary"
           size="xs"
-          onClick={() => setIsEditing(false)}
+          onClick={() => setIsEditingMode(false)}
           label="Cancel"
         />
         <Button
           variant="highlight"
           size="xs"
-          onClick={() => setIsEditing(false)}
+          onClick={onSave}
           label="Save"
+          isLoading={isEditingMessage}
         />
       </div>
     </div>
@@ -155,7 +159,7 @@ export function UserMessage({
   message,
   owner,
 }: UserMessageProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingMode, setIsEditingMode] = useState(false);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
   const isAdmin = owner.role === "admin";
@@ -163,12 +167,28 @@ export function UserMessage({
     owner,
     conversationId,
   });
+  const { editMessage, isEditing: isEditingMessage } = useEditUserMessage({
+    owner,
+    conversationId,
+  });
   const confirm = useContext(ConfirmContext);
+
+  const handleSave = async () => {
+    const { markdown, mentions } = editorService.getMarkdownAndMentions();
+
+    await editMessage({
+      messageId: message.sId,
+      content: markdown,
+      mentions,
+    });
+
+    setIsEditingMode(false);
+  };
+
   const { editor, editorService } = useCustomEditor({
     owner,
     conversationId,
-    // TODO (yuka:2025-12-04): we should fire save edit event here
-    onEnterKeyDown: () => {},
+    onEnterKeyDown: handleSave,
     disableAutoFocus: false,
   });
 
@@ -213,8 +233,7 @@ export function UserMessage({
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete =
     (isCurrentUser || isAdmin) && !isDeleted && userMentionsEnabled;
-  const canEdit =
-    isCurrentUser && !isDeleted && showEditing && userMentionsEnabled;
+  const canEdit = isCurrentUser && !isDeleted && userMentionsEnabled;
 
   const handleDeleteMessage = useCallback(async () => {
     if (isDeleting || isDeleted) {
@@ -254,11 +273,11 @@ export function UserMessage({
   ]);
 
   const handleEditMessage = () => {
-    setIsEditing(true);
+    setIsEditingMode(true);
     editorService.setContent(message.content);
   };
 
-  const showActions = !isDeleted && !isEditing;
+  const showActions = !isDeleted && !isEditingMode;
   const actions = showActions
     ? [
         ...(canEdit
@@ -291,11 +310,13 @@ export function UserMessage({
             isCurrentUser ? "items-end" : "items-start"
           )}
         >
-          {isEditing ? (
+          {isEditingMode ? (
             <UserMessageEditor
               editor={editor}
               editorService={editorService}
-              setIsEditing={setIsEditing}
+              setIsEditingMode={setIsEditingMode}
+              onSave={handleSave}
+              isEditingMessage={isEditingMessage}
             />
           ) : (
             <NewConversationMessage
@@ -306,11 +327,18 @@ export function UserMessage({
               renderName={renderName}
               timestamp={formatTimestring(message.created)}
               infoChip={
-                isTriggeredOrigin(message.context.origin) && (
-                  <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
-                    <TriggerChip message={message} />
-                  </span>
-                )
+                <>
+                  {isTriggeredOrigin(message.context.origin) && (
+                    <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
+                      <TriggerChip message={message} />
+                    </span>
+                  )}
+                  {message.version > 1 && (
+                    <span className="text-xs text-faint dark:text-muted-foreground-night">
+                      (edited)
+                    </span>
+                  )}
+                </>
               }
               type="user"
               isCurrentUser={isCurrentUser}
