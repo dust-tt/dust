@@ -173,21 +173,21 @@ export const Stories: CustomerStory[] = [
     title: "Wakam enables self-service analytics across 220 users",
     content:
       "Wakam breaks down data silos with specialized AI agents, reducing partner intelligence processing by 90% and democratizing data access company-wide.",
-    href: "/blog/wakam-empowers-teams-with-self-service-data-intelligence-while-reducing-processing-time",
+    href: "/customers/wakam-empowers-teams-with-self-service-data-intelligence-while-reducing-processing-time",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Wakam.jpg",
   },
   {
     title: "Alan eliminates data queues and expands data insights with Dust",
     content:
       "Alan's @Metabase agent reduces query development time from hours to minutes, achieving a growing 60% weekly usage in their Operations team.",
-    href: "/blog/the-end-of-data-queues-how-alan-scaled-analytics-with-dust-2",
+    href: "/customers/the-end-of-data-queues-how-alan-scaled-analytics-with-dust-2",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1.jpg",
   },
   // {
   //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
   //   content:
   //     "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-  //   href: "/blog/customer-story-lifen",
+  //   href: "/customers/customer-story-lifen",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   // },
 ];

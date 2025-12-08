@@ -48,6 +48,10 @@ main {
   @apply h-full;
 }
 
+body {
+  overflow-x: hidden;
+}
+
 #__next {
   @apply h-full;
 }
