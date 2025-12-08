@@ -1,8 +1,9 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { clientFetch } from "@app/lib/egress/client";
-import type { SkillConfigurationType } from "@app/pages/api/w/[wId]/assistant/skill_configurations";
+import type { PostSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/assistant/skill_configurations";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
+import type { SkillConfiguration } from "@app/types/skill_configuration";
 
 export async function submitSkillBuilderForm({
   formData,
@@ -10,7 +11,9 @@ export async function submitSkillBuilderForm({
 }: {
   formData: SkillBuilderFormData;
   owner: WorkspaceType;
-}): Promise<Result<SkillConfigurationType, Error>> {
+}): Promise<
+  Result<PostSkillConfigurationResponseBody["skillConfiguration"], Error>
+> {
   const response = await clientFetch(
     `/api/w/${owner.sId}/assistant/skill_configurations`,
     {
@@ -34,7 +37,7 @@ export async function submitSkillBuilderForm({
     );
   }
 
-  const result: { skillConfiguration: SkillConfigurationType } =
+  const result: { skillConfiguration: SkillConfiguration } =
     await response.json();
 
   return new Ok(result.skillConfiguration);
