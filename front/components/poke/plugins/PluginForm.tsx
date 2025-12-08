@@ -82,8 +82,8 @@ export function PluginForm({
               key,
               arg.async && asyncArgs?.[key] !== undefined
                 ? (asyncArgs[key] as AsyncEnumValues)
-                  .filter((v) => v.checked)
-                  .map((v) => v.value)
+                    .filter((v) => v.checked)
+                    .map((v) => v.value)
                 : arg.values.filter((v) => v.checked).map((v) => v.value),
             ];
           case "date":
@@ -163,7 +163,7 @@ export function PluginForm({
           }
           const fieldDescription =
             arg.asyncDescription &&
-              asyncArgs?.[`${key}_description`] !== undefined
+            asyncArgs?.[`${key}_description`] !== undefined
               ? String(asyncArgs[`${key}_description`])
               : arg.description;
 
