@@ -200,6 +200,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       attributes: ["agentConfigurationId", "groupId"],
     });
+
     return groupAgents.map((ga) => ({
       agentConfigurationId: ga.agentConfigurationId,
       groupId: ga.groupId,
@@ -227,15 +228,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agent.id,
         workspaceId: owner.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          as: "group",
-        },
-      ],
       attributes: ["groupId"],
     });
-
     if (groupAgents.length === 0) {
       return new Err(
         new DustError(
@@ -254,15 +248,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const groupAgent = groupAgents[0];
-    const groupModel = await groupAgent.getGroup();
-    if (!groupModel) {
+    const [groupAgent] = groupAgents;
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: groupAgent.groupId,
+      },
+    });
+
+    const [group] = groups.filter((g) => g.canRead(auth));
+    if (!group) {
       return new Err(
         new DustError("group_not_found", "Editor group not found for agent.")
       );
     }
 
-    const group = new GroupResource(GroupModel, groupModel.get());
     if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
@@ -359,12 +358,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agent.map((a) => a.id),
         workspaceId: owner.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          as: "group",
-        },
-      ],
       attributes: ["groupId", "agentConfigurationId"],
     });
 
@@ -377,13 +370,28 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: groupAgents.map((ga) => ga.groupId),
+        },
+      },
+    });
+
+    const accessibleGroups = groups.filter((group) => group.canRead(auth));
+    const groupMap: Record<ModelId, GroupResource> = {};
+
+    for (const group of accessibleGroups) {
+      groupMap[group.id] = group;
+    }
+
     const r: Record<string, GroupResource> = {};
     for (const ga of groupAgents) {
       if (ga.agentConfigurationId) {
         const agentConfiguration = agent.find(
           (a) => a.id === ga.agentConfigurationId
         );
-        const group = await ga.getGroup();
+        const group = groupMap[ga.groupId];
 
         if (group.kind !== "agent_editors") {
           return new Err(
@@ -394,10 +402,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           );
         }
         if (agentConfiguration) {
-          r[agentConfiguration.sId] = new GroupResource(
-            GroupModel,
-            group.get()
-          );
+          r[agentConfiguration.sId] = group;
         }
       }
     }
@@ -765,30 +770,31 @@ export class GroupResource extends BaseResource<GroupModel> {
     isDeletionFlow?: boolean;
   }): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
-    const groupAgents = await GroupAgentModel.findAll({
+
+    const agentGroups = await GroupAgentModel.findAll({
       where: {
         agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          where: {
-            workspaceId: workspace.id,
-            kind: "agent_editors",
-          },
-          required: true,
+    });
+
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: agentGroups.map((ag) => ag.groupId),
         },
-      ],
+        kind: "agent_editors",
+      },
     });
 
     if (
       agentConfiguration.status === "draft" ||
       agentConfiguration.scope === "global"
     ) {
-      if (groupAgents.length === 0) {
+      if (groups.length === 0) {
         return null;
       }
+
       throw new Error(
         "Unexpected: draft or global agent shouldn't have an editor group."
       );
@@ -797,20 +803,24 @@ export class GroupResource extends BaseResource<GroupModel> {
     // In the case of agents deletion, it is possible that the agent has no
     // editor group associated with it, because the group may have been deleted
     // when deleting another version of the agent with the same sId.
-    if (isDeletionFlow && groupAgents.length === 0) {
+    if (isDeletionFlow && groups.length === 0) {
       return null;
     }
 
     // In other cases, the agent should always have exactly one editor group.
-    if (groupAgents.length !== 1) {
+    if (groups.length !== 1) {
       throw new Error(
         "Unexpected: agent should have exactly one editor group."
       );
     }
 
-    const group = await groupAgents[0].getGroup();
+    const [group] = groups;
 
-    return new this(GroupModel, group.get());
+    if (!group.canRead(auth)) {
+      return null;
+    }
+
+    return group;
   }
 
   static async fetchWorkspaceSystemGroup(
