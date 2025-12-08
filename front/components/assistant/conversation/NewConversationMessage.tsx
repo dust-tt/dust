@@ -149,7 +149,7 @@ export const NewConversationMessage = React.forwardRef<
               "flex w-full min-w-0 flex-col",
               type === "user"
                 ? "gap-1 rounded-xl bg-muted-background px-3 py-2 dark:bg-muted-background-night"
-                : "gap-3 px-3 py-2"
+                : "gap-3 px-3 py-1"
             )}
           >
             <ConversationMessageContent citations={citations} type={type}>
