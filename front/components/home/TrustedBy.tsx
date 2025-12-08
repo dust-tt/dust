@@ -268,7 +268,7 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
         </div>
       </div>
       <Button
-        variant="primary"
+        variant="highlight"
         size="md"
         label="Join them"
         className="mt-8"
