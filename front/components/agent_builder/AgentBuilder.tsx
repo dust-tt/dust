@@ -5,10 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type {
-  AdditionalConfigurationInBuilderType,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   AgentBuilderFormContext,
   agentBuilderFormSchema,
@@ -34,6 +31,7 @@ import type {
   AgentBuilderMCPConfigurationWithId,
 } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";

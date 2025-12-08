@@ -15,10 +15,7 @@ import React, {
 } from "react";
 import { useForm } from "react-hook-form";
 
-import type {
-  MCPFormData,
-  MCPServerConfigurationType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -63,6 +60,7 @@ import {
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";

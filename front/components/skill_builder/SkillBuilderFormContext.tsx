@@ -2,7 +2,7 @@ import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
-import { actionSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { actionSchema } from "@app/components/shared/tools_picker/types";
 import { editorUserSchema } from "@app/types/editors";
 
 export const skillBuilderFormSchema = z.object({
