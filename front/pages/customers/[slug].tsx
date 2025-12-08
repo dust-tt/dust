@@ -254,6 +254,18 @@ export default function CustomerStoryPage({
 
           {/* Main content and sidebar */}
           <div className={classNames(CONTENT_CLASSES, "mt-12")}>
+            {/* Key highlight box */}
+            {story.keyHighlight && (
+              <div className="mb-8 rounded-2xl border border-highlight/20 bg-highlight/5 p-6">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-highlight">
+                  Key Highlights
+                </h3>
+                <div className="prose prose-highlight max-w-none">
+                  {renderRichTextFromContentful(story.keyHighlight)}
+                </div>
+              </div>
+            )}
+
             {/* Rich text body */}
             {renderRichTextFromContentful(story.body)}
 
