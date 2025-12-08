@@ -1,9 +1,8 @@
 import { Button, Checkbox, SliderToggle } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
-import { useMemo, useState } from "react";
-import React from "react";
-import { useForm } from "react-hook-form";
+import React, { useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 import { EnumSelect } from "@app/components/poke/plugins/EnumSelect";
 import {
@@ -118,7 +117,10 @@ export function PluginForm({
     ];
   }, [manifest]);
 
-  const watchedValuesArray = form.watch(dependencyFields);
+  const watchedValuesArray = useWatch({
+    control: form.control,
+    name: dependencyFields,
+  });
 
   const watchedValues: Record<string, unknown> = {};
   dependencyFields.forEach((field, index) => {
