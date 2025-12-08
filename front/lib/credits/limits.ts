@@ -1,30 +1,34 @@
 import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
-import {
-  countEligibleUsersForFreeCredits,
-  getCustomerStatus,
-} from "@app/lib/credits/free";
+import { countEligibleUsersForCredits } from "@app/lib/credits/common";
+import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 
 // $50 per user per month for Pro subscriptions.
-const MAX_PRO_CREDIT_PER_USER_CENTS = 5000;
+const MAX_PRO_CREDIT_PER_USER_MICRO_USD = 50_000_000;
 // $1000 absolute cap for Pro subscriptions.
-const MAX_PRO_CREDIT_TOTAL_CENTS = 100_000;
+const MAX_PRO_CREDIT_TOTAL_MICRO_USD = 1_000_000_000;
 // $1000 cap for Enterprise subscriptions.
-const MAX_ENTERPRISE_CREDIT_CENTS = 100_000;
+const MAX_ENTERPRISE_CREDIT_MICRO_USD = 1_000_000_000;
 
 export type CreditPurchaseLimits =
-  | { canPurchase: false; reason: "trialing" }
-  | { canPurchase: true; maxAmountCents: number };
+  | { canPurchase: false; reason: "trialing" | "payment_issue" }
+  | { canPurchase: true; maxAmountMicroUsd: number };
 
 /**
- * Computes the maximum amount of credits a workspace can purchase.
+ * Computes the maximum amount of credits a workspace can purchase in the
+ * current billing cycle.
  *
  * Rules:
  * - Pro in trial: cannot purchase credits
- * - Pro paying: $50/user/month, capped at $1000
- * - Enterprise: $1000
+ * - Pro with payment issues: cannot purchase credits
+ * - Pro paying: $50/user/month, capped at $1000 per billing cycle
+ * - Enterprise: $1000 per billing cycle
+ *
+ * The limits are per billing cycle. Already purchased committed credits
+ * in the current billing cycle are subtracted from the maximum.
  */
 export async function getCreditPurchaseLimits(
   auth: Authenticator,
@@ -33,32 +37,73 @@ export async function getCreditPurchaseLimits(
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
   if (isEnterprise) {
+    const alreadyPurchased = await getAlreadyPurchasedInCycle(
+      auth,
+      stripeSubscription
+    );
+    const remainingMicroUsd = Math.max(
+      0,
+      MAX_ENTERPRISE_CREDIT_MICRO_USD - alreadyPurchased
+    );
     return {
       canPurchase: true,
-      maxAmountCents: MAX_ENTERPRISE_CREDIT_CENTS,
+      maxAmountMicroUsd: remainingMicroUsd,
     };
   }
 
   // For Pro subscriptions, check if they're paying or trialing.
-  const customerStatus = await getCustomerStatus(stripeSubscription);
+  const customerStatus = await getCustomerPaymentStatus(stripeSubscription);
 
-  if (customerStatus !== "paying") {
+  if (customerStatus === "trialing") {
     return {
       canPurchase: false,
       reason: "trialing",
     };
   }
 
-  // Pro paying: $50/user/month, capped at $1000.
+  if (customerStatus === "not_paying") {
+    return {
+      canPurchase: false,
+      reason: "payment_issue",
+    };
+  }
+
+  // Pro paying: $50/user/month, capped at $1000 per billing cycle.
   const workspace = auth.getNonNullableWorkspace();
-  const userCount = await countEligibleUsersForFreeCredits(workspace);
-  const maxAmountCents = Math.min(
-    userCount * MAX_PRO_CREDIT_PER_USER_CENTS,
-    MAX_PRO_CREDIT_TOTAL_CENTS
+  const userCount = await countEligibleUsersForCredits(workspace);
+  const cycleMaxMicroUsd = Math.min(
+    userCount * MAX_PRO_CREDIT_PER_USER_MICRO_USD,
+    MAX_PRO_CREDIT_TOTAL_MICRO_USD
   );
+
+  const alreadyPurchased = await getAlreadyPurchasedInCycle(
+    auth,
+    stripeSubscription
+  );
+  const remainingMicroUsd = Math.max(0, cycleMaxMicroUsd - alreadyPurchased);
 
   return {
     canPurchase: true,
-    maxAmountCents,
+    maxAmountMicroUsd: remainingMicroUsd,
   };
+}
+
+/**
+ * Gets the total amount of committed credits already purchased in the current
+ * billing cycle.
+ */
+async function getAlreadyPurchasedInCycle(
+  auth: Authenticator,
+  stripeSubscription: Stripe.Subscription
+): Promise<number> {
+  const periodStart = new Date(
+    stripeSubscription.current_period_start * 1000
+  );
+  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+
+  return CreditResource.sumCommittedCreditsPurchasedInPeriod(
+    auth,
+    periodStart,
+    periodEnd
+  );
 }

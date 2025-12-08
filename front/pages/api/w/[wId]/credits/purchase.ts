@@ -117,22 +117,25 @@ async function handler(
       // Validate against purchase limits.
       const limits = await getCreditPurchaseLimits(auth, stripeSubscription);
       if (!limits.canPurchase) {
+        const message =
+          limits.reason === "trialing"
+            ? "Credit purchases are not available during trial. Please contact support."
+            : "Credit purchases require an active subscription. Please ensure your payment method is up to date.";
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Credit purchases are not available during trial. Please contact support.",
+            message,
           },
         });
       }
 
-      if (amountCents > limits.maxAmountCents) {
+      if (amountMicroUsd > limits.maxAmountMicroUsd) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Amount exceeds maximum allowed: $${limits.maxAmountCents / 100}. Please contact support for higher limits.`,
+            message: `Amount exceeds maximum allowed: $${limits.maxAmountMicroUsd / 1_000_000}. Please contact support for higher limits.`,
           },
         });
       }
