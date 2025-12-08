@@ -1,9 +1,36 @@
+import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { H4 } from "@app/components/home/ContentComponents";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+
+const CASE_STUDIES: Record<string, string> = {
+  alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
+  blueground: "/customers/customer-support-blueground",
+  clay: "/customers/clay-scaling-gtme-team",
+  doctolib:
+    "/customers/doctolibs-ai-adoption-playbook-from-30-person-pilot-to-company-wide-deployment",
+  fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
+  kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
+  malt: "/customers/malt-customer-support",
+  mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
+  patch:
+    "/customers/how-patch-empowered-70-of-its-team-to-use-ai-agents-weekly",
+  payfit:
+    "/customers/less-admin-more-selling-how-dust-frees-up-payfits-sales-team-to-close-more-deals",
+  pennylane: "/customers/pennylane-customer-support-journey",
+  persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
+  qonto: "/customers/qonto-dust-ai-partnership",
+  wakam:
+    "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
+  watershed:
+    "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
+};
 
 const LOGO_SETS = {
   default: {
@@ -165,47 +192,90 @@ type RegionKey = "us" | "eu";
 interface TrustedByProps {
   logoSet?: LogoSetKey;
   region?: RegionKey;
-  title?: string;
 }
 
-export default function TrustedBy({
-  logoSet = "default",
-  title = "Trusted by 1,000+ organizations",
-}: TrustedByProps) {
+export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
   const { geoData } = useGeolocation();
-  const isEU = isEUCountry(geoData?.countryCode);
-  const logos = LOGO_SETS[logoSet][isEU ? "eu" : "us"];
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Use requestAnimationFrame to avoid ESLint warning about synchronous setState in effect.
+    const frameId = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  const region =
+    mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
+      ? "eu"
+      : "us";
+
+  const logos = LOGO_SETS[logoSet][region];
 
   return (
     <div
       className={classNames(
-        "col-span-12 flex flex-col items-center py-8",
+        "col-span-12 flex flex-col items-center py-4 sm:py-8",
         "lg:col-span-12 lg:col-start-1",
         "xl:col-span-10 xl:col-start-2"
       )}
     >
       <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
-        {title}
+        Trusted by <span className="text-blue-500">1,000+</span> organizations
       </H4>
 
       <div className="w-full">
-        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 lg:gap-10 xl:gap-12">
-          {logos.map((logo, index) => (
-            <div
-              key={`${logo.name}-${index}`}
-              className="flex h-20 w-36 items-center justify-center sm:h-24 sm:w-48 lg:w-44 xl:w-40"
-            >
-              <Image
-                alt={logo.name}
-                src={logo.src}
-                width={200}
-                height={80}
-                className="h-auto max-h-16 w-auto object-contain sm:max-h-20 lg:max-h-24"
-              />
-            </div>
-          ))}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-4 sm:gap-x-8 lg:gap-x-10 xl:gap-x-12">
+          {logos.map((logo, index) => {
+            const caseStudyUrl = CASE_STUDIES[logo.name];
+            return (
+              <div
+                key={`${logo.name}-${index}`}
+                className="flex w-36 flex-col items-center sm:w-48 lg:w-44 xl:w-40"
+              >
+                <div className="flex h-12 items-center justify-center sm:h-14">
+                  <Image
+                    alt={logo.name}
+                    src={logo.src}
+                    width={200}
+                    height={80}
+                    className="h-auto max-h-16 w-auto object-contain sm:max-h-20 lg:max-h-24"
+                  />
+                </div>
+                {caseStudyUrl ? (
+                  <Link
+                    href={caseStudyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() =>
+                      trackEvent({
+                        area: TRACKING_AREAS.HOME,
+                        object: "case_study",
+                        extra: { company: logo.name },
+                      })
+                    }
+                  >
+                    Case study &rarr;
+                  </Link>
+                ) : (
+                  <div className="h-4" />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
+      <Button
+        variant="highlight"
+        size="md"
+        label="Join them"
+        className="mt-8"
+        onClick={() => {
+          window.location.href = "/api/workos/login?screenHint=sign-up";
+        }}
+      />
     </div>
   );
 }

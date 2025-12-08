@@ -489,7 +489,7 @@ function JustUseDustSection() {
               variant="highlight"
               size="md"
               label="Start free trial"
-              href="/pricing"
+              href="/api/workos/login?screenHint=sign-up"
               className="w-full sm:w-auto"
               onClick={withTracking(
                 TRACKING_AREAS.FRAMES,

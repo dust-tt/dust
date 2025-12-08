@@ -1293,6 +1293,28 @@ export type MCPApproveExecutionEvent = z.infer<
   typeof MCPApproveExecutionEventSchema
 >;
 
+const AuthErrorSchema = z.object({
+  mcpServerId: z.string(),
+  message: z.string(),
+  provider: z.string(),
+  scope: z.string().optional(),
+  toolName: z.string(),
+});
+
+const ToolPersonalAuthRequiredEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_personal_auth_required"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  authError: AuthErrorSchema,
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+});
+
+export type ToolPersonalAuthRequiredEvent = z.infer<
+  typeof ToolPersonalAuthRequiredEventSchema
+>;
+
 const ToolErrorEventSchema = z.object({
   type: z.literal("tool_error"),
   created: z.number(),
@@ -1335,6 +1357,7 @@ const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
+  ToolPersonalAuthRequiredEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

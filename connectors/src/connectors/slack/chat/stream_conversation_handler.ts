@@ -9,7 +9,6 @@ import {
   assertNever,
   DustAPI,
   Err,
-  isMCPServerPersonalAuthRequiredError,
   Ok,
   removeNulls,
   TOOL_RUNNING_LABEL,
@@ -219,6 +218,29 @@ async function streamAgentAnswerToSlack(
         break;
       }
 
+      case "tool_personal_auth_required": {
+        const conversationUrl = makeConversationUrl(
+          connector.workspaceId,
+          conversation.sId
+        );
+        await throttledPostSlackMessageUpdate({
+          messageUpdate: {
+            text:
+              "The agent took an action that requires personal authentication. " +
+              `Please go to <${conversationUrl}|the conversation> to authenticate.`,
+            assistantName,
+            agentConfigurations,
+          },
+          ...conversationData,
+          canBeIgnored: false,
+          extraLogs: {
+            source: "streamAgentAnswerToSlack",
+            eventType: event.type,
+          },
+        });
+        return new Ok(undefined);
+      }
+
       case "user_message_error": {
         return new Err(
           new Error(
@@ -228,28 +250,6 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_error": {
-        if (isMCPServerPersonalAuthRequiredError(event.error)) {
-          const conversationUrl = makeConversationUrl(
-            connector.workspaceId,
-            conversation.sId
-          );
-          await throttledPostSlackMessageUpdate({
-            messageUpdate: {
-              text:
-                "The agent took an action that requires personal authentication. " +
-                `Please go to <${conversationUrl}|the conversation> to authenticate.`,
-              assistantName,
-              agentConfigurations,
-            },
-            ...conversationData,
-            canBeIgnored: false,
-            extraLogs: {
-              source: "streamAgentAnswerToSlack",
-              eventType: event.type,
-            },
-          });
-          return new Ok(undefined);
-        }
         return new Err(
           new Error(
             `Tool message error: code: ${event.error.code} message: ${event.error.message}`

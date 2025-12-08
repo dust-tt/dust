@@ -56,6 +56,9 @@ const RESOURCES_PREFIX = {
 
   // Virtual resources (no database models associated).
   internal_mcp_server: "ims",
+
+  // Skills.
+  skill: "skl",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

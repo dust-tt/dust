@@ -209,6 +209,10 @@ export function AgentMessage({
             }
             break;
 
+          case "tool_personal_auth_required":
+            void mutateBlockedActions();
+            break;
+
           case "agent_message_success":
           case "agent_generation_cancelled":
           case "agent_error":
@@ -279,18 +283,13 @@ export function AgentMessage({
     );
   }
   React.useEffect(() => {
-    const isInArray = generationContext.generatingMessages.some(
-      (m) => m.messageId === sId
-    );
-    if (shouldStream && !isInArray) {
-      generationContext.setGeneratingMessages((s) => [
-        ...s,
-        { messageId: sId, conversationId },
-      ]);
-    } else if (!shouldStream && isInArray) {
-      generationContext.setGeneratingMessages((s) =>
-        s.filter((m) => m.messageId !== sId)
-      );
+    if (shouldStream) {
+      generationContext.addGeneratingMessage({
+        messageId: sId,
+        conversationId,
+      });
+    } else {
+      generationContext.removeGeneratingMessage({ messageId: sId });
     }
   }, [shouldStream, generationContext, sId, conversationId]);
 
@@ -376,9 +375,8 @@ export function AgentMessage({
   const messageButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
-    generationContext.generatingMessages.filter(
-      (m) => m.conversationId === conversationId
-    ).length > 1;
+    generationContext.getConversationGeneratingMessages(conversationId).length >
+    1;
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
@@ -964,6 +962,8 @@ function AgentMessageContent({
   // TODO: handle blocked action of personal authentication required
   if (agentMessage.status === "failed") {
     const { error } = agentMessage;
+    // TODO(2025-12-06 MENTION): Remove this once consolidated around the
+    // `tool_personal_auth_required` event.
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
         <MCPServerPersonalAuthenticationRequired

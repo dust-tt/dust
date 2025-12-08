@@ -6,25 +6,23 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { SkillScope, SkillStatus } from "@app/lib/models/skill";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-
-// TODO(skills): add a resource (TBD on AgentConfigurationResource).
-export type SkillConfigurationType = {
-  id: number;
-  name: string;
-  description: string;
-  instructions: string;
-  status: SkillStatus;
-  scope: SkillScope;
-  version: number;
-};
+import type { SkillConfiguration } from "@app/types/skill_configuration";
 
 export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: Omit<
+    SkillConfiguration,
+    | "author"
+    | "requestedSpaceIds"
+    | "workspaceId"
+    | "createdAt"
+    | "updatedAt"
+    | "authorId"
+  >;
 };
 
 // Request body schema for POST
@@ -52,7 +50,7 @@ async function handler(
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
         type: "app_auth_error",
         message: "Skill builder is not enabled for this workspace.",
@@ -117,6 +115,10 @@ async function handler(
       return res.status(200).json({
         skillConfiguration: {
           id: skillConfiguration.id,
+          sId: makeSId("skill", {
+            id: skillConfiguration.id,
+            workspaceId: skillConfiguration.workspaceId,
+          }),
           name: skillConfiguration.name,
           description: skillConfiguration.description,
           instructions: skillConfiguration.instructions,

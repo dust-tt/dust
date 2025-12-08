@@ -308,7 +308,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         title: "Building a Marketing Engine from Scratch at Fleet",
         content:
           "With just two interns, Valentine created a scalable marketing operation using Dust’s AI capabilities for content and brand management.",
-        href: "/blog/how-valentine-head-of-marketing-at-fleet-uses-dust",
+        href: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Fleet-__-Dust.jpg",
       },
     ],

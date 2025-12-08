@@ -78,6 +78,7 @@ async function addCreditToWorkspace(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
   const credit = await CreditResource.makeNew(auth, {
     type: "free",
     initialAmountMicroUsd: amountCents * 10_000,
@@ -86,7 +87,10 @@ async function addCreditToWorkspace(
     invoiceOrLineItemId: idempotencyKey,
   });
 
-  await credit.start(new Date(), expirationDate);
+  await credit.start(auth, {
+    startDate: new Date(),
+    expirationDate,
+  });
 
   logger.info(
     {

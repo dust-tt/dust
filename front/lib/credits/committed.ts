@@ -70,7 +70,7 @@ export async function startCreditFromProOneOffInvoice({
     return new Err(new Error("Credit not found for invoice"));
   }
 
-  const startResult = await credit.start();
+  const startResult = await credit.start(auth);
   if (startResult.isErr()) {
     logger.error(
       {
@@ -103,6 +103,8 @@ export async function voidFailedProCreditPurchaseInvoice({
   auth: Authenticator;
   invoice: Stripe.Invoice;
 }): Promise<Result<{ voided: boolean }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
   if (invoice.attempt_count < MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED) {
     return new Ok({ voided: false });
   }
@@ -121,11 +123,11 @@ export async function voidFailedProCreditPurchaseInvoice({
   );
 
   if (credit) {
-    await credit.delete(auth, {});
+    await credit.delete(auth);
   } else {
     logger.warn(
       {
-        workspaceId: auth.getNonNullableWorkspace().sId,
+        workspaceId: workspace.sId,
         invoiceId: invoice.id,
         attemptCount: invoice.attempt_count,
       },
@@ -135,7 +137,7 @@ export async function voidFailedProCreditPurchaseInvoice({
 
   logger.info(
     {
-      workspaceId: auth.getNonNullableWorkspace().sId,
+      workspaceId: workspace.sId,
       invoiceId: invoice.id,
       attemptCount: invoice.attempt_count,
     },
@@ -236,7 +238,10 @@ export async function createEnterpriseCreditPurchase({
     return new Err(new Error(finalizeResult.error.error_message));
   }
 
-  const startResult = await credit.start(startDate, expirationDate);
+  const startResult = await credit.start(auth, {
+    startDate,
+    expirationDate,
+  });
 
   if (startResult.isErr()) {
     logger.error(

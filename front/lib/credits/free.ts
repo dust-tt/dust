@@ -244,6 +244,7 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
     );
     return new Ok(undefined);
   }
+
   const credit = await CreditResource.makeNew(auth, {
     type: "free",
     initialAmountMicroUsd: creditAmountMicroUsd,
@@ -264,8 +265,10 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
   );
 
   // Start the credit at beginning of billing cycle.
-  const startResult = await credit.start(periodStart, periodEnd);
-
+  const startResult = await credit.start(auth, {
+    startDate: periodStart,
+    expirationDate: periodEnd,
+  });
   if (startResult.isErr()) {
     logger.error(
       {

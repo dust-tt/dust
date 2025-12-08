@@ -180,21 +180,21 @@ export const Stories: CustomerStory[] = [
     title: "Alan's engineering team speeds up projects 20% with Dust",
     content:
       "Alan uses Dust to improve efficiency in the context of an expanding codebase and documentation.",
-    href: "/blog/integrating-ai-workflows-alan",
+    href: "/customers/integrating-ai-workflows-alan",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1--1--1.png",
   },
   // {
   //   title: "November Five's journey to minimizing routine tasks with Dust",
   //   content:
   //     "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
-  //   href: "/blog/november-five-ai-transformation-dust",
+  //   href: "/customers/november-five-ai-transformation-dust",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
   // },
   // {
   //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
   //   content:
   //     "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-  //   href: "/blog/customer-story-lifen",
+  //   href: "/customers/customer-story-lifen",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   // },
 ];

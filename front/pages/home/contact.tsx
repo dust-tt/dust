@@ -19,6 +19,21 @@ export async function getStaticProps() {
 
 export default function Contact() {
   const router = useRouter();
+  const companyName =
+    typeof router.query.company === "string" ? router.query.company : null;
+
+  const subtitle = companyName ? (
+    <>
+      We're excited to show you how Dust can help <strong>{companyName}</strong>
+      . To prepare for our demo call, please share a bit about yourself and the
+      challenges you're hoping to address.
+    </>
+  ) : (
+    <>
+      To prepare for our demo call, please share a bit about yourself and the
+      challenges you're hoping to address with Dust.
+    </>
+  );
 
   return (
     <UTMPageWrapper>
@@ -31,12 +46,7 @@ export default function Contact() {
         <HeaderContentBlock
           title="Contact Dust"
           hasCTA={false}
-          subtitle={
-            <>
-              To prepare for our demo call, please share a bit about yourself
-              and the challenges you're hoping to address with Dust.
-            </>
-          }
+          subtitle={subtitle}
         />
         <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
           <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">

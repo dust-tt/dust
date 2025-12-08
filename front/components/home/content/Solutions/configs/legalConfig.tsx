@@ -174,7 +174,7 @@ export const Stories: CustomerStory[] = [
     title: "Wakam cuts legal contract analysis time by 50% with Dust",
     content:
       "How Wakam developed specialized AI agents to automate contract analysis, data extraction, and regulatory monitoring.",
-    href: "/blog/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
+    href: "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Wakam_Dust.png",
   },
   {
@@ -182,7 +182,7 @@ export const Stories: CustomerStory[] = [
       "50% Time Savings in Legal: How Didomi's CPO Transformed Privacy Compliance",
     content:
       "Dust AI agents cut their legal team's workload in half, enabling them to scale operations across multiple countries without additional headcount.",
-    href: "/blog/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi",
+    href: "/customers/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Didomi-__-Dust.jpg",
   },
   {
@@ -190,7 +190,7 @@ export const Stories: CustomerStory[] = [
       "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
     content:
       "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
-    href: "/blog/qonto-dust-ai-partnership",
+    href: "/customers/qonto-dust-ai-partnership",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
   },
 ];

@@ -238,7 +238,7 @@ export type MCPServerPersonalAuthenticationRequiredMetadata = {
   messageId: string;
 };
 
-export function isMCPServerPersonalAuthenticationRequiredMetadata(
+function isMCPServerPersonalAuthenticationRequiredMetadata(
   metadata: unknown
 ): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
   return (

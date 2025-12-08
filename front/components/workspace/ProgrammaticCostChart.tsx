@@ -160,7 +160,7 @@ function GroupedTooltip(
 }
 
 export function formatPeriod(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 /**
@@ -185,11 +185,11 @@ export function BaseProgrammaticCostChart({
   >({});
 
   const now = new Date();
-  // selectedPeriod is "YYYY-MM", so new Date(selectedPeriod) creates day 1 of that month.
+  // selectedPeriod is "YYYY-MM", so we parse it and create a UTC date.
   // To get the correct billing cycle, we need a date within that cycle, so we set
   // the day to billingCycleStartDay.
-  const currentDate = new Date(selectedPeriod);
-  currentDate.setDate(billingCycleStartDay);
+  const [year, month] = selectedPeriod.split("-").map(Number);
+  const currentDate = new Date(Date.UTC(year, month - 1, billingCycleStartDay));
 
   // Calculate the billing cycle for the selected month
   const billingCycle = getBillingCycleFromDay(
@@ -203,6 +203,7 @@ export function BaseProgrammaticCostChart({
       month: "short",
       day: "numeric",
       year: "numeric",
+      timeZone: "UTC",
     });
 
   // Format period label based on billing cycle
@@ -213,14 +214,10 @@ export function BaseProgrammaticCostChart({
 
   // Calculate next and previous period dates
   const nextPeriodDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    1
+    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
   );
   const previousPeriodDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    1
+    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
   );
 
   // Check if we can go to next period (not in the future)
@@ -388,9 +385,8 @@ export function BaseProgrammaticCostChart({
       timestamp: point.timestamp,
     };
 
-    if (shouldShowTotalCredits) {
-      dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
-    }
+    dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
+
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {
@@ -681,6 +677,7 @@ export function ProgrammaticCostChart({
     now,
     false
   );
+
   const [selectedPeriod, setSelectedPeriod] = useState<string>(
     formatPeriod(currentBillingCycle.cycleStart)
   );

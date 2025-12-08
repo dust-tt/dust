@@ -115,39 +115,38 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="mt-3 flex flex-col gap-3">
-            <div className="flex flex-row justify-end gap-2">
-              <Button
-                label="Decline"
-                variant="outline"
-                size="xs"
-                icon={XMarkIcon}
-                disabled={isValidating}
-                onClick={() => void handleValidation("rejected")}
-              />
-              <Button
-                label="Allow"
-                variant="highlight"
-                size="xs"
-                icon={CheckIcon}
-                disabled={isValidating}
-                onClick={() => void handleValidation("approved")}
-              />
-            </div>
+          <div className="mt-3 flex flex-row gap-3">
+            {blockedAction.stake === "low" && (
+              <div className="flex flex-row justify-end gap-2">
+                <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 text-xs">
+                  <Checkbox
+                    checked={neverAskAgain}
+                    onCheckedChange={(check) => {
+                      setNeverAskAgain(!!check);
+                    }}
+                  />
+                  <span>Always allow</span>
+                </Label>
+              </div>
+            )}
+            <div className="flex-grow" />
+            <Button
+              label="Decline"
+              variant="outline"
+              size="xs"
+              icon={XMarkIcon}
+              disabled={isValidating}
+              onClick={() => void handleValidation("rejected")}
+            />
+            <Button
+              label="Allow"
+              variant="highlight"
+              size="xs"
+              icon={CheckIcon}
+              disabled={isValidating}
+              onClick={() => void handleValidation("approved")}
+            />
           </div>
-          {blockedAction.stake === "low" && (
-            <div className="flex flex-row justify-end gap-2">
-              <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 text-xs">
-                <Checkbox
-                  checked={neverAskAgain}
-                  onCheckedChange={(check) => {
-                    setNeverAskAgain(!!check);
-                  }}
-                />
-                <span>Always allow</span>
-              </Label>
-            </div>
-          )}
         </>
       ) : (
         <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
