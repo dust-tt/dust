@@ -8,7 +8,7 @@ import { sendUserOperationMessage } from "@app/types";
 
 // Company size thresholds
 const ENTERPRISE_THRESHOLD = 100;
-const GTM_LEADS_SLACK_CHANNEL_ID = "C08L3GH8XA6";
+const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
 interface EnrichmentResponse {
   success: boolean;
@@ -52,30 +52,98 @@ function mapCountryToRegion(country: string | null): string | null {
 
   // Europe
   const europeCountries = [
-    "albania", "andorra", "austria", "belarus", "belgium", "bosnia and herzegovina",
-    "bulgaria", "croatia", "cyprus", "czech republic", "czechia", "denmark", "estonia",
-    "finland", "france", "germany", "greece", "hungary", "iceland", "ireland", "italy",
-    "kosovo", "latvia", "liechtenstein", "lithuania", "luxembourg", "malta", "moldova",
-    "monaco", "montenegro", "netherlands", "north macedonia", "norway", "poland",
-    "portugal", "romania", "russia", "san marino", "serbia", "slovakia", "slovenia",
-    "spain", "sweden", "switzerland", "ukraine", "united kingdom", "uk", "vatican city",
+    "albania",
+    "andorra",
+    "austria",
+    "belarus",
+    "belgium",
+    "bosnia and herzegovina",
+    "bulgaria",
+    "croatia",
+    "cyprus",
+    "czech republic",
+    "czechia",
+    "denmark",
+    "estonia",
+    "finland",
+    "france",
+    "germany",
+    "greece",
+    "hungary",
+    "iceland",
+    "ireland",
+    "italy",
+    "kosovo",
+    "latvia",
+    "liechtenstein",
+    "lithuania",
+    "luxembourg",
+    "malta",
+    "moldova",
+    "monaco",
+    "montenegro",
+    "netherlands",
+    "north macedonia",
+    "norway",
+    "poland",
+    "portugal",
+    "romania",
+    "russia",
+    "san marino",
+    "serbia",
+    "slovakia",
+    "slovenia",
+    "spain",
+    "sweden",
+    "switzerland",
+    "ukraine",
+    "united kingdom",
+    "uk",
+    "vatican city",
   ];
   if (europeCountries.some((ec) => c.includes(ec))) {
     return "Europe";
   }
 
   // North America
-  const northAmericaCountries = ["united states", "usa", "us", "canada", "mexico"];
+  const northAmericaCountries = [
+    "united states",
+    "usa",
+    "us",
+    "canada",
+    "mexico",
+  ];
   if (northAmericaCountries.some((na) => c.includes(na))) {
     return "North America";
   }
 
   // Latin America (Central America, South America, Caribbean)
   const latinAmericaCountries = [
-    "argentina", "belize", "bolivia", "brazil", "chile", "colombia", "costa rica",
-    "cuba", "dominican republic", "ecuador", "el salvador", "guatemala", "guyana",
-    "haiti", "honduras", "jamaica", "nicaragua", "panama", "paraguay", "peru",
-    "puerto rico", "suriname", "trinidad and tobago", "uruguay", "venezuela",
+    "argentina",
+    "belize",
+    "bolivia",
+    "brazil",
+    "chile",
+    "colombia",
+    "costa rica",
+    "cuba",
+    "dominican republic",
+    "ecuador",
+    "el salvador",
+    "guatemala",
+    "guyana",
+    "haiti",
+    "honduras",
+    "jamaica",
+    "nicaragua",
+    "panama",
+    "paraguay",
+    "peru",
+    "puerto rico",
+    "suriname",
+    "trinidad and tobago",
+    "uruguay",
+    "venezuela",
   ];
   if (latinAmericaCountries.some((la) => c.includes(la))) {
     return "Latin America";
@@ -83,14 +151,58 @@ function mapCountryToRegion(country: string | null): string | null {
 
   // Asia
   const asiaCountries = [
-    "afghanistan", "armenia", "azerbaijan", "bahrain", "bangladesh", "bhutan", "brunei",
-    "cambodia", "china", "georgia", "hong kong", "india", "indonesia", "iran", "iraq",
-    "israel", "japan", "jordan", "kazakhstan", "kuwait", "kyrgyzstan", "laos", "lebanon",
-    "macau", "malaysia", "maldives", "mongolia", "myanmar", "nepal", "north korea",
-    "oman", "pakistan", "palestine", "philippines", "qatar", "saudi arabia", "singapore",
-    "south korea", "korea", "sri lanka", "syria", "taiwan", "tajikistan", "thailand",
-    "timor-leste", "turkey", "turkmenistan", "united arab emirates", "uae", "uzbekistan",
-    "vietnam", "yemen",
+    "afghanistan",
+    "armenia",
+    "azerbaijan",
+    "bahrain",
+    "bangladesh",
+    "bhutan",
+    "brunei",
+    "cambodia",
+    "china",
+    "georgia",
+    "hong kong",
+    "india",
+    "indonesia",
+    "iran",
+    "iraq",
+    "israel",
+    "japan",
+    "jordan",
+    "kazakhstan",
+    "kuwait",
+    "kyrgyzstan",
+    "laos",
+    "lebanon",
+    "macau",
+    "malaysia",
+    "maldives",
+    "mongolia",
+    "myanmar",
+    "nepal",
+    "north korea",
+    "oman",
+    "pakistan",
+    "palestine",
+    "philippines",
+    "qatar",
+    "saudi arabia",
+    "singapore",
+    "south korea",
+    "korea",
+    "sri lanka",
+    "syria",
+    "taiwan",
+    "tajikistan",
+    "thailand",
+    "timor-leste",
+    "turkey",
+    "turkmenistan",
+    "united arab emirates",
+    "uae",
+    "uzbekistan",
+    "vietnam",
+    "yemen",
   ];
   if (asiaCountries.some((a) => c.includes(a))) {
     return "Asia";
@@ -98,9 +210,20 @@ function mapCountryToRegion(country: string | null): string | null {
 
   // Oceania
   const oceaniaCountries = [
-    "australia", "fiji", "kiribati", "marshall islands", "micronesia", "nauru",
-    "new zealand", "palau", "papua new guinea", "samoa", "solomon islands", "tonga",
-    "tuvalu", "vanuatu",
+    "australia",
+    "fiji",
+    "kiribati",
+    "marshall islands",
+    "micronesia",
+    "nauru",
+    "new zealand",
+    "palau",
+    "papua new guinea",
+    "samoa",
+    "solomon islands",
+    "tonga",
+    "tuvalu",
+    "vanuatu",
   ];
   if (oceaniaCountries.some((o) => c.includes(o))) {
     return "Oceania";
@@ -108,14 +231,57 @@ function mapCountryToRegion(country: string | null): string | null {
 
   // Africa (remaining countries)
   const africaCountries = [
-    "algeria", "angola", "benin", "botswana", "burkina faso", "burundi", "cameroon",
-    "cape verde", "central african republic", "chad", "comoros", "congo", "djibouti",
-    "egypt", "equatorial guinea", "eritrea", "eswatini", "ethiopia", "gabon", "gambia",
-    "ghana", "guinea", "ivory coast", "kenya", "lesotho", "liberia", "libya",
-    "madagascar", "malawi", "mali", "mauritania", "mauritius", "morocco", "mozambique",
-    "namibia", "niger", "nigeria", "rwanda", "senegal", "seychelles", "sierra leone",
-    "somalia", "south africa", "south sudan", "sudan", "tanzania", "togo", "tunisia",
-    "uganda", "zambia", "zimbabwe",
+    "algeria",
+    "angola",
+    "benin",
+    "botswana",
+    "burkina faso",
+    "burundi",
+    "cameroon",
+    "cape verde",
+    "central african republic",
+    "chad",
+    "comoros",
+    "congo",
+    "djibouti",
+    "egypt",
+    "equatorial guinea",
+    "eritrea",
+    "eswatini",
+    "ethiopia",
+    "gabon",
+    "gambia",
+    "ghana",
+    "guinea",
+    "ivory coast",
+    "kenya",
+    "lesotho",
+    "liberia",
+    "libya",
+    "madagascar",
+    "malawi",
+    "mali",
+    "mauritania",
+    "mauritius",
+    "morocco",
+    "mozambique",
+    "namibia",
+    "niger",
+    "nigeria",
+    "rwanda",
+    "senegal",
+    "seychelles",
+    "sierra leone",
+    "somalia",
+    "south africa",
+    "south sudan",
+    "sudan",
+    "tanzania",
+    "togo",
+    "tunisia",
+    "uganda",
+    "zambia",
+    "zimbabwe",
   ];
   if (africaCountries.some((af) => c.includes(af))) {
     return "Africa";
@@ -128,12 +294,24 @@ function mapCountryToRegion(country: string | null): string | null {
 // Docs: https://docs.apollo.io/reference/organization-enrichment
 async function enrichCompanyFromDomain(
   domain: string
-): Promise<{ size: number | null; name: string | null; region: string | null; funding: string | null; revenue: string | null }> {
+): Promise<{
+  size: number | null;
+  name: string | null;
+  region: string | null;
+  funding: string | null;
+  revenue: string | null;
+}> {
   const apiKey = config.getApolloApiKey();
 
   if (!apiKey) {
     console.warn("APOLLO_API_KEY not configured, using fallback");
-    return { size: null, name: null, region: null, funding: null, revenue: null };
+    return {
+      size: null,
+      name: null,
+      region: null,
+      funding: null,
+      revenue: null,
+    };
   }
 
   try {
@@ -152,7 +330,13 @@ async function enrichCompanyFromDomain(
     if (!response.ok) {
       if (response.status === 404) {
         // Company not found
-        return { size: null, name: null, region: null, funding: null, revenue: null };
+        return {
+          size: null,
+          name: null,
+          region: null,
+          funding: null,
+          revenue: null,
+        };
       }
       throw new Error(`Apollo API error: ${response.status}`);
     }
@@ -172,7 +356,13 @@ async function enrichCompanyFromDomain(
     const org = data.organization;
 
     if (!org) {
-      return { size: null, name: null, region: null, funding: null, revenue: null };
+      return {
+        size: null,
+        name: null,
+        region: null,
+        funding: null,
+        revenue: null,
+      };
     }
 
     // Apollo returns estimated_num_employees (number) or employee_count_range (string)
@@ -193,7 +383,13 @@ async function enrichCompanyFromDomain(
     };
   } catch (error) {
     console.error("Enrichment error:", error);
-    return { size: null, name: null, region: null, funding: null, revenue: null };
+    return {
+      size: null,
+      name: null,
+      region: null,
+      funding: null,
+      revenue: null,
+    };
   }
 }
 
@@ -241,7 +437,8 @@ export default async function handler(
   }
 
   // Enrich company data for work emails
-  const { size, name, region, funding, revenue } = await enrichCompanyFromDomain(domain);
+  const { size, name, region, funding, revenue } =
+    await enrichCompanyFromDomain(domain);
 
   // Determine redirect based on company size
   let redirectUrl: string;
@@ -282,8 +479,9 @@ export default async function handler(
   }
 
   // Send Slack notification for all Apollo enrichments
-  const destinationLabel =
-    redirectUrl.includes("/home/contact") ? "Contact Sales" : "Self-serve Signup";
+  const destinationLabel = redirectUrl.includes("/home/contact")
+    ? "Contact Sales"
+    : "Self-serve Signup";
 
   const enrichmentDetails = [
     `*Email submitted:* ${email}`,

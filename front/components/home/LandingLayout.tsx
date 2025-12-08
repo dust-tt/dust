@@ -10,7 +10,7 @@ import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
@@ -373,22 +373,35 @@ const logoVariants = cva("", {
   },
 });
 
+const emptySubscribe = () => () => {};
+
 export const PublicWebsiteLogo = ({
   size = "default",
   utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   return (
     <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
-      <Hover3D className={`relative ${className}`}>
-        <Div3D depth={0} className={className}>
-          <DustLogoLayer1 className={className} />
-        </Div3D>
-        <Div3D depth={25} className="absolute top-0">
-          <DustLogoLayer2 className={className} />
-        </Div3D>
-      </Hover3D>
+      {isClient ? (
+        <Hover3D className={`relative ${className}`}>
+          <Div3D depth={0} className={className}>
+            <DustLogoLayer1 className={className} />
+          </Div3D>
+          <Div3D depth={25} className="absolute top-0">
+            <DustLogoLayer2 className={className} />
+          </Div3D>
+        </Hover3D>
+      ) : (
+        <div className={`relative ${className}`}>
+          <DustLogo className={className} />
+        </div>
+      )}
     </Link>
   );
 };

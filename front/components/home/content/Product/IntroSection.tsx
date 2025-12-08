@@ -14,7 +14,12 @@ import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { clientFetch } from "@app/lib/egress/client";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 
 const HeroContent = () => {
@@ -30,6 +35,12 @@ const HeroContent = () => {
       setError("Please enter a valid email");
       return;
     }
+
+    trackEvent({
+      area: TRACKING_AREAS.HOME,
+      object: "hero_email",
+      action: TRACKING_ACTIONS.SUBMIT,
+    });
 
     setIsLoading(true);
 
@@ -85,13 +96,13 @@ const HeroContent = () => {
       </P>
       {/* Email input */}
       <form onSubmit={handleSubmit} className="mt-12 w-full max-w-xl">
-        <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white py-1.5 pl-6 pr-1.5 shadow-sm">
+        <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="What's your work email?"
-            className="flex-1 border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+            className="flex-1 border-none bg-transparent pl-1 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
             disabled={isLoading}
           />
           <button
@@ -100,7 +111,7 @@ const HeroContent = () => {
             className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
           >
             {isLoading && <Spinner size="xs" />}
-            Start with Dust
+            Get started
           </button>
         </div>
         {error && <p className="mt-2 text-sm text-red-500">{error}</p>}

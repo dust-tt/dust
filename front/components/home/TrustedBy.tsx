@@ -1,6 +1,7 @@
 import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 
 import { H4 } from "@app/components/home/ContentComponents";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
@@ -192,14 +193,21 @@ interface TrustedByProps {
   region?: RegionKey;
 }
 
+const emptySubscribe = () => () => {};
+
 export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
   const { geoData } = useGeolocation();
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
-  const region = geoData?.countryCode
-    ? isEUCountry(geoData.countryCode)
+  // Use "us" as default for SSR, switch to actual region on client
+  const region =
+    isClient && geoData?.countryCode && isEUCountry(geoData.countryCode)
       ? "eu"
-      : "us"
-    : "us";
+      : "us";
 
   const logos = LOGO_SETS[logoSet][region];
 
@@ -236,6 +244,8 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
                 {caseStudyUrl ? (
                   <Link
                     href={caseStudyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
                     Case study &rarr;
