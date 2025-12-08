@@ -2,10 +2,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import apiConfig from "@app/lib/api/config";
-import {
-  getDataSources,
-  unpauseAllManagedDataSources,
-} from "@app/lib/api/data_sources";
+import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -644,13 +641,20 @@ export async function restoreWorkspaceAfterSubscription(
   }
 
   // Unpause all connectors
-  const unpauseConnectorsRes = await unpauseAllManagedDataSources(auth);
-  if (unpauseConnectorsRes.isErr()) {
-    logger.error(
-      { workspaceId: owner.sId, error: unpauseConnectorsRes.error.message },
-      "Failed to unpause connectors after subscription activation."
-    );
-    return;
+  const dataSources = await getDataSources(auth);
+  const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
+  const connectorsApi = new ConnectorsAPI(
+    apiConfig.getConnectorsAPIConfig(),
+    logger
+  );
+  for (const connectorId of connectorIds) {
+    const r = await connectorsApi.unpauseConnector(connectorId);
+    if (r.isErr()) {
+      logger.error(
+        { connectorId, workspaceId: owner.sId, error: r.error },
+        "Error unpausing connector after subscription activation."
+      );
+    }
   }
 
   // Re-enable all triggers that point to non-archived agents
