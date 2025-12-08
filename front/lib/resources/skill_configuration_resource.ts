@@ -11,6 +11,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -118,6 +119,26 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return resources[0];
   }
 
+  get sId(): string {
+    return SkillConfigurationResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("skill", {
+      id,
+      workspaceId,
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -146,6 +167,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   toJSON(): SkillConfiguration | SkillConfigurationWithAuthor {
     if (this.author) {
       return {
+        sId: this.sId,
         id: this.id,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
@@ -171,6 +193,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
 
     return {
+      sId: this.sId,
       id: this.id,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

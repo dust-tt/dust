@@ -4,6 +4,7 @@ export type SkillStatus = "active" | "archived";
 export type SkillScope = "private" | "workspace";
 
 export type SkillConfiguration = {
+  sId: string;
   id: number;
   createdAt: Date;
   updatedAt: Date;
