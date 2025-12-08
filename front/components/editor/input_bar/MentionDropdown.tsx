@@ -67,26 +67,43 @@ export const MentionDropdown = forwardRef<
     const orderedSuggestions = useMemo(() => {
       let base = suggestions;
 
-      // Promote conversation participants first (up to 5).
+      // Promote conversation participants first (up to 5) by explicitly
+      // injecting them into the list (in case they weren't returned by the
+      // global suggestion endpoint), then append other suggestions.
       if (conversationParticipants) {
-        const participantUserIds = new Set(
-          conversationParticipants.users.map((u) => u.sId)
-        );
-        const participantAgentIds = new Set(
-          conversationParticipants.agents.map((a) => a.configurationId)
+        const normalizedQuery = query.trim().toLowerCase();
+        const matchesQuery = (label: string) =>
+          !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
+
+        const participantMentions = [
+          // Users
+          ...conversationParticipants.users.map((u) => ({
+            type: "user" as const,
+            id: u.sId,
+            label: u.fullName || u.username,
+            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+            description: u.username,
+          })),
+          // Agents
+          ...conversationParticipants.agents.map((a) => ({
+            type: "agent" as const,
+            id: a.configurationId,
+            label: a.name,
+            pictureUrl: a.pictureUrl,
+            description: "",
+            userFavorite: false,
+          })),
+        ].filter((m) => matchesQuery(m.label));
+
+        const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
+        const existingKeys = new Set(base.map(key));
+
+        const newParticipants = participantMentions.filter(
+          (m) => !existingKeys.has(key(m))
         );
 
-        const participantItems = base.filter(
-          (s) =>
-            (s.type === "user" && participantUserIds.has(s.id)) ||
-            (s.type === "agent" && participantAgentIds.has(s.id))
-        );
-        const nonParticipantItems = base.filter(
-          (s) => !participantItems.includes(s)
-        );
-
-        const cappedParticipants = participantItems.slice(0, 5);
-        base = [...cappedParticipants, ...nonParticipantItems];
+        const cappedParticipants = newParticipants.slice(0, 5);
+        base = [...cappedParticipants, ...base];
       }
 
       // Then move the preferred agent (last used) to the very first position if present.
@@ -101,7 +118,7 @@ export const MentionDropdown = forwardRef<
       }
       const preferred = base[preferredIndex];
       return [preferred, ...base.filter((_, i) => i !== preferredIndex)];
-    }, [suggestions, preferredAgentId, conversationParticipants]);
+    }, [suggestions, preferredAgentId, conversationParticipants, query]);
 
     const selectItem = (index: number) => {
       const item = orderedSuggestions[index];
