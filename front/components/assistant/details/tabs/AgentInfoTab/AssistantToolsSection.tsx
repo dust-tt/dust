@@ -1,6 +1,7 @@
 import { Avatar, CommandIcon, Spinner } from "@dust-tt/sparkle";
 import _ from "lodash";
 import { PuzzleIcon } from "lucide-react";
+import { useMemo } from "react";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -66,8 +67,11 @@ export function AssistantToolsSection({
     nonHiddenActions.map((action) => renderOtherAction(action, mcpServers))
   );
 
-  const sortedActions = _.uniqBy(_.sortBy(actions, "order", "title"), "title");
-  const sortedSkills = _.sortBy(skills, "name");
+  const sortedActions = useMemo(
+    () => _.uniqBy(_.sortBy(actions, "order", "title"), "title"),
+    [actions]
+  );
+  const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
 
   const models = [
     SUPPORTED_MODEL_CONFIGS.find(
