@@ -1,4 +1,4 @@
-import type { EditedByUser } from "./user";
+import type { EditedByUser } from "@app/types/user";
 
 export const CREDIT_TYPES = ["free", "payg", "committed"] as const;
 
