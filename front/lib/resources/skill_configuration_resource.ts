@@ -1,6 +1,7 @@
 import type {
   Attributes,
   CreationAttributes,
+  Model,
   ModelStatic,
   Transaction,
 } from "sequelize";
@@ -56,34 +57,31 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return new this(this.model, skillConfiguration.get());
   }
 
+  private static async baseFetch<T extends Model, S extends string>(
+    auth: Authenticator,
+    options: ResourceFindOptions<SkillConfigurationModel> & {
+      includes: [{ model: ModelStatic<T>; as: S; required: true }];
+    }
+  ): Promise<(SkillConfigurationResource & { [K in S]: Attributes<T> })[]>;
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<SkillConfigurationModel>,
-    config: { includeAuthor: true }
-  ): Promise<SkillConfigurationResourceWithAuthor[]>;
-  private static async baseFetch(
-    auth: Authenticator,
-    options?: ResourceFindOptions<SkillConfigurationModel>,
-    config?: { includeAuthor?: false }
+    options?: ResourceFindOptions<SkillConfigurationModel>
   ): Promise<SkillConfigurationResource[]>;
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<SkillConfigurationModel> = {},
-    { includeAuthor = false }: { includeAuthor?: boolean } = {}
+    options: ResourceFindOptions<SkillConfigurationModel> = {}
   ): Promise<SkillConfigurationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
+    const { where, includes, ...otherOptions } = options;
+
     const res = await this.model.findAll({
+      ...otherOptions,
       where: {
-        ...options.where,
+        ...where,
         workspaceId: workspace.id,
       },
-      limit: options.limit,
-      offset: options.offset,
-      order: options.order,
-      include: includeAuthor
-        ? [{ model: UserModel, as: "author", required: true }]
-        : [],
+      include: includes,
     });
 
     return res.map(
@@ -95,11 +93,10 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   }
 
   static async fetchWithAuthor(
-    auth: Authenticator,
-    options: ResourceFindOptions<SkillConfigurationModel> = {}
+    auth: Authenticator
   ): Promise<SkillConfigurationResourceWithAuthor[]> {
-    return this.baseFetch(auth, options, {
-      includeAuthor: true,
+    return this.baseFetch(auth, {
+      includes: [{ model: UserModel, as: "author", required: true }],
     });
   }
 
