@@ -7,6 +7,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -117,6 +118,31 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
 
     return resources[0];
+  }
+
+  static async fetchByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: ModelId
+  ): Promise<SkillConfigurationResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: SkillConfigurationModel,
+          as: "customSkill",
+          required: true,
+        },
+      ],
+    });
+
+    return agentSkills.map(
+      (as) => new SkillConfigurationResource(this.model, as.customSkill.get())
+    );
   }
 
   get sId(): string {

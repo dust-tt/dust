@@ -1,5 +1,6 @@
 import { Avatar, CommandIcon, Spinner } from "@dust-tt/sparkle";
 import _ from "lodash";
+import { PuzzleIcon } from "lucide-react";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -16,6 +17,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
+import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 import {
   asDisplayName,
@@ -46,8 +48,12 @@ export function AssistantToolsSection({
   owner,
 }: AssistantToolsSectionProps) {
   const { isDark } = useTheme();
-  const { mcpServers, isMCPServersLoading: isLoading } = useMCPServers({
+  const { mcpServers, isMCPServersLoading: isToolsLoading } = useMCPServers({
     owner,
+  });
+  const { skills, isSkillsLoading } = useAgentConfigurationSkills({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
   });
 
   const nonHiddenActions = agentConfiguration.actions.filter(
@@ -58,6 +64,7 @@ export function AssistantToolsSection({
   );
 
   const sortedActions = _.uniqBy(_.sortBy(actions, "order", "title"), "title");
+  const sortedSkills = _.sortBy(skills, "name");
 
   const models = [
     SUPPORTED_MODEL_CONFIGS.find(
@@ -68,12 +75,15 @@ export function AssistantToolsSection({
   ];
 
   const filteredModels = removeNulls(models);
+  const hasTools = nonHiddenActions.length > 0;
+  const hasSkills = skills.length > 0;
+
   return (
     <div className="flex flex-col gap-5">
       {filteredModels.length > 0 && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
-            Models
+            Model
           </div>
           <div className="flex flex-col gap-2">
             {filteredModels.map((model) => (
@@ -92,13 +102,13 @@ export function AssistantToolsSection({
         </div>
       )}
 
-      {nonHiddenActions.length > 0 && (
+      {hasTools && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Tools
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {isLoading ? (
+            {isToolsLoading ? (
               <div className="flex flex-row items-center gap-2">
                 <Spinner size="xs" />
               </div>
@@ -112,6 +122,32 @@ export function AssistantToolsSection({
                   <div className="truncate" title={action.title}>
                     {action.title}
                   </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {hasSkills && (
+        <div className="flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Skills
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {isSkillsLoading ? (
+              <div className="flex flex-row items-center gap-2">
+                <Spinner size="xs" />
+              </div>
+            ) : (
+              sortedSkills.map((skill) => (
+                <div
+                  className="flex flex-row items-center gap-2"
+                  key={skill.sId}
+                >
+                  {/* TODO(ap): Add custom icon support (pictureUrl) */}
+                  <Avatar icon={PuzzleIcon} size="xs" />
+                  <div>{skill.name}</div>
                 </div>
               ))
             )}
