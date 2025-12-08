@@ -1,3 +1,4 @@
+import type { ModelId } from "./shared/model_id";
 import type { UserType } from "./user";
 
 export type SkillStatus = "active" | "archived";
@@ -13,7 +14,7 @@ export type SkillConfigurationType = {
   name: string;
   description: string;
   instructions: string;
-  requestedSpaceIds: number[];
+  requestedSpaceIds: ModelId[];
 };
 
 export type SkillConfigurationWithAuthorType = SkillConfiguration & {
