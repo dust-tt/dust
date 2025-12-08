@@ -3,11 +3,11 @@ import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
-import { editorUserSchema } from "@app/components/shared/editorUserSchema";
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 
 const modelIdSchema = z.enum(MODEL_IDS);
