@@ -18,7 +18,7 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type {
@@ -598,7 +598,19 @@ export function CreateMCPServerDialog({
                             className="text-gray-400"
                           />
                         }
-                        label="Custom headers can be added for advanced networking such as firewalls."
+                        label={
+                          <>
+                            <p>
+                              Custom headers can be added for advanced
+                              networking such as firewalls.
+                            </p>
+                            <p>
+                              ⚠️ Use the field "Authentication" from above to
+                              add credentials (like with the the header
+                              "Authorization")
+                            </p>
+                          </>
+                        }
                       />
                     </div>
                     <SliderToggle
@@ -636,17 +648,16 @@ export function CreateMCPServerDialog({
                 : "Save",
             variant: "primary",
             disabled:
-              /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-              !isOAuthFormValid ||
-              (authorization && !useCase) ||
-              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
-              (internalMCPServer &&
-                !authorization &&
-                requiresBearerTokenConfiguration(internalMCPServer) &&
-                !sharedSecret) ||
-              (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
+              ((!isOAuthFormValid ||
+                ((authorization && !useCase) ??
+                  (defaultServerConfig?.authMethod === "bearer" &&
+                    !sharedSecret)) ||
+                (internalMCPServer &&
+                  !authorization &&
+                  requiresBearerTokenConfiguration(internalMCPServer) &&
+                  !sharedSecret)) ??
+                (!internalMCPServer && !validateUrl(remoteServerUrl).valid)) ||
               isLoading,
-            /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();

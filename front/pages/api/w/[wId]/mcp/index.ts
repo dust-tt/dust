@@ -141,8 +141,7 @@ async function handler(
         }
 
         // Default to the shared secret if it exists.
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        let bearerToken = sharedSecret || null;
+        let bearerToken = sharedSecret ?? null;
         let authorization: AuthorizationInfo | null = null;
 
         // If a connectionId is provided, we use it to fetch the access token that must have been created by the admin.

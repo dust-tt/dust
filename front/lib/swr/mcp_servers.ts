@@ -346,8 +346,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(body.error.message || "Failed to check OAuth connection")
+          new Error(body.error.message ?? "Failed to check OAuth connection")
         );
       }
 
@@ -406,8 +405,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(body.error?.message || "Failed to create server")
+          new Error(body.error?.message ?? "Failed to create server")
         );
       }
       await mutate();
