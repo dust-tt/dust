@@ -15,6 +15,7 @@ import {
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
+  makeProgrammaticUsageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -36,8 +37,9 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -1225,12 +1227,57 @@ async function isMessagesLimitReached(
   const plan = auth.getNonNullablePlan();
   const featureFlags = await getFeatureFlags(owner);
 
-  // We block programmatic usage at the api level and track
-  // it in agent loop, so it is excluded from fair use
+  // For programmatic usage, apply credit-based rate limiting.
+  // This prevents close-to-0 credit attacks where many messages are sent simultaneously
+  // before token usage is computed. Rate limit is based on total credit amount in dollars.
   if (
     featureFlags.includes("ppul") &&
     isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
   ) {
+    const activeCredits = await CreditResource.listActive(auth);
+
+    // Calculate total remaining credits in dollars (micro USD / 1,000,000).
+    const totalRemainingCreditsDollars =
+      activeCredits.reduce(
+        (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
+        0
+      ) / 1_000_000;
+
+    // Rate limit: creditDollarAmount messages per minute.
+    // Minimum of 1 to allow at least some messages even with very low credits.
+    const maxMessagesPerMinute = Math.max(
+      1,
+      Math.floor(totalRemainingCreditsDollars)
+    );
+
+    const remainingMessages = await rateLimiter({
+      key: makeProgrammaticUsageRateLimitKeyForWorkspace(owner),
+      maxPerTimeframe: maxMessagesPerMinute,
+      timeframeSeconds: 60,
+      logger,
+    });
+
+    if (remainingMessages <= 0) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          totalRemainingCreditsDollars,
+        },
+        "Pre-emptive rate limit triggered for programmatic usage."
+      );
+
+      statsDClient.increment(
+        "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
+        1,
+        { workspace_id: owner.sId }
+      );
+
+      return {
+        isLimitReached: true,
+        limitType: "rate_limit_error",
+      };
+    }
+
     return {
       isLimitReached: false,
       limitType: null,
