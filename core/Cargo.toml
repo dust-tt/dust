@@ -89,6 +89,9 @@ path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
 name = "backfill_tables_gcs_files"
 path = "bin/migrations/20250701_backfill_tables_gcs_files.rs"
 
+[[bin]]
+name = "migrate_slack_to_slack_tools_platform_actions"
+path = "bin/migrations/20251208_migrate_slack_to_slack_tools_platform_actions.rs"
 
 [[bin]]
 name = "check_table"
