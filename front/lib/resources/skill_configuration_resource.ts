@@ -304,6 +304,56 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
   }
 
+  async updateSkill(
+    auth: Authenticator,
+    {
+      name,
+      description,
+      instructions,
+    }: {
+      name: string;
+      description: string;
+      instructions: string;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<SkillConfigurationResource, Error>> {
+    try {
+      const workspace = auth.getNonNullableWorkspace();
+
+      await SkillConfigurationResource.model.update(
+        {
+          name,
+          description,
+          instructions,
+          version: this.version + 1,
+        },
+        {
+          where: {
+            id: this.id,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        }
+      );
+
+      // Fetch the updated resource
+      const updated = await SkillConfigurationResource.fetchByModelIdWithAuth(
+        auth,
+        this.id
+      );
+
+      if (!updated) {
+        return new Err(
+          new Error("Failed to fetch updated skill configuration")
+        );
+      }
+
+      return new Ok(updated);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

@@ -12,7 +12,6 @@ export const skillBuilderFormSchema = z.object({
     .refine((value) => !/\s/.test(value), "Skill name cannot contain spaces"),
   description: z.string().min(1, "Skill description is required"),
   instructions: z.string().min(1, "Skill instructions are required"),
-  scope: z.enum(["private", "workspace"]),
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
 });

@@ -6,21 +6,28 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { SkillConfiguration } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
-  skillConfiguration: SkillConfiguration;
+  skillConfiguration: SkillConfigurationType;
 };
 
 export type PatchSkillConfigurationResponseBody = {
   skillConfiguration: Omit<
-    SkillConfiguration,
+    SkillConfigurationType,
     | "author"
     | "requestedSpaceIds"
     | "workspaceId"
@@ -39,7 +46,11 @@ const PatchSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
   description: t.string,
   instructions: t.string,
-  scope: t.union([t.literal("private"), t.literal("workspace")]),
+  tools: t.array(
+    t.type({
+      mcpServerViewId: t.string,
+    })
+  ),
 });
 
 type PatchSkillConfigurationRequestBody = t.TypeOf<
@@ -71,10 +82,7 @@ async function handler(
   }
 
   const sId = req.query.sId as string;
-  const skillResource = await SkillConfigurationResource.fetchBySIdWithAuth(
-    auth,
-    sId
-  );
+  const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
 
   if (!skillResource) {
     return apiError(req, res, {
@@ -145,7 +153,6 @@ async function handler(
         name: body.name,
         description: body.description,
         instructions: body.instructions,
-        scope: body.scope,
       });
 
       if (updateResult.isErr()) {
@@ -160,9 +167,74 @@ async function handler(
 
       const updatedSkill = updateResult.value;
 
+      // Update tools: delete existing and create new ones
+      try {
+        await SkillMCPServerConfigurationModel.destroy({
+          where: {
+            workspaceId: owner.id,
+            skillConfigurationId: updatedSkill.id,
+          },
+        });
+
+        // Create new tool associations
+        for (const tool of body.tools) {
+          if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `Invalid MCP server view ID: ${tool.mcpServerViewId}`,
+              },
+            });
+          }
+
+          const mcpServerViewId = getResourceIdFromSId(tool.mcpServerViewId);
+          if (!mcpServerViewId) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `Could not parse MCP server view ID: ${tool.mcpServerViewId}`,
+              },
+            });
+          }
+
+          // Verify the MCP server view exists and belongs to this workspace
+          const mcpServerView = await MCPServerViewModel.findOne({
+            where: {
+              id: mcpServerViewId,
+              workspaceId: owner.id,
+            },
+          });
+
+          if (!mcpServerView) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `MCP server view not found: ${tool.mcpServerViewId}`,
+              },
+            });
+          }
+
+          await SkillMCPServerConfigurationModel.create({
+            workspaceId: owner.id,
+            skillConfigurationId: updatedSkill.id,
+            mcpServerViewId: mcpServerViewId,
+          });
+        }
+      } catch (error) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Error updating skill tools: ${error instanceof Error ? error.message : "Unknown error"}`,
+          },
+        });
+      }
+
       return res.status(200).json({
         skillConfiguration: {
-          id: updatedSkill.id,
           sId: makeSId("skill", {
             id: updatedSkill.id,
             workspaceId: updatedSkill.workspaceId,
@@ -171,8 +243,11 @@ async function handler(
           description: updatedSkill.description,
           instructions: updatedSkill.instructions,
           status: updatedSkill.status,
-          scope: updatedSkill.scope,
           version: updatedSkill.version,
+          createdAt: updatedSkill.createdAt,
+          updatedAt: updatedSkill.updatedAt,
+          requestedSpaceIds: updatedSkill.requestedSpaceIds,
+          tools: [],
         },
       });
     }

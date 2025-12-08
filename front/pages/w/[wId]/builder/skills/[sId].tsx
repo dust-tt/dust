@@ -9,11 +9,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import type { SkillConfiguration } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 // Serialized version with Date objects converted to timestamps
 type SerializedSkillConfiguration = Omit<
-  SkillConfiguration,
+  SkillConfigurationType,
   "createdAt" | "updatedAt"
 > & {
   createdAt: number;
@@ -90,7 +90,7 @@ export default function EditSkill({
   }
 
   // Convert timestamps back to Date objects for SkillBuilder
-  const skillConfiguration: SkillConfiguration = {
+  const skillConfiguration: SkillConfigurationType = {
     ...serializedSkillConfiguration,
     createdAt: new Date(serializedSkillConfiguration.createdAt),
     updatedAt: new Date(serializedSkillConfiguration.updatedAt),
