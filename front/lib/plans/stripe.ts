@@ -20,6 +20,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 
@@ -741,18 +742,23 @@ async function makeInvoice({
     },
   };
 
-  if (collectionParams.collectionMethod === "charge_automatically") {
-    invoiceParams.payment_settings = {
-      payment_method_options: {
-        card: {
-          // Stripe types are missing "challenge" but API supports it
-          request_three_d_secure: (collectionParams.requestThreeDSecure ??
-            "automatic") as Stripe.InvoiceCreateParams.PaymentSettings.PaymentMethodOptions.Card.RequestThreeDSecure,
+  switch (collectionParams.collectionMethod) {
+    case "charge_automatically":
+      invoiceParams.payment_settings = {
+        payment_method_options: {
+          card: {
+            // Stripe types are missing "challenge" but API supports it
+            request_three_d_secure: (collectionParams.requestThreeDSecure ??
+              "automatic") as Stripe.InvoiceCreateParams.PaymentSettings.PaymentMethodOptions.Card.RequestThreeDSecure,
+          },
         },
-      },
-    };
-  } else {
-    invoiceParams.days_until_due = collectionParams.daysUntilDue;
+      };
+      break;
+    case "send_invoice":
+      invoiceParams.days_until_due = collectionParams.daysUntilDue;
+      break;
+    default:
+      assertNever(collectionParams);
   }
 
   try {
