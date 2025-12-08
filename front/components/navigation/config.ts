@@ -174,7 +174,7 @@ export const subNavigationAdmin = ({
   current,
   subMenuLabel,
   subMenu,
-  featureFlags,
+  featureFlags: _featureFlags,
 }: {
   owner: WorkspaceType;
   current: SubNavigationAdminId;

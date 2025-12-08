@@ -3,7 +3,6 @@ import type Stripe from "stripe";
 
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
   isEnterpriseSubscription,

@@ -2,7 +2,6 @@ import assert from "assert";
 import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   getSubscriptionInvoices,
   isEnterpriseSubscription,
