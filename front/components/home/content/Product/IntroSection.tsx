@@ -21,6 +21,7 @@ import {
   withTracking,
 } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import logger from "@app/logger/logger";
 
 const HeroContent = () => {
   const [email, setEmail] = useState("");
@@ -62,7 +63,7 @@ const HeroContent = () => {
         window.location.href = appendUTMParams(data.redirectUrl);
       }
     } catch (err) {
-      console.error("Enrichment error:", err);
+      logger.error({ error: err }, "Enrichment error");
       // Fallback to signup on error
       window.location.href = appendUTMParams(
         `/api/workos/login?screenHint=sign-up&loginHint=${encodeURIComponent(email)}`

@@ -317,7 +317,7 @@ async function enrichCompanyFromDomain(domain: string): Promise<{
   const apiKey = config.getApolloApiKey();
 
   if (!apiKey) {
-    console.warn("APOLLO_API_KEY not configured, using fallback");
+    logger.warn("APOLLO_API_KEY not configured, using fallback");
     return {
       size: null,
       name: null,
@@ -395,7 +395,7 @@ async function enrichCompanyFromDomain(domain: string): Promise<{
       revenue: org.annual_revenue_printed ?? null,
     };
   } catch (error) {
-    console.error("Enrichment error:", error);
+    logger.error({ error }, "Enrichment error");
     return {
       size: null,
       name: null,
