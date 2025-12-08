@@ -34,6 +34,7 @@ import {
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -47,7 +48,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 export type GetResponseBody = {
   success: boolean;
@@ -536,13 +537,121 @@ async function handler(
           }
 
           break;
-        case "charge.dispute.created":
+        case "charge.dispute.created": {
           const dispute = event.data.object as Stripe.Dispute;
+
           logger.warn(
             { dispute, stripeError: true },
-            "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
+            "[Stripe Webhook] Received charge.dispute.created event."
           );
+
+          // Get the charge (may be string ID or expanded object)
+          const charge = isString(dispute.charge)
+            ? await stripe.charges.retrieve(dispute.charge)
+            : dispute.charge;
+
+          // Check if the charge is associated with an invoice
+          if (!charge.invoice) {
+            logger.info(
+              { disputeId: dispute.id, chargeId: charge.id },
+              "[Stripe Webhook] Dispute charge has no associated invoice."
+            );
+            break;
+          }
+
+          const disputeInvoice = isString(charge.invoice)
+            ? await stripe.invoices.retrieve(charge.invoice)
+            : charge.invoice;
+
+          // Check if this is a credit purchase invoice
+          if (!isCreditPurchaseInvoice(disputeInvoice)) {
+            logger.warn(
+              { disputeId: dispute.id, invoiceId: disputeInvoice.id },
+              "[Stripe Webhook] Dispute is not for a credit purchase invoice."
+            );
+            break;
+          }
+
+          // Find the subscription and workspace
+          if (!isString(disputeInvoice.subscription)) {
+            logger.error(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Credit purchase invoice has no subscription."
+            );
+            break;
+          }
+
+          const disputeSubscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: disputeInvoice.subscription },
+            include: [WorkspaceModel],
+          });
+
+          if (!disputeSubscription) {
+            logger.warn(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                stripeSubscriptionId: disputeInvoice.subscription,
+              },
+              "[Stripe Webhook] Subscription not found for disputed credit purchase."
+            );
+            break;
+          }
+
+          const disputeAuth = await Authenticator.internalAdminForWorkspace(
+            disputeSubscription.workspace.sId
+          );
+
+          // Fetch and freeze the credit
+          const credit = await CreditResource.fetchByInvoiceOrLineItemId(
+            disputeAuth,
+            disputeInvoice.id
+          );
+
+          if (!credit) {
+            logger.error(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                workspaceId: disputeSubscription.workspace.sId,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Credit not found for disputed credit purchase invoice."
+            );
+            break;
+          }
+
+          const freezeResult = await credit.freeze(disputeAuth);
+          if (freezeResult.isErr()) {
+            logger.error(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                creditId: credit.id,
+                workspaceId: disputeSubscription.workspace.sId,
+                error: freezeResult.error,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Failed to freeze credit for disputed payment."
+            );
+          } else {
+            logger.info(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                creditId: credit.id,
+                workspaceId: disputeSubscription.workspace.sId,
+              },
+              "[Stripe Webhook] Successfully froze credit due to payment dispute."
+            );
+          }
+
           break;
+        }
 
         case "customer.subscription.created": {
           const stripeSubscription = event.data.object as Stripe.Subscription;
