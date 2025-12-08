@@ -3,6 +3,7 @@ import {
   Avatar,
   BarChartIcon,
   BellIcon,
+  BrainIcon,
   Button,
   Chip,
   ContentMessage,
@@ -22,7 +23,6 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { BrainIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
