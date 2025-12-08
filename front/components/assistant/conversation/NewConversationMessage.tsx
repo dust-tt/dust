@@ -1,15 +1,5 @@
 import type { Button, ConversationMessageAction } from "@dust-tt/sparkle";
-import {
-  Avatar,
-  CitationGrid,
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton,
-  MoreIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, CitationGrid, cn } from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -39,7 +29,7 @@ interface NewConversationMessageProps
 const wrapperVariants = cva("flex flex-col min-w-60 w-full @container", {
   variants: {
     messageType: {
-      agent: "pr-0",
+      agent: "pr-0 mt-3",
       me: "items-end pl-9",
       user: "items-start pr-9",
     },
@@ -51,8 +41,8 @@ const wrapperVariants = cva("flex flex-col min-w-60 w-full @container", {
 const messageVariants = cva("flex rounded-2xl max-w-full", {
   variants: {
     type: {
-      user: "bg-muted-background dark:bg-muted-background-night px-4 py-4 gap-2",
-      agent: "w-full gap-3 p-4",
+      user: "gap-2",
+      agent: "w-full gap-2",
     },
   },
   defaultVariants: {
@@ -60,17 +50,17 @@ const messageVariants = cva("flex rounded-2xl max-w-full", {
   },
 });
 
-const buttonsVariants = cva("flex justify-start gap-3", {
-  variants: {
-    type: {
-      user: "pt-2 justify-end",
-      agent: "justify-start",
-    },
-  },
-  defaultVariants: {
-    type: "agent",
-  },
-});
+// const buttonsVariants = cva("flex justify-start gap-3", {
+//   variants: {
+//     type: {
+//       user: "pt-2 justify-end",
+//       agent: "justify-start",
+//     },
+//   },
+//   defaultVariants: {
+//     type: "agent",
+//   },
+// });
 
 /**
  * This is a temporary duplicate of the ConversationMessage component
@@ -85,7 +75,7 @@ export const NewConversationMessage = React.forwardRef<
     {
       actions,
       avatarBusy = false,
-      buttons,
+      // buttons,
       children,
       citations,
       isCurrentUser = true,
@@ -109,66 +99,68 @@ export const NewConversationMessage = React.forwardRef<
       messageType = isCurrentUser ? "me" : "user";
     }
 
+    const showAvatar = messageType !== "me";
+
     return (
       <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
+        {showAvatar && (
+          <ConversationMessageTitle
+            className="heading-sm mb-1 hidden pl-[50px] @sm:flex"
+            name={name}
+            timestamp={timestamp}
+            infoChip={infoChip}
+            completionStatus={completionStatus}
+            renderName={renderName}
+            actions={actions}
+          />
+        )}
         <div
           className={cn(
-            messageVariants({ type, className }),
-            "flex-col @sm:flex-row"
+            messageVariants({ type, className })
+            // "flex-col @sm:flex-row"
           )}
           {...props}
         >
-          <div className="inline-flex items-center gap-2 @sm:hidden">
+          {showAvatar && (
+            <div className="inline-flex items-center gap-2 pt-2 @sm:hidden">
+              <ConversationMessageAvatar
+                avatarUrl={pictureUrl}
+                name={name}
+                isBusy={avatarBusy}
+                isDisabled={isDisabled}
+                type={type}
+              />
+            </div>
+          )}
+
+          {showAvatar && (
             <ConversationMessageAvatar
+              className="mt-1 hidden @sm:flex"
               avatarUrl={pictureUrl}
               name={name}
               isBusy={avatarBusy}
-              isDisabled={isDisabled}
               type={type}
+              isDisabled={isDisabled}
             />
-            <ConversationMessageTitle
-              name={name}
-              timestamp={timestamp}
-              infoChip={infoChip}
-              completionStatus={completionStatus}
-              renderName={renderName}
-              actions={actions}
-            />
-          </div>
-
-          <ConversationMessageAvatar
-            className="hidden @sm:flex"
-            avatarUrl={pictureUrl}
-            name={name}
-            isBusy={avatarBusy}
-            type={type}
-            isDisabled={isDisabled}
-          />
+          )}
 
           <div
             className={cn(
               "flex w-full min-w-0 flex-col",
-              type === "user" ? "gap-1" : "gap-3"
+              type === "user"
+                ? "gap-1 rounded-xl bg-muted-background px-3 py-2 dark:bg-muted-background-night"
+                : "gap-3 px-3 py-2"
             )}
           >
-            <ConversationMessageTitle
-              className="heading-sm hidden @sm:flex"
-              name={name}
-              timestamp={timestamp}
-              infoChip={infoChip}
-              completionStatus={completionStatus}
-              renderName={renderName}
-              actions={actions}
-            />
             <ConversationMessageContent citations={citations} type={type}>
               {children}
             </ConversationMessageContent>
 
-            {buttons && (
+            {/* {buttons && (
               <div className={cn(buttonsVariants({ type, className }))}>
                 {buttons}
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
@@ -289,18 +281,16 @@ const ConversationMessageTitle = React.forwardRef<
         className={cn("inline-flex w-full justify-between gap-0.5", className)}
         {...props}
       >
-        <div className="inline-flex items-center gap-2 text-foreground dark:text-foreground-night">
-          <span className="heading-sm">{renderName(name)}</span>
-          <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
-            {timestamp}
-          </span>
+        <div className="inline-flex items-center gap-2 text-xs font-normal text-muted-foreground dark:text-muted-foreground-night">
+          <span className="">{renderName(name)}</span>
+          <span className="">{timestamp}</span>
           {infoChip && (
             <div className="inline-flex items-center gap-2">{infoChip}</div>
           )}
         </div>
         <div className="inline-flex items-center gap-2">
           {completionStatus ?? null}
-          {actions && actions.length > 0 && (
+          {/* {actions && actions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <IconButton
@@ -321,7 +311,7 @@ const ConversationMessageTitle = React.forwardRef<
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
+          )} */}
         </div>
       </div>
     );
