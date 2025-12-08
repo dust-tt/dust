@@ -18,12 +18,9 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
-import {
-  CURRENCY_SYMBOLS,
-  isSupportedCurrency,
-} from "@app/types/currency";
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
+import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 

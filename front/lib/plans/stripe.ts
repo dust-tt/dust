@@ -1,8 +1,6 @@
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
-import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -12,6 +10,7 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -22,6 +21,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
+import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
 const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
@@ -65,9 +65,10 @@ export const getStripeClient = () => {
   });
 };
 
-export async function getCreditPurchasePricing(): Promise<StripePricingData | null> {
+export async function getStripePricingData(
+  priceId: string
+): Promise<StripePricingData | null> {
   const stripe = getStripeClient();
-  const priceId = getCreditPurchasePriceId();
 
   try {
     const price = await stripe.prices.retrieve(priceId, {

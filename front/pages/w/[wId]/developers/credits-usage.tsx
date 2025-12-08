@@ -22,17 +22,18 @@ import {
 } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
-  getCreditPurchasePricing,
+  getCreditPurchasePriceId,
+  getStripePricingData,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
-import { isSupportedCurrency } from "@app/types/currency";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { useCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import { isSupportedCurrency } from "@app/types/currency";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -73,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
 
-  const creditPricing = await getCreditPurchasePricing();
+  const creditPricing = await getStripePricingData(getCreditPurchasePriceId());
 
   return {
     props: {
