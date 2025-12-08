@@ -73,7 +73,7 @@ export function AccessSection() {
         <EditorsSheet
           owner={owner}
           editors={editors || []}
-          onChangeEditors={onChangeEditors}
+          onEditorsChange={onChangeEditors}
           description="People who can use and edit the agent."
         />
         <DropdownMenu>

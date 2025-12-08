@@ -28,11 +28,8 @@ CREATE TABLE IF NOT EXISTS "group_skills" (
         UNIQUE ("groupId", "skillConfigurationId")
 );
 
--- Index for faster lookups by skillConfigurationId
-CREATE INDEX IF NOT EXISTS "group_skills_skillConfigurationId_idx"
-  ON "group_skills"("skillConfigurationId");
-
--- Index to support workspace-scoped queries
-CREATE INDEX IF NOT EXISTS "group_skills_workspace_id"
-  ON "group_skills"("workspaceId");
+-- Composite index to support workspace-scoped skill lookups
+-- This index supports queries filtering by workspaceId and skillConfigurationId
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "group_skills_workspaceId_skillConfigurationId_idx"
+  ON "group_skills"("workspaceId", "skillConfigurationId");
 

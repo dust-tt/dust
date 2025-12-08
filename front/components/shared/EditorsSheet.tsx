@@ -47,14 +47,14 @@ type RowData = {
 type EditorsSheetProps = {
   owner: WorkspaceType;
   editors: UserType[];
-  onChangeEditors: (editors: UserType[]) => void;
+  onEditorsChange: (editors: UserType[]) => void;
   description: string;
 };
 
 export function EditorsSheet({
   owner,
   editors,
-  onChangeEditors,
+  onEditorsChange,
   description,
 }: EditorsSheetProps) {
   const [pagination, setPagination] = useState<PaginationState>({
@@ -99,7 +99,7 @@ export function EditorsSheet({
   }, []);
 
   const onSave = () => {
-    onChangeEditors(localEditors);
+    onEditorsChange(localEditors);
     setIsOpen(false);
   };
 

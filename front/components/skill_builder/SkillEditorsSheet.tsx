@@ -17,7 +17,7 @@ export function SkillEditorsSheet() {
     <EditorsSheet
       owner={owner}
       editors={editors || []}
-      onChangeEditors={onChange}
+      onEditorsChange={onChange}
       description="People who can use and edit the skill."
     />
   );
