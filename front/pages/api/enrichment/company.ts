@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { promisify } from "util";
 
 import config from "@app/lib/api/config";
-import { untrustedFetch } from "@app/lib/egress";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
