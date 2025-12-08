@@ -208,10 +208,11 @@ export function AgentMessage({
               },
             });
           } else if (
-            eventType === "tool_error" &&
-            isPersonalAuthenticationRequiredErrorContent(
-              eventPayload.data.error
-            )
+            (eventType === "tool_error" &&
+              isPersonalAuthenticationRequiredErrorContent(
+                eventPayload.data.error
+              )) ||
+            eventType === "tool_personal_auth_required"
           ) {
             void mutateBlockedActions();
           }
@@ -935,6 +936,8 @@ function AgentMessageContent({
 
   if (agentMessage.status === "failed") {
     const { error } = agentMessage;
+    // TODO(2025-12-06 MENTION): Remove this once consolidated around the
+    // `tool_personal_auth_required` event.
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
         <MCPServerPersonalAuthenticationRequired

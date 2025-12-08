@@ -802,7 +802,9 @@ export default async function createServer(
                 return await finalizeAndReturn(new Ok(blockedResponse.content));
               }
             } else if (event.type === "tool_error") {
+              // TODO(2025-12-05 MENTION): Remove once all agent loops are drained.
               // Handle personal authentication required errors.
+
               if (
                 event.error.code ===
                 "mcp_server_personal_authentication_required"
@@ -836,6 +838,26 @@ export default async function createServer(
                     new Ok(blockedResponse.content)
                   );
                 }
+              }
+            } else if (event.type === "tool_personal_auth_required") {
+              collectedBlockingEvents.push({
+                type: "tool_personal_auth_required",
+                created: event.created,
+                configurationId: event.configurationId,
+                messageId: event.messageId,
+                conversationId: conversation.sId,
+                authError: event.authError,
+              });
+
+              if (event.isLastBlockingEventForStep) {
+                const blockedResponse = makeToolBlockedAwaitingInputResponse(
+                  collectedBlockingEvents,
+                  {
+                    conversationId: conversation.sId,
+                    userMessageId,
+                  }
+                );
+                return await finalizeAndReturn(new Ok(blockedResponse.content));
               }
             }
           }
