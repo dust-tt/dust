@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -308,4 +308,4 @@ async function handler(
   }
 }
 
-export default withLogging(withSessionAuthenticationForWorkspace(handler));
+export default withSessionAuthenticationForWorkspace(handler);
