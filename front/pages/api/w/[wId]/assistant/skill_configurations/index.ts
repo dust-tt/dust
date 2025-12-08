@@ -14,7 +14,6 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -22,15 +21,7 @@ import { isGlobalAgentId, isString } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: Omit<
-    SkillConfigurationType,
-    | "author"
-    | "requestedSpaceIds"
-    | "workspaceId"
-    | "createdAt"
-    | "updatedAt"
-    | "authorId"
-  >;
+  skillConfiguration: SkillConfigurationType;
 };
 
 export interface GetAgentSkillsResponseBody {
@@ -150,8 +141,10 @@ async function handler(
 
       const body: PostSkillConfigurationRequestBody = bodyValidation.right;
 
-      const existingSkill =
-        await SkillConfigurationResource.fetchActiveByName(auth, body.name);
+      const existingSkill = await SkillConfigurationResource.fetchActiveByName(
+        auth,
+        body.name
+      );
 
       if (existingSkill) {
         return apiError(req, res, {
@@ -220,16 +213,7 @@ async function handler(
       });
 
       return res.status(200).json({
-        skillConfiguration: {
-          sId: skillConfiguration.sId,
-          name: skillConfiguration.name,
-          description: skillConfiguration.description,
-          instructions: skillConfiguration.instructions,
-          status: skillConfiguration.status,
-          scope: skillConfiguration.scope,
-          version: skillConfiguration.version,
-          tools: body.tools,
-        },
+        skillConfiguration: skillConfiguration.toJSON(),
       });
     }
 
