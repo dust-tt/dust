@@ -147,6 +147,7 @@ export default function WorkspaceAdmin({
                 value={searchTerm}
                 name="search"
                 onChange={setSearchTerm}
+                className="w-full"
               />
               {isManualInvitationsEnabled && (
                 <InviteEmailButtonWithModal
