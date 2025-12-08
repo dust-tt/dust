@@ -158,6 +158,8 @@ export function useAgentMessageStream({
           // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
           // end of the stream to the client. So we just return.
           return;
+
+        case "tool_personal_auth_required":
         case "tool_approve_execution":
           break;
 

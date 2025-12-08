@@ -209,6 +209,10 @@ export function AgentMessage({
             }
             break;
 
+          case "tool_personal_auth_required":
+            void mutateBlockedActions();
+            break;
+
           case "agent_message_success":
           case "agent_generation_cancelled":
           case "agent_error":
@@ -964,6 +968,8 @@ function AgentMessageContent({
   // TODO: handle blocked action of personal authentication required
   if (agentMessage.status === "failed") {
     const { error } = agentMessage;
+    // TODO(2025-12-06 MENTION): Remove this once consolidated around the
+    // `tool_personal_auth_required` event.
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
         <MCPServerPersonalAuthenticationRequired

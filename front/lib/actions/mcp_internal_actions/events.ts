@@ -6,10 +6,8 @@ type ToolPersonalAuthError = {
   message: string;
 };
 
-/**
- * Personal authentication required event type from MCP actions.
- * This needs to be defined here to avoid circular dependencies.
- */
+// Event sent when personal authentication is required for a tool call.
+// This is a non-terminal event that pauses the workflow until authentication is completed.
 export type ToolPersonalAuthRequiredEvent = {
   type: "tool_personal_auth_required";
   created: number;
@@ -17,6 +15,11 @@ export type ToolPersonalAuthRequiredEvent = {
   messageId: string;
   conversationId: string;
   authError: ToolPersonalAuthError;
+  // TODO(DURABLE-AGENTS 2025-12-05): Move to a deferred event base interface.
+  metadata?: {
+    pubsubMessageId?: string;
+  };
+  isLastBlockingEventForStep?: boolean;
 };
 
 export type ToolEarlyExitEvent = {
