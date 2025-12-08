@@ -672,16 +672,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType }
   ) {
+    const user = auth.user();
+    if (!user) {
+      // If no user is authenticated, we cannot mark action required.
+      return new Ok([0]);
+    }
+
     // Update the conversation participant to set actionRequired to true
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
       {
-        // We do not have a workspaceId here because we do not have an Authenticator in the caller.
-        // It's fine because we are only updating the actionRequired flag.
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
-          userId: auth.getNonNullableUser().id,
+          userId: user.id,
         },
       }
     );
