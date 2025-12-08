@@ -90,9 +90,12 @@ export async function getStripePricingData(
 
   for (const currency of SUPPORTED_CURRENCIES) {
     const currencyOption = price.currency_options[currency];
-    if (currencyOption?.unit_amount) {
+    const unitAmount = Number(
+      currencyOption.unit_amount ?? currencyOption.unit_amount_decimal
+    );
+    if (unitAmount) {
       currencyOptions[currency] = {
-        unitAmount: currencyOption.unit_amount,
+        unitAmount,
       };
     } else {
       logger.error(
