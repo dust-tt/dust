@@ -47,7 +47,7 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgenticMessageData,
@@ -983,7 +983,7 @@ export async function retryAgentMessage(
         transaction: t,
       });
 
-      if (!messageRow || !messageRow.agentMessage) {
+      if (!messageRow || !messageRow.agentMessage || !messageRow.parentId) {
         return null;
       }
       const newerMessage = await Message.findOne({
@@ -1208,6 +1208,136 @@ export async function postNewContentFragment(
   });
 
   return new Ok(render);
+}
+
+export async function softDeleteUserMessage(
+  auth: Authenticator,
+  {
+    message,
+    conversation,
+  }: {
+    message: UserMessageType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<Result<{ success: true }, ConversationError>> {
+  if (message.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+
+  // Only admins or the user who sent the message can delete it.
+  if (!auth.isAdmin() && message.user?.id !== user.id) {
+    return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  const userMessage = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    const userMessage = await createUserMessage(auth, {
+      conversation,
+      content: "deleted",
+      mentions: [],
+      metadata: {
+        type: "delete",
+        message,
+      },
+      transaction: t,
+    });
+    await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+    return userMessage;
+  });
+
+  await publishMessageEventsOnMessagePostOrEdit(
+    conversation,
+    { ...userMessage, contentFragments: [] },
+    []
+  );
+
+  auditLog(
+    {
+      workspaceId: owner.sId,
+      userId: user.sId,
+      conversationId: conversation.sId,
+      messageId: message.sId,
+    },
+    auth.isAdmin()
+      ? "Admin deleted a user message"
+      : "User deleted their message"
+  );
+
+  return new Ok({ success: true });
+}
+
+export async function softDeleteAgentMessage(
+  auth: Authenticator,
+  {
+    message,
+    conversation,
+  }: {
+    message: AgentMessageType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<Result<{ success: true }, ConversationError>> {
+  if (message.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+
+  const parentMessage = await Message.findOne({
+    where: {
+      sId: message.parentMessageId,
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!parentMessage || !parentMessage.userMessage) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  if (parentMessage.userMessage.userId !== user.id) {
+    return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  const agentMessages = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    return createAgentMessages(auth, {
+      conversation,
+      metadata: {
+        type: "delete",
+        agentMessage: message,
+        parentId: parentMessage.id,
+      },
+      transaction: t,
+    });
+  });
+
+  await publishAgentMessagesEvents(conversation, agentMessages);
+
+  auditLog(
+    {
+      workspaceId: owner.sId,
+      userId: user.sId,
+      conversationId: conversation.sId,
+      messageId: message.sId,
+    },
+    "User deleted an agent message"
+  );
+
+  return new Ok({ success: true });
 }
 
 export interface MessageLimit {
