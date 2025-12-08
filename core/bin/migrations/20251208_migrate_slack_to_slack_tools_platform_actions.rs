@@ -77,8 +77,7 @@ async fn main() -> Result<()> {
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
-        let connection_id =
-            Connection::connection_id_from_row_id_and_secret(id, &secret)?;
+        let connection_id = Connection::connection_id_from_row_id_and_secret(id, &secret)?;
 
         // Create a Connection object to decrypt the access token
         let connection = Connection::new(
