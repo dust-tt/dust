@@ -73,40 +73,30 @@ export function AssistantToolsSection({
   );
   const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
 
-  const models = [
-    SUPPORTED_MODEL_CONFIGS.find(
-      (m) =>
-        m.modelId === agentConfiguration.model.modelId &&
-        m.providerId === agentConfiguration.model.providerId
-    ),
-  ];
+  const model = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === agentConfiguration.model.modelId &&
+      m.providerId === agentConfiguration.model.providerId
+  );
 
-  const filteredModels = removeNulls(models);
   const hasTools = nonHiddenActions.length > 0;
   const hasSkills = featureFlags.includes("skills") && skills.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
-      {filteredModels.length > 0 && (
-        <div className="flex flex-col gap-5">
+      {model && (
+        <>
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Model
           </div>
-          <div className="flex flex-col gap-2">
-            {filteredModels.map((model) => (
-              <div
-                className="flex flex-row items-center gap-2"
-                key={model.modelId}
-              >
-                <Avatar
-                  icon={getModelProviderLogo(model.providerId, isDark)}
-                  size="xs"
-                />
-                <div>{model.displayName}</div>
-              </div>
-            ))}
+          <div className="flex flex-row items-center gap-2">
+            <Avatar
+              icon={getModelProviderLogo(model.providerId, isDark)}
+              size="xs"
+            />
+            <div>{model.displayName}</div>
           </div>
-        </div>
+        </>
       )}
 
       {hasTools && (
