@@ -89,12 +89,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   static async fetchActiveByWorkspace(
     workspace: LightWorkspaceType,
     transaction?: Transaction
-  ): Promise<SubscriptionResource> {
+  ): Promise<SubscriptionResource | null> {
     const res = await SubscriptionResource.fetchActiveByWorkspaces(
       [workspace],
       transaction
     );
-    return res[workspace.sId];
+    return res[workspace.sId] ?? null;
   }
 
   static async fetchActiveByWorkspaces(

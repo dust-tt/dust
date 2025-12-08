@@ -278,6 +278,11 @@ export async function handleRegularSignupFlow(
       await SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace: existingWorkspace })
       );
+
+    if (!workspaceSubscription) {
+      throw new Error("Unreachable: Workspace subscription not found");
+    }
+
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
       workspaceSubscription.toJSON()
