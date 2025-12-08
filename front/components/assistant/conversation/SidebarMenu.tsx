@@ -26,11 +26,13 @@ import {
   NavigationListLabel,
   PencilSquareIcon,
   PlusIcon,
+  RobotIcon,
   SearchInput,
   Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { PuzzleIcon } from "lucide-react";
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
@@ -73,6 +75,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -151,6 +154,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+
+  const hasSkills = featureFlags.includes("skills");
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -457,7 +462,29 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         )}
                       </>
                     )}
-                    {isBuilder(owner) && (
+                    {!isBuilder(owner) ? null : hasSkills ? (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
+                          icon={ContactsRobotIcon}
+                          label="Manage"
+                        />
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent className="pointer-events-auto">
+                            <DropdownMenuItem
+                              href={getAgentBuilderRoute(owner.sId, "manage")}
+                              icon={RobotIcon}
+                              label="Agents"
+                            />
+                            <DropdownMenuItem
+                              href={getSkillBuilderRoute(owner.sId, "manage")}
+                              // TODO(skills 2025-12-05): use the right icon
+                              icon={PuzzleIcon}
+                              label="Skills"
+                            />
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    ) : (
                       <DropdownMenuItem
                         href={getAgentBuilderRoute(owner.sId, "manage")}
                         icon={ContactsRobotIcon}
