@@ -22,6 +22,7 @@ import type {
 } from "@app/components/editor/input_bar/types";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { useConversationParticipants } from "@app/lib/swr/conversations";
+import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
 export const MentionDropdown = forwardRef<
@@ -64,6 +65,8 @@ export const MentionDropdown = forwardRef<
       options: { disabled: !conversationId },
     });
 
+    const { user } = useUser();
+
     const orderedSuggestions = useMemo(() => {
       let base = suggestions;
 
@@ -77,13 +80,15 @@ export const MentionDropdown = forwardRef<
 
         const participantMentions = [
           // Users
-          ...conversationParticipants.users.map((u) => ({
-            type: "user" as const,
-            id: u.sId,
-            label: u.fullName || u.username,
-            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
-            description: u.username,
-          })),
+          ...conversationParticipants.users
+            .filter((u) => !user || u.sId !== user.sId)
+            .map((u) => ({
+              type: "user" as const,
+              id: u.sId,
+              label: u.fullName || u.username,
+              pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+              description: u.username,
+            })),
           // Agents
           ...conversationParticipants.agents.map((a) => ({
             type: "agent" as const,
@@ -118,7 +123,7 @@ export const MentionDropdown = forwardRef<
       }
       const preferred = base[preferredIndex];
       return [preferred, ...base.filter((_, i) => i !== preferredIndex)];
-    }, [suggestions, preferredAgentId, conversationParticipants, query]);
+    }, [suggestions, preferredAgentId, conversationParticipants, query, user]);
 
     const selectItem = (index: number) => {
       const item = orderedSuggestions[index];
