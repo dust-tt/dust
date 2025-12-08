@@ -13,7 +13,7 @@ import React, { useCallback, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
-import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
+import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import {
@@ -38,7 +38,7 @@ export type UploadOrEditContentActionKey =
 
 export type ContentActionKey =
   | UploadOrEditContentActionKey
-  | "MultipleDocumentsUpload"
+  | "MultipleFilesUpload"
   | "DeleteContentNode";
 
 export type ContentAction = {
@@ -54,6 +54,7 @@ const isUploadOrEditAction = (
 
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
+  existingNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
   plan: PlanType;
   owner: WorkspaceType;
@@ -74,6 +75,7 @@ export const ContentActions = React.forwardRef<
   (
     {
       dataSourceView,
+      existingNodes,
       totalNodesCount,
       owner,
       plan,
@@ -129,9 +131,10 @@ export const ContentActions = React.forwardRef<
         ) : (
           <DocumentUploadOrEditModal {...modalProps} />
         )}
-        <MultipleDocumentsUpload
+        <MultipleFilesUpload
           dataSourceView={dataSourceView}
-          isOpen={currentAction.action === "MultipleDocumentsUpload"}
+          existingNodes={existingNodes}
+          isOpen={currentAction.action === "MultipleFilesUpload"}
           onClose={onClose}
           owner={owner}
           totalNodesCount={totalNodesCount}

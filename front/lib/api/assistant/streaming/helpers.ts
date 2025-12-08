@@ -40,7 +40,11 @@ export function getConversationChannelId({
 export function getEventMessageChannelId(event: AgentMessageEvents) {
   // Tool approve execution can come from a sub agent, and in that case we want to send an event
   // to the main conversation.
-  if (event.type === "tool_approve_execution" || event.type === "tool_error") {
+  if (
+    event.type === "tool_approve_execution" ||
+    event.type === "tool_error" ||
+    event.type === "tool_personal_auth_required"
+  ) {
     return getMessageChannelId(
       event.metadata?.pubsubMessageId ?? event.messageId
     );

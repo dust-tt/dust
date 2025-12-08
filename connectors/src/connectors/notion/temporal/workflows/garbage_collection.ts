@@ -1,6 +1,6 @@
 import {
   continueAsNew,
-  patched,
+  deprecatePatch,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -10,7 +10,6 @@ import PQueue from "p-queue";
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
   INTERVAL_BETWEEN_GC_SYNCS_MS,
-  INTERVAL_BETWEEN_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
   MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
@@ -243,15 +242,9 @@ export async function notionGarbageCollectionWorkflow({
   // Once done, clear all the redis keys used for garbage collection
   await completeGarbageCollectionRun(connectorId, nbOfBatches);
 
-  if (patched("one-hour-gc-interval")) {
-    if (patched("12-hour-gc-interval")) {
-      await sleep(INTERVAL_BETWEEN_GC_SYNCS_MS);
-    } else {
-      await sleep(1000 * 60 * 60); // 1 hour, which was the previous value of INTERVAL_BETWEEN_GC_SYNCS_MS
-    }
-  } else {
-    await sleep(INTERVAL_BETWEEN_SYNCS_MS);
-  }
+  deprecatePatch("one-hour-gc-interval");
+  deprecatePatch("12-hour-gc-interval");
+  await sleep(INTERVAL_BETWEEN_GC_SYNCS_MS);
 
   await continueAsNew<typeof notionGarbageCollectionWorkflow>({
     connectorId,

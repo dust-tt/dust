@@ -67,9 +67,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-function isExpired(credit: CreditDisplayData): boolean {
+// A credit is active if it has started and has not expired.
+// This need to be consistent with logic in CreditResource.listActive().
+function isActive(credit: CreditDisplayData): boolean {
   const now = Date.now();
-  return credit.expirationDate !== null && credit.expirationDate <= now;
+  const isStarted = credit.startDate !== null && credit.startDate <= now;
+  const isExpired =
+    credit.expirationDate !== null && credit.expirationDate <= now;
+  return isStarted && !isExpired;
 }
 
 interface ProgressBarProps {
@@ -229,7 +234,9 @@ function UsageSection({
         {billingCycle && (
           <Page.P variant="secondary">
             {formatDateShort(billingCycle.cycleStart)} →{" "}
-            {formatDateShort(billingCycle.cycleEnd)}
+            {formatDateShort(
+              new Date(billingCycle.cycleEnd.getTime() - 24 * 60 * 60 * 1000)
+            )}
           </Page.P>
         )}
       </div>
@@ -262,14 +269,16 @@ function UsageSection({
             creditsByType.committed.expirationDate
           )}
           action={
-            <Button
-              label="Buy credits"
-              variant="outline"
-              size="xs"
-              disabled={isPurchasingCredits}
-              isLoading={isPurchasingCredits}
-              onClick={() => setShowBuyCreditDialog(true)}
-            />
+            !subscription.trialing && (
+              <Button
+                label="Buy credits"
+                variant="outline"
+                size="xs"
+                disabled={isPurchasingCredits}
+                isLoading={isPurchasingCredits}
+                onClick={() => setShowBuyCreditDialog(true)}
+              />
+            )
           }
         />
         {isEnterprise && (
@@ -310,7 +319,7 @@ export default function CreditsUsagePage({
     : null;
 
   const creditsByType = useMemo(() => {
-    const activeCredits = credits.filter((c) => !isExpired(c));
+    const activeCredits = credits.filter((c) => isActive(c));
 
     const byType: Record<
       CreditType,
@@ -402,9 +411,12 @@ export default function CreditsUsagePage({
           </ContentMessage>
         )}
 
+        {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
         {subscription.trialing && (
           <ContentMessage title="Available after trial" variant="info">
-            Credit purchases are available once you upgrade to a paid plan.
+            Credit purchases are available once you upgrade to a paid plan. If
+            you would like to purchase credits before upgrading, please contact
+            support.
           </ContentMessage>
         )}
 

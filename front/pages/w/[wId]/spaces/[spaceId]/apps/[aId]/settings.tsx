@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
@@ -105,7 +106,7 @@ export default function SettingsView({
       })
     ) {
       setIsDeleting(true);
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
         {
           method: "DELETE",
@@ -128,7 +129,7 @@ export default function SettingsView({
 
   const handleUpdate = async () => {
     setIsUpdating(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
       {
         method: "POST",

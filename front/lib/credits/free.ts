@@ -13,7 +13,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 const BRACKET_1_USERS = 10;
 const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5
@@ -29,7 +29,7 @@ const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 // 5 days
 const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
 
-type CustomerStatus = "paying" | "trialing";
+type CustomerPaymentStatus = "paying" | "not_paying" | "trialing";
 
 /**
  * Returns true if
@@ -80,50 +80,55 @@ export function calculateFreeCreditAmountMicroUsd(userCount: number): number {
  * the number of users before billing cycle renewal.
  * Why 5 days ? At the current price of $30 / month,
  * pro-rated bump up from 5 days ago would be 5$.
+ *
+ * However, at minimum we always count 1 user.
  */
 export async function countEligibleUsersForFreeCredits(
   workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"]
 ): Promise<number> {
   const cutoffDate = new Date(Date.now() - USER_COUNT_CUTOFF);
-  return MembershipResource.getMembersCountForWorkspace({
+  const count = await MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
     membershipSpan: { fromDate: cutoffDate, toDate: cutoffDate },
   });
+  return Math.max(1, count);
 }
 
 /**
- * Infer customer payment status to determine eligibility and credit amount.
- * - "paying": Has recent paid invoice (within 2 billing cycles) → full credits
- * - "trialing": No paid invoice but trialing or new customer → capped credits
- * - null: Not eligible (no recent payment and not trialing/new)
+ * Customer payment status.
+ * - "paying": Has recent paid invoice (within 2 billing cycles)
+ * - "trialing": No paid invoice but trialing or new customer
+ * - "not_paying": No recent payment and not trialing/new
  */
-export async function getCustomerStatus(
+export async function getCustomerPaymentStatus(
   stripeSubscription: Stripe.Subscription
-): Promise<CustomerStatus | null> {
-  const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
+): Promise<CustomerPaymentStatus> {
+  // Enterprise subscriptions are always considered paying.
+  if (isEnterpriseSubscription(stripeSubscription)) {
+    return "paying";
+  }
+
+  const paidInvoices = await getSubscriptionInvoices({
+    subscriptionId: stripeSubscription.id,
     status: "paid",
-    limit: 1,
+    createdSinceDate: new Date(
+      Date.now() - MONTHLY_BILLING_CYCLE_SECONDS * 2 * 1000
+    ),
   });
 
   if (paidInvoices && paidInvoices.length > 0) {
-    const mostRecentInvoice = paidInvoices[0];
-    const currentPeriodStartSec = stripeSubscription.current_period_start;
-    const invoicePeriodEndSec = mostRecentInvoice.period_end;
-    const ageSec = currentPeriodStartSec - invoicePeriodEndSec;
-    if (ageSec <= MONTHLY_BILLING_CYCLE_SECONDS * 2) {
-      return "paying";
-    }
+    return "paying";
   }
 
   if (isTrialingOrNewCustomer(stripeSubscription)) {
     return "trialing";
   }
 
-  return null;
+  return "not_paying";
 }
 
-export async function grantFreeCreditsOnSubscriptionRenewal({
+export async function grantFreeCreditsFromSubscriptionStateChange({
   auth,
   stripeSubscription,
 }: {
@@ -154,23 +159,8 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
 
   // Enterprise subscriptions are always eligible
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-  let customerStatus: CustomerStatus | null = null;
-
-  if (!isEnterprise) {
-    customerStatus = await getCustomerStatus(stripeSubscription);
-    if (!customerStatus) {
-      logger.info(
-        {
-          workspaceId: workspaceSId,
-          subscriptionId: stripeSubscription.id,
-        },
-        "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
-      );
-      return new Err(
-        new Error("Pro subscription not eligible for free credits")
-      );
-    }
-  }
+  const customerPaymentStatus: CustomerPaymentStatus =
+    await getCustomerPaymentStatus(stripeSubscription);
 
   logger.info(
     {
@@ -186,7 +176,11 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
+  if (
+    programmaticConfig &&
+    programmaticConfig.freeCreditMicroUsd !== null &&
+    customerPaymentStatus === "paying"
+  ) {
     creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
     logger.info(
       {
@@ -196,20 +190,36 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
-    if (customerStatus === "trialing") {
-      creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
-    } else {
-      const userCount = await countEligibleUsersForFreeCredits(workspace);
-      creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
-      logger.info(
-        {
-          workspaceId: workspaceSId,
-          userCount,
-          creditAmountMicroUsd,
-          customerStatus,
-        },
-        "[Free Credits] Calculated credit amount using brackets system"
-      );
+    switch (customerPaymentStatus) {
+      case "not_paying":
+        logger.info(
+          {
+            workspaceId: workspaceSId,
+            subscriptionId: stripeSubscription.id,
+          },
+          "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
+        );
+        return new Err(
+          new Error("Pro subscription not eligible for free credits")
+        );
+      case "trialing":
+        creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
+        break;
+      case "paying":
+        const userCount = await countEligibleUsersForFreeCredits(workspace);
+        creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+        logger.info(
+          {
+            workspaceId: workspaceSId,
+            userCount,
+            creditAmountMicroUsd,
+            customerPaymentStatus,
+          },
+          "[Free Credits] Calculated credit amount using brackets system"
+        );
+        break;
+      default:
+        assertNever(customerPaymentStatus);
     }
 
     assert(
@@ -218,19 +228,23 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     );
   }
 
-  const expirationDate = new Date(stripeSubscription.current_period_end * 1000);
+  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
+  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+
   const featureFlags = await getFeatureFlags(workspace);
   if (!featureFlags.includes("ppul")) {
     logger.info(
       {
         workspaceId: workspaceSId,
         creditAmountMicroUsd,
-        expirationDate,
+        periodStart,
+        periodEnd,
       },
       "[Free Credits] PPUL flag OFF - stopping here."
     );
     return new Ok(undefined);
   }
+
   const credit = await CreditResource.makeNew(auth, {
     type: "free",
     initialAmountMicroUsd: creditAmountMicroUsd,
@@ -244,14 +258,17 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       workspaceId: workspaceSId,
       creditId: credit.id,
       creditAmountMicroUsd,
-      expirationDate,
+      periodStart,
+      periodEnd,
     },
     "[Free Credits] Created credit, now starting"
   );
 
-  // Start the credit immediately
-  const startResult = await credit.start(undefined, expirationDate);
-
+  // Start the credit at beginning of billing cycle.
+  const startResult = await credit.start(auth, {
+    startDate: periodStart,
+    expirationDate: periodEnd,
+  });
   if (startResult.isErr()) {
     logger.error(
       {
@@ -270,7 +287,8 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       workspaceId: workspaceSId,
       creditId: credit.id,
       creditAmountMicroUsd,
-      expirationDate,
+      periodStart,
+      periodEnd,
     },
     "[Free Credits] Successfully granted and activated free credit on renewal"
   );

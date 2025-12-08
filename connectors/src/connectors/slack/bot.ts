@@ -495,6 +495,7 @@ async function processErrorResult(
       {
         error: res.error,
         errorMessage: res.error.message,
+        connectorId: connector.id,
         ...params,
       },
       "Failed answering to Slack Chat Bot message"
@@ -1252,6 +1253,7 @@ async function makeContentFragments(
         fileSize: f.size!,
         useCase: "conversation",
         useCaseMetadata: conversationId ? { conversationId } : undefined,
+        // @ts-expect-error -- migration to tsgo
         fileObject: new File([fileContent], fileName, {
           type: f.mimetype,
         }),

@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -10,11 +11,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { Result } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 import type { CreditDisplayData } from "@app/types/credits";
 import {
   CREDIT_EXPIRATION_DAYS,
@@ -61,39 +63,6 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
 
     return new this(this.model, credit.get());
-  }
-
-  async start(
-    startDate?: Date,
-    expirationDate?: Date,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    const effectiveStartDate = startDate ?? new Date();
-    const effectiveExpirationDate =
-      expirationDate ??
-      new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
-
-    const [, affectedRows] = await this.model.update(
-      {
-        startDate: effectiveStartDate,
-        expirationDate: effectiveExpirationDate,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          startDate: null,
-        },
-        transaction,
-        returning: true,
-      }
-    );
-
-    if (affectedRows.length === 0) {
-      return new Err(new Error("Credit already started"));
-    }
-
-    return new Ok(undefined);
   }
 
   private static async baseFetch(
@@ -246,20 +215,72 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
   }
 
-  static async freezePAYGCreditById(
+  private async updateCreditAlertIdempotencyKey(
+    auth: Authenticator
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const idempotencyKey = generateRandomModelSId("cra");
+    const previousMetadata = workspace.metadata ?? {};
+    const newMetadata = {
+      ...previousMetadata,
+      creditAlertIdempotencyKey: idempotencyKey,
+    };
+    await WorkspaceResource.updateMetadata(workspace.id, newMetadata);
+  }
+
+  async start(
     auth: Authenticator,
-    creditId: number,
+    {
+      startDate,
+      expirationDate,
+      transaction,
+    }: {
+      startDate?: Date;
+      expirationDate?: Date;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<Result<void, Error>> {
+    const effectiveStartDate = startDate ?? new Date();
+    const effectiveExpirationDate =
+      expirationDate ??
+      new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+
+    const [, affectedRows] = await CreditModel.update(
+      {
+        startDate: effectiveStartDate,
+        expirationDate: effectiveExpirationDate,
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          startDate: null,
+        },
+        transaction,
+        returning: true,
+      }
+    );
+
+    if (affectedRows.length === 0) {
+      return new Err(new Error("Credit already started"));
+    }
+
+    await this.updateCreditAlertIdempotencyKey(auth);
+    return new Ok(undefined);
+  }
+
+  async freeze(
+    auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    const [, affectedRows] = await this.model.update(
+    const [, affectedRows] = await CreditModel.update(
       {
         initialAmountMicroUsd: Sequelize.col("consumedAmountMicroUsd"),
       },
       {
         where: {
-          id: creditId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          type: "payg",
+          id: this.id,
+          workspaceId: this.workspaceId,
         },
         transaction,
         returning: true,
@@ -270,22 +291,21 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Credit not found or already frozen"));
     }
 
+    await this.updateCreditAlertIdempotencyKey(auth);
     return new Ok(undefined);
   }
 
-  async delete(
-    _auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
-  ): Promise<Result<undefined | number, Error>> {
-    try {
-      await this.model.destroy({
-        where: { id: this.id, workspaceId: this.workspaceId },
-        transaction,
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+  async updateInitialAmountMicroUsd(
+    auth: Authenticator,
+    initialAmountMicroUsd: number,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<[affectedCount: number]> {
+    return this.update(
+      {
+        initialAmountMicroUsd,
+      },
+      transaction
+    );
   }
 
   toJSON(): CreditDisplayData {
@@ -342,5 +362,21 @@ export class CreditResource extends BaseResource<CreditModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
+  }
+
+  async delete(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<number | undefined, Error>> {
+    assert(
+      this.startDate === null || this.type === "free",
+      "Cannot delete a credit that has been started. Use freeze() instead."
+    );
+
+    const deletedCount = await CreditModel.destroy({
+      where: { id: this.id, workspaceId: auth.getNonNullableWorkspace().id },
+      transaction,
+    });
+    return new Ok(deletedCount);
   }
 }

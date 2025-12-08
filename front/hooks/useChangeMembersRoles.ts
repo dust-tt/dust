@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   LightWorkspaceType,
@@ -47,7 +48,7 @@ export function useChangeMembersRoles({
       }
 
       const promises = members.map((member) =>
-        fetch(`/api/w/${owner.sId}/members/${member.sId}`, {
+        clientFetch(`/api/w/${owner.sId}/members/${member.sId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

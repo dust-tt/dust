@@ -55,7 +55,13 @@ async function createPAYGCreditForPeriod({
     invoiceOrLineItemId: null,
   });
 
-  await credit.start(periodStart, periodEnd);
+  const startResult = await credit.start(auth, {
+    startDate: periodStart,
+    expirationDate: periodEnd,
+  });
+  if (startResult.isErr()) {
+    return new Err(startResult.error);
+  }
   return new Ok(credit);
 }
 
@@ -104,7 +110,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   if (result.isErr()) {
     logger.info(
       { workspaceId: workspace.sId, error: result.error.message },
-      "[Credit PAYG] Credit already exists for this period, skipping allocation"
+      "[Credit PAYG] Failed to create PAYG credit for this period, skipping allocation"
     );
     return;
   }
@@ -179,30 +185,40 @@ export async function startOrResumeEnterprisePAYG({
     stripeSubscription.current_period_end * 1000
   );
 
-  const result = await createPAYGCreditForPeriod({
+  const existingCredit = await CreditResource.fetchByTypeAndDates(
     auth,
-    paygCapMicroUsd,
-    discountPercent: config.defaultDiscountPercent,
-    periodStart: currentPeriodStart,
-    periodEnd: currentPeriodEnd,
-  });
+    "payg",
+    currentPeriodStart,
+    currentPeriodEnd
+  );
 
-  if (result.isErr()) {
-    logger.info(
-      { workspaceId: workspace.sId, error: result.error.message },
-      "[Credit PAYG] Credit already exists for current period"
-    );
+  if (existingCredit) {
+    await existingCredit.updateInitialAmountMicroUsd(auth, paygCapMicroUsd);
   } else {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        periodStart: currentPeriodStart.toISOString(),
-        periodEnd: currentPeriodEnd.toISOString(),
-      },
-      "[Credit PAYG] Allocated PAYG credit for current period"
-    );
-  }
+    const result = await createPAYGCreditForPeriod({
+      auth,
+      paygCapMicroUsd,
+      discountPercent: config.defaultDiscountPercent,
+      periodStart: currentPeriodStart,
+      periodEnd: currentPeriodEnd,
+    });
 
+    if (result.isErr()) {
+      logger.info(
+        { workspaceId: workspace.sId, error: result.error.message },
+        "[Credit PAYG] Failed to create PAYG credit for current period"
+      );
+    } else {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          periodStart: currentPeriodStart.toISOString(),
+          periodEnd: currentPeriodEnd.toISOString(),
+        },
+        "[Credit PAYG] Allocated PAYG credit for current period"
+      );
+    }
+  }
   return new Ok(undefined);
 }
 
@@ -230,10 +246,7 @@ export async function stopEnterprisePAYG({
   );
 
   if (paygCredit) {
-    const freezeResult = await CreditResource.freezePAYGCreditById(
-      auth,
-      paygCredit.id
-    );
+    const freezeResult = await paygCredit.freeze(auth);
     if (freezeResult.isErr()) {
       logger.warn(
         { workspaceId: workspace.sId, error: freezeResult.error.message },

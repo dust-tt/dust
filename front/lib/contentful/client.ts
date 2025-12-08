@@ -444,6 +444,7 @@ const CustomerStoryFiltersSchema = z.object({
   industry: z.array(z.string()).optional(),
   department: z.array(z.string()).optional(),
   companySize: z.array(z.string()).optional(),
+  region: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
 });
 
@@ -487,6 +488,9 @@ function buildCustomerStoryQuery(
       if (parsed.companySize && parsed.companySize.length > 0) {
         query["fields.companySize[in]"] = parsed.companySize.join(",");
       }
+      if (parsed.region && parsed.region.length > 0) {
+        query["fields.region[in]"] = parsed.region.join(",");
+      }
       if (parsed.featured !== undefined) {
         query["fields.featured"] = parsed.featured;
       }
@@ -510,6 +514,7 @@ const CustomerStoryFieldsSchema = z.object({
   contactTitle: z.string().nullable().optional(),
   headlineMetric: z.string().nullable().optional(),
   companySize: z.string().nullable().optional(),
+  region: z.array(z.string()).default([]),
   featured: z.boolean().default(false),
 });
 
@@ -526,8 +531,11 @@ function contentfulEntryToCustomerStory(
   const parsed = result.data;
   const slug = parsed.slug ?? slugify(parsed.title);
 
-  // Check assets directly
+  // Check assets and rich text fields
   const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const keyHighlight = isContentfulDocument(fields.keyHighlight)
+    ? fields.keyHighlight
+    : null;
   const heroImage = isContentfulAsset(fields.heroImage)
     ? fields.heroImage
     : undefined;
@@ -552,9 +560,11 @@ function contentfulEntryToCustomerStory(
     contactTitle: parsed.contactTitle ?? null,
     contactPhoto: contentfulAssetToBlogImage(contactPhoto, "Contact photo"),
     headlineMetric: parsed.headlineMetric ?? null,
+    keyHighlight,
     industry: parsed.industry,
     department: parsed.department,
     companySize: parsed.companySize ?? null,
+    region: parsed.region ?? [],
     description: parsed.metaDescription ?? generateDescription(body),
     body,
     heroImage: contentfulAssetToBlogImage(heroImage, parsed.title),
@@ -582,6 +592,7 @@ function contentfulEntryToCustomerStorySummary(
     industry: story.industry,
     department: story.department,
     companySize: story.companySize,
+    region: story.region,
     featured: story.featured,
     createdAt: story.createdAt,
   };

@@ -20,6 +20,7 @@ import {
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
@@ -57,7 +58,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           feedbackContent: string | null;
           isConversationShared: boolean;
         }) => {
-          const res = await fetch(
+          const res = await clientFetch(
             `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/messages/${sId}/feedbacks`,
             {
               method: shouldRemoveExistingFeedback ? "DELETE" : "POST",

@@ -33,6 +33,7 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   decodeSqids,
   formatTimestampToFriendlyDate,
@@ -198,13 +199,14 @@ export function ViewDataSourceTable({
                       </PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
-                      <PokeTableCell>Paused at</PokeTableCell>
+                      <PokeTableCell>Paused</PokeTableCell>
                       <PokeTableCell>
                         {connector?.pausedAt ? (
                           <span className="font-bold text-green-600">
                             {timeAgoFrom(connector?.pausedAt, {
                               useLongFormat: true,
-                            })}
+                            })}{" "}
+                            ago
                           </span>
                         ) : (
                           "N/A"
@@ -241,7 +243,7 @@ export function ViewDataSourceTable({
                         {connector?.lastSyncStartTime ? (
                           timeAgoFrom(connector?.lastSyncStartTime, {
                             useLongFormat: true,
-                          })
+                          }) + " ago"
                         ) : (
                           <span className="font-bold text-warning-500">
                             never
@@ -255,7 +257,7 @@ export function ViewDataSourceTable({
                         {connector?.lastSyncFinishTime ? (
                           timeAgoFrom(connector?.lastSyncFinishTime, {
                             useLongFormat: true,
-                          })
+                          }) + " ago"
                         ) : (
                           <span className="font-bold text-warning-500">
                             never
@@ -289,7 +291,8 @@ export function ViewDataSourceTable({
                           <span className="font-bold text-green-600">
                             {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
                               useLongFormat: true,
-                            })}
+                            })}{" "}
+                            ago
                           </span>
                         ) : (
                           <span className="font-bold text-warning-600">
@@ -338,7 +341,7 @@ function CopyTokenButton({ owner, dsId }: CopyTokenButtonProps) {
 
     setIsLoading(true);
     setError(null);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/token`
     );
     if (!res.ok) {
@@ -462,7 +465,7 @@ function CheckConnectorStuck({
   const checkStuck = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/check-stuck`
       );
       if (!res.ok) {

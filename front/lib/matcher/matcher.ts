@@ -4,7 +4,7 @@ import { has, hasAll, hasAny } from "./operators/array";
 import { eq } from "./operators/equality";
 import { exists } from "./operators/existence";
 import { gt, gte, lt, lte } from "./operators/numeric";
-import { startsWith } from "./operators/string";
+import { contains, startsWith } from "./operators/string";
 import type { MatcherExpression } from "./types";
 import { isLogicalExpression, isOperationExpression } from "./types";
 
@@ -88,6 +88,9 @@ export function matchPayload(
 
       case "starts-with":
         return startsWith(fieldValue, matcher.value);
+
+      case "contains":
+        return contains(fieldValue, matcher.value);
 
       case "has":
         return has(fieldValue, matcher.value);

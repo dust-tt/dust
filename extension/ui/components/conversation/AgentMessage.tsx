@@ -5,8 +5,8 @@ import type { StoredUser } from "@app/shared/services/auth";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
-} from "@app/ui/components/assistants/state/messageReducer";
-import { messageReducer } from "@app/ui/components/assistants/state/messageReducer";
+} from "@app/ui/components/agents/state/messageReducer";
+import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
@@ -534,9 +534,9 @@ export function AgentMessage({
         .filter(
           (msg): msg is UserMessageType =>
             msg.type === "user_message" &&
-            msg.context.origin === "agent_handover"
+            msg.agenticMessageData?.type === "agent_handover"
         )
-        .map((msg) => msg.context.originMessageId)
+        .map((msg) => msg.agenticMessageData?.originMessageId)
     );
     const handingOver = handoverOrigins.has(message.sId);
 

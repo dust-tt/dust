@@ -72,7 +72,9 @@ describe("PAYG Credits Database Tests", () => {
   let auth: Authenticator;
 
   beforeEach(async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     auth = authenticator;
   });
 
@@ -89,7 +91,10 @@ describe("PAYG Credits Database Tests", () => {
         initialAmountMicroUsd: 100_000_000,
         consumedAmountMicroUsd: 0,
       });
-      await credit1.start(startDate, expirationDate);
+      await credit1.start(auth, {
+        startDate,
+        expirationDate,
+      });
 
       const credit2 = await CreditResource.makeNew(auth, {
         type: "payg",
@@ -97,9 +102,12 @@ describe("PAYG Credits Database Tests", () => {
         consumedAmountMicroUsd: 0,
       });
 
-      await expect(credit2.start(startDate, expirationDate)).rejects.toThrow(
-        /unique|Validation error/i
-      );
+      await expect(
+        credit2.start(auth, {
+          startDate,
+          expirationDate,
+        })
+      ).rejects.toThrow(/unique|Validation error/i);
     });
   });
 
@@ -115,7 +123,10 @@ describe("PAYG Credits Database Tests", () => {
         initialAmountMicroUsd: 100_000_000,
         consumedAmountMicroUsd: 0,
       });
-      await credit.start(startDate, expirationDate);
+      await credit.start(auth, {
+        startDate,
+        expirationDate,
+      });
 
       const lookupStartDate = new Date(startTimestampSeconds * 1000);
       const lookupExpirationDate = new Date(endTimestampSeconds * 1000);
@@ -178,7 +189,9 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(NOW_MS);
-    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     auth = authenticator;
     vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
   });
@@ -227,10 +240,10 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
       initialAmountMicroUsd: 500_000_000,
       consumedAmountMicroUsd: 0,
     });
-    await existingCredit.start(
-      new Date(NOW * 1000),
-      new Date((NOW + MONTH_SECONDS) * 1000)
-    );
+    await existingCredit.start(auth, {
+      startDate: new Date(NOW * 1000),
+      expirationDate: new Date((NOW + MONTH_SECONDS) * 1000),
+    });
 
     await allocatePAYGCreditsOnCycleRenewal({
       auth,
@@ -290,7 +303,9 @@ describe("startOrResumeEnterprisePAYG", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(NOW_MS);
-    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     auth = authenticator;
     vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
@@ -373,7 +388,7 @@ describe("startOrResumeEnterprisePAYG", () => {
     expect(config?.paygCapMicroUsd).toBe(2_000_000_000);
   });
 
-  it("should skip credit creation if credit already exists for period", async () => {
+  it("should update credit if credit already exists for period", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
       freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
@@ -386,10 +401,10 @@ describe("startOrResumeEnterprisePAYG", () => {
       initialAmountMicroUsd: 500_000_000,
       consumedAmountMicroUsd: 0,
     });
-    await existingCredit.start(
-      new Date(subscription.current_period_start * 1000),
-      new Date(subscription.current_period_end * 1000)
-    );
+    await existingCredit.start(auth, {
+      startDate: new Date(subscription.current_period_start * 1000),
+      expirationDate: new Date(subscription.current_period_end * 1000),
+    });
 
     await startOrResumeEnterprisePAYG({
       auth,
@@ -399,7 +414,7 @@ describe("startOrResumeEnterprisePAYG", () => {
 
     const credits = await CreditResource.listAll(auth);
     expect(credits.length).toBe(1);
-    expect(credits[0].initialAmountMicroUsd).toBe(500_000_000);
+    expect(credits[0].initialAmountMicroUsd).toBe(1_000_000_000);
   });
 });
 
@@ -410,7 +425,9 @@ describe("stopEnterprisePAYG", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(NOW_MS);
-    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     auth = authenticator;
     vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
   });
@@ -426,10 +443,10 @@ describe("stopEnterprisePAYG", () => {
       initialAmountMicroUsd: 1_000_000_000,
       consumedAmountMicroUsd: 50_000_000,
     });
-    await credit.start(
-      new Date(subscription.current_period_start * 1000),
-      new Date(subscription.current_period_end * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(subscription.current_period_start * 1000),
+      expirationDate: new Date(subscription.current_period_end * 1000),
+    });
 
     const result = await stopEnterprisePAYG({
       auth,
@@ -491,7 +508,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(NOW_MS);
-    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
     auth = authenticator;
     vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
@@ -577,10 +596,10 @@ describe("invoiceEnterprisePAYGCredits", () => {
       initialAmountMicroUsd: 100_000_000,
       consumedAmountMicroUsd: 0,
     });
-    await credit.start(
-      new Date(previousStart * 1000),
-      new Date(previousEnd * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(previousStart * 1000),
+      expirationDate: new Date(previousEnd * 1000),
+    });
 
     const subscription = makeEnterpriseSubscription();
 
@@ -610,10 +629,10 @@ describe("invoiceEnterprisePAYGCredits", () => {
       initialAmountMicroUsd: 1_000_000_000,
       consumedAmountMicroUsd: 150_000_000,
     });
-    await credit.start(
-      new Date(previousStart * 1000),
-      new Date(previousEnd * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(previousStart * 1000),
+      expirationDate: new Date(previousEnd * 1000),
+    });
 
     const subscription = makeEnterpriseSubscription();
 
@@ -651,10 +670,10 @@ describe("invoiceEnterprisePAYGCredits", () => {
       initialAmountMicroUsd: 100_000_000,
       consumedAmountMicroUsd: 5_000_000,
     });
-    await credit.start(
-      new Date(previousStart * 1000),
-      new Date(previousEnd * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(previousStart * 1000),
+      expirationDate: new Date(previousEnd * 1000),
+    });
 
     const subscription = makeEnterpriseSubscription();
 
@@ -691,10 +710,10 @@ describe("invoiceEnterprisePAYGCredits", () => {
       initialAmountMicroUsd: 1_000_000_000,
       consumedAmountMicroUsd: 50_000_000,
     });
-    await credit.start(
-      new Date(previousStart * 1000),
-      new Date(previousEnd * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(previousStart * 1000),
+      expirationDate: new Date(previousEnd * 1000),
+    });
 
     const subscription = makeEnterpriseSubscription();
 
@@ -723,10 +742,10 @@ describe("invoiceEnterprisePAYGCredits", () => {
       initialAmountMicroUsd: 100_000_000,
       consumedAmountMicroUsd: 25_000_000,
     });
-    await credit.start(
-      new Date(previousStart * 1000),
-      new Date(previousEnd * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(previousStart * 1000),
+      expirationDate: new Date(previousEnd * 1000),
+    });
 
     const subscription = makeEnterpriseSubscription();
 
@@ -760,10 +779,10 @@ describe("invoiceEnterprisePAYGCredits", () => {
       initialAmountMicroUsd: 100_000_000,
       consumedAmountMicroUsd: 10_000_000,
     });
-    await credit.start(
-      new Date(previousStart * 1000),
-      new Date(previousEnd * 1000)
-    );
+    await credit.start(auth, {
+      startDate: new Date(previousStart * 1000),
+      expirationDate: new Date(previousEnd * 1000),
+    });
 
     const subscription = makeEnterpriseSubscription();
 

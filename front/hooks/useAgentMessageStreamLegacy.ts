@@ -47,7 +47,7 @@ type AgentMessageStateEvent = (AgentMessageEvents | ToolNotificationEvent) & {
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
-  { type: "tool_approve_execution" }
+  { type: "tool_approve_execution" } | { type: "tool_personal_auth_required" }
 >;
 
 function updateMessageWithAction(
@@ -325,7 +325,10 @@ export function useAgentMessageStreamLegacy({
         return;
       }
 
-      if (eventType === "tool_approve_execution") {
+      if (
+        eventType === "tool_approve_execution" ||
+        eventType === "tool_personal_auth_required"
+      ) {
         if (customOnEventCallback) {
           customOnEventCallback(eventStr);
         }

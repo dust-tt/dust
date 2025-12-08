@@ -117,6 +117,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "speech_generator",
   "toolsets",
   "val_town",
+  "vanta",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -309,9 +310,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionRobotIcon",
       authorization: null,
       documentationUrl: null,
-      instructions: `These tools provide discoverability to published agents available in the workspace.
-The tools return agents with their "mention" markdown directive.
-The directive should be used to display a clickable version of the agent name in the response.`,
+      instructions: null,
     },
   },
   include_data: {
@@ -626,7 +625,7 @@ The directive should be used to display a clickable version of the agent name in
       description: "Work with spreadsheet data and tables.",
       authorization: {
         provider: "gmail",
-        supported_use_cases: ["personal_actions"] as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
         scope:
           "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
       },
@@ -1317,6 +1316,33 @@ The directive should be used to display a clickable version of the agent name in
       description: "Search and read from your Slab knowledge base",
       authorization: null,
       icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  vanta: {
+    id: 44,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("vanta_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_tests: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "vanta",
+      version: "1.0.0",
+      description:
+        "Review compliance posture powered by Vanta's security platform.",
+      authorization: {
+        provider: "vanta" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ActionScanIcon",
       documentationUrl: null,
       instructions: null,
     },

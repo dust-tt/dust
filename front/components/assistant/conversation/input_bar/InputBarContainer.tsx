@@ -24,7 +24,7 @@ import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import useHandleAgentMentions from "@app/components/editor/input_bar/useHandleAgentMentions";
+import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -40,12 +40,17 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
-  AgentMention,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
+  RichAgentMention,
+  RichMention,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, normalizeError } from "@app/types";
+import {
+  assertNever,
+  normalizeError,
+  toRichAgentMentionType,
+} from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
@@ -61,12 +66,11 @@ export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
   allAgents: LightAgentConfigurationType[];
-  agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
   conversationId: string | null;
-  selectedAgent: AgentMention | null;
-  stickyMentions?: AgentMention[];
+  selectedAgent: RichAgentMention | null;
+  stickyMentions?: RichMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   isSubmitting: boolean;
@@ -82,7 +86,6 @@ export interface InputBarContainerProps {
 
 const InputBarContainer = ({
   allAgents,
-  agentConfigurations,
   onEnterKeyDown,
   owner,
   conversationId,
@@ -505,9 +508,8 @@ const InputBarContainer = ({
     }
   }, [animate, editorService]);
 
-  useHandleAgentMentions(
+  useHandleMentions(
     editorService,
-    agentConfigurations,
     stickyMentions,
     selectedAgent,
     disableAutoFocus
@@ -667,13 +669,7 @@ const InputBarContainer = ({
                       owner={owner}
                       size={buttonSize}
                       onItemClick={(c) => {
-                        editorService.insertMention({
-                          type: "agent",
-                          id: c.sId,
-                          label: c.name,
-                          description: c.description,
-                          pictureUrl: c.pictureUrl,
-                        });
+                        editorService.insertMention(toRichAgentMentionType(c));
                       }}
                       agents={allAgents}
                       showDropdownArrow={false}

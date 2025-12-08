@@ -5,6 +5,7 @@ import { useSWRConfig } from "swr/_internal";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
@@ -60,7 +61,7 @@ const KillPage = () => {
       }
     }
 
-    const res = await fetch(`/api/poke/kill`, {
+    const res = await clientFetch(`/api/poke/kill`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

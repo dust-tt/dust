@@ -698,6 +698,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "web_summarization"
   | "xai_feature"
+  | "vanta_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1280,6 +1281,7 @@ export type BlockedActionExecutionType = z.infer<
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
+  userId: z.string(),
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
@@ -1289,6 +1291,28 @@ const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
 
 export type MCPApproveExecutionEvent = z.infer<
   typeof MCPApproveExecutionEventSchema
+>;
+
+const AuthErrorSchema = z.object({
+  mcpServerId: z.string(),
+  message: z.string(),
+  provider: z.string(),
+  scope: z.string().optional(),
+  toolName: z.string(),
+});
+
+const ToolPersonalAuthRequiredEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_personal_auth_required"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  authError: AuthErrorSchema,
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+});
+
+export type ToolPersonalAuthRequiredEvent = z.infer<
+  typeof ToolPersonalAuthRequiredEventSchema
 >;
 
 const ToolErrorEventSchema = z.object({
@@ -1333,6 +1357,7 @@ const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
+  ToolPersonalAuthRequiredEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -2859,6 +2884,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "vanta"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
@@ -2905,6 +2931,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
+  | "SupabaseLogo"
   | "ValTownLogo"
   | "ZendeskLogo"
 >();

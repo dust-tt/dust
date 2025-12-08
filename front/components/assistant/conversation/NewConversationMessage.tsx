@@ -270,18 +270,24 @@ const ConversationMessageTitle = React.forwardRef<
   HTMLDivElement,
   ConversationMessageTitleProps
 >(
-  ({
-    name = "",
-    timestamp,
-    infoChip,
-    completionStatus,
-    renderName,
-    actions,
-    className,
-  }) => {
+  (
+    {
+      name = "",
+      timestamp,
+      infoChip,
+      completionStatus,
+      renderName,
+      actions,
+      className,
+      ...props
+    },
+    ref
+  ) => {
     return (
       <div
+        ref={ref}
         className={cn("inline-flex w-full justify-between gap-0.5", className)}
+        {...props}
       >
         <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
           <span className="heading-sm">{renderName(name)}</span>

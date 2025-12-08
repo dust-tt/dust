@@ -42,6 +42,16 @@ export const getAgentBuilderRoute = (
   return queryParams ? `${fullPath}?${queryParams}` : fullPath;
 };
 
+export const getSkillBuilderRoute = (
+  workspaceId: string,
+  route: string,
+  queryParams?: string
+): string => {
+  const basePath = "skills";
+  const fullPath = `/w/${workspaceId}/builder/${basePath}${route === "manage" ? "" : `/${route}`}`;
+  return queryParams ? `${fullPath}?${queryParams}` : fullPath;
+};
+
 export const getConversationRoute = (
   workspaceId: string,
   conversationIdOrNew: string | null = "new",

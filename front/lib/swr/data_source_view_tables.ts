@@ -1,6 +1,7 @@
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   emptyArray,
@@ -127,7 +128,7 @@ export function useUpdateDataSourceViewTable(
 
   const doUpdate = async (body: PatchDataSourceTableRequestBody) => {
     const tableUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables/${encodeURIComponent(tableId)}`;
-    const res = await fetch(tableUrl, {
+    const res = await clientFetch(tableUrl, {
       method: "PATCH",
       body: JSON.stringify(body),
       headers: {

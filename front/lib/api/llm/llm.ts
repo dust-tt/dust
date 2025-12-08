@@ -18,6 +18,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -69,6 +70,35 @@ export abstract class LLM {
     this.traceId = createLLMTraceId(randomUUID());
   }
 
+  private async *completeStream({
+    conversation,
+    prompt,
+    specifications,
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+    let currentEvent: LLMEvent | null = null;
+    for await (const event of this.internalStream({
+      conversation,
+      prompt,
+      specifications,
+    })) {
+      currentEvent = event;
+      yield event;
+    }
+
+    if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
+      currentEvent = new EventError(
+        {
+          type: "stream_error",
+          message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
+          isRetryable: true,
+          originalError: { lastEventType: currentEvent?.type },
+        },
+        this.metadata
+      );
+      yield currentEvent;
+    }
+  }
+
   /**
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
@@ -78,7 +108,7 @@ export abstract class LLM {
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.internalStream({ conversation, prompt, specifications });
+      yield* this.completeStream({ conversation, prompt, specifications });
       return;
     }
 
@@ -132,10 +162,18 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
+    // Track LLM interaction metric
+    const metricTags = [
+      `model_id:${this.modelId}`,
+      `client_id:${this.metadata.clientId}`,
+      `operation_type:${this.context.operationType}`,
+    ];
+    statsDClient.increment("llm_interaction.count", 1, metricTags);
+
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     try {
-      for await (const event of this.internalStream({
+      for await (const event of this.completeStream({
         conversation,
         prompt,
         specifications,
@@ -154,22 +192,10 @@ export abstract class LLM {
 
         yield event;
       }
-
-      if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
-        currentEvent = new EventError(
-          {
-            type: "stream_error",
-            message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
-            isRetryable: true,
-            originalError: { lastEventType: currentEvent?.type },
-          },
-          this.metadata
-        );
-        buffer.addEvent(currentEvent);
-        yield currentEvent;
-      }
     } finally {
       if (currentEvent?.type === "error") {
+        // Temporary: track LLM error metric
+        statsDClient.increment("llm_error.count", 1, metricTags);
         generation.updateTrace({
           tags: ["isError:true", `errorType:${currentEvent.content.type}`],
         });
@@ -185,6 +211,9 @@ export abstract class LLM {
           "LLM Error"
         );
       } else if (currentEvent?.type === "success") {
+        // Temporary: track LLM success metric
+        statsDClient.increment("llm_success.count", 1, metricTags);
+
         logger.info(
           {
             llmEventType: "success",

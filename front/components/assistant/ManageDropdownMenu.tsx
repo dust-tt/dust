@@ -1,0 +1,63 @@
+import {
+  Button,
+  ContactsRobotIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  RobotIcon,
+} from "@dust-tt/sparkle";
+import { PuzzleIcon } from "lucide-react";
+import { useRouter } from "next/router";
+import { useState } from "react";
+
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
+import type { LightWorkspaceType } from "@app/types";
+
+interface ManageDropdownMenuProps {
+  owner: LightWorkspaceType;
+}
+
+export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="primary"
+          label="Manage"
+          // TODO(skills 2025-12-05): use the right icon
+          icon={ContactsRobotIcon}
+          size="sm"
+          isSelect
+          isLoading={isLoading}
+          disabled={isLoading}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem
+          label="agents"
+          icon={RobotIcon}
+          onClick={() => {
+            setIsLoading(true);
+            void router.push(getAgentBuilderRoute(owner.sId, "manage"));
+          }}
+        />
+        <DropdownMenuItem
+          label="skills"
+          // TODO(skills 2025-12-05): use the right icon
+          icon={PuzzleIcon}
+          onClick={() => {
+            setIsLoading(true);
+            void router.push(getSkillBuilderRoute(owner.sId, "manage"));
+          }}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};

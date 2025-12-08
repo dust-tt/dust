@@ -57,6 +57,7 @@ import { default as speechGenerator } from "@app/lib/actions/mcp_internal_action
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
+import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -206,6 +207,8 @@ export async function getInternalMCPServer(
       return toolsetsServer(auth, agentLoopContext);
     case "val_town":
       return valtownServer(auth, agentLoopContext);
+    case "vanta":
+      return vantaServer(auth, agentLoopContext);
     case "deep_dive":
       return deepDiveServer(auth, agentLoopContext);
     case "http_client":

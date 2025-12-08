@@ -151,8 +151,9 @@ export type ToolExecution = {
   };
 };
 
-export type BlockedToolExecution = ToolExecution &
-  (
+export type BlockedToolExecution = ToolExecution & {
+  userId: string;
+} & (
     | {
         status: "blocked_validation_required";
         authorizationInfo: AuthorizationInfo | null;
@@ -176,6 +177,7 @@ export type BlockedToolExecution = ToolExecution &
 // TODO(durable-agents): cleanup the types of the events.
 export type MCPApproveExecutionEvent = ToolExecution & {
   type: "tool_approve_execution";
+  userId: string;
   created: number;
   configurationId: string;
   isLastBlockingEventForStep?: boolean;
@@ -273,7 +275,7 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isToolPersonalAuthRequiredEvent(
+function isLegacyToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolErrorEvent & {
   error: PersonalAuthenticationRequiredErrorContent;
@@ -288,6 +290,17 @@ function isToolPersonalAuthRequiredEvent(
   );
 }
 
+function isToolPersonalAuthRequiredEvent(
+  event: unknown
+): event is ToolPersonalAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_personal_auth_required"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
 ): event is MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent {
@@ -296,6 +309,7 @@ export function isBlockedActionEvent(
     event !== null &&
     "type" in event &&
     (isMCPApproveExecutionEvent(event) ||
-      isToolPersonalAuthRequiredEvent(event))
+      isToolPersonalAuthRequiredEvent(event) ||
+      isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

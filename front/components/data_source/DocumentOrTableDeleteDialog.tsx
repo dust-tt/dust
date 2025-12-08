@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   DataSourceViewType,
   LightContentNode,
@@ -74,7 +75,7 @@ export const DocumentOrTableDeleteDialog = ({
       setIsLoading(true);
       const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${contentNode.type}s/${encodeURIComponent(contentNode.internalId)}`;
 
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await clientFetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
         throw new Error(`Failed to delete ${contentNode.type}`);
       }

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_OR_AGENTS_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -203,26 +203,22 @@ async function createServer(
   if (featureFlags.includes("mentions_v2")) {
     // Add tools for searching users or agents to mention in a message.
     server.tool(
-      SEARCH_AVAILABLE_USERS_OR_AGENTS_TOOL_NAME,
-      "Search for users or agents that are available to the conversation.",
+      SEARCH_AVAILABLE_USERS_TOOL_NAME,
+      "Search for users that are available to the conversation.",
       {
-        filter: z
-          .array(z.enum(["agents", "users"]))
-          .describe("A list of types to filter by.")
-          .default(["agents", "users"]),
         searchTerm: z
           .string()
           .describe(
-            "A single search term to find users or agents. Returns all the users and agents that contain the search term in their name or description. Use an empty string to return all items of a type."
+            "A single search term to find users. Returns all the users that contain the search term in their name or description. Use an empty string to return all items."
           ),
       },
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: SEARCH_AVAILABLE_USERS_OR_AGENTS_TOOL_NAME,
+          toolNameForMonitoring: SEARCH_AVAILABLE_USERS_TOOL_NAME,
           agentLoopContext,
         },
-        async ({ filter, searchTerm }) => {
+        async ({ searchTerm }) => {
           const user = auth.user();
           const prodCredentials = await prodAPICredentialsForOwner(
             auth.getNonNullableWorkspace()
@@ -244,7 +240,7 @@ async function createServer(
 
           const r = await api.getMentionsSuggestions({
             query: searchTerm,
-            select: filter,
+            select: ["users"],
             conversationId: agentLoopContext?.runContext?.conversation?.sId,
           });
 
@@ -273,12 +269,11 @@ async function createServer(
 
     server.tool(
       GET_MENTION_MARKDOWN_TOOL_NAME,
-      "Get the markdown directive to use to mention a user or agent in a message.",
+      "Get the markdown directive to use to mention a user in a message.",
       {
         mention: z
           .object({
             id: z.string(),
-            type: z.enum(["agent", "user"]),
             label: z.string(),
           })
           .describe("A mention to get the markdown directive for."),
@@ -293,7 +288,11 @@ async function createServer(
           return new Ok([
             {
               type: "text",
-              text: serializeMention(mention),
+              text: serializeMention({
+                name: mention.label,
+                sId: mention.id,
+                type: "user",
+              }),
             },
           ]);
         }

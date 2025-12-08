@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ChangeEvent, ReactElement } from "react";
 import React, { useState } from "react";
 
+import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
@@ -134,6 +135,7 @@ const Dashboard = () => {
 
   return (
     <>
+      <PokeFavoritesList />
       <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
       <Input
         type="text"

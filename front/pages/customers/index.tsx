@@ -1,3 +1,4 @@
+import { CollapsibleComponent } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -22,12 +23,23 @@ import type {
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+function sortCompanySizes(sizes: string[]): string[] {
+  return [...sizes].sort((a, b) => {
+    const getFirstNumber = (size: string): number => {
+      const match = size.match(/^(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+    return getFirstNumber(a) - getFirstNumber(b);
+  });
+}
+
 function extractFilterOptions(
   stories: CustomerStorySummary[]
 ): CustomerStoryFilterOptions {
   const industries = new Set<string>();
   const departments = new Set<string>();
   const companySizes = new Set<string>();
+  const regions = new Set<string>();
 
   for (const story of stories) {
     if (story.industry) {
@@ -39,12 +51,16 @@ function extractFilterOptions(
     if (story.companySize) {
       companySizes.add(story.companySize);
     }
+    for (const region of story.region) {
+      regions.add(region);
+    }
   }
 
   return {
     industries: [...industries].sort(),
     departments: [...departments].sort(),
-    companySizes: [...companySizes].sort(),
+    companySizes: sortCompanySizes([...companySizes]),
+    regions: [...regions].sort(),
   };
 }
 
@@ -61,7 +77,12 @@ export const getStaticProps: GetStaticProps<
     return {
       props: {
         stories: [],
-        filterOptions: { industries: [], departments: [], companySizes: [] },
+        filterOptions: {
+          industries: [],
+          departments: [],
+          companySizes: [],
+          regions: [],
+        },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
       revalidate: CONTENTFUL_REVALIDATE_SECONDS,
@@ -105,6 +126,7 @@ interface FilterSectionProps {
   options: readonly string[];
   selected: string[];
   onChange: (selected: string[]) => void;
+  defaultOpen?: boolean;
 }
 
 function FilterSection({
@@ -112,6 +134,7 @@ function FilterSection({
   options,
   selected,
   onChange,
+  defaultOpen = false,
 }: FilterSectionProps) {
   const handleToggle = useCallback(
     (option: string, checked: boolean) => {
@@ -126,17 +149,25 @@ function FilterSection({
 
   return (
     <div className="mb-6">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
-      <div className="flex flex-col gap-2">
-        {options.map((option) => (
-          <FilterCheckbox
-            key={option}
-            label={option}
-            checked={selected.includes(option)}
-            onChange={(checked) => handleToggle(option, checked)}
-          />
-        ))}
-      </div>
+      <CollapsibleComponent
+        rootProps={{ defaultOpen }}
+        triggerProps={{
+          label: title,
+          variant: "secondary",
+        }}
+        contentChildren={
+          <div className="flex flex-col gap-2">
+            {options.map((option) => (
+              <FilterCheckbox
+                key={option}
+                label={option}
+                checked={selected.includes(option)}
+                onChange={(checked) => handleToggle(option, checked)}
+              />
+            ))}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -172,10 +203,23 @@ export default function CustomerStoriesListing({
     return Array.isArray(param) ? param : [param];
   }, [router.query.size]);
 
+  const selectedRegions = useMemo(() => {
+    const param = router.query.region;
+    if (!param) {
+      return [];
+    }
+    return Array.isArray(param) ? param : [param];
+  }, [router.query.region]);
+
   // Scroll to top when filters change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [selectedIndustries, selectedDepartments, selectedCompanySizes]);
+  }, [
+    selectedIndustries,
+    selectedDepartments,
+    selectedCompanySizes,
+    selectedRegions,
+  ]);
 
   // Update URL with new filters
   const updateFilters = useCallback(
@@ -219,14 +263,27 @@ export default function CustomerStoriesListing({
       ) {
         return false;
       }
+      if (
+        selectedRegions.length > 0 &&
+        !story.region.some((r) => selectedRegions.includes(r))
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [stories, selectedIndustries, selectedDepartments, selectedCompanySizes]);
+  }, [
+    stories,
+    selectedIndustries,
+    selectedDepartments,
+    selectedCompanySizes,
+    selectedRegions,
+  ]);
 
   const hasActiveFilters =
     selectedIndustries.length > 0 ||
     selectedDepartments.length > 0 ||
-    selectedCompanySizes.length > 0;
+    selectedCompanySizes.length > 0 ||
+    selectedRegions.length > 0;
 
   const clearAllFilters = useCallback(() => {
     void router.push({ pathname: router.pathname }, undefined, {
@@ -279,6 +336,14 @@ export default function CustomerStoriesListing({
               </div>
 
               <FilterSection
+                title="Department"
+                options={filterOptions.departments}
+                selected={selectedDepartments}
+                onChange={(values) => updateFilters("department", values)}
+                defaultOpen={true}
+              />
+
+              <FilterSection
                 title="Industry"
                 options={filterOptions.industries}
                 selected={selectedIndustries}
@@ -286,10 +351,10 @@ export default function CustomerStoriesListing({
               />
 
               <FilterSection
-                title="Department"
-                options={filterOptions.departments}
-                selected={selectedDepartments}
-                onChange={(values) => updateFilters("department", values)}
+                title="Region"
+                options={filterOptions.regions}
+                selected={selectedRegions}
+                onChange={(values) => updateFilters("region", values)}
               />
 
               <FilterSection

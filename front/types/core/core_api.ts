@@ -1150,7 +1150,7 @@ export class CoreAPI {
     CoreAPIResponse<{
       text: string;
       total_characters: number;
-      offset: number;
+      offset: number | null;
       limit: number | null;
     }>
   > {

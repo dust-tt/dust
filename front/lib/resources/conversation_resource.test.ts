@@ -2856,3 +2856,221 @@ describe("markAsUnreadForOtherParticipants", () => {
     expect(participant3After.unread).toBe(true);
   });
 });
+
+describe("markAsActionRequired", () => {
+  let auth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+  let agents: LightAgentConfigurationType[];
+  let conversationId: string;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    agents = await setupTestAgents(workspace, user);
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(5)],
+    });
+    conversationId = conversation.sId;
+  });
+
+  afterEach(async () => {
+    await destroyConversation(auth, { conversationId });
+  });
+
+  it("should set actionRequired to true for the user's participant", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    // Create a participant first
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+
+    // Verify initial state is false
+    const participantBefore = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participantBefore, "Participant not found");
+    expect(participantBefore.actionRequired).toBe(false);
+
+    // Call markAsActionRequired
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should update 1 row
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify actionRequired is now true
+    const participantAfter = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participantAfter, "Participant not found after update");
+    expect(participantAfter.actionRequired).toBe(true);
+  });
+
+  it("should update actionRequired even when it's already true", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    // Create a participant with actionRequired already set to true
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Manually set actionRequired to true
+    await ConversationParticipantModel.update(
+      { actionRequired: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Call markAsActionRequired again
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should still update 1 row (even though value is already true)
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify actionRequired remains true
+    const participantAfter = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participantAfter, "Participant not found after update");
+    expect(participantAfter.actionRequired).toBe(true);
+  });
+
+  it("should only update the specific user's participant", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const workspace = auth.getNonNullableWorkspace();
+
+    await GroupResource.makeDefaultsForWorkspace(workspace);
+
+    const user2 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    const user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+
+    // Create participants for both users
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.upsertParticipation(user2Auth, {
+      conversation,
+      action: "posted",
+      user: user2Auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user2's actionRequired to false
+    await ConversationParticipantModel.update(
+      { actionRequired: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: workspace.id,
+          userId: user2Auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Call markAsActionRequired for user1
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should only update 1 row (user1's participant)
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify user1's actionRequired is true
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: workspace.id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found");
+    expect(participant1After.actionRequired).toBe(true);
+
+    // Verify user2's actionRequired remains false
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: workspace.id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found");
+    expect(participant2After.actionRequired).toBe(false);
+  });
+
+  it("should return 0 updated rows when participant does not exist", async () => {
+    // Don't create a participant - call markAsActionRequired directly
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should update 0 rows since participant doesn't exist
+      expect(result.value[0]).toBe(0);
+    }
+  });
+});

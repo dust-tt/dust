@@ -58,15 +58,14 @@ export interface BaseProgrammaticCostChartProps {
   setFilter: React.Dispatch<
     React.SetStateAction<Partial<Record<GroupByType, string[]>>>
   >;
-  selectedMonth: string;
-  setSelectedMonth: (month: string) => void;
+  selectedPeriod: string;
+  setSelectedPeriod: (period: string) => void;
   billingCycleStartDay: number;
 }
 
 type ChartDataPoint = {
-  date: string;
   timestamp: number;
-  totalInitialCreditsMicroUsd: number;
+  totalInitialCreditsMicroUsd?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -152,11 +151,15 @@ function GroupedTooltip(
     value: `$${(data.totalInitialCreditsMicroUsd / 1_000_000).toFixed(2)}`,
     colorClassName: COST_PALETTE.totalCredits,
   });
-
-  return <ChartTooltipCard title={data.date} rows={rows} />;
+  const date = new Date(data.timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+  });
+  return <ChartTooltipCard title={date} rows={rows} />;
 }
 
-export function formatMonth(date: Date): string {
+export function formatPeriod(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
@@ -172,8 +175,8 @@ export function BaseProgrammaticCostChart({
   setGroupBy,
   filter,
   setFilter,
-  selectedMonth,
-  setSelectedMonth,
+  selectedPeriod,
+  setSelectedPeriod,
   billingCycleStartDay,
 }: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
@@ -182,13 +185,17 @@ export function BaseProgrammaticCostChart({
   >({});
 
   const now = new Date();
-  const currentDate = new Date(selectedMonth);
+  // selectedPeriod is "YYYY-MM", so we parse it and create a UTC date.
+  // To get the correct billing cycle, we need a date within that cycle, so we set
+  // the day to billingCycleStartDay.
+  const [year, month] = selectedPeriod.split("-").map(Number);
+  const currentDate = new Date(Date.UTC(year, month - 1, billingCycleStartDay));
 
   // Calculate the billing cycle for the selected month
   const billingCycle = getBillingCycleFromDay(
     billingCycleStartDay,
     currentDate,
-    false
+    true
   );
 
   const formatDate = (date: Date) =>
@@ -196,17 +203,21 @@ export function BaseProgrammaticCostChart({
       month: "short",
       day: "numeric",
       year: "numeric",
+      timeZone: "UTC",
     });
 
   // Format period label based on billing cycle
-  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(billingCycle.cycleEnd)}`;
+  // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
+  const inclusiveEndDate = new Date(billingCycle.cycleEnd);
+  inclusiveEndDate.setDate(inclusiveEndDate.getDate() - 1);
+  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
   const nextPeriodDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
+    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
   );
   const previousPeriodDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
+    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
   );
 
   // Check if we can go to next period (not in the future)
@@ -214,12 +225,12 @@ export function BaseProgrammaticCostChart({
 
   // Navigate to next period
   const handleNextPeriod = () => {
-    setSelectedMonth(formatMonth(nextPeriodDate));
+    setSelectedPeriod(formatPeriod(nextPeriodDate));
   };
 
   // Navigate to previous period
   const handlePreviousPeriod = () => {
-    setSelectedMonth(formatMonth(previousPeriodDate));
+    setSelectedPeriod(formatPeriod(previousPeriodDate));
   };
 
   // Group by change
@@ -285,6 +296,7 @@ export function BaseProgrammaticCostChart({
       for (const group of availableGroupsArray) {
         newLabels[group.groupKey] = group.groupLabel;
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLabelCache((prev) => ({
         ...prev,
         [groupBy]: { ...prev[groupBy], ...newLabels },
@@ -335,25 +347,45 @@ export function BaseProgrammaticCostChart({
     };
   });
 
+  // Compute maximum cumulated cost among all groups.
+  const maxCumulatedCost = useMemo(() => {
+    return programmaticCostData?.points.reduce((max, point) => {
+      return Math.max(
+        max,
+        point.groups.reduce((max, group) => {
+          return Math.max(max, group.cumulatedCostMicroUsd ?? 0);
+        }, 0)
+      );
+    }, 0);
+  }, [programmaticCostData]);
+
+  const shouldShowTotalCredits = useMemo(() => {
+    // if all points in the future have total credits higher to twice the max cumulated cost, don't show total credits.
+    const futurePoints = points.filter(
+      (point) => point.timestamp > now.getTime()
+    );
+    return !futurePoints.every(
+      (point) => point.totalInitialCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
+    );
+  }, [points, maxCumulatedCost, now]);
+
   // Add Total Credits to legend (not clickable)
-  legendItems.push({
-    key: "totalCredits",
-    label: "Total Credits",
-    colorClassName: COST_PALETTE.totalCredits,
-    isActive: true,
-  });
+  if (shouldShowTotalCredits) {
+    legendItems.push({
+      key: "totalCredits",
+      label: "Total Credits",
+      colorClassName: COST_PALETTE.totalCredits,
+      isActive: true,
+    });
+  }
 
   // Transform points into chart data using labels from availableGroups
   const chartData = points.map((point) => {
-    const date = new Date(point.timestamp);
     const dataPoint: ChartDataPoint = {
-      date: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
       timestamp: point.timestamp,
-      totalInitialCreditsMicroUsd: point.totalInitialCreditsMicroUsd,
     };
+
+    dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
 
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
@@ -365,6 +397,13 @@ export function BaseProgrammaticCostChart({
   });
 
   const ChartComponent = groupBy ? AreaChart : LineChart;
+
+  // Filter to only show ticks for midnight dates
+  const midnightTicks = useMemo(() => {
+    return chartData
+      .map((point) => point.timestamp)
+      .filter((timestamp) => new Date(timestamp).getUTCHours() === 0);
+  }, [chartData]);
 
   // Check if any filters are applied
   const hasFilters = useMemo(() => {
@@ -531,13 +570,20 @@ export function BaseProgrammaticCostChart({
           className="stroke-border dark:stroke-border-night"
         />
         <XAxis
-          dataKey="date"
+          dataKey="timestamp"
           type="category"
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
+          tickLine={true}
           axisLine={false}
           tickMargin={8}
-          minTickGap={16}
+          minTickGap={8}
+          ticks={midnightTicks}
+          tickFormatter={(value) =>
+            new Date(value).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })
+          }
         />
         <YAxis
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
@@ -621,8 +667,20 @@ export function ProgrammaticCostChart({
     {}
   );
 
+  // Initialize selectedPeriod to a date within the current billing cycle.
+  // Using just formatPeriod(now) would create a date on the 1st of the month,
+  // which may fall in the previous billing cycle if billingCycleStartDay > 1.
+  // By using the billing cycle's start date, we ensure we're in the correct cycle.
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
+  const currentBillingCycle = getBillingCycleFromDay(
+    billingCycleStartDay,
+    now,
+    false
+  );
+
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    formatPeriod(currentBillingCycle.cycleStart)
+  );
 
   const {
     programmaticCostData,
@@ -630,7 +688,7 @@ export function ProgrammaticCostChart({
     isProgrammaticCostError,
   } = useWorkspaceProgrammaticCost({
     workspaceId,
-    selectedMonth,
+    selectedPeriod,
     billingCycleStartDay,
     groupBy,
     filter,
@@ -645,8 +703,8 @@ export function ProgrammaticCostChart({
       setGroupBy={setGroupBy}
       filter={filter}
       setFilter={setFilter}
-      selectedMonth={selectedMonth}
-      setSelectedMonth={setSelectedMonth}
+      selectedPeriod={selectedPeriod}
+      setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
     />
   );

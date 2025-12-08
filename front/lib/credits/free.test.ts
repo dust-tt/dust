@@ -7,8 +7,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
-  getCustomerStatus,
-  grantFreeCreditsOnSubscriptionRenewal,
+  getCustomerPaymentStatus,
+  grantFreeCreditsFromSubscriptionStateChange,
 } from "@app/lib/credits/free";
 import {
   getSubscriptionInvoices,
@@ -94,13 +94,14 @@ describe("checkCustomerStatus", () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([
         makeInvoice(NOW - MONTH_SECONDS * 0.5),
       ]);
-      const result = await getCustomerStatus(
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
       );
       expect(result).toBe("paying");
-      expect(getSubscriptionInvoices).toHaveBeenCalledWith("sub_123", {
+      expect(getSubscriptionInvoices).toHaveBeenCalledWith({
+        subscriptionId: "sub_123",
         status: "paid",
-        limit: 1,
+        createdSinceDate: expect.any(Date),
       });
     });
 
@@ -108,7 +109,7 @@ describe("checkCustomerStatus", () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([
         makeInvoice(NOW - MONTH_SECONDS * 2),
       ]);
-      const result = await getCustomerStatus(
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
       );
       expect(result).toBe("paying");
@@ -118,7 +119,7 @@ describe("checkCustomerStatus", () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([
         makeInvoice(NOW - MONTH_SECONDS * 0.5),
       ]);
-      const result = await getCustomerStatus(
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW, "trialing")
       );
       expect(result).toBe("paying");
@@ -128,7 +129,7 @@ describe("checkCustomerStatus", () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([
         makeInvoice(NOW - MONTH_SECONDS * 0.5),
       ]);
-      const result = await getCustomerStatus(makeSubscription(NOW, NOW));
+      const result = await getCustomerPaymentStatus(makeSubscription(NOW, NOW));
       expect(result).toBe("paying");
     });
   });
@@ -136,13 +137,13 @@ describe("checkCustomerStatus", () => {
   describe("trialing customers (no paid invoice but trialing or new)", () => {
     it("returns 'trialing' for new subscription without paid invoices", async () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
-      const result = await getCustomerStatus(makeSubscription(NOW, NOW));
+      const result = await getCustomerPaymentStatus(makeSubscription(NOW, NOW));
       expect(result).toBe("trialing");
     });
 
     it("returns 'trialing' for subscription started just under 1 month ago", async () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
-      const result = await getCustomerStatus(
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW - MONTH_SECONDS + 1)
       );
       expect(result).toBe("trialing");
@@ -150,7 +151,7 @@ describe("checkCustomerStatus", () => {
 
     it("returns 'trialing' for trialing subscription without paid invoices", async () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
-      const result = await getCustomerStatus(
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW - MONTH_SECONDS * 2, "trialing")
       );
       expect(result).toBe("trialing");
@@ -158,22 +159,32 @@ describe("checkCustomerStatus", () => {
   });
 
   describe("not eligible (no recent payment and not trialing/new)", () => {
-    it("returns null with old payment (more than 2 billing cycles ago)", async () => {
-      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
-        makeInvoice(NOW - MONTH_SECONDS * 2.5),
-      ]);
-      const result = await getCustomerStatus(
+    it("returns 'not_paying' when no recent invoice (Stripe filters old ones)", async () => {
+      // Stripe's createdSince filter would exclude old invoices, so mock returns empty
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
       );
-      expect(result).toBe(null);
+      expect(result).toBe("not_paying");
     });
 
-    it("returns null for old subscription with no paid invoices", async () => {
+    it("returns 'not_paying' for old subscription with no paid invoices", async () => {
       vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
-      const result = await getCustomerStatus(
+      const result = await getCustomerPaymentStatus(
         makeSubscription(NOW, NOW - MONTH_SECONDS * 2)
       );
-      expect(result).toBe(null);
+      expect(result).toBe("not_paying");
+    });
+  });
+
+  describe("enterprise subscriptions", () => {
+    it("returns 'paying' for enterprise subscriptions without checking invoices", async () => {
+      vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
+      );
+      expect(result).toBe("paying");
+      expect(getSubscriptionInvoices).not.toHaveBeenCalled();
     });
   });
 });
@@ -312,7 +323,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       invoiceOrLineItemId: idempotencyKey,
     });
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -329,7 +340,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       status: "active",
     });
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: oldSubscription,
     });
@@ -343,7 +354,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -365,7 +376,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -382,7 +393,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       start_date: NOW,
     });
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -397,7 +408,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -410,7 +421,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should create credit with correct expiration date (period end)", async () => {
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -425,7 +436,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should start credit immediately after creation", async () => {
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -438,7 +449,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should use correct idempotency key format", async () => {
     const subscription = makeFullSubscription({ id: "sub_abc123" });
 
-    await grantFreeCreditsOnSubscriptionRenewal({
+    await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -452,7 +463,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should verify isEnterpriseSubscription is called with correct subscription", async () => {
     const subscription = makeFullSubscription({ id: "sub_verify" });
 
-    await grantFreeCreditsOnSubscriptionRenewal({
+    await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });

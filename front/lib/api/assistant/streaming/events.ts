@@ -110,13 +110,14 @@ function isMessageEventParams(
   switch (eventType) {
     case "agent_action_success":
     case "agent_error":
-    case "tool_error":
     case "agent_generation_cancelled":
     case "agent_message_success":
     case "generation_tokens":
     case "tool_approve_execution":
+    case "tool_error":
     case "tool_notification":
     case "tool_params":
+    case "tool_personal_auth_required":
       return true;
     case "user_message_new":
     case "agent_message_new":
