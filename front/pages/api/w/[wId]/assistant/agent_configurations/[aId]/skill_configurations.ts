@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import { isGlobalAgentId, isString } from "@app/types";
 import type { SkillConfiguration } from "@app/types/skill_configuration";
 
 export interface GetAgentSkillsResponseBody {
@@ -45,6 +45,13 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      if (isGlobalAgentId(agent.sId)) {
+        // TODO(skills): Implement fetching skills for global agents
+        return res.status(200).json({
+          skills: [],
+        });
+      }
+
       const skills =
         await SkillConfigurationResource.fetchByAgentConfigurationId(
           auth,

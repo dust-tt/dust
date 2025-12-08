@@ -1,7 +1,7 @@
 import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetAgentSkillsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/skills";
+import type { GetAgentSkillsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurations";
 import type { LightWorkspaceType } from "@app/types";
 
 export function useAgentConfigurationSkills({
@@ -16,7 +16,7 @@ export function useAgentConfigurationSkills({
   const skillsFetcher: Fetcher<GetAgentSkillsResponseBody> = fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/skills`,
+    `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/skill_configurations`,
     skillsFetcher,
     { disabled }
   );
