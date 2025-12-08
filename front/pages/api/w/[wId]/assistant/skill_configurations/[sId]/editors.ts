@@ -5,9 +5,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types";
@@ -76,7 +76,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "not_found",
+        type: "skill_not_found",
         message: "The skill configuration was not found.",
       },
     });
@@ -173,16 +173,21 @@ async function handler(
 
       const { addEditorIds = [], removeEditorIds = [] } = bodyValidation.right;
 
-      const usersToAdd = await UserResource.fetchByIds(addEditorIds);
-      const usersToRemove = await UserResource.fetchByIds(removeEditorIds);
+      const usersToAddResources = await UserResource.fetchByIds(addEditorIds);
+      const usersToRemoveResources =
+        await UserResource.fetchByIds(removeEditorIds);
+      const usersToAdd = usersToAddResources.map((u) => u.toJSON());
+      const usersToRemove = usersToRemoveResources.map((u) => u.toJSON());
 
       if (
-        usersToAdd.length !== addEditorIds.length ||
-        usersToRemove.length !== removeEditorIds.length
+        usersToAddResources.length !== addEditorIds.length ||
+        usersToRemoveResources.length !== removeEditorIds.length
       ) {
-        const foundAddIds = new Set(usersToAdd.map((u) => u.sId));
+        const foundAddIds = new Set(usersToAddResources.map((u) => u.sId));
         const missingAddIds = addEditorIds.filter((id) => !foundAddIds.has(id));
-        const foundRemoveIds = new Set(usersToRemove.map((u) => u.sId));
+        const foundRemoveIds = new Set(
+          usersToRemoveResources.map((u) => u.sId)
+        );
         const missingRemoveIds = removeEditorIds.filter(
           (id) => !foundRemoveIds.has(id)
         );
@@ -209,22 +214,6 @@ async function handler(
                 type: "workspace_auth_error",
                 message:
                   "You are not authorized to add members to the skill editors group.",
-              },
-            });
-          case "invalid_id":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "Some of the passed ids are invalid.",
-              },
-            });
-          case "group_not_found":
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "group_not_found",
-                message: "Unable to find the editor group for the skill.",
               },
             });
           case "system_or_global_group":
@@ -268,22 +257,6 @@ async function handler(
                 type: "workspace_auth_error",
                 message:
                   "You are not authorized to remove members from the skill editors group.",
-              },
-            });
-          case "invalid_id":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "Some of the passed ids are invalid.",
-              },
-            });
-          case "group_not_found":
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "group_not_found",
-                message: "Unable to find the editor group for the skill.",
               },
             });
           case "system_or_global_group":
