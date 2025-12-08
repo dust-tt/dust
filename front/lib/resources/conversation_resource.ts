@@ -269,7 +269,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchParticipationMapForUser(
     auth: Authenticator,
     conversationIds?: number[]
-  ) {
+  ): Promise<Map<number, UserParticipation>> {
     const user = auth.user();
 
     assert(user, "User is expected to be authenticated");
