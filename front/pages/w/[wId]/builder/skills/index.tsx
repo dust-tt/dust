@@ -1,4 +1,4 @@
-import { Page } from "@dust-tt/sparkle";
+import { Button, Page, PlusIcon } from "@dust-tt/sparkle";
 import { PuzzleIcon } from "lucide-react";
 import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
@@ -11,7 +11,9 @@ import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -28,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("skills")) {
+  if (!featureFlags.includes("skills") || !isBuilder(owner)) {
     return {
       notFound: true,
     };
@@ -67,6 +69,14 @@ export default function WorkspaceSkills({
           {/* TODO(skills 2025-12-05): use the right icon */}
           <Page.Header title="Manage Skills" icon={PuzzleIcon} />
           <Page.Vertical gap="md" align="stretch">
+            <div className="flex justify-end">
+              <Button
+                label="Create skill"
+                href={getSkillBuilderRoute(owner.sId, "new")}
+                icon={PlusIcon}
+                tooltip="Create a new skill"
+              />
+            </div>
             <div className="flex flex-col pt-3">
               <SkillsTable skillsConfigurations={skillConfigurations} />
             </div>
