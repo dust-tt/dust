@@ -818,13 +818,10 @@ export async function editUserMessage(
             return isAgentMessageType(latestVersion);
           });
 
-        // Only create agent messages if there are no agent messages after the edited user message
-        const canCreateAgentMessages =
-          agentConfigurations.length > 0 && !hasAgentMessagesAfter;
-
         let agentMessages: AgentMessageType[] = [];
 
-        if (canCreateAgentMessages) {
+        // Only create agent messages if there are no agent messages after the edited user message
+        if (!hasAgentMessagesAfter) {
           const nextMessageRank =
             ((await Message.max<number | null, Message>("rank", {
               where: {
