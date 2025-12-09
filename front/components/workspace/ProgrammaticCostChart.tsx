@@ -379,7 +379,7 @@ export function BaseProgrammaticCostChart({
     );
     return !futurePoints.every(
       (point) =>
-        point.totalRemainingCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
+        point.totalRemainingCreditsMicroUsd > 4 * (maxCumulatedCost ?? 0)
     );
   }, [points, maxCumulatedCost, now, hasFilters]);
 
