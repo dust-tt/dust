@@ -87,9 +87,13 @@ const getTableColumns = () => {
 
 type SkillsTableProps = {
   skillsConfigurations: SkillConfigurationWithAuthorType[];
+  setShowDetails: (skill: SkillConfigurationWithAuthorType) => void;
 };
 
-export function SkillsTable({ skillsConfigurations }: SkillsTableProps) {
+export function SkillsTable({
+  skillsConfigurations,
+  setShowDetails,
+}: SkillsTableProps) {
   const { pagination, setPagination } = usePaginationFromUrl({});
 
   const rows: RowData[] = useMemo(
@@ -97,10 +101,12 @@ export function SkillsTable({ skillsConfigurations }: SkillsTableProps) {
       skillsConfigurations.map((skillConfiguration) => {
         return {
           ...skillConfiguration,
-          onClick: () => {},
+          onClick: () => {
+            setShowDetails(skillConfiguration);
+          },
         };
       }),
-    [skillsConfigurations]
+    [skillsConfigurations, setShowDetails]
   );
 
   if (rows.length === 0) {
