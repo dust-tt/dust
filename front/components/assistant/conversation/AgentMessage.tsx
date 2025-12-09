@@ -9,7 +9,6 @@ import {
   InteractiveImageGrid,
   Markdown,
   MoreIcon,
-  Separator,
   StopIcon,
   TrashIcon,
   useCopyToClipboard,
