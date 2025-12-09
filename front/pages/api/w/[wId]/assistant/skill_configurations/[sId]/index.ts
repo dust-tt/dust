@@ -11,12 +11,12 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import {
   getResourceIdFromSId,
   isResourceSId,
+  makeSId,
 } from "@app/lib/resources/string_ids";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
