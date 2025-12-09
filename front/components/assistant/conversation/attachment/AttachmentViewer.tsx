@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExternalLinkIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
@@ -164,11 +165,28 @@ export const AttachmentViewer = ({
     }
   };
 
+  const sourceUrl = attachmentCitation.sourceUrl;
+  const onClickOpenSource = () => {
+    if (sourceUrl) {
+      window.open(sourceUrl, "_blank");
+    }
+  };
+
   return (
     <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
       <DialogContent size="xl" height="lg">
         <DialogHeader>
           <DialogTitle>
+            {sourceUrl && (
+              <Button
+                onClick={onClickOpenSource}
+                icon={ExternalLinkIcon}
+                size="mini"
+                tooltip="Open document source"
+                variant="ghost"
+                className={"mr-2 align-middle"}
+              />
+            )}
             {canDownload && (
               <Button
                 onClick={onClickDownload}
