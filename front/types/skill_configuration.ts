@@ -15,6 +15,7 @@ export type SkillConfigurationType = {
   description: string;
   instructions: string;
   requestedSpaceIds: ModelId[];
+  tools: { mcpServerViewId: string }[];
 };
 
 export type SkillConfigurationWithAuthorType = SkillConfigurationType & {

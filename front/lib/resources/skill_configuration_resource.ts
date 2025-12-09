@@ -5,10 +5,14 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -43,15 +47,23 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly author?: Attributes<UserModel>;
+  readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
 
   constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
-    { author }: { author?: Attributes<UserModel> } = {}
+    {
+      author,
+      mcpServerConfigurations,
+    }: {
+      author?: Attributes<UserModel>;
+      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+    } = {}
   ) {
     super(SkillConfigurationModel, blob);
 
     this.author = author;
+    this.mcpServerConfigurations = mcpServerConfigurations ?? [];
   }
 
   static async makeNew(
@@ -83,7 +95,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     const { where, includes, ...otherOptions } = options;
 
-    const res = await this.model.findAll({
+    const skillConfigurations = await this.model.findAll({
       ...otherOptions,
       where: {
         ...where,
@@ -92,10 +104,42 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       include: includes,
     });
 
-    return res.map(
+    if (skillConfigurations.length === 0) {
+      return [];
+    }
+
+    const mcpServerConfigurations =
+      await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: {
+            [Op.in]: skillConfigurations.map((c) => c.id),
+          },
+        },
+      });
+
+    const mcpServerConfigsBySkillId = new Map<
+      number,
+      Attributes<SkillMCPServerConfigurationModel>[]
+    >();
+    for (const config of mcpServerConfigurations) {
+      const existing = mcpServerConfigsBySkillId.get(
+        config.skillConfigurationId
+      );
+      if (existing) {
+        existing.push(config.get());
+      } else {
+        mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
+          config.get(),
+        ]);
+      }
+    }
+
+    return skillConfigurations.map(
       (c) =>
         new this(this.model, c.get(), {
           author: c.author?.get(),
+          mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
         })
     );
   }
@@ -199,6 +243,12 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   ): SkillConfigurationWithAuthorType;
   toJSON(this: SkillConfigurationResource): SkillConfigurationType;
   toJSON(): SkillConfigurationType | SkillConfigurationWithAuthorType {
+    const tools = this.mcpServerConfigurations.map((config) => ({
+      mcpServerViewId: makeSId("mcp_server_view", {
+        id: config.mcpServerViewId,
+        workspaceId: this.workspaceId,
+      }),
+    }));
     if (this.author) {
       return {
         sId: this.sId,
@@ -211,6 +261,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         description: this.description,
         instructions: this.instructions,
         requestedSpaceIds: this.requestedSpaceIds,
+        tools,
         author: {
           id: this.author.id,
           sId: this.author.sId,
@@ -236,6 +287,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       description: this.description,
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
+      tools,
     };
   }
 }

@@ -11,6 +11,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -20,6 +21,7 @@ import {
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
+import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -39,6 +41,7 @@ export default function SkillBuilder() {
       instructions: "",
       scope: "private",
       editors: [user],
+      tools: [],
     },
   });
 
@@ -106,6 +109,9 @@ export default function SkillBuilder() {
               <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
                 <SkillBuilderDescriptionSection />
                 <SkillBuilderInstructionsSection />
+                <MCPServerViewsProvider owner={owner}>
+                  <SkillBuilderToolsSection />
+                </MCPServerViewsProvider>
                 <SkillBuilderSettingsSection />
               </div>
             </ScrollArea>
