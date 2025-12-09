@@ -34,7 +34,7 @@ import { Err, Ok, redactString, removeNulls } from "@app/types";
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
   extends ReadonlyAttributesType<RemoteMCPServerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

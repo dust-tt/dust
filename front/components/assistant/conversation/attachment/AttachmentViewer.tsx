@@ -74,7 +74,7 @@ export const AttachmentViewer = ({
     owner,
     config: {
       // Only fetch if we are on text, as for audio we use the processed content, which is the transcript
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
       disabled: isAudio || !viewerOpen || !shouldFetchFromServer,
     },
   });

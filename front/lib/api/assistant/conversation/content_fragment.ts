@@ -216,7 +216,6 @@ export async function getContentFragmentBlob(
     if (!isSupportedContentNodeFragmentContentType(contentNode.mimeType)) {
       return new Err(
         new Error(
-          // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
           "Unsupported content node fragment mime type: " + contentNode.mimeType
         )
       );

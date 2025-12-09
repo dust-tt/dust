@@ -74,7 +74,7 @@ export async function runAgentLoopWorker() {
       // modules that are not available in Temporal environment.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },

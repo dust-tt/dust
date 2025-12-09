@@ -64,7 +64,7 @@ export async function getTopologicalOrder(
 
   // Step 4a: Find all nodes with 0 in-degree.
   const queue: string[] = Object.entries(inDegree)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     .filter(([_, deg]) => deg === 0)
     .map(([tbl]) => tbl);
 

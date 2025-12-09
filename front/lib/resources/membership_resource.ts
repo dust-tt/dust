@@ -53,7 +53,7 @@ type MembershipsWithTotal = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

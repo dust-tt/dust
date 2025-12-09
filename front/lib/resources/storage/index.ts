@@ -9,7 +9,7 @@ import { isDevelopment } from "@app/types";
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
 // The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const types = require("pg").types;
 
 const acquireAttempts = new WeakMap();

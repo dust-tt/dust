@@ -1,4 +1,3 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type {
   MCPErrorEvent,
   MCPParamsEvent,

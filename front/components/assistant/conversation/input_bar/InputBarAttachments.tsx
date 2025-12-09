@@ -117,7 +117,6 @@ export function InputBarAttachments({
           spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
 
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
         const visual = isWebsiteOrFolder ? (
           <Icon visual={logo} size="md" />

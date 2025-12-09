@@ -62,7 +62,6 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to list drives")
           );
         }
@@ -190,7 +189,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         } catch (err) {
           const error = normalizeError(err);
           return new Err(
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(error.message || "Failed to search files", {
               cause: error,
             })
@@ -340,7 +338,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         } catch (err) {
           return new Err(
             new MCPError(
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to get file content"
             )
           );

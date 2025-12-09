@@ -38,9 +38,8 @@ export default defineConfig(
 
   // Global settings
   {
-    // to enable
     linterOptions: {
-      reportUnusedDisableDirectives: "off",
+      reportUnusedDisableDirectives: "error",
     },
     languageOptions: {
       parserOptions: {

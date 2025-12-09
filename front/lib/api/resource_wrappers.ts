@@ -170,7 +170,6 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
   ) => {
     const { spaceId } = req.query;
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (spaceId || options.space) {
       // Handling the case where `spaceId` is undefined to keep support for the
       // legacy endpoint for v1 routes (global space assumed in that case).

@@ -90,10 +90,9 @@ export function rewriteContentForModel(
     const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;
     if (text) {
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       text += `\n`;
     }
-    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+
     text += xml;
     return {
       type: "text",

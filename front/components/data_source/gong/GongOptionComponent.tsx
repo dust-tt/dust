@@ -123,7 +123,7 @@ export function GongOptionComponent({
       sendNotification({
         type: "error",
         title: "Failed to update Gong configuration",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
         description: normalizeError(err).message || "An unknown error occurred",
       });
     }

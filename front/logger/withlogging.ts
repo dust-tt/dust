@@ -151,7 +151,6 @@ export function withLogging<T>(
           ...(error.stack
             ? {
                 error: {
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   message: error.message || "unknown",
                   stack: error.stack,
                 },

@@ -59,7 +59,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     if (res._getStatusCode() !== 200) {
       // Help debugging in CI-like environments
-      // eslint-disable-next-line no-console
+
       console.error("Handler error response:", res._getJSONData());
     }
 

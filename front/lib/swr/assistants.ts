@@ -714,7 +714,6 @@ export function useUpdateUserFavorite({
         sendNotification({
           title: `Error updating agent list.`,
           description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             normalizeError(error).message || "An unknown error occurred",
           type: "error",
         });

@@ -319,7 +319,6 @@ export function useInfiniteDataSourceViewContentNodes({
       (_pageIndex, previousPageData) => {
         // If we reached the end, stop fetching
         if (
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           (previousPageData && !previousPageData.nextPageCursor) ||
           !dataSourceView
         ) {

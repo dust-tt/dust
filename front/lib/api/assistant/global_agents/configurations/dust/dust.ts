@@ -437,7 +437,6 @@ function _getDustLikeGlobalAgent(
   };
 
   if (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (settings && settings.status === "disabled_by_admin") ||
     !modelConfiguration
   ) {

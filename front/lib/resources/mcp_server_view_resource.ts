@@ -54,7 +54,7 @@ import {
 } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerViewResource
   extends ReadonlyAttributesType<MCPServerViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

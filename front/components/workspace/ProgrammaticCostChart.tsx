@@ -296,7 +296,7 @@ export function BaseProgrammaticCostChart({
       for (const group of availableGroupsArray) {
         newLabels[group.groupKey] = group.groupLabel;
       }
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setLabelCache((prev) => ({
         ...prev,
         [groupBy]: { ...prev[groupBy], ...newLabels },

@@ -7,7 +7,6 @@ export type AppVisibility = "private" | "deleted";
 export const APP_NAME_REGEXP = /^[a-zA-Z0-9_-]{1,64}$/;
 
 export type BlockRunConfig = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 };
 
@@ -26,7 +25,7 @@ export type AppType = {
 export type SpecificationBlockType = {
   type: BlockType;
   name: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   spec: any;
   config: BlockRunConfig;
   indent: number | null;

@@ -71,7 +71,6 @@ export const TagsSelector = ({
   };
 
   const triggerSuggestions = async () => {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!onSuggestTags || isSuggestLoading || !instructions) {
       return;
     }
