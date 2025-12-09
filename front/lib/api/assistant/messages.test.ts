@@ -11,7 +11,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { AgentMessageType, LightAgentConfigurationType } from "@app/types";
+import type {
+  AgentMessageType,
+  LightAgentConfigurationType,
+  UserMessageType,
+} from "@app/types";
 
 describe("batchRenderMessages", () => {
   let auth: Authenticator;
@@ -233,6 +237,112 @@ describe("batchRenderMessages", () => {
           (m) => m.type === "agent_message"
         );
         expect(renderedAgentMessage).toBeDefined();
+      }
+    });
+  });
+
+  describe("user context updates", () => {
+    it("should update user context when user is updated", async () => {
+      // Create a conversation with a user message
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get the user from auth
+      const user = auth.user();
+      expect(user).not.toBeNull();
+      if (!user) {
+        throw new Error("User should be available");
+      }
+
+      // Get all messages from the conversation
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      // Find the user message
+      const userMessageModel = allMessages.find((m) => !!m.userMessage);
+      expect(userMessageModel).toBeDefined();
+      expect(userMessageModel?.userMessage?.userId).toBe(user.id);
+
+      // Update user information
+      const newUsername = "updated_username";
+      const newFirstName = "Updated";
+      const newLastName = "Name";
+      const newEmail = "updated@example.com";
+      const newImageUrl = "https://example.com/new-avatar.png";
+
+      await user.updateInfo(
+        newUsername,
+        newFirstName,
+        newLastName,
+        newEmail,
+        user.workOSUserId
+      );
+      await user.updateImage(newImageUrl);
+
+      // Render messages - the user context should reflect the updated user data
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [userMessageModel!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedUserMessage = renderedMessages.find(
+          (m) => m.type === "user_message"
+        ) as UserMessageType | undefined;
+
+        expect(renderedUserMessage).toBeDefined();
+        if (renderedUserMessage) {
+          // Verify that the user context has been updated with the latest user data
+          expect(renderedUserMessage.context.username).toBe(newUsername);
+          expect(renderedUserMessage.context.fullName).toBe(
+            `${newFirstName} ${newLastName}`
+          );
+          expect(renderedUserMessage.context.email).toBe(newEmail);
+          expect(renderedUserMessage.context.profilePictureUrl).toBe(
+            newImageUrl
+          );
+
+          // Verify that the user object itself is also updated
+          expect(renderedUserMessage.user).not.toBeNull();
+          if (renderedUserMessage.user) {
+            expect(renderedUserMessage.user.username).toBe(newUsername);
+            expect(renderedUserMessage.user.fullName).toBe(
+              `${newFirstName} ${newLastName}`
+            );
+            expect(renderedUserMessage.user.email).toBe(newEmail);
+            expect(renderedUserMessage.user.image).toBe(newImageUrl);
+          }
+        }
       }
     });
   });

@@ -1037,6 +1037,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         contentFragmentId: { [Op.ne]: null },
         rank: { [Op.between]: [minRank, maxRank] },
+        visibility: { [Op.ne]: "deleted" },
       };
 
       const contentFragmentMessages = await MessageModel.findAll({
