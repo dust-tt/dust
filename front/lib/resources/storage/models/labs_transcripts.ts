@@ -14,7 +14,9 @@ export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsT
 
   declare connectionId: string | null;
   declare provider: LabsTranscriptsProviderType;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
+  declare agentConfigurationId: ForeignKey<
+    AgentConfiguration["sId"]
+  > | null;
   declare isActive: boolean;
 
   declare isDefaultWorkspaceConfiguration: boolean; // For default provider

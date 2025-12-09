@@ -1,13 +1,13 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentTablesQueryConfigurationTable extends WorkspaceAwareModel<AgentTablesQueryConfigurationTable> {
+export class AgentTablesQueryConfigurationTableModel extends WorkspaceAwareModel<AgentTablesQueryConfigurationTableModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -16,14 +16,14 @@ export class AgentTablesQueryConfigurationTable extends WorkspaceAwareModel<Agen
   declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare mcpServerConfigurationId: ForeignKey<
-    AgentMCPServerConfiguration["id"]
+    AgentMCPServerConfigurationModel["id"]
   >;
 
   declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
-AgentTablesQueryConfigurationTable.init(
+AgentTablesQueryConfigurationTableModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -68,31 +68,31 @@ AgentTablesQueryConfigurationTable.init(
 );
 
 // MCP server config <> Table config
-AgentMCPServerConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
+AgentMCPServerConfigurationModel.hasMany(AgentTablesQueryConfigurationTableModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentTablesQueryConfigurationTable.belongsTo(AgentMCPServerConfiguration, {
+AgentTablesQueryConfigurationTableModel.belongsTo(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
 // Config <> Data source.
-DataSourceModel.hasMany(AgentTablesQueryConfigurationTable, {
+DataSourceModel.hasMany(AgentTablesQueryConfigurationTableModel, {
   foreignKey: { allowNull: false, name: "dataSourceId" },
   onDelete: "RESTRICT",
 });
-AgentTablesQueryConfigurationTable.belongsTo(DataSourceModel, {
+AgentTablesQueryConfigurationTableModel.belongsTo(DataSourceModel, {
   as: "dataSource",
   foreignKey: { allowNull: false, name: "dataSourceId" },
 });
 
 // Config <> Data source view.
-DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
+DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTableModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
+AgentTablesQueryConfigurationTableModel.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
   foreignKey: { allowNull: false },
 });

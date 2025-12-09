@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -51,7 +51,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
 
   declare author: NonAttribute<UserModel>;
 
-  declare mcpServerConfigurations: NonAttribute<AgentMCPServerConfiguration[]>;
+  declare mcpServerConfigurations: NonAttribute<AgentMCPServerConfigurationModel[]>;
 }
 
 AgentConfiguration.init(
@@ -195,7 +195,7 @@ AgentConfiguration.belongsTo(UserModel, {
 /**
  * Global Agent settings
  */
-export class GlobalAgentSettings extends WorkspaceAwareModel<GlobalAgentSettings> {
+export class GlobalAgentSettingsModel extends WorkspaceAwareModel<GlobalAgentSettingsModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -203,7 +203,7 @@ export class GlobalAgentSettings extends WorkspaceAwareModel<GlobalAgentSettings
 
   declare status: GlobalAgentStatus;
 }
-GlobalAgentSettings.init(
+GlobalAgentSettingsModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -243,7 +243,7 @@ AgentConfiguration.belongsTo(TemplateModel, {
   foreignKey: { name: "templateId", allowNull: true },
 });
 
-export class AgentUserRelation extends WorkspaceAwareModel<AgentUserRelation> {
+export class AgentUserRelationModel extends WorkspaceAwareModel<AgentUserRelationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -254,7 +254,7 @@ export class AgentUserRelation extends WorkspaceAwareModel<AgentUserRelation> {
   declare userId: ForeignKey<UserModel["id"]>;
 }
 
-AgentUserRelation.init(
+AgentUserRelationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -291,10 +291,10 @@ AgentUserRelation.init(
   }
 );
 
-UserModel.hasMany(AgentUserRelation, {
+UserModel.hasMany(AgentUserRelationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentUserRelation.belongsTo(UserModel, {
+AgentUserRelationModel.belongsTo(UserModel, {
   foreignKey: { allowNull: false },
 });

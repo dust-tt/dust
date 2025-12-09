@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { Ok } from "@app/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -30,7 +30,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const enabledFlags = await FeatureFlag.findAll({
+    const enabledFlags = await FeatureFlagModel.findAll({
       where: {
         workspaceId: workspace.id,
       },
@@ -60,7 +60,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const existingFlags = await FeatureFlag.findAll({
+    const existingFlags = await FeatureFlagModel.findAll({
       where: {
         workspaceId: workspace.id,
       },
@@ -76,13 +76,13 @@ export const toggleFeatureFlagPlugin = createPlugin({
       .filter((flag) => !featureFlags.includes(flag.name))
       .map((flag) => flag.name);
 
-    await FeatureFlag.bulkCreate(
+    await FeatureFlagModel.bulkCreate(
       toAdd.map((feature) => ({
         workspaceId: workspace.id,
         name: feature as WhitelistableFeature,
       }))
     );
-    await FeatureFlag.destroy({
+    await FeatureFlagModel.destroy({
       where: {
         workspaceId: workspace.id,
         name: toRemove,

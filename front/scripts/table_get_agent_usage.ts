@@ -3,9 +3,9 @@ import { Op } from "sequelize";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -59,7 +59,7 @@ makeScript(
     // console.log(tableRes.value.table.parents);
 
     // Find all data source search
-    const dsConfigs = await AgentDataSourceConfiguration.findAll({
+    const dsConfigs = await AgentDataSourceConfigurationModel.findAll({
       where: {
         dataSourceId: dataSource.id,
         workspaceId: owner.id,
@@ -69,7 +69,7 @@ makeScript(
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           required: true,
           include: [
@@ -131,7 +131,7 @@ makeScript(
     });
 
     // Find all table query tool
-    const tableConfigs = await AgentTablesQueryConfigurationTable.findAll({
+    const tableConfigs = await AgentTablesQueryConfigurationTableModel.findAll({
       where: {
         dataSourceId: dataSource.id,
         workspaceId: owner.id,
@@ -139,7 +139,7 @@ makeScript(
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           required: true,
           include: [

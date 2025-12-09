@@ -13,7 +13,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -214,7 +214,7 @@ async function handler(
   const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
   const [app, providers, secrets] = await Promise.all([
     AppResource.fetchById(auth, req.query.aId as string),
-    Provider.findAll({
+    ProviderModel.findAll({
       where: {
         workspaceId: keyWorkspaceId,
       },

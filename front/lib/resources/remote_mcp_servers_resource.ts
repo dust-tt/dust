@@ -16,7 +16,7 @@ import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerConnection } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
@@ -208,7 +208,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       },
     });
 
-    await MCPServerConnection.destroy({
+    await MCPServerConnectionModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,

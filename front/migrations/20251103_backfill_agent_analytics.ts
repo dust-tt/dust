@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
-  AgentMessageFeedback,
+  AgentMessageFeedbackModel,
   ConversationModel,
   Message,
   UserMessage,
@@ -106,7 +106,7 @@ async function backfillAgentAnalytics(
           required: true,
           include: [
             {
-              model: AgentMessageFeedback,
+              model: AgentMessageFeedbackModel,
               as: "feedbacks",
               required: false,
               include: [

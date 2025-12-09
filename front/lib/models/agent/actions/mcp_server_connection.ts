@@ -7,7 +7,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { assertNever } from "@app/types";
 
-export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection> {
+export class MCPServerConnectionModel extends WorkspaceAwareModel<MCPServerConnectionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -25,7 +25,7 @@ export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection
   declare user: NonAttribute<UserModel>;
 }
 
-MCPServerConnection.init(
+MCPServerConnectionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -95,7 +95,7 @@ MCPServerConnection.init(
       },
     ],
     hooks: {
-      beforeValidate: (config: MCPServerConnection) => {
+      beforeValidate: (config: MCPServerConnectionModel) => {
         if (config.serverType) {
           switch (config.serverType) {
             case "internal":
@@ -131,19 +131,19 @@ MCPServerConnection.init(
   }
 );
 
-RemoteMCPServerModel.hasMany(MCPServerConnection, {
+RemoteMCPServerModel.hasMany(MCPServerConnectionModel, {
   foreignKey: { name: "remoteMCPServerId", allowNull: true },
   onDelete: "RESTRICT",
 });
-MCPServerConnection.belongsTo(RemoteMCPServerModel, {
+MCPServerConnectionModel.belongsTo(RemoteMCPServerModel, {
   foreignKey: { name: "remoteMCPServerId", allowNull: true },
 });
 
-UserModel.hasMany(MCPServerConnection, {
+UserModel.hasMany(MCPServerConnectionModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
-MCPServerConnection.belongsTo(UserModel, {
+MCPServerConnectionModel.belongsTo(UserModel, {
   as: "user",
   foreignKey: { name: "userId", allowNull: false },
 });

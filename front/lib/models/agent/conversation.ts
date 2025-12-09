@@ -355,7 +355,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
 
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
-  declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
+  declare feedbacks?: NonAttribute<AgentMessageFeedbackModel[]>;
 
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
@@ -451,7 +451,7 @@ AgentMessage.init(
   }
 );
 
-export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedback> {
+export class AgentMessageFeedbackModel extends WorkspaceAwareModel<AgentMessageFeedbackModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -469,7 +469,7 @@ export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedba
   declare user: NonAttribute<UserModel>;
 }
 
-AgentMessageFeedback.init(
+AgentMessageFeedbackModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -531,17 +531,17 @@ AgentMessageFeedback.init(
   }
 );
 
-AgentMessage.hasMany(AgentMessageFeedback, {
+AgentMessage.hasMany(AgentMessageFeedbackModel, {
   as: "feedbacks",
   onDelete: "RESTRICT",
 });
-UserModel.hasMany(AgentMessageFeedback, {
+UserModel.hasMany(AgentMessageFeedbackModel, {
   onDelete: "SET NULL",
 });
-AgentMessageFeedback.belongsTo(UserModel, {
+AgentMessageFeedbackModel.belongsTo(UserModel, {
   as: "user",
 });
-AgentMessageFeedback.belongsTo(AgentMessage, {
+AgentMessageFeedbackModel.belongsTo(AgentMessage, {
   as: "agentMessage",
 });
 

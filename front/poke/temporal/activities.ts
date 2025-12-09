@@ -8,23 +8,23 @@ import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentUserRelation,
-  GlobalAgentSettings,
+  AgentUserRelationModel,
+  GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
@@ -46,7 +46,7 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import {
@@ -211,34 +211,27 @@ export async function deleteAgentsActivity({
     },
   });
 
-  await GlobalAgentSettings.destroy({
+  await GlobalAgentSettingsModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
   });
   for (const agent of agents) {
-    const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentDataSourceConfiguration.destroy({
+    const mcpServerConfigurations =
+      await AgentMCPServerConfigurationModel.findAll({
+        where: {
+          agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
+        },
+      });
+    await AgentDataSourceConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
     });
-    await AgentTablesQueryConfigurationTable.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
-
-    await AgentReasoningConfiguration.destroy({
+    await AgentTablesQueryConfigurationTableModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
@@ -246,7 +239,15 @@ export async function deleteAgentsActivity({
       },
     });
 
-    await AgentChildAgentConfiguration.destroy({
+    await AgentReasoningConfigurationModel.destroy({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
+      },
+    });
+
+    await AgentChildAgentConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
@@ -254,14 +255,14 @@ export async function deleteAgentsActivity({
         workspaceId: workspace.id,
       },
     });
-    await AgentMCPServerConfiguration.destroy({
+    await AgentMCPServerConfigurationModel.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
       },
     });
 
-    await AgentUserRelation.destroy({
+    await AgentUserRelationModel.destroy({
       where: {
         agentConfiguration: agent.sId,
       },
@@ -316,7 +317,7 @@ export async function deleteAppsActivity({
 
   await KeyResource.deleteAllForWorkspace(auth);
 
-  await Provider.destroy({
+  await ProviderModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
@@ -613,16 +614,16 @@ export async function deleteWorkspaceActivity({
   await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
-  await AgentUserRelation.destroy({
+  await AgentUserRelationModel.destroy({
     where: { workspaceId: workspace.id },
   });
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
-  await DustAppSecret.destroy({
+  await DustAppSecretModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
   });
-  await FeatureFlag.destroy({
+  await FeatureFlagModel.destroy({
     where: {
       workspaceId: workspace.id,
     },

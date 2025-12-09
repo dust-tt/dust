@@ -2,8 +2,8 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configurations/index.test";
@@ -42,7 +42,7 @@ describe("MCP Internal Actions Server Utils", () => {
         await AgentMCPServerConfigurationFactory.create(auth, globalSpace);
 
       // Create a table configuration in a different workspace
-      const tableConfig = await AgentTablesQueryConfigurationTable.create({
+      const tableConfig = await AgentTablesQueryConfigurationTableModel.create({
         workspaceId: otherWorkspace.id,
         tableId: "test_table",
         dataSourceId: otherFolder.dataSource.id,
@@ -113,7 +113,7 @@ describe("MCP Internal Actions Server Utils", () => {
         await AgentMCPServerConfigurationFactory.create(auth, space);
 
       // Create a table configuration in the workspace
-      const tableConfig = await AgentTablesQueryConfigurationTable.create({
+      const tableConfig = await AgentTablesQueryConfigurationTableModel.create({
         workspaceId: workspace.id,
         tableId: "test_table",
         dataSourceId: folder.dataSource.id,
@@ -128,7 +128,7 @@ describe("MCP Internal Actions Server Utils", () => {
         otherWorkspace,
         otherSpace
       );
-      await AgentTablesQueryConfigurationTable.create({
+      await AgentTablesQueryConfigurationTableModel.create({
         workspaceId: otherWorkspace.id,
         tableId: "test_table",
         dataSourceId: otherFolder.dataSource.id,
@@ -197,7 +197,7 @@ describe("MCP Internal Actions Server Utils", () => {
         otherSpace
       );
 
-      const dataSourceConfig = await AgentDataSourceConfiguration.create({
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
         workspaceId: otherWorkspace.id,
         dataSourceId: otherFolder.dataSource.id,
         dataSourceViewId: otherFolder.id,
@@ -244,7 +244,7 @@ describe("MCP Internal Actions Server Utils", () => {
       const space = await SpaceFactory.global(workspace);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
-      const dataSourceConfig = await AgentDataSourceConfiguration.create({
+      const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
         workspaceId: workspace.id,
         dataSourceId: folder.dataSource.id,
         dataSourceViewId: folder.id,
@@ -260,7 +260,7 @@ describe("MCP Internal Actions Server Utils", () => {
         otherWorkspace,
         otherSpace
       );
-      await AgentDataSourceConfiguration.create({
+      await AgentDataSourceConfigurationModel.create({
         workspaceId: otherWorkspace.id,
         dataSourceId: otherFolder.dataSource.id,
         dataSourceViewId: otherFolder.id,

@@ -1,10 +1,10 @@
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { Mention } from "@app/lib/models/agent/conversation";
@@ -52,31 +52,32 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
     return true;
   }
 
-  const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-    },
-  });
+  const mcpServerConfigurations =
+    await AgentMCPServerConfigurationModel.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
 
-  await AgentDataSourceConfiguration.destroy({
-    where: {
-      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
-    },
-  });
-
-  await AgentTablesQueryConfigurationTable.destroy({
+  await AgentDataSourceConfigurationModel.destroy({
     where: {
       mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
     },
   });
 
-  await AgentReasoningConfiguration.destroy({
+  await AgentTablesQueryConfigurationTableModel.destroy({
     where: {
       mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
     },
   });
 
-  await AgentChildAgentConfiguration.destroy({
+  await AgentReasoningConfigurationModel.destroy({
+    where: {
+      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
+    },
+  });
+
+  await AgentChildAgentConfigurationModel.destroy({
     where: {
       mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
     },

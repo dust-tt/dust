@@ -13,8 +13,8 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -75,7 +75,7 @@ export function makeCoreSearchNodesFilters({
 
 async function fetchAgentDataSourceConfiguration(
   dataSourceConfigSId: string
-): Promise<Result<AgentDataSourceConfiguration, Error>> {
+): Promise<Result<AgentDataSourceConfigurationModel, Error>> {
   const sIdParts = getResourceNameAndIdFromSId(dataSourceConfigSId);
   if (!sIdParts) {
     return new Err(
@@ -91,7 +91,7 @@ async function fetchAgentDataSourceConfiguration(
   }
 
   const agentDataSourceConfiguration =
-    await AgentDataSourceConfiguration.findOne({
+    await AgentDataSourceConfigurationModel.findOne({
       where: {
         id: sIdParts.resourceModelId,
         workspaceId: sIdParts.workspaceModelId,
@@ -157,7 +157,7 @@ export async function fetchTableDataSourceConfigurations(
       }
 
       const agentTableConfiguration =
-        await AgentTablesQueryConfigurationTable.findOne({
+        await AgentTablesQueryConfigurationTableModel.findOne({
           where: {
             id: sIdParts.resourceModelId,
             workspaceId: auth.getNonNullableWorkspace().id,

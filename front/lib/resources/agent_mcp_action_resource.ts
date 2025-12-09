@@ -25,7 +25,7 @@ import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/config
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
-  AgentMCPActionOutputItem,
+  AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessage,
@@ -551,7 +551,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const outputItemsByActionId = _.groupBy(
-      await AgentMCPActionOutputItem.findAll({
+      await AgentMCPActionOutputItemModel.findAll({
         where: {
           workspaceId,
           agentMCPActionId: {

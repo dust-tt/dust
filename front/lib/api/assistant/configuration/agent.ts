@@ -25,16 +25,16 @@ import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentUserRelation,
+  AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
@@ -430,7 +430,7 @@ export async function createAgentConfiguration(
             transaction: t,
             limit: 1,
           }),
-          AgentUserRelation.findOne({
+          AgentUserRelationModel.findOne({
             where: {
               workspaceId: owner.id,
               agentConfiguration: agentConfigurationId,
@@ -1117,7 +1117,7 @@ export async function unsafeHardDeleteAgentConfiguration(
 
   await withTransaction(async (t) => {
     // Clean up MCP server configurations and their children first
-    const mcpConfigs = await AgentMCPServerConfiguration.findAll({
+    const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
         agentConfigurationId: agentConfiguration.id,
         workspaceId,
@@ -1128,7 +1128,7 @@ export async function unsafeHardDeleteAgentConfiguration(
     if (mcpConfigs.length) {
       const mcpIds = mcpConfigs.map((c) => c.id);
 
-      await AgentDataSourceConfiguration.destroy({
+      await AgentDataSourceConfigurationModel.destroy({
         where: {
           workspaceId,
           mcpServerConfigurationId: { [Op.in]: mcpIds },
@@ -1136,7 +1136,7 @@ export async function unsafeHardDeleteAgentConfiguration(
         transaction: t,
       });
 
-      await AgentTablesQueryConfigurationTable.destroy({
+      await AgentTablesQueryConfigurationTableModel.destroy({
         where: {
           workspaceId,
           mcpServerConfigurationId: { [Op.in]: mcpIds },
@@ -1144,7 +1144,7 @@ export async function unsafeHardDeleteAgentConfiguration(
         transaction: t,
       });
 
-      await AgentReasoningConfiguration.destroy({
+      await AgentReasoningConfigurationModel.destroy({
         where: {
           workspaceId,
           mcpServerConfigurationId: { [Op.in]: mcpIds },
@@ -1152,7 +1152,7 @@ export async function unsafeHardDeleteAgentConfiguration(
         transaction: t,
       });
 
-      await AgentChildAgentConfiguration.destroy({
+      await AgentChildAgentConfigurationModel.destroy({
         where: {
           workspaceId,
           mcpServerConfigurationId: { [Op.in]: mcpIds },
@@ -1160,7 +1160,7 @@ export async function unsafeHardDeleteAgentConfiguration(
         transaction: t,
       });
 
-      await AgentMCPServerConfiguration.destroy({
+      await AgentMCPServerConfigurationModel.destroy({
         where: {
           workspaceId,
           id: { [Op.in]: mcpIds },

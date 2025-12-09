@@ -85,7 +85,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
+      const planModels = await Plan.findAll({
+        order: [["createdAt", "ASC"]],
+      });
       const plans: PlanType[] = planModels.map((plan) =>
         renderPlanFromModel({ plan })
       );

@@ -3,12 +3,12 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import type { ModelId } from "@app/types";
 
 export const destroyMCPServerViewDependencies = async (
@@ -23,7 +23,7 @@ export const destroyMCPServerViewDependencies = async (
 ) => {
   // Delete all dependencies.
   const agentConfigurationIds = (
-    await AgentMCPServerConfiguration.findAll({
+    await AgentMCPServerConfigurationModel.findAll({
       attributes: ["id"],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -31,9 +31,9 @@ export const destroyMCPServerViewDependencies = async (
       },
       transaction,
     })
-  ).map((view: AgentMCPServerConfiguration) => view.id);
+  ).map((view: AgentMCPServerConfigurationModel) => view.id);
 
-  await AgentDataSourceConfiguration.destroy({
+  await AgentDataSourceConfigurationModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerConfigurationId: {
@@ -43,7 +43,7 @@ export const destroyMCPServerViewDependencies = async (
     transaction,
   });
 
-  await AgentTablesQueryConfigurationTable.destroy({
+  await AgentTablesQueryConfigurationTableModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerConfigurationId: {
@@ -53,7 +53,7 @@ export const destroyMCPServerViewDependencies = async (
     transaction,
   });
 
-  await AgentChildAgentConfiguration.destroy({
+  await AgentChildAgentConfigurationModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerConfigurationId: {
@@ -63,7 +63,7 @@ export const destroyMCPServerViewDependencies = async (
     transaction,
   });
 
-  await AgentMCPServerConfiguration.destroy({
+  await AgentMCPServerConfigurationModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerViewId: mcpServerViewId,

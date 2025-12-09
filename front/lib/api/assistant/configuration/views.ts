@@ -11,7 +11,7 @@ import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_age
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,
-  AgentUserRelation,
+  AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
@@ -237,7 +237,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       if (!userId) {
         return [];
       }
-      const relations = await AgentUserRelation.findAll({
+      const relations = await AgentUserRelationModel.findAll({
         where: {
           workspaceId: owner.id,
           userId,

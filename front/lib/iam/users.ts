@@ -3,13 +3,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import {
   AgentConfiguration,
-  AgentUserRelation,
+  AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import {
   ConversationParticipantModel,
   UserMessage,
 } from "@app/lib/models/agent/conversation";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -279,7 +279,7 @@ export async function mergeUserIdentities({
   await ContentFragmentModel.update(userIdValues, userIdOptions);
   // Migrate authorship of files from the secondary user to the primary user.
   await FileModel.update(userIdValues, userIdOptions);
-  await DustAppSecret.update(userIdValues, userIdOptions);
+  await DustAppSecretModel.update(userIdValues, userIdOptions);
   // Migrate authorship of agent memories from the secondary user to the primary user.
   await AgentMemoryModel.update(userIdValues, userIdOptions);
 
@@ -302,14 +302,14 @@ export async function mergeUserIdentities({
   await GroupMembershipModel.update(userIdValues, userIdOptions);
 
   // Delete all agent-user relations for the secondary user that already have a relation.
-  const agentConfigurations = await AgentUserRelation.findAll({
+  const agentConfigurations = await AgentUserRelationModel.findAll({
     where: {
       userId: primaryUser.id,
       workspaceId: workspaceId,
     },
     attributes: ["agentConfiguration"],
   });
-  await AgentUserRelation.destroy({
+  await AgentUserRelationModel.destroy({
     where: {
       userId: secondaryUser.id,
       agentConfiguration: agentConfigurations.map((p) => p.agentConfiguration),
@@ -317,7 +317,7 @@ export async function mergeUserIdentities({
     },
   });
   // Migrate agent-user relations from the secondary user to the primary user.
-  await AgentUserRelation.update(userIdValues, userIdOptions);
+  await AgentUserRelationModel.update(userIdValues, userIdOptions);
 
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);

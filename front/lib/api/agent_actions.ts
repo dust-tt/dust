@@ -2,7 +2,7 @@ import { Op, Sequelize } from "sequelize";
 
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -95,7 +95,7 @@ export async function getToolsUsage(
     ],
     include: [
       {
-        model: AgentMCPServerConfiguration,
+        model: AgentMCPServerConfigurationModel,
         as: "mcpServerConfigurations",
         attributes: [],
         required: true,

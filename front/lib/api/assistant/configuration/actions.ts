@@ -10,13 +10,13 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -54,7 +54,7 @@ export async function createAgentActionConfiguration(
       server: { name: serverName, description: serverDescription },
     } = mcpServerView.toJSON();
 
-    const mcpConfig = await AgentMCPServerConfiguration.create(
+    const mcpConfig = await AgentMCPServerConfigurationModel.create(
       {
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
@@ -145,9 +145,9 @@ async function createAgentDataSourcesConfiguration(
     mcpServerConfiguration,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
-    mcpServerConfiguration: AgentMCPServerConfiguration | null;
+    mcpServerConfiguration: AgentMCPServerConfigurationModel | null;
   }
-): Promise<AgentDataSourceConfiguration[]> {
+): Promise<AgentDataSourceConfigurationModel[]> {
   const owner = auth.getNonNullableWorkspace();
 
   // Although we have the capability to support multiple workspaces,
@@ -210,9 +210,12 @@ async function createAgentDataSourcesConfiguration(
     })
   );
 
-  return AgentDataSourceConfiguration.bulkCreate(agentDataSourceConfigBlobs, {
-    transaction: t,
-  });
+  return AgentDataSourceConfigurationModel.bulkCreate(
+    agentDataSourceConfigBlobs,
+    {
+      transaction: t,
+    }
+  );
 }
 
 async function createTableDataSourceConfiguration(
@@ -223,7 +226,7 @@ async function createTableDataSourceConfiguration(
     mcpConfig,
   }: {
     tableConfigurations: TableDataSourceConfiguration[];
-    mcpConfig: AgentMCPServerConfiguration;
+    mcpConfig: AgentMCPServerConfigurationModel;
   }
 ) {
   const owner = auth.getNonNullableWorkspace();
@@ -267,7 +270,7 @@ async function createTableDataSourceConfiguration(
     })
   );
 
-  return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigBlobs, {
+  return AgentTablesQueryConfigurationTableModel.bulkCreate(tableConfigBlobs, {
     transaction: t,
   });
 }
@@ -280,10 +283,10 @@ async function createChildAgentConfiguration(
     mcpConfig,
   }: {
     childAgentId: string;
-    mcpConfig: AgentMCPServerConfiguration;
+    mcpConfig: AgentMCPServerConfigurationModel;
   }
 ) {
-  return AgentChildAgentConfiguration.create(
+  return AgentChildAgentConfigurationModel.create(
     {
       agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,
@@ -302,11 +305,11 @@ async function createReasoningConfiguration(
     agentConfiguration,
   }: {
     reasoningModel: ReasoningModelConfigurationType;
-    mcpConfig: AgentMCPServerConfiguration;
+    mcpConfig: AgentMCPServerConfigurationModel;
     agentConfiguration: LightAgentConfigurationType;
   }
 ) {
-  return AgentReasoningConfiguration.create(
+  return AgentReasoningConfigurationModel.create(
     {
       sId: generateRandomModelSId(),
       mcpServerConfigurationId: mcpConfig.id,

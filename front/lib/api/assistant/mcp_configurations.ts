@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 
 export type AgentMcpConfigurationSummary = {
@@ -14,7 +14,7 @@ export async function listAgentMcpConfigurationsForAgent(params: {
 }): Promise<AgentMcpConfigurationSummary[]> {
   const { workspaceId, agentConfigurationSId } = params;
 
-  const mcpConfigurations = await AgentMCPServerConfiguration.findAll({
+  const mcpConfigurations = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId,
     },

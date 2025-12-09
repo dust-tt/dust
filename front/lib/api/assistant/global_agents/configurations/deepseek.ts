@@ -1,7 +1,7 @@
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationType } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
@@ -13,7 +13,7 @@ export function _getDeepSeekR1GlobalAgent({
   settings,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {

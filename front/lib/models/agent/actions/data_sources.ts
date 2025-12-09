@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -10,7 +10,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 /**
  * Configuration of Data Sources used for Retrieval, Process and MCP server actions.
  */
-export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataSourceConfiguration> {
+export class AgentDataSourceConfigurationModel extends WorkspaceAwareModel<AgentDataSourceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -27,13 +27,13 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   // AgentDataSourceConfiguration can be used by both the retrieval
   // and the MCP actions' configurations.
   declare mcpServerConfigurationId: ForeignKey<
-    AgentMCPServerConfiguration["id"]
+    AgentMCPServerConfigurationModel["id"]
   > | null;
 
   declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
-AgentDataSourceConfiguration.init(
+AgentDataSourceConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -96,7 +96,7 @@ AgentDataSourceConfiguration.init(
     ],
     sequelize: frontSequelize,
     hooks: {
-      beforeValidate: (dsConfig: AgentDataSourceConfiguration) => {
+      beforeValidate: (dsConfig: AgentDataSourceConfigurationModel) => {
         // Checking tags.
         if ((dsConfig.tagsIn === null) !== (dsConfig.tagsNotIn === null)) {
           throw new Error("Tags must be both set or both null");
@@ -124,32 +124,32 @@ AgentDataSourceConfiguration.init(
 );
 
 // MCP server config <> Data source config
-AgentMCPServerConfiguration.hasMany(AgentDataSourceConfiguration, {
+AgentMCPServerConfigurationModel.hasMany(AgentDataSourceConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
   onDelete: "RESTRICT",
 });
-AgentDataSourceConfiguration.belongsTo(AgentMCPServerConfiguration, {
+AgentDataSourceConfigurationModel.belongsTo(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
 });
 
 // Data source config <> Data source
-DataSourceModel.hasMany(AgentDataSourceConfiguration, {
+DataSourceModel.hasMany(AgentDataSourceConfigurationModel, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentDataSourceConfiguration.belongsTo(DataSourceModel, {
+AgentDataSourceConfigurationModel.belongsTo(DataSourceModel, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
 // Data source config <> Data source view
-DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
+DataSourceViewModel.hasMany(AgentDataSourceConfigurationModel, {
   as: "dataSourceView",
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
-AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
+AgentDataSourceConfigurationModel.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
   foreignKey: { allowNull: false },
 });

@@ -10,7 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Dataset } from "@app/lib/resources/storage/models/apps";
+import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { DatasetType, WithAPIErrorResponse } from "@app/types";
@@ -70,7 +70,7 @@ async function handler(
   }
 
   const [dataset] = await Promise.all([
-    Dataset.findOne({
+    DatasetModel.findOne({
       where: {
         workspaceId: owner.id,
         appId: app.id,
@@ -231,7 +231,7 @@ async function handler(
           },
         });
       }
-      await Dataset.destroy({
+      await DatasetModel.destroy({
         where: {
           workspaceId: owner.id,
           appId: app.id,

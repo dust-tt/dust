@@ -2,11 +2,11 @@ import chunk from "lodash/chunk";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessage,
-  AgentMessageFeedback,
+  AgentMessageFeedbackModel,
   Mention,
   Message,
   MessageReaction,
@@ -37,7 +37,7 @@ async function destroyActionsRelatedResources(
   );
 
   // Destroy MCP action output items.
-  await AgentMCPActionOutputItem.destroy({
+  await AgentMCPActionOutputItemModel.destroy({
     where: { agentMCPActionId: mcpActions.map((a) => a.id) },
   });
 
@@ -189,7 +189,7 @@ export async function destroyConversation(
     await AgentStepContentModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
-    await AgentMessageFeedback.destroy({
+    await AgentMessageFeedbackModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
     await AgentMessage.destroy({

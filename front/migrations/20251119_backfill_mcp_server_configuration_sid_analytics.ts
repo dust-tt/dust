@@ -5,7 +5,7 @@ import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessage,
   ConversationModel,
@@ -136,7 +136,7 @@ async function backfillMcpServerConfigurationSidForWorkspace(
       new Set(actions.map((a) => a.mcpServerConfigurationId))
     );
 
-    const serverConfigs = await AgentMCPServerConfiguration.findAll({
+    const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
         workspaceId: workspace.id,
         id: uniqueConfigIds,

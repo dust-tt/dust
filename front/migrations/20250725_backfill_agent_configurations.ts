@@ -5,7 +5,7 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -124,7 +124,7 @@ async function updateAgentsForWorkspace(
       workspaceId,
       status: "active",
       id: {
-        [Op.in]: await AgentMCPServerConfiguration.findAll({
+        [Op.in]: await AgentMCPServerConfigurationModel.findAll({
           where: {
             workspaceId,
             appId: { [Op.not]: null },
@@ -184,7 +184,7 @@ async function updateAgentsForWorkspace(
 
 async function getWorkspacesWithDustApps(): Promise<number[]> {
   // Find all workspaces that have agents with dust app configurations
-  const workspaceIds = await AgentMCPServerConfiguration.findAll({
+  const workspaceIds = await AgentMCPServerConfigurationModel.findAll({
     where: {
       appId: { [Op.not]: null },
     },

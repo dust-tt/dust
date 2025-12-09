@@ -13,7 +13,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerConnection } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -31,19 +31,19 @@ import {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerConnectionResource
-  extends ReadonlyAttributesType<MCPServerConnection> {}
+  extends ReadonlyAttributesType<MCPServerConnectionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class MCPServerConnectionResource extends BaseResource<MCPServerConnection> {
-  static model: ModelStatic<MCPServerConnection> = MCPServerConnection;
+export class MCPServerConnectionResource extends BaseResource<MCPServerConnectionModel> {
+  static model: ModelStatic<MCPServerConnectionModel> = MCPServerConnectionModel;
 
   readonly user: Attributes<UserModel>;
 
   constructor(
-    model: ModelStatic<MCPServerConnection>,
-    blob: Attributes<MCPServerConnection>,
+    model: ModelStatic<MCPServerConnectionModel>,
+    blob: Attributes<MCPServerConnectionModel>,
     { user }: { user: Attributes<UserModel> }
   ) {
-    super(MCPServerConnection, blob);
+    super(MCPServerConnectionModel, blob);
 
     this.user = user;
   }
@@ -51,7 +51,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
   static async makeNew(
     auth: Authenticator,
     blob: Omit<
-      CreationAttributes<MCPServerConnection>,
+      CreationAttributes<MCPServerConnectionModel>,
       "userId" | "workspaceId"
     >
   ) {
@@ -63,12 +63,12 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     }
 
     const user = auth.getNonNullableUser();
-    const server = await MCPServerConnection.create({
+    const server = await MCPServerConnectionModel.create({
       ...blob,
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: user.id,
     });
-    return new this(MCPServerConnection, server.get(), {
+    return new this(MCPServerConnectionModel, server.get(), {
       user,
     });
   }
@@ -77,13 +77,13 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   private static async baseFetch(
     auth: Authenticator,
-    { where, limit, order }: ResourceFindOptions<MCPServerConnection> = {}
+    { where, limit, order }: ResourceFindOptions<MCPServerConnectionModel> = {}
   ) {
     const connections = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
-      } as WhereOptions<MCPServerConnection>,
+      } as WhereOptions<MCPServerConnectionModel>,
       limit,
       order,
       include: [

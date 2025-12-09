@@ -248,7 +248,10 @@ Subscription.init(
 Subscription.addHook(
   "beforeCreate",
   "enforce_single_active_subscription",
-  async (subscription: Subscription, options: { transaction: Transaction }) => {
+  async (
+    subscription: Subscription,
+    options: { transaction: Transaction }
+  ) => {
     if (subscription.status === "active") {
       // Check if there's already an active subscription for the same workspace
       const existingActiveSubscription = await Subscription.findOne({

@@ -12,7 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Dataset } from "@app/lib/resources/storage/models/apps";
+import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { CoreAPIError, Result } from "@app/types";
@@ -105,7 +105,7 @@ async function updateDatasets(
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
     // Getting all existing datasets for this app
-    const existingDatasets = await Dataset.findAll({
+    const existingDatasets = await DatasetModel.findAll({
       where: {
         workspaceId: owner.id,
         appId: app.id,
@@ -140,7 +140,7 @@ async function updateDatasets(
             });
           }
         } else {
-          await Dataset.create({
+          await DatasetModel.create({
             name: datasetToImport.name,
             description: datasetToImport.description,
             appId: app.id,

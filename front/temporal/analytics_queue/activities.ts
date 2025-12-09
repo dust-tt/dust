@@ -4,8 +4,8 @@ import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMessageFeedback } from "@app/lib/models/agent/conversation";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessage,
   ConversationModel,
@@ -242,7 +242,7 @@ async function collectToolUsageFromMessage(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfiguration.findAll({
+  const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId,
       id: uniqueConfigIds,
@@ -306,7 +306,9 @@ async function storeToElasticsearch(
 }
 
 function getAgentMessageFeedbackAnalytics(
-  agentMessageFeedbacks: AgentMessageFeedbackResource[] | AgentMessageFeedback[]
+  agentMessageFeedbacks:
+    | AgentMessageFeedbackResource[]
+    | AgentMessageFeedbackModel[]
 ): AgentMessageAnalyticsFeedback[] {
   return agentMessageFeedbacks.map((agentMessageFeedback) => ({
     feedback_id: agentMessageFeedback.id,

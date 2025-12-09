@@ -1,4 +1,4 @@
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types";
@@ -11,7 +11,7 @@ async function enableFeatureFlag(
 ) {
   const { id: workspaceId, name } = workspace;
 
-  const existingFlag = await FeatureFlag.findOne({
+  const existingFlag = await FeatureFlagModel.findOne({
     where: {
       workspaceId,
       name: featureFlag,
@@ -25,7 +25,7 @@ async function enableFeatureFlag(
   }
 
   if (execute) {
-    await FeatureFlag.create({
+    await FeatureFlagModel.create({
       workspaceId,
       name: featureFlag satisfies WhitelistableFeature,
     });
@@ -46,7 +46,7 @@ async function disableFeatureFlag(
   const { id: workspaceId, name } = workspace;
 
   if (execute) {
-    const existingFlag = await FeatureFlag.findOne({
+    const existingFlag = await FeatureFlagModel.findOne({
       where: {
         workspaceId,
         name: featureFlag,

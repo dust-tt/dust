@@ -13,8 +13,8 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-  AgentMCPServerConfiguration,
+  AgentMCPActionOutputItemModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { AgentMessage } from "@app/lib/models/agent/conversation";
@@ -136,7 +136,7 @@ function createQueryOutputItem(
   // @ts-ignore
   processAction: AgentProcessAction,
   mcpActionId: ModelId
-): CreationAttributes<AgentMCPActionOutputItem> {
+): CreationAttributes<AgentMCPActionOutputItemModel> {
   const timeFrame = getTimeFrameUnit(processAction);
   const timeFrameAsString = timeFrame
     ? "the last " +
@@ -170,7 +170,7 @@ function createResultOutputItem(
   processAction: AgentProcessAction,
   mcpActionId: ModelId,
   auth: Authenticator
-): CreationAttributes<AgentMCPActionOutputItem> | null {
+): CreationAttributes<AgentMCPActionOutputItemModel> | null {
   if (!processAction.outputs || !processAction.jsonFileId) {
     return null;
   }
@@ -243,7 +243,7 @@ async function migrateSingleProcessAction(
     const mcpActionCreated = await AgentMCPActionModel.create(mcpAction.action);
 
     // Step 3: Create the MCP action output items.
-    const outputItems: CreationAttributes<AgentMCPActionOutputItem>[] = [];
+    const outputItems: CreationAttributes<AgentMCPActionOutputItemModel>[] = [];
 
     // Create the query resource.
     outputItems.push(createQueryOutputItem(processAction, mcpActionCreated.id));
@@ -258,7 +258,7 @@ async function migrateSingleProcessAction(
       outputItems.push(resultItem);
     }
 
-    await AgentMCPActionOutputItem.bulkCreate(outputItems);
+    await AgentMCPActionOutputItemModel.bulkCreate(outputItems);
   }
 }
 
@@ -321,7 +321,7 @@ async function migrateWorkspaceProcessActions(
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "mcpServerConfigurations",
         },
       ],

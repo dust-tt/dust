@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
@@ -109,7 +109,7 @@ async function updateReasoningEffortForWorkspace(
   }
 
   // Update agent reasoning configurations with "low"
-  const reasoningConfigsWithLow = await AgentReasoningConfiguration.findAll({
+  const reasoningConfigsWithLow = await AgentReasoningConfigurationModel.findAll({
     where: {
       workspaceId,
       reasoningEffort: "low",
