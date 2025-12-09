@@ -2,6 +2,7 @@ use axum::{
     extract::{Path, Query, State},
     response::Json,
 };
+use futures::stream::{iter, StreamExt};
 use hyper::http::StatusCode;
 use regex::Regex;
 use serde_json::json;
@@ -11,7 +12,7 @@ use tracing::{error, info};
 
 use crate::{
     api::api_state::APIState,
-    data_sources::data_source::{DataSource, Document},
+    data_sources::data_source::{Chunk, DataSource, Document},
     providers::embedder::EmbedderRequest,
 };
 use crate::{
@@ -25,6 +26,113 @@ use crate::{
     search_filter::SearchFilter,
     utils::{self, error_response, APIResponse},
 };
+
+struct ChunkWithDocument {
+    document_id: String,
+    timestamp: u64,
+    chunk: Chunk,
+}
+
+/// Apply global top-k sorting to documents from multiple data sources.
+/// Works at the chunk level: takes top K chunks across all documents, then reassembles documents.
+fn apply_global_top_k(
+    query: &str,
+    top_k: usize,
+    results: &[DataSourceSearchResultItem],
+) -> Vec<Document> {
+    let mut all_chunks: Vec<ChunkWithDocument> = Vec::new();
+
+    // Extract all chunks with their document metadata.
+    for result in results {
+        if result.error.is_none() {
+            for document in &result.documents {
+                for chunk in &document.chunks {
+                    all_chunks.push(ChunkWithDocument {
+                        document_id: document.document_id.clone(),
+                        timestamp: document.timestamp,
+                        chunk: chunk.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Sort chunks by score or timestamp (if no query) and truncate.
+    if !query.is_empty() {
+        all_chunks.sort_by(|a, b| {
+            let score_a = a.chunk.score.unwrap_or(0.0);
+            let score_b = b.chunk.score.unwrap_or(0.0);
+            score_b
+                .partial_cmp(&score_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+    } else {
+        all_chunks.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    }
+    all_chunks.truncate(top_k);
+
+    // Create document_id -> chunks mapping from top_k chunks.
+    let mut doc_chunks: HashMap<String, Vec<Chunk>> = HashMap::new();
+    for chunk_with_doc in all_chunks {
+        doc_chunks
+            .entry(chunk_with_doc.document_id)
+            .or_insert_with(Vec::new)
+            .push(chunk_with_doc.chunk);
+    }
+
+    // Build final documents using references and the chunk mapping.
+    let relevant_docs: Vec<&Document> = results
+        .iter()
+        .filter(|result| result.error.is_none())
+        .flat_map(|result| &result.documents)
+        .filter(|doc| doc_chunks.contains_key(&doc.document_id))
+        .collect();
+
+    let mut result: Vec<Document> = relevant_docs
+        .into_iter()
+        .map(|doc| {
+            let chunks = doc_chunks.remove(&doc.document_id).unwrap_or_default();
+            let chunk_count = chunks.len();
+
+            Document {
+                data_source_id: doc.data_source_id.clone(),
+                data_source_internal_id: doc.data_source_internal_id.clone(),
+                created: doc.created,
+                document_id: doc.document_id.clone(),
+                timestamp: doc.timestamp,
+                title: doc.title.clone(),
+                mime_type: doc.mime_type.clone(),
+                provider_visibility: doc.provider_visibility.clone(),
+                tags: doc.tags.clone(),
+                parent_id: doc.parent_id.clone(),
+                parents: doc.parents.clone(),
+                source_url: doc.source_url.clone(),
+                hash: doc.hash.clone(),
+                text_size: doc.text_size,
+                chunk_count,
+                chunks,
+                text: doc.text.clone(),
+                token_count: doc.token_count,
+            }
+        })
+        .collect();
+
+    // Sort by top chunk score or timestamp.
+    if !query.is_empty() {
+        result.sort_by(|a, b| {
+            let score_a = a.chunks.first().and_then(|c| c.score).unwrap_or(0.0);
+            let score_b = b.chunks.first().and_then(|c| c.score).unwrap_or(0.0);
+            score_b
+                .partial_cmp(&score_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+    } else {
+        result.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    }
+    result.truncate(top_k);
+
+    result
+}
 
 /// Register a new data source.
 
@@ -363,19 +471,22 @@ pub struct DataSourceSearchRequest {
 
 #[derive(serde::Deserialize)]
 pub struct DataSourcesSearchBulkPayload {
+    pub credentials: run::Credentials,
+    pub full_text: bool,
     pub query: String,
     pub searches: Vec<DataSourceSearchRequest>,
-    pub full_text: bool,
-    pub credentials: run::Credentials,
+    pub top_k: usize,
 }
 
 #[derive(serde::Serialize)]
 pub struct DataSourceSearchResultItem {
-    pub project_id: i64,
     pub data_source_id: String,
     pub documents: Vec<Document>,
     pub error: Option<String>,
+    pub project_id: i64,
 }
+
+const MAX_BULK_SEARCHES_PER_EMBEDDER: usize = 50;
 
 pub async fn data_sources_search_bulk(
     State(state): State<Arc<APIState>>,
@@ -400,17 +511,22 @@ pub async fn data_sources_search_bulk(
         }
     };
 
-    // Create a HashMap of data sources by ID for correct pairing.
-    let ds_map: HashMap<String, DataSource> = data_sources
+    // Create a HashMap of data sources by (project_id, data_source_id) for unique pairing.
+    let ds_map: HashMap<(i64, String), DataSource> = data_sources
         .into_iter()
-        .map(|ds| (ds.data_source_id().to_string(), ds))
+        .map(|ds| {
+            (
+                (ds.project().project_id(), ds.data_source_id().to_string()),
+                ds,
+            )
+        })
         .collect();
 
     // Group by embedder model_id with correct search_req <-> data_source pairing.
     let mut groups: HashMap<String, Vec<(DataSourceSearchRequest, DataSource)>> = HashMap::new();
 
     for search_req in payload.searches.into_iter() {
-        if let Some(ds) = ds_map.get(&search_req.data_source_id) {
+        if let Some(ds) = ds_map.get(&(search_req.project_id, search_req.data_source_id.clone())) {
             let model_id = ds.embedder_config().model_id.clone();
             groups
                 .entry(model_id)
@@ -524,7 +640,12 @@ pub async fn data_sources_search_bulk(
                     })
                     .collect();
 
-                Ok(futures::future::join_all(search_futures).await)
+                // Limit concurrency to avoid overwhelming Qdrant.
+                let results: Vec<_> = iter(search_futures)
+                    .buffer_unordered(MAX_BULK_SEARCHES_PER_EMBEDDER)
+                    .collect()
+                    .await;
+                Ok(results)
             }
         })
         .collect();
@@ -548,12 +669,33 @@ pub async fn data_sources_search_bulk(
         }
     }
 
+    // Check for errors in individual search results. If any search failed, fail the entire request.
+    let errors: Vec<&DataSourceSearchResultItem> =
+        all_results.iter().filter(|r| r.error.is_some()).collect();
+    if !errors.is_empty() {
+        let first_error = &errors[0];
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "search_failed",
+            &format!(
+                "Search failed for data source {}:{}: {}",
+                first_error.project_id,
+                first_error.data_source_id,
+                first_error.error.as_ref().unwrap()
+            ),
+            None,
+        );
+    }
+
+    // Apply global top_k and return documents.
+    let documents = apply_global_top_k(&payload.query, payload.top_k, &all_results);
+
     (
         StatusCode::OK,
         Json(APIResponse {
             error: None,
             response: Some(json!({
-                "results": all_results,
+                "documents": documents,
             })),
         }),
     )

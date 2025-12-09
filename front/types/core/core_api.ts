@@ -276,13 +276,6 @@ export interface CoreAPIDataSourceStatsResponse {
   overall_total_size: number;
 }
 
-interface CoreAPIBulkDataSourceSearch {
-  project_id: string;
-  data_source_id: string;
-  documents: CoreAPIDocument[];
-  error?: string;
-}
-
 export interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
   dataSourceId: string;
@@ -1068,9 +1061,10 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: query,
+          query,
           full_text: fullText,
-          credentials: credentials,
+          credentials,
+          top_k: topK,
           searches: searches.map((search) => ({
             project_id: parseInt(search.projectId),
             data_source_id: search.dataSourceId,
@@ -1084,26 +1078,19 @@ export class CoreAPI {
     );
 
     const result = await this._resultFromResponse<{
-      results: CoreAPIBulkDataSourceSearch[];
+      documents: CoreAPIDocument[];
     }>(response);
     if (result.isErr()) {
       return result;
     }
 
-    // Check for errors in individual search results.
-    const errors = result.value.results.filter((r) => r.error);
-    if (errors.length > 0) {
-      // Return the first error if any individual search failed.
-      return new Err({
-        code: "search_failed",
-        message: `Search failed: ${errors[0].error}`,
-      });
-    }
+    console.log("Bulk search returned documents:", result.value.documents);
 
-    // Extract documents from the bulk search results.
-    const allDocuments = result.value.results.flatMap((r) => r.documents);
-
-    const sortedDocuments = topKSortedDocuments(query, topK, allDocuments);
+    const sortedDocuments = topKSortedDocuments(
+      query,
+      topK,
+      result.value.documents
+    );
 
     return new Ok({
       documents: sortedDocuments,
