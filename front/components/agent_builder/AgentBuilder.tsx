@@ -39,6 +39,7 @@ import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
+import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -104,6 +105,14 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
+  const agentConfigurationSIdForSkills =
+    duplicateAgentId ?? agentConfiguration?.sId ?? null;
+  const { skills, isSkillsLoading } = useAgentConfigurationSkills({
+    owner,
+    agentConfigurationSId: agentConfigurationSIdForSkills ?? "",
+    disabled: !agentConfigurationSIdForSkills,
+  });
+
   const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
@@ -132,6 +141,14 @@ export default function AgentBuilder({
   const processedActions = useMemo(() => {
     return processActionsFromStorage(actions ?? emptyArray());
   }, [actions]);
+
+  const processedSkills = useMemo(() => {
+    return skills.map((skill) => ({
+      sId: skill.sId,
+      name: skill.name,
+      description: skill.description,
+    }));
+  }, [skills]);
 
   const agentSlackChannels = useMemo(() => {
     if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
@@ -187,6 +204,7 @@ export default function AgentBuilder({
     form.reset({
       ...currentValues,
       actions: processedActions,
+      skills: processedSkills,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
@@ -211,7 +229,9 @@ export default function AgentBuilder({
     triggers,
     isTriggersLoading,
     isActionsLoading,
+    isSkillsLoading,
     processedActions,
+    processedSkills,
     form,
     duplicateAgentId,
     user,
@@ -400,6 +420,7 @@ export default function AgentBuilder({
               }}
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               agentConfigurationId={agentConfiguration?.sId || null}
+              isSkillsLoading={isSkillsLoading}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}
             />

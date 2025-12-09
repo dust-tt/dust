@@ -82,6 +82,12 @@ const triggerSchema = z.discriminatedUnion("kind", [
   scheduleTriggerSchema,
 ]);
 
+const skillsSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  description: z.string(),
+});
+
 export type AgentBuilderWebhookTriggerType = z.infer<
   typeof webhookTriggerSchema
 >;
@@ -93,6 +99,7 @@ export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
+  skills: z.array(skillsSchema),
   actions: z.array(actionSchema),
   triggersToCreate: z.array(triggerSchema),
   triggersToUpdate: z.array(triggerSchema),
@@ -105,6 +112,7 @@ export const agentBuilderFormSchema = z.object({
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
+export type AgentBuilderSkillsType = z.infer<typeof skillsSchema>;
 export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
 
 // TODO: create types from schema

@@ -473,6 +473,9 @@ export async function submitAgentBuilderForm({
         reasoningEffort: formData.generationSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
+      skills: formData.skills.map((skill) => ({
+        sId: skill.sId,
+      })),
       actions: processedActions,
       templateId: null,
       tags: formData.agentSettings.tags,

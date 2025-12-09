@@ -186,6 +186,10 @@ const EditorSchema = t.type({
   sId: t.string,
 });
 
+const SkillSchema = t.type({
+  sId: t.string,
+});
+
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
@@ -203,6 +207,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     templateId: t.union([t.string, t.null, t.undefined]),
     tags: t.array(TagSchema),
     editors: t.array(EditorSchema),
+    skills: t.array(SkillSchema),
   }),
 });
 

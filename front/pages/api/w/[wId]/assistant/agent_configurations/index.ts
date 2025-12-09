@@ -22,10 +22,13 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -409,6 +412,38 @@ export async function createOrUpgradeAgentConfiguration({
     }
     actionConfigs.push(res.value);
   }
+
+  // Create skill associations
+  const owner = auth.getNonNullableWorkspace();
+  await concurrentExecutor(
+    assistant.skills,
+    async (skill) => {
+      // Validate the skill exists and belongs to this workspace
+      const skillResource = await SkillConfigurationResource.fetchBySId(
+        auth,
+        skill.sId
+      );
+      if (!skillResource) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfigurationRes.value.sId,
+            skillSId: skill.sId,
+          },
+          "Skill not found when creating agent configuration, skipping"
+        );
+        return;
+      }
+
+      await AgentSkillModel.create({
+        workspaceId: owner.id,
+        agentConfigurationId: agentConfigurationRes.value.id,
+        customSkillId: skillResource.id,
+        globalSkillId: null,
+      });
+    },
+    { concurrency: 10 }
+  );
 
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
