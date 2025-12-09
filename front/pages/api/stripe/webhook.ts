@@ -433,21 +433,11 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          // If the invoice is for a credit purchase, we don't mark the
-          // subscription as payment failing.
-          if (isCreditPurchaseInvoice(invoice)) {
-            return res.status(200).json({ success: true });
-          }
-
           // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have been retried.
           // Previously, there was an error in how we handled the cancellation of subscriptions.
           // This change ensures that we return a success status if the subscription is already marked as "ended".
           if (subscription.status === "ended") {
             return res.status(200).json({ success: true });
-          }
-
-          if (subscription.paymentFailingSince === null) {
-            await subscription.update({ paymentFailingSince: now });
           }
 
           // Send email to admins + customer email who subscribed in Stripe
@@ -461,80 +451,89 @@ async function handler(
           );
 
           if (!stripeSubscription) {
-            logger.warn(
+            logger.error(
               {
                 event,
+                stripeError: true,
                 stripeSubscriptionId: invoice.subscription,
               },
               "[Stripe Webhook] Stripe Subscription not found."
             );
           }
-          const owner = auth.workspace();
-          const subscriptionType = auth.subscription();
+          const isProCreditPurchaseInvoice =
+            stripeSubscription &&
+            isCreditPurchaseInvoice(invoice) &&
+            !isEnterpriseSubscription(stripeSubscription);
+          // When we received a failed payment for a pro credit purchase,
+          // We do NOT want to send an email to the admin telling them
+          // their subscription is going to be cancelled
+          // This is because credits have not been provisioned yet, and we
+          // will end-up voiding the invoice if it continues failing
+          if (isProCreditPurchaseInvoice) {
+            const result = await voidFailedProCreditPurchaseInvoice({
+              auth,
+              invoice,
+            });
+            if (result.isErr()) {
+              // For eng-oncall
+              // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+              // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+              // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+              // contact Stripe owners in case of doubt
+              logger.error(
+                {
+                  error: result.error,
+                  panic: true,
+                  stripeError: true,
+                  invoiceId: invoice.id,
+                },
+                "[Stripe Webhook] Error handling failed credit purchase"
+              );
+            } else if (result.value.voided) {
+              logger.warn(
+                { invoiceId: invoice.id },
+                "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+              );
+            }
+            // On the other hand credit purchase from enterprise are paid in arrears or with a 30days notice
+            // Either way, we want to go through the usual flow for payment failures
+          } else {
+            const owner = auth.workspace();
+            const subscriptionType = auth.subscription();
 
-          if (!owner || !subscriptionType) {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.payment_failed",
-              "Couldn't get owner or subscription from `auth`."
-            );
-          }
-          const { members } = await getMembers(auth, {
-            roles: ["admin"],
-            activeOnly: true,
-          });
-          const adminEmails = members.map((u) => u.email);
-          const customerEmail = invoice.customer_email;
-          if (customerEmail && !adminEmails.includes(customerEmail)) {
-            adminEmails.push(customerEmail);
-          }
-          const portalUrl = await createCustomerPortalSession({
-            owner,
-            subscription: subscriptionType,
-          });
-          for (const adminEmail of adminEmails) {
-            await sendAdminSubscriptionPaymentFailedEmail(
-              adminEmail,
-              portalUrl
-            );
-          }
+            if (!owner || !subscriptionType) {
+              return _returnStripeApiError(
+                req,
+                res,
+                "invoice.payment_failed",
+                "Couldn't get owner or subscription from `auth`."
+              );
+            }
 
-          if (stripeSubscription) {
-            const isProCreditPurchaseInvoice =
-              isCreditPurchaseInvoice(invoice) &&
-              !isEnterpriseSubscription(stripeSubscription);
+            if (subscription.paymentFailingSince === null) {
+              await subscription.update({ paymentFailingSince: now });
+            }
 
-            if (isProCreditPurchaseInvoice) {
-              const result = await voidFailedProCreditPurchaseInvoice({
-                auth,
-                invoice,
-              });
-              if (result.isErr()) {
-                // For eng-oncall
-                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
-                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
-                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
-                // contact Stripe owners in case of doubt
-                logger.error(
-                  {
-                    error: result.error,
-                    panic: true,
-                    stripeError: true,
-                    invoiceId: invoice.id,
-                  },
-                  "[Stripe Webhook] Error handling failed credit purchase"
-                );
-              } else if (result.value.voided) {
-                logger.warn(
-                  { invoiceId: invoice.id },
-                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
-                );
-                return res.status(200).json({ success: true });
-              }
+            const { members } = await getMembers(auth, {
+              roles: ["admin"],
+              activeOnly: true,
+            });
+            const adminEmails = members.map((u) => u.email);
+            const customerEmail = invoice.customer_email;
+            if (customerEmail && !adminEmails.includes(customerEmail)) {
+              adminEmails.push(customerEmail);
+            }
+            const portalUrl = await createCustomerPortalSession({
+              owner,
+              subscription: subscriptionType,
+            });
+            for (const adminEmail of adminEmails) {
+              await sendAdminSubscriptionPaymentFailedEmail(
+                adminEmail,
+                portalUrl
+              );
             }
           }
-
           break;
         case "charge.dispute.created":
           const dispute = event.data.object as Stripe.Dispute;
