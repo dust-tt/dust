@@ -21,7 +21,6 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -70,8 +69,7 @@ export const AgentInputBar = ({
       (m) =>
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
-        m.visibility !== "deleted" &&
-        !isHiddenMessage(m)
+        m.visibility !== "deleted"
     );
 
   const draftAgent = context.agentBuilderContext?.draftAgent;
