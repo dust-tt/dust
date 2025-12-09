@@ -83,7 +83,7 @@ const triggerSchema = z.discriminatedUnion("kind", [
 ]);
 
 const skillsSchema = z.object({
-  id: z.string(),
+  sId: z.string(),
   name: z.string(),
   description: z.string(),
 });

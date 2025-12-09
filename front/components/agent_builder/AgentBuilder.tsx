@@ -146,7 +146,7 @@ export default function AgentBuilder({
 
   const processedSkills = useMemo(() => {
     return skills.map((skill) => ({
-      id: skill.sId,
+      sId: skill.sId,
       name: skill.name,
       description: skill.description,
     }));

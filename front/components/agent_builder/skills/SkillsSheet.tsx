@@ -71,7 +71,7 @@ export function SkillsSheet({
   }, [open, selectedSkills]);
 
   const selectedSkillIds = useMemo(
-    () => new Set(localSelectedSkills.map((s) => s.id)),
+    () => new Set(localSelectedSkills.map((s) => s.sId)),
     [localSelectedSkills]
   );
 
@@ -90,14 +90,14 @@ export function SkillsSheet({
   const handleSkillToggle = useCallback(
     (skill: SkillConfigurationWithAuthorType) => {
       setLocalSelectedSkills((prev) => {
-        const isAlreadySelected = prev.some((s) => s.id === skill.sId);
+        const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
         if (isAlreadySelected) {
-          return prev.filter((s) => s.id !== skill.sId);
+          return prev.filter((s) => s.sId !== skill.sId);
         } else {
           return [
             ...prev,
             {
-              id: skill.sId,
+              sId: skill.sId,
               name: skill.name,
               description: skill.description,
             },
