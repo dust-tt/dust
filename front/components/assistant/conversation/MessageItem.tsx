@@ -14,6 +14,7 @@ import {
   getMessageDate,
   getMessageSId,
   isHandoverUserMessage,
+  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -145,7 +146,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             "max-w-4xl"
           )}
         >
-          {isUserMessage(data) && (
+          {isUserMessage(data) && !isHiddenMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
