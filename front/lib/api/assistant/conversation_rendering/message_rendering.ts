@@ -164,33 +164,39 @@ export async function renderAllMessages(
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
-      const steps = await getSteps(auth, {
-        model,
-        message: m,
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        onMissingAction,
-      });
+      if (m.visibility === "visible") {
+        const steps = await getSteps(auth, {
+          model,
+          message: m,
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          onMissingAction,
+        });
 
-      const agentMessages = renderAgentSteps(
-        steps,
-        m,
-        conversation,
-        !!excludeActions
-      );
-      messages.push(...agentMessages);
+        const agentMessages = renderAgentSteps(
+          steps,
+          m,
+          conversation,
+          !!excludeActions
+        );
+        messages.push(...agentMessages);
+      }
     } else if (isUserMessageType(m)) {
-      messages.push(renderUserMessage(m));
+      if (m.visibility === "visible") {
+        messages.push(renderUserMessage(m));
+      }
     } else if (isContentFragmentType(m)) {
-      const renderedContentFragment = await renderContentFragment(
-        auth,
-        m,
-        conversation,
-        model,
-        !!excludeImages
-      );
-      if (renderedContentFragment) {
-        messages.push(renderedContentFragment);
+      if (m.visibility === "visible") {
+        const renderedContentFragment = await renderContentFragment(
+          auth,
+          m,
+          conversation,
+          model,
+          !!excludeImages
+        );
+        if (renderedContentFragment) {
+          messages.push(renderedContentFragment);
+        }
       }
     } else {
       assertNever(m);

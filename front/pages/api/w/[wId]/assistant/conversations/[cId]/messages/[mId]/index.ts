@@ -4,6 +4,7 @@ import {
   softDeleteAgentMessage,
   softDeleteUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   batchRenderMessages,
   fetchMessageInConversation,
@@ -157,9 +158,20 @@ async function handler(
       const renderedMessage = renderRes.value[0];
 
       if (isUserMessageType(renderedMessage)) {
+        const conversationRes = await getConversation(auth, conversation.sId);
+
+        if (conversationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Unable to get the conversation.",
+            },
+          });
+        }
         const deleteResult = await softDeleteUserMessage(auth, {
           message: renderedMessage,
-          conversation: conversation.toJSON(),
+          conversation: conversationRes.value,
         });
         if (deleteResult.isErr()) {
           return apiError(req, res, {

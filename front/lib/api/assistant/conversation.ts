@@ -1,5 +1,6 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
+import { col } from "sequelize";
 
 import {
   getAgentConfiguration,
@@ -1217,7 +1218,7 @@ export async function softDeleteUserMessage(
     conversation,
   }: {
     message: UserMessageType;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationType;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
@@ -1235,6 +1236,11 @@ export async function softDeleteUserMessage(
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
+    const relatedContentFragments = await getRelatedContentFragments(
+      conversation,
+      message
+    );
+
     const userMessage = await createUserMessage(auth, {
       conversation,
       content: "deleted",
@@ -1245,6 +1251,24 @@ export async function softDeleteUserMessage(
       },
       transaction: t,
     });
+
+    if (relatedContentFragments.length > 0) {
+      await Message.update(
+        {
+          visibility: "deleted",
+          contentFragmentId: col("contentFragmentId"),
+        },
+        {
+          where: {
+            workspaceId: owner.id,
+            conversationId: conversation.id,
+            id: relatedContentFragments.map((cf) => cf.id),
+          },
+          transaction: t,
+        }
+      );
+    }
+
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     return userMessage;
