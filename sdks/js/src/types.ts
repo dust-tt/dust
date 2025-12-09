@@ -297,30 +297,32 @@ export function isSupportedAudioContentType(
   return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
 
-const UserMessageOriginSchema = FlexibleEnumSchema<
-  | "api"
-  | "cli"
-  | "cli_programmatic"
-  | "email"
-  | "excel"
-  | "extension"
-  | "github-copilot-chat"
-  | "gsheet"
-  | "make"
-  | "n8n"
-  | "powerpoint"
-  | "raycast"
-  | "slack"
-  | "slack_workflow"
-  | "teams"
-  | "transcript"
-  | "triggered_programmatic"
-  | "triggered"
-  | "web"
-  | "zapier"
-  | "zendesk"
-  | "onboarding_conversation"
->()
+const UserMessageOriginSchema = z
+  .enum([
+    "api",
+    "cli",
+    "cli_programmatic",
+    "email",
+    "excel",
+    "extension",
+    "github-copilot-chat",
+    "gsheet",
+    "make",
+    "n8n",
+    "powerpoint",
+    "raycast",
+    "slack",
+    "slack_workflow",
+    "teams",
+    "transcript",
+    "triggered_programmatic",
+    "triggered",
+    "web",
+    "zapier",
+    "zendesk",
+    "onboarding_conversation",
+  ])
+  .catch("api")
   .or(z.null())
   .or(z.undefined());
 
