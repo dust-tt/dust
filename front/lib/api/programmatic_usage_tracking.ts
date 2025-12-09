@@ -44,7 +44,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   triggered: "user",
   web: "user",
   zapier: "programmatic",
-  zendesk: "programmatic",
+  zendesk: "user",
   onboarding_conversation: "user",
 };
 
