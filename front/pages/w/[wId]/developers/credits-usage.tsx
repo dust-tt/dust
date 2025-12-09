@@ -247,9 +247,7 @@ function UsageSection({
     <div className="flex flex-col gap-6">
       {/* Usage Header */}
       <div className="flex items-center justify-between">
-        <Page.Vertical gap="xs">
-          <Page.H variant="h5">Available credits</Page.H>
-        </Page.Vertical>
+        <Page.H variant="h5">Available credits</Page.H>
         {billingCycle && (
           <Page.P variant="secondary">
             {formatDateShort(billingCycle.cycleStart)} →{" "}
@@ -278,7 +276,7 @@ function UsageSection({
           title="Free credits"
           consumed={creditsByType.free.consumed}
           total={creditsByType.free.total}
-          renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
+          renewalDate={formatRenewalDate(billingCycle?.cycleEnd.getTime() ?? null)}
         />
         <CreditCategoryBar
           title="Purchased credits"
