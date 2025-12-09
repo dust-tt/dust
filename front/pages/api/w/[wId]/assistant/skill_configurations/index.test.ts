@@ -2,17 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
-import type { SkillConfiguration } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
-import handler from "./skill_configurations";
+import handler from "./index";
 
-describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurations", () => {
+describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
   it("should return 200 with empty array when agent has no skills", async () => {
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
     });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -35,6 +39,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
     });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -72,7 +79,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
     expect(data.skills[0]).toHaveProperty("name");
     expect(data.skills[0]).toHaveProperty("description");
 
-    const skillNames = data.skills.map((s: SkillConfiguration) => s.name);
+    const skillNames = data.skills.map((s: SkillConfigurationType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -81,6 +88,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
     });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
 
     req.query = {
       ...req.query,
@@ -105,6 +115,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
       method: "GET",
     });
 
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
+
     req.query = {
       ...req.query,
       wId: workspace.sId,
@@ -122,6 +135,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
     });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
 
     // Use a global agent sId format
     req.query = {
@@ -142,6 +158,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
     const { req, res, workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
     });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -177,6 +196,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
         role,
       });
 
+      // Enable skills feature flag
+      await FeatureFlagFactory.basic("skills", workspace);
+
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
         workspace.sId
@@ -201,14 +223,36 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurat
       expect(data.skills[0].name).toBe(`Skill for ${role}`);
     }
   });
+
+  it("should return 400 when aId query param is missing", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
+
+    req.query = { ...req.query, wId: workspace.sId };
+    // aId is intentionally not set
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const data = res._getJSONData();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe("Invalid agent configuration ID.");
+  });
 });
 
-describe("Method Support /api/w/[wId]/assistant/agent_configurations/[aId]/skill_configurations", () => {
+describe("Method Support /api/w/[wId]/assistant/skill_configurations", () => {
   it("should return 405 for unsupported methods", async () => {
-    for (const method of ["POST", "PUT", "PATCH", "DELETE"] as const) {
+    for (const method of ["PUT", "PATCH", "DELETE"] as const) {
       const { req, res, workspace, user } = await createPrivateApiMockRequest({
         method,
       });
+
+      // Enable skills feature flag
+      await FeatureFlagFactory.basic("skills", workspace);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
@@ -225,7 +269,8 @@ describe("Method Support /api/w/[wId]/assistant/agent_configurations/[aId]/skill
       expect(data).toEqual({
         error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
     }
