@@ -20,6 +20,23 @@
         }
       },
       "args": []
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug sqlite worker",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=sqlite-worker",
+          "--manifest-path=${workspaceFolder}/Cargo.toml"
+        ],
+        "filter": {
+          "name": "sqlite-worker",
+          "kind": "bin"
+        }
+      },
+      "args": []
     }
   ]
 }
