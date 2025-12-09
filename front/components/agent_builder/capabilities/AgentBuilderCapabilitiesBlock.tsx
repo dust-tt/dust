@@ -11,7 +11,6 @@ import {
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
@@ -35,7 +34,6 @@ interface AgentBuilderCapabilitiesBlockProps {
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
 }: AgentBuilderCapabilitiesBlockProps) {
-  const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -233,7 +231,6 @@ export function AgentBuilderCapabilitiesBlock({
         presetActionData={knowledgeAction?.presetData}
       />
       <MCPServerViewsSheet
-        owner={owner}
         addTools={append}
         mode={dialogMode}
         onModeChange={setDialogMode}

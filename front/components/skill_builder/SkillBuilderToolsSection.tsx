@@ -13,7 +13,6 @@ import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
@@ -25,8 +24,6 @@ export function SkillBuilderToolsSection() {
   >({
     name: "tools",
   });
-  const { owner } = useSkillBuilderContext();
-
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
@@ -102,7 +99,6 @@ export function SkillBuilderToolsSection() {
       </div>
 
       <MCPServerViewsSheet
-        owner={owner}
         addTools={append}
         mode={sheetMode}
         onModeChange={setSheetMode}

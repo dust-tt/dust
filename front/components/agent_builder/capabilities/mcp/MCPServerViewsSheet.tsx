@@ -61,6 +61,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
+import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -69,7 +70,6 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
@@ -121,7 +121,6 @@ function isMCPActionWithConfiguration(
 }
 
 interface MCPServerViewsSheetProps {
-  owner: WorkspaceType;
   addTools: (action: AgentBuilderAction | AgentBuilderAction[]) => void;
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
@@ -133,7 +132,6 @@ interface MCPServerViewsSheetProps {
 }
 
 export function MCPServerViewsSheet({
-  owner,
   addTools,
   mode,
   onModeChange,
@@ -142,6 +140,7 @@ export function MCPServerViewsSheet({
   getAgentInstructions,
   filterMCPServerViews,
 }: MCPServerViewsSheetProps) {
+  const { owner } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
@@ -625,10 +624,7 @@ export function MCPServerViewsSheet({
       description: getInfoPageDescription(infoMCPServerView),
       icon: getInfoPageIcon(infoMCPServerView),
       content: infoMCPServerView ? (
-        <MCPServerInfoPage
-          infoMCPServerView={infoMCPServerView}
-          owner={owner}
-        />
+        <MCPServerInfoPage infoMCPServerView={infoMCPServerView} />
       ) : (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />
