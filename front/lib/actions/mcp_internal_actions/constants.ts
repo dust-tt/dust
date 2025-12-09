@@ -378,6 +378,7 @@ export const INTERNAL_MCP_SERVERS = {
       add_page_content: "low",
       create_comment: "low",
       delete_block: "low",
+      delete_page: "low",
       update_row_database: "low",
       update_schema_database: "low",
     },
