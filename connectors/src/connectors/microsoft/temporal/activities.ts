@@ -158,17 +158,25 @@ export async function getRootNodesToSyncFromResources(
     await concurrentExecutor(
       rootSitePaths,
       async (sitePath) => {
-        const msDrives = await getAllPaginatedEntities((nextLink) =>
-          getDrives(
-            logger,
-            client,
-            internalIdFromTypeAndPath({
-              nodeType: "site",
-              itemAPIPath: sitePath,
-            }),
-            nextLink
-          )
-        );
+        const msDrives = await getAllPaginatedEntities(async (nextLink) => {
+          try {
+            return await getDrives(
+              logger,
+              client,
+              internalIdFromTypeAndPath({
+                nodeType: "site",
+                itemAPIPath: sitePath,
+              }),
+              nextLink
+            );
+          } catch (error) {
+            if (isItemNotFoundError(error)) {
+              logger.warn({ sitePath }, "Site not found, skipping drives");
+              return { results: [] };
+            }
+            throw error;
+          }
+        });
         return msDrives.map((driveItem) => {
           const driveNode = itemToMicrosoftNode("drive", driveItem);
           return {
