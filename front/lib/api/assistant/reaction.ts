@@ -1,5 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
-import { Message, MessageReaction } from "@app/lib/models/agent/conversation";
+import {
+  MessageModel,
+  MessageReactionModel,
+} from "@app/lib/models/agent/conversation";
 import type {
   ConversationError,
   ConversationMessageReactions,
@@ -22,7 +25,7 @@ export async function getMessageReactions(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
@@ -30,7 +33,7 @@ export async function getMessageReactions(
     attributes: ["sId"],
     include: [
       {
-        model: MessageReaction,
+        model: MessageReactionModel,
         as: "reactions",
         required: false,
       },
@@ -47,10 +50,10 @@ export async function getMessageReactions(
 }
 
 function _renderMessageReactions(
-  reactions: MessageReaction[]
+  reactions: MessageReactionModel[]
 ): MessageReactionType[] {
   return reactions.reduce<MessageReactionType[]>(
-    (acc: MessageReactionType[], r: MessageReaction) => {
+    (acc: MessageReactionType[], r: MessageReactionModel) => {
       const reaction = acc.find((r2) => r2.emoji === r.reaction);
       if (reaction) {
         reaction.users.push({
@@ -101,7 +104,7 @@ export async function createMessageReaction(
 ): Promise<boolean | null> {
   const owner = auth.getNonNullableWorkspace();
 
-  const message = await Message.findOne({
+  const message = await MessageModel.findOne({
     where: {
       sId: messageId,
       conversationId: conversation.id,
@@ -113,7 +116,7 @@ export async function createMessageReaction(
     return null;
   }
 
-  const newReaction = await MessageReaction.create({
+  const newReaction = await MessageReactionModel.create({
     messageId: message.id,
     userId: user ? user.id : null,
     userContextUsername: context.username,
@@ -152,7 +155,7 @@ export async function deleteMessageReaction(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const message = await Message.findOne({
+  const message = await MessageModel.findOne({
     where: {
       sId: messageId,
       conversationId: conversation.id,
@@ -164,7 +167,7 @@ export async function deleteMessageReaction(
     return null;
   }
 
-  const deletedReaction = await MessageReaction.destroy({
+  const deletedReaction = await MessageReactionModel.destroy({
     where: {
       messageId: message.id,
       userId: user ? user.id : null,

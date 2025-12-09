@@ -18,7 +18,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
+import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
   AgentConfigurationType,
@@ -86,19 +87,22 @@ export function makeMCPToolExit({
   };
 }
 
-export async function getExitOrPauseEvents({
-  outputItems,
-  action,
-  agentConfiguration,
-  agentMessage,
-  conversation,
-}: {
-  outputItems: AgentMCPActionOutputItem[];
-  action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
-  conversation: ConversationWithoutContentType;
-}): Promise<
+export async function getExitOrPauseEvents(
+  auth: Authenticator,
+  {
+    outputItems,
+    action,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+  }: {
+    outputItems: AgentMCPActionOutputItemModel[];
+    action: AgentMCPActionResource;
+    agentConfiguration: AgentConfigurationType;
+    agentMessage: AgentMessageType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<
   (
     | MCPApproveExecutionEvent
     | ToolPersonalAuthRequiredEvent
@@ -154,11 +158,21 @@ export async function getExitOrPauseEvents({
             type: "tool_personal_auth_required",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
+            userId: auth.user()?.sId,
             messageId: agentMessage.sId,
             conversationId: conversation.sId,
+            actionId: action.sId,
+            metadata: {
+              toolName: action.toolConfiguration.originalName,
+              mcpServerName: action.toolConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+              mcpServerDisplayName: action.toolConfiguration.mcpServerName,
+              mcpServerId: action.toolConfiguration.toolServerId,
+            },
+            inputs: action.augmentedInputs,
             authError: {
               mcpServerId: action.toolConfiguration.toolServerId,
-              provider: provider,
+              provider,
               toolName: action.functionCallName ?? "unknown",
               message: authErrorMessage,
               ...(scope && {

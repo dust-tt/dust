@@ -5,9 +5,9 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import type { AgentMessageStatus } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -27,14 +27,14 @@ export async function trackProgrammaticUsageActivity(
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
   // Query the Message/AgentMessage/Conversation rows.
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },
@@ -44,14 +44,14 @@ export async function trackProgrammaticUsageActivity(
   const agentMessage = agentMessageRow?.agentMessage;
 
   // Query the UserMessage row to get user.
-  const userMessageRow = await Message.findOne({
+  const userMessageRow = await MessageModel.findOne({
     where: {
       sId: userMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
       },
@@ -73,7 +73,7 @@ export async function trackProgrammaticUsageActivity(
   ) {
     await trackProgrammaticCost(auth, {
       dustRunIds: agentMessage.runIds,
-      userMessageOrigin: userMessage.userContextOrigin ?? null,
+      userMessageOrigin: userMessage.userContextOrigin,
     });
   }
 }

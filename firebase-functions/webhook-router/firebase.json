@@ -17,19 +17,25 @@
   },
   "emulators": {
     "functions": {
+      "host": "0.0.0.0",
       "port": 5001
     },
     "database": {
+      "host": "0.0.0.0",
       "port": 9000
     },
     "hosting": {
+      "host": "0.0.0.0",
       "port": 5000
     },
     "storage": {
+      "host": "0.0.0.0",
       "port": 9199
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 4000
     },
     "singleProjectMode": true
   },

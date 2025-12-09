@@ -1,6 +1,9 @@
 import { Op } from "sequelize";
 
-import { Message, UserMessage } from "@app/lib/models/agent/conversation";
+import {
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { UserMessageOrigin } from "@app/types";
@@ -8,11 +11,11 @@ import { UserMessageOrigin } from "@app/types";
 const BATCH_SIZE = 1000;
 
 export async function getRootContextOrigin(
-  userMessage: UserMessage
+  userMessage: UserMessageModel
 ): Promise<UserMessageOrigin | null> {
   const originAgentMessageId = userMessage.userContextOriginMessageId;
   if (originAgentMessageId) {
-    const originAgentMessageRow = await Message.findOne({
+    const originAgentMessageRow = await MessageModel.findOne({
       where: {
         sId: originAgentMessageId,
         workspaceId: userMessage.workspaceId,
@@ -20,14 +23,14 @@ export async function getRootContextOrigin(
       attributes: ["parentId"],
     });
     if (originAgentMessageRow?.parentId) {
-      const parentMessage = await Message.findOne({
+      const parentMessage = await MessageModel.findOne({
         where: {
           id: originAgentMessageRow.parentId,
           workspaceId: userMessage.workspaceId,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: true,
           },
@@ -61,7 +64,7 @@ async function updateAgenticFields(
   let hasMore = true;
 
   // Get total count for progress tracking
-  const totalCount = await UserMessage.count({
+  const totalCount = await UserMessageModel.count({
     where: {
       userContextOrigin: {
         [Op.in]: ["run_agent", "agent_handover"],
@@ -81,7 +84,7 @@ async function updateAgenticFields(
 
     try {
       // Get batch of messages to update - need full objects to resolve root origin
-      const batchMessages = await UserMessage.findAll({
+      const batchMessages = await UserMessageModel.findAll({
         where: {
           userContextOrigin: {
             [Op.in]: ["run_agent", "agent_handover"],
@@ -113,7 +116,7 @@ async function updateAgenticFields(
         if (execute) {
           await userMessage.update(
             {
-              userContextOrigin: rootContextOrigin,
+              userContextOrigin: rootContextOrigin ?? "api",
               agenticOriginMessageId: userMessage.userContextOriginMessageId,
               agenticMessageType: originalUserContextOrigin as
                 | "run_agent"

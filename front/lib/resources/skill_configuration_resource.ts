@@ -5,18 +5,34 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  formatUserFullName,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type {
-  SkillConfiguration,
-  SkillConfigurationWithAuthor,
+  SkillConfigurationType,
+  SkillConfigurationWithAuthorType,
 } from "@app/types/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -35,15 +51,23 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly author?: Attributes<UserModel>;
+  readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
 
   constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
-    { author }: { author?: Attributes<UserModel> } = {}
+    {
+      author,
+      mcpServerConfigurations,
+    }: {
+      author?: Attributes<UserModel>;
+      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+    } = {}
   ) {
     super(SkillConfigurationModel, blob);
 
     this.author = author;
+    this.mcpServerConfigurations = mcpServerConfigurations ?? [];
   }
 
   static async makeNew(
@@ -75,7 +99,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     const { where, includes, ...otherOptions } = options;
 
-    const res = await this.model.findAll({
+    const skillConfigurations = await this.model.findAll({
       ...otherOptions,
       where: {
         ...where,
@@ -84,10 +108,42 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       include: includes,
     });
 
-    return res.map(
+    if (skillConfigurations.length === 0) {
+      return [];
+    }
+
+    const mcpServerConfigurations =
+      await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: {
+            [Op.in]: skillConfigurations.map((c) => c.id),
+          },
+        },
+      });
+
+    const mcpServerConfigsBySkillId = new Map<
+      number,
+      Attributes<SkillMCPServerConfigurationModel>[]
+    >();
+    for (const config of mcpServerConfigurations) {
+      const existing = mcpServerConfigsBySkillId.get(
+        config.skillConfigurationId
+      );
+      if (existing) {
+        existing.push(config.get());
+      } else {
+        mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
+          config.get(),
+        ]);
+      }
+    }
+
+    return skillConfigurations.map(
       (c) =>
         new this(this.model, c.get(), {
           author: c.author?.get(),
+          mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
         })
     );
   }
@@ -118,6 +174,88 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return resources[0];
   }
 
+  static async fetchBySId(
+    auth: Authenticator,
+    sId: string
+  ): Promise<SkillConfigurationResource | null> {
+    if (!isResourceSId("skill", sId)) {
+      return null;
+    }
+
+    const resourceId = getResourceIdFromSId(sId);
+    if (resourceId === null) {
+      return null;
+    }
+
+    return this.fetchByModelIdWithAuth(auth, resourceId);
+  }
+
+  static async fetchByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: ModelId
+  ): Promise<SkillConfigurationResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: SkillConfigurationModel,
+          as: "customSkill",
+          required: false,
+        },
+      ],
+    });
+
+    // TODO(skills 2025-12-09): Add support for global skills.
+    // When globalSkillId is set, we need to fetch the skill from the global registry
+    // and return it as a SkillConfigurationResource.
+    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
+    return customSkills.map((skill) => new this(this.model, skill.get()));
+  }
+
+  static async fetchActiveByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<SkillConfigurationResource | null> {
+    const resources = await this.baseFetch(auth, {
+      where: {
+        name,
+        status: "active",
+      },
+      limit: 1,
+    });
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
+  }
+
+  get sId(): string {
+    return SkillConfigurationResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("skill", {
+      id,
+      workspaceId,
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -125,7 +263,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     try {
       const workspace = auth.getNonNullableWorkspace();
 
-      const affectedCount = await SkillConfigurationResource.model.destroy({
+      const affectedCount = await this.model.destroy({
         where: {
           id: this.id,
           workspaceId: workspace.id,
@@ -141,15 +279,20 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
   toJSON(
     this: SkillConfigurationResourceWithAuthor
-  ): SkillConfigurationWithAuthor;
-  toJSON(this: SkillConfigurationResource): SkillConfiguration;
-  toJSON(): SkillConfiguration | SkillConfigurationWithAuthor {
+  ): SkillConfigurationWithAuthorType;
+  toJSON(this: SkillConfigurationResource): SkillConfigurationType;
+  toJSON(): SkillConfigurationType | SkillConfigurationWithAuthorType {
+    const tools = this.mcpServerConfigurations.map((config) => ({
+      mcpServerViewId: makeSId("mcp_server_view", {
+        id: config.mcpServerViewId,
+        workspaceId: this.workspaceId,
+      }),
+    }));
     if (this.author) {
       return {
-        id: this.id,
+        sId: this.sId,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
-        workspaceId: this.workspaceId,
         version: this.version,
         status: this.status,
         scope: this.scope,
@@ -157,11 +300,13 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         description: this.description,
         instructions: this.instructions,
         requestedSpaceIds: this.requestedSpaceIds,
+        tools,
         author: {
           id: this.author.id,
           sId: this.author.sId,
           createdAt: this.author.createdAt.getTime(),
           username: this.author.username,
+          fullName: formatUserFullName(this.author),
           email: this.author.email,
           firstName: this.author.firstName,
           lastName: this.author.lastName,
@@ -171,18 +316,17 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
 
     return {
-      id: this.id,
+      sId: this.sId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      workspaceId: this.workspaceId,
       version: this.version,
       status: this.status,
       scope: this.scope,
       name: this.name,
       description: this.description,
       instructions: this.instructions,
-      authorId: this.authorId,
       requestedSpaceIds: this.requestedSpaceIds,
+      tools,
     };
   }
 }

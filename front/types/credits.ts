@@ -1,3 +1,5 @@
+import type { EditedByUser } from "@app/types/user";
+
 export const CREDIT_TYPES = ["free", "payg", "committed"] as const;
 
 export type CreditType = (typeof CREDIT_TYPES)[number];
@@ -17,6 +19,7 @@ export type CreditDisplayData = {
   consumedAmountMicroUsd: number;
   startDate: number | null;
   expirationDate: number | null;
+  boughtByUser: EditedByUser | null;
 };
 
 export type GetCreditsResponseBody = {

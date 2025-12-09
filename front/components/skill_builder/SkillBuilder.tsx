@@ -11,6 +11,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -20,13 +21,14 @@ import {
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
+import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 
 export default function SkillBuilder() {
-  const { owner } = useSkillBuilderContext();
+  const { owner, user } = useSkillBuilderContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -37,6 +39,9 @@ export default function SkillBuilder() {
       name: "",
       description: "",
       instructions: "",
+      scope: "private",
+      editors: [user],
+      tools: [],
     },
   });
 
@@ -46,6 +51,7 @@ export default function SkillBuilder() {
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
+      user,
     });
 
     if (result.isErr()) {
@@ -89,7 +95,7 @@ export default function SkillBuilder() {
             <BarHeader
               variant="default"
               className="mx-4"
-              title="Create new skill"
+              title="Skill"
               rightActions={
                 <Button
                   icon={XMarkIcon}
@@ -99,10 +105,22 @@ export default function SkillBuilder() {
                 />
               }
             />
+
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
+                <div>
+                  <h2 className="heading-lg text-foreground dark:text-foreground-night">
+                    Create new skill
+                  </h2>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Create custom capabilities for specific tasks
+                  </p>
+                </div>
                 <SkillBuilderDescriptionSection />
                 <SkillBuilderInstructionsSection />
+                <MCPServerViewsProvider owner={owner}>
+                  <SkillBuilderToolsSection />
+                </MCPServerViewsProvider>
                 <SkillBuilderSettingsSection />
               </div>
             </ScrollArea>

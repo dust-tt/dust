@@ -9,10 +9,10 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Mention,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -32,6 +32,7 @@ import type {
   ConversationWithoutContentType,
   MentionType,
   MessageType,
+  MessageVisibility,
   ModelId,
   RichMention,
   UserMessageContext,
@@ -74,7 +75,7 @@ export const createUserMentions = async (
       // check if the user exists in the workspace before creating the mention
       const user = await getUserForWorkspace(auth, { userId: mention.userId });
       if (user) {
-        await Mention.create(
+        await MentionModel.create(
           {
             messageId: message.id,
             userId: user.id,
@@ -226,6 +227,10 @@ export async function createUserMessage(
           message: UserMessageType;
         }
       | {
+          type: "delete";
+          message: UserMessageType;
+        }
+      | {
           type: "create";
           user: UserType | null;
           rank: number;
@@ -243,6 +248,7 @@ export async function createUserMessage(
 
   let context: UserMessageContext | null = null;
   let agenticMessageData: AgenticMessageData | undefined = undefined;
+  let visibility: MessageVisibility = "visible";
 
   switch (metadata.type) {
     case "edit":
@@ -254,6 +260,17 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      break;
+    case "delete":
+      // In case of delete, we use the message metadata to delete the user message.
+      rank = metadata.message.rank;
+      version = metadata.message.version + 1;
+      parentId = metadata.message.id;
+      user = metadata.message.user;
+
+      context = metadata.message.context;
+      agenticMessageData = metadata.message.agenticMessageData;
+      visibility = "deleted";
       break;
     case "create":
       // Otherwise, we create a new user message from the metadata.
@@ -277,7 +294,7 @@ export async function createUserMessage(
   // Fetch originMessage to ensure it exists and that it's an agent message.
   const originMessageId = agenticMessageData?.originMessageId;
   const originMessage = originMessageId
-    ? await Message.findOne({
+    ? await MessageModel.findOne({
         where: {
           workspaceId: workspace.id,
           sId: originMessageId,
@@ -300,7 +317,7 @@ export async function createUserMessage(
   // The model validation requires both to be set together
   const agenticMessageType = originMessage ? agenticMessageData?.type : null;
   const agenticOriginMessageId = originMessage?.sId ?? null;
-  const userMessage = await UserMessage.create(
+  const userMessage = await UserMessageModel.create(
     {
       content,
       // TODO(MCP Clean-up): Rename field in DB.
@@ -322,7 +339,7 @@ export async function createUserMessage(
     { transaction }
   );
 
-  const m = await Message.create(
+  const m = await MessageModel.create(
     {
       sId: generateRandomModelSId(),
       rank,
@@ -331,6 +348,7 @@ export async function createUserMessage(
       version,
       userMessageId: userMessage.id,
       workspaceId: workspace.id,
+      visibility,
     },
     {
       transaction,
@@ -407,7 +425,12 @@ export const createAgentMessages = async (
       | {
           type: "retry";
           agentMessage: AgentMessageType;
-          parentId: number | null;
+          parentId: number;
+        }
+      | {
+          type: "delete";
+          agentMessage: AgentMessageType;
+          parentId: number;
         }
       | {
           type: "create";
@@ -422,8 +445,8 @@ export const createAgentMessages = async (
 ) => {
   const owner = auth.getNonNullableWorkspace();
   const results: {
-    agentMessageRow: AgentMessage;
-    messageRow: Message;
+    agentMessageRow: AgentMessageModel;
+    messageRow: MessageModel;
     configuration: LightAgentConfigurationType;
     parentMessageId: string;
     parentAgentMessageId: string | null;
@@ -433,7 +456,7 @@ export const createAgentMessages = async (
     case "retry":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
-        const agentMessageRow = await AgentMessage.create(
+        const agentMessageRow = await AgentMessageModel.create(
           {
             status: "created",
             agentConfigurationId: agentConfiguration.sId,
@@ -443,7 +466,7 @@ export const createAgentMessages = async (
           },
           { transaction }
         );
-        const messageRow = await Message.create(
+        const messageRow = await MessageModel.create(
           {
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
@@ -452,6 +475,42 @@ export const createAgentMessages = async (
             version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
             workspaceId: owner.id,
+          },
+          {
+            transaction,
+          }
+        );
+
+        results.push({
+          agentMessageRow,
+          messageRow,
+          parentMessageId: metadata.agentMessage.parentMessageId,
+          parentAgentMessageId: metadata.agentMessage.parentAgentMessageId,
+          configuration: metadata.agentMessage.configuration,
+        });
+      }
+      break;
+
+    case "delete":
+      {
+        const agentConfiguration = metadata.agentMessage.configuration;
+        const agentMessageRow = await AgentMessageModel.create({
+          status: "cancelled",
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: agentConfiguration.version,
+          workspaceId: owner.id,
+          skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+        });
+        const messageRow = await MessageModel.create(
+          {
+            sId: generateRandomModelSId(),
+            rank: metadata.agentMessage.rank,
+            conversationId: conversation.id,
+            parentId: metadata.parentId,
+            version: metadata.agentMessage.version + 1,
+            agentMessageId: agentMessageRow.id,
+            workspaceId: owner.id,
+            visibility: "deleted",
           },
           {
             transaction,
@@ -480,7 +539,7 @@ export const createAgentMessages = async (
               return;
             }
 
-            await Mention.create(
+            await MentionModel.create(
               {
                 messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
@@ -489,7 +548,7 @@ export const createAgentMessages = async (
               { transaction }
             );
 
-            const agentMessageRow = await AgentMessage.create(
+            const agentMessageRow = await AgentMessageModel.create(
               {
                 status: "created",
                 agentConfigurationId: configuration.sId,
@@ -499,7 +558,7 @@ export const createAgentMessages = async (
               },
               { transaction }
             );
-            const messageRow = await Message.create(
+            const messageRow = await MessageModel.create(
               {
                 sId: generateRandomModelSId(),
                 rank: metadata.nextMessageRank++,
@@ -555,11 +614,11 @@ export const createAgentMessages = async (
       completedTs: agentMessageRow.completedAt?.getTime() ?? null,
       sId: messageRow.sId,
       type: "agent_message",
-      visibility: "visible",
+      visibility: messageRow.visibility,
       version: messageRow.version,
       parentMessageId,
       parentAgentMessageId,
-      status: "created",
+      status: agentMessageRow.status,
       actions: [],
       content: null,
       chainOfThought: null,

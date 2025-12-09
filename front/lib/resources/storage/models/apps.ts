@@ -92,14 +92,14 @@ AppModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-export class Provider extends WorkspaceAwareModel<Provider> {
+export class ProviderModel extends WorkspaceAwareModel<ProviderModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare providerId: string;
   declare config: string;
 }
-Provider.init(
+ProviderModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -127,7 +127,7 @@ Provider.init(
   }
 );
 
-export class Dataset extends WorkspaceAwareModel<Dataset> {
+export class DatasetModel extends WorkspaceAwareModel<DatasetModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -138,7 +138,7 @@ export class Dataset extends WorkspaceAwareModel<Dataset> {
 
   declare appId: ForeignKey<AppModel["id"]>;
 }
-Dataset.init(
+DatasetModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -169,20 +169,20 @@ Dataset.init(
   }
 );
 
-AppModel.hasMany(Dataset, {
+AppModel.hasMany(DatasetModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-Dataset.belongsTo(AppModel);
+DatasetModel.belongsTo(AppModel);
 
-export class Clone extends WorkspaceAwareModel<Clone> {
+export class CloneModel extends WorkspaceAwareModel<CloneModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare fromId: ForeignKey<AppModel["id"]>;
   declare toId: ForeignKey<AppModel["id"]>;
 }
-Clone.init(
+CloneModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -201,11 +201,11 @@ Clone.init(
     indexes: [{ fields: ["workspaceId"], concurrently: true }],
   }
 );
-Clone.belongsTo(AppModel, {
+CloneModel.belongsTo(AppModel, {
   foreignKey: { name: "fromId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Clone.belongsTo(AppModel, {
+CloneModel.belongsTo(AppModel, {
   foreignKey: { name: "toId", allowNull: false },
   onDelete: "RESTRICT",
 });

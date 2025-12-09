@@ -3,7 +3,7 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -17,7 +17,7 @@ import type {
 } from "@app/types";
 
 function getModelForAgentConfiguration(
-  agent: AgentConfiguration
+  agent: AgentConfigurationModel
 ): AgentModelConfigurationType {
   const model: AgentModelConfigurationType = {
     providerId: agent.providerId,
@@ -76,7 +76,7 @@ export async function getAgentSIdFromName(
 ): Promise<string | null> {
   const owner = auth.getNonNullableWorkspace();
 
-  const agent = await AgentConfiguration.findOne({
+  const agent = await AgentConfigurationModel.findOne({
     attributes: ["sId"],
     where: {
       workspaceId: owner.id,
@@ -97,7 +97,7 @@ export async function getAgentSIdFromName(
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
-  agentConfigurations: AgentConfiguration[],
+  agentConfigurations: AgentConfigurationModel[],
   {
     variant,
     agentIdsForUserAsEditor,

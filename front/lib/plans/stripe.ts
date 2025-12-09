@@ -1,7 +1,8 @@
+import assert from "assert";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
@@ -10,6 +11,7 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -19,7 +21,9 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
+import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
 const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
@@ -62,6 +66,52 @@ export const getStripeClient = () => {
     typescript: true,
   });
 };
+
+export async function getStripePricingData(
+  priceId: string
+): Promise<StripePricingData | null> {
+  const stripe = getStripeClient();
+  const price = await stripe.prices.retrieve(priceId, {
+    expand: ["currency_options"],
+  });
+
+  if (!price.unit_amount || !price.currency_options) {
+    logger.error(
+      { priceId },
+      "[Stripe] Credit purchase price missing unit_amount or currency_options"
+    );
+    return null;
+  }
+
+  const currencyOptions: StripePricingData["currencyOptions"] = {
+    usd: { unitAmount: 0 },
+    eur: { unitAmount: 0 },
+  };
+
+  for (const currency of SUPPORTED_CURRENCIES) {
+    const currencyOption = price.currency_options[currency];
+    const unitAmount = Number(
+      currencyOption.unit_amount ?? currencyOption.unit_amount_decimal
+    );
+    if (unitAmount) {
+      currencyOptions[currency] = {
+        unitAmount,
+      };
+    } else {
+      logger.error(
+        { priceId, currency, stripeError: true },
+        "[Stripe] Currency option not configured"
+      );
+    }
+  }
+
+  assert(
+    currencyOptions.usd.unitAmount > 0,
+    "no USD currency option found for price"
+  );
+
+  return { currencyOptions };
+}
 
 /**
  * Calls the Stripe API to get the price ID for a given product ID.
@@ -121,7 +171,7 @@ export const createProPlanCheckoutSession = async ({
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
-  const plan = await Plan.findOne({ where: { code: planCode } });
+  const plan = await PlanModel.findOne({ where: { code: planCode } });
   if (!plan) {
     throw new Error(
       `Cannot create checkout session for plan ${planCode}: plan not found.`
@@ -153,9 +203,9 @@ export const createProPlanCheckoutSession = async ({
   // subscription before.
   // User under the grandfathered free plan are not allowed to have a trial.
   let trialAllowed = true;
-  const existingSubscription = await Subscription.findOne({
+  const existingSubscription = await SubscriptionModel.findOne({
     where: { workspaceId: owner.id },
-    include: [Plan],
+    include: [PlanModel],
   });
   if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
     trialAllowed = false;
@@ -638,8 +688,16 @@ export async function createCreditPurchaseCoupon(
 }
 
 type InvoiceCollectionParams =
-  | { collectionMethod: "charge_automatically"; daysUntilDue?: never }
-  | { collectionMethod: "send_invoice"; daysUntilDue: number };
+  | {
+      collectionMethod: "charge_automatically";
+      daysUntilDue?: never;
+      requestThreeDSecure?: "any" | "automatic" | "challenge";
+    }
+  | {
+      collectionMethod: "send_invoice";
+      daysUntilDue: number;
+      requestThreeDSecure?: never;
+    };
 
 type InvoiceLineItem = {
   priceId: string;
@@ -674,10 +732,28 @@ async function makeInvoice({
     collection_method: collectionParams.collectionMethod,
     metadata,
     auto_advance: true,
+    automatic_tax: {
+      enabled: true,
+    },
   };
 
-  if (collectionParams.collectionMethod === "send_invoice") {
-    invoiceParams.days_until_due = collectionParams.daysUntilDue;
+  switch (collectionParams.collectionMethod) {
+    case "charge_automatically":
+      invoiceParams.payment_settings = {
+        payment_method_options: {
+          card: {
+            // Stripe types are missing "challenge" but API supports it
+            request_three_d_secure: (collectionParams.requestThreeDSecure ??
+              "automatic") as Stripe.InvoiceCreateParams.PaymentSettings.PaymentMethodOptions.Card.RequestThreeDSecure,
+          },
+        },
+      };
+      break;
+    case "send_invoice":
+      invoiceParams.days_until_due = collectionParams.daysUntilDue;
+      break;
+    default:
+      assertNever(collectionParams);
   }
 
   try {

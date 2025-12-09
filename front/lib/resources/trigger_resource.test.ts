@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import * as temporalClient from "@app/temporal/triggers/schedule/client";
@@ -747,7 +747,7 @@ describe("TriggerResource", () => {
 
       // Mock AgentConfiguration.findAll to return different statuses
       const mockAgentConfigFindAll = vi
-        .spyOn(AgentConfiguration, "findAll")
+        .spyOn(AgentConfigurationModel, "findAll")
         .mockResolvedValue([
           {
             sId: activeAgentConfig.sId,

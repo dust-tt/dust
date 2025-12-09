@@ -2,6 +2,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import React from "react";
 
+import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -13,11 +14,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
-}>(async (context, auth) => {
+}>(async (_, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isUser() || !subscription) {
+  if (!owner || !auth.isBuilder() || !subscription) {
     return {
       notFound: true,
     };
@@ -47,12 +48,12 @@ export default function CreateSkill({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <SkillBuilderProvider owner={owner} user={user}>
-      <>
+      <SpacesProvider owner={owner}>
         <Head>
           <title>Dust - New Skill</title>
         </Head>
         <SkillBuilder />
-      </>
+      </SpacesProvider>
     </SkillBuilderProvider>
   );
 }

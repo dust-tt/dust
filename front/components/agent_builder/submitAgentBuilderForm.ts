@@ -1,12 +1,10 @@
-import type {
-  AdditionalConfigurationInBuilderType,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
@@ -475,6 +473,9 @@ export async function submitAgentBuilderForm({
         reasoningEffort: formData.generationSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
+      skills: formData.skills.map((skill) => ({
+        sId: skill.sId,
+      })),
       actions: processedActions,
       templateId: null,
       tags: formData.agentSettings.tags,

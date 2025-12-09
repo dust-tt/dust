@@ -12,7 +12,9 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
+import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -20,6 +22,7 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
+  isSkillsLoading?: boolean;
   isTriggersLoading?: boolean;
 }
 
@@ -29,9 +32,12 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isActionsLoading,
+  isSkillsLoading,
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleCancel = async () => {
     onCancel();
@@ -56,6 +62,9 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
+          {hasFeature("skills") && (
+            <AgentBuilderSkillsBlock isSkillsLoading={isSkillsLoading} />
+          )}
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <AgentBuilderTriggersBlock
             owner={owner}

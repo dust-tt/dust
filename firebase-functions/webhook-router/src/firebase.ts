@@ -1,6 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
+import { error, log } from "firebase-functions/logger";
 import { defineString } from "firebase-functions/params";
 import { onObjectFinalized } from "firebase-functions/storage";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -56,15 +57,15 @@ export const syncWebhookRouterConfig = onObjectFinalized(
       // We set the updated webhook router configuration at the root of Firebase Realtime Database
       await getDatabase(firebaseApp).ref().set(parsedConfig);
 
-      console.log("Webhook router configuration sync succeeded", {
+      log("Webhook router configuration sync succeeded", {
         component: "webhook-router-config-sync",
       });
-    } catch (error) {
-      console.error("Webhook router configuration sync failed", {
+    } catch (e) {
+      error("Webhook router configuration sync failed", {
         component: "webhook-router-config-sync",
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
       });
-      throw error;
+      throw e;
     }
   }
 );

@@ -1,13 +1,13 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
 import type { AgentReasoningEffort } from "@app/types";
 
-export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReasoningConfiguration> {
+export class AgentReasoningConfigurationModel extends WorkspaceAwareModel<AgentReasoningConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -17,13 +17,13 @@ export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReason
   declare reasoningEffort: AgentReasoningEffort | null;
 
   declare mcpServerConfigurationId: ForeignKey<
-    AgentMCPServerConfiguration["id"]
+    AgentMCPServerConfigurationModel["id"]
   >;
 
   declare sId: string;
 }
 
-AgentReasoningConfiguration.init(
+AgentReasoningConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -73,11 +73,11 @@ AgentReasoningConfiguration.init(
   }
 );
 
-AgentMCPServerConfiguration.hasMany(AgentReasoningConfiguration, {
+AgentMCPServerConfigurationModel.hasMany(AgentReasoningConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentReasoningConfiguration.belongsTo(AgentMCPServerConfiguration, {
+AgentReasoningConfigurationModel.belongsTo(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });

@@ -30,7 +30,7 @@ export const LATENCY_LEGEND = [
 
 export const COST_PALETTE = {
   costMicroUsd: "text-blue-400 dark:text-blue-400-night",
-  totalCredits: "text-green-500 dark:text-green-500-night",
+  totalCredits: "text-orange-400 dark:text-orange-400-night",
 } as const;
 
 export const CHART_HEIGHT = 260;

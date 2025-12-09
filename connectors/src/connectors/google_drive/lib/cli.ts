@@ -132,7 +132,7 @@ export const google_drive = async ({
       });
       return { status: res.status, content: res.data, type: typeof res.data };
     }
-    case "get-file": {
+    case "get-file-metadata": {
       const connector = await getConnector(args);
       if (!args.fileId) {
         throw new Error("Missing --fileId argument");

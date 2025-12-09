@@ -1,27 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import type { Authenticator } from "@app/lib/auth";
 import {
-  batchRenderMessages,
-  softDeleteAgentMessage,
-} from "@app/lib/api/assistant/messages";
-import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessage,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-} from "@app/types";
-import { ConversationError } from "@app/types";
+import type { AgentMessageType, LightAgentConfigurationType } from "@app/types";
 
 describe("batchRenderMessages", () => {
   let auth: Authenticator;
@@ -55,19 +45,19 @@ describe("batchRenderMessages", () => {
       expect(conversationResource).not.toBeNull();
 
       // Get all messages from the conversation
-      const allMessages = await Message.findAll({
+      const allMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: false,
           },
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: false,
           },
@@ -132,19 +122,19 @@ describe("batchRenderMessages", () => {
       expect(conversationResource).not.toBeNull();
 
       // Get all messages from the conversation
-      const allMessages = await Message.findAll({
+      const allMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: false,
           },
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: false,
           },
@@ -202,19 +192,19 @@ describe("batchRenderMessages", () => {
       expect(conversationResource).not.toBeNull();
 
       // Get all messages from the conversation
-      const allMessages = await Message.findAll({
+      const allMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: false,
           },
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: false,
           },
@@ -245,135 +235,5 @@ describe("batchRenderMessages", () => {
         expect(renderedAgentMessage).toBeDefined();
       }
     });
-  });
-});
-
-describe("softDeleteAgentMessage", () => {
-  let auth: Authenticator;
-  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let conversation: ConversationWithoutContentType;
-  let agentConfig: LightAgentConfigurationType;
-  let agentMessageModel: Message;
-
-  beforeEach(async () => {
-    const setup = await createResourceTest({});
-    auth = setup.authenticator;
-    workspace = setup.workspace;
-
-    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent",
-      description: "Test Agent Description",
-    });
-
-    conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const allMessages = await Message.findAll({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: workspace.id,
-      },
-      include: [
-        {
-          model: UserMessage,
-          as: "userMessage",
-          required: false,
-        },
-        {
-          model: AgentMessage,
-          as: "agentMessage",
-          required: false,
-        },
-      ],
-      order: [["rank", "ASC"]],
-    });
-
-    const foundAgentMessage = allMessages.find((m) => !!m.agentMessage);
-    expect(foundAgentMessage).toBeDefined();
-    agentMessageModel = foundAgentMessage!;
-  });
-
-  it("allows the user who sent the parent message to soft delete the agent message", async () => {
-    const initialMessage = await Message.findByPk(agentMessageModel.id);
-    expect(initialMessage?.visibility).toBe("visible");
-
-    const result = await softDeleteAgentMessage(auth, {
-      messageId: agentMessageModel.sId,
-      conversation,
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.success).toBe(true);
-    }
-
-    const updatedMessage = await Message.findByPk(agentMessageModel.id);
-    expect(updatedMessage).not.toBeNull();
-    expect(updatedMessage?.visibility).toBe("deleted");
-
-    const secondResult = await softDeleteAgentMessage(auth, {
-      messageId: agentMessageModel.sId,
-      conversation,
-    });
-    expect(secondResult.isOk()).toBe(true);
-  });
-
-  it("returns message_not_found when the message does not exist", async () => {
-    const result = await softDeleteAgentMessage(auth, {
-      messageId: "non-existent-message-id",
-      conversation,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error).toBeInstanceOf(ConversationError);
-      expect(result.error.type).toBe("message_not_found");
-    }
-  });
-
-  it("returns message_deletion_not_authorized when the agent message has no parent user message", async () => {
-    const orphanAgentMessage =
-      await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 10,
-        agentConfigurationId: agentConfig.sId,
-      });
-
-    const result = await softDeleteAgentMessage(auth, {
-      messageId: orphanAgentMessage.sId,
-      conversation,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error).toBeInstanceOf(ConversationError);
-      expect(result.error.type).toBe("message_deletion_not_authorized");
-    }
-  });
-
-  it("returns message_deletion_not_authorized when a different user tries to delete the agent message", async () => {
-    const otherUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, otherUser, {
-      role: "user",
-    });
-
-    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      otherUser.sId,
-      workspace.sId
-    );
-
-    const result = await softDeleteAgentMessage(otherAuth, {
-      messageId: agentMessageModel.sId,
-      conversation,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error).toBeInstanceOf(ConversationError);
-      expect(result.error.type).toBe("message_deletion_not_authorized");
-    }
   });
 });

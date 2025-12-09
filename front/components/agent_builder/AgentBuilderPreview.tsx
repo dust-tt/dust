@@ -7,7 +7,6 @@ import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
@@ -17,6 +16,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
 import type {

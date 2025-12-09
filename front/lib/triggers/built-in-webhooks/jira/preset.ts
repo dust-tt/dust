@@ -52,6 +52,7 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
   ],
   icon: "JiraLogo",
   description: "Receive events from Jira such as creation of issues.",
+  filterGenerationInstructions: null,
   webhookPageUrl: `https://id.atlassian.com/manage-profile/security/api-tokens`,
   webhookService: new JiraWebhookService(),
   components: {

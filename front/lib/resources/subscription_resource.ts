@@ -5,12 +5,9 @@ import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
-import {
-  getWorkspaceInfos,
-  restoreWorkspaceAfterSubscription,
-} from "@app/lib/api/workspace";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
@@ -69,35 +66,43 @@ const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SubscriptionResource
-  extends ReadonlyAttributesType<Subscription> {}
+  extends ReadonlyAttributesType<SubscriptionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class SubscriptionResource extends BaseResource<Subscription> {
-  static model: ModelStaticWorkspaceAware<Subscription> = Subscription;
+export class SubscriptionResource extends BaseResource<SubscriptionModel> {
+  static model: ModelStaticWorkspaceAware<SubscriptionModel> =
+    SubscriptionModel;
   private readonly plan: PlanType;
 
   constructor(
-    model: ModelStaticWorkspaceAware<Subscription>,
-    blob: Attributes<Subscription>,
+    model: ModelStaticWorkspaceAware<SubscriptionModel>,
+    blob: Attributes<SubscriptionModel>,
     plan: PlanType
   ) {
-    super(Subscription, blob);
+    super(SubscriptionModel, blob);
     this.plan = plan;
   }
 
-  static async makeNew(blob: CreationAttributes<Subscription>, plan: PlanType) {
-    const subscription = await Subscription.create({ ...blob });
-    return new SubscriptionResource(Subscription, subscription.get(), plan);
+  static async makeNew(
+    blob: CreationAttributes<SubscriptionModel>,
+    plan: PlanType
+  ) {
+    const subscription = await SubscriptionModel.create({ ...blob });
+    return new SubscriptionResource(
+      SubscriptionModel,
+      subscription.get(),
+      plan
+    );
   }
 
   static async fetchActiveByWorkspace(
     workspace: LightWorkspaceType,
     transaction?: Transaction
-  ): Promise<SubscriptionResource> {
+  ): Promise<SubscriptionResource | null> {
     const res = await SubscriptionResource.fetchActiveByWorkspaces(
       [workspace],
       transaction
     );
-    return res[workspace.sId];
+    return res[workspace.sId] ?? null;
   }
 
   static async fetchActiveByWorkspaces(
@@ -127,7 +132,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
-            model: Plan,
+            model: PlanModel,
             as: "plan",
             required: true,
           },
@@ -165,7 +170,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         }
       }
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
-        Subscription,
+        SubscriptionModel,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
         renderPlanFromModel({ plan })
@@ -180,15 +185,15 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const subscriptions = await Subscription.findAll({
+    const subscriptions = await SubscriptionModel.findAll({
       where: { workspaceId: owner.id },
-      include: [Plan],
+      include: [PlanModel],
     });
 
     return subscriptions.map(
       (s) =>
         new SubscriptionResource(
-          Subscription,
+          SubscriptionModel,
           s.get(),
           renderPlanFromModel({ plan: s.plan })
         )
@@ -200,7 +205,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource | null> {
     const res = await this.model.findOne({
       where: { stripeSubscriptionId },
-      include: [Plan],
+      include: [PlanModel],
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -211,7 +216,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return new SubscriptionResource(
-      Subscription,
+      SubscriptionModel,
       res.get(),
       renderPlanFromModel({ plan: res.plan })
     );
@@ -220,7 +225,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   static async internalFetchWorkspacesWithFreeEndedSubscriptions(): Promise<{
     workspaces: LightWorkspaceType[];
   }> {
-    const freeEndedSubscriptions = await Subscription.findAll({
+    const freeEndedSubscriptions = await SubscriptionModel.findAll({
       where: {
         status: "active",
         stripeSubscriptionId: null,
@@ -255,7 +260,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
-          model: Plan,
+          model: PlanModel,
           as: "plan",
           where: {
             code: {
@@ -293,7 +298,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     await this.endActiveSubscription(workspace);
 
     return new SubscriptionResource(
-      Subscription,
+      SubscriptionModel,
       this.createFreeNoPlanSubscription(workspace),
       renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
     );
@@ -323,7 +328,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await Subscription.findOne({
+    const activeSubscription = await SubscriptionModel.findOne({
       where: { workspaceId: workspace.id, status: "active" },
     });
 
@@ -360,7 +365,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         );
       }
 
-      return Subscription.create(
+      return SubscriptionModel.create(
         {
           sId: generateRandomModelSId(),
           workspaceId: workspace.id,
@@ -389,7 +394,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return new SubscriptionResource(
-      Subscription,
+      SubscriptionModel,
       newSubscription.get(),
       renderPlanFromModel({ plan: newPlan })
     );
@@ -413,9 +418,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       stripeSubscriptionId: enterpriseDetails.stripeSubscriptionId,
       endDate: null,
     });
-
-    // Restore workspace functionality: unpause connectors, re-enable triggers, cancel scrub workflow
-    await restoreWorkspaceAfterSubscription(auth);
   }
 
   /**
@@ -443,7 +445,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
       // If you are already on this free plan and you want to change the end date, we let you do it.
       if (isFreePlan(newPlan.code) && activeSubscription.endDate !== endDate) {
-        await Subscription.update(
+        await SubscriptionModel.update(
           { endDate },
           {
             where: { sId: activeSubscription.sId },
@@ -485,7 +487,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         );
       }
 
-      await Subscription.update(
+      await SubscriptionModel.update(
         { planId: newPlan.id },
         {
           where: {
@@ -505,9 +507,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     if (isUpgraded(newSubscription.getPlan())) {
       await getOrCreateWorkOSOrganization(owner);
     }
-
-    // Restore workspace functionality: unpause connectors, re-enable triggers, cancel scrub workflow
-    await restoreWorkspaceAfterSubscription(auth);
   }
 
   /**
@@ -545,7 +544,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       return new Err(stripeResult.error);
     }
 
-    await Subscription.update(
+    await SubscriptionModel.update(
       { planId: businessPlan.id },
       {
         where: {
@@ -563,7 +562,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ) {
     const { id: stripeSubscriptionId } = eventStripeSubscription;
 
-    const subscription = await Subscription.findOne({
+    const subscription = await SubscriptionModel.findOne({
       where: { stripeSubscriptionId },
       include: [WorkspaceModel],
     });
@@ -756,7 +755,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
   private static createFreeNoPlanSubscription(
     workspace: LightWorkspaceType
-  ): Attributes<Subscription> {
+  ): Attributes<SubscriptionModel> {
     const now = new Date();
     return {
       id: FREE_NO_PLAN_SUBSCRIPTION_ID,
@@ -802,8 +801,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return workspace;
   }
 
-  private static async findPlanOrThrow(planCode: string): Promise<Plan> {
-    const newPlan = await Plan.findOne({
+  private static async findPlanOrThrow(planCode: string): Promise<PlanModel> {
+    const newPlan = await PlanModel.findOne({
       where: { code: planCode },
     });
     if (!newPlan) {
@@ -820,11 +819,11 @@ export class SubscriptionResource extends BaseResource<Subscription> {
    */
   static async endActiveSubscription(
     workspace: LightWorkspaceType
-  ): Promise<Subscription | null> {
+  ): Promise<SubscriptionModel | null> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await Subscription.findOne({
+    const activeSubscription = await SubscriptionModel.findOne({
       where: { workspaceId: workspace.id, status: "active" },
     });
 

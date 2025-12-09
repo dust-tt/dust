@@ -2,7 +2,6 @@ import type Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -151,7 +150,6 @@ describe("isPAYGEnabled", () => {
     vi.clearAllMocks();
     const { authenticator } = await createResourceTest({ role: "admin" });
     auth = authenticator;
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
   });
 
   it("should return false when no programmatic config exists", async () => {
@@ -193,7 +191,6 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
       role: "admin",
     });
     auth = authenticator;
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
   });
 
   afterEach(() => {
@@ -307,7 +304,6 @@ describe("startOrResumeEnterprisePAYG", () => {
       role: "admin",
     });
     auth = authenticator;
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
   });
 
@@ -429,7 +425,6 @@ describe("stopEnterprisePAYG", () => {
       role: "admin",
     });
     auth = authenticator;
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
   });
 
   afterEach(() => {
@@ -512,7 +507,6 @@ describe("invoiceEnterprisePAYGCredits", () => {
       role: "admin",
     });
     auth = authenticator;
-    vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(makeAndFinalizeCreditsPAYGInvoice).mockResolvedValue(
       new Ok({ id: "inv_test" } as Stripe.Invoice)

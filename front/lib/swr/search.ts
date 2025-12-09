@@ -1,13 +1,15 @@
 import type { Fetcher } from "swr";
 
-import type {
-  ToolSeachResults,
-  ToolSearchNode,
-} from "@app/lib/search/tools/types";
+import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types";
 
-export function useSearchTools({
+interface ToolSearchResponse {
+  results: ToolSearchResult[];
+  resultsCount: number;
+}
+
+export function useSearchToolFiles({
   owner,
   query,
   pageSize = 25,
@@ -18,7 +20,7 @@ export function useSearchTools({
   pageSize?: number;
   disabled?: boolean;
 }) {
-  const searchFetcher: Fetcher<ToolSeachResults> = fetcher;
+  const searchFetcher: Fetcher<ToolSearchResponse> = fetcher;
   const url =
     query && query.length >= 3 && !disabled
       ? `/api/w/${owner.sId}/search/tools?query=${encodeURIComponent(query)}&pageSize=${pageSize}`
@@ -34,7 +36,7 @@ export function useSearchTools({
   );
 
   return {
-    searchResults: data?.nodes ?? emptyArray<ToolSearchNode>(),
+    searchResults: data?.results ?? emptyArray<ToolSearchResult>(),
     resultsCount: data?.resultsCount ?? 0,
     isSearchLoading: isLoading,
     isSearchValidating: isValidating,

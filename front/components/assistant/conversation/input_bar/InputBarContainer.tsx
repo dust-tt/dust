@@ -650,6 +650,7 @@ const InputBarContainer = ({
                         attachedNodes={attachedNodes}
                         disabled={disableTextInput}
                         buttonSize={buttonSize}
+                        conversationId={conversationId}
                       />
                     </>
                   )}

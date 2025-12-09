@@ -583,7 +583,7 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description: "Slack tools for searching and posting messages.",
       authorization: {
-        provider: "slack" as const,
+        provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
       },
       icon: "SlackLogo",

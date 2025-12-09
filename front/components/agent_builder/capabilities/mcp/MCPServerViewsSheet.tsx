@@ -13,15 +13,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type {
-  AgentBuilderFormData,
-  MCPFormData,
-  MCPServerConfigurationType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -55,17 +49,17 @@ import { NameSection } from "@app/components/agent_builder/capabilities/shared/N
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import type {
-  AgentBuilderAction,
-  ConfigurationPagePageId,
-} from "@app/components/agent_builder/types";
+import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
+import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -90,30 +84,30 @@ const TOP_MCP_SERVER_VIEWS = [
 export type SelectedTool = {
   type: "MCP";
   view: MCPServerViewTypeWithLabel;
-  configuredAction?: AgentBuilderAction;
+  configuredAction?: BuilderAction;
 };
 
 export type SheetMode =
   | { type: "add" }
   | {
       type: "configure";
-      action: AgentBuilderAction;
+      action: BuilderAction;
       mcpServerView: MCPServerViewTypeWithLabel;
     }
-  | { type: "edit"; action: AgentBuilderAction; index: number }
+  | { type: "edit"; action: BuilderAction; index: number }
   | {
       type: "info";
-      action: AgentBuilderAction;
+      action: BuilderAction;
       source: "toolDetails" | "addedTool";
     };
 
-type MCPActionWithConfiguration = AgentBuilderAction & {
+type MCPActionWithConfiguration = BuilderAction & {
   type: "MCP";
   configuration: MCPServerConfigurationType;
 };
 
 function isMCPActionWithConfiguration(
-  action: AgentBuilderAction
+  action: BuilderAction
 ): action is MCPActionWithConfiguration {
   return (
     action.type === "MCP" &&
@@ -125,12 +119,14 @@ function isMCPActionWithConfiguration(
 }
 
 interface MCPServerViewsSheetProps {
-  addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
+  addTools: (action: BuilderAction | BuilderAction[]) => void;
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
-  onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
-  selectedActions: AgentBuilderAction[];
+  onActionUpdate?: (action: BuilderAction, index: number) => void;
+  selectedActions: BuilderAction[];
   getAgentInstructions: () => string;
+  /** Optional filter to restrict which MCP server views are shown */
+  filterMCPServerViews?: (view: MCPServerViewTypeWithLabel) => boolean;
 }
 
 export function MCPServerViewsSheet({
@@ -140,9 +136,10 @@ export function MCPServerViewsSheet({
   onActionUpdate,
   selectedActions,
   getAgentInstructions,
+  filterMCPServerViews,
 }: MCPServerViewsSheetProps) {
+  const { owner } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
-  const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -164,7 +161,7 @@ export function MCPServerViewsSheet({
     getInitialPageId(mode)
   );
   const [configurationTool, setConfigurationTool] =
-    useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
+    useState<BuilderAction | null>(getInitialConfigurationTool(mode));
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewTypeWithLabel | null>(null);
@@ -174,7 +171,7 @@ export function MCPServerViewsSheet({
   const hasReasoningModel = reasoningModels.length > 0;
 
   const shouldFilterServerView = useCallback(
-    (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
+    (view: MCPServerViewTypeWithLabel, actions: BuilderAction[]) => {
       // Build the set of server.sId already selected by actions (via their selected view).
       const selectedServerIds = new Set<string>();
       for (const action of actions) {
@@ -199,16 +196,18 @@ export function MCPServerViewsSheet({
   );
 
   const topMCPServerViews = useMemo(() => {
-    return mcpServerViewsWithoutKnowledge.filter((view) =>
+    const views = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-  }, [mcpServerViewsWithoutKnowledge]);
+    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
+  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const nonTopMCPServerViews = useMemo(() => {
-    return mcpServerViewsWithoutKnowledge.filter(
+    const views = mcpServerViewsWithoutKnowledge.filter(
       (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-  }, [mcpServerViewsWithoutKnowledge]);
+    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
+  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const selectableTopMCPServerViews = useMemo(() => {
     const filteredList = topMCPServerViews.filter(
@@ -669,7 +668,7 @@ export function MCPServerViewsSheet({
           ? configurationTool.name
           : formData.name;
 
-      const configuredAction: AgentBuilderAction = {
+      const configuredAction: BuilderAction = {
         ...configurationTool,
         name: newActionName,
         description: formData.description,

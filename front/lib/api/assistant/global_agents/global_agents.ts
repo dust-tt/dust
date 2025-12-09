@@ -55,7 +55,7 @@ import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_ag
 import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { GlobalAgentSettings } from "@app/lib/models/agent/agent";
+import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -95,7 +95,7 @@ function getGlobalAgent({
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   helperPromptInstance: HelperAssistantPrompt;
-  globalAgentSettings: GlobalAgentSettings[];
+  globalAgentSettings: GlobalAgentSettingsModel[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
@@ -494,7 +494,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
       : null,
-    GlobalAgentSettings.findAll({
+    GlobalAgentSettingsModel.findAll({
       where: { workspaceId: owner.id },
     }),
     HelperAssistantPrompt.getInstance(),
@@ -706,14 +706,14 @@ export async function upsertGlobalAgentSettings(
     throw new Error("Global Agent not found: invalid agentId.");
   }
 
-  const settings = await GlobalAgentSettings.findOne({
+  const settings = await GlobalAgentSettingsModel.findOne({
     where: { workspaceId: owner.id, agentId },
   });
 
   if (settings) {
     await settings.update({ status });
   } else {
-    await GlobalAgentSettings.create({
+    await GlobalAgentSettingsModel.create({
       workspaceId: owner.id,
       agentId,
       status,

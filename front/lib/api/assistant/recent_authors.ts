@@ -2,7 +2,7 @@ import { Sequelize } from "sequelize";
 
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentRecentAuthors,
@@ -31,7 +31,7 @@ async function fetchRecentAuthorIdsWithVersion(
   auth: Authenticator,
   { agentId }: { agentId: string }
 ) {
-  return AgentConfiguration.findAll({
+  return AgentConfigurationModel.findAll({
     attributes: [
       "authorId",
       [Sequelize.fn("MAX", Sequelize.col("version")), "version"],

@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
-  Message,
-  UserMessage,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -40,7 +40,7 @@ async function isAncestorConversation(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // Get the first user message from conversation B.
-  const firstUserMessage = await Message.findOne({
+  const firstUserMessage = await MessageModel.findOne({
     where: {
       conversationId: conversationB.id,
       workspaceId,
@@ -51,7 +51,7 @@ async function isAncestorConversation(
     ],
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
       },
@@ -67,7 +67,7 @@ async function isAncestorConversation(
   }
 
   // Find the origin message and its conversation.
-  const originMessage = await Message.findOne({
+  const originMessage = await MessageModel.findOne({
     where: {
       workspaceId,
       sId: originMessageId,

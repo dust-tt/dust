@@ -1,0 +1,120 @@
+import {
+  getGoogleDriveClient,
+  MAX_FILE_SIZE,
+  SUPPORTED_MIMETYPES,
+} from "@app/lib/providers/google_drive/utils";
+import type {
+  ToolDownloadParams,
+  ToolDownloadResult,
+  ToolSearchParams,
+  ToolSearchRawResult,
+} from "@app/lib/search/tools/types";
+import type { ContentNodeType } from "@app/types/core/content_node";
+
+export async function search({
+  accessToken,
+  query,
+  pageSize,
+}: ToolSearchParams): Promise<ToolSearchRawResult[]> {
+  const drive = getGoogleDriveClient(accessToken);
+
+  const searchQuery = `(name contains '${query.replace(/'/g, "\\'")}' or fullText contains '${query.replace(/'/g, "\\'")}') and trashed = false`;
+
+  const res = await drive.files.list({
+    q: searchQuery,
+    pageSize: Math.min(pageSize, 100),
+    fields: "files(id, name, mimeType, webViewLink)",
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    corpora: "allDrives",
+    orderBy: "modifiedTime desc",
+  });
+
+  return (res.data.files ?? []).map((file) => {
+    const mimeType = file.mimeType ?? "application/octet-stream";
+    let type: ContentNodeType = "document";
+    if (mimeType === "application/vnd.google-apps.folder") {
+      type = "folder";
+    } else if (
+      mimeType === "application/vnd.google-apps.spreadsheet" ||
+      mimeType === "text/csv"
+    ) {
+      type = "table";
+    }
+    return {
+      externalId: file.id ?? "",
+      mimeType,
+      title: file.name ?? "Untitled",
+      type,
+      sourceUrl: file.webViewLink ?? null,
+    };
+  });
+}
+
+export async function download({
+  accessToken,
+  externalId,
+}: ToolDownloadParams): Promise<ToolDownloadResult> {
+  const drive = getGoogleDriveClient(accessToken);
+
+  const fileMetadata = await drive.files.get({
+    fileId: externalId,
+    supportsAllDrives: true,
+    fields: "id, name, mimeType, size",
+  });
+
+  const file = fileMetadata.data;
+  if (!file.mimeType || !file.name) {
+    throw new Error("File metadata is incomplete.");
+  }
+
+  if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
+    throw new Error(
+      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+    );
+  }
+
+  let content: string;
+
+  // Export Google native files or download regular files.
+  if (
+    file.mimeType === "application/vnd.google-apps.document" ||
+    file.mimeType === "application/vnd.google-apps.presentation"
+  ) {
+    const exportRes = await drive.files.export({
+      fileId: externalId,
+      mimeType: "text/plain",
+    });
+    if (typeof exportRes.data !== "string") {
+      throw new Error("Failed to export file content.");
+    }
+    content = exportRes.data;
+  } else if (file.mimeType === "application/vnd.google-apps.spreadsheet") {
+    // Export Google Sheets as CSV.
+    const exportRes = await drive.files.export({
+      fileId: externalId,
+      mimeType: "text/csv",
+    });
+    if (typeof exportRes.data !== "string") {
+      throw new Error("Failed to export spreadsheet content.");
+    }
+    content = exportRes.data;
+  } else if (SUPPORTED_MIMETYPES.includes(file.mimeType)) {
+    const downloadRes = await drive.files.get({
+      fileId: externalId,
+      alt: "media",
+    });
+    if (typeof downloadRes.data !== "string") {
+      throw new Error("Failed to download file content.");
+    }
+    content = downloadRes.data;
+  } else {
+    throw new Error(`Unsupported file type: ${file.mimeType}`);
+  }
+
+  return {
+    content,
+    fileName: file.name,
+    mimeType: file.mimeType,
+  };
+}

@@ -7,10 +7,10 @@ import {
   DropdownMenuTrigger,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { PuzzleIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import { SKILL_ICON } from "@app/lib/skill";
 import {
   getAgentBuilderRoute,
   getSkillBuilderRoute,
@@ -31,7 +31,6 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
         <Button
           variant="primary"
           label="Manage"
-          // TODO(skills 2025-12-05): use the right icon
           icon={ContactsRobotIcon}
           size="sm"
           isSelect
@@ -50,8 +49,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
         />
         <DropdownMenuItem
           label="skills"
-          // TODO(skills 2025-12-05): use the right icon
-          icon={PuzzleIcon}
+          icon={SKILL_ICON}
           onClick={() => {
             setIsLoading(true);
             void router.push(getSkillBuilderRoute(owner.sId, "manage"));

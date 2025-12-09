@@ -145,6 +145,8 @@ const API_ERROR_TYPES = [
   "agent_memory_not_found",
   // ES
   "elasticsearch_error",
+  // Skills
+  "skill_not_found",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];

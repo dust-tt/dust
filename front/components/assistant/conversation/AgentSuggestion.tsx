@@ -164,7 +164,9 @@ export function AgentSuggestion({
     if (
       !dustAgent ||
       userMessage.id === -1 ||
-      userMessage.sId === autoSelectedMessageIdRef.current
+      userMessage.sId === autoSelectedMessageIdRef.current ||
+      // Only auto-select the dust agent if it is the first message in the conversation
+      userMessage.rank !== 0
     ) {
       return;
     }
@@ -176,6 +178,7 @@ export function AgentSuggestion({
     dustAgent,
     userMessage.id,
     userMessage.sId,
+    userMessage.rank,
     setSelectedAgent,
     handleSelectSuggestion,
   ]);

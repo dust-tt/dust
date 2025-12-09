@@ -10,7 +10,7 @@ import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types"
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/agent/conversation";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -22,7 +22,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export async function markAgentMessageAsFailed(
-  agentMessageRow: AgentMessage,
+  agentMessageRow: AgentMessageModel,
   error: ToolErrorEvent["error"]
 ): Promise<void> {
   await agentMessageRow.update({
@@ -45,7 +45,7 @@ async function processEventForDatabase(
     modelInteractionDurationMs,
   }: {
     event: AgentMessageEvents;
-    agentMessageRow: AgentMessage;
+    agentMessageRow: AgentMessageModel;
     step: number;
     conversation: ConversationWithoutContentType;
     modelInteractionDurationMs?: number;
@@ -180,7 +180,7 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs,
   }: {
     event: AgentMessageEvents;
-    agentMessageRow: AgentMessage;
+    agentMessageRow: AgentMessageModel;
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;

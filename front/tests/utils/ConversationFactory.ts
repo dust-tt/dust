@@ -3,10 +3,10 @@ import type { Transaction } from "sequelize";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-  UserMessage,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -108,8 +108,8 @@ export class ConversationFactory {
     origin?: UserMessageOrigin;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
-  }): Promise<{ messageRow: Message; userMessage: UserMessageType }> {
-    const userMessageRow = await UserMessage.create({
+  }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
+    const userMessageRow = await UserMessageModel.create({
       userId: auth.getNonNullableUser().id,
       workspaceId: workspace.id,
       content,
@@ -122,7 +122,7 @@ export class ConversationFactory {
       clientSideMCPServerIds: [],
     });
 
-    const messageRow = await Message.create({
+    const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
       rank: 0,
       conversationId: conversation.id,
@@ -180,8 +180,8 @@ export class ConversationFactory {
     rank: number;
     content: string;
     origin?: UserMessageOrigin;
-  }): Promise<Message> {
-    const userMessageRow = await UserMessage.create({
+  }): Promise<MessageModel> {
+    const userMessageRow = await UserMessageModel.create({
       userId: auth.user()?.id,
       workspaceId: workspace.id,
       content,
@@ -194,7 +194,7 @@ export class ConversationFactory {
       clientSideMCPServerIds: [],
     });
 
-    return Message.create({
+    return MessageModel.create({
       sId: generateRandomModelSId(),
       rank,
       conversationId,
@@ -217,8 +217,8 @@ export class ConversationFactory {
     conversationId: ModelId;
     rank: number;
     agentConfigurationId: string;
-  }): Promise<Message> {
-    const agentMessageRow = await AgentMessage.create({
+  }): Promise<MessageModel> {
+    const agentMessageRow = await AgentMessageModel.create({
       status: "created",
       agentConfigurationId,
       agentConfigurationVersion: 0,
@@ -226,7 +226,7 @@ export class ConversationFactory {
       skipToolsValidation: false,
     });
 
-    return Message.create({
+    return MessageModel.create({
       sId: generateRandomModelSId(),
       rank,
       conversationId,
@@ -258,7 +258,7 @@ export class ConversationFactory {
     title: string;
     contentType?: SupportedContentFragmentType;
     fileName?: string;
-  }): Promise<Message> {
+  }): Promise<MessageModel> {
     let finalFileId = fileId;
     if (!finalFileId) {
       // Default to text/plain for file creation if contentType is not a valid file content type
@@ -294,7 +294,7 @@ export class ConversationFactory {
       textBytes: null,
     });
 
-    return Message.create({
+    return MessageModel.create({
       sId: generateRandomModelSId(),
       rank,
       conversationId,
@@ -319,8 +319,8 @@ const createUserMessage = async ({
   createdAt: Date;
   rank: number;
   t?: Transaction;
-}): Promise<Message> => {
-  return Message.create(
+}): Promise<MessageModel> => {
+  return MessageModel.create(
     {
       createdAt,
       updatedAt: createdAt,
@@ -329,7 +329,7 @@ const createUserMessage = async ({
       conversationId: conversationModelId,
       parentId: null,
       userMessageId: (
-        await UserMessage.create(
+        await UserMessageModel.create(
           {
             createdAt,
             updatedAt: createdAt,
@@ -372,7 +372,7 @@ const createMessageAndAgentMessage = async ({
   parentId?: ModelId | null;
   t?: Transaction;
 }) => {
-  const agentMessageRow = await AgentMessage.create(
+  const agentMessageRow = await AgentMessageModel.create(
     {
       createdAt,
       updatedAt: createdAt,
@@ -384,7 +384,7 @@ const createMessageAndAgentMessage = async ({
     },
     { transaction: t }
   );
-  const messageRow = await Message.create(
+  const messageRow = await MessageModel.create(
     {
       createdAt,
       updatedAt: createdAt,

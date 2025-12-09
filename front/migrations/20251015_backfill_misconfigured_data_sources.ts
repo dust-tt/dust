@@ -2,7 +2,7 @@ import assert from "assert";
 import * as fs from "fs";
 import { Op } from "sequelize";
 
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -13,14 +13,15 @@ makeScript({}, async ({ execute }, logger) => {
 
   logger.info("Starting migration of AgentDataSourceConfiguration parentsIn");
 
-  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
-    where: {
-      parentsIn: [],
-      parentsNotIn: {
-        [Op.and]: [{ [Op.not]: null }, { [Op.ne]: [] }],
+  const dataSourceConfigurations =
+    await AgentDataSourceConfigurationModel.findAll({
+      where: {
+        parentsIn: [],
+        parentsNotIn: {
+          [Op.and]: [{ [Op.not]: null }, { [Op.ne]: [] }],
+        },
       },
-    },
-  });
+    });
 
   logger.info(
     `Found ${dataSourceConfigurations.length} configurations to process`

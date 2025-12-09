@@ -2,7 +2,7 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
 import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
@@ -16,7 +16,10 @@ import {
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import type {
+  FileBlob,
+  FileUploaderService,
+} from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
@@ -69,34 +72,38 @@ export function InputBarAttachments({
     [spaces]
   );
 
-  // Convert file blobs to FileAttachment objects
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const fileService = files.service;
+
+  const createFileAttachment = useCallback(
+    (blob: FileBlob): FileAttachment => {
+      const isPasted = isPastedFile(blob.contentType);
+      const title = isPasted
+        ? getDisplayNameFromPastedFileId(blob.id)
+        : blob.filename;
+      const uploadDate = isPasted
+        ? getDisplayDateFromPastedFileId(blob.id)
+        : undefined;
+
+      return {
+        type: "file",
+        id: blob.id,
+        title,
+        sourceUrl: blob.sourceUrl,
+        contentType: blob.contentType,
+        isUploading: blob.isUploading,
+        description: uploadDate,
+        iconName: blob.iconName,
+        fileId: blob.fileId,
+        onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
+      };
+    },
+    [disable, fileService]
+  );
+
+  // Convert file blobs to FileAttachments (open in viewer dialog).
   const fileAttachments: FileAttachment[] = useMemo(() => {
-    return (
-      files?.service.fileBlobs.map((blob) => {
-        const isPasted = isPastedFile(blob.contentType);
-        const title = isPasted
-          ? getDisplayNameFromPastedFileId(blob.id)
-          : blob.id;
-        const uploadDate = isPasted
-          ? getDisplayDateFromPastedFileId(blob.id)
-          : undefined;
-        return {
-          type: "file",
-          id: blob.id,
-          title,
-          sourceUrl: blob.sourceUrl,
-          contentType: blob.contentType,
-          isUploading: blob.isUploading,
-          description: uploadDate,
-          fileId: blob.id,
-          onRemove: disable
-            ? undefined
-            : () => files.service.removeFile(blob.id),
-        };
-      }) ?? []
-    );
-  }, [files?.service, disable]);
+    return fileService.fileBlobs.map((blob) => createFileAttachment(blob));
+  }, [fileService, createFileAttachment]);
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {

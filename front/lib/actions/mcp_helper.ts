@@ -1,5 +1,5 @@
-import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   AutoInternalMCPServerNameType,
@@ -136,7 +136,7 @@ export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?:
     | AgentBuilderMCPConfiguration
-    | AgentBuilderAction
+    | BuilderAction
     | MCPServerConfigurationType
 ) {
   if (view.name) {
@@ -149,7 +149,7 @@ export function getMcpServerDisplayName(
   server: MCPServerType,
   action?:
     | AgentBuilderMCPConfiguration
-    | AgentBuilderAction
+    | BuilderAction
     | MCPServerConfigurationType
 ): string {
   // Unreleased internal servers are displayed with a suffix in the UI.

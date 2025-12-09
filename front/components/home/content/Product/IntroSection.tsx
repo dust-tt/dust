@@ -1,4 +1,4 @@
-import { PlayIcon, RocketIcon } from "@dust-tt/sparkle";
+import { PlayIcon, Spinner } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -13,41 +13,118 @@ import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
+import logger from "@app/logger/logger";
 
 const HeroContent = () => {
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!email || !email.includes("@")) {
+      setError("Please enter a valid email");
+      return;
+    }
+
+    trackEvent({
+      area: TRACKING_AREAS.HOME,
+      object: "hero_email",
+      action: TRACKING_ACTIONS.SUBMIT,
+    });
+
+    setIsLoading(true);
+
+    try {
+      const response = await clientFetch("/api/enrichment/company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success && data.error) {
+        setError(data.error);
+        return;
+      }
+
+      if (data.redirectUrl) {
+        window.location.href = appendUTMParams(data.redirectUrl);
+      }
+    } catch (err) {
+      logger.error({ error: err }, "Enrichment error");
+      // Fallback to signup on error
+      window.location.href = appendUTMParams(
+        `/api/workos/login?screenHint=sign-up&loginHint=${encodeURIComponent(email)}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
-      <H1
-        mono
-        className="text-center text-5xl font-medium md:text-6xl lg:text-7xl"
-      >
-        Transform how work
+      <H1 className="text-center text-5xl font-medium md:text-6xl lg:text-7xl">
+        The operating system
         <br />
-        gets done
+        for{" "}
+        <span
+          className="pr-1"
+          style={{
+            background:
+              "linear-gradient(90deg, #1C91FF 0%, #8B5CF6 35%, #E14322 65%, #6AA668 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          AI Agents
+        </span>
       </H1>
-      <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-        The platform to build AI agents in minutes, connected to your company
-        knowledge and tools,
-        <br className="hidden sm:block" /> powered by the best AI models.
+      <P
+        size="lg"
+        className="text-xl leading-7 tracking-tight text-muted-foreground"
+      >
+        Deploy, orchestrate, and govern fleets of specialized AI agents that
+        work alongside your team, safely connected to your company's knowledge
+        and tools.
       </P>
-      <div className="mt-4 flex flex-row justify-center gap-4">
-        <UTMButton
-          variant="highlight"
-          size="md"
-          label="Get started"
-          icon={RocketIcon}
-          href="/home/pricing"
-          onClick={withTracking(TRACKING_AREAS.HOME, "hero_get_started")}
-        />
-        <UTMButton
-          variant="outline"
-          size="md"
-          label="Book a demo"
-          href="/home/contact"
-          onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
-        />
-      </div>
+      {/* Email input */}
+      <form onSubmit={handleSubmit} className="mt-12 w-full max-w-xl">
+        <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="What's your work email?"
+            className="flex-1 border-none bg-transparent pl-1 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
+          >
+            {isLoading && <Spinner size="xs" />}
+            Get started
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        <p className="mt-3 text-sm text-muted-foreground">
+          14-day free trial. Cancel anytime.
+        </p>
+      </form>
     </div>
   );
 };
@@ -59,7 +136,6 @@ export const HeroVisual = ({
   onWatch: () => void;
   showVideo: boolean;
 }) => {
-  // Keep the outer shell & border animation consistent, swap inner content on click
   const videoUrl = new URL(
     "https://fast.wistia.net/embed/iframe/3eqngftomq?seo=true&videoFoam=true"
   );
@@ -132,19 +208,20 @@ export const HeroVisual = ({
 };
 
 export function IntroSection() {
-  const [showHeroVideo, setShowHeroVideo] = useState(false);
   return (
     <section className="w-full">
       <div className="flex flex-col gap-6 pt-16 sm:gap-6 md:gap-6 lg:gap-6">
-        <div className="flex flex-col gap-16 sm:gap-16">
+        <div
+          className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-12"
+          style={{
+            background:
+              "linear-gradient(180deg, #FFF 0%, #E9F7FF 40%, #E9F7FF 60%, #FFF 100%)",
+          }}
+        >
           <HeroContent />
-          <HeroVisual
-            showVideo={showHeroVideo}
-            onWatch={() => setShowHeroVideo(true)}
-          />
-        </div>
-        <div className="mt-12">
-          <TrustedBy logoSet="landing" />
+          <div className="mx-auto mt-12 max-w-5xl px-4">
+            <TrustedBy logoSet="landing" />
+          </div>
         </div>
         <div className="mt-12">
           <FunctionsSection />

@@ -10,7 +10,7 @@ import {
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
-import { Message } from "@app/lib/models/agent/conversation";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -1863,7 +1863,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find a user message
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -1902,7 +1902,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find an agent message
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -1969,7 +1969,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get a message from the other conversation
-      const otherMessages = await Message.findAll({
+      const otherMessages = await MessageModel.findAll({
         where: {
           conversationId: (await ConversationResource.fetchById(
             auth,
@@ -2001,7 +2001,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -2046,7 +2046,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get the first message
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,

@@ -1,4 +1,4 @@
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
@@ -20,12 +20,12 @@ export async function recordUsageActivity(workspaceId: string) {
     return;
   }
 
-  const subscription = await Subscription.findOne({
+  const subscription = await SubscriptionModel.findOne({
     where: {
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
 
   if (!subscription) {

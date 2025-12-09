@@ -39,19 +39,19 @@ export async function launchCreditAlertWorkflow({
 
     logger.info(
       { workflowId, workspaceId, thresholdId: idempotencyKey },
-      "Started credit alert workflow"
+      "[Credit Alert] Started credit alert workflow"
     );
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       logger.info(
         { workflowId, workspaceId, thresholdId: idempotencyKey },
-        "Credit alert workflow already started (idempotency check passed)"
+        "[Credit Alert] Credit alert workflow already started (idempotency check passed)"
       );
       return;
     }
     logger.error(
       { workflowId, workspaceId, thresholdId: idempotencyKey, error: e },
-      "Failed to start credit alert workflow"
+      "[Credit Alert] Failed to start credit alert workflow"
     );
     throw e;
   }

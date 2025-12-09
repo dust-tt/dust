@@ -2,11 +2,11 @@ import * as _ from "lodash";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -38,7 +38,7 @@ async function updateConversationRequestedSpaceIds(
   }
 
   // Find all agent messages in this conversation to determine which agents are involved
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       workspaceId: workspace.id,
       conversationId: conversation.id,
@@ -46,7 +46,7 @@ async function updateConversationRequestedSpaceIds(
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
         attributes: ["agentConfigurationId", "agentConfigurationVersion"],
@@ -70,7 +70,7 @@ async function updateConversationRequestedSpaceIds(
   }
 
   // Get the agent configurations involved in this conversation (matching sId and version pairs)
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       [Op.or]: agentConfigPairs.map((pair) => ({

@@ -17,7 +17,7 @@ import {
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { decrypt, Err, Ok } from "@app/types";
@@ -44,7 +44,7 @@ export async function getAshbyClient(
     );
   }
 
-  const secret = await DustAppSecret.findOne({
+  const secret = await DustAppSecretModel.findOne({
     where: {
       name: toolConfig.secretName,
       workspaceId: auth.getNonNullableWorkspace().id,

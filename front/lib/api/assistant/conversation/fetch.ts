@@ -3,9 +3,9 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -35,7 +35,7 @@ export async function getConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
@@ -46,12 +46,12 @@ export async function getConversation(
     ],
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: false,
       },
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: false,
         include: [

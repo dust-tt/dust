@@ -133,13 +133,11 @@ export type EditedByUser = {
   userId: string | null;
 };
 
-export function formatUserFullName(user?: {
+export function formatUserFullName(user: {
   firstName?: string;
   lastName?: string | null;
-}) {
-  return user
-    ? [user.firstName, user.lastName].filter(Boolean).join(" ")
-    : null;
+}): string {
+  return [user.firstName, user.lastName].filter(Boolean).join(" ");
 }
 
 export function isAdmin(

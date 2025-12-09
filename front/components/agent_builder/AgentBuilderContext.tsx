@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
-import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
 

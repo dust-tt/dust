@@ -1,3 +1,4 @@
+import assert from "assert";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -13,12 +14,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
   ConversationParticipantModel,
-  Mention,
-  Message,
-  UserMessage,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -248,6 +249,46 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async fetchParticipationMapForUser(
+    auth: Authenticator,
+    conversationIds?: number[]
+  ): Promise<Map<number, UserParticipation>> {
+    const user = auth.user();
+
+    assert(user, "User is expected to be authenticated");
+
+    const whereClause: WhereOptions<ConversationParticipantModel> = {
+      userId: user.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (conversationIds && conversationIds.length > 0) {
+      whereClause.conversationId = { [Op.in]: conversationIds };
+    }
+
+    const participations = await ConversationParticipantModel.findAll({
+      where: whereClause,
+      attributes: [
+        "actionRequired",
+        "conversationId",
+        "unread",
+        "updatedAt",
+        "userId",
+      ],
+    });
+
+    return new Map(
+      participations.map((p) => [
+        p.conversationId,
+        {
+          actionRequired: p.actionRequired,
+          unread: p.unread,
+          updated: p.updatedAt.getTime(),
+        },
+      ])
+    );
+  }
+
   static async fetchByIds(
     auth: Authenticator,
     sIds: string[],
@@ -344,12 +385,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       include: [
         {
-          model: Message,
+          model: MessageModel,
           required: true,
           attributes: [],
           include: [
             {
-              model: Mention,
+              model: MentionModel,
               as: "mentions",
               required: true,
               attributes: [],
@@ -365,7 +406,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
               },
             },
             {
-              model: UserMessage,
+              model: UserMessageModel,
               as: "userMessage",
               required: true,
               attributes: [],
@@ -392,7 +433,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const { batchSize = 1000, cutoffDate } = options ?? {};
 
-    const inactiveConversations = await Message.findAll({
+    const inactiveConversations = await MessageModel.findAll({
       attributes: [
         "conversationId",
         [fn("MAX", col("createdAt")), "lastMessageDate"],
@@ -445,7 +486,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Two-step approach for better performance:
     // Step 1: Get distinct conversation IDs that have messages from this agent.
-    const messageWithAgent = await Message.findAll({
+    const messageWithAgent = await MessageModel.findAll({
       attributes: [
         [
           Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
@@ -457,7 +498,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           attributes: [],
@@ -548,31 +589,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listConversationsForUser(
     auth: Authenticator
   ): Promise<ConversationResource[]> {
-    const user = auth.getNonNullableUser();
-
     // First get all participations for the user to get conversation IDs and metadata.
-    const participations = await ConversationParticipantModel.findAll({
-      attributes: [
-        "actionRequired",
-        "conversationId",
-        "unread",
-        "updatedAt",
-        "userId",
-      ],
-      where: {
-        userId: user.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      order: [["updatedAt", "DESC"]],
-    });
+    const participationMap = await this.fetchParticipationMapForUser(auth);
+    const conversationIds = Array.from(participationMap.keys());
 
-    if (participations.length === 0) {
+    if (conversationIds.length === 0) {
       return [];
     }
 
-    const conversationIds = participations.map((p) => p.conversationId);
-
-    // Use baseFetchWithAuthorization to get conversations with proper authorization.
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
@@ -582,17 +606,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           visibility: { [Op.eq]: "unlisted" },
         },
       }
-    );
-
-    const participationMap = new Map(
-      participations.map((p) => [
-        p.conversationId,
-        {
-          actionRequired: p.actionRequired,
-          unread: p.unread,
-          updated: p.updatedAt.getTime(),
-        },
-      ])
     );
 
     // Attach participation data to resources.
@@ -659,16 +672,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType }
   ) {
+    const user = auth.user();
+    if (!user) {
+      // If no user is authenticated, we cannot mark action required.
+      return new Ok([0]);
+    }
+
     // Update the conversation participant to set actionRequired to true
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
       {
-        // We do not have a workspaceId here because we do not have an Authenticator in the caller.
-        // It's fine because we are only updating the actionRequired flag.
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
-          userId: auth.getNonNullableUser().id,
+          userId: user.id,
         },
       }
     );
@@ -798,6 +815,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  getUserParticipation(): UserParticipation | undefined {
+    return this.userParticipation;
+  }
+
   static async upsertParticipation(
     auth: Authenticator,
     {
@@ -914,8 +935,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getMessageById(
     auth: Authenticator,
     messageId: string
-  ): Promise<Result<Message, Error>> {
-    const message = await Message.findOne({
+  ): Promise<Result<MessageModel, Error>> {
+    const message = await MessageModel.findOne({
       where: {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -923,12 +944,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       include: [
         {
-          model: UserMessage,
+          model: UserMessageModel,
           as: "userMessage",
           required: false,
         },
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: false,
         },
@@ -956,7 +977,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     hasMore: boolean;
   }> {
     // Step 1: Fetch all NON content fragments with size = limit + 1
-    const whereNonCf: WhereOptions<Message> = {
+    const whereNonCf: WhereOptions<MessageModel> = {
       conversationId: this.id,
       workspaceId: auth.getNonNullableWorkspace().id,
       contentFragmentId: { [Op.is]: null },
@@ -968,7 +989,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     }
 
-    const nonContentFragmentMessages = await Message.findAll({
+    const nonContentFragmentMessages = await MessageModel.findAll({
       attributes: [
         [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
         [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
@@ -1011,14 +1032,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // For multiple non-CF messages: include CFs between minRank and maxRank (inclusive)
 
     if (minRank !== undefined && maxRank !== undefined && ranksHaveGaps) {
-      const whereCf: WhereOptions<Message> = {
+      const whereCf: WhereOptions<MessageModel> = {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         contentFragmentId: { [Op.ne]: null },
         rank: { [Op.between]: [minRank, maxRank] },
       };
 
-      const contentFragmentMessages = await Message.findAll({
+      const contentFragmentMessages = await MessageModel.findAll({
         attributes: [
           [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
           [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
@@ -1042,14 +1063,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async fetchMessagesForPage(
     auth: Authenticator,
     { limit, lastRank }: { limit: number; lastRank?: number | null }
-  ): Promise<{ hasMore: boolean; messages: Message[] }> {
+  ): Promise<{ hasMore: boolean; messages: MessageModel[] }> {
     const { allMessageIds, hasMore } = await this.getMaxRankMessages(auth, {
       limit,
       lastRank,
     });
 
     // Fetch all messages (including content fragments and up to limit non-content-fragment messages)
-    const messages = await Message.findAll({
+    const messages = await MessageModel.findAll({
       where: {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -1060,12 +1081,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["rank", "DESC"]],
       include: [
         {
-          model: UserMessage,
+          model: UserMessageModel,
           as: "userMessage",
           required: false,
         },
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: false,
           include: [
@@ -1398,6 +1419,31 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return spaceIds;
+  }
+
+  static async batchMarkAsReadAndClearActionRequired(
+    auth: Authenticator,
+    conversationSIds: string[]
+  ) {
+    const conversations = await ConversationResource.fetchByIds(
+      auth,
+      conversationSIds
+    );
+
+    const conversationIds = conversations.map((c) => c.id);
+
+    await ConversationParticipantModel.update(
+      { unread: false, actionRequired: false },
+      {
+        where: {
+          conversationId: { [Op.in]: conversationIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    return new Ok(undefined);
   }
 
   toJSON(): ConversationWithoutContentType {

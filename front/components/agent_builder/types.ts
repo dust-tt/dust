@@ -4,12 +4,11 @@ import uniqueId from "lodash/uniqueId";
 import type { ComponentProps } from "react";
 import { z } from "zod";
 
-import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
-import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { mcpServerConfigurationSchema } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -22,10 +21,6 @@ import type {
   TimeFrame,
   WhitelistableFeature,
 } from "@app/types";
-
-type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
-
-export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
 
 export const BUILDER_FLOWS = [
   "workspace_assistants",
@@ -130,7 +125,7 @@ export const capabilityFormSchema = z
 
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
-): AgentBuilderAction {
+): BuilderAction {
   const {
     requiresDataSourceConfiguration,
     requiresDataWarehouseConfiguration,
@@ -157,10 +152,6 @@ export function getDefaultMCPAction(
           : "",
     configurationRequired: !noRequirement,
   };
-}
-
-export function isDefaultActionName(action: AgentBuilderAction) {
-  return action.name.includes(DEFAULT_MCP_ACTION_NAME);
 }
 
 export interface ActionSpecification {

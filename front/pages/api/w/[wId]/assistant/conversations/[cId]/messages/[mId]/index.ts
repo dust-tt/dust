@@ -1,18 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import {
+  softDeleteAgentMessage,
+  softDeleteUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   batchRenderMessages,
   fetchMessageInConversation,
-  softDeleteAgentMessage,
-  softDeleteUserMessage,
 } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { MessageType, WithAPIErrorResponse } from "@app/types";
-import { ConversationError, Err, isString } from "@app/types";
+import { isAgentMessageType, isString, isUserMessageType } from "@app/types";
 
 export type FetchConversationMessageResponse = {
   message: MessageType;
@@ -102,18 +104,32 @@ async function handler(
     }
 
     case "DELETE": {
-      const conversationRes =
-        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+      const conversation = await ConversationResource.fetchById(auth, cId);
 
-      if (conversationRes.isErr()) {
-        return apiErrorForConversation(req, res, conversationRes.error);
+      if (!conversation) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: "Conversation not found",
+          },
+        });
       }
 
-      const conversation = conversationRes.value;
+      const messageRes = await conversation.getMessageById(auth, mId);
 
-      const message = await fetchMessageInConversation(auth, conversation, mId);
+      if (messageRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "message_not_found",
+            message: "The message you're trying to delete does not exist.",
+          },
+        });
+      }
+      const message = messageRes.value;
 
-      if (!message) {
+      if (!message.userMessage && !message.agentMessage) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -123,43 +139,69 @@ async function handler(
         });
       }
 
-      const deleteResult = message.userMessage
-        ? await softDeleteUserMessage(auth, {
-            messageId: mId,
-            conversation,
-          })
-        : message.agentMessage
-          ? await softDeleteAgentMessage(auth, {
-              messageId: mId,
-              conversation,
-            })
-          : new Err(new ConversationError("message_not_found"));
-
-      if (deleteResult.isErr()) {
-        const error = deleteResult.error;
-        if (error.type === "message_not_found") {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "message_not_found",
-              message: "The message you're trying to delete does not exist.",
-            },
-          });
-        }
-        if (error.type === "message_deletion_not_authorized") {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "message_deletion_not_authorized",
-              message: "You are not authorized to delete this message.",
-            },
-          });
-        }
+      const renderRes = await batchRenderMessages(
+        auth,
+        conversation,
+        [message],
+        "full"
+      );
+      if (renderRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "An error occurred while deleting the message.",
+            message: "Unable to render the message you're trying to delete.",
+          },
+        });
+      }
+
+      const renderedMessage = renderRes.value[0];
+
+      if (isUserMessageType(renderedMessage)) {
+        const conversationRes = await getConversation(auth, conversation.sId);
+
+        if (conversationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Unable to get the conversation.",
+            },
+          });
+        }
+        const deleteResult = await softDeleteUserMessage(auth, {
+          message: renderedMessage,
+          conversation: conversationRes.value,
+        });
+        if (deleteResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: deleteResult.error.type,
+              message: deleteResult.error.message,
+            },
+          });
+        }
+      } else if (isAgentMessageType(renderedMessage)) {
+        const deleteResult = await softDeleteAgentMessage(auth, {
+          message: renderedMessage,
+          conversation: conversation.toJSON(),
+        });
+        if (deleteResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: deleteResult.error.type,
+              message: deleteResult.error.message,
+            },
+          });
+        }
+      } else {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "message_not_found",
+            message: "The message you're trying to delete does not exist.",
           },
         });
       }

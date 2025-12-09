@@ -174,7 +174,7 @@ export const subNavigationAdmin = ({
   current,
   subMenuLabel,
   subMenu,
-  featureFlags,
+  featureFlags: _featureFlags,
 }: {
   owner: WorkspaceType;
   current: SubNavigationAdminId;
@@ -187,8 +187,6 @@ export const subNavigationAdmin = ({
   if (!isBuilder(owner)) {
     return nav;
   }
-
-  const hasApiAndProgrammaticSection = featureFlags.includes("ppul");
 
   if (isAdmin(owner)) {
     nav.push({
@@ -235,35 +233,31 @@ export const subNavigationAdmin = ({
       ],
     });
 
-    // API & Programmatic section (feature flagged)
-    if (hasApiAndProgrammaticSection) {
-      nav.push({
-        id: "api",
-        label: "API & Programmatic",
-        variant: "primary",
-        menus: [
-          {
-            id: "api_keys",
-            label: "API Keys",
-            icon: LockIcon,
-            href: `/w/${owner.sId}/developers/api-keys`,
-            current: current === "api_keys",
-            subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-            subMenu: current === "api_keys" ? subMenu : undefined,
-          },
-          {
-            id: "credits_usage",
-            label: "Programmatic usage",
-            icon: CardIcon,
-            href: `/w/${owner.sId}/developers/credits-usage`,
-            current: current === "credits_usage",
-            subMenuLabel:
-              current === "credits_usage" ? subMenuLabel : undefined,
-            subMenu: current === "credits_usage" ? subMenu : undefined,
-          },
-        ],
-      });
-    }
+    nav.push({
+      id: "api",
+      label: "API & Programmatic",
+      variant: "primary",
+      menus: [
+        {
+          id: "api_keys",
+          label: "API Keys",
+          icon: LockIcon,
+          href: `/w/${owner.sId}/developers/api-keys`,
+          current: current === "api_keys",
+          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+          subMenu: current === "api_keys" ? subMenu : undefined,
+        },
+        {
+          id: "credits_usage",
+          label: "Programmatic usage",
+          icon: CardIcon,
+          href: `/w/${owner.sId}/developers/credits-usage`,
+          current: current === "credits_usage",
+          subMenuLabel: current === "credits_usage" ? subMenuLabel : undefined,
+          subMenu: current === "credits_usage" ? subMenu : undefined,
+        },
+      ],
+    });
 
     nav.push({
       id: "developers",
@@ -279,20 +273,6 @@ export const subNavigationAdmin = ({
           subMenuLabel: current === "providers" ? subMenuLabel : undefined,
           subMenu: current === "providers" ? subMenu : undefined,
         },
-        // Only show API keys here if the new section is not enabled
-        ...(hasApiAndProgrammaticSection
-          ? []
-          : [
-              {
-                id: "api_keys" as const,
-                label: "API Keys",
-                icon: LockIcon,
-                href: `/w/${owner.sId}/developers/api-keys`,
-                current: current === "api_keys",
-                subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-                subMenu: current === "api_keys" ? subMenu : undefined,
-              },
-            ]),
         {
           id: "dev_secrets",
           label: "Secrets",

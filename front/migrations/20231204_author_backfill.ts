@@ -1,11 +1,11 @@
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function main() {
   console.log("Starting author backfill");
   const workspaceIds = (
-    await AgentConfiguration.findAll({
+    await AgentConfigurationModel.findAll({
       attributes: ["workspaceId"],
       group: ["workspaceId"],
     })
@@ -51,7 +51,7 @@ async function backfillAuthor(workspaceId: number) {
   }
 
   // update all agent configurations with null author of this workspace
-  const agentConfigurations = await AgentConfiguration.update(
+  const agentConfigurations = await AgentConfigurationModel.update(
     {
       authorId: author.id,
     },

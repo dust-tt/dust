@@ -13,11 +13,11 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-  AgentMCPServerConfiguration,
+  AgentMCPActionOutputItemModel,
+  AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
-import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -49,7 +49,7 @@ function getTimeFrameUnit(processAction: AgentProcessAction): TimeFrame | null {
 function agentProcessActionToAgentMCPAction(
   // @ts-ignore
   processAction: AgentProcessAction,
-  agentConfiguration: AgentConfiguration | null,
+  agentConfiguration: AgentConfigurationModel | null,
   mcpServerViewForExtractId: ModelId,
   logger: Logger
 ): {
@@ -136,7 +136,7 @@ function createQueryOutputItem(
   // @ts-ignore
   processAction: AgentProcessAction,
   mcpActionId: ModelId
-): CreationAttributes<AgentMCPActionOutputItem> {
+): CreationAttributes<AgentMCPActionOutputItemModel> {
   const timeFrame = getTimeFrameUnit(processAction);
   const timeFrameAsString = timeFrame
     ? "the last " +
@@ -170,7 +170,7 @@ function createResultOutputItem(
   processAction: AgentProcessAction,
   mcpActionId: ModelId,
   auth: Authenticator
-): CreationAttributes<AgentMCPActionOutputItem> | null {
+): CreationAttributes<AgentMCPActionOutputItemModel> | null {
   if (!processAction.outputs || !processAction.jsonFileId) {
     return null;
   }
@@ -209,10 +209,10 @@ function createResultOutputItem(
 
 async function migrateSingleProcessAction(
   auth: Authenticator,
-  agentMessage: AgentMessage,
+  agentMessage: AgentMessageModel,
   // @ts-ignore
   processAction: AgentProcessAction,
-  agentConfiguration: AgentConfiguration | null,
+  agentConfiguration: AgentConfigurationModel | null,
   logger: Logger,
   {
     execute,
@@ -243,7 +243,7 @@ async function migrateSingleProcessAction(
     const mcpActionCreated = await AgentMCPActionModel.create(mcpAction.action);
 
     // Step 3: Create the MCP action output items.
-    const outputItems: CreationAttributes<AgentMCPActionOutputItem>[] = [];
+    const outputItems: CreationAttributes<AgentMCPActionOutputItemModel>[] = [];
 
     // Create the query resource.
     outputItems.push(createQueryOutputItem(processAction, mcpActionCreated.id));
@@ -258,7 +258,7 @@ async function migrateSingleProcessAction(
       outputItems.push(resultItem);
     }
 
-    await AgentMCPActionOutputItem.bulkCreate(outputItems);
+    await AgentMCPActionOutputItemModel.bulkCreate(outputItems);
   }
 }
 
@@ -297,7 +297,7 @@ async function migrateWorkspaceProcessActions(
     logger.info(`Found ${processActions.length} process actions`);
 
     // Step 2: Find the corresponding AgentMessages.
-    const agentMessages = await AgentMessage.findAll({
+    const agentMessages = await AgentMessageModel.findAll({
       where: {
         id: {
           // @ts-ignore
@@ -312,7 +312,7 @@ async function migrateWorkspaceProcessActions(
       ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
     ];
 
-    const agentConfigurations = await AgentConfiguration.findAll({
+    const agentConfigurations = await AgentConfigurationModel.findAll({
       where: {
         sId: {
           [Op.in]: agentConfigurationSIds,
@@ -321,7 +321,7 @@ async function migrateWorkspaceProcessActions(
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "mcpServerConfigurations",
         },
       ],

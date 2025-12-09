@@ -9,7 +9,6 @@ import {
   InteractiveImageGrid,
   Markdown,
   MoreIcon,
-  Separator,
   StopIcon,
   TrashIcon,
   useCopyToClipboard,
@@ -93,7 +92,6 @@ import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
-  PersonalAuthenticationRequiredErrorContent,
   Result,
   RichAgentMention,
   RichMention,
@@ -104,7 +102,6 @@ import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isInteractiveContentFileContentType,
-  isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -147,11 +144,8 @@ export function AgentMessage({
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const {
-    enqueueBlockedAction,
-    removeAllBlockedActionsForMessage,
-    mutateBlockedActions,
-  } = useBlockedActionsContext();
+  const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
+    useBlockedActionsContext();
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -181,36 +175,48 @@ export function AgentMessage({
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       }) => {
-        const eventType = eventPayload.data.type;
-        switch (eventType) {
+        switch (eventPayload.data.type) {
           case "tool_approve_execution":
             enqueueBlockedAction({
               messageId: sId,
               blockedAction: {
                 status: "blocked_validation_required",
-                authorizationInfo: null,
-                messageId: eventPayload.data.messageId,
-                conversationId: eventPayload.data.conversationId,
                 actionId: eventPayload.data.actionId,
-                userId: eventPayload.data.userId,
+                authorizationInfo: null,
+                configurationId: eventPayload.data.configurationId,
+                conversationId: eventPayload.data.conversationId,
+                created: eventPayload.data.created,
                 inputs: eventPayload.data.inputs,
-                stake: eventPayload.data.stake,
+                messageId: eventPayload.data.messageId,
                 metadata: eventPayload.data.metadata,
+                stake: eventPayload.data.stake,
+                userId: eventPayload.data.userId,
               },
             });
             break;
-          case "tool_error":
-            if (
-              isPersonalAuthenticationRequiredErrorContent(
-                eventPayload.data.error
-              )
-            ) {
-              void mutateBlockedActions();
-            }
-            break;
 
           case "tool_personal_auth_required":
-            void mutateBlockedActions();
+            const { authError } = eventPayload.data;
+
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                status: "blocked_authentication_required",
+                actionId: eventPayload.data.actionId,
+                authorizationInfo: {
+                  ...authError,
+                  supported_use_cases: [],
+                },
+                configurationId: eventPayload.data.configurationId,
+                conversationId: eventPayload.data.conversationId,
+                created: eventPayload.data.created,
+                inputs: eventPayload.data.inputs,
+                messageId: eventPayload.data.messageId,
+                metadata: eventPayload.data.metadata,
+                stake: eventPayload.data.stake,
+                userId: eventPayload.data.userId,
+              },
+            });
             break;
 
           case "agent_message_success":
@@ -225,12 +231,13 @@ export function AgentMessage({
             break;
           case "agent_action_success":
           case "end-of-stream":
+          case "tool_error":
           case "tool_notification":
           case "tool_params":
             // Do nothing
             break;
           default:
-            assertNever(eventType);
+            assertNever(eventPayload.data);
         }
       },
       [
@@ -238,7 +245,6 @@ export function AgentMessage({
         sId,
         removeAllBlockedActionsForMessage,
         conversationId,
-        mutateBlockedActions,
       ]
     ),
     streamId: `message-${sId}`,
@@ -523,11 +529,6 @@ export function AgentMessage({
         getPopoverInfo={PopoverContent}
       />
     );
-  }
-
-  // Add separator if we have both feedback and copy buttons
-  if (shouldShowFeedback && shouldShowCopy) {
-    messageButtons.push(<Separator key="separator" orientation="vertical" />);
   }
 
   // Add copy button or split button with dropdown (only when mentions_v2 is enabled)
@@ -848,7 +849,11 @@ function AgentMessageContent({
   const blockedAction = getFirstBlockedActionForMessage(sId);
 
   const retryHandlerWithResetState = useCallback(
-    async (error: PersonalAuthenticationRequiredErrorContent) => {
+    // Conversation and message might be different than the current ones in case of subagents.
+    async (conversationAndMessage: {
+      conversationId: string;
+      messageId: string;
+    }) => {
       methods.data.map((m) =>
         isMessageTemporayState(m) && getMessageSId(m) === sId
           ? {
@@ -865,18 +870,18 @@ function AgentMessageContent({
       );
 
       // Retry on the event's conversationId, which may be coming from a subagent.
-      if (error.metadata.conversationId !== conversationId) {
+      if (conversationAndMessage.conversationId !== conversationId) {
         await retryHandler({
-          conversationId: error.metadata.conversationId,
-          messageId: error.metadata.messageId,
           blockedOnly: true,
+          conversationId: conversationAndMessage.conversationId,
+          messageId: conversationAndMessage.messageId,
         });
       }
       // Retry on the main conversation.
       await retryHandler({
+        blockedOnly: true,
         conversationId,
         messageId: sId,
-        blockedOnly: true,
       });
     },
     [conversationId, methods.data, retryHandler, sId]
@@ -947,35 +952,39 @@ function AgentMessageContent({
     isLastMessage,
   });
 
-  if (blockedAction && blockedAction.status === "blocked_validation_required") {
-    return (
-      <MCPToolValidationRequired
-        triggeringUser={triggeringUser}
-        owner={owner}
-        blockedAction={blockedAction}
-        conversationId={conversationId}
-        messageId={sId}
-      />
-    );
+  if (blockedAction) {
+    switch (blockedAction.status) {
+      case "blocked_validation_required":
+        return (
+          <MCPToolValidationRequired
+            triggeringUser={triggeringUser}
+            owner={owner}
+            blockedAction={blockedAction}
+            conversationId={conversationId}
+            messageId={sId}
+          />
+        );
+
+      case "blocked_authentication_required":
+        return (
+          <MCPServerPersonalAuthenticationRequired
+            triggeringUser={triggeringUser}
+            owner={owner}
+            mcpServerId={blockedAction.metadata.mcpServerId}
+            provider={blockedAction.authorizationInfo.provider}
+            scope={blockedAction.authorizationInfo.scope}
+            retryHandler={() =>
+              retryHandlerWithResetState({
+                conversationId: blockedAction.conversationId,
+                messageId: blockedAction.messageId,
+              })
+            }
+          />
+        );
+    }
   }
 
-  // TODO: handle blocked action of personal authentication required
   if (agentMessage.status === "failed") {
-    const { error } = agentMessage;
-    // TODO(2025-12-06 MENTION): Remove this once consolidated around the
-    // `tool_personal_auth_required` event.
-    if (isPersonalAuthenticationRequiredErrorContent(error)) {
-      return (
-        <MCPServerPersonalAuthenticationRequired
-          triggeringUser={triggeringUser}
-          owner={owner}
-          mcpServerId={error.metadata.mcp_server_id}
-          provider={error.metadata.provider}
-          scope={error.metadata.scope}
-          retryHandler={() => retryHandlerWithResetState(error)}
-        />
-      );
-    }
     return (
       <ErrorMessage
         error={

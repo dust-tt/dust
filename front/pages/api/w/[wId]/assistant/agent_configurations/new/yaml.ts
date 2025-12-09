@@ -131,6 +131,7 @@ async function handler(
     editors: yamlConfig.editors.map((editor) => ({
       sId: editor.user_id,
     })),
+    skills: [],
   };
 
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({

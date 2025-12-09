@@ -16,6 +16,7 @@ export const ZENDESK_WEBHOOK_PRESET: PresetWebhook<"zendesk"> = {
   description:
     "Receive events from Zendesk such as ticket creation or modification",
   webhookService: new ZendeskWebhookService(),
+  filterGenerationInstructions: null,
   components: {
     detailsComponent: WebhookSourceZendeskDetails,
     createFormComponent: CreateWebhookZendeskConnection,
