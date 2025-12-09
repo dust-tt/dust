@@ -5,7 +5,7 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { SkillScope, SkillStatus } from "@app/types/skill_configuration";
+import type { SkillStatus } from "@app/types/skill_configuration";
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -14,7 +14,6 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare version: number;
 
   declare status: SkillStatus;
-  declare scope: SkillScope;
 
   declare name: string;
   declare description: string;
@@ -47,10 +46,6 @@ SkillConfigurationModel.init(
       allowNull: false,
     },
     status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    scope: {
       type: DataTypes.STRING,
       allowNull: false,
     },
