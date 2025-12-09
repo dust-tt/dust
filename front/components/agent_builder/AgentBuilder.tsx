@@ -41,6 +41,7 @@ import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, normalizeError, removeNulls } from "@app/types";
@@ -90,6 +91,7 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useRouter();
   const sendNotification = useSendNotification(true);
@@ -110,7 +112,7 @@ export default function AgentBuilder({
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationSId: agentConfigurationSIdForSkills ?? "",
-    disabled: !agentConfigurationSIdForSkills,
+    disabled: !hasFeature("skills") || !agentConfigurationSIdForSkills,
   });
 
   const { editors } = useEditors({
