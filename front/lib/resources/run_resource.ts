@@ -277,7 +277,6 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
-          costUsd: costMicroUsd / 1_000_000,
           costMicroUsd,
         })
       )
