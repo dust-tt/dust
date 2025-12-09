@@ -19,8 +19,8 @@ export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
-  declare AgentConfigurationModel: NonAttribute<AgentConfigurationModel>;
-  declare AgentConfigurationModelId: ForeignKey<AgentConfigurationModel["id"]>;
+  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
 
   declare getCustomSkill: BelongsToGetAssociationMixin<SkillConfigurationModel>;
   declare getAgentConfigurationModel: BelongsToGetAssociationMixin<AgentConfigurationModel>;
