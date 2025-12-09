@@ -27,6 +27,7 @@ import type {
   ModelId,
   RequireAtLeastOne,
   Result,
+  UserType,
 } from "@app/types";
 import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
@@ -666,6 +667,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated = false,
     allowLastAdminRemoval = false,
     transaction,
+    author,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
@@ -674,6 +676,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated?: boolean;
     allowLastAdminRemoval?: boolean;
     transaction?: Transaction;
+    author: UserType | "no-author";
   }): Promise<
     Result<
       { previousRole: MembershipRoleType; newRole: MembershipRoleType },
@@ -758,7 +761,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
-        author: "no-author",
+        author,
         userId: user.id,
         workspaceId: workspace.id,
         previousRole,
@@ -833,11 +836,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newOrigin,
     transaction,
+    author,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newOrigin: MembershipOriginType;
     transaction?: Transaction;
+    author: UserType | "no-author";
   }): Promise<{
     previousOrigin: MembershipOriginType;
     newOrigin: MembershipOriginType;
@@ -848,7 +853,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
-        author: "no-author",
+        author,
         userId: user.id,
         workspaceId: workspace.id,
         previousOrigin,

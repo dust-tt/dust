@@ -61,10 +61,13 @@ export async function createAndLogMembership({
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as all the
 // checks (decoding the JWT) have been run before. Simply create the membership if it does not
 // already exist and mark the invitation as consumed.
-export async function handleMembershipInvite(
-  user: UserResource,
-  membershipInvite: MembershipInvitationResource
-): Promise<
+export async function handleMembershipInvite({
+  user,
+  membershipInvite,
+}: {
+  user: UserResource;
+  membershipInvite: MembershipInvitationResource;
+}): Promise<
   Result<
     {
       flow: "joined";
@@ -121,6 +124,7 @@ export async function handleMembershipInvite(
       workspace: lightWorkspace,
       newRole: membershipInvite.initialRole,
       allowTerminated: true,
+      author: "no-author",
     });
 
     if (updateRes.isErr()) {
