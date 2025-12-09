@@ -24,7 +24,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -322,7 +322,7 @@ function _getDustLikeGlobalAgent(
     memories,
     availableToolsets,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -565,7 +565,7 @@ function _getDustLikeGlobalAgent(
 export function _getDustGlobalAgent(
   auth: Authenticator,
   args: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -589,7 +589,7 @@ export function _getDustGlobalAgent(
 export function _getDustEdgeGlobalAgent(
   auth: Authenticator,
   args: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -614,7 +614,7 @@ export function _getDustEdgeGlobalAgent(
 export function _getDustQuickGlobalAgent(
   auth: Authenticator,
   args: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;

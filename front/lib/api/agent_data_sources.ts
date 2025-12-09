@@ -5,10 +5,10 @@ import { Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { isManagedConnectorProvider } from "@app/lib/data_sources";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -109,7 +109,7 @@ export async function getDataSourceViewsUsageByCategory({
   });
 
   const agentConfigurationInclude = {
-    model: AgentConfiguration,
+    model: AgentConfigurationModel,
     as: "agent_configuration",
     attributes: [],
     required: true,
@@ -119,7 +119,7 @@ export async function getDataSourceViewsUsageByCategory({
   };
 
   const res = (await Promise.all([
-    AgentDataSourceConfiguration.findAll({
+    AgentDataSourceConfigurationModel.findAll({
       raw: true,
       group: ["dataSourceView.id"],
       where: {
@@ -165,7 +165,7 @@ export async function getDataSourceViewsUsageByCategory({
           ],
         },
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
@@ -173,7 +173,7 @@ export async function getDataSourceViewsUsageByCategory({
         },
       ],
     }),
-    AgentTablesQueryConfigurationTable.findAll({
+    AgentTablesQueryConfigurationTableModel.findAll({
       raw: true,
       group: ["dataSourceView.id"],
       where: {
@@ -219,13 +219,13 @@ export async function getDataSourceViewsUsageByCategory({
           ],
         },
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -317,7 +317,7 @@ export async function getDataSourcesUsageByCategory({
   }
 
   const res = (await Promise.all([
-    AgentDataSourceConfiguration.findAll({
+    AgentDataSourceConfigurationModel.findAll({
       raw: true,
       group: ["dataSource.id"],
       where: {
@@ -355,13 +355,13 @@ export async function getDataSourcesUsageByCategory({
           },
         },
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -374,7 +374,7 @@ export async function getDataSourcesUsageByCategory({
         },
       ],
     }),
-    AgentTablesQueryConfigurationTable.findAll({
+    AgentTablesQueryConfigurationTableModel.findAll({
       raw: true,
       group: ["dataSource.id"],
       where: {
@@ -412,13 +412,13 @@ export async function getDataSourcesUsageByCategory({
           },
         },
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -496,7 +496,7 @@ export async function getDataSourceUsage({
   }
 
   const res = (await Promise.all([
-    AgentDataSourceConfiguration.findOne({
+    AgentDataSourceConfigurationModel.findOne({
       raw: true,
       attributes: [
         [
@@ -524,13 +524,13 @@ export async function getDataSourceUsage({
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -543,7 +543,7 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-    AgentTablesQueryConfigurationTable.findOne({
+    AgentTablesQueryConfigurationTableModel.findOne({
       raw: true,
       attributes: [
         [
@@ -571,13 +571,13 @@ export async function getDataSourceUsage({
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -641,7 +641,7 @@ export async function getDataSourceViewUsage({
   }
 
   const res = (await Promise.all([
-    AgentDataSourceConfiguration.findOne({
+    AgentDataSourceConfigurationModel.findOne({
       raw: true,
       attributes: [
         [
@@ -669,13 +669,13 @@ export async function getDataSourceViewUsage({
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -688,7 +688,7 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-    AgentTablesQueryConfigurationTable.findOne({
+    AgentTablesQueryConfigurationTableModel.findOne({
       raw: true,
       attributes: [
         [
@@ -716,13 +716,13 @@ export async function getDataSourceViewUsage({
       },
       include: [
         {
-          model: AgentMCPServerConfiguration,
+          model: AgentMCPServerConfigurationModel,
           as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,

@@ -2,10 +2,10 @@ import fs from "fs";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -25,7 +25,7 @@ async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
     include: [
       {
         attributes: [],
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         required: true,
         where: {
           status: "active",
@@ -72,7 +72,7 @@ async function migrateWorkspaceExtractActions(
     include: [
       {
         attributes: [],
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         required: true,
         where: {
           status: "active",
@@ -120,7 +120,7 @@ async function migrateWorkspaceExtractActions(
     processConfigs,
     async (processConfig) => {
       if (execute) {
-        const mcpConfig = await AgentMCPServerConfiguration.create({
+        const mcpConfig = await AgentMCPServerConfigurationModel.create({
           sId: generateRandomModelSId(),
           // @ts-ignore
           agentConfigurationId: processConfig.agentConfigurationId,
@@ -156,7 +156,7 @@ async function migrateWorkspaceExtractActions(
         });
 
         // Move the datasources to the new MCP server configuration.
-        const datasources = await AgentDataSourceConfiguration.findAll({
+        const datasources = await AgentDataSourceConfigurationModel.findAll({
           where: {
             workspaceId: auth.getNonNullableWorkspace().id,
             // @ts-ignore

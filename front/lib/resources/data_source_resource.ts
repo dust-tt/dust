@@ -9,8 +9,8 @@ import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -438,14 +438,14 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    await AgentDataSourceConfiguration.destroy({
+    await AgentDataSourceConfigurationModel.destroy({
       where: {
         dataSourceId: this.id,
       },
       transaction,
     });
 
-    await AgentTablesQueryConfigurationTable.destroy({
+    await AgentTablesQueryConfigurationTableModel.destroy({
       where: {
         dataSourceId: this.id,
       },

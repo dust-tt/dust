@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -45,19 +45,19 @@ describe("batchRenderMessages", () => {
       expect(conversationResource).not.toBeNull();
 
       // Get all messages from the conversation
-      const allMessages = await Message.findAll({
+      const allMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: false,
           },
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: false,
           },
@@ -122,19 +122,19 @@ describe("batchRenderMessages", () => {
       expect(conversationResource).not.toBeNull();
 
       // Get all messages from the conversation
-      const allMessages = await Message.findAll({
+      const allMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: false,
           },
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: false,
           },
@@ -192,19 +192,19 @@ describe("batchRenderMessages", () => {
       expect(conversationResource).not.toBeNull();
 
       // Get all messages from the conversation
-      const allMessages = await Message.findAll({
+      const allMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: false,
           },
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: false,
           },

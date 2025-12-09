@@ -1,6 +1,6 @@
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { assertNever } from "@app/types";
 
@@ -21,7 +21,7 @@ export async function publishDeferredEventsActivity(
     const { event, context } = deferredEvent;
     const isLastEvent = index === deferredEvents.length - 1;
 
-    const agentMessageRow = await AgentMessage.findByPk(
+    const agentMessageRow = await AgentMessageModel.findByPk(
       context.agentMessageRowId
     );
     if (!agentMessageRow) {

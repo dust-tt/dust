@@ -15,9 +15,9 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -60,7 +60,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   ): Promise<ModelId[]> {
     const uniqueAgentMessageIds = [...new Set(agentMessageIds)];
 
-    const agentMessages = await AgentMessage.findAll({
+    const agentMessages = await AgentMessageModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: uniqueAgentMessageIds },
@@ -236,7 +236,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     const includeClause: IncludeOptions[] = [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
         where: {
@@ -244,7 +244,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
         include: [
           {
-            model: Message,
+            model: MessageModel,
             as: "message",
             required: true,
             include: [

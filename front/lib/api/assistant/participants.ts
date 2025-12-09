@@ -3,9 +3,9 @@ import { Op } from "sequelize";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationParticipantModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
@@ -72,7 +72,7 @@ export async function fetchConversationParticipants(
   }
 
   // We fetch agent participants from the messages table
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
@@ -80,7 +80,7 @@ export async function fetchConversationParticipants(
     attributes: [],
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
         attributes: ["agentConfigurationId"],

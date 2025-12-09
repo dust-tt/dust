@@ -4,13 +4,13 @@ import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { AppModel, Clone } from "@app/lib/resources/storage/models/apps";
+import { AppModel, CloneModel } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -111,14 +111,14 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   async getUsagesByAgents(auth: Authenticator) {
     const owner = auth.getNonNullableWorkspace();
 
-    const mcpConfigurations = await AgentMCPServerConfiguration.findAll({
+    const mcpConfigurations = await AgentMCPServerConfigurationModel.findAll({
       where: {
         appId: this.sId,
         workspaceId: owner.id,
       },
     });
 
-    const agentConfigurations = await AgentConfiguration.findAll({
+    const agentConfigurations = await AgentConfigurationModel.findAll({
       where: {
         workspaceId: owner.id,
         status: "active",
@@ -199,7 +199,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     }
 
     // Create clone relationship.
-    await Clone.create({
+    await CloneModel.create({
       fromId: this.id,
       toId: newApp.id,
       workspaceId: newApp.workspaceId,
@@ -255,7 +255,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     const deletedCount = await withTransaction(async (t) => {
       await RunResource.deleteAllByAppId(this.id, t);
 
-      await Clone.destroy({
+      await CloneModel.destroy({
         where: {
           [Op.or]: [{ fromId: this.id }, { toId: this.id }],
         },

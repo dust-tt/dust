@@ -3,8 +3,8 @@
 import { personalWorkspace } from "@app/lib/auth";
 import {
   AppModel,
-  Dataset,
-  Provider,
+  DatasetModel,
+  ProviderModel,
 } from "@app/lib/resources/storage/models/apps";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -12,7 +12,13 @@ import { RunModel } from "@app/lib/resources/storage/models/runs";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function addWorkspaceToObject(
-  object: AppModel | Dataset | Provider | KeyModel | DataSourceModel | RunModel
+  object:
+    | AppModel
+    | DatasetModel
+    | ProviderModel
+    | KeyModel
+    | DataSourceModel
+    | RunModel
 ) {
   if (object.workspaceId) {
     // @ts-expect-error old migration code kept for reference
@@ -48,8 +54,8 @@ async function addWorkspaceToObject(
 async function updateObjects(
   objects:
     | AppModel[]
-    | Dataset[]
-    | Provider[]
+    | DatasetModel[]
+    | ProviderModel[]
     | KeyModel[]
     | DataSourceModel[]
     | RunModel[]
@@ -76,12 +82,12 @@ async function updateApps() {
 }
 
 async function updateDatasets() {
-  const datasets = await Dataset.findAll();
+  const datasets = await DatasetModel.findAll();
   await updateObjects(datasets);
 }
 
 async function updateProviders() {
-  const providers = await Provider.findAll();
+  const providers = await ProviderModel.findAll();
   await updateObjects(providers);
 }
 

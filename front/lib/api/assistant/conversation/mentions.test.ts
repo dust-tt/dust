@@ -19,13 +19,13 @@ import {
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationParticipantModel,
-  Mention,
-  Message,
-  UserMessage,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
@@ -117,7 +117,7 @@ describe("createAgentMessages", () => {
     expect(result[0].skipToolsValidation).toBe(false);
 
     // Verify database records were created
-    const mentionInDb = await Mention.findOne({
+    const mentionInDb = await MentionModel.findOne({
       where: {
         messageId: messageRow.id,
         agentConfigurationId: agentConfig1.sId,
@@ -125,13 +125,13 @@ describe("createAgentMessages", () => {
     });
     expect(mentionInDb).not.toBeNull();
 
-    const agentMessageInDb = await AgentMessage.findByPk(
+    const agentMessageInDb = await AgentMessageModel.findByPk(
       result[0].agentMessageId
     );
     expect(agentMessageInDb).not.toBeNull();
     expect(agentMessageInDb?.status).toBe("created");
 
-    const messageInDb = await Message.findByPk(result[0].id);
+    const messageInDb = await MessageModel.findByPk(result[0].id);
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.rank).toBe(1);
     expect(messageInDb?.parentId).toBe(messageRow.id);
@@ -184,7 +184,7 @@ describe("createAgentMessages", () => {
     expect(result[1].configuration.sId).toBe(agentConfig2.sId);
 
     // Verify both mentions were created
-    const mentionsInDb = await Mention.findAll({
+    const mentionsInDb = await MentionModel.findAll({
       where: {
         messageId: messageRow.id,
       },
@@ -514,7 +514,7 @@ describe("createAgentMessages", () => {
     expect(space1ModelId).not.toBeNull();
     expect(space2ModelId).not.toBeNull();
 
-    await AgentConfiguration.update(
+    await AgentConfigurationModel.update(
       {
         requestedSpaceIds: [space1ModelId!, space2ModelId!],
       },
@@ -528,7 +528,7 @@ describe("createAgentMessages", () => {
     );
 
     // Fetch updated agent configuration
-    const updatedAgentConfig = await AgentConfiguration.findOne({
+    const updatedAgentConfig = await AgentConfigurationModel.findOne({
       where: {
         workspaceId: workspace.id,
         sId: agentConfig.sId,
@@ -655,7 +655,7 @@ describe("createAgentMessages", () => {
     expect(space1ModelId).not.toBeNull();
     expect(space2ModelId).not.toBeNull();
 
-    await AgentConfiguration.update(
+    await AgentConfigurationModel.update(
       {
         requestedSpaceIds: [space1ModelId!, space2ModelId!],
       },
@@ -785,7 +785,7 @@ describe("createAgentMessages", () => {
     expect(space1ModelId).not.toBeNull();
     expect(space2ModelId).not.toBeNull();
 
-    await AgentConfiguration.update(
+    await AgentConfigurationModel.update(
       {
         requestedSpaceIds: [space1ModelId!, space2ModelId!],
       },
@@ -929,7 +929,7 @@ describe("createUserMentions", () => {
     });
 
     // Verify user mention was stored in the database
-    const userMentionInDb = await Mention.findOne({
+    const userMentionInDb = await MentionModel.findOne({
       where: {
         messageId: userMessage.id,
         userId: mentionedUser.id,
@@ -983,7 +983,7 @@ describe("createUserMentions", () => {
     });
 
     // Verify both user mentions were stored
-    const allMentionsInDb = await Mention.findAll({
+    const allMentionsInDb = await MentionModel.findAll({
       where: {
         messageId: userMessage.id,
       },
@@ -1039,7 +1039,7 @@ describe("createUserMentions", () => {
     });
 
     // Verify no mentions were stored
-    const allMentionsInDb = await Mention.findAll({
+    const allMentionsInDb = await MentionModel.findAll({
       where: {
         messageId: userMessage.id,
       },
@@ -1086,7 +1086,7 @@ describe("createUserMentions", () => {
     });
 
     // Verify only user mention was stored, agent mention should be ignored
-    const allMentionsInDb = await Mention.findAll({
+    const allMentionsInDb = await MentionModel.findAll({
       where: {
         messageId: userMessage.id,
       },
@@ -1165,13 +1165,13 @@ describe("createUserMessage", () => {
     expect(userMessage.agenticMessageData).toBeUndefined();
 
     // Verify database records were created
-    const messageInDb = await Message.findByPk(userMessage.id);
+    const messageInDb = await MessageModel.findByPk(userMessage.id);
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.rank).toBe(rank);
     expect(messageInDb?.version).toBe(0);
     expect(messageInDb?.parentId).toBeNull();
 
-    const userMessageInDb = await UserMessage.findByPk(
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb).not.toBeNull();
@@ -1226,7 +1226,7 @@ describe("createUserMessage", () => {
 
     // Create an origin message first with rank 0
     const originMessage = await withTransaction(async (transaction) => {
-      const originAgentMessage = await AgentMessage.create(
+      const originAgentMessage = await AgentMessageModel.create(
         {
           workspaceId: workspace.id,
           skipToolsValidation: false,
@@ -1236,7 +1236,7 @@ describe("createUserMessage", () => {
         { transaction }
       );
 
-      return Message.create(
+      return MessageModel.create(
         {
           sId: generateRandomModelSId(),
           rank: 0,
@@ -1285,8 +1285,8 @@ describe("createUserMessage", () => {
     expect(userMessage.agenticMessageData).toEqual(agenticMessageData);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.agenticMessageType).toBe("agent_handover");
@@ -1336,8 +1336,8 @@ describe("createUserMessage", () => {
 
     // Verify database records - both fields should be null since origin message doesn't exist
     // The model validation requires agenticMessageType and agenticOriginMessageId to be set together
-    const messageInDb = await Message.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.agenticMessageType).toBeNull();
@@ -1396,12 +1396,12 @@ describe("createUserMessage", () => {
     expect(editedMessage.context).toEqual(originalMessage.context);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(editedMessage.id);
+    const messageInDb = await MessageModel.findByPk(editedMessage.id);
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.version).toBe(originalMessage.version + 1);
     expect(messageInDb?.parentId).toBe(originalMessage.id);
 
-    const userMessageInDb = await UserMessage.findByPk(
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.content).toBe(editedContent);
@@ -1472,7 +1472,7 @@ describe("createUserMessage", () => {
 
     // Create origin message
     const originMessage = await withTransaction(async (transaction) => {
-      const originAgentMessage = await AgentMessage.create(
+      const originAgentMessage = await AgentMessageModel.create(
         {
           workspaceId: workspace.id,
           skipToolsValidation: false,
@@ -1482,7 +1482,7 @@ describe("createUserMessage", () => {
         { transaction }
       );
 
-      return Message.create(
+      return MessageModel.create(
         {
           sId: generateRandomModelSId(),
           rank: 0,
@@ -1546,8 +1546,8 @@ describe("createUserMessage", () => {
     expect(editedMessage.rank).toBe(originalMessage.rank);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.agenticMessageType).toBe("agent_handover");
@@ -1619,8 +1619,8 @@ describe("createUserMessage", () => {
     );
 
     // Verify database records
-    const messageInDb = await Message.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.userContextTimezone).toBe(originalContext.timezone);
@@ -1681,7 +1681,7 @@ describe("createUserMessage", () => {
     expect(firstEdit.rank).toBe(originalMessage.rank);
 
     // Verify parentId points to original message
-    const firstEditMessageInDb = await Message.findByPk(firstEdit.id);
+    const firstEditMessageInDb = await MessageModel.findByPk(firstEdit.id);
     expect(firstEditMessageInDb?.parentId).toBe(originalMessage.id);
 
     // Second edit
@@ -1702,7 +1702,7 @@ describe("createUserMessage", () => {
     expect(secondEdit.rank).toBe(originalMessage.rank);
 
     // Verify parentId points to first edit
-    const secondEditMessageInDb = await Message.findByPk(secondEdit.id);
+    const secondEditMessageInDb = await MessageModel.findByPk(secondEdit.id);
     expect(secondEditMessageInDb?.parentId).toBe(firstEdit.id);
 
     // Third edit
@@ -1723,7 +1723,7 @@ describe("createUserMessage", () => {
     expect(thirdEdit.rank).toBe(originalMessage.rank);
 
     // Verify parentId points to second edit
-    const thirdEditMessageInDb = await Message.findByPk(thirdEdit.id);
+    const thirdEditMessageInDb = await MessageModel.findByPk(thirdEdit.id);
     expect(thirdEditMessageInDb?.parentId).toBe(secondEdit.id);
   });
 
@@ -1778,8 +1778,8 @@ describe("createUserMessage", () => {
     expect(editedMessage.rank).toBe(originalMessage.rank);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.userId).toBeNull();
@@ -1836,8 +1836,8 @@ describe("createUserMessage", () => {
     expect(editedMessage.user?.username).toBe(userJson.username);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.userId).toBe(userJson.id);
@@ -1921,8 +1921,8 @@ describe("createUserMessage", () => {
     expect(userMessage.context).toEqual(context);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.userContextTimezone).toBe(context.timezone);
@@ -1972,8 +1972,8 @@ describe("createUserMessage", () => {
     expect(userMessage.context).toEqual(context);
 
     // Verify database records
-    const messageInDb = await Message.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.userContextFullName).toBeNull();
@@ -2066,8 +2066,8 @@ describe("createUserMessage", () => {
     expect(userMessage.user).toBeNull();
 
     // Verify database records
-    const messageInDb = await Message.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessage.findByPk(
+    const messageInDb = await MessageModel.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessageModel.findByPk(
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.userId).toBeNull();

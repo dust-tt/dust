@@ -13,9 +13,12 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
-  AgentMCPActionOutputItem,
+  AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -440,8 +443,8 @@ function isRenameFileActionType(
 }
 
 function isCreateFileActionOutputType(
-  output: AgentMCPActionOutputItem
-): output is AgentMCPActionOutputItem & {
+  output: AgentMCPActionOutputItemModel
+): output is AgentMCPActionOutputItemModel & {
   content: { resource: { fileId: string } };
 } {
   if (typeof output.content !== "object" || output.content === null) {
@@ -471,7 +474,7 @@ export async function isCreateFileActionForFileId({
   fileId: string;
 }) {
   if (isCreateFileActionType(action)) {
-    const actionOutputs = await AgentMCPActionOutputItem.findAll({
+    const actionOutputs = await AgentMCPActionOutputItemModel.findAll({
       where: {
         agentMCPActionId: action.id,
         workspaceId: workspace.id,
@@ -731,12 +734,12 @@ export async function revertClientExecutableFileChanges(
     const conversationActions = await AgentMCPActionModel.findAll({
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               required: true,
               where: {

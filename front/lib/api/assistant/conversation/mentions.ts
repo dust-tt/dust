@@ -9,10 +9,10 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Mention,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -75,7 +75,7 @@ export const createUserMentions = async (
       // check if the user exists in the workspace before creating the mention
       const user = await getUserForWorkspace(auth, { userId: mention.userId });
       if (user) {
-        await Mention.create(
+        await MentionModel.create(
           {
             messageId: message.id,
             userId: user.id,
@@ -294,7 +294,7 @@ export async function createUserMessage(
   // Fetch originMessage to ensure it exists and that it's an agent message.
   const originMessageId = agenticMessageData?.originMessageId;
   const originMessage = originMessageId
-    ? await Message.findOne({
+    ? await MessageModel.findOne({
         where: {
           workspaceId: workspace.id,
           sId: originMessageId,
@@ -317,7 +317,7 @@ export async function createUserMessage(
   // The model validation requires both to be set together
   const agenticMessageType = originMessage ? agenticMessageData?.type : null;
   const agenticOriginMessageId = originMessage?.sId ?? null;
-  const userMessage = await UserMessage.create(
+  const userMessage = await UserMessageModel.create(
     {
       content,
       // TODO(MCP Clean-up): Rename field in DB.
@@ -339,7 +339,7 @@ export async function createUserMessage(
     { transaction }
   );
 
-  const m = await Message.create(
+  const m = await MessageModel.create(
     {
       sId: generateRandomModelSId(),
       rank,
@@ -445,8 +445,8 @@ export const createAgentMessages = async (
 ) => {
   const owner = auth.getNonNullableWorkspace();
   const results: {
-    agentMessageRow: AgentMessage;
-    messageRow: Message;
+    agentMessageRow: AgentMessageModel;
+    messageRow: MessageModel;
     configuration: LightAgentConfigurationType;
     parentMessageId: string;
     parentAgentMessageId: string | null;
@@ -456,7 +456,7 @@ export const createAgentMessages = async (
     case "retry":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
-        const agentMessageRow = await AgentMessage.create(
+        const agentMessageRow = await AgentMessageModel.create(
           {
             status: "created",
             agentConfigurationId: agentConfiguration.sId,
@@ -466,7 +466,7 @@ export const createAgentMessages = async (
           },
           { transaction }
         );
-        const messageRow = await Message.create(
+        const messageRow = await MessageModel.create(
           {
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
@@ -494,14 +494,14 @@ export const createAgentMessages = async (
     case "delete":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
-        const agentMessageRow = await AgentMessage.create({
+        const agentMessageRow = await AgentMessageModel.create({
           status: "cancelled",
           agentConfigurationId: agentConfiguration.sId,
           agentConfigurationVersion: agentConfiguration.version,
           workspaceId: owner.id,
           skipToolsValidation: metadata.agentMessage.skipToolsValidation,
         });
-        const messageRow = await Message.create(
+        const messageRow = await MessageModel.create(
           {
             sId: generateRandomModelSId(),
             rank: metadata.agentMessage.rank,
@@ -539,7 +539,7 @@ export const createAgentMessages = async (
               return;
             }
 
-            await Mention.create(
+            await MentionModel.create(
               {
                 messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
@@ -548,7 +548,7 @@ export const createAgentMessages = async (
               { transaction }
             );
 
-            const agentMessageRow = await AgentMessage.create(
+            const agentMessageRow = await AgentMessageModel.create(
               {
                 status: "created",
                 agentConfigurationId: configuration.sId,
@@ -558,7 +558,7 @@ export const createAgentMessages = async (
               },
               { transaction }
             );
-            const messageRow = await Message.create(
+            const messageRow = await MessageModel.create(
               {
                 sId: generateRandomModelSId(),
                 rank: metadata.nextMessageRank++,

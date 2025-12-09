@@ -4,7 +4,7 @@ import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -20,7 +20,7 @@ import { AGENT_GROUP_PREFIX } from "@app/types";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
-  agentConfigs: AgentConfiguration[],
+  agentConfigs: AgentConfigurationModel[],
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
@@ -145,7 +145,7 @@ const migrateWorkspaceEditorsGroups = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const agents = await (async () => {
     try {
-      return await AgentConfiguration.findAll({
+      return await AgentConfigurationModel.findAll({
         where: {
           workspaceId: workspace.id,
           status: {

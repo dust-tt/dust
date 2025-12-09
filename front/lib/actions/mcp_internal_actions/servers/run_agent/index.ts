@@ -44,7 +44,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -139,7 +139,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 
   const owner = auth.getNonNullableWorkspace();
 
-  const agentConfiguration = await AgentConfiguration.findOne({
+  const agentConfiguration = await AgentConfigurationModel.findOne({
     where: {
       sId: agentId,
       workspaceId: owner.id,

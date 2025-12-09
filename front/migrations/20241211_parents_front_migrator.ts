@@ -2,7 +2,7 @@ import _ from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -120,7 +120,7 @@ async function migrateAgentDataSourceConfigurations({
 }) {
   let lastSeenId = 0;
   for (;;) {
-    const configurations = await AgentDataSourceConfiguration.findAll({
+    const configurations = await AgentDataSourceConfigurationModel.findAll({
       limit: BATCH_SIZE,
       where: { id: { [Op.gt]: lastSeenId } },
       order: [["id", "ASC"]],

@@ -198,7 +198,7 @@ ConversationParticipantModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
-export class UserMessage extends WorkspaceAwareModel<UserMessage> {
+export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -227,7 +227,7 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare user?: NonAttribute<UserModel>;
 }
 
-UserMessage.init(
+UserMessageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -329,14 +329,14 @@ UserMessage.init(
   }
 );
 
-UserModel.hasMany(UserMessage, {
+UserModel.hasMany(UserMessageModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = message is not associated with a user
 });
-UserMessage.belongsTo(UserModel, {
+UserMessageModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });
 
-export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
+export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runIds: string[] | null;
@@ -354,14 +354,14 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentConfigurationVersion: number;
 
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
-  declare message?: NonAttribute<Message>;
-  declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
+  declare message?: NonAttribute<MessageModel>;
+  declare feedbacks?: NonAttribute<AgentMessageFeedbackModel[]>;
 
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
 }
 
-AgentMessage.init(
+AgentMessageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -451,13 +451,13 @@ AgentMessage.init(
   }
 );
 
-export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedback> {
+export class AgentMessageFeedbackModel extends WorkspaceAwareModel<AgentMessageFeedbackModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare isConversationShared: boolean;
   declare dismissed: boolean;
@@ -465,11 +465,11 @@ export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedba
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
 
-  declare agentMessage: NonAttribute<AgentMessage>;
+  declare agentMessage: NonAttribute<AgentMessageModel>;
   declare user: NonAttribute<UserModel>;
 }
 
-AgentMessageFeedback.init(
+AgentMessageFeedbackModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -531,21 +531,21 @@ AgentMessageFeedback.init(
   }
 );
 
-AgentMessage.hasMany(AgentMessageFeedback, {
+AgentMessageModel.hasMany(AgentMessageFeedbackModel, {
   as: "feedbacks",
   onDelete: "RESTRICT",
 });
-UserModel.hasMany(AgentMessageFeedback, {
+UserModel.hasMany(AgentMessageFeedbackModel, {
   onDelete: "SET NULL",
 });
-AgentMessageFeedback.belongsTo(UserModel, {
+AgentMessageFeedbackModel.belongsTo(UserModel, {
   as: "user",
 });
-AgentMessageFeedback.belongsTo(AgentMessage, {
+AgentMessageFeedbackModel.belongsTo(AgentMessageModel, {
   as: "agentMessage",
 });
 
-export class Message extends WorkspaceAwareModel<Message> {
+export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -557,20 +557,20 @@ export class Message extends WorkspaceAwareModel<Message> {
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 
-  declare parentId: ForeignKey<Message["id"]> | null;
-  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare parentId: ForeignKey<MessageModel["id"]> | null;
+  declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessageModel["id"]> | null;
   declare contentFragmentId: ForeignKey<ContentFragmentModel["id"]> | null;
 
-  declare userMessage?: NonAttribute<UserMessage>;
-  declare agentMessage?: NonAttribute<AgentMessage>;
+  declare userMessage?: NonAttribute<UserMessageModel>;
+  declare agentMessage?: NonAttribute<AgentMessageModel>;
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
-  declare reactions?: NonAttribute<MessageReaction[]>;
+  declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
 }
 
-Message.init(
+MessageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -664,49 +664,49 @@ Message.init(
   }
 );
 
-ConversationModel.hasMany(Message, {
+ConversationModel.hasMany(MessageModel, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Message.belongsTo(ConversationModel, {
+MessageModel.belongsTo(ConversationModel, {
   as: "conversation",
   foreignKey: { name: "conversationId", allowNull: false },
 });
 
-UserMessage.hasOne(Message, {
+UserMessageModel.hasOne(MessageModel, {
   as: "message",
   foreignKey: { name: "userMessageId", allowNull: true },
 });
-Message.belongsTo(UserMessage, {
+MessageModel.belongsTo(UserMessageModel, {
   as: "userMessage",
   foreignKey: { name: "userMessageId", allowNull: true },
 });
 
-AgentMessage.hasOne(Message, {
+AgentMessageModel.hasOne(MessageModel, {
   as: "message",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
-Message.belongsTo(AgentMessage, {
+MessageModel.belongsTo(AgentMessageModel, {
   as: "agentMessage",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 
-Message.belongsTo(Message, {
+MessageModel.belongsTo(MessageModel, {
   foreignKey: { name: "parentId", allowNull: true },
 });
-ContentFragmentModel.hasOne(Message, {
+ContentFragmentModel.hasOne(MessageModel, {
   as: "message",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-Message.belongsTo(ContentFragmentModel, {
+MessageModel.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {
+export class MessageReactionModel extends WorkspaceAwareModel<MessageReactionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare messageId: ForeignKey<Message["id"]>;
+  declare messageId: ForeignKey<MessageModel["id"]>;
 
   // User is nullable so that we can store reactions from a Slackbot message
   declare userId: ForeignKey<UserModel["id"]> | null;
@@ -716,7 +716,7 @@ export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {
   declare reaction: string;
 }
 
-MessageReaction.init(
+MessageReactionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -759,36 +759,36 @@ MessageReaction.init(
   }
 );
 
-Message.hasMany(MessageReaction, {
+MessageModel.hasMany(MessageReactionModel, {
   as: "reactions",
   foreignKey: { name: "messageId", allowNull: false },
   onDelete: "RESTRICT",
 });
-MessageReaction.belongsTo(Message, {
+MessageReactionModel.belongsTo(MessageModel, {
   foreignKey: { name: "messageId", allowNull: false },
 });
-UserModel.hasMany(MessageReaction, {
+UserModel.hasMany(MessageReactionModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is from a user using a Slackbot
 });
-MessageReaction.belongsTo(UserModel, {
+MessageReactionModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
-export class Mention extends WorkspaceAwareModel<Mention> {
+export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare messageId: ForeignKey<Message["id"]>;
+  declare messageId: ForeignKey<MessageModel["id"]>;
 
   // a Mention is either an agent mention xor a user mention
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare user: NonAttribute<UserModel> | null;
 
-  declare message: NonAttribute<Message>;
+  declare message: NonAttribute<MessageModel>;
 }
 
-Mention.init(
+MentionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -847,13 +847,13 @@ Mention.init(
   }
 );
 
-Message.hasMany(Mention, {
+MessageModel.hasMany(MentionModel, {
   foreignKey: { name: "messageId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Mention.belongsTo(Message, {
+MentionModel.belongsTo(MessageModel, {
   foreignKey: { name: "messageId", allowNull: false },
 });
-Mention.belongsTo(UserModel, {
+MentionModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });

@@ -9,7 +9,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -41,7 +41,7 @@ async function getValTownClient(
     return null;
   }
 
-  const secret = await DustAppSecret.findOne({
+  const secret = await DustAppSecretModel.findOne({
     where: {
       name: toolConfig.secretName,
       workspaceId: auth.getNonNullableWorkspace().id,

@@ -7,9 +7,9 @@ import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -29,11 +29,11 @@ export type AdditionalConfigurationType = Record<
   AdditionalConfigurationValueType
 >;
 
-export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
+export class AgentMCPServerConfigurationModel extends WorkspaceAwareModel<AgentMCPServerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
 
   declare sId: string;
 
@@ -61,7 +61,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare singleToolDescriptionOverride: string | null;
 }
 
-AgentMCPServerConfiguration.init(
+AgentMCPServerConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -182,21 +182,21 @@ AgentMCPServerConfiguration.init(
   }
 );
 
-AgentConfiguration.hasMany(AgentMCPServerConfiguration, {
+AgentConfigurationModel.hasMany(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "mcpServerConfigurations",
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
+AgentMCPServerConfigurationModel.belongsTo(AgentConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
-MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
+MCPServerViewModel.hasMany(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
+AgentMCPServerConfigurationModel.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   as: "mcpServerView",
 });
@@ -207,7 +207,7 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
 
   declare mcpServerConfigurationId: string;
   declare version: number;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare status: ToolExecutionStatus;
@@ -219,9 +219,9 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
 
   declare executionDurationMs: number | null;
 
-  declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+  declare outputItems: NonAttribute<AgentMCPActionOutputItemModel[]>;
 
-  declare agentMessage?: NonAttribute<AgentMessage>;
+  declare agentMessage?: NonAttribute<AgentMessageModel>;
 }
 
 AgentMCPActionModel.init(
@@ -303,12 +303,12 @@ AgentMCPActionModel.init(
   }
 );
 
-AgentMCPActionModel.belongsTo(AgentMessage, {
+AgentMCPActionModel.belongsTo(AgentMessageModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
   as: "agentMessage",
 });
 
-AgentMessage.hasMany(AgentMCPActionModel, {
+AgentMessageModel.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
@@ -323,7 +323,7 @@ AgentStepContentModel.hasMany(AgentMCPActionModel, {
   as: "agentMCPActions",
 });
 
-export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPActionOutputItem> {
+export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPActionOutputItemModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -334,7 +334,7 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare file: NonAttribute<FileModel>;
 }
 
-AgentMCPActionOutputItem.init(
+AgentMCPActionOutputItemModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -390,17 +390,17 @@ AgentMCPActionOutputItem.init(
   }
 );
 
-AgentMCPActionModel.hasMany(AgentMCPActionOutputItem, {
+AgentMCPActionModel.hasMany(AgentMCPActionOutputItemModel, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
   as: "outputItems",
   onDelete: "CASCADE",
 });
 
-AgentMCPActionOutputItem.belongsTo(AgentMCPActionModel, {
+AgentMCPActionOutputItemModel.belongsTo(AgentMCPActionModel, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
 });
 
-AgentMCPActionOutputItem.belongsTo(FileModel, {
+AgentMCPActionOutputItemModel.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: true },
   onDelete: "SET NULL",
 });
@@ -410,17 +410,17 @@ AgentMCPActionOutputItem.belongsTo(FileModel, {
  * TODO(mcp): move this model in a file dedicated to the configuration blocks, add Resources for
  *  all of them (should be done after cleaning up all the actions).
  */
-export class AgentChildAgentConfiguration extends WorkspaceAwareModel<AgentChildAgentConfiguration> {
+export class AgentChildAgentConfigurationModel extends WorkspaceAwareModel<AgentChildAgentConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare agentConfigurationId: string;
 
   declare mcpServerConfigurationId: ForeignKey<
-    AgentMCPServerConfiguration["id"]
+    AgentMCPServerConfigurationModel["id"]
   >;
 }
-AgentChildAgentConfiguration.init(
+AgentChildAgentConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -453,10 +453,10 @@ AgentChildAgentConfiguration.init(
 );
 
 // MCP server configuration <> Child agent configuration
-AgentMCPServerConfiguration.hasMany(AgentChildAgentConfiguration, {
+AgentMCPServerConfigurationModel.hasMany(AgentChildAgentConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentChildAgentConfiguration.belongsTo(AgentMCPServerConfiguration, {
+AgentChildAgentConfigurationModel.belongsTo(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
 });

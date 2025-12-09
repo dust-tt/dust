@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -334,7 +334,7 @@ export async function unsafeGetWorkspacesByModelId(
 export async function areAllSubscriptionsCanceled(
   workspace: LightWorkspaceType
 ): Promise<boolean> {
-  const subscriptions = await Subscription.findAll({
+  const subscriptions = await SubscriptionModel.findAll({
     where: {
       workspaceId: workspace.id,
       stripeSubscriptionId: {
@@ -497,12 +497,12 @@ export async function whitelistWorkspaceToBusinessPlan(
 export async function checkSeatCountForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<Result<string, Error>> {
-  const subscription = await Subscription.findOne({
+  const subscription = await SubscriptionModel.findOne({
     where: {
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
   if (!subscription) {
     return new Err(new Error("Workspace has no active subscription."));

@@ -29,10 +29,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-  UserMessage,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
@@ -222,7 +222,7 @@ export async function getConversationMessageType(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const message = await Message.findOne({
+  const message = await MessageModel.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -251,7 +251,7 @@ export async function getMessageConversationId(
   auth: Authenticator,
   { messageId }: { messageId: number }
 ): Promise<{ conversationId: string | null; messageId: string | null }> {
-  const messageRow = await Message.findOne({
+  const messageRow = await MessageModel.findOne({
     attributes: ["sId"],
     where: {
       agentMessageId: messageId,
@@ -278,7 +278,7 @@ export async function getLastUserMessage(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const message = await Message.findOne({
+  const message = await MessageModel.findOne({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
@@ -289,7 +289,7 @@ export async function getLastUserMessage(
     ],
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: false,
       },
@@ -521,7 +521,7 @@ export async function postUserMessage(
     }
 
     let nextMessageRank =
-      ((await Message.max<number | null, Message>("rank", {
+      ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
           conversationId: conversation.id,
         },
@@ -744,7 +744,7 @@ export async function editUserMessage(
       // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(auth, conversation, t);
 
-      const messageRow = await Message.findOne({
+      const messageRow = await MessageModel.findOne({
         where: {
           sId: message.sId,
           conversationId: conversation.id,
@@ -752,7 +752,7 @@ export async function editUserMessage(
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: true,
           },
@@ -766,7 +766,7 @@ export async function editUserMessage(
         );
       }
 
-      const newerMessage = await Message.findOne({
+      const newerMessage = await MessageModel.findOne({
         where: {
           workspaceId: owner.id,
           rank: messageRow.rank,
@@ -826,7 +826,7 @@ export async function editUserMessage(
         // Only create agent messages if there are no agent messages after the edited user message
         if (!hasAgentMessagesAfter) {
           const nextMessageRank =
-            ((await Message.max<number | null, Message>("rank", {
+            ((await MessageModel.max<number | null, MessageModel>("rank", {
               where: {
                 conversationId: conversation.id,
               },
@@ -968,7 +968,7 @@ export async function retryAgentMessage(
         );
       }
 
-      const messageRow = await Message.findOne({
+      const messageRow = await MessageModel.findOne({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           conversationId: conversation.id,
@@ -976,7 +976,7 @@ export async function retryAgentMessage(
         },
         include: [
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: true,
           },
@@ -987,7 +987,7 @@ export async function retryAgentMessage(
       if (!messageRow || !messageRow.agentMessage || !messageRow.parentId) {
         return null;
       }
-      const newerMessage = await Message.findOne({
+      const newerMessage = await MessageModel.findOne({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           rank: messageRow.rank,
@@ -1171,13 +1171,13 @@ export async function postNewContentFragment(
     })();
 
     const nextMessageRank =
-      ((await Message.max<number | null, Message>("rank", {
+      ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
           conversationId: conversation.id,
         },
         transaction: t,
       })) ?? -1) + 1;
-    const messageRow = await Message.create(
+    const messageRow = await MessageModel.create(
       {
         sId: messageId,
         rank: nextMessageRank,
@@ -1253,7 +1253,7 @@ export async function softDeleteUserMessage(
     });
 
     if (relatedContentFragments.length > 0) {
-      await Message.update(
+      await MessageModel.update(
         {
           visibility: "deleted",
           contentFragmentId: col("contentFragmentId"),
@@ -1312,7 +1312,7 @@ export async function softDeleteAgentMessage(
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
-  const parentMessage = await Message.findOne({
+  const parentMessage = await MessageModel.findOne({
     where: {
       sId: message.parentMessageId,
       conversationId: conversation.id,
@@ -1320,7 +1320,7 @@ export async function softDeleteAgentMessage(
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
       },

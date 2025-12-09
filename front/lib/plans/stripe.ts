@@ -2,7 +2,7 @@ import assert from "assert";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
@@ -171,7 +171,7 @@ export const createProPlanCheckoutSession = async ({
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
-  const plan = await Plan.findOne({ where: { code: planCode } });
+  const plan = await PlanModel.findOne({ where: { code: planCode } });
   if (!plan) {
     throw new Error(
       `Cannot create checkout session for plan ${planCode}: plan not found.`
@@ -203,9 +203,9 @@ export const createProPlanCheckoutSession = async ({
   // subscription before.
   // User under the grandfathered free plan are not allowed to have a trial.
   let trialAllowed = true;
-  const existingSubscription = await Subscription.findOne({
+  const existingSubscription = await SubscriptionModel.findOne({
     where: { workspaceId: owner.id },
-    include: [Plan],
+    include: [PlanModel],
   });
   if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
     trialAllowed = false;

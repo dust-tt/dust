@@ -3,7 +3,7 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { Message } from "@app/lib/models/agent/conversation";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationType, Result } from "@app/types";
@@ -28,7 +28,7 @@ async function findUserMessageForRetry(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // Query 1: Get the message and its parentId.
-  const agentMessage = await Message.findOne({
+  const agentMessage = await MessageModel.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -42,7 +42,7 @@ async function findUserMessageForRetry(
   }
 
   // Query 2: Get the parent message's sId (which is the user message).
-  const parentMessage = await Message.findOne({
+  const parentMessage = await MessageModel.findOne({
     where: {
       id: agentMessage.parentId,
       conversationId: conversation.id,

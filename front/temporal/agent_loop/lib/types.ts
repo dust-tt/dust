@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/agent/conversation";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -44,7 +44,7 @@ export type GetOutputRequestParams = {
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;
-  agentMessageRow: AgentMessage;
+  agentMessageRow: AgentMessageModel;
   step: number;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
@@ -65,7 +65,7 @@ export type GetOutputRequestParams = {
       modelInteractionDurationMs,
     }: {
       event: AgentMessageEvents;
-      agentMessageRow: AgentMessage;
+      agentMessageRow: AgentMessageModel;
       conversation: ConversationWithoutContentType;
       step: number;
       modelInteractionDurationMs?: number;

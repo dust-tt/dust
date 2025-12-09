@@ -19,7 +19,7 @@ import type {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
   AgentConfigurationType,
@@ -96,7 +96,7 @@ export async function getExitOrPauseEvents(
     agentMessage,
     conversation,
   }: {
-    outputItems: AgentMCPActionOutputItem[];
+    outputItems: AgentMCPActionOutputItemModel[];
     action: AgentMCPActionResource;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;

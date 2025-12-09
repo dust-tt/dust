@@ -1,5 +1,5 @@
 import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
@@ -14,12 +14,12 @@ async function checkWorkspaceSeatCount(
   logger: Logger,
   execute: boolean
 ) {
-  const subscription = await Subscription.findOne({
+  const subscription = await SubscriptionModel.findOne({
     where: {
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
   const localLogger = logger.child({
     workspaceId: workspace.sId,

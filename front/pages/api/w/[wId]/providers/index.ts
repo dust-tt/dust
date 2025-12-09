@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
 import type { ProviderType, WithAPIErrorResponse } from "@app/types";
 import { redactString } from "@app/types";
@@ -40,7 +40,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const providers = await Provider.findAll({
+      const providers = await ProviderModel.findAll({
         where: {
           workspaceId: owner.id,
         },

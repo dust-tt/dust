@@ -8,7 +8,7 @@ import {
   _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types";
 import {
@@ -36,7 +36,7 @@ export function _getClaude3HaikuGlobalAgent({
   webSearchBrowseMCPServerView,
   interactiveContentMCPServerView,
 }: {
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -92,7 +92,7 @@ export function _getClaude3OpusGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -151,7 +151,7 @@ export function _getClaude3GlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -210,7 +210,7 @@ export function _getClaude4SonnetGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -269,7 +269,7 @@ export function _getClaude3_7GlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -328,7 +328,7 @@ export function _getClaude4_5SonnetGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -388,7 +388,7 @@ export function _getClaude4_5HaikuGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {

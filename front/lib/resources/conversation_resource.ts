@@ -14,12 +14,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
   ConversationParticipantModel,
-  Mention,
-  Message,
-  UserMessage,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -385,12 +385,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       include: [
         {
-          model: Message,
+          model: MessageModel,
           required: true,
           attributes: [],
           include: [
             {
-              model: Mention,
+              model: MentionModel,
               as: "mentions",
               required: true,
               attributes: [],
@@ -406,7 +406,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
               },
             },
             {
-              model: UserMessage,
+              model: UserMessageModel,
               as: "userMessage",
               required: true,
               attributes: [],
@@ -433,7 +433,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const { batchSize = 1000, cutoffDate } = options ?? {};
 
-    const inactiveConversations = await Message.findAll({
+    const inactiveConversations = await MessageModel.findAll({
       attributes: [
         "conversationId",
         [fn("MAX", col("createdAt")), "lastMessageDate"],
@@ -486,7 +486,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Two-step approach for better performance:
     // Step 1: Get distinct conversation IDs that have messages from this agent.
-    const messageWithAgent = await Message.findAll({
+    const messageWithAgent = await MessageModel.findAll({
       attributes: [
         [
           Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
@@ -498,7 +498,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           attributes: [],
@@ -935,8 +935,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async getMessageById(
     auth: Authenticator,
     messageId: string
-  ): Promise<Result<Message, Error>> {
-    const message = await Message.findOne({
+  ): Promise<Result<MessageModel, Error>> {
+    const message = await MessageModel.findOne({
       where: {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -944,12 +944,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       include: [
         {
-          model: UserMessage,
+          model: UserMessageModel,
           as: "userMessage",
           required: false,
         },
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: false,
         },
@@ -977,7 +977,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     hasMore: boolean;
   }> {
     // Step 1: Fetch all NON content fragments with size = limit + 1
-    const whereNonCf: WhereOptions<Message> = {
+    const whereNonCf: WhereOptions<MessageModel> = {
       conversationId: this.id,
       workspaceId: auth.getNonNullableWorkspace().id,
       contentFragmentId: { [Op.is]: null },
@@ -989,7 +989,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     }
 
-    const nonContentFragmentMessages = await Message.findAll({
+    const nonContentFragmentMessages = await MessageModel.findAll({
       attributes: [
         [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
         [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
@@ -1032,14 +1032,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // For multiple non-CF messages: include CFs between minRank and maxRank (inclusive)
 
     if (minRank !== undefined && maxRank !== undefined && ranksHaveGaps) {
-      const whereCf: WhereOptions<Message> = {
+      const whereCf: WhereOptions<MessageModel> = {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         contentFragmentId: { [Op.ne]: null },
         rank: { [Op.between]: [minRank, maxRank] },
       };
 
-      const contentFragmentMessages = await Message.findAll({
+      const contentFragmentMessages = await MessageModel.findAll({
         attributes: [
           [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
           [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
@@ -1063,14 +1063,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async fetchMessagesForPage(
     auth: Authenticator,
     { limit, lastRank }: { limit: number; lastRank?: number | null }
-  ): Promise<{ hasMore: boolean; messages: Message[] }> {
+  ): Promise<{ hasMore: boolean; messages: MessageModel[] }> {
     const { allMessageIds, hasMore } = await this.getMaxRankMessages(auth, {
       limit,
       lastRank,
     });
 
     // Fetch all messages (including content fragments and up to limit non-content-fragment messages)
-    const messages = await Message.findAll({
+    const messages = await MessageModel.findAll({
       where: {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -1081,12 +1081,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["rank", "DESC"]],
       include: [
         {
-          model: UserMessage,
+          model: UserMessageModel,
           as: "userMessage",
           required: false,
         },
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: false,
           include: [

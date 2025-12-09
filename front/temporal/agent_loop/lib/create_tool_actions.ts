@@ -11,7 +11,7 @@ import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/agent/conversation";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
@@ -123,7 +123,7 @@ async function createActionForTool(
     actionConfiguration: MCPToolConfigurationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
+    agentMessageRow: AgentMessageModel;
     conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;

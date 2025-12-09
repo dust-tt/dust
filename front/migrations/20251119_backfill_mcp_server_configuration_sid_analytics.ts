@@ -5,11 +5,11 @@ import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import type { Logger } from "@app/logger/logger";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -48,7 +48,7 @@ async function backfillMcpServerConfigurationSidForWorkspace(
     },
   };
 
-  const totalAgentMessages = await Message.count({
+  const totalAgentMessages = await MessageModel.count({
     where: baseWhere,
   });
 
@@ -86,12 +86,12 @@ async function backfillMcpServerConfigurationSidForWorkspace(
       };
     }
 
-    const agentMessagesBatch = await Message.findAll({
+    const agentMessagesBatch = await MessageModel.findAll({
       where,
       attributes: ["id", "sId", "version"],
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
         },
@@ -136,7 +136,7 @@ async function backfillMcpServerConfigurationSidForWorkspace(
       new Set(actions.map((a) => a.mcpServerConfigurationId))
     );
 
-    const serverConfigs = await AgentMCPServerConfiguration.findAll({
+    const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
         workspaceId: workspace.id,
         id: uniqueConfigIds,

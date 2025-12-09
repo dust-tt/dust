@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
-import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -40,7 +40,7 @@ async function backfillViewsInAgentDataSourceConfigurationForWorkspace(
   // Count agent data source configurations that uses those data sources.
 
   const agentDataSourceConfigurationsCount =
-    await AgentDataSourceConfiguration.count({
+    await AgentDataSourceConfigurationModel.count({
       where: {
         dataSourceId: managedDataSources.map((ds) => ds.id),
       },
@@ -63,7 +63,7 @@ async function backfillViewsInAgentDataSourceConfigurationForWorkspace(
       `Data source view not found for data source ${ds.id}.`
     );
 
-    await AgentDataSourceConfiguration.update(
+    await AgentDataSourceConfigurationModel.update(
       { dataSourceViewId: dataSourceView.id },
       {
         where: {

@@ -3,7 +3,7 @@ import type { GroupedCountResultItem } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -11,6 +11,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+
 async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,
@@ -37,7 +38,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
 
   // Count agent tables query configurations that uses those data sources and have no dataSourceIdNew.
   const agentTablesQueryConfigurationsCount: GroupedCountResultItem[] =
-    await AgentTablesQueryConfigurationTable.count({
+    await AgentTablesQueryConfigurationTableModel.count({
       where: {
         dataSourceId: dataSources.map((ds) => ds.sId),
         // @ts-expect-error `dataSourceIdNew` has been removed.
@@ -66,24 +67,25 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
       `Error while fetching data source view for data source ${ds.id} // Found ${dataSourceViewsForDataSource.length} data source views.`
     );
 
-    const [, affectedRows] = await AgentTablesQueryConfigurationTable.update(
-      {
-        // @ts-expect-error `dataSourceIdNew` has been removed.
-        dataSourceIdNew: ds.id,
-      },
-      {
-        where: {
-          // /!\ `dataSourceId` is the data source's name, not the id.
-          dataSourceId: ds.sId,
-          dataSourceIdNew: {
-            [Op.is]: null,
-          },
-          // Given that the name isn't unique we need to precise the workspace.
-          dataSourceWorkspaceId: workspace.sId,
+    const [, affectedRows] =
+      await AgentTablesQueryConfigurationTableModel.update(
+        {
+          // @ts-expect-error `dataSourceIdNew` has been removed.
+          dataSourceIdNew: ds.id,
         },
-        returning: true,
-      }
-    );
+        {
+          where: {
+            // /!\ `dataSourceId` is the data source's name, not the id.
+            dataSourceId: ds.sId,
+            dataSourceIdNew: {
+              [Op.is]: null,
+            },
+            // Given that the name isn't unique we need to precise the workspace.
+            dataSourceWorkspaceId: workspace.sId,
+          },
+          returning: true,
+        }
+      );
 
     if (affectedRows && affectedRows.length > 0) {
       const [r] = affectedRows;
@@ -95,7 +97,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
           // Expected dataSourceViewId to be ${dataSourceViewsForDataSource[0].id} but got ${r.dataSourceViewId}.`
         );
 
-        await AgentTablesQueryConfigurationTable.update(
+        await AgentTablesQueryConfigurationTableModel.update(
           {
             dataSourceViewId: dataSourceViewsForDataSource[0].id,
           },
