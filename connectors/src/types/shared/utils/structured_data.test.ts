@@ -8,6 +8,17 @@ import { decodeBuffer } from "@connectors/connectors/shared/file";
 import { parseAndStringifyCsv } from "./structured_data";
 
 describe("parseAndStringifyCsv", () => {
+  it("should parse and stringify a single line CSV", async () => {
+    const result = await parseAndStringifyCsv(
+      '"Last name"\t"First name"\t"Email"\t"Program session"\t"Path session"\t"Course"\t"Score"\t"Progress"\t"Start"\t"End"\t"Total time spent"'
+    );
+
+    expect(result).toBe(
+      `Last name,First name,Email,Program session,Path session,Course,Score,Progress,Start,End,Total time spent
+`
+    );
+  });
+
   it("should parse and stringify a comma-separated CSV", async () => {
     const csv = `name,age,city
 Alice,30,Paris
