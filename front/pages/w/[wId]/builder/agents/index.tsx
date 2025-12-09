@@ -308,7 +308,6 @@ export default function WorkspaceAssistants({
         <AgentDetails
           owner={owner}
           user={user}
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           agentId={detailedAgentId}
           onClose={() => setDetailedAgentId(null)}
         />
