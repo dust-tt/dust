@@ -1,9 +1,11 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
   SUGGESTION_DISPLAY_LIMIT,
 } from "@app/lib/mentions/editor/suggestion";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   RichAgentMention,
@@ -32,12 +34,16 @@ export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
     query,
+    conversationId,
+    preferredAgentId,
     select = {
       agents: true,
       users: true,
     },
   }: {
     query: string;
+    conversationId?: string | null;
+    preferredAgentId?: string | null;
     select?: {
       agents: boolean;
       users: boolean;
@@ -132,5 +138,98 @@ export const suggestionsOfMentions = async (
     ...selectedAgents,
   ]);
 
-  return [firstUser, ...rest];
+  let results: RichMention[] = [firstUser, ...rest];
+
+  // Apply conversation participant prioritization if conversationId is provided
+  // This only runs when mentions_v2 is enabled (select.users === true)
+  if (conversationId && select.users) {
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        conversationId
+      );
+
+    if (conversationRes.isOk()) {
+      const participantsRes = await fetchConversationParticipants(
+        auth,
+        conversationRes.value
+      );
+
+      if (participantsRes.isOk()) {
+        const participants = participantsRes.value;
+        const matchesQuery = (label: string) =>
+          !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
+
+        // Convert participants to RichMention format
+        const participantUsers = participants.users
+          .filter((u) => u.sId !== currentUserSId)
+          .map((u) => ({
+            type: "user" as const,
+            id: u.sId,
+            label: u.fullName ?? u.username,
+            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+            description: u.username,
+          }))
+          .filter((m) => matchesQuery(m.label));
+
+        const participantAgents = participants.agents
+          .map((a) => ({
+            type: "agent" as const,
+            id: a.configurationId,
+            label: a.name,
+            pictureUrl: a.pictureUrl,
+            description: "",
+            userFavorite: false,
+          }))
+          .filter((m) => matchesQuery(m.label));
+
+        // Find participants not already in results
+        const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
+        const existingKeys = new Set(results.map(key));
+
+        const MAX_TOP_PARTICIPANTS = 5;
+        const MAX_TOP_USERS = 3;
+
+        const newUserParticipants = participantUsers.filter(
+          (m) => !existingKeys.has(key(m))
+        );
+        const cappedUserParticipants = newUserParticipants.slice(
+          0,
+          MAX_TOP_USERS
+        );
+
+        const remainingSlots =
+          MAX_TOP_PARTICIPANTS - cappedUserParticipants.length;
+
+        const newAgentParticipants = participantAgents.filter(
+          (m) => !existingKeys.has(key(m))
+        );
+        const cappedAgentParticipants =
+          remainingSlots > 0
+            ? newAgentParticipants.slice(0, remainingSlots)
+            : [];
+
+        const cappedParticipants = [
+          ...cappedUserParticipants,
+          ...cappedAgentParticipants,
+        ];
+
+        // Prepend conversation participants to the results
+        results = [...cappedParticipants, ...results];
+      }
+    }
+  }
+
+  // Move preferred agent to first position if specified
+  if (preferredAgentId) {
+    const preferredIndex = results.findIndex(
+      (s) => s.type === "agent" && s.id === preferredAgentId
+    );
+    if (preferredIndex > 0) {
+      const preferred = results[preferredIndex];
+      results = [preferred, ...results.filter((_, i) => i !== preferredIndex)];
+    }
+  }
+
+  return results;
 };

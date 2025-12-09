@@ -11,7 +11,6 @@ export interface MentionDropdownProps {
   owner: WorkspaceType;
   conversationId: string | null;
   preferredAgentId?: string | null;
-  userMentionsEnabled?: boolean;
   command: (item: RichMention) => void;
   clientRect?: (() => DOMRect | null) | null;
   onClose?: () => void;

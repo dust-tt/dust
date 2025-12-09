@@ -20,9 +20,7 @@ import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
-import { useConversationParticipants } from "@app/lib/swr/conversations";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
-import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
 export const MentionDropdown = forwardRef<
@@ -38,7 +36,6 @@ export const MentionDropdown = forwardRef<
       owner,
       conversationId,
       preferredAgentId,
-      userMentionsEnabled,
     },
     ref
   ) => {
@@ -49,11 +46,13 @@ export const MentionDropdown = forwardRef<
     );
 
     // Fetch suggestions from server using the query.
+    // Backend handles all prioritization logic (participants, preferred agent, etc.)
     const { suggestions, isLoading } = useMentionSuggestions({
       workspaceId: owner.sId,
       conversationId,
       query,
-      select: { agents: true, users: userMentionsEnabled ?? false },
+      preferredAgentId,
+      select: { agents: true, users: true },
     });
 
     const triggerRef = useRef<HTMLDivElement>(null);
@@ -61,106 +60,8 @@ export const MentionDropdown = forwardRef<
       useState<React.CSSProperties>({});
     const selectedItemRef = useRef<HTMLButtonElement>(null);
 
-    const { conversationParticipants } = useConversationParticipants({
-      conversationId,
-      workspaceId: owner.sId,
-      options: { disabled: !conversationId || !userMentionsEnabled },
-    });
-
-    const { user } = useUser();
-
-    const orderedSuggestions = useMemo(() => {
-      let base = suggestions;
-
-      // Only apply new participant prioritization logic when mentions_v2 is enabled
-      if (userMentionsEnabled) {
-        // Promote conversation participants first (up to 5) by explicitly
-        // injecting them into the list (in case they weren't returned by the
-        // global suggestion endpoint), then append other suggestions.
-        if (conversationParticipants) {
-          const normalizedQuery = query.trim().toLowerCase();
-          const matchesQuery = (label: string) =>
-            !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
-
-          const participantUsers = conversationParticipants.users
-            .filter((u) => u.sId !== user?.sId)
-            .map((u) => ({
-              type: "user" as const,
-              id: u.sId,
-              label: u.fullName ?? u.username,
-              pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
-              description: u.username,
-            }))
-            .filter((m) => matchesQuery(m.label));
-
-          const participantAgents = conversationParticipants.agents
-            .map((a) => ({
-              type: "agent" as const,
-              id: a.configurationId,
-              label: a.name,
-              pictureUrl: a.pictureUrl,
-              description: "",
-              userFavorite: false,
-            }))
-            .filter((m) => matchesQuery(m.label));
-
-          const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
-          const existingKeys = new Set(base.map(key));
-
-          const MAX_TOP_PARTICIPANTS = 5;
-          const MAX_TOP_USERS = 3;
-
-          const newUserParticipants = participantUsers.filter(
-            (m) => !existingKeys.has(key(m))
-          );
-          const cappedUserParticipants = newUserParticipants.slice(
-            0,
-            MAX_TOP_USERS
-          );
-
-          const remainingSlots =
-            MAX_TOP_PARTICIPANTS - cappedUserParticipants.length;
-
-          const newAgentParticipants = participantAgents.filter(
-            (m) => !existingKeys.has(key(m))
-          );
-          const cappedAgentParticipants =
-            remainingSlots > 0
-              ? newAgentParticipants.slice(0, remainingSlots)
-              : [];
-
-          const cappedParticipants = [
-            ...cappedUserParticipants,
-            ...cappedAgentParticipants,
-          ];
-
-          base = [...cappedParticipants, ...base];
-        }
-
-        // Then move the preferred agent (last used) to the very first position if present.
-        if (preferredAgentId) {
-          const preferredIndex = base.findIndex(
-            (s) => s.type === "agent" && s.id === preferredAgentId
-          );
-          if (preferredIndex > 0) {
-            const preferred = base[preferredIndex];
-            base = [preferred, ...base.filter((_, i) => i !== preferredIndex)];
-          }
-        }
-      }
-
-      return base;
-    }, [
-      suggestions,
-      preferredAgentId,
-      conversationParticipants,
-      query,
-      user,
-      userMentionsEnabled,
-    ]);
-
     const selectItem = (index: number) => {
-      const item = orderedSuggestions[index];
+      const item = suggestions[index];
 
       if (item) {
         command(item);
@@ -187,17 +88,16 @@ export const MentionDropdown = forwardRef<
       onKeyDown: ({ event }) => {
         if (event.key === "ArrowUp") {
           setSelectedIndex(
-            (selectedIndex + orderedSuggestions.length - 1) %
-              orderedSuggestions.length
+            (selectedIndex + suggestions.length - 1) % suggestions.length
           );
           return true;
         }
 
         if (event.key === "ArrowDown") {
-          if (orderedSuggestions.length === 0) {
+          if (suggestions.length === 0) {
             return false;
           }
-          setSelectedIndex((selectedIndex + 1) % orderedSuggestions.length);
+          setSelectedIndex((selectedIndex + 1) % suggestions.length);
           return true;
         }
 
@@ -240,7 +140,7 @@ export const MentionDropdown = forwardRef<
     // This ensures Radix UI recalculates collision detection and positioning.
     const contentKey = isLoading
       ? "loading"
-      : orderedSuggestions.length === 0
+      : suggestions.length === 0
         ? "empty"
         : `results-${suggestions.length}`;
 
@@ -268,9 +168,9 @@ export const MentionDropdown = forwardRef<
             <div className="flex h-12 w-full items-center justify-center">
               <Spinner />
             </div>
-          ) : orderedSuggestions.length > 0 ? (
+          ) : suggestions.length > 0 ? (
             <div className="flex max-h-60 flex-col gap-y-1 overflow-y-auto p-1">
-              {orderedSuggestions.map((suggestion, index) => (
+              {suggestions.map((suggestion, index) => (
                 <div key={suggestion.id}>
                   <button
                     ref={index === selectedIndex ? selectedItemRef : null}
@@ -301,7 +201,7 @@ export const MentionDropdown = forwardRef<
                         {suggestion.label}
                       </span>
                     </div>
-                    {userMentionsEnabled && suggestion.type === "user" && (
+                    {suggestion.type === "user" && (
                       <Chip
                         size="mini"
                         color="primary"
