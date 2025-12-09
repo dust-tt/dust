@@ -217,6 +217,7 @@ export async function getMessageUsageData(
              COALESCE(ac."sId", am."agentConfigurationId")               AS "assistant_id",
              COALESCE(ac."name", am."agentConfigurationId")              AS "assistant_name",
              CASE
+             	 WHEN ac."status" = 'draft' THEN 'draft'
                WHEN ac."scope" = 'visible' THEN 'published'
                WHEN ac."scope" = 'hidden' THEN 'unpublished'
                ELSE 'unknown'
