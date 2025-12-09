@@ -38,6 +38,7 @@ export const MentionDropdown = forwardRef<
       owner,
       conversationId,
       preferredAgentId,
+      userMentionsEnabled,
     },
     ref
   ) => {
@@ -52,7 +53,7 @@ export const MentionDropdown = forwardRef<
       workspaceId: owner.sId,
       conversationId,
       query,
-      select: { agents: true, users: true },
+      select: { agents: true, users: userMentionsEnabled ?? false },
     });
 
     const triggerRef = useRef<HTMLDivElement>(null);
@@ -63,7 +64,7 @@ export const MentionDropdown = forwardRef<
     const { conversationParticipants } = useConversationParticipants({
       conversationId,
       workspaceId: owner.sId,
-      options: { disabled: !conversationId },
+      options: { disabled: !conversationId || !userMentionsEnabled },
     });
 
     const { user } = useUser();
@@ -71,82 +72,92 @@ export const MentionDropdown = forwardRef<
     const orderedSuggestions = useMemo(() => {
       let base = suggestions;
 
-      // Promote conversation participants first (up to 5) by explicitly
-      // injecting them into the list (in case they weren't returned by the
-      // global suggestion endpoint), then append other suggestions.
-      if (conversationParticipants) {
-        const normalizedQuery = query.trim().toLowerCase();
-        const matchesQuery = (label: string) =>
-          !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
+      // Only apply new participant prioritization logic when mentions_v2 is enabled
+      if (userMentionsEnabled) {
+        // Promote conversation participants first (up to 5) by explicitly
+        // injecting them into the list (in case they weren't returned by the
+        // global suggestion endpoint), then append other suggestions.
+        if (conversationParticipants) {
+          const normalizedQuery = query.trim().toLowerCase();
+          const matchesQuery = (label: string) =>
+            !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
 
-        const participantUsers = conversationParticipants.users
-          .filter((u) => u.sId !== user?.sId)
-          .map((u) => ({
-            type: "user" as const,
-            id: u.sId,
-            label: u.fullName ?? u.username,
-            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
-            description: u.username,
-          }))
-          .filter((m) => matchesQuery(m.label));
+          const participantUsers = conversationParticipants.users
+            .filter((u) => u.sId !== user?.sId)
+            .map((u) => ({
+              type: "user" as const,
+              id: u.sId,
+              label: u.fullName ?? u.username,
+              pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+              description: u.username,
+            }))
+            .filter((m) => matchesQuery(m.label));
 
-        const participantAgents = conversationParticipants.agents
-          .map((a) => ({
-            type: "agent" as const,
-            id: a.configurationId,
-            label: a.name,
-            pictureUrl: a.pictureUrl,
-            description: "",
-            userFavorite: false,
-          }))
-          .filter((m) => matchesQuery(m.label));
+          const participantAgents = conversationParticipants.agents
+            .map((a) => ({
+              type: "agent" as const,
+              id: a.configurationId,
+              label: a.name,
+              pictureUrl: a.pictureUrl,
+              description: "",
+              userFavorite: false,
+            }))
+            .filter((m) => matchesQuery(m.label));
 
-        const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
-        const existingKeys = new Set(base.map(key));
+          const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
+          const existingKeys = new Set(base.map(key));
 
-        const MAX_TOP_PARTICIPANTS = 5;
-        const MAX_TOP_USERS = 3;
+          const MAX_TOP_PARTICIPANTS = 5;
+          const MAX_TOP_USERS = 3;
 
-        const newUserParticipants = participantUsers.filter(
-          (m) => !existingKeys.has(key(m))
-        );
-        const cappedUserParticipants = newUserParticipants.slice(
-          0,
-          MAX_TOP_USERS
-        );
+          const newUserParticipants = participantUsers.filter(
+            (m) => !existingKeys.has(key(m))
+          );
+          const cappedUserParticipants = newUserParticipants.slice(
+            0,
+            MAX_TOP_USERS
+          );
 
-        const remainingSlots =
-          MAX_TOP_PARTICIPANTS - cappedUserParticipants.length;
+          const remainingSlots =
+            MAX_TOP_PARTICIPANTS - cappedUserParticipants.length;
 
-        const newAgentParticipants = participantAgents.filter(
-          (m) => !existingKeys.has(key(m))
-        );
-        const cappedAgentParticipants =
-          remainingSlots > 0
-            ? newAgentParticipants.slice(0, remainingSlots)
-            : [];
+          const newAgentParticipants = participantAgents.filter(
+            (m) => !existingKeys.has(key(m))
+          );
+          const cappedAgentParticipants =
+            remainingSlots > 0
+              ? newAgentParticipants.slice(0, remainingSlots)
+              : [];
 
-        const cappedParticipants = [
-          ...cappedUserParticipants,
-          ...cappedAgentParticipants,
-        ];
+          const cappedParticipants = [
+            ...cappedUserParticipants,
+            ...cappedAgentParticipants,
+          ];
 
-        base = [...cappedParticipants, ...base];
+          base = [...cappedParticipants, ...base];
+        }
+
+        // Then move the preferred agent (last used) to the very first position if present.
+        if (preferredAgentId) {
+          const preferredIndex = base.findIndex(
+            (s) => s.type === "agent" && s.id === preferredAgentId
+          );
+          if (preferredIndex > 0) {
+            const preferred = base[preferredIndex];
+            base = [preferred, ...base.filter((_, i) => i !== preferredIndex)];
+          }
+        }
       }
 
-      // Then move the preferred agent (last used) to the very first position if present.
-      if (!preferredAgentId) {
-        return base;
-      }
-      const preferredIndex = base.findIndex(
-        (s) => s.type === "agent" && s.id === preferredAgentId
-      );
-      if (preferredIndex <= 0) {
-        return base;
-      }
-      const preferred = base[preferredIndex];
-      return [preferred, ...base.filter((_, i) => i !== preferredIndex)];
-    }, [suggestions, preferredAgentId, conversationParticipants, query, user]);
+      return base;
+    }, [
+      suggestions,
+      preferredAgentId,
+      conversationParticipants,
+      query,
+      user,
+      userMentionsEnabled,
+    ]);
 
     const selectItem = (index: number) => {
       const item = orderedSuggestions[index];
@@ -290,7 +301,7 @@ export const MentionDropdown = forwardRef<
                         {suggestion.label}
                       </span>
                     </div>
-                    {suggestion.type === "user" && (
+                    {userMentionsEnabled && suggestion.type === "user" && (
                       <Chip
                         size="mini"
                         color="primary"

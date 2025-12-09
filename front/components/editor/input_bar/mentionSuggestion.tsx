@@ -19,10 +19,12 @@ export function createMentionSuggestion({
   owner,
   conversationId,
   preferredAgentId,
+  userMentionsEnabled,
 }: {
   owner: WorkspaceType;
   conversationId: string | null;
   preferredAgentId?: string | null;
+  userMentionsEnabled?: boolean;
 }) {
   return {
     pluginKey: mentionPluginKey,
@@ -52,6 +54,7 @@ export function createMentionSuggestion({
               owner,
               conversationId,
               preferredAgentId,
+              userMentionsEnabled,
               onClose: closeDropdown,
             },
           });
@@ -66,6 +69,7 @@ export function createMentionSuggestion({
             owner,
             conversationId,
             preferredAgentId,
+            userMentionsEnabled,
           });
         },
 
