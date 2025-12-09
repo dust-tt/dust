@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -12,7 +12,7 @@ const createMockMCPAction = (
   mcpServerViewId?: string | null,
   dataSourceConfigurations?: any,
   tablesConfigurations?: any
-): AgentBuilderAction => ({
+): BuilderAction => ({
   id,
   type: "MCP",
   name,

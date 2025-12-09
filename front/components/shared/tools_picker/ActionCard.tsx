@@ -1,15 +1,15 @@
 import { Card, CardActionButton, XMarkIcon } from "@dust-tt/sparkle";
 
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import { isDefaultActionName } from "@app/components/agent_builder/types";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { isDefaultActionName } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 function actionIcon(
-  action: AgentBuilderAction,
+  action: BuilderAction,
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView?.server) {
@@ -18,7 +18,7 @@ function actionIcon(
 }
 
 function actionDisplayName(
-  action: AgentBuilderAction,
+  action: BuilderAction,
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView && action.type === "MCP") {
@@ -31,7 +31,7 @@ function actionDisplayName(
 }
 
 export interface ActionCardProps {
-  action: AgentBuilderAction;
+  action: BuilderAction;
   onRemove: () => void;
   onEdit?: () => void;
 }

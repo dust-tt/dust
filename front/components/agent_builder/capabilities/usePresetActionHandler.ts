@@ -2,12 +2,10 @@ import { useEffect, useRef } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type {
-  AgentBuilderAction,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMCPServerNameForTemplateAction,
@@ -23,7 +21,7 @@ interface UsePresetActionHandlerProps {
   append: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   setKnowledgeAction: (
     action: {
-      action: AgentBuilderAction;
+      action: BuilderAction;
       index: number | null;
       presetData?: TemplateActionPreset;
     } | null
