@@ -7,10 +7,10 @@ import { SkillConfigurationResource } from "@app/lib/resources/skill_configurati
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
-import type { SkillConfigurationWithAuthor } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillConfigurationWithAuthor[];
+  skillConfigurations: SkillConfigurationWithAuthorType[];
 };
 
 async function handler(
