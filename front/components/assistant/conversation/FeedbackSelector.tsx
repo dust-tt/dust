@@ -74,36 +74,33 @@ export function FeedbackSelector({
     feedback?.thumb,
   ]);
 
-  const selectThumb = useCallback(
-    async (thumb: ThumbReaction) => {
-      const shouldRemoveExistingFeedback = feedback?.thumb === thumb;
-      setIsPopoverOpen(!shouldRemoveExistingFeedback);
-      setLastSelectedThumb(shouldRemoveExistingFeedback ? null : thumb);
-      setIsConversationShared(thumb === "down");
+  const selectThumb = async (thumb: ThumbReaction) => {
+    const shouldRemoveExistingFeedback = feedback?.thumb === thumb;
+    setIsPopoverOpen(!shouldRemoveExistingFeedback);
+    setLastSelectedThumb(shouldRemoveExistingFeedback ? null : thumb);
+    setIsConversationShared(thumb === "down");
 
-      // We enforce written feedback for thumbs down.
-      // -> Not saving the reaction until then.
-      if (thumb === "down" && !shouldRemoveExistingFeedback) {
-        return;
-      }
+    // We enforce written feedback for thumbs down.
+    // -> Not saving the reaction until then.
+    if (thumb === "down" && !shouldRemoveExistingFeedback) {
+      return;
+    }
 
-      await onSubmitThumb({
-        feedbackContent: localFeedbackContent,
-        thumb,
-        shouldRemoveExistingFeedback,
-        isConversationShared: false,
-      });
-    },
-    [feedback?.thumb, localFeedbackContent, onSubmitThumb]
-  );
+    await onSubmitThumb({
+      feedbackContent: localFeedbackContent,
+      thumb,
+      shouldRemoveExistingFeedback,
+      isConversationShared: false,
+    });
+  };
 
-  const handleThumbUp = useCallback(async () => {
+  const handleThumbUp = async () => {
     await selectThumb("up");
-  }, [selectThumb]);
+  };
 
-  const handleThumbDown = useCallback(async () => {
+  const handleThumbDown = async () => {
     await selectThumb("down");
-  }, [selectThumb]);
+  };
 
   const handleTextAreaChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -112,11 +109,11 @@ export function FeedbackSelector({
     []
   );
 
-  const closePopover = useCallback(() => {
+  const closePopover = () => {
     setIsPopoverOpen(false);
-  }, []);
+  };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     setIsPopoverOpen(false);
     if (lastSelectedThumb) {
       await onSubmitThumb({
@@ -127,12 +124,7 @@ export function FeedbackSelector({
       });
       setLocalFeedbackContent(null);
     }
-  }, [
-    onSubmitThumb,
-    localFeedbackContent,
-    isConversationShared,
-    lastSelectedThumb,
-  ]);
+  };
 
   return (
     <div ref={containerRef} className="flex items-center">
