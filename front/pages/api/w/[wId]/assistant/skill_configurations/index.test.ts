@@ -262,7 +262,6 @@ describe("POST /api/w/[wId]/assistant/skill_configurations", () => {
       name: "Simple Skill",
       description: "A simple skill without tools",
       instructions: "Simple instructions",
-      scope: "private",
       tools: [],
     };
 
@@ -274,7 +273,6 @@ describe("POST /api/w/[wId]/assistant/skill_configurations", () => {
       name: "Simple Skill",
       description: "A simple skill without tools",
       instructions: "Simple instructions",
-      scope: "private",
       status: "active",
       version: 0,
       tools: [],
@@ -288,7 +286,6 @@ describe("POST /api/w/[wId]/assistant/skill_configurations", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.scope).toBe("private");
   });
 
   it("creates a skill configuration with 2 tools", async () => {
@@ -324,7 +321,6 @@ describe("POST /api/w/[wId]/assistant/skill_configurations", () => {
       name: "Test Skill",
       description: "A test skill description",
       instructions: "Test instructions for the skill",
-      scope: "workspace",
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
@@ -339,7 +335,6 @@ describe("POST /api/w/[wId]/assistant/skill_configurations", () => {
       name: "Test Skill",
       description: "A test skill description",
       instructions: "Test instructions for the skill",
-      scope: "workspace",
       status: "active",
       version: 0,
       tools: [
@@ -360,8 +355,6 @@ describe("POST /api/w/[wId]/assistant/skill_configurations", () => {
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );
-    expect(skillConfiguration!.scope).toBe("workspace");
-    expect(skillConfiguration!.status).toBe("active");
     expect(skillConfiguration!.authorId).toBe(user.id);
 
     // Verify tools were created in the database
