@@ -123,15 +123,21 @@
  *           description: Origin of the context (contact us to add more at support@dust.tt)
  *           enum:
  *             - api
- *             - slack
- *             - gsheet
- *             - zapier
- *             - make
- *             - zendesk
- *             - raycast
- *             - github-copilot-chat
- *             - extension
+ *             - cli
+ *             - cli_programmatic
  *             - email
+ *             - excel
+ *             - extension
+ *             - github-copilot-chat
+ *             - gsheet
+ *             - make
+ *             - n8n
+ *             - powerpoint
+ *             - raycast
+ *             - slack
+ *             - teams
+ *             - zapier
+ *             - zendesk
  *     AgentConfiguration:
  *       type: object
  *       properties:
