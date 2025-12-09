@@ -46,7 +46,7 @@ AgentSkillModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    AgentConfigurationModelId: {
+    agentConfigurationId: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
@@ -54,7 +54,7 @@ AgentSkillModel.init(
   {
     modelName: "agent_skills",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "AgentConfigurationModelId"] }],
+    indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
     validate: {
       eitherGlobalOrCustomSkill() {
         const hasCustomSkill = this.customSkillId !== null;
@@ -83,11 +83,11 @@ SkillConfigurationModel.hasMany(AgentSkillModel, {
 
 // Association with AgentConfigurationModel
 AgentSkillModel.belongsTo(AgentConfigurationModel, {
-  foreignKey: { name: "AgentConfigurationModelId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentConfigurationModel.hasMany(AgentSkillModel, {
-  foreignKey: { name: "AgentConfigurationModelId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "skillAgentLinks",
 });
 
@@ -95,12 +95,12 @@ AgentConfigurationModel.hasMany(AgentSkillModel, {
 SkillConfigurationModel.belongsToMany(AgentConfigurationModel, {
   through: AgentSkillModel,
   foreignKey: "customSkillId",
-  otherKey: "AgentConfigurationModelId",
+  otherKey: "agentConfigurationId",
   as: "AgentConfigurationModels",
 });
 AgentConfigurationModel.belongsToMany(SkillConfigurationModel, {
   through: AgentSkillModel,
-  foreignKey: "AgentConfigurationModelId",
+  foreignKey: "agentConfigurationId",
   otherKey: "customSkillId",
   as: "skills",
 });
