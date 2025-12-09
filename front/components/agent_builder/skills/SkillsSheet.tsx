@@ -4,6 +4,7 @@ import {
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
+  Spinner,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -133,7 +134,7 @@ export function SkillsSheet({
 
           {isSkillConfigurationsLoading ? (
             <div className="flex h-40 items-center justify-center">
-              <span className="text-muted-foreground">Loading skills...</span>
+              <Spinner />
             </div>
           ) : filteredSkills.length === 0 ? (
             <div className="flex flex-1 items-center justify-center py-12">
