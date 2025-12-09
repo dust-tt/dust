@@ -196,6 +196,7 @@ async function handler(
 
         // Create MCP server configurations (tools) for this skill
         for (const mcpServerView of mcpServerViews) {
+          // TODO(skills 2025-12-09): move this to the makeNew.
           await SkillMCPServerConfigurationModel.create(
             {
               workspaceId: owner.id,
@@ -210,7 +211,10 @@ async function handler(
       });
 
       return res.status(200).json({
-        skillConfiguration: skillConfiguration.toJSON(),
+        skillConfiguration: {
+          ...skillConfiguration.toJSON(),
+          tools: body.tools,
+        },
       });
     }
 
