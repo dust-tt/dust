@@ -13,7 +13,6 @@ export class SkillConfigurationFactory {
       description: string;
       instructions: string;
       status: "active" | "archived";
-      scope: "private" | "workspace";
       version: number;
     }> = {}
   ): Promise<SkillConfigurationModel> {
@@ -25,7 +24,6 @@ export class SkillConfigurationFactory {
     const description = overrides.description ?? "Test skill description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
-    const scope = overrides.scope ?? "private";
     const version = overrides.version ?? 1;
 
     const skill = await SkillConfigurationModel.create({
@@ -35,7 +33,6 @@ export class SkillConfigurationFactory {
       description,
       instructions,
       status,
-      scope,
       version,
       requestedSpaceIds: [],
     });

@@ -30,7 +30,6 @@ const PostSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
   description: t.string,
   instructions: t.string,
-  scope: t.union([t.literal("private"), t.literal("workspace")]),
   tools: t.array(
     t.type({
       mcpServerViewId: t.string,
@@ -179,7 +178,6 @@ async function handler(
             workspaceId: owner.id,
             version: 0,
             status: "active",
-            scope: body.scope,
             name: body.name,
             description: body.description,
             instructions: body.instructions,
