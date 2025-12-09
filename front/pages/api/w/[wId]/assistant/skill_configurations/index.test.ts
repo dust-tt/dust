@@ -220,7 +220,7 @@ describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
+    expect(res._getStatusCode()).toBe(400);
     const data = res._getJSONData();
     expect(data.error.type).toBe("invalid_request_error");
     expect(data.error.message).toBe("Invalid agent configuration ID.");
