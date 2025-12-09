@@ -124,6 +124,7 @@ export async function handleFileExport(
       connectorId,
       parents,
       tags: file.labels,
+      allowEmptySchema: true, // CSV files can be empty or with just one line, so we allow empty schemas
     });
   } else if (file.mimeType === "text/markdown") {
     const textContent = handleTextFile(res.data, maxDocumentLen);

@@ -842,7 +842,8 @@ export async function upsertTable({
       return new Err({
         name: "dust_error",
         code: "invalid_csv_content",
-        message: "Invalid CSV content, skipping",
+        message:
+          "Cannot determine schema of CSV, and it's required. It can mean the CSV has only 1 row. Skipping",
       });
     }
   }

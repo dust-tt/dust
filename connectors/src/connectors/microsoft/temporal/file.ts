@@ -270,6 +270,7 @@ export async function syncOneFile({
       connectorId,
       parents,
       tags: columns,
+      allowEmptySchema: true, // CSV files can be empty or with just one line, so we allow empty schemas
     });
 
     if (result.isErr()) {
