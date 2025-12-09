@@ -801,44 +801,6 @@ export default async function createServer(
                 );
                 return await finalizeAndReturn(new Ok(blockedResponse.content));
               }
-            } else if (event.type === "tool_error") {
-              // TODO(2025-12-05 MENTION): Remove once all agent loops are drained.
-              // Handle personal authentication required errors.
-
-              if (
-                event.error.code ===
-                "mcp_server_personal_authentication_required"
-              ) {
-                const metadata = event.error.metadata ?? {};
-
-                collectedBlockingEvents.push({
-                  type: "tool_personal_auth_required",
-                  created: event.created,
-                  configurationId: event.configurationId,
-                  messageId: event.messageId,
-                  conversationId: conversation.sId,
-                  authError: {
-                    mcpServerId: metadata.mcp_server_id,
-                    provider: metadata.provider,
-                    toolName: metadata.toolName,
-                    message: metadata.message,
-                    scope: metadata.scope,
-                  },
-                });
-
-                if (event.isLastBlockingEventForStep) {
-                  const blockedResponse = makeToolBlockedAwaitingInputResponse(
-                    collectedBlockingEvents,
-                    {
-                      conversationId: conversation.sId,
-                      userMessageId,
-                    }
-                  );
-                  return await finalizeAndReturn(
-                    new Ok(blockedResponse.content)
-                  );
-                }
-              }
             } else if (event.type === "tool_personal_auth_required") {
               collectedBlockingEvents.push(event);
 
@@ -886,8 +848,8 @@ export default async function createServer(
           const normalizedError = normalizeError(streamError);
           const isNotConnected = normalizedError.message === "Not connected";
           const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
-          /* eslint-disable-next-line @typescript-eslint/return-await */
-          return await finalizeAndReturn(
+
+          return finalizeAndReturn(
             new Err(
               new MCPError(errorMessage, {
                 tracked: !isNotConnected,

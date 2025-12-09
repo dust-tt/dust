@@ -34,7 +34,6 @@ type BlockedActionsContextType = {
   }) => void;
   hasPendingValidations: (userId: string) => boolean;
   getBlockedActions: (userId: string) => BlockedToolExecution[];
-  mutateBlockedActions: () => void;
   getFirstBlockedActionForMessage: (
     messageId: string
   ) => BlockedToolExecution | undefined;
@@ -70,7 +69,7 @@ export function BlockedActionsProvider({
   const conversationId = conversation?.sId || null;
 
   // Fetch blocked actions from the database.
-  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
+  const { blockedActions } = useBlockedActions({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -215,7 +214,6 @@ export function BlockedActionsProvider({
         enqueueBlockedAction,
         removeCompletedAction,
         removeAllBlockedActionsForMessage,
-        mutateBlockedActions,
         hasPendingValidations,
         getBlockedActions,
         getFirstBlockedActionForMessage,
