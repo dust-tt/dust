@@ -225,7 +225,7 @@ export const GoogleDriveCommandSchema = t.type({
   majorCommand: t.literal("google_drive"),
   command: t.union([
     t.literal("garbage-collect-all"),
-    t.literal("get-file"),
+    t.literal("get-file-metadata"),
     t.literal("check-file"),
     t.literal("get-google-parents"),
     t.literal("clean-invalid-parents"),

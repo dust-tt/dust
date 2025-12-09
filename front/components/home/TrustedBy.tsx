@@ -222,7 +222,7 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
       )}
     >
       <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
-        Trusted by <span className="text-blue-500">1,000+</span> organizations
+        Trusted by <span className="text-blue-500">2,000+</span> organizations
       </H4>
 
       <div className="w-full">

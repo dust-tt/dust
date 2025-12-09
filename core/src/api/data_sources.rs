@@ -5,11 +5,15 @@ use axum::{
 use hyper::http::StatusCode;
 use regex::Regex;
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{error, info};
 
-use crate::api::api_state::APIState;
+use crate::{
+    api::api_state::APIState,
+    data_sources::data_source::{DataSource, Document},
+    providers::embedder::EmbedderRequest,
+};
 use crate::{
     data_sources::{
         data_source::{self, Section},
@@ -345,6 +349,196 @@ pub async fn data_sources_search(
     }
 }
 
+// Perform a bulk search on several data sources.
+
+#[derive(serde::Deserialize)]
+pub struct DataSourceSearchRequest {
+    pub project_id: i64,
+    pub data_source_id: String,
+    pub top_k: usize,
+    pub filter: Option<SearchFilter>,
+    pub view_filter: Option<SearchFilter>,
+    pub target_document_tokens: Option<usize>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct DataSourcesSearchBulkPayload {
+    pub query: String,
+    pub searches: Vec<DataSourceSearchRequest>,
+    pub full_text: bool,
+    pub credentials: run::Credentials,
+}
+
+#[derive(serde::Serialize)]
+pub struct DataSourceSearchResultItem {
+    pub project_id: i64,
+    pub data_source_id: String,
+    pub documents: Vec<Document>,
+    pub error: Option<String>,
+}
+
+pub async fn data_sources_search_bulk(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesSearchBulkPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Load all data sources.
+    let project_data_sources: Vec<(i64, String)> = payload
+        .searches
+        .iter()
+        .map(|s| (s.project_id, s.data_source_id.clone()))
+        .collect();
+
+    let data_sources = match state.store.load_data_sources(project_data_sources).await {
+        Ok(ds) => ds,
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to load data sources",
+                Some(e),
+            );
+        }
+    };
+
+    // Group by embedder model_id.
+    let mut groups: HashMap<String, Vec<(DataSourceSearchRequest, DataSource)>> = HashMap::new();
+
+    for (search_req, ds) in payload.searches.into_iter().zip(data_sources.into_iter()) {
+        let model_id = ds.embedder_config().model_id.clone();
+        groups
+            .entry(model_id)
+            .or_insert_with(Vec::new)
+            .push((search_req, ds));
+    }
+
+    // Embed and search for each group concurrently.
+    let group_futures: Vec<_> = groups
+        .into_iter()
+        .map(|(model_id, group)| {
+            let credentials = payload.credentials.clone();
+            let query = payload.query.clone();
+            let full_text = payload.full_text;
+            let state = state.clone();
+
+            async move {
+                // Get embedder from first data source in group.
+                let first_ds = &group[0].1;
+                let embedder_config = first_ds.embedder_config();
+
+                // Embed query once per group.
+                let embedder_request = EmbedderRequest::new(
+                    embedder_config.provider_id,
+                    &model_id,
+                    vec![&query],
+                    first_ds.config().extras.clone(),
+                );
+
+                // If any embedding fails, return error for this group.
+                let query_vector = match embedder_request.execute(credentials).await {
+                    Ok(v) => {
+                        if v.len() != 1 {
+                            return Err(format!(
+                                "Expected exactly one embedding vector, got {}",
+                                v.len()
+                            ));
+                        }
+                        Some(v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>())
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Failed to embed query with model {}: {}",
+                            model_id, e
+                        ));
+                    }
+                };
+
+                // Search all data sources in this group with the same vector.
+                let search_futures: Vec<_> = group
+                    .into_iter()
+                    .map(|(search_req, ds)| {
+                        let vector = query_vector.clone();
+                        let store = state.store.clone();
+                        let qdrant_clients = state.qdrant_clients.clone();
+
+                        async move {
+                            let filter = match search_req.filter {
+                                Some(f) => {
+                                    Some(f.postprocess_for_data_source(&search_req.data_source_id))
+                                }
+                                None => None,
+                            };
+
+                            let view_filter = match search_req.view_filter {
+                                Some(f) => {
+                                    Some(f.postprocess_for_data_source(&search_req.data_source_id))
+                                }
+                                None => None,
+                            };
+
+                            match ds
+                                .search_with_vector(
+                                    store,
+                                    qdrant_clients,
+                                    vector,
+                                    search_req.top_k,
+                                    filter,
+                                    view_filter,
+                                    full_text,
+                                    search_req.target_document_tokens,
+                                )
+                                .await
+                            {
+                                Ok(documents) => DataSourceSearchResultItem {
+                                    project_id: search_req.project_id,
+                                    data_source_id: search_req.data_source_id.clone(),
+                                    documents,
+                                    error: None,
+                                },
+                                Err(e) => DataSourceSearchResultItem {
+                                    project_id: search_req.project_id,
+                                    data_source_id: search_req.data_source_id.clone(),
+                                    documents: vec![],
+                                    error: Some(format!("{}", e)),
+                                },
+                            }
+                        }
+                    })
+                    .collect();
+
+                Ok(futures::future::join_all(search_futures).await)
+            }
+        })
+        .collect();
+
+    // Execute all group operations concurrently.
+    let group_results = futures::future::join_all(group_futures).await;
+
+    // Handle results and errors.
+    let mut all_results: Vec<DataSourceSearchResultItem> = Vec::new();
+    for group_result in group_results {
+        match group_result {
+            Ok(results) => all_results.extend(results),
+            Err(e) => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "embedding_error",
+                    &e,
+                    None,
+                );
+            }
+        }
+    }
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "results": all_results,
+            })),
+        }),
+    )
+}
 /// Update tags of a document in a data source.
 
 #[derive(serde::Deserialize)]

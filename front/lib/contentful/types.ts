@@ -76,6 +76,7 @@ export interface CustomerStoryFields {
   companyName: string;
   body: Document;
   industry: string;
+  industries?: string[];
   department: string[];
 
   // Customer info (optional)
@@ -125,6 +126,7 @@ export interface CustomerStory {
   headlineMetric: string | null;
   keyHighlight: Document | null;
   industry: string;
+  industries: string[];
   department: string[];
   companySize: string | null;
   region: string[];
@@ -147,6 +149,7 @@ export interface CustomerStorySummary {
   description: string | null;
   heroImage: BlogImage | null;
   industry: string;
+  industries: string[];
   department: string[];
   companySize: string | null;
   region: string[];
@@ -156,6 +159,7 @@ export interface CustomerStorySummary {
 
 export interface CustomerStoryFilters {
   industry?: string[];
+  industries?: string[];
   department?: string[];
   companySize?: string[];
   region?: string[];

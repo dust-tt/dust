@@ -2,7 +2,6 @@ import assert from "assert";
 import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   getSubscriptionInvoices,
   isEnterpriseSubscription,
@@ -230,20 +229,6 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
 
   const periodStart = new Date(stripeSubscription.current_period_start * 1000);
   const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
-
-  const featureFlags = await getFeatureFlags(workspace);
-  if (!featureFlags.includes("ppul")) {
-    logger.info(
-      {
-        workspaceId: workspaceSId,
-        creditAmountMicroUsd,
-        periodStart,
-        periodEnd,
-      },
-      "[Free Credits] PPUL flag OFF - stopping here."
-    );
-    return new Ok(undefined);
-  }
 
   const credit = await CreditResource.makeNew(auth, {
     type: "free",

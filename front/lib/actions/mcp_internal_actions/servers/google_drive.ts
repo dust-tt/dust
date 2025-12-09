@@ -1,6 +1,5 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -8,30 +7,14 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  ToolSearchParams,
-  ToolSearchRawNode,
-} from "@app/lib/search/tools/types";
-import type { ContentNodeType } from "@app/types";
+import {
+  getGoogleDriveClient,
+  MAX_CONTENT_SIZE,
+  MAX_FILE_SIZE,
+  SUPPORTED_MIMETYPES,
+} from "@app/lib/providers/google_drive/utils";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-const SUPPORTED_MIMETYPES = [
-  "application/vnd.google-apps.document",
-  "application/vnd.google-apps.presentation",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-];
-
-const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
-
-function getClient(accessToken: string) {
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.drive({ version: "v3", auth: oauth2Client });
-}
 
 function createServer(
   auth: Authenticator,
@@ -44,7 +27,7 @@ function createServer(
     if (!accessToken) {
       return null;
     }
-    return getClient(accessToken);
+    return getGoogleDriveClient(accessToken);
   }
 
   server.tool(
@@ -367,45 +350,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   );
 
   return server;
-}
-
-export async function search({
-  accessToken,
-  query,
-  pageSize,
-}: ToolSearchParams): Promise<ToolSearchRawNode[]> {
-  const drive = getClient(accessToken);
-
-  const searchQuery = `(name contains '${query.replace(/'/g, "\\'")}' or fullText contains '${query.replace(/'/g, "\\'")}') and trashed = false`;
-
-  const res = await drive.files.list({
-    q: searchQuery,
-    pageSize: Math.min(pageSize, 100),
-    fields: "files(id, name, mimeType)",
-    includeItemsFromAllDrives: true,
-    supportsAllDrives: true,
-    corpora: "allDrives",
-    orderBy: "modifiedTime desc",
-  });
-
-  return (res.data.files ?? []).map((file) => {
-    const mimeType = file.mimeType ?? "application/octet-stream";
-    let type: ContentNodeType = "document";
-    if (mimeType === "application/vnd.google-apps.folder") {
-      type = "folder";
-    } else if (
-      mimeType === "application/vnd.google-apps.spreadsheet" ||
-      mimeType === "text/csv"
-    ) {
-      type = "table";
-    }
-    return {
-      internalId: file.id ?? "",
-      mimeType,
-      title: file.name ?? "Untitled",
-      type,
-    };
-  });
 }
 
 export default createServer;

@@ -9,6 +9,7 @@ import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 
 const DEFAULT_EXPIRATION_DAYS = 5;
 const CONCURRENCY = 16;
@@ -52,6 +53,17 @@ async function addCreditToWorkspace(
   expirationDate: Date,
   execute: boolean
 ): Promise<"added" | "skipped"> {
+  // Check workspace has an active subscription
+  const subscription =
+    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+  if (!subscription) {
+    logger.info(
+      { workspaceSId: workspace.sId, workspaceId: workspace.id },
+      "Skipping workspace: no active subscription"
+    );
+    return "skipped";
+  }
+
   const idempotencyKey = getIdempotencyKey(workspace.id, expirationDate);
 
   const existingCredit = await CreditModel.findOne({

@@ -19,6 +19,7 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessage,
@@ -48,7 +49,11 @@ import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
+import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import {
@@ -194,6 +199,9 @@ async function main() {
   await OnboardingTaskModel.sync({ alter: true });
 
   await SkillConfigurationModel.sync({ alter: true });
+  await GroupSkillModel.sync({ alter: true });
+  await AgentSkillModel.sync({ alter: true });
+  await SkillMCPServerConfigurationModel.sync({ alter: true });
 
   process.exit(0);
 }

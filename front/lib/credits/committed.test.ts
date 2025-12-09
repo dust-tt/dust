@@ -493,6 +493,7 @@ describe("createProCreditPurchase", () => {
       amountMicroUsd: 100_000_000,
       couponId: undefined,
       collectionMethod: "charge_automatically",
+      requestThreeDSecure: "challenge",
     });
   });
 

@@ -1,5 +1,3 @@
-import { useSWRConfig } from "swr";
-
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -13,7 +11,6 @@ export function useDeleteMessage({
   conversationId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutate } = useSWRConfig();
 
   const { submit: deleteMessage, isSubmitting } = useSubmitFunction(
     async (messageId: string) => {
@@ -37,14 +34,6 @@ export function useDeleteMessage({
         description: "Message has been deleted successfully.",
         type: "success",
       });
-
-      await mutate(
-        (key) =>
-          typeof key === "string" &&
-          key.includes(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-          )
-      );
     }
   );
 

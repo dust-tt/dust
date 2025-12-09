@@ -112,12 +112,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           };
         case "labs_transcripts":
           assert(
+            false,
             "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
           );
-          return { user_scopes: [], bot_scopes: [] };
+          break;
         case "webhooks":
-          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
-          return { user_scopes: [], bot_scopes: [] };
+          assert(false, "Unreachable useCase `webhooks` in SlackOAuthProvider");
+          break;
         default:
           assertNever(useCase);
       }
@@ -139,14 +140,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         case "bot":
         case "platform_actions":
           return config.getOAuthSlackBotClientId();
-        case "labs_transcripts":
-          assert(
-            "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
-          );
-          return "";
-        case "webhooks":
-          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
-          return "";
         default:
           assertNever(useCase);
       }

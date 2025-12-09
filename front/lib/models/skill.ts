@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -24,6 +25,9 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
+  declare mcpServerConfigurations: NonAttribute<
+    SkillMCPServerConfigurationModel[]
+  >;
 }
 
 SkillConfigurationModel.init(
@@ -84,4 +88,70 @@ UserModel.hasMany(SkillConfigurationModel, {
 SkillConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
   as: "author",
+});
+
+// Skill MCP Server Configuration (tools associated with a skill)
+export class SkillMCPServerConfigurationModel extends WorkspaceAwareModel<SkillMCPServerConfigurationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
+  declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
+
+  declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
+  declare mcpServerView: NonAttribute<MCPServerViewModel>;
+}
+
+SkillMCPServerConfigurationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    mcpServerViewId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: MCPServerViewModel,
+        key: "id",
+      },
+    },
+  },
+  {
+    modelName: "skill_mcp_server_configuration",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "skillConfigurationId"],
+        name: "idx_skill_mcp_server_config_workspace_skill_config",
+      },
+    ],
+  }
+);
+
+// Skill config <> MCP Server Configuration
+SkillConfigurationModel.hasMany(SkillMCPServerConfigurationModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  onDelete: "CASCADE",
+  as: "mcpServerConfigurations",
+});
+SkillMCPServerConfigurationModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  as: "skillConfiguration",
+});
+
+// Skill MCP Server Configuration <> MCP Server View
+MCPServerViewModel.hasMany(SkillMCPServerConfigurationModel, {
+  foreignKey: { name: "mcpServerViewId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+SkillMCPServerConfigurationModel.belongsTo(MCPServerViewModel, {
+  foreignKey: { name: "mcpServerViewId", allowNull: false },
+  as: "mcpServerView",
 });

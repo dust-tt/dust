@@ -33,6 +33,7 @@ export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
   events: [LINEAR_ISSUE_EVENT, LINEAR_PROJECT_EVENT],
   icon: "LinearLogo",
   description: "Receive events from Linear.",
+  filterGenerationInstructions: null,
   webhookPageUrl: "https://linear.app/settings/api",
   webhookService: new LinearWebhookService(),
   components: {

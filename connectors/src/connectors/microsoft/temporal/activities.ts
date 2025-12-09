@@ -158,17 +158,25 @@ export async function getRootNodesToSyncFromResources(
     await concurrentExecutor(
       rootSitePaths,
       async (sitePath) => {
-        const msDrives = await getAllPaginatedEntities((nextLink) =>
-          getDrives(
-            logger,
-            client,
-            internalIdFromTypeAndPath({
-              nodeType: "site",
-              itemAPIPath: sitePath,
-            }),
-            nextLink
-          )
-        );
+        const msDrives = await getAllPaginatedEntities(async (nextLink) => {
+          try {
+            return await getDrives(
+              logger,
+              client,
+              internalIdFromTypeAndPath({
+                nodeType: "site",
+                itemAPIPath: sitePath,
+              }),
+              nextLink
+            );
+          } catch (error) {
+            if (isItemNotFoundError(error)) {
+              logger.warn({ sitePath }, "Site not found, skipping drives");
+              return { results: [] };
+            }
+            throw error;
+          }
+        });
         return msDrives.map((driveItem) => {
           const driveNode = itemToMicrosoftNode("drive", driveItem);
           return {
@@ -999,12 +1007,25 @@ export async function fetchDeltaForRootNodesInDrive({
     }
   }
 
-  const { results, deltaLink } = await getDeltaData({
-    logger,
-    client,
-    node,
-    heartbeat,
-  });
+  let results: DriveItem[] = [];
+  let deltaLink = "";
+  try {
+    const { results: resultsFromDelta, deltaLink: deltaLinkFromDelta } =
+      await getDeltaData({
+        logger,
+        client,
+        node,
+        heartbeat,
+      });
+    results = resultsFromDelta;
+    deltaLink = deltaLinkFromDelta;
+  } catch (error) {
+    if (isItemNotFoundError(error)) {
+      logger.info({ error: error.message }, "Node not found, skipping");
+      return { gcsFilePath: null };
+    }
+    throw error;
+  }
 
   // Generate a unique GCS file path for this delta sync
   const timestamp = Date.now();

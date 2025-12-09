@@ -27,6 +27,7 @@ export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   icon: "FathomLogo",
   description:
     "Receive events from Fathom when meeting recordings are ready with transcripts, summaries, and action items.",
+  filterGenerationInstructions: null,
   webhookPageUrl: "https://app.fathom.video/settings/api",
   webhookService: new FathomWebhookService(),
   components: {
