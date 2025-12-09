@@ -451,9 +451,10 @@ async function handler(
           );
 
           if (!stripeSubscription) {
-            logger.warn(
+            logger.error(
               {
                 event,
+                stripeError: true,
                 stripeSubscriptionId: invoice.subscription,
               },
               "[Stripe Webhook] Stripe Subscription not found."
