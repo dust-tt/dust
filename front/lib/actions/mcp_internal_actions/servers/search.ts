@@ -137,42 +137,38 @@ export async function searchFunction({
     retrievalTopK,
     credentials,
     false,
-    coreSearchArgs.map(
-      (args) => {
-        // In addition to the tags provided by the user, we also add the tags that the model inferred
-        // from the conversation history.
-        const finalTagsIn = [
-          ...(args.filter.tags?.in ?? []),
-          ...(tagsIn ?? []),
-        ];
-        const finalTagsNot = [
-          ...(args.filter.tags?.not ?? []),
-          ...(tagsNot ?? []),
-        ];
+    coreSearchArgs.map((args) => {
+      // In addition to the tags provided by the user, we also add the tags that the model inferred
+      // from the conversation history.
+      const finalTagsIn = [...(args.filter.tags?.in ?? []), ...(tagsIn ?? [])];
+      const finalTagsNot = [
+        ...(args.filter.tags?.not ?? []),
+        ...(tagsNot ?? []),
+      ];
 
-        return {
-          projectId: args.projectId,
-          dataSourceId: args.dataSourceId,
-          filter: {
-            ...args.filter,
-            tags: {
-              in: finalTagsIn.length > 0 ? finalTagsIn : null,
-              not: finalTagsNot.length > 0 ? finalTagsNot : null,
-            },
-            timestamp: {
-              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-              lt: null,
-            },
+      return {
+        projectId: args.projectId,
+        dataSourceId: args.dataSourceId,
+        filter: {
+          ...args.filter,
+          tags: {
+            in: finalTagsIn.length > 0 ? finalTagsIn : null,
+            not: finalTagsNot.length > 0 ? finalTagsNot : null,
           },
-          view_filter: args.view_filter,
-        };
-      },
-      {
-        hasUseBulkSearchFF: featureFlags.includes(
-          "use_bulk_search_data_sources_api"
-        ),
-      }
-    )
+          timestamp: {
+            gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+            lt: null,
+          },
+        },
+        view_filter: args.view_filter,
+      };
+    }),
+    null,
+    {
+      hasUseBulkSearchFF: featureFlags.includes(
+        "use_bulk_search_data_sources_api"
+      ),
+    }
   );
 
   if (searchResults.isErr()) {
