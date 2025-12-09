@@ -58,6 +58,17 @@ async function handler(
     });
   }
 
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only users that are `builders` for the current workspace can manage skills.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST": {
       const bodyValidation = PostSkillConfigurationRequestBodySchema.decode(
