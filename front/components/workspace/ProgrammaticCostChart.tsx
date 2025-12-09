@@ -65,7 +65,7 @@ export interface BaseProgrammaticCostChartProps {
 
 type ChartDataPoint = {
   timestamp: number;
-  totalInitialCreditsMicroUsd?: number;
+  totalCreditsMicroUsd?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -116,7 +116,7 @@ function GroupedTooltip(
   const rows = payload
     .filter(
       (p) =>
-        p.dataKey !== "totalInitialCreditsMicroUsd" &&
+        p.dataKey !== "totalCreditsMicroUsd" &&
         p.value != null &&
         typeof p.value === "number"
     )
@@ -148,7 +148,7 @@ function GroupedTooltip(
   // Add credits row
   rows.push({
     label: "Total Credits",
-    value: `$${(data.totalInitialCreditsMicroUsd / 1_000_000).toFixed(2)}`,
+    value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
     colorClassName: COST_PALETTE.totalCredits,
   });
   const date = new Date(data.timestamp).toLocaleDateString("en-US", {
@@ -347,6 +347,13 @@ export function BaseProgrammaticCostChart({
     };
   });
 
+  // Check if any filters are applied
+  const hasFilters = useMemo(() => {
+    return Object.values(filter).some(
+      (filterArray) => filterArray && filterArray.length > 0
+    );
+  }, [filter]);
+
   // Compute maximum cumulated cost among all groups.
   const maxCumulatedCost = useMemo(() => {
     return programmaticCostData?.points.reduce((max, point) => {
@@ -360,14 +367,21 @@ export function BaseProgrammaticCostChart({
   }, [programmaticCostData]);
 
   const shouldShowTotalCredits = useMemo(() => {
-    // if all points in the future have total credits higher to twice the max cumulated cost, don't show total credits.
+    // Don't show total credits when a filter is applied, since credits are global
+    // but the cumulative cost shown would be filtered.
+    if (hasFilters) {
+      return false;
+    }
+    // If all points in the future have total credits higher than twice the max
+    // cumulated cost, don't show total credits.
     const futurePoints = points.filter(
       (point) => point.timestamp > now.getTime()
     );
     return !futurePoints.every(
-      (point) => point.totalInitialCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
+      (point) =>
+        point.totalRemainingCreditsMicroUsd > 4 * (maxCumulatedCost ?? 0)
     );
-  }, [points, maxCumulatedCost, now]);
+  }, [points, maxCumulatedCost, now, hasFilters]);
 
   // Add Total Credits to legend (not clickable)
   if (shouldShowTotalCredits) {
@@ -385,7 +399,16 @@ export function BaseProgrammaticCostChart({
       timestamp: point.timestamp,
     };
 
-    dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
+    // Compute total credits as cumulative cost + remaining credits.
+    // This avoids showing a total credits line below cumulative cost when credits expire
+    // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
+    // usage is still in cumulative cost).
+    const cumulativeCost = point.groups.reduce(
+      (acc, g) => acc + (g.cumulatedCostMicroUsd ?? 0),
+      0
+    );
+    dataPoint.totalCreditsMicroUsd =
+      cumulativeCost + point.totalRemainingCreditsMicroUsd;
 
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
@@ -404,13 +427,6 @@ export function BaseProgrammaticCostChart({
       .map((point) => point.timestamp)
       .filter((timestamp) => new Date(timestamp).getUTCHours() === 0);
   }, [chartData]);
-
-  // Check if any filters are applied
-  const hasFilters = useMemo(() => {
-    return Object.values(filter).some(
-      (filterArray) => filterArray && filterArray.length > 0
-    );
-  }, [filter]);
 
   // Util function to get label for a filter key based on type
   const getFilterLabel = useCallback(
@@ -605,17 +621,6 @@ export function BaseProgrammaticCostChart({
             boxShadow: "none",
           }}
         />
-        <Line
-          type="monotone"
-          dataKey="totalInitialCreditsMicroUsd"
-          name="Total Credits"
-          stroke="currentColor"
-          strokeWidth={2}
-          className="text-green-500"
-          strokeDasharray="5 5"
-          dot={false}
-          activeDot={{ r: 5 }}
-        />
         {groupKeys.map((groupKey) => {
           const colorClassName = getColorClassName(
             groupBy,
@@ -649,6 +654,19 @@ export function BaseProgrammaticCostChart({
             />
           );
         })}
+        {shouldShowTotalCredits && (
+          <Line
+            type="monotone"
+            dataKey="totalCreditsMicroUsd"
+            name="Total Credits"
+            stroke="currentColor"
+            strokeWidth={2}
+            className={COST_PALETTE.totalCredits}
+            strokeDasharray="5 5"
+            dot={false}
+            activeDot={{ r: 5 }}
+          />
+        )}
       </ChartComponent>
     </ChartContainer>
   );
