@@ -539,18 +539,10 @@ async function handler(
           break;
         case "charge.dispute.created": {
           const dispute = event.data.object as Stripe.Dispute;
-
-          logger.warn(
-            { dispute, stripeError: true },
-            "[Stripe Webhook] Received charge.dispute.created event."
-          );
-
-          // Get the charge (may be string ID or expanded object)
           const charge = isString(dispute.charge)
             ? await stripe.charges.retrieve(dispute.charge)
             : dispute.charge;
 
-          // Check if the charge is associated with an invoice
           if (!charge.invoice) {
             logger.info(
               { disputeId: dispute.id, chargeId: charge.id },
@@ -563,16 +555,14 @@ async function handler(
             ? await stripe.invoices.retrieve(charge.invoice)
             : charge.invoice;
 
-          // Check if this is a credit purchase invoice
           if (!isCreditPurchaseInvoice(disputeInvoice)) {
             logger.warn(
-              { disputeId: dispute.id, invoiceId: disputeInvoice.id },
-              "[Stripe Webhook] Dispute is not for a credit purchase invoice."
+              { dispute, stripeError: true },
+              "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
             );
             break;
           }
 
-          // Find the subscription and workspace
           if (!isString(disputeInvoice.subscription)) {
             logger.error(
               {
@@ -585,7 +575,7 @@ async function handler(
             break;
           }
 
-          const disputeSubscription = await Subscription.findOne({
+          const disputeSubscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: disputeInvoice.subscription },
             include: [WorkspaceModel],
           });
@@ -606,7 +596,6 @@ async function handler(
             disputeSubscription.workspace.sId
           );
 
-          // Fetch and freeze the credit
           const credit = await CreditResource.fetchByInvoiceOrLineItemId(
             disputeAuth,
             disputeInvoice.id
