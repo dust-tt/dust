@@ -187,7 +187,7 @@ export async function sendCreditUsageAlertEmail({
     subject: `[Dust] Credit usage alert - ${percentUsed}% of your credits consumed`,
     body: `
       <p>You're receiving this as Admin of the Dust workspace <strong>${workspaceName}</strong>.</p>
-      <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available Programmatic Usage credits.</p>
+      <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available programmatic usage credits.</p>
       <ul>
         <li>Total credits: ${formatCents(totalInitialMicroUsd)}</li>
         <li>Consumed: ${formatCents(totalConsumedMicroUsd)}</li>
@@ -196,7 +196,7 @@ export async function sendCreditUsageAlertEmail({
       <p>To avoid service interruption, consider:</p>
       <ul>
         <li>Purchasing additional credits</li>
-        <li>Reviewing your programmatic API usage</li>
+        <li>Reviewing your <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage</a></li>
       </ul>
       <p>View your usage details at: <a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">https://dust.tt/w/${workspaceSId}/developers/credits-usage</a></p>
       <p>Please reply to this email if you have any questions.</p>`,
