@@ -14,7 +14,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
-  AgentMessageModel as AgentMessageModel,
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
