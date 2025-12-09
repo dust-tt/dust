@@ -43,6 +43,7 @@ import {
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -414,31 +415,35 @@ export async function createOrUpgradeAgentConfiguration({
 
   // Create skill associations
   const owner = auth.getNonNullableWorkspace();
-  for (const skill of assistant.skills) {
-    // Validate the skill exists and belongs to this workspace
-    const skillResource = await SkillConfigurationResource.fetchBySId(
-      auth,
-      skill.sId
-    );
-    if (!skillResource) {
-      logger.warn(
-        {
-          workspaceId: owner.sId,
-          agentConfigurationId: agentConfigurationRes.value.sId,
-          skillSId: skill.sId,
-        },
-        "Skill not found when creating agent configuration, skipping"
+  await concurrentExecutor(
+    assistant.skills,
+    async (skill) => {
+      // Validate the skill exists and belongs to this workspace
+      const skillResource = await SkillConfigurationResource.fetchBySId(
+        auth,
+        skill.sId
       );
-      continue;
-    }
+      if (!skillResource) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfigurationRes.value.sId,
+            skillSId: skill.sId,
+          },
+          "Skill not found when creating agent configuration, skipping"
+        );
+        return;
+      }
 
-    await AgentSkillModel.create({
-      workspaceId: owner.id,
-      agentConfigurationId: agentConfigurationRes.value.id,
-      customSkillId: skillResource.id,
-      globalSkillId: null,
-    });
-  }
+      await AgentSkillModel.create({
+        workspaceId: owner.id,
+        agentConfigurationId: agentConfigurationRes.value.id,
+        customSkillId: skillResource.id,
+        globalSkillId: null,
+      });
+    },
+    { concurrency: 10 }
+  );
 
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
