@@ -219,7 +219,6 @@ export function AgentDetailsDropdownMenu({
       sendNotification({
         title: "Export failed",
         description:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           normalizeError(error).message || "An error occurred while exporting",
         type: "error",
       });

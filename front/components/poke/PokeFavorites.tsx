@@ -29,7 +29,7 @@ export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
   }, [toggleFavorite, url, title]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true);
   }, []);
 

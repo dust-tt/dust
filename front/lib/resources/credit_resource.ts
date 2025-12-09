@@ -25,7 +25,6 @@ import {
   isCreditType,
 } from "@app/types/credits";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

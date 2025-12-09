@@ -78,7 +78,6 @@ const PlansPage = () => {
       (plan) => plan.code.trim() === editingPlan.code.trim()
     );
     if (
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (editingPlan.isNewPlan && plansWithSameCode.length > 0) ||
       (!editingPlan.isNewPlan && plansWithSameCode.length > 1)
     ) {

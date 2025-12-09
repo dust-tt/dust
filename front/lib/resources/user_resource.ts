@@ -33,7 +33,7 @@ const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

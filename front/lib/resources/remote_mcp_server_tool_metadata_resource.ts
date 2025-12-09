@@ -20,7 +20,7 @@ import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerToolMetadataResource
   extends ReadonlyAttributesType<RemoteMCPServerToolMetadataModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

@@ -27,7 +27,7 @@ import type {
 } from "@app/types/triggers/webhooks";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WebhookSourcesViewResource
   extends ReadonlyAttributesType<WebhookSourcesViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

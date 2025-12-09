@@ -57,7 +57,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
           {
             workspaceId: owner.sId,
           },
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
           normalizeError(errorData).message ||
             "Failed to create agent from YAML file."
         );

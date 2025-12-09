@@ -205,7 +205,6 @@ function createServer(
           orderDirection,
         };
 
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         if (timeframeStart || timeframeEnd) {
           filters.timeframe = {
             start: timeframeStart ? new Date(timeframeStart) : undefined,

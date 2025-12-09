@@ -337,7 +337,6 @@ export async function listEvents(
       urlParams.append("$skip", skip.toString());
     }
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (startTime || endTime) {
       const filters = [];
       if (startTime) {

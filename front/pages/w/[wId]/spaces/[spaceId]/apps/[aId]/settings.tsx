@@ -85,7 +85,6 @@ export default function SettingsView({
     if (appName.length == 0) {
       setAppNameError(false);
       return false;
-      // eslint-disable-next-line no-useless-escape
     } else if (!appName.match(APP_NAME_REGEXP)) {
       setAppNameError(true);
       return false;

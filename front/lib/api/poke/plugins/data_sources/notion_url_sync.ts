@@ -290,7 +290,6 @@ export async function deleteUrls({
         db: { [key: string]: unknown } | null;
       };
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if ((page && !page.in_trash) || (db && !db.in_trash)) {
         return {
           url,

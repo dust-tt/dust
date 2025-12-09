@@ -7,7 +7,6 @@ export interface WakeLockEntry {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var wakeLocks: Map<string, WakeLockEntry> | undefined;
 }
 

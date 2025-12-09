@@ -53,11 +53,8 @@ export const isTextualContentType = (
   }
   const ct = attachmentCitation.contentType;
   return (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ct.startsWith("text/") ||
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ct === "application/json" ||
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ct === "application/xml" ||
     ct === "application/vnd.dust.section.json"
   );

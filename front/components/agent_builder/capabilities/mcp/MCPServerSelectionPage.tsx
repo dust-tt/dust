@@ -114,9 +114,7 @@ export function MCPServerSelectionPage({
 
   const hasTopViews = topMCPServerViews.length > 0;
   const hasNonTopViews = nonTopMCPServerViews.length > 0;
-  const hasAnyResults =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    hasTopViews || hasNonTopViews;
+  const hasAnyResults = hasTopViews || hasNonTopViews;
 
   if (!hasAnyResults) {
     return (

@@ -85,7 +85,6 @@ export type CoreAPIDatasetWithoutData = CoreAPIDatasetVersion & {
 };
 
 export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: { [key: string]: any }[];
 };
 
@@ -108,7 +107,7 @@ type CoreAPICreateRunParams = {
   specification?: string | null;
   specificationHash?: string | null;
   datasetId?: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   inputs?: any[] | null;
   config: RunConfig;
   credentials: CredentialsType;
@@ -470,7 +469,7 @@ export class CoreAPI {
   }: {
     projectId: string;
     datasetId: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     data: any[];
   }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
     const response = await this._fetchWithError(
