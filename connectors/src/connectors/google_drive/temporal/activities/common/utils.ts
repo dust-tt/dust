@@ -10,8 +10,8 @@ import {
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
-  GoogleDriveFiles,
-  GoogleDriveSyncToken,
+  GoogleDriveFilesModel,
+  GoogleDriveSyncTokenModel,
 } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -21,7 +21,7 @@ export async function deleteOneFile(
   connectorId: ModelId,
   file: GoogleDriveObjectType
 ) {
-  const googleDriveFile = await GoogleDriveFiles.findOne({
+  const googleDriveFile = await GoogleDriveFilesModel.findOne({
     where: {
       connectorId: connectorId,
       driveFileId: file.id,
@@ -34,7 +34,7 @@ export async function deleteOneFile(
   await deleteFile(googleDriveFile);
 }
 
-export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
+export async function deleteFile(googleDriveFile: GoogleDriveFilesModel) {
   const connectorId = googleDriveFile.connectorId;
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -100,7 +100,7 @@ export async function getSyncPageToken(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const last = await GoogleDriveSyncToken.findOne({
+  const last = await GoogleDriveSyncTokenModel.findOne({
     where: {
       connectorId: connectorId,
       driveId: driveId,

@@ -299,6 +299,8 @@ export function isSupportedAudioContentType(
 const UserMessageOriginSchema = FlexibleEnumSchema<
   | "agent_handover"
   | "api"
+  | "cli"
+  | "cli_programmatic"
   | "email"
   | "excel"
   | "extension"

@@ -7,8 +7,8 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  GoogleDriveFiles,
-  GoogleDriveFolders,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
 } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -36,7 +36,7 @@ async function main() {
   // Map the results to GoogleDriveFolders instances
   const unusedFolders = results.map((result) =>
     // @ts-expect-error typescript cannot correctly infer result's type
-    GoogleDriveFolders.build(result, { isNewRecord: false })
+    GoogleDriveFoldersModel.build(result, { isNewRecord: false })
   );
 
   logger.info(`Found ${unusedFolders.length} unused folders`);
@@ -54,7 +54,9 @@ async function main() {
         `Connector not found, deleting folder (live: ${LIVE})`
       );
       if (LIVE) {
-        await GoogleDriveFolders.destroy({ where: { connectorId, folderId } });
+        await GoogleDriveFoldersModel.destroy({
+          where: { connectorId, folderId },
+        });
       }
       continue;
     }
@@ -69,7 +71,7 @@ async function main() {
             `Auth revoked, deleting folder (live: ${LIVE})`
           );
           if (LIVE) {
-            await GoogleDriveFolders.destroy({
+            await GoogleDriveFoldersModel.destroy({
               where: { connectorId, folderId },
             });
           }
@@ -93,7 +95,9 @@ async function main() {
         `Folder not found on google, deleting folder (live: ${LIVE})`
       );
       if (LIVE) {
-        await GoogleDriveFolders.destroy({ where: { connectorId, folderId } });
+        await GoogleDriveFoldersModel.destroy({
+          where: { connectorId, folderId },
+        });
       }
       continue;
     }
@@ -103,7 +107,7 @@ async function main() {
       `Folder found on google, backfilling google_drive_files (live: ${LIVE})`
     );
     if (LIVE) {
-      await GoogleDriveFiles.create({
+      await GoogleDriveFilesModel.create({
         connectorId,
         driveFileId: folderId,
         name: file.name,

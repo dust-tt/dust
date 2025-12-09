@@ -163,6 +163,14 @@ export function ViewDataSourceTable({
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
                     <Link
+                      href={`https://app.datadoghq.eu/logs?query=%40connectorId%3A${dataSource.connectorId}`}
+                      target="_blank"
+                      className="text-sm text-highlight-400"
+                    >
+                      Datadog(connector)
+                    </Link>{" "}
+                    /{" "}
+                    <Link
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/${
                         isScheduleBased ? "schedules" : "workflows"
                       }?query=connectorId%3D%22${dataSource.connectorId}%22`}

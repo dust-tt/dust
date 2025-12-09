@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import type { NotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
 import { processNotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -72,7 +72,7 @@ const _webhookNotionAPIHandler = async (
   }
 
   // Find the connector state from the Notion workspace ID
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: { notionWorkspaceId },
   });
 

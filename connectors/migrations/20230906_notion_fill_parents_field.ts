@@ -2,7 +2,10 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -55,12 +58,12 @@ async function main() {
 
 async function updateParentsFieldForConnector(connector: ConnectorModel) {
   // get all pages and databases for this connector
-  const pages = await NotionPage.findAll({
+  const pages = await NotionPageModel.findAll({
     where: {
       connectorId: connector.id,
     },
   });
-  const databases = await NotionDatabase.findAll({
+  const databases = await NotionDatabaseModel.findAll({
     where: {
       connectorId: connector.id,
     },

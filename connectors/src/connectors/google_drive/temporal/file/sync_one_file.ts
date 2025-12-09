@@ -11,8 +11,8 @@ import {
   MAX_LARGE_DOCUMENT_TXT_LEN,
 } from "@connectors/lib/data_sources";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
 } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -44,14 +44,14 @@ export async function syncOneFile(
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
       }
-      const config = await GoogleDriveConfig.findOne({
+      const config = await GoogleDriveConfigModel.findOne({
         where: {
           connectorId,
         },
       });
 
       const documentId = getInternalId(file.id);
-      const fileInDb = await GoogleDriveFiles.findOne({
+      const fileInDb = await GoogleDriveFilesModel.findOne({
         where: { connectorId, driveFileId: file.id },
       });
 

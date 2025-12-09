@@ -318,7 +318,7 @@ const getTableColumns = ({
 type AssistantsTableProps = {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  setShowDetails: (agent: LightAgentConfigurationType) => void;
+  setDetailedAgentId: (sId: string) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
   ) => Promise<void>;
@@ -333,7 +333,7 @@ type AssistantsTableProps = {
 export function AssistantsTable({
   owner,
   agents,
-  setShowDetails,
+  setDetailedAgentId,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
@@ -407,7 +407,7 @@ export function AssistantsTable({
                 );
               }
             } else {
-              setShowDetails(agentConfiguration);
+              setDetailedAgentId(agentConfiguration.sId);
             }
           },
           menuItems:
@@ -448,7 +448,7 @@ export function AssistantsTable({
                     icon: EyeIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
-                      setShowDetails(agentConfiguration);
+                      setDetailedAgentId(agentConfiguration.sId);
                     },
                     kind: "item" as const,
                   },
@@ -490,7 +490,7 @@ export function AssistantsTable({
     [
       agents,
       owner,
-      setShowDetails,
+      setDetailedAgentId,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
       selection,

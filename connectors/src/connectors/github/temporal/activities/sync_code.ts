@@ -29,8 +29,8 @@ import {
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  GithubCodeRepository,
-  GithubConnectorState,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -91,7 +91,7 @@ export async function githubExtractToGcsActivity({
     });
 
     // Finally delete the repository object if it exists.
-    await GithubCodeRepository.destroy({
+    await GithubCodeRepositoryModel.destroy({
       where: {
         connectorId: connector.id,
         repoId: repoId.toString(),
@@ -400,7 +400,7 @@ export async function githubCleanupCodeSyncActivity({
 
   // No need to delete the GCS repository, it will be deleted by the bucket lifecycle policy.
 
-  const githubCodeRepository = await GithubCodeRepository.findOne({
+  const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -445,7 +445,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     activityName: "githubEnsureCodeSyncEnabledActivity",
   });
 
-  const connectorState = await GithubConnectorState.findOne({
+  const connectorState = await GithubConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -476,7 +476,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     });
 
     // Finally delete the repository object if it exists.
-    await GithubCodeRepository.destroy({
+    await GithubCodeRepositoryModel.destroy({
       where: {
         connectorId: connector.id,
         repoId: repoId.toString(),
@@ -486,7 +486,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     return false;
   }
 
-  let githubCodeRepository = await GithubCodeRepository.findOne({
+  let githubCodeRepository = await GithubCodeRepositoryModel.findOne({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -516,7 +516,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
   });
 
   if (!githubCodeRepository) {
-    githubCodeRepository = await GithubCodeRepository.create({
+    githubCodeRepository = await GithubCodeRepositoryModel.create({
       connectorId: connector.id,
       repoId: repoId.toString(),
       repoLogin,

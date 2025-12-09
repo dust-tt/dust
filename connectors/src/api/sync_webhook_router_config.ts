@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { connectorsConfig } from "@connectors/connectors/shared/config";
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -63,7 +63,7 @@ const _syncWebhookRouterEntryHandler = async (
 
   if (provider === "notion") {
     // Find all connectors for this Notion workspace in this region
-    const notionConnectorStates = await NotionConnectorState.findAll({
+    const notionConnectorStates = await NotionConnectorStateModel.findAll({
       where: { notionWorkspaceId: providerWorkspaceId },
     });
 

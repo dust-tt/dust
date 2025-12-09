@@ -24,9 +24,9 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
+  GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -55,7 +55,7 @@ export async function isDriveObjectExpandable({
 }): Promise<boolean> {
   if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "table") {
     // In tables view, Spreadsheets can be expanded to show their sheets.
-    return !!(await GoogleDriveSheet.findOne({
+    return !!(await GoogleDriveSheetModel.findOne({
       attributes: ["id"],
       where: {
         driveFileId: objectId,
@@ -64,12 +64,12 @@ export async function isDriveObjectExpandable({
     }));
   }
 
-  const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
+  const where: WhereOptions<InferAttributes<GoogleDriveFilesModel>> = {
     connectorId: connectorId,
     parentId: objectId,
   };
 
-  return !!(await GoogleDriveFiles.findOne({
+  return !!(await GoogleDriveFilesModel.findOne({
     attributes: ["id"],
     where,
   }));
@@ -90,7 +90,7 @@ async function _getLocalParents(
     );
     parentId = getInternalId(googleFileId);
   } else {
-    const object = await GoogleDriveFiles.findOne({
+    const object = await GoogleDriveFilesModel.findOne({
       where: {
         connectorId,
         driveFileId: getDriveFileId(contentNodeInternalId),
@@ -127,7 +127,7 @@ export const getLocalParents = cacheWithRedis(
 
 export async function internalDeleteFile(
   connector: ConnectorResource,
-  googleDriveFile: GoogleDriveFiles
+  googleDriveFile: GoogleDriveFilesModel
 ) {
   if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
     await deleteSpreadsheet(connector, googleDriveFile);
@@ -145,7 +145,7 @@ export async function internalDeleteFile(
     );
   }
 
-  const folder = await GoogleDriveFolders.findOne({
+  const folder = await GoogleDriveFoldersModel.findOne({
     where: {
       connectorId: connector.id,
       folderId: googleDriveFile.driveFileId,
@@ -162,7 +162,7 @@ export async function internalDeleteFile(
 
 export async function updateParentsField(
   connector: ConnectorResource | ConnectorModel,
-  file: GoogleDriveFiles,
+  file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger
 ) {
@@ -183,7 +183,7 @@ export async function updateParentsField(
       mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
       sourceUrl: getSourceUrlForGoogleDriveFiles(file),
     });
-    const sheets = await GoogleDriveSheet.findAll({
+    const sheets = await GoogleDriveSheetModel.findAll({
       where: {
         driveFileId: file.driveFileId,
         connectorId: connector.id,
@@ -243,7 +243,7 @@ export async function fixParentsConsistency({
   logger,
 }: {
   connector: ConnectorResource;
-  files: GoogleDriveFiles[];
+  files: GoogleDriveFilesModel[];
   startSyncTs: number;
   checkFromGoogle?: boolean;
   execute?: boolean;
@@ -318,7 +318,7 @@ export async function fixParentsConsistency({
           );
 
           // Get all parents to check existence
-          const existingParents = await GoogleDriveFiles.findAll({
+          const existingParents = await GoogleDriveFilesModel.findAll({
             where: {
               connectorId: connector.id,
               dustFileId: googleParents,
@@ -356,7 +356,7 @@ export async function fixParentsConsistency({
                   sourceUrl: getSourceUrlForGoogleDriveFiles(missingFolder),
                 });
 
-                await GoogleDriveFiles.upsert({
+                await GoogleDriveFilesModel.upsert({
                   connectorId: connector.id,
                   dustFileId: missingFolderId,
                   driveFileId: getDriveFileId(missingFolderId),
@@ -378,7 +378,7 @@ export async function fixParentsConsistency({
     }
 
     // Re-fetch files to ensure we only process non-deleted ones
-    files = await GoogleDriveFiles.findAll({
+    files = await GoogleDriveFilesModel.findAll({
       where: {
         id: files.map((f) => f.id),
       },
@@ -387,14 +387,14 @@ export async function fixParentsConsistency({
 
   logger.info("Checking parentIds validity");
 
-  const parentFiles = await GoogleDriveFiles.findAll({
+  const parentFiles = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connector.id,
       driveFileId: [...new Set(removeNulls(files.map((f) => f.parentId)))],
     },
   });
 
-  const roots = await GoogleDriveFolders.findAll({
+  const roots = await GoogleDriveFoldersModel.findAll({
     where: {
       connectorId: connector.id,
     },

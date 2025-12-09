@@ -8,7 +8,7 @@ import type {
 import { ErrorCode } from "@slack/web-api";
 import type { Attributes } from "sequelize";
 
-import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
+import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
 
 function isCodedError(error: unknown): error is CodedError {
   return error != null && typeof error === "object" && "code" in error;
@@ -19,7 +19,7 @@ export class SlackExternalUserError extends Error {}
 export class SlackMessageError extends Error {
   constructor(
     message: string,
-    public slackChatBotMessage: Attributes<SlackChatBotMessage>,
+    public slackChatBotMessage: Attributes<SlackChatBotMessageModel>,
     public mainMessage: ChatPostMessageResponse
   ) {
     super(message);

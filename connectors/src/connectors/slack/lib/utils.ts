@@ -1,6 +1,6 @@
 import _ from "lodash";
 
-import type { SlackChannel } from "@connectors/lib/models/slack";
+import type { SlackChannelModel } from "@connectors/lib/models/slack";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 export function getWeekStart(date: Date): Date {
@@ -117,7 +117,7 @@ export function slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesId
 export function getSlackChannelSourceUrl(
   slackChannelId: string,
   slackConfig: SlackConfigurationResource
-): `https://app.slack.com/client/${SlackConfigurationResource["slackTeamId"]}/${SlackChannel["slackChannelId"]}` {
+): `https://app.slack.com/client/${SlackConfigurationResource["slackTeamId"]}/${SlackChannelModel["slackChannelId"]}` {
   return `https://app.slack.com/client/${slackConfig.slackTeamId}/${slackChannelId}`;
 }
 

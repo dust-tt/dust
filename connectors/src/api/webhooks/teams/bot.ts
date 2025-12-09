@@ -25,7 +25,7 @@ import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
-import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
+import { MicrosoftBotMessageModel } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -71,7 +71,7 @@ export async function botAnswerMessage(
   const { email, displayName, userAadObjectId } = validatedUser;
 
   // Check for existing Dust conversation for this Teams conversation
-  const allMicrosoftBotMessages = await MicrosoftBotMessage.findAll({
+  const allMicrosoftBotMessages = await MicrosoftBotMessageModel.findAll({
     where: {
       connectorId: connector.id,
       conversationId: conversationId,
@@ -253,7 +253,7 @@ export async function botAnswerMessage(
     }
   }
 
-  const m = await MicrosoftBotMessage.create({
+  const m = await MicrosoftBotMessageModel.create({
     connectorId: connector.id,
     userAadObjectId: userAadObjectId,
     email: email,
@@ -458,7 +458,7 @@ async function streamAgentResponse({
       }
       case "tool_approve_execution": {
         // Find the MicrosoftBotMessage to get the microsoftBotMessageId
-        const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+        const microsoftBotMessage = await MicrosoftBotMessageModel.findOne({
           where: {
             connectorId: connector.id,
             dustConversationId: conversation.sId,
@@ -578,7 +578,7 @@ async function makeContentFragments(
   context: TurnContext,
   dustAPI: DustAPI,
   connector: ConnectorResource,
-  lastMicrosoftBotMessage: MicrosoftBotMessage | null,
+  lastMicrosoftBotMessage: MicrosoftBotMessageModel | null,
   localLogger: Logger
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
   // Get Microsoft Graph client only for file downloads
@@ -750,7 +750,7 @@ export async function sendFeedback({
   }
 
   // Find the MicrosoftBotMessage to get the Dust conversation ID
-  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+  const microsoftBotMessage = await MicrosoftBotMessageModel.findOne({
     where: {
       connectorId: connector.id,
       conversationId: conversationId,
@@ -838,7 +838,7 @@ export async function botValidateToolExecution({
   const { email } = validatedUser;
 
   // Find the MicrosoftBotMessage
-  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+  const microsoftBotMessage = await MicrosoftBotMessageModel.findOne({
     where: { id: microsoftBotMessageId },
   });
 

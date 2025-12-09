@@ -219,6 +219,31 @@ async function batchRenderUserMessages(
       })
     );
 
+    let username = userMessage.userContextUsername;
+    let fullName = userMessage.userContextFullName;
+    let email = userMessage.userContextEmail;
+    let profilePictureUrl = userMessage.userContextProfilePictureUrl;
+
+    // We have a linked user and this is not an agentic message, so we can override the user context with the latest user data.
+    if (userMessage.userId !== null && !userMessage.agenticMessageType) {
+      const user = usersById.get(userMessage.userId);
+      if (user) {
+        username = user.username;
+        fullName = user.fullName;
+        email = user.email;
+        profilePictureUrl = user.image;
+      } else {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            userId: userMessage.userId,
+          },
+          "User not found for user message while it should have been fetched before. Falling back to user context."
+        );
+      }
+    }
+
     const mentions = richMentions.map(toMentionType);
     return {
       id: message.id,
@@ -233,11 +258,11 @@ async function batchRenderUserMessages(
       richMentions,
       content: userMessage.content,
       context: {
-        username: userMessage.userContextUsername,
+        username,
         timezone: userMessage.userContextTimezone,
-        fullName: userMessage.userContextFullName,
-        email: userMessage.userContextEmail,
-        profilePictureUrl: userMessage.userContextProfilePictureUrl,
+        fullName,
+        email,
+        profilePictureUrl,
         origin: userMessage.userContextOrigin,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:

@@ -1,5 +1,5 @@
 import { apiConfig } from "@connectors/lib/api/config";
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -14,7 +14,7 @@ export async function getNotionAccessToken(
   // Fetch connector and notion connector state concurrently
   const [connector, notionConnectorState] = await Promise.all([
     ConnectorResource.fetchById(connectorId),
-    NotionConnectorState.findOne({
+    NotionConnectorStateModel.findOne({
       where: { connectorId },
     }),
   ]);

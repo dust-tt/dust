@@ -1,6 +1,6 @@
 import type { CreationAttributes } from "sequelize";
 
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 
 export async function updateGoogleDriveFiles(
@@ -10,7 +10,7 @@ export async function updateGoogleDriveFiles(
   skipReason: string | undefined,
   upsertTimestampMs: number | undefined
 ): Promise<void> {
-  const params: CreationAttributes<GoogleDriveFiles> = {
+  const params: CreationAttributes<GoogleDriveFilesModel> = {
     connectorId,
     dustFileId: documentId,
     driveFileId: file.id,
@@ -25,5 +25,5 @@ export async function updateGoogleDriveFiles(
     params.lastUpsertedTs = new Date(upsertTimestampMs);
   }
 
-  await GoogleDriveFiles.upsert(params);
+  await GoogleDriveFilesModel.upsert(params);
 }
