@@ -379,21 +379,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.listBySpace(auth, systemSpace, options);
   }
 
-  static async countBySpace(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<number> {
-    if (space.canRead(auth)) {
-      return this.model.count({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: space.id,
-        },
-      });
-    }
-    return 0;
-  }
-
   static async listByMCPServer(
     auth: Authenticator,
     mcpServerId: string
@@ -761,13 +746,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return makeSId("mcp_server_view", {
       id,
       workspaceId,
-    });
-  }
-
-  async setEditedBy(auth: Authenticator) {
-    await this.update({
-      editedByUserId: auth.user()?.id ?? null,
-      editedAt: new Date(),
     });
   }
 

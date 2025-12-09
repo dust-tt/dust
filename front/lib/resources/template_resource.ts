@@ -11,7 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
-  isResourceSId,
   makeSId,
 } from "@app/lib/resources//string_ids";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -129,10 +128,6 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       id,
       workspaceId: CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
     });
-  }
-
-  static isTemplateSId(sId: string): boolean {
-    return isResourceSId("template", sId);
   }
 
   async delete(

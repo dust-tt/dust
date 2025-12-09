@@ -359,10 +359,6 @@ export class FileResource extends BaseResource<FileModel> {
     return this.status === "ready";
   }
 
-  get isCreated(): boolean {
-    return this.status === "created";
-  }
-
   get isFailed(): boolean {
     return this.status === "failed";
   }
