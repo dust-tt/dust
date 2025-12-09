@@ -35,22 +35,3 @@ export function getDefaultSkillFormData({
     tools: [],
   };
 }
-
-/**
- * Transforms a skill configuration for duplication into skill builder form data.
- * Similar to transformSkillConfigurationToFormData but adds "_Copy" suffix to name
- * and resets editors to current user.
- */
-export function transformDuplicateSkillToFormData(
-  skillConfiguration: SkillConfigurationType,
-  user: UserType
-): SkillBuilderFormData {
-  const baseFormData =
-    transformSkillConfigurationToFormData(skillConfiguration);
-
-  return {
-    ...baseFormData,
-    name: `${skillConfiguration.name}_Copy`,
-    editors: [user], // Reset editors to current user for duplicated skill
-  };
-}

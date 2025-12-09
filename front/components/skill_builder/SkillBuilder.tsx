@@ -11,7 +11,6 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -25,7 +24,6 @@ import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBui
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import {
   getDefaultSkillFormData,
-  transformDuplicateSkillToFormData,
   transformSkillConfigurationToFormData,
 } from "@app/components/skill_builder/transformSkillConfiguration";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
@@ -34,21 +32,14 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillConfigurationTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
-import { emptyArray } from "@app/lib/swr/swr";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
-
-function processActionsFromStorage(actions: BuilderAction[]): BuilderAction[] {
-  return actions;
-}
 
 interface SkillBuilderProps {
   skillConfiguration?: SkillConfigurationType;
-  duplicateSkillId?: string | null;
 }
 
 export default function SkillBuilder({
   skillConfiguration,
-  duplicateSkillId,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useRouter();
@@ -65,21 +56,13 @@ export default function SkillBuilder({
     skillConfigurationId: skillConfiguration?.sId ?? null,
   });
 
-  const processedActions = useMemo(() => {
-    return processActionsFromStorage(actions ?? emptyArray());
-  }, [actions]);
-
   const defaultValues = useMemo(() => {
-    if (duplicateSkillId && skillConfiguration) {
-      return transformDuplicateSkillToFormData(skillConfiguration, user);
-    }
-
     if (skillConfiguration) {
       return transformSkillConfigurationToFormData(skillConfiguration);
     }
 
     return getDefaultSkillFormData({ user });
-  }, [skillConfiguration, duplicateSkillId, user]);
+  }, [skillConfiguration, user]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -96,27 +79,15 @@ export default function SkillBuilder({
 
     form.reset({
       ...currentValues,
-      tools: processedActions,
-      editors: duplicateSkillId
-        ? [user]
-        : skillConfiguration || editors.length > 0
-          ? editors
-          : [user],
+      tools: actions,
+      editors: skillConfiguration || editors.length > 0 ? editors : [user],
     });
-  }, [
-    isActionsLoading,
-    processedActions,
-    editors,
-    form,
-    duplicateSkillId,
-    user,
-    skillConfiguration,
-  ]);
+  }, [isActionsLoading, actions, editors, form, user, skillConfiguration]);
 
-  const isCreatingNew = duplicateSkillId || !skillConfiguration;
+  const isCreatingNew = !skillConfiguration;
   const { isDirty } = form.formState;
 
-  useNavigationLock((isDirty || !!duplicateSkillId) && !isSaving);
+  useNavigationLock(isDirty && !isSaving);
 
   const handleSubmit = async (data: SkillBuilderFormData) => {
     setIsSaving(true);
@@ -182,9 +153,7 @@ export default function SkillBuilder({
               className="mx-4"
               title={
                 skillConfiguration
-                  ? duplicateSkillId
-                    ? `Duplicate ${skillConfiguration.name}`
-                    : `Edit skill ${skillConfiguration.name}`
+                  ? `Edit skill ${skillConfiguration.name}`
                   : "Create new skill"
               }
               rightActions={
