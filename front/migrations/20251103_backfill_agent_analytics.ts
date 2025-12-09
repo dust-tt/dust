@@ -3,11 +3,11 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
+  AgentMessageModel,
   AgentMessageFeedbackModel,
   ConversationModel,
-  Message,
-  UserMessage,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -40,7 +40,7 @@ async function backfillAgentAnalytics(
   );
 
   // First, count total messages to process
-  const totalCount = await Message.count({
+  const totalCount = await MessageModel.count({
     where: {
       workspaceId: workspace.id,
       agentMessageId: {
@@ -89,7 +89,7 @@ async function backfillAgentAnalytics(
       "Processing batch"
     );
 
-    const agentMessagesBatch = await Message.findAll({
+    const agentMessagesBatch = await MessageModel.findAll({
       where: {
         workspaceId: workspace.id,
         agentMessageId: {
@@ -101,7 +101,7 @@ async function backfillAgentAnalytics(
       },
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           include: [
@@ -154,14 +154,14 @@ async function backfillAgentAnalytics(
               return;
             }
 
-            const userMessageRow = await Message.findOne({
+            const userMessageRow = await MessageModel.findOne({
               where: {
                 id: agentMessageRow.parentId,
                 workspaceId: workspace.id,
               },
               include: [
                 {
-                  model: UserMessage,
+                  model: UserMessageModel,
                   as: "userMessage",
                   required: true,
                   include: [

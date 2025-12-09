@@ -33,7 +33,7 @@ import {
 import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
-  AgentConfiguration,
+  AgentConfigurationModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -101,7 +101,7 @@ export async function getAgentConfigurationsWithVersion<
     globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
   }
 
-  const workspaceAgentModels = await AgentConfiguration.findAll({
+  const workspaceAgentModels = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: owner.id,
       [Op.or]: agentIdsWithVersion
@@ -152,7 +152,7 @@ export async function listsAgentConfigurationVersions<
   if (isGlobalAgentId(agentId)) {
     agents = await getGlobalAgents(auth, [agentId], variant);
   } else {
-    const agentModels = await AgentConfiguration.findAll({
+    const agentModels = await AgentConfigurationModel.findAll({
       where: {
         workspaceId: owner.id,
         sId: agentId,
@@ -208,7 +208,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      const latestVersions = (await AgentConfiguration.findAll({
+      const latestVersions = (await AgentConfigurationModel.findAll({
         attributes: [
           "sId",
           [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
@@ -221,7 +221,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         raw: true,
       })) as unknown as { sId: string; max_version: number }[];
 
-      const agentModels = await AgentConfiguration.findAll({
+      const agentModels = await AgentConfigurationModel.findAll({
         where: {
           workspaceId: owner.id,
           [Op.or]: latestVersions.map((v) => ({
@@ -300,7 +300,7 @@ export async function searchAgentConfigurationsByName(
 ): Promise<LightAgentConfigurationType[]> {
   const owner = auth.getNonNullableWorkspace();
 
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: owner.id,
       status: "active",
@@ -416,11 +416,11 @@ export async function createAgentConfiguration(
     }
     const performCreation = async (
       t: Transaction
-    ): Promise<AgentConfiguration> => {
+    ): Promise<AgentConfigurationModel> => {
       let existingAgent = null;
       if (agentConfigurationId) {
         const [agentConfiguration, userRelation] = await Promise.all([
-          AgentConfiguration.findOne({
+          AgentConfigurationModel.findOne({
             where: {
               sId: agentConfigurationId,
               workspaceId: owner.id,
@@ -447,7 +447,7 @@ export async function createAgentConfiguration(
           version = existingAgent.version + 1;
         }
 
-        await AgentConfiguration.update(
+        await AgentConfigurationModel.update(
           { status: "archived" },
           {
             where: {
@@ -464,7 +464,7 @@ export async function createAgentConfiguration(
       const sId = agentConfigurationId || generateRandomModelSId();
 
       // Create Agent config.
-      const agentConfigurationInstance = await AgentConfiguration.create(
+      const agentConfigurationInstance = await AgentConfigurationModel.create(
         {
           sId,
           version,
@@ -1019,7 +1019,7 @@ export async function archiveAgentConfiguration(
     }
   }
 
-  const updated = await AgentConfiguration.update(
+  const updated = await AgentConfigurationModel.update(
     { status: "archived" },
     {
       where: {
@@ -1041,7 +1041,7 @@ export async function restoreAgentConfiguration(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const latestConfig = await AgentConfiguration.findOne({
+  const latestConfig = await AgentConfigurationModel.findOne({
     where: {
       sId: agentConfigurationId,
       workspaceId: owner.id,
@@ -1055,7 +1055,7 @@ export async function restoreAgentConfiguration(
   if (latestConfig.status !== "archived") {
     throw new Error("Agent configuration is not archived");
   }
-  const updated = await AgentConfiguration.update(
+  const updated = await AgentConfigurationModel.update(
     { status: "active" },
     {
       where: {
@@ -1193,7 +1193,7 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await AgentConfiguration.destroy({
+    await AgentConfigurationModel.destroy({
       where: {
         id: agentConfiguration.id,
         workspaceId,
@@ -1345,7 +1345,7 @@ export async function updateAgentConfigurationScope(
   }
 
   const previousScope = agentConfig.scope;
-  await AgentConfiguration.update(
+  await AgentConfigurationModel.update(
     { scope },
     {
       where: {
@@ -1407,7 +1407,7 @@ export async function updateAgentRequirements(
 
   const owner = auth.getNonNullableWorkspace();
 
-  const updated = await AgentConfiguration.update(
+  const updated = await AgentConfigurationModel.update(
     {
       requestedSpaceIds: newSpaceIds,
     },
@@ -1425,7 +1425,7 @@ export async function updateAgentRequirements(
 
 export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
-  agents: AgentConfiguration[]
+  agents: AgentConfigurationModel[]
 ) {
   const uniqSpaceIds = Array.from(
     new Set(agents.flatMap((agent) => agent.requestedSpaceIds))

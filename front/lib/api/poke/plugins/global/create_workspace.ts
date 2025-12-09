@@ -3,7 +3,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/planModel";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
@@ -52,7 +52,7 @@ export const createWorkspacePlugin = createPlugin({
   },
   populateAsyncArgs: async () => {
     // Fetch all plans from the database
-    const plans = await Plan.findAll({ order: [["name", "ASC"]] });
+    const plans = await PlanModel.findAll({ order: [["name", "ASC"]] });
 
     // Create enum values with "None" as the first option
     const planValues = [

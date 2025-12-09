@@ -9,10 +9,10 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Mention,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -142,13 +142,13 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
 
 async function batchRenderUserMessages(
   auth: Authenticator,
-  messages: Message[]
+  messages: MessageModel[]
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
 
-  const mentionRows = await Mention.findAll({
+  const mentionRows = await MentionModel.findAll({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       messageId: userMessages.map((m) => m.id),
@@ -256,7 +256,7 @@ async function batchRenderUserMessages(
 
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
-  messages: Message[],
+  messages: MessageModel[],
   viewType: V
 ): Promise<
   Result<
@@ -458,7 +458,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           },
           "Couldn't find parent message for agent message in the messages map, can happen if you are only rendering a subset of the messages. Falling back to fetch the message from the database."
         );
-        parentMessage = await Message.findOne({
+        parentMessage = await MessageModel.findOne({
           where: {
             id: message.parentId,
             workspaceId: auth.getNonNullableWorkspace().id,
@@ -466,7 +466,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           },
           include: [
             {
-              model: UserMessage,
+              model: UserMessageModel,
               as: "userMessage",
               required: true,
             },
@@ -478,7 +478,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const userMessage = parentMessage.userMessage;
       assert(!!userMessage, "Parent message must be a userMessage.");
 
-      let parentAgentMessage: Message | null = null;
+      let parentAgentMessage: MessageModel | null = null;
 
       // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
       if (
@@ -551,7 +551,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
-  messages: Message[]
+  messages: MessageModel[]
 ): Promise<ContentFragmentType[]> {
   const messagesWithContentFragment = messages.filter(
     (m) => !!m.contentFragment
@@ -563,7 +563,7 @@ async function batchRenderContentFragment(
   }
 
   return Promise.all(
-    messagesWithContentFragment.map(async (message: Message) => {
+    messagesWithContentFragment.map(async (message: MessageModel) => {
       const contentFragment = ContentFragmentResource.fromMessage(message);
       const render = await contentFragment.renderFromMessage({
         auth,
@@ -581,7 +581,7 @@ type RenderMessageVariant = "legacy-light" | "full" | "light";
 export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversation: ConversationResource,
-  messages: Message[],
+  messages: MessageModel[],
   viewType: V
 ): Promise<
   Result<
@@ -732,7 +732,7 @@ export async function fetchMessageInConversation(
   messageId: string,
   version?: number
 ) {
-  return Message.findOne({
+  return MessageModel.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -741,12 +741,12 @@ export async function fetchMessageInConversation(
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: false,
       },
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: false,
       },

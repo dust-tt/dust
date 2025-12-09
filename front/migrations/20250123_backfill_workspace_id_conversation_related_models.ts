@@ -2,13 +2,13 @@ import _ from "lodash";
 import { Op } from "sequelize";
 
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
   ConversationParticipantModel,
-  Mention,
-  Message,
-  MessageReaction,
-  UserMessage,
+  MentionModel,
+  MessageModel,
+  MessageReactionModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -34,7 +34,7 @@ const TABLES: TableConfig[] = [
     ],
   },
   {
-    model: Message,
+    model: MessageModel,
     include: (workspaceId: number) => [
       {
         as: "conversation",
@@ -45,11 +45,11 @@ const TABLES: TableConfig[] = [
     ],
   },
   {
-    model: UserMessage,
+    model: UserMessageModel,
     include: (workspaceId: number) => [
       {
         as: "message",
-        model: Message,
+        model: MessageModel,
         required: true,
         include: [
           {
@@ -63,11 +63,11 @@ const TABLES: TableConfig[] = [
     ],
   },
   {
-    model: AgentMessage,
+    model: AgentMessageModel,
     include: (workspaceId: number) => [
       {
         as: "message",
-        model: Message,
+        model: MessageModel,
         required: true,
         include: [
           {
@@ -85,7 +85,7 @@ const TABLES: TableConfig[] = [
     include: (workspaceId: number) => [
       {
         as: "message",
-        model: Message,
+        model: MessageModel,
         required: true,
         include: [
           {
@@ -99,10 +99,10 @@ const TABLES: TableConfig[] = [
     ],
   },
   {
-    model: MessageReaction,
+    model: MessageReactionModel,
     include: (workspaceId: number) => [
       {
-        model: Message,
+        model: MessageModel,
         required: true,
         include: [
           {
@@ -116,10 +116,10 @@ const TABLES: TableConfig[] = [
     ],
   },
   {
-    model: Mention,
+    model: MentionModel,
     include: (workspaceId: number) => [
       {
-        model: Message,
+        model: MessageModel,
         required: true,
         include: [
           {

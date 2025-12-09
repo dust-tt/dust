@@ -24,7 +24,7 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -181,7 +181,7 @@ async function handler(
               // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
-            const plan = await Plan.findOne({
+            const plan = await PlanModel.findOne({
               where: { code: planCode },
             });
             if (!plan) {
@@ -191,11 +191,11 @@ async function handler(
             }
 
             await withTransaction(async (t) => {
-              const activeSubscription = await Subscription.findOne({
+              const activeSubscription = await SubscriptionModel.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
                   {
-                    model: Plan,
+                    model: PlanModel,
                     as: "plan",
                   },
                 ],
@@ -255,7 +255,7 @@ async function handler(
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-              await Subscription.create(
+              await SubscriptionModel.create(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
@@ -326,7 +326,7 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          const subscription = await Subscription.findOne({
+          const subscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
@@ -416,7 +416,7 @@ async function handler(
           }
 
           // Logging that we have a failed payment
-          subscription = await Subscription.findOne({
+          subscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
@@ -572,7 +572,7 @@ async function handler(
             );
           }
 
-          const subscription = await Subscription.findOne({
+          const subscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
             include: [WorkspaceModel],
           });
@@ -623,7 +623,7 @@ async function handler(
 
           // Billing cycle changed
           if ("current_period_start" in previousAttributes) {
-            const subscription = await Subscription.findOne({
+            const subscription = await SubscriptionModel.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
               include: [WorkspaceModel],
             });
@@ -722,7 +722,7 @@ async function handler(
               stripeSubscription.cancel_at
             ) {
               const endDate = new Date(stripeSubscription.cancel_at * 1000);
-              const subscription = await Subscription.findOne({
+              const subscription = await SubscriptionModel.findOne({
                 where: { stripeSubscriptionId: stripeSubscription.id },
                 include: [WorkspaceModel],
               });
@@ -759,7 +759,7 @@ async function handler(
               : null;
 
             // get subscription
-            const subscription = await Subscription.findOne({
+            const subscription = await SubscriptionModel.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
               include: [WorkspaceModel],
             });
@@ -849,7 +849,7 @@ async function handler(
               }
             }
           } else if (stripeSubscription.status === "active") {
-            const subscription = await Subscription.findOne({
+            const subscription = await SubscriptionModel.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
             });
             if (!subscription) {
@@ -913,7 +913,7 @@ async function handler(
             });
           }
 
-          const matchingSubscription = await Subscription.findOne({
+          const matchingSubscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
             include: [WorkspaceModel],
           });
@@ -998,7 +998,7 @@ async function handler(
           );
           stripeSubscription = event.data.object as Stripe.Subscription;
 
-          const trialingSubscription = await Subscription.findOne({
+          const trialingSubscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
             include: [WorkspaceModel],
           });

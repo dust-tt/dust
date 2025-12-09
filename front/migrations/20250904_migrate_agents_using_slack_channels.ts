@@ -5,7 +5,7 @@ import config from "@app/lib/api/config";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
 import { OAuthAPI } from "@app/types";
 
@@ -164,7 +164,7 @@ makeScript(
     logger.info(`Generated instruction text: ${instructionText}`);
 
     // Get the agent configuration with workspace context
-    const agentConfig = await AgentConfiguration.findOne({
+    const agentConfig = await AgentConfigurationModel.findOne({
       where: {
         id: mcpServerConfig.agentConfigurationId,
         workspaceId: mcpServerConfig.workspaceId,

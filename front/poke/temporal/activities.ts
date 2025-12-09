@@ -17,7 +17,7 @@ import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
-  AgentConfiguration,
+  AgentConfigurationModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
@@ -26,7 +26,7 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { Subscription } from "@app/lib/models/plan";
+import { SubscriptionModel } from "@app/lib/models/planModel";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -205,7 +205,7 @@ export async function deleteAgentsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const agents = await AgentConfiguration.findAll({
+  const agents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
     },
@@ -596,7 +596,7 @@ export async function deleteWorkspaceActivity({
   }
   const workspace = auth.getNonNullableWorkspace();
 
-  await Subscription.destroy({
+  await SubscriptionModel.destroy({
     where: {
       workspaceId: workspace.id,
     },

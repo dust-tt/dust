@@ -1,6 +1,6 @@
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -11,7 +11,7 @@ import { makeScript } from "@app/scripts/helpers";
 async function deleteReasoningConfigurationAndRelatedResources(
   reasoningConfig: AgentReasoningConfigurationModel & {
     agent_mcp_server_configuration: AgentMCPServerConfigurationModel & {
-      agent_configuration: AgentConfiguration;
+      agent_configuration: AgentConfigurationModel;
     };
   },
   logger: Logger,
@@ -86,29 +86,30 @@ makeScript({}, async ({ execute }, logger) => {
 
   // Get all reasoning configurations with agent information
 
-  const reasoningConfigurations = await AgentReasoningConfigurationModel.findAll({
-    attributes: ["id", "sId", "mcpServerConfigurationId"],
-    include: [
-      {
-        model: AgentMCPServerConfigurationModel,
-        required: true,
-        include: [
-          {
-            model: AgentConfiguration,
-            required: true,
-            attributes: [
-              "id",
-              "sId",
-              "name",
-              "modelId",
-              "providerId",
-              "status",
-            ],
-          },
-        ],
-      },
-    ],
-  });
+  const reasoningConfigurations =
+    await AgentReasoningConfigurationModel.findAll({
+      attributes: ["id", "sId", "mcpServerConfigurationId"],
+      include: [
+        {
+          model: AgentMCPServerConfigurationModel,
+          required: true,
+          include: [
+            {
+              model: AgentConfigurationModel,
+              required: true,
+              attributes: [
+                "id",
+                "sId",
+                "name",
+                "modelId",
+                "providerId",
+                "status",
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
   if (reasoningConfigurations.length === 0) {
     logger.info("No reasoning configurations found");
@@ -140,7 +141,7 @@ makeScript({}, async ({ execute }, logger) => {
     const success = await deleteReasoningConfigurationAndRelatedResources(
       reasoningConfig as AgentReasoningConfigurationModel & {
         agent_mcp_server_configuration: AgentMCPServerConfigurationModel & {
-          agent_configuration: AgentConfiguration;
+          agent_configuration: AgentConfigurationModel;
         };
       },
       logger,

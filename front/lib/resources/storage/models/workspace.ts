@@ -1,7 +1,7 @@
 import type { CreationOptional, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { Subscription } from "@app/lib/models/plan";
+import type { SubscriptionModel } from "@app/lib/models/planModel";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type {
@@ -24,7 +24,7 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
   declare workOSOrganizationId: string | null;
-  declare subscriptions: NonAttribute<Subscription[]>;
+  declare subscriptions: NonAttribute<SubscriptionModel[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   declare metadata: Record<string, string | number | boolean | object> | null;

@@ -18,7 +18,7 @@ import type {
 /**
  * Agent configuration
  */
-export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> {
+export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -51,10 +51,12 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
 
   declare author: NonAttribute<UserModel>;
 
-  declare mcpServerConfigurations: NonAttribute<AgentMCPServerConfigurationModel[]>;
+  declare mcpServerConfigurations: NonAttribute<
+    AgentMCPServerConfigurationModel[]
+  >;
 }
 
-AgentConfiguration.init(
+AgentConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -184,11 +186,11 @@ AgentConfiguration.init(
 );
 
 // Agent config <> Author
-UserModel.hasMany(AgentConfiguration, {
+UserModel.hasMany(AgentConfigurationModel, {
   foreignKey: { name: "authorId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentConfiguration.belongsTo(UserModel, {
+AgentConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
 });
 
@@ -234,12 +236,12 @@ GlobalAgentSettingsModel.init(
     ],
   }
 );
-TemplateModel.hasOne(AgentConfiguration, {
+TemplateModel.hasOne(AgentConfigurationModel, {
   foreignKey: { name: "templateId", allowNull: true },
   onDelete: "SET NULL",
 });
 
-AgentConfiguration.belongsTo(TemplateModel, {
+AgentConfigurationModel.belongsTo(TemplateModel, {
   foreignKey: { name: "templateId", allowNull: true },
 });
 

@@ -6,7 +6,7 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   isEntreprisePlanPrefix,
@@ -234,13 +234,13 @@ async function handler(
         limit,
         include: [
           {
-            model: Subscription,
+            model: SubscriptionModel,
             as: "subscriptions",
             where: { status: "active" },
             required: false,
             include: [
               {
-                model: Plan,
+                model: PlanModel,
                 as: "plan",
               },
             ],

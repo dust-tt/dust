@@ -1,10 +1,10 @@
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/planModel";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const updateProMaxMessagesLimit = async (execute: boolean) => {
   if (execute) {
-    const res = await Plan.update(
+    const res = await PlanModel.update(
       {
         maxMessages: 100,
         maxMessagesTimeframe: "day",

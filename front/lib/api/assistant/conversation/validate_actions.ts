@@ -11,7 +11,10 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { Message, UserMessage } from "@app/lib/models/agent/conversation";
+import {
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -31,7 +34,7 @@ async function getUserMessageIdFromMessageId(
   userMessageUserId: number;
 }> {
   // Query 1: Get the message and its parentId.
-  const agentMessage = await Message.findOne({
+  const agentMessage = await MessageModel.findOne({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       sId: messageId,
@@ -46,7 +49,7 @@ async function getUserMessageIdFromMessageId(
   );
 
   // Query 2: Get the parent message's sId (which is the user message).
-  const parentMessage = await Message.findOne({
+  const parentMessage = await MessageModel.findOne({
     where: {
       id: agentMessage.parentId,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -54,7 +57,7 @@ async function getUserMessageIdFromMessageId(
     attributes: ["sId", "version"],
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
         attributes: ["userId"],

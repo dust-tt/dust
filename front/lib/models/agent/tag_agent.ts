@@ -6,7 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagModel } from "@app/lib/models/tags";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -20,12 +20,12 @@ export class TagAgentModel extends WorkspaceAwareModel<TagAgentModel> {
   declare tag: NonAttribute<TagModel>;
   declare tagId: ForeignKey<TagModel["id"]>;
 
-  declare agentConfiguration: NonAttribute<AgentConfiguration>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
   // workspaceId is inherited from WorkspaceAwareModel
 
   declare getGroup: BelongsToGetAssociationMixin<GroupModel>;
-  declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfiguration>;
+  declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfigurationModel>;
 }
 
 TagAgentModel.init(
@@ -84,12 +84,12 @@ TagModel.hasMany(TagAgentModel, {
 });
 
 // Association with AgentConfiguration
-TagAgentModel.belongsTo(AgentConfiguration, {
+TagAgentModel.belongsTo(AgentConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   targetKey: "id",
   onDelete: "RESTRICT",
 });
-AgentConfiguration.hasMany(TagAgentModel, {
+AgentConfigurationModel.hasMany(TagAgentModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   sourceKey: "id",
   as: "agentTagLinks",
@@ -97,14 +97,14 @@ AgentConfiguration.hasMany(TagAgentModel, {
 });
 
 // Many-to-Many between Tags and AgentConfiguration (ensure FKs match)
-TagModel.belongsToMany(AgentConfiguration, {
+TagModel.belongsToMany(AgentConfigurationModel, {
   through: TagAgentModel,
   foreignKey: "tagId",
   otherKey: "agentConfigurationId",
   as: "agentConfigurations",
   onDelete: "RESTRICT",
 });
-AgentConfiguration.belongsToMany(TagModel, {
+AgentConfigurationModel.belongsToMany(TagModel, {
   through: TagAgentModel,
   foreignKey: "agentConfigurationId",
   otherKey: "tagId",

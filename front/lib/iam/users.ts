@@ -2,12 +2,12 @@ import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import {
-  AgentConfiguration,
+  AgentConfigurationModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import {
   ConversationParticipantModel,
-  UserMessage,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -234,7 +234,7 @@ export async function mergeUserIdentities({
   }
 
   // Migrate authorship of agent configurations from the secondary user to the primary user.
-  await AgentConfiguration.update(
+  await AgentConfigurationModel.update(
     {
       authorId: primaryUser.id,
     },
@@ -274,7 +274,7 @@ export async function mergeUserIdentities({
   // Replace all conversation participants for the secondary user with the primary user.
   await ConversationParticipantModel.update(userIdValues, userIdOptions);
   // Migrate authorship of user messages from the secondary user to the primary user.
-  await UserMessage.update(userIdValues, userIdOptions);
+  await UserMessageModel.update(userIdValues, userIdOptions);
   // Migrate authorship of content fragments from the secondary user to the primary user.
   await ContentFragmentModel.update(userIdValues, userIdOptions);
   // Migrate authorship of files from the secondary user to the primary user.

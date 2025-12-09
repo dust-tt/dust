@@ -5,11 +5,11 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   ConversationModel,
-  Message,
-  UserMessage,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -344,7 +344,7 @@ export async function getUserUsageData(
 
   const allUserMessages = await getFrontReplicaDbConnection().transaction(
     async (t) => {
-      return Message.findAll({
+      return MessageModel.findAll({
         attributes: [
           "userMessage.userId",
           [
@@ -390,7 +390,7 @@ export async function getUserUsageData(
         },
         include: [
           {
-            model: UserMessage,
+            model: UserMessageModel,
             as: "userMessage",
             required: true,
             attributes: [],
@@ -553,7 +553,7 @@ export async function getBuildersUsageData(
   const wId = workspace.id;
   const agentConfigurations = await getFrontReplicaDbConnection().transaction(
     async (t) => {
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         attributes: [
           [
             Sequelize.fn("COUNT", Sequelize.col("agent_configuration.sId")),
@@ -825,7 +825,7 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
   const hasDataSource =
     (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
 
-  const hasCreatedAssistant = await AgentConfiguration.findOne({
+  const hasCreatedAssistant = await AgentConfigurationModel.findOne({
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 

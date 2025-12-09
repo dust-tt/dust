@@ -14,7 +14,7 @@ import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_s
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
-  AgentConfiguration,
+  AgentConfigurationModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
@@ -22,14 +22,14 @@ import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retent
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
   AgentMessageFeedbackModel,
+  AgentMessageModel,
   ConversationModel,
   ConversationParticipantModel,
-  Mention,
-  Message,
-  MessageReaction,
-  UserMessage,
+  MentionModel,
+  MessageModel,
+  MessageReactionModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
@@ -48,7 +48,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
@@ -147,13 +147,13 @@ async function main() {
 
   await ExtensionConfigurationModel.sync({ alter: true });
 
-  await Plan.sync({ alter: true });
-  await Subscription.sync({ alter: true });
+  await PlanModel.sync({ alter: true });
+  await SubscriptionModel.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
   await CreditModel.sync({ alter: true });
   await ProgrammaticUsageConfigurationModel.sync({ alter: true });
 
-  await AgentConfiguration.sync({ alter: true });
+  await AgentConfigurationModel.sync({ alter: true });
   await AgentUserRelationModel.sync({ alter: true });
   await GlobalAgentSettingsModel.sync({ alter: true });
   await TagAgentModel.sync({ alter: true });
@@ -173,13 +173,13 @@ async function main() {
 
   await AgentDataSourceConfigurationModel.sync({ alter: true });
 
-  await UserMessage.sync({ alter: true });
-  await AgentMessage.sync({ alter: true });
+  await UserMessageModel.sync({ alter: true });
+  await AgentMessageModel.sync({ alter: true });
   await AgentMessageFeedbackModel.sync({ alter: true });
   await ContentFragmentModel.sync({ alter: true });
-  await Message.sync({ alter: true });
-  await MessageReaction.sync({ alter: true });
-  await Mention.sync({ alter: true });
+  await MessageModel.sync({ alter: true });
+  await MessageReactionModel.sync({ alter: true });
+  await MentionModel.sync({ alter: true });
 
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });

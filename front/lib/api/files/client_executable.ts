@@ -15,7 +15,10 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -731,12 +734,12 @@ export async function revertClientExecutableFileChanges(
     const conversationActions = await AgentMCPActionModel.findAll({
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               required: true,
               where: {

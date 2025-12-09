@@ -1,6 +1,6 @@
 import type { Attributes } from "sequelize";
 
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/planModel";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
@@ -8,7 +8,7 @@ import {
 import { isDevelopment, isTest } from "@app/types";
 
 export type PlanAttributes = Omit<
-  Attributes<Plan>,
+  Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
 
@@ -87,13 +87,13 @@ if (isDevelopment() || isTest()) {
  */
 export const upsertProPlans = async () => {
   for (const planData of PRO_PLANS_DATA) {
-    const plan = await Plan.findOne({
+    const plan = await PlanModel.findOne({
       where: {
         code: planData.code,
       },
     });
     if (plan === null) {
-      await Plan.create(planData);
+      await PlanModel.create(planData);
       // console.log(`Pro plan ${planData.code} created.`);
     } else {
       await plan.update(planData);

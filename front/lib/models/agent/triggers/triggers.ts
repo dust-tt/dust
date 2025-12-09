@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentConfiguration } from "@app/lib/models/agent/agent";
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -36,7 +36,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    * We use the sId, because it's static between an agent versions,
    * whereas the id is dynamic and changes with each new agent version.
    */
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["sId"]>;
   declare editor: ForeignKey<UserModel["id"]>;
 }
 

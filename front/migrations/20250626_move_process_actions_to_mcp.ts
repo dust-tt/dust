@@ -16,8 +16,8 @@ import {
   AgentMCPActionOutputItemModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
-import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -49,7 +49,7 @@ function getTimeFrameUnit(processAction: AgentProcessAction): TimeFrame | null {
 function agentProcessActionToAgentMCPAction(
   // @ts-ignore
   processAction: AgentProcessAction,
-  agentConfiguration: AgentConfiguration | null,
+  agentConfiguration: AgentConfigurationModel | null,
   mcpServerViewForExtractId: ModelId,
   logger: Logger
 ): {
@@ -209,10 +209,10 @@ function createResultOutputItem(
 
 async function migrateSingleProcessAction(
   auth: Authenticator,
-  agentMessage: AgentMessage,
+  agentMessage: AgentMessageModel,
   // @ts-ignore
   processAction: AgentProcessAction,
-  agentConfiguration: AgentConfiguration | null,
+  agentConfiguration: AgentConfigurationModel | null,
   logger: Logger,
   {
     execute,
@@ -297,7 +297,7 @@ async function migrateWorkspaceProcessActions(
     logger.info(`Found ${processActions.length} process actions`);
 
     // Step 2: Find the corresponding AgentMessages.
-    const agentMessages = await AgentMessage.findAll({
+    const agentMessages = await AgentMessageModel.findAll({
       where: {
         id: {
           // @ts-ignore
@@ -312,7 +312,7 @@ async function migrateWorkspaceProcessActions(
       ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
     ];
 
-    const agentConfigurations = await AgentConfiguration.findAll({
+    const agentConfigurations = await AgentConfigurationModel.findAll({
       where: {
         sId: {
           [Op.in]: agentConfigurationSIds,

@@ -1,6 +1,6 @@
 import type { Attributes } from "sequelize";
 
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/planModel";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -8,7 +8,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
-  Attributes<Plan>,
+  Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
 
@@ -115,13 +115,13 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
  */
 export const upsertFreePlans = async () => {
   for (const planData of FREE_PLANS_DATA) {
-    const plan = await Plan.findOne({
+    const plan = await PlanModel.findOne({
       where: {
         code: planData.code,
       },
     });
     if (plan === null) {
-      await Plan.create(planData);
+      await PlanModel.create(planData);
       console.log(`Free plan ${planData.code} created.`);
     } else {
       await plan.update(planData);

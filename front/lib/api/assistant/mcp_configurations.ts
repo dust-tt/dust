@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 
 export type AgentMcpConfigurationSummary = {
   sId: string;
@@ -21,7 +21,7 @@ export async function listAgentMcpConfigurationsForAgent(params: {
     attributes: ["sId", "name"],
     include: [
       {
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         where: {
           sId: agentConfigurationSId,
           status: {

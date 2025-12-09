@@ -5,11 +5,11 @@ import { Op } from "sequelize";
 
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -102,7 +102,7 @@ async function updateConversationRequestedSpaceIds(
 
     for (const conversation of conversations) {
       // Get all agent messages in this conversation with their versions
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
           workspaceId: workspace.id,
@@ -110,7 +110,7 @@ async function updateConversationRequestedSpaceIds(
         attributes: [],
         include: [
           {
-            model: AgentMessage,
+            model: AgentMessageModel,
             as: "agentMessage",
             required: true,
             attributes: ["agentConfigurationId", "agentConfigurationVersion"],
@@ -147,7 +147,7 @@ async function updateConversationRequestedSpaceIds(
 
       // Get the exact agent versions that were used in the conversation
       // Fetch directly from DB to get specific versions (not just latest)
-      const agentConfigs = await AgentConfiguration.findAll({
+      const agentConfigs = await AgentConfigurationModel.findAll({
         where: {
           workspaceId: workspace.id,
           [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({

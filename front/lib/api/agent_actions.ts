@@ -4,7 +4,7 @@ import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { AgentsUsageType, ModelId } from "@app/types";
 
@@ -62,7 +62,7 @@ export async function getToolsUsage(
     ],
   });
 
-  const res = (await AgentConfiguration.findAll({
+  const res = (await AgentConfigurationModel.findAll({
     raw: true,
     group: [
       "mcpServerConfigurations->mcpServerView.internalMCPServerId",

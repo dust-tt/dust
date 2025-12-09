@@ -10,13 +10,13 @@ import { Op } from "sequelize";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  AgentMessage,
-  AgentMessage as AgentMessageModel,
   AgentMessageFeedbackModel,
+  AgentMessageModel,
+  AgentMessageModel as AgentMessageModel,
   ConversationModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
@@ -47,7 +47,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static model: ModelStatic<AgentMessageFeedbackModel> =
     AgentMessageFeedbackModel;
 
-  readonly message?: Attributes<Message>;
+  readonly message?: Attributes<MessageModel>;
   readonly user?: Attributes<UserModel>;
   readonly conversationId?: string;
 
@@ -59,7 +59,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       user,
       conversationId,
     }: {
-      message?: Attributes<Message>;
+      message?: Attributes<MessageModel>;
       user?: Attributes<UserModel>;
       conversationId?: string;
     } = {}
@@ -98,7 +98,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       user,
       conversationId,
     }: {
-      message?: Attributes<Message>;
+      message?: Attributes<MessageModel>;
       user?: Attributes<UserModel>;
       conversationId?: string;
     } = {}
@@ -223,7 +223,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           as: "agentMessage",
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               attributes: ["id", "sId"],
               include: [
@@ -293,7 +293,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           as: "agentMessage",
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               attributes: ["id", "sId"],
               include: [
@@ -363,7 +363,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ) {
     const user = auth.getNonNullableUser();
 
-    const feedbackForMessages = await Message.findAll({
+    const feedbackForMessages = await MessageModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
@@ -374,7 +374,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       attributes: ["id", "sId", "agentMessageId"],
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           attributes: ["id"],
           include: [
@@ -393,7 +393,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       .filter(
         (
           message
-        ): message is Message & {
+        ): message is MessageModel & {
           agentMessage: { feedbacks: AgentMessageFeedbackModel[] };
         } =>
           !!message.agentMessage?.feedbacks &&
@@ -440,7 +440,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       Error
     >
   > {
-    const message = await Message.findOne({
+    const message = await MessageModel.findOne({
       attributes: ["id", "sId"],
       where: {
         sId: messageId,
@@ -449,7 +449,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       },
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           attributes: [
             "id",
@@ -510,7 +510,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       });
     }
 
-    const agentConfiguration = await AgentConfiguration.findOne({
+    const agentConfiguration = await AgentConfigurationModel.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: message.agentMessage.agentConfigurationId,

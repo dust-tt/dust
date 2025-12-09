@@ -5,7 +5,10 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import type { Result } from "@app/types";
 import { Err, isGlobalAgentId, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -40,7 +43,7 @@ export type AgentMessageRef = {
 export type AgentLoopExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
+  agentMessageRow: AgentMessageModel;
   conversation: ConversationType;
   userMessage: UserMessageType;
 };
@@ -108,7 +111,7 @@ export async function getAgentLoopData(
   }
 
   // Get the AgentMessage database row by querying through Message model.
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       // Leveraging the index on workspaceId, conversationId, sId.
       conversationId: conversation.id,
@@ -119,7 +122,7 @@ export async function getAgentLoopData(
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },

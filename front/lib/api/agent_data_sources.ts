@@ -8,7 +8,7 @@ import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -109,7 +109,7 @@ export async function getDataSourceViewsUsageByCategory({
   });
 
   const agentConfigurationInclude = {
-    model: AgentConfiguration,
+    model: AgentConfigurationModel,
     as: "agent_configuration",
     attributes: [],
     required: true,
@@ -225,7 +225,7 @@ export async function getDataSourceViewsUsageByCategory({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -361,7 +361,7 @@ export async function getDataSourcesUsageByCategory({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -418,7 +418,7 @@ export async function getDataSourcesUsageByCategory({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -530,7 +530,7 @@ export async function getDataSourceUsage({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -577,7 +577,7 @@ export async function getDataSourceUsage({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -675,7 +675,7 @@ export async function getDataSourceViewUsage({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,
@@ -722,7 +722,7 @@ export async function getDataSourceViewUsage({
           required: true,
           include: [
             {
-              model: AgentConfiguration,
+              model: AgentConfigurationModel,
               as: "agent_configuration",
               attributes: [],
               required: true,

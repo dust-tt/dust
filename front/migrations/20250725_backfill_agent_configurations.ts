@@ -6,7 +6,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
@@ -21,7 +21,7 @@ interface AgentUpdateStats {
 
 async function updateAgentConfigurationGroupIds(
   auth: Authenticator,
-  agent: AgentConfiguration,
+  agent: AgentConfigurationModel,
   execute: boolean,
   logger: Logger
 ): Promise<{ updated: boolean; error?: string }> {
@@ -80,7 +80,7 @@ async function updateAgentConfigurationGroupIds(
     );
 
     if (execute) {
-      await AgentConfiguration.update(
+      await AgentConfigurationModel.update(
         {
           requestedSpaceIds: newRequirements.requestedSpaceIds,
         },
@@ -119,7 +119,7 @@ async function updateAgentsForWorkspace(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   // Find all active agent configurations that have MCP actions with dust apps
-  const agentsWithDustApps = await AgentConfiguration.findAll({
+  const agentsWithDustApps = await AgentConfigurationModel.findAll({
     where: {
       workspaceId,
       status: "active",

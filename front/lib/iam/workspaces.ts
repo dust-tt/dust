@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/planModel";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -40,7 +40,7 @@ export async function createWorkspaceInternal({
         `Invalid plan code: ${planCode}. Only free plans are supported.`
       );
     }
-    const plan = await Plan.findOne({
+    const plan = await PlanModel.findOne({
       where: {
         code: planCode,
       },

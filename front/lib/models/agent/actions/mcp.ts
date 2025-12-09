@@ -7,9 +7,9 @@ import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -33,7 +33,7 @@ export class AgentMCPServerConfigurationModel extends WorkspaceAwareModel<AgentM
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
 
   declare sId: string;
 
@@ -182,12 +182,12 @@ AgentMCPServerConfigurationModel.init(
   }
 );
 
-AgentConfiguration.hasMany(AgentMCPServerConfigurationModel, {
+AgentConfigurationModel.hasMany(AgentMCPServerConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "mcpServerConfigurations",
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfigurationModel.belongsTo(AgentConfiguration, {
+AgentMCPServerConfigurationModel.belongsTo(AgentConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
@@ -207,7 +207,7 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
 
   declare mcpServerConfigurationId: string;
   declare version: number;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare status: ToolExecutionStatus;
@@ -221,7 +221,7 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItemModel[]>;
 
-  declare agentMessage?: NonAttribute<AgentMessage>;
+  declare agentMessage?: NonAttribute<AgentMessageModel>;
 }
 
 AgentMCPActionModel.init(
@@ -303,12 +303,12 @@ AgentMCPActionModel.init(
   }
 );
 
-AgentMCPActionModel.belongsTo(AgentMessage, {
+AgentMCPActionModel.belongsTo(AgentMessageModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
   as: "agentMessage",
 });
 
-AgentMessage.hasMany(AgentMCPActionModel, {
+AgentMessageModel.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 

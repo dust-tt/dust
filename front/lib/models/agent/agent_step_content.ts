@@ -2,7 +2,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
@@ -11,14 +11,14 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare step: number;
   declare index: number;
   declare version: number;
   declare type: AgentContentItemType["type"];
   declare value: AgentContentItemType;
 
-  declare agentMessage?: NonAttribute<AgentMessage>;
+  declare agentMessage?: NonAttribute<AgentMessageModel>;
   declare agentMCPActions?: NonAttribute<AgentMCPActionModel[]>;
 }
 
@@ -93,7 +93,7 @@ AgentStepContentModel.init(
   }
 );
 
-AgentStepContentModel.belongsTo(AgentMessage, {
+AgentStepContentModel.belongsTo(AgentMessageModel, {
   as: "agentMessage",
   foreignKey: {
     name: "agentMessageId",
@@ -102,7 +102,7 @@ AgentStepContentModel.belongsTo(AgentMessage, {
   onDelete: "RESTRICT",
 });
 
-AgentMessage.hasMany(AgentStepContentModel, {
+AgentMessageModel.hasMany(AgentStepContentModel, {
   as: "agentStepContents",
   foreignKey: {
     name: "agentMessageId",

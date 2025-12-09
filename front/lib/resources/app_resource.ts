@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -118,7 +118,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       },
     });
 
-    const agentConfigurations = await AgentConfiguration.findAll({
+    const agentConfigurations = await AgentConfigurationModel.findAll({
       where: {
         workspaceId: owner.id,
         status: "active",

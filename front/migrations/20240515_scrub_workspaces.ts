@@ -2,14 +2,14 @@ import _ from "lodash";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
+import { SubscriptionModel } from "@app/lib/models/planModel";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
 const scrubWorkspaces = async (execute: boolean) => {
-  const endedSubs = await Subscription.findAll({
+  const endedSubs = await SubscriptionModel.findAll({
     where: {
       // end date at least 14 days ago
       endDate: {
@@ -25,7 +25,7 @@ const scrubWorkspaces = async (execute: boolean) => {
   });
 
   const allSubsByWorkspaceId = _.groupBy(
-    await Subscription.findAll({
+    await SubscriptionModel.findAll({
       where: {
         workspaceId: workspaces.map((w) => w.id),
       },

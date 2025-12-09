@@ -1,4 +1,4 @@
-import { Subscription } from "@app/lib/models/plan";
+import { SubscriptionModel } from "@app/lib/models/planModel";
 
 const { LIVE = false, WORKSPACE_IDS = "" } = process.env;
 
@@ -26,7 +26,7 @@ const getValidSubscriptionStartDateForWorkspace = async (
   workspaceId: number
 ) => {
   console.log(`Fixing subscription start date for workspace ${workspaceId}`);
-  const subscriptions = await Subscription.findAll({
+  const subscriptions = await SubscriptionModel.findAll({
     where: {
       workspaceId: workspaceId,
       planId: 5,
@@ -53,7 +53,7 @@ const deletedDuplicatedEndedSubscriptionsForWorkspace = async (
   workspaceId: number
 ) => {
   console.log(`Cleaning duplicated ended subscriptions for ${workspaceId}`);
-  const subscriptions = await Subscription.findAll({
+  const subscriptions = await SubscriptionModel.findAll({
     where: {
       workspaceId: workspaceId,
       status: "ended",

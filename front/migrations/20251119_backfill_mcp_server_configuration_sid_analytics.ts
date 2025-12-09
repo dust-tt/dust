@@ -7,9 +7,9 @@ import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_a
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import type { Logger } from "@app/logger/logger";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -48,7 +48,7 @@ async function backfillMcpServerConfigurationSidForWorkspace(
     },
   };
 
-  const totalAgentMessages = await Message.count({
+  const totalAgentMessages = await MessageModel.count({
     where: baseWhere,
   });
 
@@ -86,12 +86,12 @@ async function backfillMcpServerConfigurationSidForWorkspace(
       };
     }
 
-    const agentMessagesBatch = await Message.findAll({
+    const agentMessagesBatch = await MessageModel.findAll({
       where,
       attributes: ["id", "sId", "version"],
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
         },

@@ -7,10 +7,10 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-  UserMessage,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -43,7 +43,7 @@ export async function storeAgentAnalyticsActivity(
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
   // Query the Message/AgentMessage/Conversation rows.
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
       workspaceId: workspace.id,
@@ -55,7 +55,7 @@ export async function storeAgentAnalyticsActivity(
         required: true,
       },
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },
@@ -74,14 +74,14 @@ export async function storeAgentAnalyticsActivity(
   }
 
   // Query the UserMessage row to get user.
-  const userMessageRow = await Message.findOne({
+  const userMessageRow = await MessageModel.findOne({
     where: {
       sId: userMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
         include: [
@@ -120,8 +120,8 @@ export async function storeAgentAnalyticsActivity(
 export async function storeAgentAnalytics(
   auth: Authenticator,
   params: {
-    agentMessageRow: Message;
-    agentAgentMessageRow: AgentMessage;
+    agentMessageRow: MessageModel;
+    agentAgentMessageRow: AgentMessageModel;
     userModel: UserModel | null;
     conversationRow: ConversationModel;
     contextOrigin: UserMessageOrigin | null;
@@ -188,7 +188,7 @@ export async function storeAgentAnalytics(
  */
 async function collectTokenUsage(
   auth: Authenticator,
-  agentMessage: AgentMessage
+  agentMessage: AgentMessageModel
 ): Promise<AgentMessageAnalyticsTokens> {
   if (!agentMessage.runIds || agentMessage.runIds.length === 0) {
     return {
@@ -332,14 +332,14 @@ export async function storeAgentMessageFeedbackActivity(
 
   const workspace = auth.getNonNullableWorkspace();
 
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: message.agentMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },

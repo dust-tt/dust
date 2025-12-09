@@ -5,7 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -25,7 +25,7 @@ async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
     include: [
       {
         attributes: [],
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         required: true,
         where: {
           status: "active",
@@ -72,7 +72,7 @@ async function migrateWorkspaceExtractActions(
     include: [
       {
         attributes: [],
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         required: true,
         where: {
           status: "active",

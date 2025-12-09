@@ -10,7 +10,7 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
@@ -416,7 +416,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Query latest versions of all agent configurations at once
-    const agentConfigs = await AgentConfiguration.findAll({
+    const agentConfigs = await AgentConfigurationModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: agentConfigurationIds,
@@ -424,7 +424,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     // Get only the latest version of each agent config (by latest createdAt)
-    const latestAgentConfigs = new Map<string, AgentConfiguration>();
+    const latestAgentConfigs = new Map<string, AgentConfigurationModel>();
     for (const config of agentConfigs) {
       const existing = latestAgentConfigs.get(config.sId);
       if (

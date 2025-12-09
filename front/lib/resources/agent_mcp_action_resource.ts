@@ -28,9 +28,9 @@ import {
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
 import {
-  AgentMessage,
-  Message,
-  UserMessage,
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -212,12 +212,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               required: true,
               where: {
@@ -240,7 +240,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
     );
 
-    const parentUserMessages = await Message.findAll({
+    const parentUserMessages = await MessageModel.findAll({
       where: {
         workspaceId: owner.id,
         conversationId: conversation.id,
@@ -248,7 +248,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       include: [
         {
-          model: UserMessage,
+          model: UserMessageModel,
           as: "userMessage",
           required: true,
           include: [

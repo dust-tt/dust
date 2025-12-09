@@ -5,7 +5,7 @@ import type {
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -16,11 +16,11 @@ export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
   declare updatedAt: CreationOptional<Date>;
 
   declare groupId: ForeignKey<GroupModel["id"]>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
   // workspaceId is inherited from WorkspaceAwareModel
 
   declare getGroup: BelongsToGetAssociationMixin<GroupModel>;
-  declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfiguration>;
+  declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfigurationModel>;
   // getWorkspace is inherited
 }
 
@@ -79,24 +79,24 @@ GroupModel.hasMany(GroupAgentModel, {
 });
 
 // Association with AgentConfiguration
-GroupAgentModel.belongsTo(AgentConfiguration, {
+GroupAgentModel.belongsTo(AgentConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   targetKey: "id",
 });
-AgentConfiguration.hasMany(GroupAgentModel, {
+AgentConfigurationModel.hasMany(GroupAgentModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   sourceKey: "id",
   as: "agentGroupLinks",
 });
 
 // Many-to-Many between Group and AgentConfiguration (ensure FKs match)
-GroupModel.belongsToMany(AgentConfiguration, {
+GroupModel.belongsToMany(AgentConfigurationModel, {
   through: GroupAgentModel,
   foreignKey: "groupId",
   otherKey: "agentConfigurationId",
   as: "agentConfigurations",
 });
-AgentConfiguration.belongsToMany(GroupModel, {
+AgentConfigurationModel.belongsToMany(GroupModel, {
   through: GroupAgentModel,
   foreignKey: "agentConfigurationId",
   otherKey: "groupId",

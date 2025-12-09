@@ -15,7 +15,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import type { AgentConfiguration } from "@app/lib/models/agent/agent";
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import type { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
@@ -82,7 +82,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async makeNewAgentEditorsGroup(
     auth: Authenticator,
-    agent: AgentConfiguration,
+    agent: AgentConfigurationModel,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const user = auth.getNonNullableUser();
@@ -767,7 +767,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     isDeletionFlow = false,
   }: {
     auth: Authenticator;
-    agentConfiguration: AgentConfiguration | AgentConfigurationType;
+    agentConfiguration: AgentConfigurationModel | AgentConfigurationType;
     isDeletionFlow?: boolean;
   }): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
@@ -1597,7 +1597,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction,
   }: {
     auth: Authenticator;
-    agentConfiguration: AgentConfiguration;
+    agentConfiguration: AgentConfigurationModel;
     transaction?: Transaction;
   }): Promise<Result<void, Error>> {
     assert(
