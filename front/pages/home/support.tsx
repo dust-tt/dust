@@ -54,8 +54,7 @@ const SUPPORT_OPTIONS: SupportOption[] = [
   {
     icon: "/static/landing/industry/d-red.svg",
     title: "Email Support",
-    description:
-      "We respond to all requests within 2 business days. No signup required.",
+    description: "We respond to all requests. No signup required.",
     button: {
       label: "Contact support",
       href: "mailto:support@dust.tt",
@@ -68,7 +67,7 @@ const SUPPORT_OPTIONS: SupportOption[] = [
     description: "Connect with other Dust users and get help from our team.",
     button: {
       label: "Join community",
-      href: "https://community.dust.tt",
+      href: "https://dust-community.tightknit.community/join",
     },
     color: "green",
   },
