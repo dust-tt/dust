@@ -217,40 +217,47 @@ async function searchCallback(
   }
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const searchMethod = featureFlags.includes("use_bulk_search_data_sources_api")
-    ? coreAPI.bulkSearchDataSources
-    : coreAPI.searchDataSources;
 
-  const searchResults = await searchMethod(
+  const searchResults = await coreAPI.bulkSearchDataSources(
     query,
     retrievalTopK,
     credentials,
     false,
-    coreSearchArgs.map((args) => {
-      // In addition to the tags provided by the user, we add the tags the agent passed.
-      const finalTagsIn = [...(args.filter.tags?.in ?? []), ...(tagsIn ?? [])];
-      const finalTagsNot = [
-        ...(args.filter.tags?.not ?? []),
-        ...(tagsNot ?? []),
-      ];
+    coreSearchArgs.map(
+      (args) => {
+        // In addition to the tags provided by the user, we add the tags the agent passed.
+        const finalTagsIn = [
+          ...(args.filter.tags?.in ?? []),
+          ...(tagsIn ?? []),
+        ];
+        const finalTagsNot = [
+          ...(args.filter.tags?.not ?? []),
+          ...(tagsNot ?? []),
+        ];
 
-      return {
-        projectId: args.projectId,
-        dataSourceId: args.dataSourceId,
-        filter: {
-          ...args.filter,
-          tags: {
-            in: finalTagsIn.length > 0 ? finalTagsIn : null,
-            not: finalTagsNot.length > 0 ? finalTagsNot : null,
+        return {
+          projectId: args.projectId,
+          dataSourceId: args.dataSourceId,
+          filter: {
+            ...args.filter,
+            tags: {
+              in: finalTagsIn.length > 0 ? finalTagsIn : null,
+              not: finalTagsNot.length > 0 ? finalTagsNot : null,
+            },
+            timestamp: {
+              gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+              lt: null,
+            },
           },
-          timestamp: {
-            gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
-            lt: null,
-          },
-        },
-        view_filter: args.view_filter,
-      };
-    })
+          view_filter: args.view_filter,
+        };
+      },
+      {
+        hasUseBulkSearchFF: featureFlags.includes(
+          "use_bulk_search_data_sources_api"
+        ),
+      }
+    )
   );
 
   if (searchResults.isErr()) {
