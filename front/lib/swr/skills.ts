@@ -6,17 +6,17 @@ import type { LightWorkspaceType } from "@app/types";
 
 export function useAgentConfigurationSkills({
   owner,
-  agentConfigurationId,
+  agentConfigurationSId,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string;
+  agentConfigurationSId: string;
   disabled?: boolean;
 }) {
   const skillsFetcher: Fetcher<GetAgentSkillsResponseBody> = fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/assistant/skill_configurations?aId=${agentConfigurationId}`,
+    `/api/w/${owner.sId}/assistant/skill_configurations?aId=${agentConfigurationSId}`,
     skillsFetcher,
     { disabled }
   );

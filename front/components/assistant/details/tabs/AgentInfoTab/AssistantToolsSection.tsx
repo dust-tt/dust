@@ -1,6 +1,5 @@
 import { Avatar, CommandIcon, Spinner } from "@dust-tt/sparkle";
 import _ from "lodash";
-import { PuzzleIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -17,6 +16,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import { SKILL_ICON } from "@app/lib/skill";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -56,7 +56,7 @@ export function AssistantToolsSection({
   });
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
-    agentConfigurationId: agentConfiguration.sId,
+    agentConfigurationSId: agentConfiguration.sId,
     disabled: !featureFlags.includes("skills"),
   });
 
@@ -68,7 +68,7 @@ export function AssistantToolsSection({
   );
 
   const sortedActions = useMemo(
-    () => _.uniqBy(_.sortBy(actions, "order", "title"), "title"),
+    () => _.sortBy(_.uniqBy(actions, "title"), ["order", "title"]),
     [actions]
   );
   const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
@@ -143,7 +143,7 @@ export function AssistantToolsSection({
                   key={skill.sId}
                 >
                   {/* TODO(skills 2025-12-08): Add custom icon support (pictureUrl) */}
-                  <Avatar icon={PuzzleIcon} size="xs" />
+                  <Avatar icon={SKILL_ICON} size="xs" />
                   <div>{skill.name}</div>
                 </div>
               ))

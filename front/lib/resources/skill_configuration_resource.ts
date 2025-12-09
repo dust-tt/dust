@@ -146,7 +146,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       ],
     });
 
-    // TODO(skills): Add support for global skills.
+    // TODO(skills 2025-12-09): Add support for global skills.
     // When globalSkillId is set, we need to fetch the skill from the global registry
     // and return it as a SkillConfigurationResource.
     const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));

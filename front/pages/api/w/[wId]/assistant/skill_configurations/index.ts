@@ -93,7 +93,7 @@ async function handler(
       }
 
       if (isGlobalAgentId(agent.sId)) {
-        // TODO(skills): Implement fetching skills for global agents.
+        // TODO(skills 2025-12-09): Implement fetching skills for global agents.
         return res.status(200).json({
           skills: [],
         });

@@ -77,7 +77,7 @@ AgentSkillModel.belongsTo(SkillConfigurationModel, {
 });
 SkillConfigurationModel.hasMany(AgentSkillModel, {
   foreignKey: { name: "customSkillId", allowNull: true },
-  as: "agentSkillLinks",
+  as: "skillAgentLinks",
   onDelete: "RESTRICT",
 });
 
@@ -88,7 +88,7 @@ AgentSkillModel.belongsTo(AgentConfiguration, {
 });
 AgentConfiguration.hasMany(AgentSkillModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-  as: "agentSkillLinks",
+  as: "skillAgentLinks",
 });
 
 // Many-to-Many associations
