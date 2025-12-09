@@ -10,7 +10,10 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
-import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 import parentLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
@@ -301,14 +304,19 @@ async function getPagesAndDatabasesToUpdate(
   return pageAndDataBaseIdsToUpdate;
 }
 
-function notionPageOrDbId(pageOrDb: NotionPageModel | NotionDatabaseModel): string {
+function notionPageOrDbId(
+  pageOrDb: NotionPageModel | NotionDatabaseModel
+): string {
   return (
     (pageOrDb as NotionPageModel).notionPageId ||
     (pageOrDb as NotionDatabaseModel).notionDatabaseId
   );
 }
 
-export const hasChildren = async (pages: NotionPageModel[], connectorId: number) => {
+export const hasChildren = async (
+  pages: NotionPageModel[],
+  connectorId: number
+) => {
   const hasChildrenPage = (
     await NotionPageModel.findAll({
       attributes: [

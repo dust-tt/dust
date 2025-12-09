@@ -8,7 +8,10 @@ import {
   updateDataSourceDocumentParents,
   updateDataSourceTableParents,
 } from "@connectors/lib/data_sources";
-import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 

@@ -57,7 +57,10 @@ import {
   ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
-import { SlackChannelModel, SlackMessagesModel } from "@connectors/lib/models/slack";
+import {
+  SlackChannelModel,
+  SlackMessagesModel,
+} from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
   syncSucceeded,

@@ -2,7 +2,10 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
-import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {

@@ -2225,7 +2225,10 @@ export async function renderAndUpsertPageFromCache({
     },
   });
 
-  const blocksByParentId: Record<string, NotionConnectorBlockCacheEntryModel[]> = {};
+  const blocksByParentId: Record<
+    string,
+    NotionConnectorBlockCacheEntryModel[]
+  > = {};
   for (const blockCacheEntry of blockCacheEntries) {
     blocksByParentId[blockCacheEntry.parentBlockId || "root"] = [
       ...(blocksByParentId[blockCacheEntry.parentBlockId || "root"] ?? []),

@@ -116,12 +116,13 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const currentCloudInformation = await ConfluenceConfigurationModel.findOne({
-        attributes: ["cloudId"],
-        where: {
-          connectorId: this.connectorId,
-        },
-      });
+      const currentCloudInformation =
+        await ConfluenceConfigurationModel.findOne({
+          attributes: ["cloudId"],
+          where: {
+            connectorId: this.connectorId,
+          },
+        });
 
       const confluenceAccessTokenRes =
         await getConfluenceAccessToken(connectionId);

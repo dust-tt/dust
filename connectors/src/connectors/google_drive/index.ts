@@ -867,6 +867,7 @@ export function getSourceUrlForGoogleDriveSheet(
 ): string {
   const driveFileId =
     s instanceof GoogleDriveSheetModel ? s.driveFileId : s.spreadsheet.id;
-  const driveSheetId = s instanceof GoogleDriveSheetModel ? s.driveSheetId : s.id;
+  const driveSheetId =
+    s instanceof GoogleDriveSheetModel ? s.driveSheetId : s.id;
   return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit#gid=${driveSheetId}`;
 }

@@ -1,7 +1,10 @@
 import { isConnectorProvider } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
-import { GithubDiscussionModel, GithubIssueModel } from "@connectors/lib/models/github";
+import {
+  GithubDiscussionModel,
+  GithubIssueModel,
+} from "@connectors/lib/models/github";
 import { NotionPageModel } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";

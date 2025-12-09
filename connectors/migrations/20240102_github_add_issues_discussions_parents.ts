@@ -3,7 +3,10 @@ import {
   getIssueInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
-import { GithubDiscussionModel, GithubIssueModel } from "@connectors/lib/models/github";
+import {
+  GithubDiscussionModel,
+  GithubIssueModel,
+} from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { LIVE = null } = process.env;

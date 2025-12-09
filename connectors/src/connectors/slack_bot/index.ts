@@ -162,7 +162,9 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                 agentConfigurationId: channel.agentConfigurationId,
               })
             );
-            await SlackChannelModel.bulkCreate(creationRecords, { transaction });
+            await SlackChannelModel.bulkCreate(creationRecords, {
+              transaction,
+            });
 
             channelsMigrated = slackChannels.length;
             channelsMigrationStatus = "success";

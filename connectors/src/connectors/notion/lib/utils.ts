@@ -5,7 +5,10 @@ import * as t from "io-ts";
 import type { Logger } from "pino";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
-import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 
 // Define the type codec for the Notion OAuth response
 export const NotionOAuthResponse = t.type({

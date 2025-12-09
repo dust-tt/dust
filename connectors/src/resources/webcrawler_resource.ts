@@ -94,11 +94,12 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       {} as Record<ModelId, WebCrawlerConfigurationResource>
     );
 
-    const configurationHeaders = await WebCrawlerConfigurationHeaderModel.findAll({
-      where: {
-        webcrawlerConfigurationId: blobs.map((b) => b.id),
-      },
-    });
+    const configurationHeaders =
+      await WebCrawlerConfigurationHeaderModel.findAll({
+        where: {
+          webcrawlerConfigurationId: blobs.map((b) => b.id),
+        },
+      });
 
     const configIdToConnectorId = blobs.reduce(
       (acc, blob) => {

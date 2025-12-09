@@ -22,7 +22,10 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { SlackChannelModel, SlackMessagesModel } from "@connectors/lib/models/slack";
+import {
+  SlackChannelModel,
+  SlackMessagesModel,
+} from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";

@@ -54,7 +54,9 @@ async function main() {
         `Connector not found, deleting folder (live: ${LIVE})`
       );
       if (LIVE) {
-        await GoogleDriveFoldersModel.destroy({ where: { connectorId, folderId } });
+        await GoogleDriveFoldersModel.destroy({
+          where: { connectorId, folderId },
+        });
       }
       continue;
     }
@@ -93,7 +95,9 @@ async function main() {
         `Folder not found on google, deleting folder (live: ${LIVE})`
       );
       if (LIVE) {
-        await GoogleDriveFoldersModel.destroy({ where: { connectorId, folderId } });
+        await GoogleDriveFoldersModel.destroy({
+          where: { connectorId, folderId },
+        });
       }
       continue;
     }

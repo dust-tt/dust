@@ -459,7 +459,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       pageNodes = pageNodes.filter((p) => p.expandable);
     }
 
-    const getDbNodes = async (db: NotionDatabaseModel): Promise<ContentNode> => {
+    const getDbNodes = async (
+      db: NotionDatabaseModel
+    ): Promise<ContentNode> => {
       return {
         internalId: nodeIdFromNotionId(db.notionDatabaseId),
         parentInternalId:
