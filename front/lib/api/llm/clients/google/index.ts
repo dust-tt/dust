@@ -37,7 +37,7 @@ export class GoogleLLM extends LLM {
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
       throw new Error(
-        "GOOGLE_AI_STUDIO_API_KEY environment variable is required"
+        "DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY environment variable is required"
       );
     }
 

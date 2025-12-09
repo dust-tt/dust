@@ -33,7 +33,9 @@ export class AnthropicLLM extends LLM {
     super(auth, overwriteLLMParameters(llmParameters));
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
+      );
     }
 
     this.client = new Anthropic({
