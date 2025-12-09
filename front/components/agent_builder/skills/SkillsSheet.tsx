@@ -1,10 +1,10 @@
+import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   ActionCard,
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -65,6 +65,7 @@ export function SkillsSheet({
   // Reset local state when sheet opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalSelectedSkills(selectedSkills);
       setSearchQuery("");
     }

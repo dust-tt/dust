@@ -11,8 +11,8 @@ import React from "react";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
-import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
+import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
