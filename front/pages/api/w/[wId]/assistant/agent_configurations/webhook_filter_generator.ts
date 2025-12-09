@@ -55,9 +55,12 @@ async function handler(
         provider,
       } = bodyValidation.data;
 
-      const event = WEBHOOK_PRESETS[provider].events.find(
-        (event) => event.value === eventValue
-      );
+      const {
+        filterGenerationInstructions: providerSpecificInstructions,
+        events,
+      } = WEBHOOK_PRESETS[provider];
+
+      const event = events.find((event) => event.value === eventValue);
 
       if (!event) {
         return apiError(req, res, {
@@ -72,6 +75,7 @@ async function handler(
       const r = await getWebhookFilterGeneration(auth, {
         naturalDescription,
         event,
+        providerSpecificInstructions,
       });
 
       if (r.isErr()) {

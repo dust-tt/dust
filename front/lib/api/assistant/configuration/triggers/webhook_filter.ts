@@ -24,7 +24,12 @@ const specifications: AgentActionSpecification[] = [
   },
 ];
 
-const INSTRUCTIONS = `<role>
+function getInstructions(providerSpecificInstructions: string | null): string {
+  const providerInstructionsSection = providerSpecificInstructions
+    ? `\n<provider_specific_instructions>\n${providerSpecificInstructions}\n</provider_specific_instructions>\n`
+    : "";
+
+  return `<role>
   You are a webhook filter expression generator. Your task is to
   analyze webhook payloads and user requirements to create precise
   filter expressions that determine whether a webhook event should
@@ -262,13 +267,20 @@ In addition to the exhaustive JSON Schema of the payload, you will be provided a
   <return>
     You must return the filter using the set_filter function with the created filter as an argument.
   </return>
-</output>`;
+</output>
+${providerInstructionsSection}`;
+}
 
 export async function getWebhookFilterGeneration(
   auth: Authenticator,
-  inputs: {
+  {
+    naturalDescription,
+    event,
+    providerSpecificInstructions,
+  }: {
     naturalDescription: string;
     event: WebhookEvent;
+    providerSpecificInstructions: string | null;
   }
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -279,8 +291,6 @@ export async function getWebhookFilterGeneration(
       new Error("Failed to find a whitelisted model to generate filter")
     );
   }
-
-  const { naturalDescription, event } = inputs;
 
   const userContent = [
     `<eventJSONSchema>\n${JSON.stringify(event.schema)}</eventJSONSchema>`,
@@ -312,7 +322,7 @@ export async function getWebhookFilterGeneration(
           },
         ],
       },
-      prompt: INSTRUCTIONS,
+      prompt: getInstructions(providerSpecificInstructions),
       specifications,
       forceToolCall: SET_FILTER_FUNCTION_NAME,
     },
