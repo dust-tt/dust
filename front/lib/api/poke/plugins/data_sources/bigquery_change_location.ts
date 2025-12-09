@@ -189,13 +189,12 @@ export const bigqueryChangeLocationPlugin = createPlugin({
 
     auditLog(
       {
-        author: "no-author",
+        author: auth.user()?.toJSON() ?? "no-author",
         connectorId: dataSource.connectorId,
         previousConnectionId: connector.connectionId,
         newConnectionId: newCredentialsId,
         previousLocation: content.location,
         newLocation: selected,
-        who: auth.user(),
       },
       "BigQuery connector location updated"
     );
