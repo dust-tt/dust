@@ -1,6 +1,5 @@
 import {
   Avatar,
-  Chip,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -9,30 +8,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { SKILL_ICON } from "@app/lib/skill";
-import type {
-  SkillConfigurationWithAuthorType,
-  SkillScope,
-} from "@app/types/skill_configuration";
-
-export const SCOPE_INFO: Record<
-  SkillScope,
-  {
-    shortLabel: string;
-    label: string;
-    color: "green" | "primary";
-  }
-> = {
-  workspace: {
-    shortLabel: "Published",
-    label: "Published",
-    color: "green",
-  },
-  private: {
-    shortLabel: "Not published",
-    label: "Not published",
-    color: "primary",
-  },
-} as const;
+import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
 
 type SkillDetailsProps = {
   skillConfiguration: SkillConfigurationWithAuthorType;
@@ -78,13 +54,6 @@ const DescriptionSection = ({
         <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
           {skillConfiguration.name}
         </div>
-        {skillConfiguration.status === "active" && (
-          <div>
-            <Chip color={SCOPE_INFO[skillConfiguration.scope].color}>
-              {SCOPE_INFO[skillConfiguration.scope].label}
-            </Chip>
-          </div>
-        )}
       </div>
     </div>
   </div>
