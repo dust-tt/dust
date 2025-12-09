@@ -1,7 +1,7 @@
 import type { CreationOptional, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { SubscriptionModel } from "@app/lib/models/planModel";
+import type { SubscriptionModel } from "@app/lib/models/plan";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type {

@@ -48,7 +48,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,

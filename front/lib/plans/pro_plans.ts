@@ -1,6 +1,6 @@
 import type { Attributes } from "sequelize";
 
-import { PlanModel } from "@app/lib/models/planModel";
+import { PlanModel } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,

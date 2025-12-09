@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
 
-import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { upsertProPlans } from "@app/lib/plans/pro_plans";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";

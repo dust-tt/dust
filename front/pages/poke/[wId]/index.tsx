@@ -49,7 +49,7 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";

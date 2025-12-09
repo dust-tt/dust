@@ -3,7 +3,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { PlanModel } from "@app/lib/models/planModel";
+import { PlanModel } from "@app/lib/models/plan";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";

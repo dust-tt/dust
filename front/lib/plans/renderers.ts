@@ -1,4 +1,4 @@
-import type { SubscriptionModel } from "@app/lib/models/planModel";
+import type { SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import type { PlanType, SubscriptionType } from "@app/types";
 

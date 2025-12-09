@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,

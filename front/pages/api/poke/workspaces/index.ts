@@ -6,7 +6,7 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   isEntreprisePlanPrefix,

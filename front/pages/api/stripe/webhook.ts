@@ -24,7 +24,7 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/planModel";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,

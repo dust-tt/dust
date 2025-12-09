@@ -1,4 +1,4 @@
-import { PlanModel } from "@app/lib/models/planModel";
+import { PlanModel } from "@app/lib/models/plan";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 

@@ -1,6 +1,6 @@
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { PlanModel } from "@app/lib/models/planModel";
+import { PlanModel } from "@app/lib/models/plan";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
