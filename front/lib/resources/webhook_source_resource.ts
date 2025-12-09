@@ -151,6 +151,13 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    const webhookSources = await this.listByWorkspace(auth);
+    for (const webhookSource of webhookSources) {
+      await webhookSource.delete(auth);
+    }
+  }
+
   async updateRemoteMetadata(
     updates: Partial<
       Pick<WebhookSourceModel, "remoteMetadata" | "oauthConnectionId">
