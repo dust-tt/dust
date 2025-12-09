@@ -74,7 +74,7 @@ export const getStaticProps: GetStaticProps<CustomerStoryPageProps> = async (
 
   const relatedStoriesResult = await getRelatedCustomerStories(
     slug,
-    story.industry,
+    story.industries,
     story.department,
     3,
     resolvedUrl
@@ -211,9 +211,14 @@ export default function CustomerStoryPage({
             </Link>
 
             <div className="mb-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-highlight/10 px-3 py-1 text-sm font-medium text-highlight">
-                {story.industry}
-              </span>
+              {story.industries.map((ind) => (
+                <span
+                  key={ind}
+                  className="rounded-full bg-highlight/10 px-3 py-1 text-sm font-medium text-highlight"
+                >
+                  {ind}
+                </span>
+              ))}
               {story.department.map((dept) => (
                 <span
                   key={dept}
@@ -304,14 +309,18 @@ export default function CustomerStoryPage({
 
                 <div className="p-6">
                   <dl className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <dt className="text-sm text-muted-foreground">
-                        Industry
-                      </dt>
-                      <dd className="text-right text-sm font-medium text-foreground">
-                        {story.industry}
-                      </dd>
-                    </div>
+                    {story.industries.length > 0 && (
+                      <div className="flex items-start justify-between">
+                        <dt className="text-sm text-muted-foreground">
+                          {story.industries.length > 1
+                            ? "Industries"
+                            : "Industry"}
+                        </dt>
+                        <dd className="text-right text-sm font-medium text-foreground">
+                          {story.industries.join(", ")}
+                        </dd>
+                      </div>
+                    )}
                     {story.companySize && (
                       <div className="flex items-start justify-between">
                         <dt className="text-sm text-muted-foreground">

@@ -21,10 +21,12 @@
     "src"
   ],
   "scripts": {
-    "build": "dts build",
-    "lint": "dts lint",
-    "format": "dts lint --fix",
-    "start": "dts watch",
+    "build": "npm run build:types && npm run build:bundle",
+    "build:types": "tsc",
+    "build:bundle": "tsx esbuild.config.ts",
+    "lint": "eslint .",
+    "format": "eslint . --fix",
+    "watch": "npm-watch",
     "tsc": "tsc"
   },
   "engines": {
@@ -35,9 +37,11 @@
     "@types/event-source-polyfill": "^1.0.5",
     "@types/node": "^22.7.5",
     "@types/uuid": "^9.0.7",
-    "dts-cli": "^2.0.5",
+    "esbuild": "^0.24.0",
     "eslint-plugin-simple-import-sort": "^12.1.0",
+    "npm-watch": "^0.11.0",
     "tslib": "^2.6.2",
+    "tsx": "^4.19.1",
     "typescript": "^5.4.5"
   },
   "dependencies": {
@@ -54,5 +58,14 @@
     "tls": false,
     "net": false,
     "hot-shots": false
+  },
+  "watch": {
+    "build": {
+      "patterns": [
+        "src"
+      ],
+      "extensions": "ts",
+      "ignore": ""
+    }
   }
 }

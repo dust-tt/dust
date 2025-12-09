@@ -42,8 +42,8 @@ function extractFilterOptions(
   const regions = new Set<string>();
 
   for (const story of stories) {
-    if (story.industry) {
-      industries.add(story.industry);
+    for (const ind of story.industries) {
+      industries.add(ind);
     }
     for (const dept of story.department) {
       departments.add(dept);
@@ -246,7 +246,7 @@ export default function CustomerStoriesListing({
     return stories.filter((story) => {
       if (
         selectedIndustries.length > 0 &&
-        !selectedIndustries.includes(story.industry)
+        !story.industries.some((ind) => selectedIndustries.includes(ind))
       ) {
         return false;
       }
@@ -412,9 +412,14 @@ export default function CustomerStoriesListing({
                         )}
                         {/* Tags */}
                         <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
-                          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm">
-                            {story.industry}
-                          </span>
+                          {story.industries.slice(0, 2).map((ind) => (
+                            <span
+                              key={ind}
+                              className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
+                            >
+                              {ind}
+                            </span>
+                          ))}
                           {story.department.slice(0, 2).map((dept) => (
                             <span
                               key={dept}

@@ -19,6 +19,7 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessage,
@@ -199,6 +200,7 @@ async function main() {
 
   await SkillConfigurationModel.sync({ alter: true });
   await GroupSkillModel.sync({ alter: true });
+  await AgentSkillModel.sync({ alter: true });
   await SkillMCPServerConfigurationModel.sync({ alter: true });
 
   process.exit(0);

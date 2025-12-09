@@ -8,7 +8,6 @@ import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -49,6 +48,8 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   onboarding_conversation: "user",
 };
 
+const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
+
 export const USER_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
 ).filter(
@@ -66,7 +67,6 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
 const REDIS_ORIGIN = "public_api_limits";
-const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
 function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
@@ -133,29 +133,7 @@ export function getShouldTrackTokenUsageCostsESFilter(
 export async function hasReachedProgrammaticUsageLimits(
   auth: Authenticator
 ): Promise<boolean> {
-  const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
-  if (featureFlags.includes("ppul")) {
-    return (await CreditResource.listActive(auth)).length === 0;
-  }
-
-  const limits = getWorkspacePublicAPILimits(owner);
-  if (!limits?.enabled) {
-    return false;
-  }
-
-  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
-    const key = getRedisKey(owner);
-    const remainingCreditsUsd = await redis.get(key);
-
-    // If no credits are set yet, initialize with monthly limit.
-    if (remainingCreditsUsd === null) {
-      await initializeCredits(redis, owner, limits.monthlyLimit);
-      return false;
-    }
-
-    return parseFloat(remainingCreditsUsd) <= 0;
-  });
+  return (await CreditResource.listActive(auth)).length === 0;
 }
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
@@ -358,25 +336,22 @@ export async function trackProgrammaticCost(
     );
     if (totalConsumedMicroUsd >= thresholdMicroUsd) {
       const workspace = auth.getNonNullableWorkspace();
-      const featureFlags = await getFeatureFlags(workspace);
-      if (featureFlags.includes("ppul")) {
-        const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
-        // For eng-oncall:
-        // If you get this, you can defer to programmatic usage owners right away
-        // Every workspace should have this key defined
-        // If not, it means they will not get alerted
-        // when they reached their usage threshold
-        assert(
-          isString(idempotencyKey),
-          "creditAlertThresholdId must be set when credits exist"
-        );
-        void launchCreditAlertWorkflow({
-          workspaceId: workspace.sId,
-          idempotencyKey: idempotencyKey,
-          totalInitialMicroUsd,
-          totalConsumedMicroUsd,
-        });
-      }
+      const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
+      // For eng-oncall:
+      // If you get this, you can defer to programmatic usage owners right away
+      // Every workspace should have this key defined
+      // If not, it means they will not get alerted
+      // when they reached their usage threshold
+      assert(
+        isString(idempotencyKey),
+        "creditAlertThresholdId must be set when credits exist"
+      );
+      void launchCreditAlertWorkflow({
+        workspaceId: workspace.sId,
+        idempotencyKey: idempotencyKey,
+        totalInitialMicroUsd,
+        totalConsumedMicroUsd,
+      });
     }
   }
 }

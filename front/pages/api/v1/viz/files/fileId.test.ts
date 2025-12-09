@@ -689,6 +689,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         workspace,
         key,
       } = await createPublicApiMockRequest({
+        systemKey: true,
         method: "POST",
       });
 
@@ -724,6 +725,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
       const { req: conversationBReq, res: conversationBRes } =
         await createPublicApiMockRequest({
+          systemKey: true,
           method: "POST",
         });
 

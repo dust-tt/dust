@@ -226,7 +226,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       id: this.id,
       createdAt: this.createdAt.getTime(),
       lastUsedAt: this.lastUsedAt?.getTime() ?? null,
-      creator: formatUserFullName(this.user),
+      creator: this.user ? formatUserFullName(this.user) : null,
       name: this.name,
       secret,
       status: this.status,

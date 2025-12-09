@@ -32,4 +32,3 @@ CREATE TABLE IF NOT EXISTS "group_skills" (
 -- This index supports queries filtering by workspaceId and skillConfigurationId
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "group_skills_workspaceId_skillConfigurationId_idx"
   ON "group_skills"("workspaceId", "skillConfigurationId");
-

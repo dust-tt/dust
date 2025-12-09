@@ -35,6 +35,7 @@ export interface FileBlob {
   sourceUrl?: string;
   size: number;
   publicUrl?: string;
+  iconName?: string;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
@@ -370,7 +371,32 @@ export function useFileUploaderService({
     return getFileBlobs().find((blob) => blob.id === blobId);
   };
 
+  const addUploadedFile = (fileData: {
+    fileId: string;
+    filename: string;
+    contentType: SupportedFileContentType;
+    size: number;
+    id?: string;
+    sourceUrl?: string;
+    iconName?: string;
+  }) => {
+    const blob: FileBlob = {
+      contentType: fileData.contentType,
+      file: new File([], fileData.filename, { type: fileData.contentType }),
+      filename: fileData.filename,
+      id: fileData.id ?? fileData.fileId,
+      fileId: fileData.fileId,
+      isUploading: false,
+      size: fileData.size,
+      sourceUrl: fileData.sourceUrl,
+      iconName: fileData.iconName,
+    };
+
+    setFileBlobs((prevFiles) => [...prevFiles, blob]);
+  };
+
   return {
+    addUploadedFile,
     fileBlobs,
     getFileBlob,
     getFileBlobs,

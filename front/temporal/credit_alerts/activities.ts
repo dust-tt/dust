@@ -18,7 +18,10 @@ export async function sendCreditAlertEmailActivity({
   const workspace = auth.workspace();
 
   if (!workspace) {
-    logger.error({ workspaceId }, "Workspace not found for credit alert email");
+    logger.error(
+      { workspaceId },
+      "[Credit Alert] Workspace not found for credit alert email"
+    );
     return;
   }
 
@@ -30,7 +33,7 @@ export async function sendCreditAlertEmailActivity({
   if (admins.length === 0) {
     logger.warn(
       { workspaceId },
-      "No active admins found for credit alert email"
+      "[Credit Alert] No active admins found for credit alert email"
     );
     return;
   }
@@ -58,6 +61,6 @@ export async function sendCreditAlertEmailActivity({
       totalInitialMicroUsd,
       totalConsumedMicroUsd,
     },
-    "Sent credit usage alert emails to workspace admins"
+    "[Credit Alert] Sent credit usage alert emails to workspace admins"
   );
 }

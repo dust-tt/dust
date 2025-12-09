@@ -32,6 +32,7 @@ import type {
   ConversationWithoutContentType,
   MentionType,
   MessageType,
+  MessageVisibility,
   ModelId,
   RichMention,
   UserMessageContext,
@@ -226,6 +227,10 @@ export async function createUserMessage(
           message: UserMessageType;
         }
       | {
+          type: "delete";
+          message: UserMessageType;
+        }
+      | {
           type: "create";
           user: UserType | null;
           rank: number;
@@ -243,6 +248,7 @@ export async function createUserMessage(
 
   let context: UserMessageContext | null = null;
   let agenticMessageData: AgenticMessageData | undefined = undefined;
+  let visibility: MessageVisibility = "visible";
 
   switch (metadata.type) {
     case "edit":
@@ -254,6 +260,17 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      break;
+    case "delete":
+      // In case of delete, we use the message metadata to delete the user message.
+      rank = metadata.message.rank;
+      version = metadata.message.version + 1;
+      parentId = metadata.message.id;
+      user = metadata.message.user;
+
+      context = metadata.message.context;
+      agenticMessageData = metadata.message.agenticMessageData;
+      visibility = "deleted";
       break;
     case "create":
       // Otherwise, we create a new user message from the metadata.
@@ -331,6 +348,7 @@ export async function createUserMessage(
       version,
       userMessageId: userMessage.id,
       workspaceId: workspace.id,
+      visibility,
     },
     {
       transaction,
@@ -407,7 +425,12 @@ export const createAgentMessages = async (
       | {
           type: "retry";
           agentMessage: AgentMessageType;
-          parentId: number | null;
+          parentId: number;
+        }
+      | {
+          type: "delete";
+          agentMessage: AgentMessageType;
+          parentId: number;
         }
       | {
           type: "create";
@@ -452,6 +475,42 @@ export const createAgentMessages = async (
             version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
             workspaceId: owner.id,
+          },
+          {
+            transaction,
+          }
+        );
+
+        results.push({
+          agentMessageRow,
+          messageRow,
+          parentMessageId: metadata.agentMessage.parentMessageId,
+          parentAgentMessageId: metadata.agentMessage.parentAgentMessageId,
+          configuration: metadata.agentMessage.configuration,
+        });
+      }
+      break;
+
+    case "delete":
+      {
+        const agentConfiguration = metadata.agentMessage.configuration;
+        const agentMessageRow = await AgentMessage.create({
+          status: "cancelled",
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: agentConfiguration.version,
+          workspaceId: owner.id,
+          skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+        });
+        const messageRow = await Message.create(
+          {
+            sId: generateRandomModelSId(),
+            rank: metadata.agentMessage.rank,
+            conversationId: conversation.id,
+            parentId: metadata.parentId,
+            version: metadata.agentMessage.version + 1,
+            agentMessageId: agentMessageRow.id,
+            workspaceId: owner.id,
+            visibility: "deleted",
           },
           {
             transaction,
@@ -555,11 +614,11 @@ export const createAgentMessages = async (
       completedTs: agentMessageRow.completedAt?.getTime() ?? null,
       sId: messageRow.sId,
       type: "agent_message",
-      visibility: "visible",
+      visibility: messageRow.visibility,
       version: messageRow.version,
       parentMessageId,
       parentAgentMessageId,
-      status: "created",
+      status: agentMessageRow.status,
       actions: [],
       content: null,
       chainOfThought: null,

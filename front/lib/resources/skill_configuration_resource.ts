@@ -8,6 +8,7 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
@@ -18,10 +19,16 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  formatUserFullName,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type {
-  SkillConfiguration,
-  SkillConfigurationWithAuthor,
+  SkillConfigurationType,
+  SkillConfigurationWithAuthorType,
 } from "@app/types/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -163,6 +170,33 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return resources[0];
   }
 
+  static async fetchByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: ModelId
+  ): Promise<SkillConfigurationResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: SkillConfigurationModel,
+          as: "customSkill",
+          required: false,
+        },
+      ],
+    });
+
+    // TODO(skills 2025-12-09): Add support for global skills.
+    // When globalSkillId is set, we need to fetch the skill from the global registry
+    // and return it as a SkillConfigurationResource.
+    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
+    return customSkills.map((skill) => new this(this.model, skill.get()));
+  }
+
   get sId(): string {
     return SkillConfigurationResource.modelIdToSId({
       id: this.id,
@@ -190,7 +224,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     try {
       const workspace = auth.getNonNullableWorkspace();
 
-      const affectedCount = await SkillConfigurationResource.model.destroy({
+      const affectedCount = await this.model.destroy({
         where: {
           id: this.id,
           workspaceId: workspace.id,
@@ -206,23 +240,20 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
   toJSON(
     this: SkillConfigurationResourceWithAuthor
-  ): SkillConfigurationWithAuthor;
-  toJSON(this: SkillConfigurationResource): SkillConfiguration;
-  toJSON(): SkillConfiguration | SkillConfigurationWithAuthor {
+  ): SkillConfigurationWithAuthorType;
+  toJSON(this: SkillConfigurationResource): SkillConfigurationType;
+  toJSON(): SkillConfigurationType | SkillConfigurationWithAuthorType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
         id: config.mcpServerViewId,
         workspaceId: this.workspaceId,
       }),
     }));
-
     if (this.author) {
       return {
         sId: this.sId,
-        id: this.id,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
-        workspaceId: this.workspaceId,
         version: this.version,
         status: this.status,
         scope: this.scope,
@@ -236,6 +267,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
           sId: this.author.sId,
           createdAt: this.author.createdAt.getTime(),
           username: this.author.username,
+          fullName: formatUserFullName(this.author),
           email: this.author.email,
           firstName: this.author.firstName,
           lastName: this.author.lastName,
@@ -246,17 +278,14 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     return {
       sId: this.sId,
-      id: this.id,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      workspaceId: this.workspaceId,
       version: this.version,
       status: this.status,
       scope: this.scope,
       name: this.name,
       description: this.description,
       instructions: this.instructions,
-      authorId: this.authorId,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
     };

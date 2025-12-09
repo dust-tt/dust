@@ -15,6 +15,7 @@ import {
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
+  makeProgrammaticUsageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
@@ -36,8 +37,9 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -45,7 +47,7 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgenticMessageData,
@@ -78,6 +80,8 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
+
 /**
  * Conversation Creation, update and deletion
  */
@@ -636,7 +640,8 @@ function canAccessAgent(
 class UserMessageError extends Error {}
 
 /**
- * This method creates a new user message version, and if there are new agent mentions, run them.
+ * This method creates a new user message version. If a new message contains agent mentions, it will create new agent messages,
+ * only when there are no agent messages after the edited user message.
  */
 export async function editUserMessage(
   auth: Authenticator,
@@ -678,34 +683,6 @@ export async function editUserMessage(
       api_error: {
         type: "workspace_auth_error",
         message: "Only the author of the message can edit it",
-      },
-    });
-  }
-
-  if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Editing a message that already has agent mentions is not yet supported",
-      },
-    });
-  }
-
-  if (
-    !conversation.content[conversation.content.length - 1].some(
-      (m) => m.sId === message.sId
-    ) &&
-    mentions.filter((m) => isAgentMention(m)).length > 0
-  ) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Adding agent mentions when editing is only supported for the last message " +
-          "of the conversation",
       },
     });
   }
@@ -759,7 +736,7 @@ export async function editUserMessage(
   }
 
   try {
-    // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
+    // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
     const result = await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
@@ -781,11 +758,13 @@ export async function editUserMessage(
         ],
         transaction: t,
       });
+
       if (!messageRow || !messageRow.userMessage) {
         throw new Error(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
+
       const newerMessage = await Message.findOne({
         where: {
           workspaceId: owner.id,
@@ -795,6 +774,7 @@ export async function editUserMessage(
         },
         transaction: t,
       });
+
       if (newerMessage) {
         throw new UserMessageError(
           "Invalid user message edit request, this message was already edited."
@@ -818,17 +798,6 @@ export async function editUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      // For now agent messages are appended at the end of conversation
-      // it is fine since for now editing with new mentions is only supported
-      // for the last user message
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-
       await createUserMentions(auth, {
         mentions,
         message: userMessage,
@@ -836,26 +805,61 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      const agentMessages = await createAgentMessages(auth, {
-        conversation,
-        metadata: {
-          type: "create",
-          mentions,
-          agentConfigurations,
-          skipToolsValidation,
-          nextMessageRank,
-          userMessage,
-        },
-        transaction: t,
-      });
+      const hasAgentMentions = mentions.some(isAgentMention);
 
-      await ConversationResource.markAsUpdated(auth, { conversation, t });
+      if (hasAgentMentions) {
+        // Check if there are any agent messages after the edited user message
+        // by checking conversation.content (which is indexed by rank)
+        const hasAgentMessagesAfter = conversation.content
+          .slice(messageRow.rank + 1)
+          .some((versions) => {
+            if (versions.length === 0) {
+              return false;
+            }
+            const latestVersion = versions[versions.length - 1];
+            return isAgentMessageType(latestVersion);
+          });
+
+        let agentMessages: AgentMessageType[] = [];
+
+        // Only create agent messages if there are no agent messages after the edited user message
+        if (!hasAgentMessagesAfter) {
+          const nextMessageRank =
+            ((await Message.max<number | null, Message>("rank", {
+              where: {
+                conversationId: conversation.id,
+              },
+              transaction: t,
+            })) ?? -1) + 1;
+
+          agentMessages = await createAgentMessages(auth, {
+            conversation,
+            metadata: {
+              type: "create",
+              mentions,
+              agentConfigurations,
+              skipToolsValidation,
+              nextMessageRank,
+              userMessage,
+            },
+            transaction: t,
+          });
+        }
+
+        await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+        return {
+          userMessage,
+          agentMessages,
+        };
+      }
 
       return {
         userMessage,
         agentMessages,
       };
     });
+
     userMessage = result.userMessage;
     agentMessages = result.agentMessages;
 
@@ -979,7 +983,7 @@ export async function retryAgentMessage(
         transaction: t,
       });
 
-      if (!messageRow || !messageRow.agentMessage) {
+      if (!messageRow || !messageRow.agentMessage || !messageRow.parentId) {
         return null;
       }
       const newerMessage = await Message.findOne({
@@ -1206,6 +1210,136 @@ export async function postNewContentFragment(
   return new Ok(render);
 }
 
+export async function softDeleteUserMessage(
+  auth: Authenticator,
+  {
+    message,
+    conversation,
+  }: {
+    message: UserMessageType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<Result<{ success: true }, ConversationError>> {
+  if (message.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+
+  // Only admins or the user who sent the message can delete it.
+  if (!auth.isAdmin() && message.user?.id !== user.id) {
+    return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  const userMessage = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    const userMessage = await createUserMessage(auth, {
+      conversation,
+      content: "deleted",
+      mentions: [],
+      metadata: {
+        type: "delete",
+        message,
+      },
+      transaction: t,
+    });
+    await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+    return userMessage;
+  });
+
+  await publishMessageEventsOnMessagePostOrEdit(
+    conversation,
+    { ...userMessage, contentFragments: [] },
+    []
+  );
+
+  auditLog(
+    {
+      workspaceId: owner.sId,
+      userId: user.sId,
+      conversationId: conversation.sId,
+      messageId: message.sId,
+    },
+    auth.isAdmin()
+      ? "Admin deleted a user message"
+      : "User deleted their message"
+  );
+
+  return new Ok({ success: true });
+}
+
+export async function softDeleteAgentMessage(
+  auth: Authenticator,
+  {
+    message,
+    conversation,
+  }: {
+    message: AgentMessageType;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<Result<{ success: true }, ConversationError>> {
+  if (message.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+
+  const parentMessage = await Message.findOne({
+    where: {
+      sId: message.parentMessageId,
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!parentMessage || !parentMessage.userMessage) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  if (parentMessage.userMessage.userId !== user.id) {
+    return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  const agentMessages = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    return createAgentMessages(auth, {
+      conversation,
+      metadata: {
+        type: "delete",
+        agentMessage: message,
+        parentId: parentMessage.id,
+      },
+      transaction: t,
+    });
+  });
+
+  await publishAgentMessagesEvents(conversation, agentMessages);
+
+  auditLog(
+    {
+      workspaceId: owner.sId,
+      userId: user.sId,
+      conversationId: conversation.sId,
+      messageId: message.sId,
+    },
+    "User deleted an agent message"
+  );
+
+  return new Ok({ success: true });
+}
+
 export interface MessageLimit {
   isLimitReached: boolean;
   limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
@@ -1223,14 +1357,55 @@ async function isMessagesLimitReached(
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
-  const featureFlags = await getFeatureFlags(owner);
 
-  // We block programmatic usage at the api level and track
-  // it in agent loop, so it is excluded from fair use
-  if (
-    featureFlags.includes("ppul") &&
-    isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
-  ) {
+  // For programmatic usage, apply credit-based rate limiting.
+  // This prevents close-to-0 credit attacks where many messages are sent simultaneously
+  // before token usage is computed. Rate limit is based on total credit amount in dollars.
+  if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+    const activeCredits = await CreditResource.listActive(auth);
+
+    // Calculate total remaining credits in dollars (micro USD / 1,000,000).
+    const totalRemainingCreditsDollars =
+      activeCredits.reduce(
+        (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
+        0
+      ) / 1_000_000;
+
+    // Rate limit: creditDollarAmount messages per minute.
+    // Minimum of 1 to allow at least some messages even with very low credits.
+    const maxMessagesPerMinute = Math.max(
+      1,
+      Math.floor(totalRemainingCreditsDollars)
+    );
+
+    const remainingMessages = await rateLimiter({
+      key: makeProgrammaticUsageRateLimitKeyForWorkspace(owner),
+      maxPerTimeframe: maxMessagesPerMinute,
+      timeframeSeconds: 60,
+      logger,
+    });
+
+    if (remainingMessages <= 0) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          totalRemainingCreditsDollars,
+        },
+        "Pre-emptive rate limit triggered for programmatic usage."
+      );
+
+      statsDClient.increment(
+        "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
+        1,
+        { workspace_id: owner.sId }
+      );
+
+      return {
+        isLimitReached: true,
+        limitType: "rate_limit_error",
+      };
+    }
+
     return {
       isLimitReached: false,
       limitType: null,
