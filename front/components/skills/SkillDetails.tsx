@@ -44,7 +44,14 @@ export function SkillDetails({
   onClose,
 }: SkillDetailsProps) {
   return (
-    <Sheet open={!!skillConfiguration} onOpenChange={onClose}>
+    <Sheet
+      open={!!skillConfiguration}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <SheetContent size="lg">
         <VisuallyHidden>
           <SheetTitle />
