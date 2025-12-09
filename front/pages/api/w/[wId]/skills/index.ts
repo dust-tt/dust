@@ -7,16 +7,26 @@ import { SkillConfigurationResource } from "@app/lib/resources/skill_configurati
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillConfigurationWithAuthorType[];
+  skillConfigurations: SkillConfigurationType[];
+};
+
+export type GetSkillConfigurationsWithRelationsResponseBody = {
+  skillConfigurations: (SkillConfigurationType & SkillConfigurationRelations)[];
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetSkillConfigurationsResponseBody>
+    WithAPIErrorResponse<
+      | GetSkillConfigurationsResponseBody
+      | GetSkillConfigurationsWithRelationsResponseBody
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -45,8 +55,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const { withRelations } = req.query;
+
+      if (withRelations === "true") {
+        const skillConfigurations =
+          await SkillConfigurationResource.fetchWithRelations(auth);
+
+        return res.status(200).json({
+          skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),
+        });
+      }
+
       const skillConfigurations =
-        await SkillConfigurationResource.fetchWithAuthor(auth);
+        await SkillConfigurationResource.fetchAllAvailableSkills(auth);
 
       return res.status(200).json({
         skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),

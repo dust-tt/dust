@@ -1,13 +1,13 @@
 import type {
   Attributes,
   CreationAttributes,
-  Model,
   ModelStatic,
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
@@ -17,7 +17,7 @@ import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skil
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -28,21 +28,16 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  AgentsUsageType,
   ConversationType,
   ModelId,
   Result,
 } from "@app/types";
-import {
-  Err,
-  formatUserFullName,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
 import type {
+  SkillConfigurationRelations,
   SkillConfigurationType,
-  SkillConfigurationWithAuthorType,
 } from "@app/types/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -50,17 +45,10 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SkillConfigurationResource
   extends ReadonlyAttributesType<SkillConfigurationModel> {}
-
-export type SkillConfigurationResourceWithAuthor =
-  SkillConfigurationResource & {
-    author: Attributes<UserModel>;
-  };
-
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillConfigurationResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
-  readonly author?: Attributes<UserModel>;
   readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
   readonly canEdit: boolean;
 
@@ -68,18 +56,15 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
-      author,
       mcpServerConfigurations,
       canEdit = true,
     }: {
-      author?: Attributes<UserModel>;
       mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
       canEdit?: boolean;
     } = {}
   ) {
     super(SkillConfigurationModel, blob);
 
-    this.author = author;
     this.mcpServerConfigurations = mcpServerConfigurations ?? [];
     this.canEdit = canEdit;
   }
@@ -100,14 +85,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
 
     return new this(this.model, skillConfiguration.get());
-  }
-
-  static async fetchWithAuthor(
-    auth: Authenticator
-  ): Promise<SkillConfigurationResourceWithAuthor[]> {
-    return this.baseFetch(auth, {
-      includes: [{ model: UserModel, as: "author", required: true }],
-    });
   }
 
   static async fetchByModelIdWithAuth(
@@ -203,19 +180,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  private static async baseFetch<T extends Model, S extends string>(
-    auth: Authenticator,
-    options: ResourceFindOptions<SkillConfigurationModel> & {
-      includes: [{ model: ModelStatic<T>; as: S; required: true }];
-    }
-  ): Promise<(SkillConfigurationResource & { [K in S]: Attributes<T> })[]>;
-
-  private static async baseFetch(
-    auth: Authenticator,
-    options?: ResourceFindOptions<SkillConfigurationModel>
-  ): Promise<SkillConfigurationResource[]>;
-
-  private static async baseFetch(
+  protected static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<SkillConfigurationModel> = {}
   ): Promise<SkillConfigurationResource[]> {
@@ -311,7 +276,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return skillConfigurations.map(
       (c) =>
         new this(this.model, c.get(), {
-          author: c.author?.get(),
           mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
           canEdit: canEditMap.get(c.id) ?? false,
         })
@@ -354,6 +318,66 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       },
       ...(limit ? { limit } : {}),
     });
+  }
+
+  // Static method for fetching with relations (usage, etc.)
+  static async fetchWithRelations(
+    auth: Authenticator
+  ): Promise<SkillConfigurationResourceWithRelations[]> {
+    const resources = await this.baseFetch(auth, {});
+
+    if (resources.length === 0) {
+      return [];
+    }
+
+    // Fetch usage for each skill individually
+    const resourcesWithRelations = await Promise.all(
+      resources.map(async (resource) => {
+        const usage = await resource.fetchUsage(auth);
+        return new SkillConfigurationResourceWithRelations(resource, usage);
+      })
+    );
+
+    return resourcesWithRelations;
+  }
+
+  // Fetch usage data for this skill
+  // TODO(skills 2025-12-10): Add support for global skills
+  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch agent-skill links for this skill
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        customSkillId: this.id,
+      },
+    });
+
+    if (agentSkills.length === 0) {
+      return { count: 0, agents: [] };
+    }
+
+    // Get agent configuration IDs
+    const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
+
+    // Fetch active agent configurations
+    const agents = await AgentConfigurationModel.findAll({
+      where: {
+        id: { [Op.in]: agentConfigIds },
+        workspaceId: workspace.id,
+        status: "active",
+      },
+    });
+
+    const sortedAgents = agents
+      .map((agent) => ({ sId: agent.sId, name: agent.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      count: sortedAgents.length,
+      agents: sortedAgents,
+    };
   }
 
   async archive(
@@ -537,43 +561,13 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return new Ok(undefined);
   }
 
-  toJSON(
-    this: SkillConfigurationResourceWithAuthor
-  ): SkillConfigurationWithAuthorType;
-  toJSON(this: SkillConfigurationResource): SkillConfigurationType;
-  toJSON(): SkillConfigurationType | SkillConfigurationWithAuthorType {
+  toJSON(): SkillConfigurationType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
         id: config.mcpServerViewId,
         workspaceId: this.workspaceId,
       }),
     }));
-    if (this.author) {
-      return {
-        id: this.id,
-        sId: this.sId,
-        createdAt: this.createdAt.getTime(),
-        updatedAt: this.updatedAt.getTime(),
-        version: this.version,
-        status: this.status,
-        name: this.name,
-        description: this.description,
-        instructions: this.instructions,
-        requestedSpaceIds: this.requestedSpaceIds,
-        tools,
-        author: {
-          id: this.author.id,
-          sId: this.author.sId,
-          createdAt: this.author.createdAt.getTime(),
-          username: this.author.username,
-          fullName: formatUserFullName(this.author),
-          email: this.author.email,
-          firstName: this.author.firstName,
-          lastName: this.author.lastName,
-          image: this.author.imageUrl,
-        },
-      };
-    }
 
     return {
       id: this.id,
@@ -587,6 +581,27 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
+    };
+  }
+}
+
+// Resource with relations - extends base and includes relations data that we don't want to include in the base resource
+// Not intended for direct instantiation
+class SkillConfigurationResourceWithRelations extends SkillConfigurationResource {
+  readonly usage: AgentsUsageType;
+
+  constructor(resource: SkillConfigurationResource, usage: AgentsUsageType) {
+    super(SkillConfigurationResourceWithRelations.model, resource, {
+      mcpServerConfigurations: resource.mcpServerConfigurations,
+      canEdit: resource.canEdit,
+    });
+    this.usage = usage;
+  }
+
+  override toJSON(): SkillConfigurationType & SkillConfigurationRelations {
+    return {
+      ...super.toJSON(),
+      usage: this.usage,
     };
   }
 }

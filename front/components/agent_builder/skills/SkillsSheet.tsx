@@ -12,7 +12,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 const SKILLS_SHEET_PAGE_IDS = {
   SELECTION: "skill-selection",
@@ -26,7 +26,7 @@ interface SkillsSheetProps {
 }
 
 interface SkillCardProps {
-  skill: SkillConfigurationWithAuthorType;
+  skill: SkillConfigurationType;
   isSelected: boolean;
   onClick: () => void;
 }
@@ -89,26 +89,23 @@ export function SkillsSheet({
     );
   }, [skillConfigurations, searchQuery]);
 
-  const handleSkillToggle = useCallback(
-    (skill: SkillConfigurationWithAuthorType) => {
-      setLocalSelectedSkills((prev) => {
-        const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
-        if (isAlreadySelected) {
-          return prev.filter((s) => s.sId !== skill.sId);
-        } else {
-          return [
-            ...prev,
-            {
-              sId: skill.sId,
-              name: skill.name,
-              description: skill.description,
-            },
-          ];
-        }
-      });
-    },
-    []
-  );
+  const handleSkillToggle = useCallback((skill: SkillConfigurationType) => {
+    setLocalSelectedSkills((prev) => {
+      const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
+      if (isAlreadySelected) {
+        return prev.filter((s) => s.sId !== skill.sId);
+      } else {
+        return [
+          ...prev,
+          {
+            sId: skill.sId,
+            name: skill.name,
+            description: skill.description,
+          },
+        ];
+      }
+    });
+  }, []);
 
   const handleSave = useCallback(() => {
     onSave(localSelectedSkills);

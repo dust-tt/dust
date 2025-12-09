@@ -1,5 +1,5 @@
+import type { AgentsUsageType } from "./data_source";
 import type { ModelId } from "./shared/model_id";
-import type { UserType } from "./user";
 
 export type SkillStatus = "active" | "archived";
 
@@ -17,6 +17,6 @@ export type SkillConfigurationType = {
   tools: { mcpServerViewId: string }[];
 };
 
-export type SkillConfigurationWithAuthorType = SkillConfigurationType & {
-  author: Omit<UserType, "lastLoginAt" | "provider">;
+export type SkillConfigurationRelations = {
+  usage: AgentsUsageType;
 };
