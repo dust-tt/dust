@@ -1,5 +1,4 @@
 import { Button, Page, PlusIcon } from "@dust-tt/sparkle";
-import { PuzzleIcon } from "lucide-react";
 import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 
@@ -10,6 +9,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
@@ -66,8 +66,7 @@ export default function WorkspaceSkills({
           <title>Dust - Manage Skills</title>
         </Head>
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-          {/* TODO(skills 2025-12-05): use the right icon */}
-          <Page.Header title="Manage Skills" icon={PuzzleIcon} />
+          <Page.Header title="Manage Skills" icon={SKILL_ICON} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex justify-end">
               <Button
