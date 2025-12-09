@@ -40,20 +40,18 @@ async function handler(
 
   const conversationId = req.query.cId;
 
-  if (conversationId) {
-    const conversationRes = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversationRes) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: "Conversation not found",
-        },
-      });
-    }
+  const conversationRes = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversationRes) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
   }
 
   const { select: selectParam } = req.query;
@@ -78,8 +76,14 @@ async function handler(
     return { agents, users };
   })();
 
+  const { preferredAgentId: preferredAgentIdParam } = req.query;
+  const preferredAgentId =
+    typeof preferredAgentIdParam === "string" ? preferredAgentIdParam : null;
+
   const suggestions = await suggestionsOfMentions(auth, {
     query,
+    conversationId,
+    preferredAgentId,
     select,
   });
 
