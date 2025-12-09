@@ -32,7 +32,6 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-<<<<<<< HEAD
 import { useSkillConfigurationTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import { emptyArray } from "@app/lib/swr/swr";
@@ -44,13 +43,6 @@ function processActionsFromStorage(actions: BuilderAction[]): BuilderAction[] {
 
 interface SkillBuilderProps {
   skillConfiguration?: SkillConfigurationType;
-=======
-import { useSkillEditors } from "@app/lib/swr/skill_editors";
-import type { SkillConfiguration } from "@app/types/skill_configuration";
-
-interface SkillBuilderProps {
-  skillConfiguration?: SkillConfiguration;
->>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
   duplicateSkillId?: string | null;
 }
 
@@ -63,26 +55,20 @@ export default function SkillBuilder({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-<<<<<<< HEAD
   const { actions, isActionsLoading } = useSkillConfigurationTools(
     owner.sId,
     skillConfiguration?.sId ?? null
   );
 
-=======
->>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
   const { editors } = useSkillEditors({
     owner,
     skillConfigurationId: skillConfiguration?.sId ?? null,
   });
 
-<<<<<<< HEAD
   const processedActions = useMemo(() => {
     return processActionsFromStorage(actions ?? emptyArray());
   }, [actions]);
 
-=======
->>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
   const defaultValues = useMemo(() => {
     if (duplicateSkillId && skillConfiguration) {
       return transformDuplicateSkillToFormData(skillConfiguration, user);
@@ -104,26 +90,19 @@ export default function SkillBuilder({
     },
   });
 
-<<<<<<< HEAD
   // Populate editors and tools reactively
-=======
->>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
   useEffect(() => {
     const currentValues = form.getValues();
 
     form.reset({
       ...currentValues,
-<<<<<<< HEAD
       tools: processedActions,
-=======
->>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
       editors: duplicateSkillId
         ? [user]
         : skillConfiguration || editors.length > 0
           ? editors
           : [user],
     });
-<<<<<<< HEAD
   }, [
     isActionsLoading,
     processedActions,
@@ -133,9 +112,6 @@ export default function SkillBuilder({
     user,
     skillConfiguration,
   ]);
-=======
-  }, [editors, form, duplicateSkillId, user, skillConfiguration]);
->>>>>>> c8ec270dd6 ([skill_builder] - feature: enhance SkillBuilder to support editing and duplicating skills)
 
   const isCreatingNew = duplicateSkillId || !skillConfiguration;
   const { isDirty } = form.formState;
