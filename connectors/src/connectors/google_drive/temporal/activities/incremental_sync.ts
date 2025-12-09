@@ -24,9 +24,9 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveSyncToken,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveSyncTokenModel,
 } from "@connectors/lib/models/google_drive";
 import { heartbeat } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
@@ -66,7 +66,7 @@ export async function incrementalSync(
         isSharedDrive
       );
     }
-    const config = await GoogleDriveConfig.findOne({
+    const config = await GoogleDriveConfigModel.findOne({
       where: {
         connectorId: connectorId,
       },
@@ -164,7 +164,7 @@ export async function incrementalSync(
       ) {
         // The current file is not in the list of selected folders.
         // If we have it locally, we need to garbage collect it.
-        const localFile = await GoogleDriveFiles.findOne({
+        const localFile = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connectorId,
             driveFileId: change.file.id,
@@ -214,7 +214,7 @@ export async function incrementalSync(
           driveFile,
           startSyncTs
         );
-        const localFolder = await GoogleDriveFiles.findOne({
+        const localFolder = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connectorId,
             driveFileId: change.file.id,
@@ -274,7 +274,7 @@ export async function incrementalSync(
       ? changesRes.data.nextPageToken
       : undefined;
     if (changesRes.data.newStartPageToken) {
-      await GoogleDriveSyncToken.upsert({
+      await GoogleDriveSyncTokenModel.upsert({
         connectorId: connectorId,
         driveId: driveId,
         syncToken: changesRes.data.newStartPageToken,
@@ -320,12 +320,12 @@ export async function incrementalSync(
 
 async function recurseUpdateParents(
   connector: ConnectorResource,
-  file: GoogleDriveFiles,
+  file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger
 ) {
   await heartbeat();
-  const children = await GoogleDriveFiles.findAll({
+  const children = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connector.id,
       parentId: file.driveFileId,

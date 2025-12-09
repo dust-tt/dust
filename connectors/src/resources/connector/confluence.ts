@@ -1,10 +1,10 @@
 import type { Transaction } from "sequelize";
 
 import {
-  ConfluenceConfiguration,
-  ConfluenceFolder,
-  ConfluencePage,
-  ConfluenceSpace,
+  ConfluenceConfigurationModel,
+  ConfluenceFolderModel,
+  ConfluencePageModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
 import type {
   ConnectorProviderConfigurationType,
@@ -20,10 +20,10 @@ export class ConfluenceConnectorStrategy
 {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<ConfluenceConfiguration>,
+    blob: WithCreationAttributes<ConfluenceConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["confluence"] | null> {
-    await ConfluenceConfiguration.create(
+    await ConfluenceConfigurationModel.create(
       {
         ...blob,
         connectorId,
@@ -38,25 +38,25 @@ export class ConfluenceConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await ConfluenceConfiguration.destroy({
+    await ConfluenceConfigurationModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await ConfluenceSpace.destroy({
+    await ConfluenceSpaceModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await ConfluenceFolder.destroy({
+    await ConfluenceFolderModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await ConfluencePage.destroy({
+    await ConfluencePageModel.destroy({
       where: {
         connectorId: connector.id,
       },

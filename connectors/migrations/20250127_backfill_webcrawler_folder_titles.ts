@@ -6,7 +6,7 @@ import { makeScript } from "scripts/helpers";
 import { getDisplayNameForFolder } from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { WebCrawlerFolder } from "@connectors/lib/models/webcrawler";
+import { WebCrawlerFolderModel } from "@connectors/lib/models/webcrawler";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -22,13 +22,13 @@ async function migrateConnector(
 
   logger.info("MIGRATE");
 
-  const folders = await WebCrawlerFolder.findAll({
+  const folders = await WebCrawlerFolderModel.findAll({
     where: { connectorId },
   });
 
   const foldersByUrl = _.keyBy(folders, "url");
 
-  const getParents = (folder: WebCrawlerFolder): string[] => {
+  const getParents = (folder: WebCrawlerFolderModel): string[] => {
     assert(
       folder.parentUrl === null || foldersByUrl[folder.parentUrl],
       "Parent folder not found"

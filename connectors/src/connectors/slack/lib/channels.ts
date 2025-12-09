@@ -13,7 +13,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -62,7 +62,7 @@ export async function updateSlackChannelInConnectorsDb({
     throw new Error(`Could not find connector ${connectorId}`);
   }
 
-  let channel = await SlackChannel.findOne({
+  let channel = await SlackChannelModel.findOne({
     where: {
       connectorId,
       slackChannelId,
@@ -71,7 +71,7 @@ export async function updateSlackChannelInConnectorsDb({
 
   if (!channel) {
     if (createIfNotExistsWithParams) {
-      channel = await SlackChannel.create({
+      channel = await SlackChannelModel.create({
         connectorId,
         slackChannelId,
         slackChannelName,
@@ -120,7 +120,7 @@ export async function updateSlackChannelInCoreDb(
     );
   }
 
-  const channelOnDb = await SlackChannel.findOne({
+  const channelOnDb = await SlackChannelModel.findOne({
     where: {
       connectorId: connector.id,
       slackChannelId: channelId,
@@ -511,7 +511,7 @@ export async function getChannelsToSync(
 ) {
   const [remoteChannels, localChannels] = await Promise.all([
     getJoinedChannels(slackClient, connectorId),
-    SlackChannel.findAll({
+    SlackChannelModel.findAll({
       where: {
         connectorId,
         permission: {

@@ -10,7 +10,7 @@ import { getChannelById } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
@@ -64,7 +64,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   const slackChannelIds = slackChannelInternalIds.map((s) =>
     slackChannelIdFromInternalId(s)
   );
-  const slackChannels = await SlackChannel.findAll({
+  const slackChannels = await SlackChannelModel.findAll({
     where: {
       slackChannelId: slackChannelIds,
       connectorId,
@@ -103,7 +103,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
                 `Unexpected error: Unable to find Slack channel ${slackChannelId}.`
               );
             }
-            return await SlackChannel.create(
+            return await SlackChannelModel.create(
               {
                 connectorId: parseInt(connectorId),
                 slackChannelId,
@@ -126,7 +126,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       );
       slackChannelIds.push(...createdChannels.map((c) => c.slackChannelId));
     }
-    await SlackChannel.update(
+    await SlackChannelModel.update(
       { agentConfigurationId: null },
       {
         where: {
@@ -138,7 +138,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     );
     await Promise.all(
       slackChannelIds.map((slackChannelId) =>
-        SlackChannel.update(
+        SlackChannelModel.update(
           {
             agentConfigurationId,
             autoRespondWithoutMention: autoRespondWithoutMention ?? false,
@@ -227,7 +227,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
     });
   }
 
-  const slackChannels = await SlackChannel.findAll({
+  const slackChannels = await SlackChannelModel.findAll({
     where: {
       connectorId,
       agentConfigurationId: {

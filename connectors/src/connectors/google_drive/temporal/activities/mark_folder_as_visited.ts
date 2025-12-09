@@ -8,7 +8,7 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
@@ -61,7 +61,7 @@ export async function markFolderAsVisited(
     sourceUrl: getSourceUrlForGoogleDriveFiles(file),
   });
 
-  await GoogleDriveFiles.upsert({
+  await GoogleDriveFilesModel.upsert({
     connectorId: connectorId,
     dustFileId: getInternalId(driveFileId),
     driveFileId: file.id,

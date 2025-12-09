@@ -43,7 +43,7 @@ MicrosoftBotConfigurationModel.init(
   }
 );
 
-export class MicrosoftBotMessage extends ConnectorBaseModel<MicrosoftBotMessage> {
+export class MicrosoftBotMessageModel extends ConnectorBaseModel<MicrosoftBotMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -57,7 +57,7 @@ export class MicrosoftBotMessage extends ConnectorBaseModel<MicrosoftBotMessage>
   declare dustAgentMessageId?: string;
 }
 
-MicrosoftBotMessage.init(
+MicrosoftBotMessageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,

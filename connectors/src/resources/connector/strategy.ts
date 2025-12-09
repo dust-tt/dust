@@ -3,15 +3,15 @@ import { assertNever } from "@dust-tt/client";
 import type { CreationAttributes, Model, Transaction } from "sequelize";
 
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
-import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
-import type { GithubConnectorState } from "@connectors/lib/models/github";
+import type { GithubConnectorStateModel } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
-import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
+import type { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
-import type { NotionConnectorState } from "@connectors/lib/models/notion";
+import type { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
@@ -47,14 +47,14 @@ export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
 // ConfigurationResource.
 
 export interface ConnectorProviderModelM {
-  confluence: ConfluenceConfiguration;
+  confluence: ConfluenceConfigurationModel;
   discord_bot: DiscordConfigurationModel;
-  github: GithubConnectorState;
-  google_drive: GoogleDriveConfig;
+  github: GithubConnectorStateModel;
+  google_drive: GoogleDriveConfigModel;
   intercom: IntercomWorkspaceModel;
   microsoft: MicrosoftConfigurationModel;
   microsoft_bot: MicrosoftBotConfigurationModel;
-  notion: NotionConnectorState;
+  notion: NotionConnectorStateModel;
   slack: SlackConfigurationModel;
   slack_bot: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;

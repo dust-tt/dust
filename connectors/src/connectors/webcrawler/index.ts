@@ -19,8 +19,8 @@ import {
 } from "@connectors/connectors/webcrawler/lib/utils";
 import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -209,7 +209,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     }
     let parentUrl: string | null = null;
     if (parentInternalId) {
-      const parent = await WebCrawlerFolder.findOne({
+      const parent = await WebCrawlerFolderModel.findOne({
         where: {
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -229,7 +229,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       parentUrl = parent.url;
     }
 
-    const pages = await WebCrawlerPage.findAll({
+    const pages = await WebCrawlerPageModel.findAll({
       where: {
         connectorId: connector.id,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -237,7 +237,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       },
     });
 
-    const folders = await WebCrawlerFolder.findAll({
+    const folders = await WebCrawlerFolderModel.findAll({
       where: {
         connectorId: connector.id,
         webcrawlerConfigurationId: webCrawlerConfig.id,

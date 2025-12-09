@@ -18,7 +18,7 @@ import { notionDeletionCrawlWorkflow } from "@connectors/connectors/notion/tempo
 import { notionGarbageCollectionWorkflow } from "@connectors/connectors/notion/temporal/workflows/garbage_collection";
 import { processDatabaseUpsertQueueWorkflow } from "@connectors/connectors/notion/temporal/workflows/upsert_database_queue";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -78,7 +78,7 @@ export async function launchNotionSyncWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId,
     },
@@ -180,7 +180,7 @@ export async function stopNotionSyncWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
 
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId,
     },

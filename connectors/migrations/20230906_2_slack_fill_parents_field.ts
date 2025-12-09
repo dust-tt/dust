@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
-import { SlackMessages } from "@connectors/lib/models/slack";
+import { SlackMessagesModel } from "@connectors/lib/models/slack";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -57,7 +57,7 @@ async function main() {
 async function updateParentsFieldForConnector(connector: ConnectorModel) {
   // get all distinct documentIds and their channel ids from slack messages in
   // this connector
-  const documentIdsAndChannels = await SlackMessages.findAll({
+  const documentIdsAndChannels = await SlackMessagesModel.findAll({
     where: {
       connectorId: connector.id,
     },

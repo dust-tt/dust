@@ -28,7 +28,7 @@ import {
 import { launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow } from "@connectors/connectors/slack/temporal/client";
 import {
   SlackBotWhitelistModel,
-  SlackChannel,
+  SlackChannelModel,
 } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -130,7 +130,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
       );
 
       if (legacyConnector) {
-        const slackBotChannelsCount = await SlackChannel.count({
+        const slackBotChannelsCount = await SlackChannelModel.count({
           where: {
             connectorId: connector.id,
           },
@@ -140,7 +140,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
         ) {
           // Migrate channels from legacy slack connector to keep default bot per Slack channel
           // functionality
-          const slackChannels = await SlackChannel.findAll({
+          const slackChannels = await SlackChannelModel.findAll({
             where: {
               connectorId: legacyConnector.id,
               // Only migrate channels with agent configuration
@@ -150,7 +150,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
 
           if (slackChannels.length > 0) {
             const creationRecords = slackChannels.map(
-              (channel): CreationAttributes<SlackChannel> => ({
+              (channel): CreationAttributes<SlackChannelModel> => ({
                 connectorId: connector.id, // Update to slack_bot connector ID
                 createdAt: channel.createdAt, // Keep the original createdAt field
                 updatedAt: channel.updatedAt, // Keep the original updatedAt field
@@ -162,7 +162,9 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                 agentConfigurationId: channel.agentConfigurationId,
               })
             );
-            await SlackChannel.bulkCreate(creationRecords, { transaction });
+            await SlackChannelModel.bulkCreate(creationRecords, {
+              transaction,
+            });
 
             channelsMigrated = slackChannels.length;
             channelsMigrationStatus = "success";
@@ -627,7 +629,7 @@ async function getFilteredChannels(
 
   const [remoteChannels, localChannels] = await Promise.all([
     getJoinedChannels(slackClient, connectorId),
-    SlackChannel.findAll({
+    SlackChannelModel.findAll({
       where: {
         connectorId,
         // Here we do not filter out channels with skipReason because we need to know the ones that
@@ -637,11 +639,11 @@ async function getFilteredChannels(
   ]);
 
   const localChannelsById = localChannels.reduce(
-    (acc: Record<string, SlackChannel>, ch: SlackChannel) => {
+    (acc: Record<string, SlackChannelModel>, ch: SlackChannelModel) => {
       acc[ch.slackChannelId] = ch;
       return acc;
     },
-    {} as Record<string, SlackChannel>
+    {} as Record<string, SlackChannelModel>
   );
 
   for (const remoteChannel of remoteChannels) {

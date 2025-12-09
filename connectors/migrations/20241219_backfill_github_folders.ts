@@ -11,9 +11,9 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
-  GithubCodeDirectory,
-  GithubCodeRepository,
-  GithubConnectorState,
+  GithubCodeDirectoryModel,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -28,7 +28,7 @@ async function upsertFoldersForConnector(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const connectorId = connector.id;
 
-  const repositories = await GithubCodeRepository.findAll({
+  const repositories = await GithubCodeRepositoryModel.findAll({
     where: { connectorId },
   });
 
@@ -87,7 +87,7 @@ async function upsertFoldersForConnector(
       logger.info(`Would upsert discussions folder ${discussionsInternalId}`);
     }
 
-    const connectorState = await GithubConnectorState.findOne({
+    const connectorState = await GithubConnectorStateModel.findOne({
       where: { connectorId },
     });
     if (connectorState?.codeSyncEnabled) {
@@ -107,7 +107,7 @@ async function upsertFoldersForConnector(
         logger.info(`Would upsert code root folder ${codeRootInternalId}`);
       }
 
-      const directories = await GithubCodeDirectory.findAll({
+      const directories = await GithubCodeDirectoryModel.findAll({
         where: { connectorId },
       });
 

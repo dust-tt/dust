@@ -33,8 +33,8 @@ import {
 } from "@connectors/lib/data_sources";
 import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import {
   reportInitialSyncProgress,
@@ -375,9 +375,9 @@ export async function webCrawlerGarbageCollector(
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  let pagesToDelete: WebCrawlerPage[] = [];
+  let pagesToDelete: WebCrawlerPageModel[] = [];
   do {
-    pagesToDelete = await WebCrawlerPage.findAll({
+    pagesToDelete = await WebCrawlerPageModel.findAll({
       where: {
         connectorId,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -398,9 +398,9 @@ export async function webCrawlerGarbageCollector(
     }
   } while (pagesToDelete.length > 0);
 
-  let foldersToDelete: WebCrawlerFolder[] = [];
+  let foldersToDelete: WebCrawlerFolderModel[] = [];
   do {
-    foldersToDelete = await WebCrawlerFolder.findAll({
+    foldersToDelete = await WebCrawlerFolderModel.findAll({
       where: {
         connectorId,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -565,7 +565,7 @@ export async function firecrawlCrawlPage(
     const logicalParent = isTopFolder(sourceUrl)
       ? null
       : getFolderForUrl(folder);
-    const [webCrawlerFolder] = await WebCrawlerFolder.upsert({
+    const [webCrawlerFolder] = await WebCrawlerFolderModel.upsert({
       url: folder,
       parentUrl: logicalParent,
       connectorId: connector.id,
@@ -597,7 +597,7 @@ export async function firecrawlCrawlPage(
     ressourceType: "document",
   });
 
-  await WebCrawlerPage.upsert({
+  await WebCrawlerPageModel.upsert({
     url: sourceUrl,
     parentUrl: isTopFolder(sourceUrl) ? null : getFolderForUrl(sourceUrl),
     connectorId: connector.id,
@@ -697,7 +697,7 @@ export async function firecrawlCrawlPage(
   if (!connector?.firstSuccessfulSyncTime) {
     // If this is the first sync we report the progress. This is a bit racy but that's not a big
     // problem as this is simple reporting of initial progress.
-    const pagesCount = await WebCrawlerPage.count({
+    const pagesCount = await WebCrawlerPageModel.count({
       where: {
         connectorId,
         webcrawlerConfigurationId: webCrawlerConfig.id,

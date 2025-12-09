@@ -10,8 +10,8 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
-  GoogleDriveFiles,
-  GoogleDriveSheet,
+  GoogleDriveFilesModel,
+  GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -54,16 +54,15 @@ async function migrate({
   const parentsMap: Record<string, string | null> = {};
   let nextId: number | undefined = 0;
   do {
-    const googleDriveFiles: GoogleDriveFiles[] = await GoogleDriveFiles.findAll(
-      {
+    const googleDriveFiles: GoogleDriveFilesModel[] =
+      await GoogleDriveFilesModel.findAll({
         where: {
           connectorId: connector.id,
           id: {
             [Op.gt]: nextId,
           },
         },
-      }
-    );
+      });
 
     googleDriveFiles.forEach((file) => {
       parentsMap[file.driveFileId] = file.parentId;
@@ -74,8 +73,8 @@ async function migrate({
 
   nextId = 0;
   do {
-    const googleDriveFiles: GoogleDriveFiles[] = await GoogleDriveFiles.findAll(
-      {
+    const googleDriveFiles: GoogleDriveFilesModel[] =
+      await GoogleDriveFilesModel.findAll({
         where: {
           connectorId: connector.id,
           id: {
@@ -87,8 +86,7 @@ async function migrate({
         },
         order: [["id", "ASC"]],
         limit: QUERY_BATCH_SIZE,
-      }
-    );
+      });
 
     await concurrentExecutor(
       googleDriveFiles,
@@ -163,8 +161,8 @@ async function migrate({
 
   nextId = 0;
   do {
-    const googleDriveSheets: GoogleDriveSheet[] =
-      await GoogleDriveSheet.findAll({
+    const googleDriveSheets: GoogleDriveSheetModel[] =
+      await GoogleDriveSheetModel.findAll({
         where: {
           connectorId: connector.id,
           id: {

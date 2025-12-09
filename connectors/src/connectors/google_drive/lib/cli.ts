@@ -27,9 +27,9 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveFolders,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
 } from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -179,7 +179,7 @@ export const google_drive = async ({
 
       // Upsert parents if missing
       for (const parent of reversedParents) {
-        const file = await GoogleDriveFiles.findOne({
+        const file = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connector.id,
             driveFileId: parent,
@@ -241,7 +241,7 @@ export const google_drive = async ({
         if (!connectorResource) {
           throw new Error("Connector not found");
         }
-        const existingFile = await GoogleDriveFiles.findOne({
+        const existingFile = await GoogleDriveFilesModel.findOne({
           where: {
             driveFileId: getDriveFileId(fileId),
             connectorId: connector.id,
@@ -275,7 +275,7 @@ export const google_drive = async ({
       if (!args.fileId) {
         throw new Error("Missing --fileId argument");
       }
-      const file = await GoogleDriveFiles.findOne({
+      const file = await GoogleDriveFilesModel.findOne({
         where: {
           connectorId: connector.id,
           dustFileId: args.fileId,
@@ -325,7 +325,7 @@ export const google_drive = async ({
         throw new Error("Missing --fileId argument");
       }
 
-      const existingFile = await GoogleDriveFiles.findOne({
+      const existingFile = await GoogleDriveFilesModel.findOne({
         where: {
           driveFileId: args.fileId,
           connectorId: connector.id,
@@ -336,7 +336,7 @@ export const google_drive = async ({
           skipReason: args.reason || "blacklisted",
         });
       } else {
-        await GoogleDriveFiles.create({
+        await GoogleDriveFilesModel.create({
           driveFileId: args.fileId,
           dustFileId: getInternalId(args.fileId),
           name: "unknown",
@@ -351,7 +351,7 @@ export const google_drive = async ({
 
     case "export-folder-structure": {
       const connector = await getConnector(args);
-      const config = await GoogleDriveConfig.findOne({
+      const config = await GoogleDriveConfigModel.findOne({
         where: {
           connectorId: connector.id,
         },
@@ -366,7 +366,7 @@ export const google_drive = async ({
       const drive = await getDriveClient(authCredentials);
 
       // Get all folders configured to sync
-      const foldersToSync = await GoogleDriveFolders.findAll({
+      const foldersToSync = await GoogleDriveFoldersModel.findAll({
         where: {
           connectorId: connector.id,
         },
@@ -411,7 +411,7 @@ export const google_drive = async ({
         });
 
         // Get lastSeenTs from database if it exists
-        const folderFile = await GoogleDriveFiles.findOne({
+        const folderFile = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connector.id,
             driveFileId: folderId,
