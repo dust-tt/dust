@@ -89,6 +89,7 @@ async function handler(
 
       auditLog(
         {
+          author: "no-author",
           connectorId: connector.id,
           who: auth.user(),
         },
