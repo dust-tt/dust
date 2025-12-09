@@ -189,6 +189,7 @@ export const bigqueryChangeLocationPlugin = createPlugin({
 
     auditLog(
       {
+        author: "no-author",
         connectorId: dataSource.connectorId,
         previousConnectionId: connector.connectionId,
         newConnectionId: newCredentialsId,

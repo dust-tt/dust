@@ -758,6 +758,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
+        author: "no-author",
         userId: user.id,
         workspaceId: workspace.id,
         previousRole,
@@ -847,6 +848,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
+        author: "no-author",
         userId: user.id,
         workspaceId: workspace.id,
         previousOrigin,
