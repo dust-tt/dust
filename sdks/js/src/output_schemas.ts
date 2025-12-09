@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { FlexibleEnumSchema } from "./helpers";
 import { INTERNAL_MIME_TYPES } from "./internal_mime_types";
 import { NotificationSchema } from "./raw_mcp_types";
 import type { CallToolResult, Notification } from "./raw_mcp_types.ts";
@@ -560,12 +561,39 @@ export function isMCPProgressNotificationType(
   return MCPProgressNotificationSchema.safeParse(notification).success;
 }
 
+export const OAuthProviderSchema = FlexibleEnumSchema<
+  | "confluence"
+  | "confluence_tools"
+  | "discord"
+  | "fathom"
+  | "freshservice"
+  | "github"
+  | "google_drive"
+  | "gmail"
+  | "intercom"
+  | "jira"
+  | "linear"
+  | "monday"
+  | "notion"
+  | "slack"
+  | "slack_tools"
+  | "gong"
+  | "microsoft"
+  | "microsoft_tools"
+  | "zendesk"
+  | "salesforce"
+  | "hubspot"
+  | "mcp"
+  | "mcp_static"
+  | "vanta"
+>();
+
 // Internal tool output.
 
 export const AuthRequiredOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_personal_auth_required"),
-  provider: z.string(),
+  provider: OAuthProviderSchema,
   scope: z.string().optional(),
   text: z.string(),
   uri: z.string(),

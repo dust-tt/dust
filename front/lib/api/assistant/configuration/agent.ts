@@ -36,6 +36,7 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/agent/agent";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -1177,6 +1178,14 @@ export async function unsafeHardDeleteAgentConfiguration(
     });
 
     await GroupAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await AgentSkillModel.destroy({
       where: {
         agentConfigurationId: agentConfiguration.id,
         workspaceId,

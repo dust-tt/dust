@@ -1,5 +1,7 @@
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  MCPApproveExecutionEvent,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 
 /**
  * Union type of all events that can be deferred.

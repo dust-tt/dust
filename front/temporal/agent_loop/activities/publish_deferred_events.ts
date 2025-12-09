@@ -40,6 +40,7 @@ export async function publishDeferredEventsActivity(
           const newEvent: AgentMessageEvents = {
             ...event,
             metadata: {
+              ...event.metadata,
               // Override the message id to root the event to the right channel.
               pubsubMessageId: deferredEvent.context.agentMessageId,
             },

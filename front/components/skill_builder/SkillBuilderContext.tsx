@@ -3,12 +3,13 @@ import { createContext, useContext } from "react";
 
 import type { UserType, WorkspaceType } from "@app/types";
 
-type SkillBuilderContextType = {
+export type SkillBuilderContextType = {
   owner: WorkspaceType;
   user: UserType;
 };
 
-const SkillBuilderContext = createContext<SkillBuilderContextType | null>(null);
+export const SkillBuilderContext =
+  createContext<SkillBuilderContextType | null>(null);
 
 interface SkillBuilderProviderProps {
   owner: WorkspaceType;

@@ -13,15 +13,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type {
-  AgentBuilderFormData,
-  MCPFormData,
-  MCPServerConfigurationType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -55,8 +49,6 @@ import { NameSection } from "@app/components/agent_builder/capabilities/shared/N
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   AgentBuilderAction,
   ConfigurationPagePageId,
@@ -66,6 +58,10 @@ import {
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
+import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -125,12 +121,14 @@ function isMCPActionWithConfiguration(
 }
 
 interface MCPServerViewsSheetProps {
-  addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
+  addTools: (action: AgentBuilderAction | AgentBuilderAction[]) => void;
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   selectedActions: AgentBuilderAction[];
   getAgentInstructions: () => string;
+  /** Optional filter to restrict which MCP server views are shown */
+  filterMCPServerViews?: (view: MCPServerViewTypeWithLabel) => boolean;
 }
 
 export function MCPServerViewsSheet({
@@ -140,9 +138,10 @@ export function MCPServerViewsSheet({
   onActionUpdate,
   selectedActions,
   getAgentInstructions,
+  filterMCPServerViews,
 }: MCPServerViewsSheetProps) {
+  const { owner } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
-  const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -199,16 +198,18 @@ export function MCPServerViewsSheet({
   );
 
   const topMCPServerViews = useMemo(() => {
-    return mcpServerViewsWithoutKnowledge.filter((view) =>
+    const views = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-  }, [mcpServerViewsWithoutKnowledge]);
+    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
+  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const nonTopMCPServerViews = useMemo(() => {
-    return mcpServerViewsWithoutKnowledge.filter(
+    const views = mcpServerViewsWithoutKnowledge.filter(
       (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-  }, [mcpServerViewsWithoutKnowledge]);
+    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
+  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const selectableTopMCPServerViews = useMemo(() => {
     const filteredList = topMCPServerViews.filter(

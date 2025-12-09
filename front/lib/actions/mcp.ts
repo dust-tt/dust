@@ -9,7 +9,11 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  MCPApproveExecutionEvent,
+  ToolExecution,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -137,24 +141,8 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
-export type ToolExecution = {
-  conversationId: string;
-  messageId: string;
-  actionId: string;
-
-  inputs: Record<string, unknown>;
-  stake?: MCPToolStakeLevelType;
-
-  metadata: MCPValidationMetadataType & {
-    mcpServerId?: string;
-    mcpServerDisplayName?: string;
-  };
-};
-
-export type BlockedToolExecution = ToolExecution & {
-  // User might be undefined if the run was initiated through the public API using an API key.
-  userId?: string;
-} & (
+export type BlockedToolExecution = ToolExecution &
+  (
     | {
         status: "blocked_validation_required";
         authorizationInfo: AuthorizationInfo | null;
@@ -174,15 +162,6 @@ export type BlockedToolExecution = ToolExecution & {
         authorizationInfo: AuthorizationInfo;
       }
   );
-
-// TODO(durable-agents): cleanup the types of the events.
-export type MCPApproveExecutionEvent = ToolExecution & {
-  type: "tool_approve_execution";
-  userId?: string;
-  created: number;
-  configurationId: string;
-  isLastBlockingEventForStep?: boolean;
-};
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType

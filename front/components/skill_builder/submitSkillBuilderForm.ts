@@ -27,6 +27,9 @@ export async function submitSkillBuilderForm({
         description: formData.description,
         instructions: formData.instructions,
         scope: formData.scope,
+        tools: formData.tools.map((tool) => ({
+          mcpServerViewId: tool.configuration.mcpServerViewId,
+        })),
       }),
     }
   );

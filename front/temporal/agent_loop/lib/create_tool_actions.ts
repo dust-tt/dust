@@ -1,10 +1,8 @@
 import assert from "assert";
 
-import type {
-  MCPApproveExecutionEvent,
-  MCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";

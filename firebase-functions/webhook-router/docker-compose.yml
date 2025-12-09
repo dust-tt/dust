@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  firebase-emulators:
+    build: .
+    working_dir: /app
+    init: true
+    stop_grace_period: 30s
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - firebase-cache:/root/.cache/firebase
+    ports:
+      - "5001:5001" # functions
+      - "9000:9000" # database
+      - "9199:9199" # storage
+      - "4000:4000" # emulator UI
+    command: ./docker-entrypoint.sh
+
+volumes:
+  node_modules:
+  firebase-cache:

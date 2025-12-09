@@ -6,6 +6,7 @@ import {
 import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { Mention } from "@app/lib/models/agent/conversation";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -82,6 +83,12 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   });
 
   await TagAgentModel.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
+  await AgentSkillModel.destroy({
     where: {
       agentConfigurationId: agent.id,
     },

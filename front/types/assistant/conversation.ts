@@ -1,4 +1,4 @@
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type {
   AllSupportedWithDustSpecificFileContentType,

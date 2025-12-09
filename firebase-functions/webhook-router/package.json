@@ -6,6 +6,7 @@
   "main": "dist/firebase.js",
   "scripts": {
     "build": "tsc",
+    "build:watch": "tsc --watch",
     "start": "npm run build && firebase emulators:start --only functions,storage,database",
     "dev": "npm run start",
     "lint": "eslint src/**/*.ts",
