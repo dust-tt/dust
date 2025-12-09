@@ -1,5 +1,6 @@
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
+import chunk from "lodash/chunk";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { EmbeddingProviderIdType } from "@app/types";
@@ -371,6 +372,9 @@ function topKSortedDocuments(
 
   return result;
 }
+
+const BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES = 100;
+const CORE_API_CALLS_CONCURRENCY = 10;
 
 export class CoreAPI {
   _url: string;
@@ -1019,7 +1023,7 @@ export class CoreAPI {
 
         return r;
       },
-      { concurrency: 10 }
+      { concurrency: CORE_API_CALLS_CONCURRENCY }
     );
 
     // Check if all search results are successful, if not return the first error
@@ -1053,43 +1057,55 @@ export class CoreAPI {
     }[],
     target_document_tokens?: number | null
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
-    const response = await this._fetchWithError(
-      `${this._url}/data_sources/search/bulk`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          full_text: fullText,
-          credentials,
-          top_k: topK,
-          searches: searches.map((search) => ({
-            project_id: parseInt(search.projectId),
-            data_source_id: search.dataSourceId,
-            top_k: topK,
-            filter: search.filter,
-            view_filter: search.view_filter,
-            target_document_tokens: target_document_tokens,
-          })),
-        }),
-      }
+    const dataSourceChunks = chunk(
+      searches,
+      BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES
     );
 
-    const result = await this._resultFromResponse<{
-      documents: CoreAPIDocument[];
-    }>(response);
-    if (result.isErr()) {
-      return result;
-    }
+    const results = await concurrentExecutor(
+      dataSourceChunks,
+      async (chunk) => {
+        const response = await this._fetchWithError(
+          `${this._url}/data_sources/search/bulk`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query,
+              full_text: fullText,
+              credentials,
+              top_k: topK,
+              searches: chunk.map((search) => ({
+                project_id: parseInt(search.projectId),
+                data_source_id: search.dataSourceId,
+                top_k: topK,
+                filter: search.filter,
+                view_filter: search.view_filter,
+                target_document_tokens: target_document_tokens,
+              })),
+            }),
+          }
+        );
 
-    console.log("Bulk search returned documents:", result.value.documents);
+        return this._resultFromResponse<{
+          documents: CoreAPIDocument[];
+        }>(response);
+      },
+      { concurrency: CORE_API_CALLS_CONCURRENCY }
+    );
+
+    const errors = results.filter((result) => result.isErr());
+    if (errors.length > 0) {
+      // If any of the bulk search requests failed, return the first error.
+      return errors[0];
+    }
 
     const sortedDocuments = topKSortedDocuments(
       query,
       topK,
-      result.value.documents
+      results.flatMap((r) => (r.isOk() ? r.value.documents : []))
     );
 
     return new Ok({
