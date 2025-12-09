@@ -106,8 +106,19 @@ async function handler(
         });
       }
 
+      const {
+        content,
+        context,
+        mentions,
+        blocking,
+        skipToolsValidation,
+        agenticMessageData,
+      } = r.data;
+
+      const origin = context.origin ?? "api";
+
       const hasReachedLimits = isProgrammaticUsage(auth, {
-        userMessageOrigin: r.data.context.origin,
+        userMessageOrigin: origin,
       })
         ? await hasReachedProgrammaticUsageLimits(auth)
         : false;
@@ -122,15 +133,6 @@ async function handler(
           },
         });
       }
-
-      const {
-        content,
-        context,
-        mentions,
-        blocking,
-        skipToolsValidation,
-        agenticMessageData,
-      } = r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -206,7 +208,7 @@ async function handler(
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
-        origin: context.origin ?? "api",
+        origin,
         originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,

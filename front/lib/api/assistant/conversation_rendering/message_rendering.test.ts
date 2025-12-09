@@ -83,6 +83,7 @@ describe("renderAllMessages", () => {
               fullName: null,
               email: null,
               profilePictureUrl: null,
+              origin: "web",
             },
           } satisfies UserMessageType,
         ];
