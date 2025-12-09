@@ -113,7 +113,7 @@ async function updateAgenticFields(
         if (execute) {
           await userMessage.update(
             {
-              userContextOrigin: rootContextOrigin,
+              userContextOrigin: rootContextOrigin ?? "api",
               agenticOriginMessageId: userMessage.userContextOriginMessageId,
               agenticMessageType: originalUserContextOrigin as
                 | "run_agent"
