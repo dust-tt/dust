@@ -6,7 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -19,11 +19,11 @@ export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
-  declare agentConfiguration: NonAttribute<AgentConfiguration>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare AgentConfigurationModel: NonAttribute<AgentConfigurationModel>;
+  declare AgentConfigurationModelId: ForeignKey<AgentConfigurationModel["id"]>;
 
   declare getCustomSkill: BelongsToGetAssociationMixin<SkillConfigurationModel>;
-  declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfiguration>;
+  declare getAgentConfigurationModel: BelongsToGetAssociationMixin<AgentConfigurationModel>;
 }
 
 AgentSkillModel.init(
@@ -46,7 +46,7 @@ AgentSkillModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    agentConfigurationId: {
+    AgentConfigurationModelId: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
@@ -54,7 +54,7 @@ AgentSkillModel.init(
   {
     modelName: "agent_skills",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
+    indexes: [{ fields: ["workspaceId", "AgentConfigurationModelId"] }],
     validate: {
       eitherGlobalOrCustomSkill() {
         const hasCustomSkill = this.customSkillId !== null;
@@ -81,26 +81,26 @@ SkillConfigurationModel.hasMany(AgentSkillModel, {
   onDelete: "RESTRICT",
 });
 
-// Association with AgentConfiguration
-AgentSkillModel.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+// Association with AgentConfigurationModel
+AgentSkillModel.belongsTo(AgentConfigurationModel, {
+  foreignKey: { name: "AgentConfigurationModelId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentConfiguration.hasMany(AgentSkillModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+AgentConfigurationModel.hasMany(AgentSkillModel, {
+  foreignKey: { name: "AgentConfigurationModelId", allowNull: false },
   as: "skillAgentLinks",
 });
 
 // Many-to-Many associations
-SkillConfigurationModel.belongsToMany(AgentConfiguration, {
+SkillConfigurationModel.belongsToMany(AgentConfigurationModel, {
   through: AgentSkillModel,
   foreignKey: "customSkillId",
-  otherKey: "agentConfigurationId",
-  as: "agentConfigurations",
+  otherKey: "AgentConfigurationModelId",
+  as: "AgentConfigurationModels",
 });
-AgentConfiguration.belongsToMany(SkillConfigurationModel, {
+AgentConfigurationModel.belongsToMany(SkillConfigurationModel, {
   through: AgentSkillModel,
-  foreignKey: "agentConfigurationId",
+  foreignKey: "AgentConfigurationModelId",
   otherKey: "customSkillId",
   as: "skills",
 });
