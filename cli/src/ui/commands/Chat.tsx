@@ -513,7 +513,7 @@ const CliChat: FC<CliChatProps> = ({
                 username: me.username,
                 fullName: me.fullName,
                 email: me.email,
-                origin: "api",
+                origin: "cli",
                 clientSideMCPServerIds: fileSystemServerId
                   ? [fileSystemServerId]
                   : null,
@@ -554,7 +554,7 @@ const CliChat: FC<CliChatProps> = ({
                 username: me.username,
                 fullName: me.fullName,
                 email: me.email,
-                origin: "api",
+                origin: "cli",
               },
             },
           });
