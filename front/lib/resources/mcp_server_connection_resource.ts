@@ -184,6 +184,31 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       : new Err(new DustError("connection_not_found", "Connection not found"));
   }
 
+  static async listByMCPServer(
+    auth: Authenticator,
+    {
+      mcpServerId,
+    }: {
+      mcpServerId: string;
+    }
+  ): Promise<Result<MCPServerConnectionResource[], DustError>> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+    const connections = await this.baseFetch(auth, {
+      where: {
+        serverType,
+        ...(serverType === "remote"
+          ? { remoteMCPServerId: id }
+          : { internalMCPServerId: mcpServerId }),
+      },
+      // Only returns the latest connection for a given MCP server.
+      order: [["createdAt", "DESC"]],
+      limit: 1,
+    });
+
+    return new Ok(connections);
+  }
+
   static async listByWorkspace(
     auth: Authenticator,
     { connectionType }: { connectionType: MCPServerConnectionConnectionType }
