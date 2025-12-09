@@ -54,7 +54,7 @@ export default function WorkspaceSkills({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [showDetails, setShowDetails] =
+  const [skillConfiguration, setSkillConfiguration] =
     useState<SkillConfigurationWithAuthorType | null>(null);
 
   const { skillConfigurations } = useSkillConfigurations({
@@ -63,10 +63,10 @@ export default function WorkspaceSkills({
 
   return (
     <>
-      {!!showDetails && (
+      {!!skillConfiguration && (
         <SkillDetails
-          skillConfiguration={showDetails}
-          onClose={() => setShowDetails(null)}
+          skillConfiguration={skillConfiguration}
+          onClose={() => setSkillConfiguration(null)}
         />
       )}
       <ConversationsNavigationProvider>
@@ -92,7 +92,7 @@ export default function WorkspaceSkills({
               <div className="flex flex-col pt-3">
                 <SkillsTable
                   skillsConfigurations={skillConfigurations}
-                  setShowDetails={setShowDetails}
+                  setSkillConfiguration={setSkillConfiguration}
                 />
               </div>
             </Page.Vertical>

@@ -87,12 +87,12 @@ const getTableColumns = () => {
 
 type SkillsTableProps = {
   skillsConfigurations: SkillConfigurationWithAuthorType[];
-  setShowDetails: (skill: SkillConfigurationWithAuthorType) => void;
+  setSkillConfiguration: (skill: SkillConfigurationWithAuthorType) => void;
 };
 
 export function SkillsTable({
   skillsConfigurations,
-  setShowDetails,
+  setSkillConfiguration,
 }: SkillsTableProps) {
   const { pagination, setPagination } = usePaginationFromUrl({});
 
@@ -102,11 +102,11 @@ export function SkillsTable({
         return {
           ...skillConfiguration,
           onClick: () => {
-            setShowDetails(skillConfiguration);
+            setSkillConfiguration(skillConfiguration);
           },
         };
       }),
-    [skillsConfigurations, setShowDetails]
+    [skillsConfigurations, setSkillConfiguration]
   );
 
   if (rows.length === 0) {
