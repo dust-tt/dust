@@ -226,10 +226,10 @@ function UsageSection({
 
   if (isLoading) {
     return (
-      <Page.Vertical gap="md">
-        <Page.H variant="h5">Available credits</Page.H>
-        <div className="h-32 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
-      </Page.Vertical>
+      <div className="flex flex-col gap-6 rounded-lg border border-border p-6 dark:border-border-night">
+        <div className="h-8 w-32 animate-pulse rounded bg-muted-foreground/20" />
+        <div className="h-24 w-full animate-pulse rounded bg-muted-foreground/20" />
+      </div>
     );
   }
 
@@ -264,18 +264,22 @@ function UsageSection({
       <Page.Vertical>
         <Page.P variant="secondary">Total consumed</Page.P>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-foreground dark:text-foreground-night">
-            {totalConsumedFormatted}
-          </span>
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
-            / {totalCreditsFormatted}
+          <span className="text-5xl font-bold">{totalConsumedFormatted}</span>
+          <span className="text-2xl text-muted-foreground dark:text-muted-foreground-night">
+            /{totalCreditsFormatted}
           </span>
         </div>
         <ProgressBar consumed={totalConsumed} total={totalCredits} />
       </Page.Vertical>
 
       {/* Credit Categories */}
-      <div className="flex w-full flex-wrap gap-4">
+      <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
+        <CreditCategoryBar
+          title="Free credits"
+          consumed={creditsByType.free.consumed}
+          total={creditsByType.free.total}
+          renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
+        />
         <CreditCategoryBar
           title="Purchased credits"
           consumed={creditsByType.committed.consumed}
@@ -303,12 +307,6 @@ function UsageSection({
             isCap
           />
         )}
-        <CreditCategoryBar
-          title="Free credits"
-          consumed={creditsByType.free.consumed}
-          total={creditsByType.free.total}
-          renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
-        />
       </div>
     </div>
   );
