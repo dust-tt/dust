@@ -1,4 +1,5 @@
 import { createParser } from "eventsource-parser";
+import * as fs from "fs";
 import * as t from "io-ts";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -1061,11 +1062,18 @@ export class CoreAPI {
     }[],
     target_document_tokens?: number | null
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
-    console.log(">> bulkSearchDataSources", {
+    const debugLogFile = `/tmp/bulk-search-debug-${Date.now()}.log`;
+    const logToFile = (label: string, data: any) => {
+      const logEntry = `[${new Date().toISOString()}] ${label}\n${JSON.stringify(data, null, 2)}\n\n`;
+      fs.appendFileSync(debugLogFile, logEntry);
+      console.log(`${label} logged to ${debugLogFile}`);
+    };
+
+    logToFile(">> bulkSearchDataSources INPUT", {
       query,
       topK,
       fullText,
-      searches: JSON.stringify(searches, null, 2),
+      searches,
       target_document_tokens,
     });
 
@@ -1096,15 +1104,22 @@ export class CoreAPI {
       results: CoreAPIBulkDataSourceSearch[];
     }>(response);
     if (result.isErr()) {
-      console.log(">> bulkSearchDataSources error", {
+      logToFile(">> bulkSearchDataSources ERROR", {
         error: result.error,
       });
       return result;
     }
 
-    console.log(">> bulkSearchDataSources result", {
-      result: JSON.stringify(result.value, null, 2),
+    logToFile(">> bulkSearchDataSources RESULT", {
+      result: result.value,
     });
+
+    const resultErrors = result.value.results.find((r) => r.error);
+    if (resultErrors) {
+      logToFile(">> bulkSearchDataSources INDIVIDUAL_ERRORS", {
+        errors: resultErrors,
+      });
+    }
 
     // Check for errors in individual search results.
     const errors = result.value.results.filter((r) => r.error);
