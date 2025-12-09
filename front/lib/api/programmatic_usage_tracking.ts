@@ -26,6 +26,8 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
 > = {
   agent_handover: "user",
   api: "programmatic",
+  cli: "user",
+  cli_programmatic: "programmatic",
   email: "user",
   excel: "programmatic",
   extension: "user",

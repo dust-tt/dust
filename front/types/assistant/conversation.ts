@@ -76,6 +76,8 @@ export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
   // below are API usages dedicated to standard product features.
   | "api"
+  | "cli"
+  | "cli_programmatic"
   | "email"
   | "excel"
   | "extension"

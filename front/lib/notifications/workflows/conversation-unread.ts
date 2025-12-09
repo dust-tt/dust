@@ -44,6 +44,8 @@ export const shouldSendNotificationForAgentAnswer = (
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
+    case "cli":
+    case "cli_programmatic":
     case "email":
     case "excel":
     case "github-copilot-chat":
