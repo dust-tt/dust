@@ -40,22 +40,20 @@ fn apply_global_top_k(
     top_k: usize,
     results: &[DataSourceSearchResultItem],
 ) -> Vec<Document> {
-    let mut all_chunks: Vec<ChunkWithDocument> = Vec::new();
-
-    // Extract all chunks with their document metadata.
-    for result in results {
-        if result.error.is_none() {
-            for document in &result.documents {
-                for chunk in &document.chunks {
-                    all_chunks.push(ChunkWithDocument {
-                        document_id: document.document_id.clone(),
-                        timestamp: document.timestamp,
-                        chunk: chunk.clone(),
-                    });
-                }
-            }
-        }
-    }
+    // Extract all chunks with their document metadata using functional approach.
+    let mut all_chunks: Vec<ChunkWithDocument> = results
+        .iter()
+        .filter(|result| result.error.is_none())
+        .flat_map(|result| {
+            result.documents.iter().flat_map(|document| {
+                document.chunks.iter().map(|chunk| ChunkWithDocument {
+                    document_id: document.document_id.clone(),
+                    timestamp: document.timestamp,
+                    chunk: chunk.clone(),
+                })
+            })
+        })
+        .collect();
 
     // Sort chunks by score or timestamp (if no query) and truncate.
     if !query.is_empty() {
