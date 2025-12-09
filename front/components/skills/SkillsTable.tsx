@@ -14,7 +14,6 @@ import type {
 } from "@app/types/skill_configuration";
 
 type RowData = {
-  id: number;
   sId: string;
   name: string;
   description: string;
