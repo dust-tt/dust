@@ -116,12 +116,16 @@ async function checkImageGenerationRateLimit(
   return new Ok(undefined);
 }
 
-function validateGeminiImageResponse(
+type GeminiResponseParts = {
+  textParts: string[];
+  imageParts: GeminiInlineDataPart[];
+};
+
+function extractGeminiResponseParts(
   response: any,
   operationType: "generation" | "editing",
   promptText: string
-): Ok<GeminiInlineDataPart[]> | Err<MCPError> {
-  // Check for empty candidates.
+): Ok<GeminiResponseParts> | Err<MCPError> {
   if (!response.candidates || response.candidates.length === 0) {
     if (response.promptFeedback?.blockReason) {
       logger.error(
@@ -141,19 +145,42 @@ function validateGeminiImageResponse(
     return new Err(new MCPError("No image generated."));
   }
 
-  // Validate content structure.
-  const content = response.candidates[0].content;
-  if (!content || !content.parts) {
-    return new Err(new MCPError("No image data in response"));
+  const allTextParts: string[] = [];
+  const allImageParts: GeminiInlineDataPart[] = [];
+
+  for (const candidate of response.candidates) {
+    if (candidate.content?.parts) {
+      for (const part of candidate.content.parts) {
+        if (typeof part.text === "string") {
+          allTextParts.push(part.text);
+        } else if (isValidGeminiInlineDataPart(part)) {
+          allImageParts.push(part);
+        }
+      }
+    }
   }
 
-  // Extract valid image parts.
-  const imageParts = content.parts.filter(isValidGeminiInlineDataPart);
-  if (imageParts.length === 0) {
+  if (allImageParts.length === 0) {
     return new Err(new MCPError("No image data in response."));
   }
 
-  return new Ok(imageParts);
+  return new Ok({ textParts: allTextParts, imageParts: allImageParts });
+}
+
+function extractFilenamesFromJson(textParts: string[]): string[] {
+  for (const text of textParts) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.images && Array.isArray(parsed.images)) {
+        return parsed.images.map(
+          (img: { filename?: string }) => img.filename ?? "image"
+        );
+      }
+    } catch {
+      // Not valid JSON, continue to next text part
+    }
+  }
+  return [];
 }
 
 function trackGeminiTokenUsage(
@@ -174,7 +201,7 @@ function trackGeminiTokenUsage(
 
 function formatImageResponse(
   imageParts: GeminiInlineDataPart[],
-  fileName: string
+  filenames: string[]
 ): Ok<
   Array<{
     type: "image";
@@ -183,15 +210,16 @@ function formatImageResponse(
     name: string;
   }>
 > {
-  const outputFileName = `${fileName}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
-
   return new Ok(
-    imageParts.map((part) => ({
-      type: "image" as const,
-      mimeType: part.inlineData.mimeType ?? DEFAULT_IMAGE_MIME_TYPE,
-      data: part.inlineData.data,
-      name: outputFileName,
-    }))
+    imageParts.map((part, index) => {
+      const baseName = filenames[index] ?? `image_${index}`;
+      return {
+        type: "image" as const,
+        mimeType: part.inlineData.mimeType ?? DEFAULT_IMAGE_MIME_TYPE,
+        data: part.inlineData.data,
+        name: `${baseName}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`,
+      };
+    })
   );
 }
 
@@ -210,7 +238,7 @@ function createServer(
 
   server.tool(
     "generate_image",
-    "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
+    "Generate one or multiple images from text descriptions. The more detailed and specific your prompt is, the" +
       " better the result will be. You can customize the output through various parameters to" +
       " match your needs.",
     {
@@ -219,12 +247,6 @@ function createServer(
         .max(4000)
         .describe(
           "A text description of the desired image. The maximum length is 32000 characters."
-        ),
-      name: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the generated image. Must be 64 characters or less."
         ),
       quality: z
         .enum(["auto", "low", "medium", "high"])
@@ -245,7 +267,7 @@ function createServer(
     withToolLogging(
       auth,
       { toolNameForMonitoring: "generate_image", agentLoopContext },
-      async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
+      async ({ prompt, quality, size }, { sendNotification, _meta }) => {
         const workspace = auth.getNonNullableWorkspace();
 
         await sendImageProgressNotification(
@@ -275,12 +297,16 @@ function createServer(
           const aspectRatio =
             SIZE_TO_ASPECT_RATIO[size] || SIZE_TO_ASPECT_RATIO["1024x1024"];
 
+          const promptWithFilenameRequest =
+            `${prompt}\n\nFor each image you generate, provide a short descriptive filename (without extension). ` +
+            `Respond with JSON: {"images": [{"filename": "<name>"}]}`;
+
           const response = await gemini.models.generateContent({
             model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            contents: prompt,
+            contents: promptWithFilenameRequest,
             config: {
               temperature: 0.7,
-              responseModalities: ["IMAGE"],
+              responseModalities: ["TEXT", "IMAGE"],
               candidateCount: 1,
               imageConfig: {
                 aspectRatio,
@@ -288,20 +314,21 @@ function createServer(
             },
           });
 
-          const validationResult = validateGeminiImageResponse(
+          const extractionResult = extractGeminiResponseParts(
             response,
             "generation",
             prompt
           );
-          if (validationResult.isErr()) {
-            return validationResult;
+          if (extractionResult.isErr()) {
+            return extractionResult;
           }
 
-          const imageParts = validationResult.value;
+          const { textParts, imageParts } = extractionResult.value;
+          const filenames = extractFilenamesFromJson(textParts);
 
           trackGeminiTokenUsage(response, statsDClient);
 
-          return formatImageResponse(imageParts, name);
+          return formatImageResponse(imageParts, filenames);
         } catch (error) {
           logger.error(
             {
@@ -317,26 +344,23 @@ function createServer(
 
   server.tool(
     "edit_image",
-    "Edit an existing image using text instructions. Provide the file ID of an image from Dust" +
-      " file storage and describe the changes you want to make. The tool preserves the original" +
+    "Edit existing images using text instructions. Provide one or more file IDs of images from Dust" +
+      " file storage and describe the changes you want to make. The model may output one or more" +
+      " edited images based on your instructions. The tool preserves the original" +
       " image's aspect ratio by default, but you can optionally change it.",
     {
-      imageFileId: z
-        .string()
+      imageFileIds: z
+        .array(z.string())
+        .min(1)
+        .max(4)
         .describe(
-          "The ID of the image file to edit (e.g. fil_abc1234) from conversation attachments. Must be a valid image file (PNG, JPEG, etc.)."
+          "The IDs of the image files to edit (e.g. ['fil_abc1234', 'fil_xyz5678']) from conversation attachments. Must be valid image files (PNG, JPEG, etc.). Between 1 and 4 images."
         ),
       editPrompt: z
         .string()
         .max(4000)
         .describe(
           "A text description of the desired edits. Be specific about what should change and what should remain unchanged. The maximum length is 4000 characters."
-        ),
-      outputName: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the edited image. Must be 64 characters or less."
         ),
       quality: z
         .enum(["auto", "low", "medium", "high"])
@@ -359,9 +383,8 @@ function createServer(
       { toolNameForMonitoring: "edit_image", agentLoopContext },
       async (
         {
-          imageFileId: inputImageFileId,
+          imageFileIds: inputImageFileIds,
           editPrompt: editImageInstructions,
-          outputName: outputImageFileName,
           quality,
           aspectRatio,
         },
@@ -385,90 +408,109 @@ function createServer(
           );
         }
 
-        // Fetch the file resource
-        const fileResource = await FileResource.fetchById(
-          auth,
-          inputImageFileId
-        );
-        if (!fileResource) {
-          return new Err(
-            new MCPError(`File not found: ${inputImageFileId}`, {
-              tracked: false,
-            })
-          );
-        }
-
-        // Validate file belongs to the current conversation
         const conversationId = agentLoopContext.runContext.conversation.sId;
-        const belongsResult =
-          fileResource.belongsToConversation(conversationId);
-        if (belongsResult.isErr() || !belongsResult.value) {
-          return new Err(
-            new MCPError(`File does not belong to this conversation`, {
-              tracked: false,
-            })
-          );
-        }
-
         const maxImageSize = MAX_FILE_SIZES.image;
-        if (fileResource.fileSize > maxImageSize) {
-          logger.warn(
-            {
-              fileId: fileResource.sId,
-              fileSize: fileResource.fileSize,
-              maxFileSize: maxImageSize,
-              workspaceId: workspace.sId,
-            },
-            "edit_image: File size exceeds maximum allowed size"
-          );
 
-          statsDClient.increment(
-            "tools.image_generation.file_size_limit_exceeded",
-            1,
-            ["provider:gemini"]
-          );
+        // Fetch all file resources in parallel
+        const fileResources = await Promise.all(
+          inputImageFileIds.map((fileId) =>
+            FileResource.fetchById(auth, fileId)
+          )
+        );
 
-          return new Err(
-            new MCPError(
-              `Image file too large for editing. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
-              {
+        // Validate all files belong to conversation and meet requirements
+        const validFileResources = [];
+        for (let i = 0; i < fileResources.length; i++) {
+          const fileResource = fileResources[i];
+          if (!fileResource) {
+            return new Err(
+              new MCPError(`File not found: ${inputImageFileIds[i]}`, {
                 tracked: false,
-              }
-            )
-          );
-        }
+              })
+            );
+          }
 
-        // Get file content as buffer
-        const readStream = fileResource.getReadStream({
-          auth,
-          version: "original",
-        });
-        const bufferResult = await streamToBuffer(readStream);
-        if (bufferResult.isErr()) {
-          return new Err(
-            new MCPError(`Failed to read file: ${bufferResult.error}`, {
-              tracked: false,
-            })
-          );
-        }
+          const belongsResult =
+            fileResource.belongsToConversation(conversationId);
+          if (belongsResult.isErr() || !belongsResult.value) {
+            return new Err(
+              new MCPError(
+                `File ${fileResource.sId} does not belong to this conversation`,
+                { tracked: false }
+              )
+            );
+          }
 
-        const buffer = bufferResult.value;
-        const contentType = fileResource.contentType;
-
-        if (!isSupportedImageContentType(fileResource.contentType)) {
-          return new Err(
-            new MCPError(
-              `File is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
+          if (fileResource.fileSize > maxImageSize) {
+            logger.warn(
               {
-                tracked: false,
-              }
-            )
-          );
+                fileId: fileResource.sId,
+                fileSize: fileResource.fileSize,
+                maxFileSize: maxImageSize,
+                workspaceId: workspace.sId,
+              },
+              "edit_image: File size exceeds maximum allowed size"
+            );
+
+            statsDClient.increment(
+              "tools.image_generation.file_size_limit_exceeded",
+              1,
+              ["provider:gemini"]
+            );
+
+            return new Err(
+              new MCPError(
+                `Image file ${fileResource.sId} too large for editing. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
+                { tracked: false }
+              )
+            );
+          }
+
+          if (!isSupportedImageContentType(fileResource.contentType)) {
+            return new Err(
+              new MCPError(
+                `File ${fileResource.sId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
+                { tracked: false }
+              )
+            );
+          }
+
+          validFileResources.push(fileResource);
         }
+
+        // Read all files in parallel
+        const bufferResults = await Promise.all(
+          validFileResources.map((fr) => {
+            const readStream = fr.getReadStream({ auth, version: "original" });
+            return streamToBuffer(readStream);
+          })
+        );
+
+        // Validate all reads succeeded and extract buffers
+        const buffers: Buffer[] = [];
+        for (let i = 0; i < bufferResults.length; i++) {
+          const result = bufferResults[i];
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to read file ${inputImageFileIds[i]}: ${result.error}`,
+                { tracked: false }
+              )
+            );
+          }
+          buffers.push(result.value);
+        }
+
+        // Build image data array
+        const imageDataArray = validFileResources.map((fr, i) => ({
+          base64: buffers[i].toString("base64"),
+          contentType: fr.contentType,
+        }));
 
         statsDClient.increment("tools.image_generation.edited", 1, [
           `quality:${quality}`,
           `aspect_ratio:${aspectRatio ?? "original"}`,
+          `input_count:${inputImageFileIds.length}`,
           "provider:gemini",
         ]);
 
@@ -480,52 +522,57 @@ function createServer(
           return rateLimitResult;
         }
 
-        const imageBase64 = buffer.toString("base64");
-
         try {
           const gemini = createGeminiClient();
 
-          // Call Gemini API with image inline data and edit prompt.
-          // The contents array includes both the image and the text prompt.
+          // Build parts array with all images plus the edit prompt
+          const inputImageParts = imageDataArray.map((img) => ({
+            inlineData: {
+              data: img.base64,
+              mimeType: img.contentType,
+            },
+          }));
+
+          const promptWithFilenameRequest =
+            `${editImageInstructions}\n\nFor each image you generate, provide a short descriptive filename (without extension). ` +
+            `Respond with JSON: {"images": [{"filename": "<name>"}]}`;
+
+          // Call Gemini API with images inline data and edit prompt.
+          // The contents array includes all images and the text prompt.
           const response = await gemini.models.generateContent({
             model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
             contents: [
               {
                 parts: [
-                  {
-                    inlineData: {
-                      data: imageBase64,
-                      mimeType: contentType,
-                    },
-                  },
-                  {
-                    text: editImageInstructions,
-                  },
+                  ...inputImageParts,
+                  { text: promptWithFilenameRequest },
                 ],
               },
             ],
             config: {
               temperature: 0.7,
-              responseModalities: ["IMAGE"],
+              responseModalities: ["TEXT", "IMAGE"],
               candidateCount: 1,
               imageConfig: aspectRatio ? { aspectRatio } : undefined,
             },
           });
 
-          const validationResult = validateGeminiImageResponse(
+          const extractionResult = extractGeminiResponseParts(
             response,
             "editing",
             editImageInstructions
           );
-          if (validationResult.isErr()) {
-            return validationResult;
+          if (extractionResult.isErr()) {
+            return extractionResult;
           }
 
-          const imageParts = validationResult.value;
+          const { textParts, imageParts: outputImageParts } =
+            extractionResult.value;
+          const filenames = extractFilenamesFromJson(textParts);
 
           trackGeminiTokenUsage(response, statsDClient);
 
-          return formatImageResponse(imageParts, outputImageFileName);
+          return formatImageResponse(outputImageParts, filenames);
         } catch (error) {
           logger.error(
             {
