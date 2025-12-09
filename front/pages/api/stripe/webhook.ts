@@ -498,9 +498,6 @@ async function handler(
             // On the other hand credit purchase from enterprise are paid in arrears or with a 30days notice
             // Either way, we want to go through the usual flow for payment failures
           } else {
-            if (subscription.paymentFailingSince === null) {
-              await subscription.update({ paymentFailingSince: now });
-            }
             const owner = auth.workspace();
             const subscriptionType = auth.subscription();
 
@@ -512,6 +509,11 @@ async function handler(
                 "Couldn't get owner or subscription from `auth`."
               );
             }
+
+            if (subscription.paymentFailingSince === null) {
+              await subscription.update({ paymentFailingSince: now });
+            }
+
             const { members } = await getMembers(auth, {
               roles: ["admin"],
               activeOnly: true,
