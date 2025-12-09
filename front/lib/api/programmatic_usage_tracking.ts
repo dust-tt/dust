@@ -21,7 +21,6 @@ import type {
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
-import { isString } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -199,7 +198,11 @@ export async function decreaseProgrammaticCreditsV2(
     userMessageOrigin: UserMessageOrigin;
   },
   parentLogger?: Logger
-): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
+): Promise<{
+  totalConsumedMicroUsd: number;
+  totalInitialMicroUsd: number;
+  activeCredits: CreditResource[];
+}> {
   const localLogger = parentLogger ?? logger;
   const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
@@ -286,6 +289,7 @@ export async function decreaseProgrammaticCreditsV2(
   return {
     totalConsumedMicroUsd: totalConsumedBeforeMicroUsd + consumedAmountMicroUsd,
     totalInitialMicroUsd: totalInitialMicroUsd,
+    activeCredits,
   };
 }
 
@@ -318,6 +322,27 @@ async function initializeCredits(
   // Set initial credits with expiry.
   await redis.set(key, monthlyLimitUsd.toString());
   await redis.expire(key, secondsUntilEnd);
+}
+
+function computeCreditAlertThresholdId(
+  activeCredits: CreditResource[],
+  thresholdPercent: number
+): string {
+  const sortByStartDateDesc = (a: CreditResource, b: CreditResource) =>
+    (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0);
+
+  const firstFreeCredit = activeCredits
+    .filter((c) => c.type === "free")
+    .sort(sortByStartDateDesc)[0];
+
+  const firstCommittedCredit = activeCredits
+    .filter((c) => c.type === "committed")
+    .sort(sortByStartDateDesc)[0];
+
+  const freeId = firstFreeCredit?.id.toString() ?? "";
+  const committedId = firstCommittedCredit?.id.toString() ?? "";
+
+  return `${freeId}-${committedId}-${thresholdPercent}`;
 }
 
 export async function trackProgrammaticCost(
@@ -366,7 +391,7 @@ export async function trackProgrammaticCost(
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
-  const { totalConsumedMicroUsd, totalInitialMicroUsd } =
+  const { totalConsumedMicroUsd, totalInitialMicroUsd, activeCredits } =
     await decreaseProgrammaticCreditsV2(
       auth,
       {
@@ -386,19 +411,13 @@ export async function trackProgrammaticCost(
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
-      const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
-      // For eng-oncall:
-      // If you get this, you can defer to programmatic usage owners right away
-      // Every workspace should have this key defined
-      // If not, it means they will not get alerted
-      // when they reached their usage threshold
-      assert(
-        isString(idempotencyKey),
-        "creditAlertThresholdId must be set when credits exist"
+      const creditAlertThresholdId = computeCreditAlertThresholdId(
+        activeCredits,
+        CREDIT_ALERT_THRESHOLD_PERCENT
       );
-      void launchCreditAlertWorkflow({
+      await launchCreditAlertWorkflow({
         workspaceId: workspace.sId,
-        idempotencyKey: idempotencyKey,
+        creditAlertThresholdId,
         totalInitialMicroUsd,
         totalConsumedMicroUsd,
       });

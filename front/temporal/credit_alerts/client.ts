@@ -11,19 +11,19 @@ import { creditAlertWorkflow } from "./workflows";
 
 export interface LaunchCreditAlertWorkflowArgs {
   workspaceId: string;
-  idempotencyKey: string;
+  creditAlertThresholdId: string;
   totalInitialMicroUsd: number;
   totalConsumedMicroUsd: number;
 }
 
 export async function launchCreditAlertWorkflow({
   workspaceId,
-  idempotencyKey,
+  creditAlertThresholdId,
   totalInitialMicroUsd: totalInitialCents,
   totalConsumedMicroUsd: totalConsumedCents,
 }: LaunchCreditAlertWorkflowArgs): Promise<void> {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = `credit-alert-${workspaceId}-${idempotencyKey}`;
+  const workflowId = `credit-alert-${workspaceId}-${creditAlertThresholdId}`;
 
   try {
     await client.workflow.start(creditAlertWorkflow, {
@@ -33,24 +33,24 @@ export async function launchCreditAlertWorkflow({
       workflowId,
       memo: {
         workspaceId,
-        thresholdId: idempotencyKey,
+        creditAlertThresholdId,
       },
     });
 
     logger.info(
-      { workflowId, workspaceId, thresholdId: idempotencyKey },
+      { workflowId, workspaceId, creditAlertThresholdId },
       "[Credit Alert] Started credit alert workflow"
     );
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       logger.info(
-        { workflowId, workspaceId, thresholdId: idempotencyKey },
+        { workflowId, workspaceId, creditAlertThresholdId },
         "[Credit Alert] Credit alert workflow already started (idempotency check passed)"
       );
       return;
     }
     logger.error(
-      { workflowId, workspaceId, thresholdId: idempotencyKey, error: e },
+      { workflowId, workspaceId, creditAlertThresholdId, error: e },
       "[Credit Alert] Failed to start credit alert workflow"
     );
     throw e;
