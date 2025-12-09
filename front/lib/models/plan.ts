@@ -176,8 +176,8 @@ export class SubscriptionModel extends WorkspaceAwareModel<SubscriptionModel> {
   declare startDate: Date;
   declare endDate: Date | null;
 
-  declare planId: ForeignKey<Plan["id"]>;
-  declare plan: NonAttribute<Plan>;
+  declare planId: ForeignKey<PlanModel["id"]>;
+  declare plan: NonAttribute<PlanModel>;
 
   declare stripeSubscriptionId: string | null;
 
@@ -272,10 +272,10 @@ SubscriptionModel.addHook(
 );
 
 // Plan <> Subscription relationship: attribute "planId" in Subscription
-Plan.hasMany(SubscriptionModel, {
+PlanModel.hasMany(SubscriptionModel, {
   foreignKey: { name: "planId", allowNull: false },
   onDelete: "RESTRICT",
 });
-SubscriptionModel.belongsTo(Plan, {
+SubscriptionModel.belongsTo(PlanModel, {
   foreignKey: { name: "planId", allowNull: false },
 });
