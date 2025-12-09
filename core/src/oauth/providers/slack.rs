@@ -24,11 +24,6 @@ lazy_static! {
         env::var("OAUTH_SLACK_BOT_CLIENT_ID").expect("OAUTH_SLACK_BOT_CLIENT_ID must be set");
     static ref OAUTH_SLACK_BOT_CLIENT_SECRET: String = env::var("OAUTH_SLACK_BOT_CLIENT_SECRET")
         .expect("OAUTH_SLACK_BOT_CLIENT_SECRET must be set");
-    static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
-        env::var("OAUTH_SLACK_TOOLS_CLIENT_ID").expect("OAUTH_SLACK_TOOLS_CLIENT_ID must be set");
-    static ref OAUTH_SLACK_TOOLS_CLIENT_SECRET: String =
-        env::var("OAUTH_SLACK_TOOLS_CLIENT_SECRET")
-            .expect("OAUTH_SLACK_TOOLS_CLIENT_SECRET must be set");
 }
 
 /// We support three Slack apps. Our default `connection` app (for data source connections) a
@@ -38,7 +33,6 @@ lazy_static! {
 pub enum SlackUseCase {
     Connection,
     Bot,
-    PersonalActions, // (personal tools setup)
     PlatformActions,
 }
 
@@ -66,10 +60,6 @@ impl SlackConnectionProvider {
             SlackUseCase::PlatformActions | SlackUseCase::Bot => (
                 OAUTH_SLACK_BOT_CLIENT_ID.clone(),
                 OAUTH_SLACK_BOT_CLIENT_SECRET.clone(),
-            ),
-            SlackUseCase::PersonalActions => (
-                OAUTH_SLACK_TOOLS_CLIENT_ID.clone(),
-                OAUTH_SLACK_TOOLS_CLIENT_SECRET.clone(),
             ),
         };
 
@@ -165,7 +155,6 @@ impl Provider for SlackConnectionProvider {
                 "connection" => SlackUseCase::Connection,
                 "bot" => SlackUseCase::Bot,
                 "platform_actions" => SlackUseCase::PlatformActions,
-                "personal_actions" => SlackUseCase::PersonalActions,
                 _ => Err(anyhow!("Slack use_case format invalid"))?,
             },
             None => Err(anyhow!("Slack use_case missing"))?,
@@ -185,7 +174,6 @@ impl Provider for SlackConnectionProvider {
                 None => OAUTH_SLACK_CLIENT_ID.clone(),
             },
             SlackUseCase::PlatformActions | SlackUseCase::Bot => OAUTH_SLACK_BOT_CLIENT_ID.clone(),
-            SlackUseCase::PersonalActions => OAUTH_SLACK_TOOLS_CLIENT_ID.clone(),
         };
 
         let req = self
@@ -229,18 +217,10 @@ impl Provider for SlackConnectionProvider {
             }
         };
 
-        // For Bot, Connection, and PlatformActions we receive a bot token (acces_token). For personal_actions (personal tools setup) we receive a user
-        // token (authed_user.access_token).
-        let access_token = match app_type {
-            SlackUseCase::Connection | SlackUseCase::Bot | SlackUseCase::PlatformActions => {
-                raw_json["access_token"]
-                    .as_str()
-                    .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?
-            }
-            SlackUseCase::PersonalActions => raw_json["authed_user"]["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
-        };
+        // For Bot, Connection, and PlatformActions we receive a bot token (acces_token).
+        let access_token = raw_json["access_token"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
