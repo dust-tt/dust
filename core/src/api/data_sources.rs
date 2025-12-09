@@ -487,11 +487,24 @@ pub struct DataSourceSearchResultItem {
 }
 
 const MAX_BULK_SEARCHES_PER_EMBEDDER: usize = 50;
+const MAX_DATA_SOURCES_PER_REQUEST: usize = 100;
 
 pub async fn data_sources_search_bulk(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<DataSourcesSearchBulkPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
+    if payload.searches.len() > MAX_DATA_SOURCES_PER_REQUEST {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "too_many_data_sources",
+            &format!(
+                "Too many data sources in bulk search request. Maximum allowed: {}, received: {}",
+                MAX_DATA_SOURCES_PER_REQUEST,
+                payload.searches.len()
+            ),
+            None,
+        );
+    }
     // Load all data sources.
     let project_data_sources: Vec<(i64, String)> = payload
         .searches
