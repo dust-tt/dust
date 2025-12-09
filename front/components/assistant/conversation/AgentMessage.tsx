@@ -525,11 +525,6 @@ export function AgentMessage({
     );
   }
 
-  // Add separator if we have both feedback and copy buttons
-  if (shouldShowFeedback && shouldShowCopy) {
-    messageButtons.push(<Separator key="separator" orientation="vertical" />);
-  }
-
   // Add copy button or split button with dropdown (only when mentions_v2 is enabled)
   if (
     userMentionsEnabled &&

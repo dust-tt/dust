@@ -1,5 +1,6 @@
 import {
   Button,
+  ButtonGroup,
   Checkbox,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -133,33 +134,44 @@ export function FeedbackSelector({
     lastSelectedThumb,
   ]);
 
-  const ThumbButtons = (
-    <div className="flex items-center gap-0.5">
-      <Button
-        tooltip="I found this helpful"
-        variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
-        size="xs"
-        disabled={isSubmittingThumb}
-        onClick={handleThumbUp}
-        icon={HandThumbUpIcon}
-        className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
-      />
-      <Button
-        tooltip="Report an issue with this answer"
-        variant={feedback?.thumb === "down" ? "primary" : "ghost-secondary"}
-        size="xs"
-        disabled={isSubmittingThumb}
-        onClick={handleThumbDown}
-        icon={HandThumbDownIcon}
-        className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
-      />
-    </div>
-  );
-
   return (
     <div ref={containerRef} className="flex items-center">
       <PopoverRoot open={isPopoverOpen}>
-        <PopoverTrigger asChild>{ThumbButtons}</PopoverTrigger>
+        <PopoverTrigger asChild>
+          <ButtonGroup
+            variant="outline"
+            items={[
+              {
+                type: "button",
+                props: {
+                  tooltip: "I found this helpful",
+                  variant:
+                    feedback?.thumb === "up" ? "primary" : "ghost-secondary",
+                  size: "xs",
+                  disabled: isSubmittingThumb,
+                  onClick: handleThumbUp,
+                  icon: HandThumbUpIcon,
+                  className:
+                    feedback?.thumb === "up" ? "" : "text-muted-foreground",
+                },
+              },
+              {
+                type: "button",
+                props: {
+                  tooltip: "Report an issue with this answer",
+                  variant:
+                    feedback?.thumb === "down" ? "primary" : "ghost-secondary",
+                  size: "xs",
+                  disabled: isSubmittingThumb,
+                  onClick: handleThumbDown,
+                  icon: HandThumbDownIcon,
+                  className:
+                    feedback?.thumb === "down" ? "" : "text-muted-foreground",
+                },
+              },
+            ]}
+          />
+        </PopoverTrigger>
         <PopoverContent
           fullWidth={true}
           onInteractOutside={closePopover}
