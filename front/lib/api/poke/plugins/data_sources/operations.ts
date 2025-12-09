@@ -68,10 +68,9 @@ export const connectorOperationsPlugin = createPlugin({
 
     auditLog(
       {
-        author: "no-author",
+        author: auth.user()?.toJSON() ?? "no-author",
         connectorId,
         op,
-        who: auth.user(),
       },
       "Executing operation on connector"
     );

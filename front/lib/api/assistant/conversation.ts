@@ -1282,9 +1282,8 @@ export async function softDeleteUserMessage(
 
   auditLog(
     {
-      author: "no-author",
+      author: user.toJSON(),
       workspaceId: owner.sId,
-      userId: user.sId,
       conversationId: conversation.sId,
       messageId: message.sId,
     },
@@ -1354,9 +1353,8 @@ export async function softDeleteAgentMessage(
 
   auditLog(
     {
-      author: "no-author",
+      author: user.toJSON(),
       workspaceId: owner.sId,
-      userId: user.sId,
       conversationId: conversation.sId,
       messageId: message.sId,
     },

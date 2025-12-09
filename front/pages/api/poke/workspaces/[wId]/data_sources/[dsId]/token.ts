@@ -89,9 +89,8 @@ async function handler(
 
       auditLog(
         {
-          author: "no-author",
+          author: auth.user()?.toJSON() ?? "no-author",
           connectorId: connector.id,
-          who: auth.user(),
         },
         "Fetching access token"
       );
