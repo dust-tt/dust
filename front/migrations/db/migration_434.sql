@@ -6,3 +6,5 @@ ALTER TABLE "skill_mcp_server_configurations"
         FOREIGN KEY ("skillConfigurationId")
         REFERENCES "skill_configurations" ("id")
         ON DELETE RESTRICT ON UPDATE CASCADE;
+-- Migration: Remove creditAlertIdempotencyKey from workspace metadata
+-- This key is no longer needed as the credit alert threshold ID is now computed JIT.
