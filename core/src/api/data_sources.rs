@@ -400,15 +400,34 @@ pub async fn data_sources_search_bulk(
         }
     };
 
-    // Group by embedder model_id.
+    // Create a HashMap of data sources by ID for correct pairing.
+    let ds_map: HashMap<String, DataSource> = data_sources
+        .into_iter()
+        .map(|ds| (ds.data_source_id().to_string(), ds))
+        .collect();
+
+    // Group by embedder model_id with correct search_req <-> data_source pairing.
     let mut groups: HashMap<String, Vec<(DataSourceSearchRequest, DataSource)>> = HashMap::new();
 
-    for (search_req, ds) in payload.searches.into_iter().zip(data_sources.into_iter()) {
-        let model_id = ds.embedder_config().model_id.clone();
-        groups
-            .entry(model_id)
-            .or_insert_with(Vec::new)
-            .push((search_req, ds));
+    for search_req in payload.searches.into_iter() {
+        if let Some(ds) = ds_map.get(&search_req.data_source_id) {
+            let model_id = ds.embedder_config().model_id.clone();
+            groups
+                .entry(model_id)
+                .or_insert_with(Vec::new)
+                .push((search_req, ds.clone()));
+        } else {
+            // Handle missing data source.
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!(
+                    "Data source {} not found after loading",
+                    search_req.data_source_id
+                ),
+                None,
+            );
+        }
     }
 
     // Embed and search for each group concurrently.
