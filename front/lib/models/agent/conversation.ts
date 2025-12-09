@@ -213,7 +213,7 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextFullName: string | null;
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
-  declare userContextOrigin: UserMessageOrigin | null;
+  declare userContextOrigin: UserMessageOrigin;
   // TODO(2025-11-24 PPUL): Remove this once data has been backfilled
   declare userContextOriginMessageId: string | null;
 
@@ -276,7 +276,7 @@ UserMessage.init(
     },
     userContextOrigin: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     // TODO: Remove this once backfilled
     userContextOriginMessageId: {

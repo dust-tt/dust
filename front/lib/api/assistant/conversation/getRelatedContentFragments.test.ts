@@ -62,6 +62,7 @@ function createMockUserMessage(rank: number): UserMessageType {
       fullName: null,
       email: null,
       profilePictureUrl: null,
+      origin: "api",
     },
   };
 }
