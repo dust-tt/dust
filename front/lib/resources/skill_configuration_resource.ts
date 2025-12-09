@@ -197,6 +197,25 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return customSkills.map((skill) => new this(this.model, skill.get()));
   }
 
+  static async fetchActiveByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<SkillConfigurationResource | null> {
+    const resources = await this.baseFetch(auth, {
+      where: {
+        name,
+        status: "active",
+      },
+      limit: 1,
+    });
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
+  }
+
   get sId(): string {
     return SkillConfigurationResource.modelIdToSId({
       id: this.id,

@@ -7,14 +7,10 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
+import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -22,15 +18,7 @@ import { isGlobalAgentId, isString } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: Omit<
-    SkillConfigurationType,
-    | "author"
-    | "requestedSpaceIds"
-    | "workspaceId"
-    | "createdAt"
-    | "updatedAt"
-    | "authorId"
-  >;
+  skillConfiguration: SkillConfigurationType;
 };
 
 export interface GetAgentSkillsResponseBody {
@@ -150,15 +138,10 @@ async function handler(
 
       const body: PostSkillConfigurationRequestBody = bodyValidation.right;
 
-      // Check for existing active skill with the same name.
-      // TODO(skills): consolidate this kind of db interaction within a resource.
-      const existingSkill = await SkillConfigurationModel.findOne({
-        where: {
-          workspaceId: owner.id,
-          name: body.name,
-          status: "active",
-        },
-      });
+      const existingSkill = await SkillConfigurationResource.fetchActiveByName(
+        auth,
+        body.name
+      );
 
       if (existingSkill) {
         return apiError(req, res, {
@@ -191,7 +174,7 @@ async function handler(
 
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillConfiguration = await withTransaction(async (transaction) => {
-        const skill = await SkillConfigurationModel.create(
+        const skill = await SkillConfigurationResource.makeNew(
           {
             workspaceId: owner.id,
             version: 0,
@@ -213,6 +196,7 @@ async function handler(
 
         // Create MCP server configurations (tools) for this skill
         for (const mcpServerView of mcpServerViews) {
+          // TODO(skills 2025-12-09): move this to the makeNew.
           await SkillMCPServerConfigurationModel.create(
             {
               workspaceId: owner.id,
@@ -228,16 +212,7 @@ async function handler(
 
       return res.status(200).json({
         skillConfiguration: {
-          sId: makeSId("skill", {
-            id: skillConfiguration.id,
-            workspaceId: skillConfiguration.workspaceId,
-          }),
-          name: skillConfiguration.name,
-          description: skillConfiguration.description,
-          instructions: skillConfiguration.instructions,
-          status: skillConfiguration.status,
-          scope: skillConfiguration.scope,
-          version: skillConfiguration.version,
+          ...skillConfiguration.toJSON(),
           tools: body.tools,
         },
       });

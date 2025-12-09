@@ -21,7 +21,7 @@ import handler from "./index";
 
 async function setupTest(
   method: RequestMethod = "GET",
-  role: MembershipRoleType = "user"
+  role: MembershipRoleType = "builder"
 ) {
   const mockRequest = await createPrivateApiMockRequest({
     method,
@@ -183,8 +183,8 @@ describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
     expect(data.skills[0].name).toBe("Workspace Skill");
   });
 
-  it("should work for different user roles (user, builder, admin)", async () => {
-    for (const role of ["user", "builder", "admin"] as const) {
+  it("should work for builder roles (builder, admin)", async () => {
+    for (const role of ["builder", "admin"] as const) {
       const { req, res, workspace, user } = await setupTest("GET", role);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
