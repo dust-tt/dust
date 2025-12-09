@@ -59,6 +59,8 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -561,6 +563,18 @@ export async function deleteSpacesActivity({
       await mcpServerView.delete(auth, { hardDelete: false });
     }
 
+    // Delete all the webhook source views of the space.
+    const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+      auth,
+      space,
+      {
+        includeDeleted: true,
+      }
+    );
+    for (const webhookSourceView of webhookSourceViews) {
+      await webhookSourceView.hardDelete(auth);
+    }
+
     await scrubSpaceActivity({
       spaceId: space.sId,
       workspaceId,
@@ -601,6 +615,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
+  await WebhookSourceResource.deleteAllForWorkspace(auth);
   await TriggerResource.deleteAllForWorkspace(auth);
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);

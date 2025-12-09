@@ -18,6 +18,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -213,6 +214,19 @@ export async function hardDeleteSpace(
   });
   for (const app of apps) {
     const res = await hardDeleteApp(auth, app);
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
+  // Delete all webhook source views of the space.
+  const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+    auth,
+    space,
+    { includeDeleted: true }
+  );
+  for (const webhookSourceView of webhookSourceViews) {
+    const res = await webhookSourceView.hardDelete(auth);
     if (res.isErr()) {
       return res;
     }
