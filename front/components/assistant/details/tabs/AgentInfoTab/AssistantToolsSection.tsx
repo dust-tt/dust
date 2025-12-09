@@ -105,11 +105,13 @@ export function AssistantToolsSection({
             ) : (
               sortedActions.map((action) => (
                 <div
-                  className="flex flex-row items-center gap-2"
+                  className="flex min-w-0 flex-row items-center gap-2"
                   key={action.title}
                 >
                   {action.avatar}
-                  <div>{action.title}</div>
+                  <div className="truncate" title={action.title}>
+                    {action.title}
+                  </div>
                 </div>
               ))
             )}
