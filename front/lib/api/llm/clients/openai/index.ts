@@ -43,7 +43,9 @@ export class OpenAIResponsesLLM extends LLM {
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_OPENAI_API_KEY environment variable is required"
+      );
     }
 
     this.client = new OpenAI({
