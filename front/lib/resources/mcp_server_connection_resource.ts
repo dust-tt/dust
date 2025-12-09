@@ -201,9 +201,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           ? { remoteMCPServerId: id }
           : { internalMCPServerId: mcpServerId }),
       },
-      // Only returns the latest connection for a given MCP server.
       order: [["createdAt", "DESC"]],
-      limit: 1,
     });
 
     return new Ok(connections);
