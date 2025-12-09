@@ -34,7 +34,8 @@ export interface MCPServerConnectionResource
   extends ReadonlyAttributesType<MCPServerConnectionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerConnectionResource extends BaseResource<MCPServerConnectionModel> {
-  static model: ModelStatic<MCPServerConnectionModel> = MCPServerConnectionModel;
+  static model: ModelStatic<MCPServerConnectionModel> =
+    MCPServerConnectionModel;
 
   readonly user: Attributes<UserModel>;
 

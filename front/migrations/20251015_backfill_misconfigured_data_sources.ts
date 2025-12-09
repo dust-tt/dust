@@ -13,14 +13,15 @@ makeScript({}, async ({ execute }, logger) => {
 
   logger.info("Starting migration of AgentDataSourceConfiguration parentsIn");
 
-  const dataSourceConfigurations = await AgentDataSourceConfigurationModel.findAll({
-    where: {
-      parentsIn: [],
-      parentsNotIn: {
-        [Op.and]: [{ [Op.not]: null }, { [Op.ne]: [] }],
+  const dataSourceConfigurations =
+    await AgentDataSourceConfigurationModel.findAll({
+      where: {
+        parentsIn: [],
+        parentsNotIn: {
+          [Op.and]: [{ [Op.not]: null }, { [Op.ne]: [] }],
+        },
       },
-    },
-  });
+    });
 
   logger.info(
     `Found ${dataSourceConfigurations.length} configurations to process`

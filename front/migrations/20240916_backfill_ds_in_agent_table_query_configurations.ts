@@ -11,6 +11,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+
 async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,
@@ -66,24 +67,25 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
       `Error while fetching data source view for data source ${ds.id} // Found ${dataSourceViewsForDataSource.length} data source views.`
     );
 
-    const [, affectedRows] = await AgentTablesQueryConfigurationTableModel.update(
-      {
-        // @ts-expect-error `dataSourceIdNew` has been removed.
-        dataSourceIdNew: ds.id,
-      },
-      {
-        where: {
-          // /!\ `dataSourceId` is the data source's name, not the id.
-          dataSourceId: ds.sId,
-          dataSourceIdNew: {
-            [Op.is]: null,
-          },
-          // Given that the name isn't unique we need to precise the workspace.
-          dataSourceWorkspaceId: workspace.sId,
+    const [, affectedRows] =
+      await AgentTablesQueryConfigurationTableModel.update(
+        {
+          // @ts-expect-error `dataSourceIdNew` has been removed.
+          dataSourceIdNew: ds.id,
         },
-        returning: true,
-      }
-    );
+        {
+          where: {
+            // /!\ `dataSourceId` is the data source's name, not the id.
+            dataSourceId: ds.sId,
+            dataSourceIdNew: {
+              [Op.is]: null,
+            },
+            // Given that the name isn't unique we need to precise the workspace.
+            dataSourceWorkspaceId: workspace.sId,
+          },
+          returning: true,
+        }
+      );
 
     if (affectedRows && affectedRows.length > 0) {
       const [r] = affectedRows;

@@ -68,14 +68,20 @@ AgentTablesQueryConfigurationTableModel.init(
 );
 
 // MCP server config <> Table config
-AgentMCPServerConfigurationModel.hasMany(AgentTablesQueryConfigurationTableModel, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-AgentTablesQueryConfigurationTableModel.belongsTo(AgentMCPServerConfigurationModel, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-});
+AgentMCPServerConfigurationModel.hasMany(
+  AgentTablesQueryConfigurationTableModel,
+  {
+    foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
+    onDelete: "RESTRICT",
+  }
+);
+AgentTablesQueryConfigurationTableModel.belongsTo(
+  AgentMCPServerConfigurationModel,
+  {
+    foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
+    onDelete: "RESTRICT",
+  }
+);
 
 // Config <> Data source.
 DataSourceModel.hasMany(AgentTablesQueryConfigurationTableModel, {
