@@ -63,10 +63,12 @@ export default function WorkspaceSkills({
 
   return (
     <>
-      <SkillDetails
-        skillConfiguration={showDetails}
-        onClose={() => setShowDetails(null)}
-      />
+      {!!showDetails && (
+        <SkillDetails
+          skillConfiguration={showDetails}
+          onClose={() => setShowDetails(null)}
+        />
+      )}
       <ConversationsNavigationProvider>
         <AppWideModeLayout
           subscription={subscription}

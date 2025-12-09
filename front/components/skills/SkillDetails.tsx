@@ -35,7 +35,7 @@ export const SCOPE_INFO: Record<
 } as const;
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillConfigurationWithAuthorType | null;
+  skillConfiguration: SkillConfigurationWithAuthorType;
   onClose: () => void;
 };
 
@@ -57,9 +57,7 @@ export function SkillDetails({
           <SheetTitle />
         </VisuallyHidden>
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          {skillConfiguration && (
-            <DescriptionSection skillConfiguration={skillConfiguration} />
-          )}
+          <DescriptionSection skillConfiguration={skillConfiguration} />
         </SheetHeader>
       </SheetContent>
     </Sheet>
