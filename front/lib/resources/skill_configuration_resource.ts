@@ -16,7 +16,11 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import {
@@ -168,6 +172,22 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
 
     return resources[0];
+  }
+
+  static async fetchBySId(
+    auth: Authenticator,
+    sId: string
+  ): Promise<SkillConfigurationResource | null> {
+    if (!isResourceSId("skill", sId)) {
+      return null;
+    }
+
+    const resourceId = getResourceIdFromSId(sId);
+    if (resourceId === null) {
+      return null;
+    }
+
+    return this.fetchByModelIdWithAuth(auth, resourceId);
   }
 
   static async fetchByAgentConfigurationId(

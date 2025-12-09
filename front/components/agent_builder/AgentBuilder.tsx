@@ -38,8 +38,8 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
-import { useAgentConfigurationSkills } from "@app/lib/swr/agent_configuration_skills";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
+import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
@@ -107,10 +107,13 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const { skills, isSkillsLoading } = useAgentConfigurationSkills(
-    owner.sId,
-    duplicateAgentId ?? agentConfiguration?.sId ?? null
-  );
+  const agentConfigurationSIdForSkills =
+    duplicateAgentId ?? agentConfiguration?.sId ?? null;
+  const { skills, isSkillsLoading } = useAgentConfigurationSkills({
+    owner,
+    agentConfigurationSId: agentConfigurationSIdForSkills ?? "",
+    disabled: !agentConfigurationSIdForSkills,
+  });
 
   const { editors } = useEditors({
     owner,
@@ -140,6 +143,14 @@ export default function AgentBuilder({
   const processedActions = useMemo(() => {
     return processActionsFromStorage(actions ?? emptyArray());
   }, [actions]);
+
+  const processedSkills = useMemo(() => {
+    return skills.map((skill) => ({
+      id: skill.sId,
+      name: skill.name,
+      description: skill.description,
+    }));
+  }, [skills]);
 
   const agentSlackChannels = useMemo(() => {
     if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
@@ -195,7 +206,7 @@ export default function AgentBuilder({
     form.reset({
       ...currentValues,
       actions: processedActions,
-      skills,
+      skills: processedSkills,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
@@ -222,7 +233,7 @@ export default function AgentBuilder({
     isActionsLoading,
     isSkillsLoading,
     processedActions,
-    skills,
+    processedSkills,
     form,
     duplicateAgentId,
     user,

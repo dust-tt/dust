@@ -22,7 +22,9 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -408,6 +410,34 @@ export async function createOrUpgradeAgentConfiguration({
       return res;
     }
     actionConfigs.push(res.value);
+  }
+
+  // Create skill associations
+  const owner = auth.getNonNullableWorkspace();
+  for (const skill of assistant.skills) {
+    // Validate the skill exists and belongs to this workspace
+    const skillResource = await SkillConfigurationResource.fetchBySId(
+      auth,
+      skill.sId
+    );
+    if (!skillResource) {
+      logger.warn(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId: agentConfigurationRes.value.sId,
+          skillSId: skill.sId,
+        },
+        "Skill not found when creating agent configuration, skipping"
+      );
+      continue;
+    }
+
+    await AgentSkillModel.create({
+      workspaceId: owner.id,
+      agentConfigurationId: agentConfigurationRes.value.id,
+      customSkillId: skillResource.id,
+      globalSkillId: null,
+    });
   }
 
   const agentConfiguration: AgentConfigurationType = {
