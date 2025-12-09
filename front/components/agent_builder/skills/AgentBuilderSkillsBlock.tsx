@@ -1,5 +1,4 @@
 import {
-  BookOpenIcon,
   Button,
   Card,
   CardActionButton,
@@ -9,7 +8,7 @@ import {
   ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -17,6 +16,8 @@ import type {
   AgentBuilderSkillsType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { SkillsSheet } from "@app/components/agent_builder/skills/SkillsSheet";
+import { SKILL_ICON } from "@app/lib/skill";
 
 const BACKGROUND_IMAGE_PATH = "/static/SkillsBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
@@ -27,21 +28,18 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
   paddingTop: "90px",
 };
 
-interface ActionCardProps {
-  action: AgentBuilderSkillsType;
+interface SkillCardProps {
+  skill: AgentBuilderSkillsType;
   onRemove: () => void;
-  onEdit?: () => void;
 }
 
-function SkillCard({ action, onRemove, onEdit }: ActionCardProps) {
-  const displayName = action.name;
-  const description = action.description ?? "";
+function SkillCard({ skill, onRemove }: SkillCardProps) {
+  const SkillIcon = SKILL_ICON;
 
   return (
     <Card
       variant="primary"
       className="h-28"
-      onClick={onEdit}
       action={
         <CardActionButton
           size="mini"
@@ -55,11 +53,12 @@ function SkillCard({ action, onRemove, onEdit }: ActionCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <span className="truncate">{displayName}</span>
+          <SkillIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{skill.name}</span>
         </div>
 
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <span className="line-clamp-2 break-words">{description}</span>
+          <span className="line-clamp-2 break-words">{skill.description}</span>
         </div>
       </div>
     </Card>
@@ -70,11 +69,11 @@ interface AgentBuilderSkillsBlockProps {
   isSkillsLoading?: boolean;
 }
 
-function AddSkillsButton({ onAddSkills }: { onAddSkills: () => void }) {
+function AddSkillsButton({ onClick }: { onClick: () => void }) {
   return (
     <Button
       type="button"
-      onClick={onAddSkills}
+      onClick={onClick}
       label="Add skills"
       icon={ToolsIcon}
       variant="primary"
@@ -85,36 +84,36 @@ function AddSkillsButton({ onAddSkills }: { onAddSkills: () => void }) {
 export function AgentBuilderSkillsBlock({
   isSkillsLoading,
 }: AgentBuilderSkillsBlockProps) {
-  const { getValues } = useFormContext<AgentBuilderFormData>();
-  const { fields, remove, append, update } = useFieldArray<
-    AgentBuilderFormData,
-    "skills"
-  >({
+  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { fields, remove } = useFieldArray<AgentBuilderFormData, "skills">({
     name: "skills",
   });
 
-  const skills = getValues("skills");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const onAddSkills = () => {
-    // For simplicity, we directly append a default skill here.
-    const newSkill: AgentBuilderSkillsType = {
-      id: `skill-${Date.now()}`,
-      name: "New Skill",
-      description: "Description of the new skill",
-    };
-    append(newSkill);
-  };
+  const handleOpenSheet = useCallback(() => {
+    setIsSheetOpen(true);
+  }, []);
 
-  const onEditSkill = (updatedSkill: AgentBuilderSkillsType, index: number) => {
-    update(index, updatedSkill);
-  };
+  const handleCloseSheet = useCallback(() => {
+    setIsSheetOpen(false);
+  }, []);
+
+  const handleSaveSkills = useCallback(
+    (skills: AgentBuilderSkillsType[]) => {
+      setValue("skills", skills, { shouldDirty: true });
+    },
+    [setValue]
+  );
+
+  const currentSkills = getValues("skills");
 
   return (
     <AgentBuilderSectionContainer
       title="Skills"
       description="Give your agent a custom capability for specific tasks"
       headerActions={
-        fields.length > 0 && <AddSkillsButton onAddSkills={onAddSkills} />
+        fields.length > 0 && <AddSkillsButton onClick={handleOpenSheet} />
       }
     >
       <div className="flex-1">
@@ -124,27 +123,29 @@ export function AgentBuilderSkillsBlock({
           </div>
         ) : fields.length === 0 ? (
           <EmptyCTA
-            action={<AddSkillsButton onAddSkills={onAddSkills} />}
+            action={<AddSkillsButton onClick={handleOpenSheet} />}
             className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
-          <>
-            <CardGrid>
-              {fields.map((field, index) => (
-                <SkillCard
-                  key={field.id}
-                  action={field}
-                  onRemove={() => remove(index)}
-                  onEdit={() =>
-                    onEditSkill({ ...field, name: "Updated Skill" }, index)
-                  }
-                />
-              ))}
-            </CardGrid>
-          </>
+          <CardGrid>
+            {fields.map((field, index) => (
+              <SkillCard
+                key={field.id}
+                skill={field}
+                onRemove={() => remove(index)}
+              />
+            ))}
+          </CardGrid>
         )}
       </div>
+
+      <SkillsSheet
+        open={isSheetOpen}
+        onClose={handleCloseSheet}
+        selectedSkills={currentSkills}
+        onSave={handleSaveSkills}
+      />
     </AgentBuilderSectionContainer>
   );
 }

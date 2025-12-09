@@ -48,6 +48,7 @@ export function transformAgentConfigurationToFormData(
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Will be populated reactively from useAgentConfigurationActions hook
+    skills: [], // Will be populated reactively from useAgentConfigurationSkills hook
     triggersToCreate: [],
     triggersToUpdate: [], // Will be populated reactively from the hook
     triggersToDelete: [],
@@ -94,6 +95,7 @@ export function getDefaultAgentFormData({
       responseFormat: undefined,
     },
     actions: [],
+    skills: [],
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],
@@ -138,6 +140,7 @@ export function transformTemplateToFormData(
         : defaultFormData.generationSettings.temperature,
     },
     actions: [],
+    skills: [],
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],

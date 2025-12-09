@@ -481,6 +481,9 @@ export async function submitAgentBuilderForm({
       editors: formData.agentSettings.editors.map((editor) => ({
         sId: editor.sId,
       })),
+      skills: formData.skills.map((skill) => ({
+        sId: skill.id,
+      })),
     },
   };
 

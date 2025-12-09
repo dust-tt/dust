@@ -40,6 +40,7 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentConfigurationSkills } from "@app/lib/swr/agent_configuration_skills";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
@@ -107,6 +108,11 @@ export default function AgentBuilder({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
+
+  const { skills, isSkillsLoading } = useAgentConfigurationSkills(
+    owner.sId,
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
+  );
 
   const { editors } = useEditors({
     owner,
@@ -191,6 +197,7 @@ export default function AgentBuilder({
     form.reset({
       ...currentValues,
       actions: processedActions,
+      skills,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
@@ -215,7 +222,9 @@ export default function AgentBuilder({
     triggers,
     isTriggersLoading,
     isActionsLoading,
+    isSkillsLoading,
     processedActions,
+    skills,
     form,
     duplicateAgentId,
     user,
@@ -404,7 +413,7 @@ export default function AgentBuilder({
               }}
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               agentConfigurationId={agentConfiguration?.sId || null}
-              isSkillsLoading={false}
+              isSkillsLoading={isSkillsLoading}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}
             />
