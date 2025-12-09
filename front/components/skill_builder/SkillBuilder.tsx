@@ -19,6 +19,7 @@ import {
   skillBuilderFormSchema,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
+import { SkillBuilderRequestedSpace } from "@app/components/skill_builder/SkillBuilderRequestedSpace";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
@@ -176,6 +177,7 @@ export default function SkillBuilder({
                     Create custom capabilities for specific tasks
                   </p>
                 </div>
+                <SkillBuilderRequestedSpace />
                 <SkillBuilderDescriptionSection />
                 <SkillBuilderInstructionsSection />
                 <SkillBuilderToolsSection />

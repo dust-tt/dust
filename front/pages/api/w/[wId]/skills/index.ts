@@ -188,6 +188,16 @@ async function handler(
         mcpServerViews.push(mcpServerView);
       }
 
+      // Compute requestedSpaceIds from the MCP server views' spaces
+      // Exclude the global space from requestedSpaceIds
+      const requestedSpaceIds = [
+        ...new Set(
+          mcpServerViews
+            .filter((view) => !view.space.isGlobal())
+            .map((view) => view.space.id)
+        ),
+      ];
+
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillResource = await SkillResource.makeNew(auth, {
         status: "active",
@@ -197,8 +207,7 @@ async function handler(
         userFacingDescription: body.userFacingDescription ?? "",
         instructions: body.instructions,
         authorId: user.id,
-        // TODO(skills): add space restrictions.
-        requestedSpaceIds: [],
+        requestedSpaceIds,
       });
 
       // Create MCP server configurations (tools) for this skill
