@@ -7,6 +7,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -14,7 +15,13 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, formatUserFullName, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  formatUserFullName,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
@@ -119,6 +126,33 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return resources[0];
   }
 
+  static async fetchByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: ModelId
+  ): Promise<SkillConfigurationResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: SkillConfigurationModel,
+          as: "customSkill",
+          required: false,
+        },
+      ],
+    });
+
+    // TODO(skills 2025-12-09): Add support for global skills.
+    // When globalSkillId is set, we need to fetch the skill from the global registry
+    // and return it as a SkillConfigurationResource.
+    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
+    return customSkills.map((skill) => new this(this.model, skill.get()));
+  }
+
   get sId(): string {
     return SkillConfigurationResource.modelIdToSId({
       id: this.id,
@@ -146,7 +180,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     try {
       const workspace = auth.getNonNullableWorkspace();
 
-      const affectedCount = await SkillConfigurationResource.model.destroy({
+      const affectedCount = await this.model.destroy({
         where: {
           id: this.id,
           workspaceId: workspace.id,
