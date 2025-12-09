@@ -1253,7 +1253,7 @@ export async function softDeleteUserMessage(
     });
 
     if (relatedContentFragments.length > 0) {
-      await Message.update(
+      await MessageModel.update(
         {
           visibility: "deleted",
           contentFragmentId: col("contentFragmentId"),
