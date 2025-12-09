@@ -95,7 +95,7 @@ export default function SkillBuilder() {
             <BarHeader
               variant="default"
               className="mx-4"
-              title="Create new skill"
+              title="Skill"
               rightActions={
                 <Button
                   icon={XMarkIcon}
@@ -105,8 +105,17 @@ export default function SkillBuilder() {
                 />
               }
             />
+
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
+                <div>
+                  <h2 className="heading-lg text-foreground dark:text-foreground-night">
+                    Create new skill
+                  </h2>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Create custom capabilities for specific tasks
+                  </p>
+                </div>
                 <SkillBuilderDescriptionSection />
                 <SkillBuilderInstructionsSection />
                 <MCPServerViewsProvider owner={owner}>
