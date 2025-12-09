@@ -93,7 +93,7 @@ impl Provider for SlackToolsConnectionProvider {
             }
         };
 
-        // For both platform_actions and personal_actions we receive a user token.
+        // For both `platform_actions and `personal_actions we receive a user token.
         // `platform_actions` are used to setup the MCP server while `personal_actions` are used by
         // users at time of use.
         let access_token = raw_json["authed_user"]["access_token"]
