@@ -4,6 +4,7 @@ import type { UserType } from "./user";
 export type SkillStatus = "active" | "archived";
 
 export type SkillConfigurationType = {
+  id: number;
   sId: string;
   createdAt: Date;
   updatedAt: Date;
