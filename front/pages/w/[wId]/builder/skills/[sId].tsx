@@ -53,8 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const canEdit = await skillResource.canUserEdit(auth);
-  if (!canEdit && !auth.isAdmin()) {
+  if (!skillResource.canEdit && !auth.isAdmin()) {
     return {
       notFound: true,
     };

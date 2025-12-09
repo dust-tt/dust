@@ -53,6 +53,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
   readonly author?: Attributes<UserModel>;
   readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
+  readonly canEdit: boolean;
 
   constructor(
     model: ModelStatic<SkillConfigurationModel>,
@@ -60,15 +61,18 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     {
       author,
       mcpServerConfigurations,
+      canEdit = true,
     }: {
       author?: Attributes<UserModel>;
       mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+      canEdit?: boolean;
     } = {}
   ) {
     super(SkillConfigurationModel, blob);
 
     this.author = author;
     this.mcpServerConfigurations = mcpServerConfigurations ?? [];
+    this.canEdit = canEdit;
   }
 
   static async makeNew(
@@ -140,11 +144,40 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       }
     }
 
+    // Compute canEdit for each skill
+    const user = auth.user();
+    const canEditMap = new Map<number, boolean>();
+
+    for (const skill of skillConfigurations) {
+      let canEdit = false;
+
+      if (user) {
+        // Author can always edit
+        if (skill.authorId === user.id) {
+          canEdit = true;
+        } else {
+          // Check if user is in the editors group
+          const editorGroupRes = await GroupResource.findEditorGroupForSkill(
+            auth,
+            skill
+          );
+
+          if (editorGroupRes.isOk()) {
+            const members = await editorGroupRes.value.getActiveMembers(auth);
+            canEdit = members.some((m) => m.id === user.id);
+          }
+        }
+      }
+
+      canEditMap.set(skill.id, canEdit);
+    }
+
     return skillConfigurations.map(
       (c) =>
         new this(this.model, c.get(), {
           author: c.author?.get(),
           mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
+          canEdit: canEditMap.get(c.id) ?? false,
         })
     );
   }
@@ -303,6 +336,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       return new Err(normalizeError(error));
     }
   }
+
 
   async updateSkill(
     auth: Authenticator,
