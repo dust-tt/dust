@@ -289,8 +289,8 @@ async function createServer(
             {
               type: "text",
               text: serializeMention({
-                name: mention.label,
-                sId: mention.id,
+                id: mention.id,
+                label: mention.label,
                 type: "user",
               }),
             },
