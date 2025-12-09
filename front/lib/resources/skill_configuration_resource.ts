@@ -236,6 +236,18 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return resources[0];
   }
 
+  static async fetchAllAvailableSkills(
+    auth: Authenticator,
+    limit?: number
+  ): Promise<SkillConfigurationResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status: "active",
+      },
+      ...(limit ? { limit } : {}),
+    });
+  }
+
   get sId(): string {
     return SkillConfigurationResource.modelIdToSId({
       id: this.id,
