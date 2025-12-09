@@ -1,4 +1,4 @@
-import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
+import { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -9,7 +9,7 @@ async function main() {
   });
 
   for (const connector of gDriveConnectors) {
-    const config = await GoogleDriveConfig.create({
+    const config = await GoogleDriveConfigModel.create({
       connectorId: connector.id,
       pdfEnabled: false,
       csvEnabled: false,

@@ -2,7 +2,7 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import type { LightGoogleDrive } from "@connectors/connectors/google_drive/temporal/activities/common/types";
 import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
-import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFoldersModel } from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
@@ -10,7 +10,7 @@ import type { ModelId } from "@connectors/types";
 export async function getDrivesToSync(
   connectorId: ModelId
 ): Promise<LightGoogleDrive[]> {
-  const selectedFolders = await GoogleDriveFolders.findAll({
+  const selectedFolders = await GoogleDriveFoldersModel.findAll({
     where: {
       connectorId: connectorId,
     },

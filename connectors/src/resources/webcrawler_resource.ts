@@ -10,10 +10,10 @@ import type {
 import { literal, Op } from "sequelize";
 
 import {
-  WebCrawlerConfigurationHeader,
+  WebCrawlerConfigurationHeaderModel,
   WebCrawlerConfigurationModel,
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {} from "@connectors/resources/connector/strategy";
@@ -52,7 +52,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
   async postFetchHook() {
     (
-      await WebCrawlerConfigurationHeader.findAll({
+      await WebCrawlerConfigurationHeaderModel.findAll({
         where: {
           webcrawlerConfigurationId: this.id,
         },
@@ -94,7 +94,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       {} as Record<ModelId, WebCrawlerConfigurationResource>
     );
 
-    const configurationHeaders = await WebCrawlerConfigurationHeader.findAll({
+    const configurationHeaders = await WebCrawlerConfigurationHeaderModel.findAll({
       where: {
         webcrawlerConfigurationId: blobs.map((b) => b.id),
       },
@@ -134,7 +134,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       { transaction }
     );
 
-    await WebCrawlerConfigurationHeader.bulkCreate(
+    await WebCrawlerConfigurationHeaderModel.bulkCreate(
       Object.entries(blob.headers).map(([key, value]) => {
         return {
           connectorId: blob.connectorId,
@@ -216,14 +216,14 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     await withTransaction(async (transaction) => {
       const headersList = Object.entries(headers);
       // delete all headers before inserting new ones
-      await WebCrawlerConfigurationHeader.destroy({
+      await WebCrawlerConfigurationHeaderModel.destroy({
         where: {
           webcrawlerConfigurationId: this.id,
         },
         transaction,
       });
       // now insert new headers
-      await WebCrawlerConfigurationHeader.bulkCreate(
+      await WebCrawlerConfigurationHeaderModel.bulkCreate(
         headersList.map(([key, value]) => {
           return {
             connectorId: this.connectorId,
@@ -278,19 +278,19 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await WebCrawlerPage.destroy({
+    await WebCrawlerPageModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
       transaction,
     });
-    await WebCrawlerFolder.destroy({
+    await WebCrawlerFolderModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
       transaction,
     });
-    await WebCrawlerConfigurationHeader.destroy({
+    await WebCrawlerConfigurationHeaderModel.destroy({
       where: {
         webcrawlerConfigurationId: this.id,
       },

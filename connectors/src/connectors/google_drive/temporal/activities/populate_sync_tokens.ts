@@ -3,7 +3,7 @@ import {
   getDrives,
   getSyncPageToken,
 } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
-import { GoogleDriveSyncToken } from "@connectors/lib/models/google_drive";
+import { GoogleDriveSyncTokenModel } from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
@@ -19,7 +19,7 @@ export async function populateSyncTokens(connectorId: ModelId) {
       drive.id,
       drive.isSharedDrive
     );
-    await GoogleDriveSyncToken.upsert({
+    await GoogleDriveSyncTokenModel.upsert({
       connectorId: connectorId,
       driveId: drive.id,
       syncToken: lastSyncToken,
@@ -31,7 +31,7 @@ export async function populateSyncTokens(connectorId: ModelId) {
     GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
     false
   );
-  await GoogleDriveSyncToken.upsert({
+  await GoogleDriveSyncTokenModel.upsert({
     connectorId,
     driveId: GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
     syncToken: userLandSyncToken,

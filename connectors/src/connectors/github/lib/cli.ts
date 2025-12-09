@@ -14,10 +14,10 @@ import {
   getRepoSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
-  GithubCodeFile,
-  GithubCodeRepository,
-  GithubConnectorState,
-  GithubIssue,
+  GithubCodeFileModel,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
+  GithubIssueModel,
 } from "@connectors/lib/models/github";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -161,7 +161,7 @@ export const github = async ({
 
       const enable = args.enable === "true";
 
-      const connectorState = await GithubConnectorState.findOne({
+      const connectorState = await GithubConnectorStateModel.findOne({
         where: {
           connectorId: connector.id,
         },
@@ -221,7 +221,7 @@ export const github = async ({
         throw new Error("Missing --skipReason argument");
       }
 
-      await GithubIssue.upsert({
+      await GithubIssueModel.upsert({
         repoId: args.repoId.toString(),
         issueNumber: parseInt(args.issueNumber, 10),
         connectorId: connector.id,
@@ -236,7 +236,7 @@ export const github = async ({
         throw new Error("Missing --repoId argument");
       }
 
-      const githubCodeRepository = await GithubCodeRepository.findOne({
+      const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -270,7 +270,7 @@ export const github = async ({
         throw new Error("Missing --skipReason argument");
       }
 
-      const githubCodeRepository = await GithubCodeRepository.findOne({
+      const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -298,7 +298,7 @@ export const github = async ({
         throw new Error("Missing --repoId argument");
       }
 
-      const githubCodeRepository = await GithubCodeRepository.findOne({
+      const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -320,7 +320,7 @@ export const github = async ({
     }
 
     case "list-skipped-repos": {
-      const skippedRepos = await GithubCodeRepository.findAll({
+      const skippedRepos = await GithubCodeRepositoryModel.findAll({
         where: {
           connectorId: connector.id,
           skipReason: {
@@ -350,7 +350,7 @@ export const github = async ({
         throw new Error("Missing --skipReason argument");
       }
 
-      const githubCodeRepository = await GithubCodeRepository.findOne({
+      const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -362,7 +362,7 @@ export const github = async ({
         );
       }
 
-      const githubCodeFile = await GithubCodeFile.findOne({
+      const githubCodeFile = await GithubCodeFileModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -395,7 +395,7 @@ export const github = async ({
         throw new Error("Missing --documentId argument");
       }
 
-      const githubCodeRepository = await GithubCodeRepository.findOne({
+      const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -407,7 +407,7 @@ export const github = async ({
         );
       }
 
-      const githubCodeFile = await GithubCodeFile.findOne({
+      const githubCodeFile = await GithubCodeFileModel.findOne({
         where: {
           connectorId: connector.id,
           repoId: args.repoId,
@@ -432,7 +432,7 @@ export const github = async ({
     }
 
     case "clear-installation-id": {
-      const connectorState = await GithubConnectorState.findOne({
+      const connectorState = await GithubConnectorStateModel.findOne({
         where: {
           connectorId: connector.id,
         },

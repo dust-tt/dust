@@ -1,6 +1,6 @@
 import { getJoinedChannels } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -12,7 +12,7 @@ async function main() {
 
   for (const c of slackConnectors) {
     const channelsInDb = (
-      await SlackChannel.findAll({
+      await SlackChannelModel.findAll({
         where: {
           connectorId: c.id,
         },
@@ -20,7 +20,7 @@ async function main() {
     ).reduce(
       (acc, c) => Object.assign(acc, { [c.slackChannelId]: c }),
       {} as {
-        [key: string]: SlackChannel;
+        [key: string]: SlackChannelModel;
       }
     );
 
@@ -35,7 +35,7 @@ async function main() {
       (id) => !channelIdsInSlackSet.has(id)
     );
     console.log("Deleting channels", { channelIdsToDelete, connectorId: c.id });
-    await SlackChannel.destroy({
+    await SlackChannelModel.destroy({
       where: {
         connectorId: c.id,
         slackChannelId: channelIdsToDelete,
@@ -61,7 +61,7 @@ async function main() {
           slackChannelName: channel.name,
         });
       } else {
-        await SlackChannel.create({
+        await SlackChannelModel.create({
           connectorId: c.id,
           slackChannelId: channel.id,
           slackChannelName: channel.name,

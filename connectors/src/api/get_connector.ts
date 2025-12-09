@@ -1,8 +1,8 @@
 import { isConnectorProvider } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
-import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
-import { NotionPage } from "@connectors/lib/models/notion";
+import { GithubDiscussionModel, GithubIssueModel } from "@connectors/lib/models/github";
+import { NotionPageModel } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorType } from "@connectors/types";
@@ -41,12 +41,12 @@ const _getConnector = async (
     switch (connector.type) {
       case "github": {
         const [issues, discussions] = await Promise.all([
-          GithubIssue.count({
+          GithubIssueModel.count({
             where: {
               connectorId: connector.id,
             },
           }),
-          GithubDiscussion.count({
+          GithubDiscussionModel.count({
             where: {
               connectorId: connector.id,
             },
@@ -56,7 +56,7 @@ const _getConnector = async (
         break;
       }
       case "notion": {
-        const c = await NotionPage.count({
+        const c = await NotionPageModel.count({
           where: {
             connectorId: connector.id,
           },

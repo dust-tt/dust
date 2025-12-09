@@ -14,8 +14,8 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
 } from "@connectors/lib/models/google_drive";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -38,7 +38,7 @@ export async function syncFiles(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const config = await GoogleDriveConfig.findOne({
+  const config = await GoogleDriveConfigModel.findOne({
     where: {
       connectorId: connectorId,
     },
@@ -87,7 +87,7 @@ export async function syncFiles(
   }
   if (nextPageToken === undefined) {
     // On the first page of a folder id, we can check if we already visited it
-    const visitedFolder = await GoogleDriveFiles.findOne({
+    const visitedFolder = await GoogleDriveFilesModel.findOne({
       where: {
         connectorId: connectorId,
         driveFileId: driveFolder.id,

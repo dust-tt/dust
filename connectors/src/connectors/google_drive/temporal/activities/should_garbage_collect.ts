@@ -1,6 +1,6 @@
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
-import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFoldersModel } from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
@@ -8,7 +8,7 @@ import type { ModelId } from "@connectors/types";
 // supposed to sync.
 // If we don't have access to one of them, we should garbage collect.
 export async function shouldGarbageCollect(connectorId: ModelId) {
-  const selectedFolder = await GoogleDriveFolders.findAll({
+  const selectedFolder = await GoogleDriveFoldersModel.findAll({
     where: {
       connectorId: connectorId,
     },

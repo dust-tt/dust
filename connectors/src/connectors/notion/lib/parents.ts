@@ -10,7 +10,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
 import parentLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
@@ -301,16 +301,16 @@ async function getPagesAndDatabasesToUpdate(
   return pageAndDataBaseIdsToUpdate;
 }
 
-function notionPageOrDbId(pageOrDb: NotionPage | NotionDatabase): string {
+function notionPageOrDbId(pageOrDb: NotionPageModel | NotionDatabaseModel): string {
   return (
-    (pageOrDb as NotionPage).notionPageId ||
-    (pageOrDb as NotionDatabase).notionDatabaseId
+    (pageOrDb as NotionPageModel).notionPageId ||
+    (pageOrDb as NotionDatabaseModel).notionDatabaseId
   );
 }
 
-export const hasChildren = async (pages: NotionPage[], connectorId: number) => {
+export const hasChildren = async (pages: NotionPageModel[], connectorId: number) => {
   const hasChildrenPage = (
-    await NotionPage.findAll({
+    await NotionPageModel.findAll({
       attributes: [
         "parentId",
         [Sequelize.fn("COUNT", Sequelize.col("*")), "count"],
@@ -327,7 +327,7 @@ export const hasChildren = async (pages: NotionPage[], connectorId: number) => {
   );
 
   const hasChildrenDb = (
-    await NotionDatabase.findAll({
+    await NotionDatabaseModel.findAll({
       attributes: [
         "parentId",
         [Sequelize.fn("COUNT", Sequelize.col("*")), "count"],
@@ -348,13 +348,13 @@ export const hasChildren = async (pages: NotionPage[], connectorId: number) => {
 
 export const getOrphanedCount = async (connectorId: number) => {
   const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
-    NotionPage.count({
+    NotionPageModel.count({
       where: {
         connectorId: connectorId,
         parentId: "unknown",
       },
     }),
-    NotionDatabase.count({
+    NotionDatabaseModel.count({
       where: {
         connectorId: connectorId,
         parentId: "unknown",

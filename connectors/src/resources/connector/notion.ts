@@ -1,12 +1,12 @@
 import type { Transaction } from "sequelize";
 
 import {
-  NotionConnectorBlockCacheEntry,
-  NotionConnectorPageCacheEntry,
-  NotionConnectorResourcesToCheckCacheEntry,
-  NotionConnectorState,
-  NotionDatabase,
-  NotionPage,
+  NotionConnectorBlockCacheEntryModel,
+  NotionConnectorPageCacheEntryModel,
+  NotionConnectorResourcesToCheckCacheEntryModel,
+  NotionConnectorStateModel,
+  NotionDatabaseModel,
+  NotionPageModel,
 } from "@connectors/lib/models/notion";
 import type {
   ConnectorProviderConfigurationType,
@@ -22,10 +22,10 @@ export class NotionConnectorStrategy
 {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<NotionConnectorState>,
+    blob: WithCreationAttributes<NotionConnectorStateModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["notion"] | null> {
-    await NotionConnectorState.create(
+    await NotionConnectorStateModel.create(
       {
         ...blob,
         connectorId,
@@ -39,37 +39,37 @@ export class NotionConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await NotionPage.destroy({
+    await NotionPageModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await NotionDatabase.destroy({
+    await NotionDatabaseModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await NotionConnectorState.destroy({
+    await NotionConnectorStateModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await NotionConnectorBlockCacheEntry.destroy({
+    await NotionConnectorBlockCacheEntryModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await NotionConnectorPageCacheEntry.destroy({
+    await NotionConnectorPageCacheEntryModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+    await NotionConnectorResourcesToCheckCacheEntryModel.destroy({
       where: {
         connectorId: connector.id,
       },

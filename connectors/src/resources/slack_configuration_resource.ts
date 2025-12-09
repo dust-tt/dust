@@ -4,10 +4,10 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import {
   SlackBotWhitelistModel,
-  SlackChannel,
-  SlackChatBotMessage,
+  SlackChannelModel,
+  SlackChatBotMessageModel,
   SlackConfigurationModel,
-  SlackMessages,
+  SlackMessagesModel,
 } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
@@ -127,8 +127,8 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   static async findChannelWithAutoRespond(
     connectorId: ModelId,
     slackChannelId: string
-  ): Promise<SlackChannel | null> {
-    return SlackChannel.findOne({
+  ): Promise<SlackChannelModel | null> {
+    return SlackChannelModel.findOne({
       where: {
         connectorId,
         slackChannelId,
@@ -331,21 +331,21 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
     try {
-      await SlackChannel.destroy({
+      await SlackChannelModel.destroy({
         where: {
           connectorId: this.connectorId,
         },
         transaction,
       });
 
-      await SlackMessages.destroy({
+      await SlackMessagesModel.destroy({
         where: {
           connectorId: this.connectorId,
         },
         transaction,
       });
 
-      await SlackChatBotMessage.destroy({
+      await SlackChatBotMessageModel.destroy({
         where: {
           connectorId: this.connectorId,
         },

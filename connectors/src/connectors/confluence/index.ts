@@ -30,8 +30,8 @@ import {
 } from "@connectors/connectors/interface";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  ConfluenceConfiguration,
-  ConfluenceSpace,
+  ConfluenceConfigurationModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -116,7 +116,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const currentCloudInformation = await ConfluenceConfiguration.findOne({
+      const currentCloudInformation = await ConfluenceConfigurationModel.findOne({
         attributes: ["cloudId"],
         where: {
           connectorId: this.connectorId,
@@ -209,7 +209,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
-      const connectorState = await ConfluenceConfiguration.findOne({
+      const connectorState = await ConfluenceConfigurationModel.findOne({
         where: {
           connectorId: connector.id,
         },
@@ -231,7 +231,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    const spaces = await ConfluenceSpace.findAll({
+    const spaces = await ConfluenceSpaceModel.findAll({
       attributes: ["spaceId"],
       where: {
         connectorId: this.connectorId,
@@ -263,7 +263,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const confluenceConfig = await ConfluenceConfiguration.findOne({
+    const confluenceConfig = await ConfluenceConfigurationModel.findOne({
       where: {
         connectorId: this.connectorId,
       },
@@ -356,7 +356,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     for (const [internalId, permission] of Object.entries(permissions)) {
       const confluenceId = getConfluenceIdFromInternalId(internalId);
       if (permission === "none") {
-        await ConfluenceSpace.destroy({
+        await ConfluenceSpaceModel.destroy({
           where: {
             connectorId: this.connectorId,
             spaceId: confluenceId,
@@ -367,7 +367,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       } else if (permission === "read") {
         const confluenceSpace = spaces.find((s) => s.id === confluenceId);
 
-        await ConfluenceSpace.upsert({
+        await ConfluenceSpaceModel.upsert({
           connectorId: this.connectorId,
           name: confluenceSpace?.name ?? confluenceId,
           spaceId: confluenceId,

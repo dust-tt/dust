@@ -21,9 +21,9 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
-  NotionConnectorState,
-  NotionDatabase,
-  NotionPage,
+  NotionConnectorStateModel,
+  NotionDatabaseModel,
+  NotionPageModel,
 } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -195,7 +195,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         throw new Error("Error retrieving connection info to update connector");
       }
 
-      const connectorState = await NotionConnectorState.findOne({
+      const connectorState = await NotionConnectorStateModel.findOne({
         where: {
           connectorId: c.id,
         },
@@ -344,7 +344,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const notionConnectorState = await NotionConnectorState.findOne({
+    const notionConnectorState = await NotionConnectorStateModel.findOne({
       where: {
         connectorId: this.connectorId,
       },
@@ -419,13 +419,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       (parentInternalId && notionIdFromNodeId(parentInternalId)) || "workspace";
 
     const [pages, dbs] = await Promise.all([
-      NotionPage.findAll({
+      NotionPageModel.findAll({
         where: {
           connectorId: this.connectorId,
           parentId: notionId,
         },
       }),
-      NotionDatabase.findAll({
+      NotionDatabaseModel.findAll({
         where: {
           connectorId: this.connectorId,
           parentId: notionId,
@@ -434,7 +434,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     ]);
 
     const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
-    const getPageNode = async (page: NotionPage): Promise<ContentNode> => {
+    const getPageNode = async (page: NotionPageModel): Promise<ContentNode> => {
       const expandable = Boolean(hasChildrenByPageId[page.notionPageId]);
 
       return {
@@ -459,7 +459,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       pageNodes = pageNodes.filter((p) => p.expandable);
     }
 
-    const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
+    const getDbNodes = async (db: NotionDatabaseModel): Promise<ContentNode> => {
       return {
         internalId: nodeIdFromNotionId(db.notionDatabaseId),
         parentInternalId:
@@ -539,7 +539,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error(`Connector ${this.connectorId} not found`));
     }
 
-    const notionConnectorState = await NotionConnectorState.findOne({
+    const notionConnectorState = await NotionConnectorStateModel.findOne({
       where: { connectorId: connector.id },
     });
 
@@ -572,7 +572,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error(`Connector ${this.connectorId} not found`));
     }
 
-    const notionConnectorState = await NotionConnectorState.findOne({
+    const notionConnectorState = await NotionConnectorStateModel.findOne({
       where: { connectorId: connector.id },
     });
 

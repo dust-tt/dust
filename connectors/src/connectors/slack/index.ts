@@ -32,7 +32,7 @@ import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/u
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
@@ -387,7 +387,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }
 
     const channels = (
-      await SlackChannel.findAll({
+      await SlackChannelModel.findAll({
         where: {
           connectorId: this.connectorId,
           slackChannelId: Object.keys(permissions).map((k) =>
@@ -398,7 +398,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     ).reduce(
       (acc, c) => Object.assign(acc, { [c.slackChannelId]: c }),
       {} as {
-        [key: string]: SlackChannel;
+        [key: string]: SlackChannelModel;
       }
     );
 
@@ -427,7 +427,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
               `Could not get the Slack channel name for #${slackChannelId}.`
             );
           }
-          const slackChannel = await SlackChannel.create({
+          const slackChannel = await SlackChannelModel.create({
             connectorId: this.connectorId,
             slackChannelId: slackChannelId,
             slackChannelName: channelInfo.name,
@@ -987,7 +987,7 @@ async function getFilteredChannels(
   }[] = [];
 
   if (filterPermission === "read") {
-    const localChannels = await SlackChannel.findAll({
+    const localChannels = await SlackChannelModel.findAll({
       where: {
         connectorId,
         permission: permissionToFilter,
@@ -1007,7 +1007,7 @@ async function getFilteredChannels(
 
     const [remoteChannels, localChannels] = await Promise.all([
       getAllChannels(slackClient, connectorId),
-      SlackChannel.findAll({
+      SlackChannelModel.findAll({
         where: {
           connectorId,
           // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
@@ -1016,11 +1016,11 @@ async function getFilteredChannels(
     ]);
 
     const localChannelsById = localChannels.reduce(
-      (acc: Record<string, SlackChannel>, ch: SlackChannel) => {
+      (acc: Record<string, SlackChannelModel>, ch: SlackChannelModel) => {
         acc[ch.slackChannelId] = ch;
         return acc;
       },
-      {} as Record<string, SlackChannel>
+      {} as Record<string, SlackChannelModel>
     );
 
     for (const remoteChannel of remoteChannels) {

@@ -6,8 +6,8 @@ import {
   deleteDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
-  GithubCodeDirectory,
-  GithubCodeFile,
+  GithubCodeDirectoryModel,
+  GithubCodeFileModel,
 } from "@connectors/lib/models/github";
 import { heartbeat } from "@connectors/lib/temporal";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -23,7 +23,7 @@ export async function garbageCollectCodeSync(
   codeSyncStartedAt: Date,
   logger: Logger
 ) {
-  const filesToDelete = await GithubCodeFile.findAll({
+  const filesToDelete = await GithubCodeFileModel.findAll({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -58,7 +58,7 @@ export async function garbageCollectCodeSync(
     );
   }
 
-  const directoriesToDelete = await GithubCodeDirectory.findAll({
+  const directoriesToDelete = await GithubCodeDirectoryModel.findAll({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -87,7 +87,7 @@ export async function garbageCollectCodeSync(
       { concurrency: MAX_CONCURRENCY_DELETE }
     );
 
-    await GithubCodeDirectory.destroy({
+    await GithubCodeDirectoryModel.destroy({
       where: {
         connectorId: connector.id,
         repoId: repoId.toString(),

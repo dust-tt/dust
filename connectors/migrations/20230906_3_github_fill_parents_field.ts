@@ -6,7 +6,7 @@ import {
   getIssueInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
-import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
+import { GithubDiscussionModel, GithubIssueModel } from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -64,7 +64,7 @@ async function updateDiscussionsParentsFieldForConnector(
 ) {
   // get all distinct documentIds and their channel ids from slack messages in
   // this connector
-  const documentData = await GithubDiscussion.findAll({
+  const documentData = await GithubDiscussionModel.findAll({
     where: {
       connectorId: connector.id,
     },
@@ -98,7 +98,7 @@ async function updateDiscussionsParentsFieldForConnector(
 
 async function updateIssuesParentsFieldForConnector(connector: ConnectorModel) {
   // get all distinct issues  and their repo ids fro
-  const documentData = await GithubIssue.findAll({
+  const documentData = await GithubIssueModel.findAll({
     where: {
       connectorId: connector.id,
     },

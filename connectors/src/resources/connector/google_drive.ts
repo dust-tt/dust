@@ -1,11 +1,11 @@
 import type { Transaction } from "sequelize";
 
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
-  GoogleDriveSyncToken,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
+  GoogleDriveSheetModel,
+  GoogleDriveSyncTokenModel,
 } from "@connectors/lib/models/google_drive";
 import type {
   ConnectorProviderConfigurationType,
@@ -21,10 +21,10 @@ export class GoogleDriveConnectorStrategy
 {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<GoogleDriveConfig>,
+    blob: WithCreationAttributes<GoogleDriveConfigModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["google_drive"] | null> {
-    await GoogleDriveConfig.create(
+    await GoogleDriveConfigModel.create(
       {
         ...blob,
         connectorId,
@@ -38,32 +38,32 @@ export class GoogleDriveConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await GoogleDriveFolders.destroy({
+    await GoogleDriveFoldersModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GoogleDriveFiles.destroy({
+    await GoogleDriveFilesModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GoogleDriveSheet.destroy({
+    await GoogleDriveSheetModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
 
-    await GoogleDriveSyncToken.destroy({
+    await GoogleDriveSyncTokenModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GoogleDriveConfig.destroy({
+    await GoogleDriveConfigModel.destroy({
       where: {
         connectorId: connector.id,
       },

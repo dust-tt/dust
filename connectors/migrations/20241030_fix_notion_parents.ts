@@ -8,31 +8,31 @@ import {
   updateDataSourceDocumentParents,
   updateDataSourceTableParents,
 } from "@connectors/lib/data_sources";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
 async function findAllDescendants(
-  nodes: (NotionPage | NotionDatabase)[],
+  nodes: (NotionPageModel | NotionDatabaseModel)[],
   connectorId: ModelId
-): Promise<(NotionPage | NotionDatabase)[]> {
-  const getNodeId = (node: NotionPage | NotionDatabase) =>
+): Promise<(NotionPageModel | NotionDatabaseModel)[]> {
+  const getNodeId = (node: NotionPageModel | NotionDatabaseModel) =>
     "notionPageId" in node ? node.notionPageId : node.notionDatabaseId;
 
-  const descendants: (NotionPage | NotionDatabase)[] = [];
+  const descendants: (NotionPageModel | NotionDatabaseModel)[] = [];
   const seen = new Set<string>();
 
   const nodeIds = nodes.map(getNodeId);
   while (nodeIds.length > 0) {
     const parentIds = nodeIds.splice(0, nodeIds.length);
 
-    const childPages = await NotionPage.findAll({
+    const childPages = await NotionPageModel.findAll({
       where: {
         connectorId,
         parentId: parentIds,
       },
     });
-    const childDatabases = await NotionDatabase.findAll({
+    const childDatabases = await NotionDatabaseModel.findAll({
       where: {
         connectorId,
         parentId: parentIds,
@@ -62,9 +62,9 @@ async function updateParentsFieldForConnector(
   let databasesIdCursor = 0;
 
   const pageSize = 512;
-  let nodes: (NotionPage | NotionDatabase)[] = [];
+  let nodes: (NotionPageModel | NotionDatabaseModel)[] = [];
   for (;;) {
-    const pages = await NotionPage.findAll({
+    const pages = await NotionPageModel.findAll({
       where: {
         connectorId: connector.id,
         id: {
@@ -75,7 +75,7 @@ async function updateParentsFieldForConnector(
       limit: pageSize,
       order: [["id", "ASC"]],
     });
-    const databases = await NotionDatabase.findAll({
+    const databases = await NotionDatabaseModel.findAll({
       where: {
         connectorId: connector.id,
         id: {
@@ -89,7 +89,7 @@ async function updateParentsFieldForConnector(
 
     nodes = [...pages, ...databases];
 
-    const descendants: (NotionPage | NotionDatabase)[] =
+    const descendants: (NotionPageModel | NotionDatabaseModel)[] =
       await findAllDescendants(nodes, connector.id);
 
     if (pages.length > 0) {

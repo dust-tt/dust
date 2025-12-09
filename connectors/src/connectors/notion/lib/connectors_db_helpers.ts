@@ -1,4 +1,4 @@
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { NotionDatabaseModel, NotionPageModel } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceInfo } from "@connectors/types";
@@ -26,12 +26,12 @@ export async function upsertNotionPageInConnectorsDb({
   lastUpsertedTs?: number;
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
-}): Promise<NotionPage> {
+}): Promise<NotionPageModel> {
   const connector = await ConnectorResource.findByDataSource(dataSourceInfo);
   if (!connector || connector.type !== "notion") {
     throw new Error("Could not find connector");
   }
-  const page = await NotionPage.findOne({
+  const page = await NotionPageModel.findOne({
     where: {
       notionPageId,
       connectorId: connector.id,
@@ -75,7 +75,7 @@ export async function upsertNotionPageInConnectorsDb({
   if (page) {
     return page.update(updateParams);
   } else {
-    return NotionPage.create({
+    return NotionPageModel.create({
       notionPageId,
       connectorId: connector.id,
       ...updateParams,
@@ -87,7 +87,7 @@ export async function getNotionPageFromConnectorsDb(
   connectorId: ModelId,
   notionPageId: string,
   lastSeenTs?: number
-): Promise<NotionPage | null> {
+): Promise<NotionPageModel | null> {
   const where: {
     notionPageId: string;
     connectorId: ModelId;
@@ -101,7 +101,7 @@ export async function getNotionPageFromConnectorsDb(
     where.lastSeenTs = new Date(lastSeenTs);
   }
 
-  return NotionPage.findOne({ where });
+  return NotionPageModel.findOne({ where });
 }
 
 // Note: this function does not let you "remove" a skipReason.
@@ -127,12 +127,12 @@ export async function upsertNotionDatabaseInConnectorsDb({
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
   requestQueuingForUpsertToCore: boolean;
-}): Promise<NotionDatabase> {
+}): Promise<NotionDatabaseModel> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const database = await NotionDatabase.findOne({
+  const database = await NotionDatabaseModel.findOne({
     where: {
       notionDatabaseId,
       connectorId: connector.id,
@@ -194,7 +194,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   if (database) {
     return database.update(updateParams);
   } else {
-    return NotionDatabase.create({
+    return NotionDatabaseModel.create({
       notionDatabaseId,
       connectorId: connector.id,
       firstSeenTs: new Date(runTimestamp),
@@ -207,7 +207,7 @@ export async function getNotionDatabaseFromConnectorsDb(
   connectorId: ModelId,
   notionDatabaseId: string,
   lastSeenTs?: number
-): Promise<NotionDatabase | null> {
+): Promise<NotionDatabaseModel | null> {
   const where: {
     notionDatabaseId: string;
     connectorId: ModelId;
@@ -221,7 +221,7 @@ export async function getNotionDatabaseFromConnectorsDb(
     where.lastSeenTs = new Date(lastSeenTs);
   }
 
-  return NotionDatabase.findOne({ where });
+  return NotionDatabaseModel.findOne({ where });
 }
 
 /**
@@ -232,8 +232,8 @@ export async function getNotionDatabaseFromConnectorsDb(
 export async function getPageChildrenOf(
   connectorId: ModelId,
   notionId: string
-): Promise<NotionPage[]> {
-  return NotionPage.findAll({
+): Promise<NotionPageModel[]> {
+  return NotionPageModel.findAll({
     where: {
       parentId: notionId,
       connectorId: connectorId,
@@ -249,8 +249,8 @@ export async function getPageChildrenOf(
 export async function getDatabaseChildrenOf(
   connectorId: ModelId,
   notionId: string
-): Promise<NotionDatabase[]> {
-  return NotionDatabase.findAll({
+): Promise<NotionDatabaseModel[]> {
+  return NotionDatabaseModel.findAll({
     where: {
       parentId: notionId,
       connectorId: connectorId,

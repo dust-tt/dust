@@ -10,7 +10,7 @@ import {
   ConfluenceClient,
 } from "@connectors/connectors/confluence/lib/confluence_client";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
@@ -59,7 +59,7 @@ export async function getConfluenceUserAccountId(accessToken: string) {
 }
 
 async function fetchConfluenceConfiguration(connectorId: ModelId) {
-  const confluenceConfig = await ConfluenceConfiguration.findOne({
+  const confluenceConfig = await ConfluenceConfigurationModel.findOne({
     where: {
       connectorId: connectorId,
     },
@@ -70,7 +70,7 @@ async function fetchConfluenceConfiguration(connectorId: ModelId) {
 
 export async function listConfluenceSpaces(
   connector: ConnectorResource,
-  confluenceConfig?: ConfluenceConfiguration
+  confluenceConfig?: ConfluenceConfigurationModel
 ): Promise<Result<ConfluenceSpaceType[], Error>> {
   const { id: connectorId, connectionId } = connector;
 

@@ -32,7 +32,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
-import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
+import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -80,7 +80,7 @@ interface StreamConversationToSlackParams {
     slackUserId: string | null;
   };
   userMessage: UserMessageType;
-  slackChatBotMessage: SlackChatBotMessage;
+  slackChatBotMessage: SlackChatBotMessageModel;
   agentConfigurations: LightAgentConfigurationType[];
   feedbackVisibleToAuthorOnly: boolean;
 }
