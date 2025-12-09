@@ -22,6 +22,7 @@ import {
   joinChannelWithRetries,
 } from "@connectors/connectors/slack/lib/channels";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
+import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
 import {
   getSlackAccessToken,
@@ -893,10 +894,19 @@ export async function uninstallSlack(
       );
     }
   } catch (e) {
-    if (e instanceof ExternalOAuthTokenError) {
+    // Handle auth-related errors by logging and continuing (the app can't be uninstalled if auth is invalid).
+    const isAuthError =
+      e instanceof ExternalOAuthTokenError ||
+      (isWebAPIPlatformError(e) &&
+        ["account_inactive", "invalid_auth", "missing_scope"].includes(
+          e.data.error
+        ));
+
+    if (isAuthError) {
       logger.info(
         {
           connectionId: connectionId,
+          error: normalizeError(e),
         },
         `Slack auth is invalid, skipping uninstallation of the Slack app`
       );
