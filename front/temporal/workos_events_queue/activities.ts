@@ -89,17 +89,20 @@ async function verifyWorkOSWorkspace<E extends object, R>(
 /**
  * Handle role assignment based on the name of the group.
  */
-async function handleRoleAssignmentForGroup({
-  workspace,
-  user,
-  group,
-  action,
-}: {
-  workspace: LightWorkspaceType;
-  user: UserResource;
-  group: GroupResource;
-  action: "add" | "remove";
-}) {
+async function handleRoleAssignmentForGroup(
+  auth: Authenticator,
+  {
+    workspace,
+    user,
+    group,
+    action,
+  }: {
+    workspace: LightWorkspaceType;
+    user: UserResource;
+    group: GroupResource;
+    action: "add" | "remove";
+  }
+) {
   if (group.name !== ADMIN_GROUP_NAME && group.name !== BUILDER_GROUP_NAME) {
     // Not a special group, no role assignment needed.
     return;
@@ -126,6 +129,7 @@ async function handleRoleAssignmentForGroup({
         user,
         workspace,
         newRole,
+        author: auth.user()?.toJSON() ?? "no-author",
       });
 
       if (updateResult.isErr()) {
@@ -163,6 +167,7 @@ async function handleRoleAssignmentForGroup({
         user,
         workspace,
         newRole,
+        author: auth.user()?.toJSON() ?? "no-author",
       });
 
       if (updateResult.isErr()) {
@@ -576,7 +581,12 @@ async function handleUserAddedToGroup(
   }
 
   // Handle role assignment for special groups.
-  await handleRoleAssignmentForGroup({ workspace, user, group, action: "add" });
+  await handleRoleAssignmentForGroup(auth, {
+    workspace,
+    user,
+    group,
+    action: "add",
+  });
 
   // Update membership origin to "provisioned" when syncing from WorkOS groups.
   const currentMembership =
@@ -590,6 +600,7 @@ async function handleUserAddedToGroup(
       user,
       workspace,
       newOrigin: "provisioned",
+      author: auth.user()?.toJSON() ?? "no-author",
     });
 
     logger.info(
@@ -658,7 +669,7 @@ async function handleUserRemovedFromGroup(
   }
 
   // Handle role assignment for special groups.
-  await handleRoleAssignmentForGroup({
+  await handleRoleAssignmentForGroup(auth, {
     workspace,
     user,
     group,
@@ -704,12 +715,13 @@ async function handleCreateOrUpdateWorkOSUser(
     });
   if (membership) {
     logger.info(
-      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}"`
+      `User ${createdOrUpdatedUser.sId} already has a membership associated to workspace "${workspace.sId}"`
     );
     await membership.updateOrigin({
       user: createdOrUpdatedUser,
       workspace,
       newOrigin: "provisioned",
+      author: createdOrUpdatedUser.toJSON(),
     });
     return;
   }
