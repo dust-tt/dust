@@ -185,9 +185,10 @@ interface UsageSectionProps {
 }
 
 function formatDateShort(date: Date): string {
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
 }
 
