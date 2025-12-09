@@ -224,8 +224,7 @@ export default function WorkspaceAssistants({
     return { uniqueTags };
   }, [agentConfigurations]);
 
-  const [showDetails, setShowDetails] =
-    useState<LightAgentConfigurationType | null>(null);
+  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
   const handleToggleAgentStatus = async (
     agent: LightAgentConfigurationType
@@ -310,8 +309,8 @@ export default function WorkspaceAssistants({
           owner={owner}
           user={user}
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          agentId={showDetails?.sId || null}
-          onClose={() => setShowDetails(null)}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
         />
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
           <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
@@ -414,7 +413,7 @@ export default function WorkspaceAssistants({
                   setSelection={setSelection}
                   owner={owner}
                   agents={agentsByTab[activeTab]}
-                  setShowDetails={setShowDetails}
+                  setDetailedAgentId={setDetailedAgentId}
                   handleToggleAgentStatus={handleToggleAgentStatus}
                   showDisabledFreeWorkspacePopup={
                     showDisabledFreeWorkspacePopup
