@@ -85,7 +85,7 @@ export function AgentMessageActions({
       )}
     >
       {lastAction && lastAgentStateClassification === "acting" ? (
-        <Card variant="secondary" size="sm">
+        <Card variant="secondary" className="max-w-xl">
           <MCPActionDetails
             viewType="conversation"
             action={lastAction}
