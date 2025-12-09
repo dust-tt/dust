@@ -21,6 +21,7 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -467,10 +468,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name,
       description,
       instructions,
+      requestedSpaceIds,
     }: {
       name: string;
       description: string;
       instructions: string;
+      requestedSpaceIds: number[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
@@ -479,6 +482,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name,
         description,
         instructions,
+        requestedSpaceIds,
         version: this.version + 1,
       },
       transaction
@@ -637,6 +641,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }),
     }));
 
+    const requestedSpaceSIds = this.requestedSpaceIds.map((spaceId) =>
+      SpaceResource.modelIdToSId({
+        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        workspaceId: this.workspaceId,
+      })
+    );
+
     return {
       id: this.id,
       sId: this.sId,
@@ -647,7 +658,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       description: this.description,
       instructions: this.instructions,
-      requestedSpaceIds: this.requestedSpaceIds,
+      requestedSpaceIds: requestedSpaceSIds,
       tools,
     };
   }
