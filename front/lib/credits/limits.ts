@@ -5,13 +5,14 @@ import { countEligibleUsersForCredits } from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 
 // $50 per user per month for Pro subscriptions.
 const MAX_PRO_CREDIT_PER_USER_MICRO_USD = 50_000_000;
 // $1000 absolute cap for Pro subscriptions.
 const MAX_PRO_CREDIT_TOTAL_MICRO_USD = 1_000_000_000;
-// $1000 cap for Enterprise subscriptions.
-const MAX_ENTERPRISE_CREDIT_MICRO_USD = 1_000_000_000;
+// $1000 minimum cap for Enterprise subscriptions.
+const MIN_ENTERPRISE_CREDIT_MICRO_USD = 1_000_000_000;
 
 export type CreditPurchaseLimits =
   | { canPurchase: false; reason: "trialing" | "payment_issue" }
@@ -25,7 +26,7 @@ export type CreditPurchaseLimits =
  * - Pro in trial: cannot purchase credits
  * - Pro with payment issues: cannot purchase credits
  * - Pro paying: $50/user/month, capped at $1000 per billing cycle
- * - Enterprise: $1000 per billing cycle
+ * - Enterprise: max($1000, half of pay-as-you-go cap) per billing cycle
  *
  * The limits are per billing cycle. Already purchased committed credits
  * in the current billing cycle are subtracted from the maximum.
@@ -37,13 +38,22 @@ export async function getCreditPurchaseLimits(
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
   if (isEnterprise) {
+    // Enterprise limit: max($1000, half of pay-as-you-go cap).
+    const programmaticConfig =
+      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+    const paygCapMicroUsd = programmaticConfig?.paygCapMicroUsd ?? 0;
+    const enterpriseMaxMicroUsd = Math.max(
+      MIN_ENTERPRISE_CREDIT_MICRO_USD,
+      Math.floor(paygCapMicroUsd / 2)
+    );
+
     const alreadyPurchased = await getAlreadyPurchasedInCycle(
       auth,
       stripeSubscription
     );
     const remainingMicroUsd = Math.max(
       0,
-      MAX_ENTERPRISE_CREDIT_MICRO_USD - alreadyPurchased
+      enterpriseMaxMicroUsd - alreadyPurchased
     );
     return {
       canPurchase: true,

@@ -8,6 +8,7 @@ import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 
 vi.mock("@app/lib/plans/stripe", async () => {
@@ -48,6 +49,7 @@ describe("getCreditPurchaseLimits", () => {
   let auth: Authenticator;
   let countEligibleUsersSpy: MockInstance;
   let sumCommittedCreditsSpy: MockInstance;
+  let fetchProgrammaticConfigSpy: MockInstance;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -64,36 +66,69 @@ describe("getCreditPurchaseLimits", () => {
     sumCommittedCreditsSpy = vi
       .spyOn(CreditResource, "sumCommittedCreditsPurchasedInPeriod")
       .mockResolvedValue(0);
+
+    fetchProgrammaticConfigSpy = vi
+      .spyOn(ProgrammaticUsageConfigurationResource, "fetchByWorkspaceId")
+      .mockResolvedValue(null);
   });
 
   afterEach(() => {
     vi.useRealTimers();
     countEligibleUsersSpy.mockRestore();
     sumCommittedCreditsSpy.mockRestore();
+    fetchProgrammaticConfigSpy.mockRestore();
   });
 
   describe("Enterprise subscriptions", () => {
-    it("should allow purchase with $1000 limit for enterprise", async () => {
+    beforeEach(() => {
       vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    });
+
+    it("should allow purchase with $1000 minimum limit when no payg cap", async () => {
+      fetchProgrammaticConfigSpy.mockResolvedValue(null);
 
       const result = await getCreditPurchaseLimits(auth, makeSubscription());
 
       expect(result).toEqual({
         canPurchase: true,
-        maxAmountMicroUsd: 1_000_000_000, // $1000 in microUsd
+        maxAmountMicroUsd: 1_000_000_000, // $1000 minimum
+      });
+    });
+
+    it("should use $1000 minimum when payg cap is low", async () => {
+      fetchProgrammaticConfigSpy.mockResolvedValue({
+        paygCapMicroUsd: 1_000_000_000, // $1000 payg cap -> $500 half
+      });
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountMicroUsd: 1_000_000_000, // $1000 minimum (half of $1000 is $500, less than $1000)
+      });
+    });
+
+    it("should use half of payg cap when greater than $1000", async () => {
+      fetchProgrammaticConfigSpy.mockResolvedValue({
+        paygCapMicroUsd: 10_000_000_000, // $10,000 payg cap -> $5,000 half
+      });
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountMicroUsd: 5_000_000_000, // Half of $10,000 = $5,000
       });
     });
 
     it("should not call getCustomerPaymentStatus for enterprise", async () => {
-      vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
-
       await getCreditPurchaseLimits(auth, makeSubscription());
 
       expect(getCustomerPaymentStatus).not.toHaveBeenCalled();
     });
 
     it("should subtract already purchased credits from limit", async () => {
-      vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+      fetchProgrammaticConfigSpy.mockResolvedValue(null);
       sumCommittedCreditsSpy.mockResolvedValue(300_000_000); // $300 already purchased
 
       const result = await getCreditPurchaseLimits(auth, makeSubscription());
@@ -104,8 +139,22 @@ describe("getCreditPurchaseLimits", () => {
       });
     });
 
+    it("should subtract already purchased from payg-based limit", async () => {
+      fetchProgrammaticConfigSpy.mockResolvedValue({
+        paygCapMicroUsd: 10_000_000_000, // $10,000 payg cap -> $5,000 half
+      });
+      sumCommittedCreditsSpy.mockResolvedValue(2_000_000_000); // $2000 already purchased
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountMicroUsd: 3_000_000_000, // $5,000 - $2,000 = $3,000
+      });
+    });
+
     it("should return 0 if limit is exhausted", async () => {
-      vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+      fetchProgrammaticConfigSpy.mockResolvedValue(null);
       sumCommittedCreditsSpy.mockResolvedValue(1_000_000_000); // $1000 already purchased
 
       const result = await getCreditPurchaseLimits(auth, makeSubscription());

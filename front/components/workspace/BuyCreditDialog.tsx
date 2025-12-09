@@ -308,14 +308,14 @@ export function BuyCreditDialog({
 
             {maxAmountFormatted && (
               <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                Purchase up to {maxAmountFormatted} worth of credits. Need more?{" "}
+                Purchase up to {maxAmountFormatted} worth of credits.
                 <a
                   href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
                   className="text-action-500 hover:underline"
                 >
                   Contact support
-                </a>
-                .
+                </a>{" "}
+                if you need more.
               </p>
             )}
 
