@@ -74,24 +74,8 @@ function getRedisKey(workspace: LightWorkspaceType): string {
 
 export function isProgrammaticUsage(
   auth: Authenticator,
-  { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
+  { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin }
 ): boolean {
-  // TODO(2025-12-01 PPUL): Remove once PPUL is out.
-  if (auth.isKey() && !auth.isSystemKey()) {
-    return true;
-  }
-
-  // Track for API keys, listed programmatic origins or unspecified user message origins.
-  // This must be in sync with the getShouldTrackTokenUsageCostsESFilter function.
-  // TODO(PPUL): enforce passing non-null userMessageOrigin.
-  if (!userMessageOrigin) {
-    logger.warn(
-      { workspaceId: auth.getNonNullableWorkspace().sId },
-      "No user message origin provided, assuming non-programmatic usage for now"
-    );
-    return false;
-  }
-
   if (
     auth.authMethod() === "api_key" ||
     USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
@@ -290,7 +274,7 @@ export async function trackProgrammaticCost(
   {
     dustRunIds,
     userMessageOrigin,
-  }: { dustRunIds: string[]; userMessageOrigin?: UserMessageOrigin | null }
+  }: { dustRunIds: string[]; userMessageOrigin: UserMessageOrigin }
 ) {
   if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
     return;

@@ -73,7 +73,7 @@ export async function trackProgrammaticUsageActivity(
   ) {
     await trackProgrammaticCost(auth, {
       dustRunIds: agentMessage.runIds,
-      userMessageOrigin: userMessage.userContextOrigin ?? null,
+      userMessageOrigin: userMessage.userContextOrigin,
     });
   }
 }

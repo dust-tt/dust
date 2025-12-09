@@ -144,23 +144,25 @@ async function handler(
         blocking,
       } = r.data;
 
-      const hasReachedLimits =
-        isProgrammaticUsage(auth, {
-          userMessageOrigin: message?.context.origin,
-        }) && (await hasReachedProgrammaticUsageLimits(auth));
-      if (hasReachedLimits) {
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message:
-              "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
-              "limit resets next billing period.",
-          },
-        });
-      }
+      const origin = message?.context.origin ?? "api";
 
       if (message) {
+        const hasReachedLimits =
+          isProgrammaticUsage(auth, {
+            userMessageOrigin: origin,
+          }) && (await hasReachedProgrammaticUsageLimits(auth));
+        if (hasReachedLimits) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message:
+                "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
+                "limit resets next billing period.",
+            },
+          });
+        }
+
         if (isUserMessageContextOverflowing(message.context)) {
           return apiError(req, res, {
             status_code: 400,
@@ -379,7 +381,7 @@ async function handler(
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
           email: message.context.email?.toLowerCase() ?? null,
           fullName: message.context.fullName ?? null,
-          origin: message.context.origin ?? "api",
+          origin,
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
