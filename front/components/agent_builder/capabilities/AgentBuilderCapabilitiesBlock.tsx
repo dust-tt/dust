@@ -19,10 +19,10 @@ import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import type { TemplateActionPreset } from "@app/types";
 import { pluralize } from "@app/types";
@@ -52,7 +52,7 @@ export function AgentBuilderCapabilitiesBlock({
 
   const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
-    action: AgentBuilderAction;
+    action: BuilderAction;
     index: number | null;
     presetData?: TemplateActionPreset;
   } | null>(null);
@@ -63,7 +63,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction,
   });
 
-  const handleEditSave = (updatedAction: AgentBuilderAction) => {
+  const handleEditSave = (updatedAction: BuilderAction) => {
     if (dialogMode?.type === "edit") {
       update(dialogMode.index, updatedAction);
     } else if (knowledgeAction && knowledgeAction.index !== null) {
@@ -75,7 +75,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction(null);
   };
 
-  const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+  const handleActionEdit = (action: BuilderAction, index: number) => {
     const mcpServerView = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
@@ -98,7 +98,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction(null);
   };
 
-  const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
+  const handleMcpActionUpdate = (action: BuilderAction, index: number) => {
     update(index, action);
   };
 

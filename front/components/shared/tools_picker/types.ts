@@ -1,6 +1,7 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
+import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -130,3 +131,9 @@ export const actionSchema = baseActionSchema.extend({
   type: z.literal("MCP"),
   configuration: mcpServerConfigurationSchema,
 });
+
+export type BuilderAction = z.infer<typeof actionSchema>;
+
+export function isDefaultActionName(action: BuilderAction) {
+  return action.name.includes(DEFAULT_MCP_ACTION_NAME);
+}

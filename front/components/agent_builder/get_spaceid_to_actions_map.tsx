@@ -1,11 +1,9 @@
-import type {
-  AgentBuilderAction,
-  AgentBuilderMCPConfigurationWithId,
-} from "@app/components/agent_builder/types";
+import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
 
-type ActionType = AgentBuilderMCPConfigurationWithId | AgentBuilderAction;
+type ActionType = AgentBuilderMCPConfigurationWithId | BuilderAction;
 
 export const getSpaceIdToActionsMap = (
   actions: ActionType[],

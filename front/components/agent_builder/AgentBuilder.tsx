@@ -25,12 +25,10 @@ import {
   transformDuplicateAgentToFormData,
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
-import type {
-  AgentBuilderAction,
-  AgentBuilderMCPConfigurationWithId,
-} from "@app/components/agent_builder/types";
+import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -48,7 +46,7 @@ import { isBuilder, normalizeError, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
-): AgentBuilderAction[] {
+): BuilderAction[] {
   return [
     ...actions.map((action) => {
       if (action.type === "MCP") {

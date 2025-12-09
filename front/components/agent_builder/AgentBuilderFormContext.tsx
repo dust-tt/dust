@@ -106,7 +106,6 @@ export const agentBuilderFormSchema = z.object({
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
-export type AgentBuilderAction = z.infer<typeof actionSchema>;
 
 // TODO: create types from schema
 export interface MCPFormData {
