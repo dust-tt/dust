@@ -21,7 +21,7 @@ import handler from "./index";
 
 async function setupTest(
   method: RequestMethod = "GET",
-  role: MembershipRoleType = "user"
+  role: MembershipRoleType = "builder"
 ) {
   const mockRequest = await createPrivateApiMockRequest({
     method,
