@@ -243,7 +243,7 @@ function UsageSection({
   });
 
   return (
-    <Page.Vertical gap="md">
+    <div className="flex flex-col gap-6">
       {/* Usage Header */}
       <div className="flex items-center justify-between">
         <Page.Vertical gap="xs">
@@ -309,7 +309,7 @@ function UsageSection({
           renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
         />
       </div>
-    </Page.Vertical>
+    </div>
   );
 }
 
