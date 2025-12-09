@@ -28,6 +28,7 @@ import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -43,7 +44,6 @@ import {
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
