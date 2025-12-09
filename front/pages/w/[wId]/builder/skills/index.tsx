@@ -91,6 +91,7 @@ export default function WorkspaceSkills({
               </div>
               <div className="flex flex-col pt-3">
                 <SkillsTable
+                  owner={owner}
                   skillConfigurations={skillConfigurations}
                   setSkillConfiguration={setSkillConfiguration}
                 />
