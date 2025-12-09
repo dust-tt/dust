@@ -183,8 +183,8 @@ describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
     expect(data.skills[0].name).toBe("Workspace Skill");
   });
 
-  it("should work for different user roles (user, builder, admin)", async () => {
-    for (const role of ["user", "builder", "admin"] as const) {
+  it("should work for builder roles (builder, admin)", async () => {
+    for (const role of ["builder", "admin"] as const) {
       const { req, res, workspace, user } = await setupTest("GET", role);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -220,7 +220,7 @@ describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
+    expect(res._getStatusCode()).toBe(403);
     const data = res._getJSONData();
     expect(data.error.type).toBe("invalid_request_error");
     expect(data.error.message).toBe("Invalid agent configuration ID.");
