@@ -80,6 +80,11 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     color: "text-gray-300 dark:text-gray-300-night",
   },
   api: { label: "API", color: "text-blue-300 dark:text-blue-300-night" },
+  cli: { label: "CLI", color: "text-gray-500 dark:text-gray-500-night" },
+  cli_programmatic: {
+    label: "CLI",
+    color: "text-gray-500 dark:text-gray-500-night",
+  },
   email: {
     label: "Email",
     color: "text-violet-300 dark:text-violet-300-night",
