@@ -544,8 +544,8 @@ async function handler(
             : dispute.charge;
 
           if (!charge.invoice) {
-            logger.info(
-              { disputeId: dispute.id, chargeId: charge.id },
+            logger.warn(
+              { disputeId: dispute.id, chargeId: charge.id, stripeError: true },
               "[Stripe Webhook] Dispute charge has no associated invoice."
             );
             break;
