@@ -13,6 +13,7 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -30,6 +31,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
@@ -322,6 +324,46 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  async enableForMessage(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      agentMessageId,
+      conversationId,
+      source,
+    }: {
+      agentConfigurationId: ModelId;
+      agentMessageId: ModelId;
+      conversationId: ModelId;
+      source: AgentMessageSkillSource;
+    }
+  ): Promise<Result<void, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.user();
+    if (!user && source === "conversation") {
+      // If enabling from conversation and no user, we cannot track who enabled it.
+      return new Err(
+        new Error(
+          "Cannot enable skill from conversation without an authenticated user"
+        )
+      );
+    }
+
+    await AgentMessageSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId,
+      isActive: true,
+      customSkillId: this.id,
+      globalSkillId: null,
+      agentMessageId,
+      conversationId,
+      source,
+      addedByUserId: user && source === "conversation" ? user.id : null,
+    });
+
+    return new Ok(undefined);
   }
 
   toJSON(

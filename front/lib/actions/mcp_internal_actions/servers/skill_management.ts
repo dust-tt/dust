@@ -8,7 +8,6 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { Err, Ok } from "@app/types";
 
@@ -37,8 +36,6 @@ function createServer(
           return new Err(new MCPError("No conversation context available"));
         }
 
-        const workspace = auth.getNonNullableWorkspace();
-
         const { conversation, agentConfiguration, agentMessage } =
           agentLoopContext.runContext;
 
@@ -51,18 +48,16 @@ function createServer(
           );
         }
 
-        // TODO(skill): Use SkillConfigurationResource to encapsulate this logic
-        await AgentMessageSkillModel.create({
-          workspaceId: workspace.id,
+        const r = await skill.enableForMessage(auth, {
           agentConfigurationId: agentConfiguration.id,
-          isActive: true,
-          customSkillId: skill.id,
-          globalSkillId: null,
           agentMessageId: agentMessage.id,
           conversationId: conversation.id,
           source: "agent_enabled",
-          addedByUserId: null,
         });
+
+        if (r.isErr()) {
+          return new Err(new MCPError(r.error.message, { tracked: false }));
+        }
 
         return new Ok([
           {
