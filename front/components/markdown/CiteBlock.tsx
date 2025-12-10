@@ -67,6 +67,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
                       contentType={document.contentType}
                       nodeType={"document"}
                       sourceUrl={document.href}
+                      size="sm"
                     ></IconForAttachmentCitation>
                   </span>
                   <span>{r.counter}</span>

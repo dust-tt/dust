@@ -74,19 +74,21 @@ export const IconForAttachmentCitation = ({
   contentType,
   sourceUrl,
   iconName,
+  size = "md",
 }: {
   provider?: string;
   nodeType?: ContentNodeType;
   contentType?: string;
   sourceUrl?: string;
   iconName?: string;
+  size?: "md" | "sm" | "lg";
 }): ReactNode => {
   const { isDark } = useTheme();
 
   if (provider === "webcrawler") {
     return (
       <div className="h-6 w-6">
-        <FaviconIcon size="md" websiteUrl={sourceUrl} />
+        <FaviconIcon size={size} websiteUrl={sourceUrl} />
       </div>
     );
   }
@@ -104,21 +106,25 @@ export const IconForAttachmentCitation = ({
           ? FolderIcon
           : DocumentIcon;
     return (
-      <DoubleIcon mainIcon={mainIcon} secondaryIcon={providerLogo} size="md" />
+      <DoubleIcon
+        mainIcon={mainIcon}
+        secondaryIcon={providerLogo}
+        size={size}
+      />
     );
   }
 
   if (contentType) {
     const isImageType = contentType.startsWith("image/");
     if (isImageType) {
-      return <Icon visual={ImageIcon} size="md" />;
+      return <Icon visual={ImageIcon} size={size} />;
     }
     const isAudioType = contentType.startsWith("audio/");
     if (isAudioType) {
-      return <Icon visual={ActionVolumeUpIcon} size="md" />;
+      return <Icon visual={ActionVolumeUpIcon} size={size} />;
     }
     if (isPastedFile(contentType)) {
-      return <Icon visual={DoubleQuotesIcon} size="md" />;
+      return <Icon visual={DoubleQuotesIcon} size={size} />;
     }
   }
 
@@ -130,12 +136,12 @@ export const IconForAttachmentCitation = ({
       <DoubleIcon
         mainIcon={DocumentIcon}
         secondaryIcon={getIcon(iconName)}
-        size="md"
+        size={size}
       />
     );
   }
 
-  return <Icon visual={DocumentIcon} size="md" />;
+  return <Icon visual={DocumentIcon} size={size} />;
 };
 
 export function contentFragmentToAttachmentCitation(
