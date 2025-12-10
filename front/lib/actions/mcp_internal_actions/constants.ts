@@ -1374,8 +1374,6 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-
-  //
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
