@@ -284,17 +284,11 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         transaction,
       });
 
-      const [affectedCount] = await this.model.update(
+      const [affectedCount] = await this.update(
         {
           status: "archived",
         },
-        {
-          where: {
-            id: this.id,
-            workspaceId: workspace.id,
-          },
-          transaction,
-        }
+        transaction
       );
 
       return new Ok(affectedCount);
