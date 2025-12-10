@@ -25,15 +25,10 @@ export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkil
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
-  declare agentMessage: NonAttribute<AgentMessageModel>;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
-
-  declare conversation: NonAttribute<ConversationModel>;
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 
   declare source: AgentMessageSkillSource;
-
-  declare addedByUser: NonAttribute<UserModel> | null;
   declare addedByUserId: ForeignKey<UserModel["id"]> | null;
 }
 
