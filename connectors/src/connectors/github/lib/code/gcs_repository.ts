@@ -6,7 +6,10 @@ import { pipeline } from "stream/promises";
 
 import { getCodeDirInternalId } from "@connectors/connectors/github/lib/utils";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@connectors/lib/async_utils";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
@@ -20,6 +23,8 @@ const DUST_INTERNAL_INDEX_FILE_PREFIX = "._dust_internal_index";
 
 const DEFAULT_MAX_RESULTS = 1000;
 const STREAM_THRESHOLD_BYTES = 2 * 1024 * 1024; // 2MB - files smaller than this will be buffered.
+const SMALL_FILE_UPLOAD_MAX_RETRIES = 3;
+const SMALL_FILE_UPLOAD_BASE_DELAY_MS = 500;
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
 // Files are faster to upsert than directories, so we can afford to have more files per index file.
@@ -236,7 +241,30 @@ export class GCSRepositoryManager {
 
         // @ts-expect-error -- migration to tsgo
         const content = Buffer.concat(chunks);
-        await this.uploadFile(gcsPath, content, { contentType, metadata });
+        // Retry logic for small file uploads to handle transient GCS failures.
+        let lastError: unknown;
+        for (
+          let attempt = 0;
+          attempt < SMALL_FILE_UPLOAD_MAX_RETRIES;
+          attempt++
+        ) {
+          try {
+            await this.uploadFile(gcsPath, content, { contentType, metadata });
+            return;
+          } catch (error) {
+            lastError = error;
+            if (attempt < SMALL_FILE_UPLOAD_MAX_RETRIES - 1) {
+              const delay =
+                SMALL_FILE_UPLOAD_BASE_DELAY_MS * Math.pow(2, attempt);
+              childLogger.warn(
+                { error, gcsPath, attempt, delay },
+                "GCS upload failed, retrying"
+              );
+              await setTimeoutAsync(delay);
+            }
+          }
+        }
+        throw lastError;
       } else {
         // Large file - stream directly to GCS.
         const file = this.bucket.file(gcsPath);
