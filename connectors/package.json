@@ -119,7 +119,7 @@
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
-    "vitest": "^3.0.8"
+    "vitest": "^4.0.15"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [

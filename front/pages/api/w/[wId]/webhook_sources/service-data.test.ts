@@ -36,10 +36,12 @@ vi.mock("@app/types", async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
-    OAuthAPI: vi.fn().mockImplementation(() => ({
-      getConnectionMetadata: mockGetConnectionMetadata,
-      getAccessToken: mockGetAccessToken,
-    })),
+    OAuthAPI: vi.fn().mockImplementation(function () {
+      return {
+        getConnectionMetadata: mockGetConnectionMetadata,
+        getAccessToken: mockGetAccessToken,
+      };
+    }),
   };
 });
 
