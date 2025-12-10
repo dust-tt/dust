@@ -61,6 +61,49 @@ export type SkillConfigurationResourceWithAuthor =
     author: Attributes<UserModel>;
   };
 
+/**
+ * SkillConfigurationResource handles both custom (database-backed) and global (code-defined)
+ * skills in a single resource class.
+ *
+ * ## Architectural Trade-offs
+ *
+ * This design prioritizes convenience (single API for 90% of use cases) over perfect separation of
+ * concerns. The alternative would be separate resource classes, which adds conceptual overhead and
+ * forces most code to handle unions.
+ *
+ * ### What We Gain
+ * - Single entry point: `fetchAll()`, `fetchById()` work for both types
+ * - No new concepts: Just one resource class to understand
+ * - Type-safe constraints: Sequelize operators only available with `onlyCustom: true`
+ *
+ * ### What We Pay
+ * - Global skills use synthetic database fields (id: -1, authorId: -1)
+ * - Mutations (update/delete) require runtime checks to reject global skills
+ * - Mixed queries limited to simple equality filters (name, sId, status)
+ * - Some internal complexity to distinguish types via `globalSId` presence
+ *
+ * ## Key Limitations
+ *
+ * 1. **Query Constraints**: Default queries (both types) only support string equality.
+ *    Complex operators require `onlyCustom: true`.
+ *
+ * 2. **No Sequelize Features for Global Skills**: Pagination, ordering, and joins only work fully
+ *    for custom skills. Global skills are in-memory filtered.
+ *
+ * 3. **Type Detection is Implicit**: Global skills identified by presence of `globalSId` field.
+ *    No explicit type enum exposed externally.
+ *
+ * 4. **Synthetic Fields Never Exposed**: The fake `id: -1` is internal only.
+ *    External code must use `sId` (string) for all operations.
+ *
+ * ## When This Breaks Down
+ *
+ * If you find yourself adding many special cases for global skills, or if the
+ * synthetic fields cause bugs, consider refactoring to separate resource classes
+ * with a thin coordination layer.
+ *
+ * @see GlobalSkillsRegistry for global skill definitions
+ */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillConfigurationResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
