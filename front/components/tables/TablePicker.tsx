@@ -108,7 +108,6 @@ export default function TablePicker({
 
   useEffect(() => {
     if (tables && !isTablesLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setallTablesMap((prevTablesMap) => {
         if (pageIndex === 0) {
           return new Map(tables.map((table) => [table.internalId, table]));
@@ -128,7 +127,6 @@ export default function TablePicker({
 
   useEffect(() => {
     if (!isTableLoading && !isTableError) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentTable(table);
     }
   }, [isTableError, isTableLoading, table]);

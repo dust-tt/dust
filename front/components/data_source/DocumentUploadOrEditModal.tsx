@@ -322,7 +322,6 @@ export const DocumentUploadOrEditModal = ({
   // Effect: Set the document state when the document is loaded
   useEffect(() => {
     if (!initialId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDocumentState({
         title: "",
         text: "",
@@ -346,7 +345,6 @@ export const DocumentUploadOrEditModal = ({
   useEffect(() => {
     const isTitleValid = documentState.title.trim().length > 0;
     const isContentValid = documentState.text.trim().length > 0;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsValidDocument(isTitleValid && isContentValid);
   }, [documentState]);
 

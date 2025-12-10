@@ -115,7 +115,6 @@ export function CreateMCPServerDialog({
 
   useEffect(() => {
     if (defaultServerConfig?.url && isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRemoteServerUrl(defaultServerConfig.url);
     }
     if (defaultServerConfig && isOpen) {
@@ -125,7 +124,6 @@ export function CreateMCPServerDialog({
 
   useEffect(() => {
     if (internalMCPServer && isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthorization(internalMCPServer.authorization);
     } else {
       setAuthorization(null);

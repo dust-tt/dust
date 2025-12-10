@@ -29,7 +29,6 @@ export function useSearchToolFiles({
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchResults([]);
     setResultsCount(0);
     setIsSearchError(null);

@@ -114,13 +114,11 @@ export const MentionDropdown = forwardRef<
     }));
 
     useEffect(() => {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       updateTriggerPosition();
     }, [updateTriggerPosition]);
 
     // Reset the selected index when items change (e.g., when query changes).
     useEffect(() => {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIndex(0);
     }, [suggestions]);
 
