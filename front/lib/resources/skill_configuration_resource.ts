@@ -15,7 +15,7 @@ import {
 } from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -430,9 +430,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   async updateTools(
     auth: Authenticator,
     {
-      mcpServerViewIds,
+      mcpServerViews,
     }: {
-      mcpServerViewIds: string[];
+      mcpServerViews: MCPServerViewResource[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<{ mcpServerViewId: string }[], Error>> {
@@ -449,32 +449,20 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       });
 
       // Create new tool associations
-      const createdTools: { mcpServerViewId: string }[] = [];
-      for (const mcpServerViewId of mcpServerViewIds) {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          mcpServerViewId
-        );
+      await SkillMCPServerConfigurationModel.bulkCreate(
+        mcpServerViews.map((mcpServerView) => ({
+          workspaceId: workspace.id,
+          skillConfigurationId: this.id,
+          mcpServerViewId: mcpServerView.id,
+        })),
+        { transaction }
+      );
 
-        if (!mcpServerView) {
-          return new Err(
-            new Error(`MCP server view not found: ${mcpServerViewId}`)
-          );
-        }
-
-        await SkillMCPServerConfigurationModel.create(
-          {
-            workspaceId: workspace.id,
-            skillConfigurationId: this.id,
-            mcpServerViewId: mcpServerView.id,
-          },
-          { transaction }
-        );
-
-        createdTools.push({ mcpServerViewId });
-      }
-
-      return new Ok(createdTools);
+      return new Ok(
+        mcpServerViews.map((mcpServerView) => ({
+          mcpServerViewId: mcpServerView.sId,
+        }))
+      );
     } catch (error) {
       return new Err(normalizeError(error));
     }
