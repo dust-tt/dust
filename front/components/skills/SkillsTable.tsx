@@ -104,13 +104,13 @@ const getTableColumns = () => {
 
 type SkillsTableProps = {
   skillConfigurations: SkillConfigurationWithAuthorType[];
-  setSkillConfiguration: (skill: SkillConfigurationWithAuthorType) => void;
   owner: LightWorkspaceType;
+  setSkillConfiguration: (skill: SkillConfigurationWithAuthorType) => void;
 };
 
 export function SkillsTable({
-  owner,
   skillConfigurations,
+  owner,
   setSkillConfiguration,
 }: SkillsTableProps) {
   const { pagination, setPagination } = usePaginationFromUrl({});
