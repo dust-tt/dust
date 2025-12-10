@@ -26,7 +26,6 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -420,26 +419,11 @@ export async function createOrUpgradeAgentConfiguration({
     assistant.skills,
     async (skill) => {
       // Validate the skill exists and belongs to this workspace
-      const id = getResourceIdFromSId(skill.sId);
-      if (!id) {
-        logger.warn(
-          {
-            workspaceId: owner.sId,
-            agentConfigurationId: agentConfigurationRes.value.sId,
-            skillSId: skill.sId,
-          },
-          "Invalid skill sId when creating agent configuration, skipping"
-        );
-        return;
-      }
-
-      // Fetch skill to ensure it exists. We don't really need the result beyond this.
-      const skillRes = await SkillConfigurationResource.fetchByModelIdWithAuth(
+      const skillResource = await SkillConfigurationResource.fetchById(
         auth,
-        id
+        skill.sId
       );
-
-      if (!skillRes) {
+      if (!skillResource) {
         logger.warn(
           {
             workspaceId: owner.sId,
@@ -454,7 +438,7 @@ export async function createOrUpgradeAgentConfiguration({
       await AgentSkillModel.create({
         workspaceId: owner.id,
         agentConfigurationId: agentConfigurationRes.value.id,
-        customSkillId: id,
+        customSkillId: skillResource.id,
         globalSkillId: null,
       });
     },
