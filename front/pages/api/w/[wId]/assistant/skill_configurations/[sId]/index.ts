@@ -12,6 +12,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
@@ -219,7 +220,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Error updating skill: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: `Error updating skill: ${normalizeError(error).message}`,
           },
         });
       }
