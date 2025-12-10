@@ -59,6 +59,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -503,6 +504,10 @@ export async function deleteWebhookSourcesActivity({
 
   const webhookSources = await WebhookSourceResource.listByWorkspace(auth);
   for (const webhookSource of webhookSources) {
+    await WebhookRequestResource.deleteByWebhookSourceId(
+      auth,
+      webhookSource.id
+    );
     await webhookSource.delete(auth);
   }
 }
