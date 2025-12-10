@@ -182,19 +182,12 @@ export async function getJITServers(
           "MCP server view not found for skill_management. Ensure auto tools are created."
         );
       } else if (!agentMcpServerViewIds.includes(skillManagementView.sId)) {
-        const skillManagementViewJSON = skillManagementView.toJSON();
         const skillManagementServer: ServerSideMCPServerConfigurationType = {
           id: -1,
           sId: generateRandomModelSId(),
           type: "mcp_server_configuration",
-          name:
-            skillManagementViewJSON.name ??
-            skillManagementViewJSON.server.name ??
-            SKILL_MANAGEMENT_SERVER_NAME,
-          description:
-            skillManagementViewJSON.description ??
-            skillManagementViewJSON.server.description ??
-            "Enable skills for the conversation.",
+          name: SKILL_MANAGEMENT_SERVER_NAME,
+          description: "Enable skills for the conversation.",
           dataSources: null,
           tables: null,
           childAgentId: null,
@@ -203,7 +196,7 @@ export async function getJITServers(
           jsonSchema: null,
           secretName: null,
           additionalConfiguration: {},
-          mcpServerViewId: skillManagementViewJSON.sId,
+          mcpServerViewId: skillManagementView.sId,
           dustAppConfiguration: null,
           internalMCPServerId: skillManagementView.mcpServerId,
         };
