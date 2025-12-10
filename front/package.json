@@ -260,8 +260,8 @@
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.48.0",
-    "vitest": "^3.2.4",
-    "vitest-canvas-mock": "^0.3.3",
+    "vitest": "^4.0.15",
+    "vitest-canvas-mock": "^1.1.3",
     "webpack-stats-plugin": "^1.1.3",
     "yalc": "^1.0.0-pre.53"
   },
