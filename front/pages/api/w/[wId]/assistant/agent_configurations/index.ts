@@ -44,6 +44,7 @@ import {
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -419,11 +420,26 @@ export async function createOrUpgradeAgentConfiguration({
     assistant.skills,
     async (skill) => {
       // Validate the skill exists and belongs to this workspace
-      const skillResource = await SkillConfigurationResource.fetchBySId(
+      const id = getResourceIdFromSId(skill.sId);
+      if (!id) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfigurationRes.value.sId,
+            skillSId: skill.sId,
+          },
+          "Invalid skill sId when creating agent configuration, skipping"
+        );
+        return;
+      }
+
+      // Fetch skill to ensure it exists. We don't really need the result beyond this.
+      const skillRes = await SkillConfigurationResource.fetchByModelIdWithAuth(
         auth,
-        skill.sId
+        id
       );
-      if (!skillResource) {
+
+      if (!skillRes) {
         logger.warn(
           {
             workspaceId: owner.sId,
@@ -438,7 +454,7 @@ export async function createOrUpgradeAgentConfiguration({
       await AgentSkillModel.create({
         workspaceId: owner.id,
         agentConfigurationId: agentConfigurationRes.value.id,
-        customSkillId: skillResource.id,
+        customSkillId: id,
         globalSkillId: null,
       });
     },

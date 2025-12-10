@@ -174,22 +174,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return resources[0];
   }
 
-  static async fetchBySId(
-    auth: Authenticator,
-    sId: string
-  ): Promise<SkillConfigurationResource | null> {
-    if (!isResourceSId("skill", sId)) {
-      return null;
-    }
-
-    const resourceId = getResourceIdFromSId(sId);
-    if (resourceId === null) {
-      return null;
-    }
-
-    return this.fetchByModelIdWithAuth(auth, resourceId);
-  }
-
   static async fetchByAgentConfigurationId(
     auth: Authenticator,
     agentConfigurationId: ModelId
