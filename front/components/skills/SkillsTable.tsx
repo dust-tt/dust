@@ -17,7 +17,7 @@ type RowData = {
   name: string;
   description: string;
   author: SkillConfigurationWithAuthorType["author"];
-  updatedAt: Date;
+  updatedAt: number;
   onClick?: () => void;
   menuItems?: MenuItem[];
 };

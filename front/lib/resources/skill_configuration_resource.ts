@@ -338,8 +338,8 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     if (this.author) {
       return {
         sId: this.sId,
-        createdAt: this.createdAt,
-        updatedAt: this.updatedAt,
+        createdAt: this.createdAt.getTime(),
+        updatedAt: this.updatedAt.getTime(),
         version: this.version,
         status: this.status,
         name: this.name,
@@ -363,8 +363,8 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     return {
       sId: this.sId,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
       version: this.version,
       status: this.status,
       name: this.name,
