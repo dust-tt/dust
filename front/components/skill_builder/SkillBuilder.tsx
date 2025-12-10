@@ -47,7 +47,7 @@ export default function SkillBuilder({
   const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useSkillConfigurationTools(
-    owner.sId,
+    owner,
     skillConfiguration?.sId ?? null
   );
 

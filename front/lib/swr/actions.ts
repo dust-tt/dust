@@ -6,6 +6,7 @@ import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_b
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 import type { GetSkillActionsResponseBody } from "@app/pages/api/w/[wId]/builder/skills/[sId]/actions";
+import type { LightWorkspaceType } from "@app/types";
 
 export function useAgentConfigurationActions(
   ownerId: string,
@@ -40,13 +41,13 @@ export function useAgentConfigurationActions(
 }
 
 export function useSkillConfigurationTools(
-  ownerId: string,
+  owner: LightWorkspaceType,
   skillConfigurationId: string | null
 ) {
   const disabled = skillConfigurationId === null;
   const actionsFetcher: Fetcher<GetSkillActionsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${ownerId}/builder/skills/${skillConfigurationId}/actions`,
+    `/api/w/${owner.sId}/builder/skills/${skillConfigurationId}/actions`,
     actionsFetcher,
     {
       disabled,

@@ -75,6 +75,13 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     this.canEdit = canEdit;
   }
 
+  get sId(): string {
+    return SkillConfigurationResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
   static async makeNew(
     blob: CreationAttributes<SkillConfigurationModel>,
     { transaction }: { transaction?: Transaction } = {}
@@ -86,16 +93,119 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return new this(this.model, skillConfiguration.get());
   }
 
+  static async fetchWithAuthor(
+    auth: Authenticator
+  ): Promise<SkillConfigurationResourceWithAuthor[]> {
+    return this.baseFetch(auth, {
+      includes: [{ model: UserModel, as: "author", required: true }],
+    });
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<SkillConfigurationResource | null> {
+    const resources = await this.baseFetch(auth, {
+      where: {
+        id,
+      },
+      limit: 1,
+    });
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
+  }
+
+  static async fetchBySId(
+    auth: Authenticator,
+    sId: string
+  ): Promise<SkillConfigurationResource | null> {
+    if (!isResourceSId("skill", sId)) {
+      return null;
+    }
+
+    const resourceId = getResourceIdFromSId(sId);
+    if (resourceId === null) {
+      return null;
+    }
+
+    return this.fetchByModelIdWithAuth(auth, resourceId);
+  }
+
+  static async fetchActiveByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<SkillConfigurationResource | null> {
+    const resources = await this.baseFetch(auth, {
+      where: {
+        name,
+        status: "active",
+      },
+      limit: 1,
+    });
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
+  }
+
+  static async fetchByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: ModelId
+  ): Promise<SkillConfigurationResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: SkillConfigurationModel,
+          as: "customSkill",
+          required: false,
+        },
+      ],
+    });
+
+    // TODO(skills 2025-12-09): Add support for global skills.
+    // When globalSkillId is set, we need to fetch the skill from the global registry
+    // and return it as a SkillConfigurationResource.
+    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
+    return customSkills.map((skill) => new this(this.model, skill.get()));
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("skill", {
+      id,
+      workspaceId,
+    });
+  }
+
   private static async baseFetch<T extends Model, S extends string>(
     auth: Authenticator,
     options: ResourceFindOptions<SkillConfigurationModel> & {
       includes: [{ model: ModelStatic<T>; as: S; required: true }];
     }
   ): Promise<(SkillConfigurationResource & { [K in S]: Attributes<T> })[]>;
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<SkillConfigurationModel>
   ): Promise<SkillConfigurationResource[]>;
+
   private static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<SkillConfigurationModel> = {}
@@ -225,94 +335,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return memberIds.includes(user.id);
   }
 
-  static async fetchWithAuthor(
-    auth: Authenticator
-  ): Promise<SkillConfigurationResourceWithAuthor[]> {
-    return this.baseFetch(auth, {
-      includes: [{ model: UserModel, as: "author", required: true }],
-    });
-  }
-
-  static async fetchByModelIdWithAuth(
-    auth: Authenticator,
-    id: ModelId
-  ): Promise<SkillConfigurationResource | null> {
-    const resources = await this.baseFetch(auth, {
-      where: {
-        id,
-      },
-      limit: 1,
-    });
-
-    if (resources.length === 0) {
-      return null;
-    }
-
-    return resources[0];
-  }
-
-  static async fetchById(
-    auth: Authenticator,
-    sId: string
-  ): Promise<SkillConfigurationResource | null> {
-    if (!isResourceSId("skill", sId)) {
-      return null;
-    }
-
-    const resourceId = getResourceIdFromSId(sId);
-    if (resourceId === null) {
-      return null;
-    }
-
-    return this.fetchByModelIdWithAuth(auth, resourceId);
-  }
-
-  static async fetchActiveByName(
-    auth: Authenticator,
-    name: string
-  ): Promise<SkillConfigurationResource | null> {
-    const resources = await this.baseFetch(auth, {
-      where: {
-        name,
-        status: "active",
-      },
-      limit: 1,
-    });
-
-    if (resources.length === 0) {
-      return null;
-    }
-
-    return resources[0];
-  }
-
-  static async fetchByAgentConfigurationId(
-    auth: Authenticator,
-    agentConfigurationId: ModelId
-  ): Promise<SkillConfigurationResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const agentSkills = await AgentSkillModel.findAll({
-      where: {
-        agentConfigurationId,
-        workspaceId: workspace.id,
-      },
-      include: [
-        {
-          model: SkillConfigurationModel,
-          as: "customSkill",
-          required: false,
-        },
-      ],
-    });
-
-    // TODO(skills 2025-12-09): Add support for global skills.
-    // When globalSkillId is set, we need to fetch the skill from the global registry
-    // and return it as a SkillConfigurationResource.
-    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
-    return customSkills.map((skill) => new this(this.model, skill.get()));
-  }
-
   static async fetchAllAvailableSkills(
     auth: Authenticator,
     limit?: number
@@ -322,26 +344,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         status: "active",
       },
       ...(limit ? { limit } : {}),
-    });
-  }
-
-  get sId(): string {
-    return SkillConfigurationResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("skill", {
-      id,
-      workspaceId,
     });
   }
 
@@ -397,7 +399,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     try {
       const workspace = auth.getNonNullableWorkspace();
 
-      await SkillConfigurationResource.model.update(
+      await this.model.update(
         {
           name,
           description,

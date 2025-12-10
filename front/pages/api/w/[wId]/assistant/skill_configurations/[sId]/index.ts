@@ -82,7 +82,17 @@ async function handler(
     });
   }
 
-  const sId = req.query.sId as string;
+  if (typeof req.query.sId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill ID.",
+      },
+    });
+  }
+
+  const sId = req.query.sId;
   const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
 
   if (!skillResource) {
