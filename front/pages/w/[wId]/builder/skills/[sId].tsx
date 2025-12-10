@@ -11,17 +11,8 @@ import { SkillConfigurationResource } from "@app/lib/resources/skill_configurati
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
-// Serialized version with Date objects converted to timestamps
-type SerializedSkillConfiguration = Omit<
-  SkillConfigurationType,
-  "createdAt" | "updatedAt"
-> & {
-  createdAt: number;
-  updatedAt: number;
-};
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skillConfiguration: SerializedSkillConfiguration;
+  skillConfiguration: SkillConfigurationType;
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
