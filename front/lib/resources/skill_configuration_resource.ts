@@ -359,30 +359,26 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   async archive(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined | number, Error>> {
-    try {
-      const workspace = auth.getNonNullableWorkspace();
+  ): Promise<{ affectedCount: number }> {
+    const workspace = auth.getNonNullableWorkspace();
 
-      // Remove all agent skill links before archiving
-      await AgentSkillModel.destroy({
-        where: {
-          customSkillId: this.id,
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
+    // Remove all agent skill links before archiving.
+    await AgentSkillModel.destroy({
+      where: {
+        customSkillId: this.id,
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
 
-      const [affectedCount] = await this.update(
-        {
-          status: "archived",
-        },
-        transaction
-      );
+    const [affectedCount] = await this.update(
+      {
+        status: "archived",
+      },
+      transaction
+    );
 
-      return new Ok(affectedCount);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return { affectedCount };
   }
 
   async updateSkill(
@@ -398,41 +394,27 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillConfigurationResource, Error>> {
-    try {
-      const workspace = auth.getNonNullableWorkspace();
+    await this.update(
+      {
+        name,
+        description,
+        instructions,
+        version: this.version + 1,
+      },
+      transaction
+    );
 
-      await this.model.update(
-        {
-          name,
-          description,
-          instructions,
-          version: this.version + 1,
-        },
-        {
-          where: {
-            id: this.id,
-            workspaceId: workspace.id,
-          },
-          transaction,
-        }
-      );
+    // Fetch the updated resource
+    const updated = await SkillConfigurationResource.fetchByModelIdWithAuth(
+      auth,
+      this.id
+    );
 
-      // Fetch the updated resource
-      const updated = await SkillConfigurationResource.fetchByModelIdWithAuth(
-        auth,
-        this.id
-      );
-
-      if (!updated) {
-        return new Err(
-          new Error("Failed to fetch updated skill configuration")
-        );
-      }
-
-      return new Ok(updated);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    if (!updated) {
+      return new Err(new Error("Failed to fetch updated skill configuration"));
     }
+
+    return new Ok(updated);
   }
 
   async updateTools(
@@ -443,37 +425,27 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       mcpServerViews: MCPServerViewResource[];
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<{ mcpServerViewId: string }[], Error>> {
-    try {
-      const workspace = auth.getNonNullableWorkspace();
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
 
-      // Delete existing tool associations
-      await SkillMCPServerConfigurationModel.destroy({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: this.id,
-        },
-        transaction,
-      });
+    // Delete existing tool associations.
+    await SkillMCPServerConfigurationModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: this.id,
+      },
+      transaction,
+    });
 
-      // Create new tool associations
-      await SkillMCPServerConfigurationModel.bulkCreate(
-        mcpServerViews.map((mcpServerView) => ({
-          workspaceId: workspace.id,
-          skillConfigurationId: this.id,
-          mcpServerViewId: mcpServerView.id,
-        })),
-        { transaction }
-      );
-
-      return new Ok(
-        mcpServerViews.map((mcpServerView) => ({
-          mcpServerViewId: mcpServerView.sId,
-        }))
-      );
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    // Create new tool associations.
+    await SkillMCPServerConfigurationModel.bulkCreate(
+      mcpServerViews.map((mcpServerView) => ({
+        workspaceId: workspace.id,
+        skillConfigurationId: this.id,
+        mcpServerViewId: mcpServerView.id,
+      })),
+      { transaction }
+    );
   }
 
   async delete(
