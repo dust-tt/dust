@@ -198,11 +198,10 @@ async function extractBlockContent(
       return "";
     }
 
-    // Extract direct content for this block
+    // Extract direct content for this block (no Notion calls)
     const directContent = extractBlockDirectContent(block, depth);
 
-    // Recursively fetch child blocks if they exist, up to a reasonable depth
-    // and if we haven't exceeded the deadline
+    // Recursively extract child blocks, up to a reasonable depth, and respecting the deadline
     let childContent = "";
     if (block.has_children && depth < 10) {
       if (!deadline || Date.now() < deadline) {
