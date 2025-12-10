@@ -71,17 +71,7 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      const archiveResult = await skillConfiguration.archive(auth);
-
-      if (archiveResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Error archiving skill: ${archiveResult.error.message}`,
-          },
-        });
-      }
+      await skillConfiguration.archive(auth);
 
       return res.status(200).json({ success: true });
     }
