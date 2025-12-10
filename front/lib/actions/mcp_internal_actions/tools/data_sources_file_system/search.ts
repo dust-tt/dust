@@ -31,7 +31,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -215,8 +214,6 @@ async function searchCallback(
   if (conflictingTags) {
     return new Err(new MCPError(conflictingTags, { tracked: false }));
   }
-
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
   const searchResults = await coreAPI.bulkSearchDataSources(
     query,
