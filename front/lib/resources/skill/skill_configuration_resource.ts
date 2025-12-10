@@ -44,7 +44,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
+import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
