@@ -690,7 +690,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "universal_search"
   | "usage_data_api"
-  | "use_bulk_search_data_sources_api"
   | "vanta_tool"
   | "web_summarization"
   | "xai_feature"
