@@ -103,7 +103,7 @@
     "@valtown/sdk": "^2.0.0",
     "@vercel/otel": "^2.1.0",
     "@virtuoso.dev/message-list": "^1.14.0",
-    "@workos-inc/node": "^7.50.0",
+    "@workos-inc/node": "^7.77.0",
     "@typescript/native-preview": "^7.0.0-dev.20251201.1",
     "adm-zip": "^0.5.16",
     "ajv": "^8.17.1",
