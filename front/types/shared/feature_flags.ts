@@ -229,6 +229,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to Skills, which are packaged sets of instructions and tools",
     stage: "dust_only",
   },
+  skills_similar_display: {
+    description:
+      "Display similar skills when creating a new skill to avoid duplicates",
+    stage: "dust_only",
+  },
   universal_search: {
     description:
       "WIP - Search from Input bar search in Knowledge and MCP tools. ",

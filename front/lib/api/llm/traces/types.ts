@@ -25,7 +25,8 @@ export interface LLMTraceContext {
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"
     | "workspace_tags_suggestion"
-    | "agent_observability_summary";
+    | "agent_observability_summary"
+    | "skills_similarity_checker";
 
   /** Context-specific identifier (e.g., agentConfigId, conversationId, etc.) */
   contextId?: string;
