@@ -522,11 +522,10 @@ async function createServer(
                 {
                   permalink: (match) => match.permalink,
                   text: (match) => {
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     const username = match.user_id
                       ? userIdToName.get(match.user_id)
                       : undefined;
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
                     const channelName = match.channel_id
                       ? channelIdToName.get(match.channel_id)
                       : undefined;
@@ -632,11 +631,10 @@ async function createServer(
                 {
                   permalink: (match) => match.permalink,
                   text: (match) => {
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     const username = match.user_id
                       ? userIdToName.get(match.user_id)
                       : undefined;
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
                     const channelName = match.channel_id
                       ? channelIdToName.get(match.channel_id)
                       : undefined;
