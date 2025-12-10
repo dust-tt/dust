@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "agent_message_skills" (
   "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   "id" BIGSERIAL,
   PRIMARY KEY ("id")
-);g
+);
 
 CREATE INDEX "agent_message_skills_wid_cid_acid_active" ON "agent_message_skills" (
   "workspaceId",
