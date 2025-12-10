@@ -6,10 +6,6 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import {
-  CustomBold,
-  CustomItalic,
-} from "@app/components/editor/extensions/input_bar/CustomMarks";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -207,8 +203,6 @@ export const buildEditorExtensions = ({
       heading: {
         levels: [1],
       },
-      bold: false, // Disable default bold, we use a custom one
-      italic: false, // Disable default italic, we use a custom one
       blockquote: false, // Disable default blockquote, we use a custom one
       // Markdown styles configuration.
       code: {
@@ -242,8 +236,6 @@ export const buildEditorExtensions = ({
         },
       },
     }),
-    CustomBold,
-    CustomItalic,
     BlockquoteExtension.configure({
       HTMLAttributes: {
         class: markdownStyles.blockquote(),
