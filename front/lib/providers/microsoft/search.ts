@@ -115,7 +115,7 @@ export async function search({
         // Get mimeType
         const mimeType = isFolder
           ? "folder"
-          : resource.file?.mimeType || "application/octet-stream";
+          : (resource.file?.mimeType ?? "application/octet-stream");
 
         // Determine type
         let type: ContentNodeType = "document";
