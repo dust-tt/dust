@@ -81,7 +81,7 @@ export async function search({
     // Use shared search function
     const response = await searchMicrosoftDriveItems({
       client,
-      query,
+      query: "FileName: " + query,
       pageSize: Math.min(pageSize, 100),
     });
 
