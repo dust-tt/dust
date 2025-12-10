@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { isResourceSId, makeSId } from "@app/lib/resources/string_ids";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
@@ -84,7 +84,7 @@ async function handler(
   }
 
   const sId = req.query.sId;
-  const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
+  const skillResource = await SkillConfigurationResource.fetchById(auth, sId);
 
   if (!skillResource) {
     return apiError(req, res, {
@@ -197,19 +197,7 @@ async function handler(
 
         return res.status(200).json({
           skillConfiguration: {
-            id: result.updatedSkill.id,
-            sId: makeSId("skill", {
-              id: result.updatedSkill.id,
-              workspaceId: result.updatedSkill.workspaceId,
-            }),
-            name: result.updatedSkill.name,
-            description: result.updatedSkill.description,
-            instructions: result.updatedSkill.instructions,
-            status: result.updatedSkill.status,
-            version: result.updatedSkill.version,
-            createdAt: result.updatedSkill.createdAt,
-            updatedAt: result.updatedSkill.updatedAt,
-            requestedSpaceIds: result.updatedSkill.requestedSpaceIds,
+            ...result.updatedSkill.toJSON(),
             tools: result.createdTools,
           },
         });
