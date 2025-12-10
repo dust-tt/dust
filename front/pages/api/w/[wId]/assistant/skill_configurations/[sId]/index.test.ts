@@ -221,7 +221,7 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
     });
 
     // Create another skill with a different name
-    const otherSkill = await SkillConfigurationFactory.create(requestUserAuth, {
+    await SkillConfigurationFactory.create(requestUserAuth, {
       name: "Other Skill",
     });
 
