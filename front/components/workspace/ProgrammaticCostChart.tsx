@@ -506,9 +506,7 @@ export function BaseProgrammaticCostChart({
           )}
         </div>
       }
-      description={
-        groupBy ? "Filter by clicking on legend items." : undefined
-      }
+      description={groupBy ? "Filter by clicking on legend items." : undefined}
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError

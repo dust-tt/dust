@@ -276,7 +276,9 @@ function UsageSection({
           title="Free credits"
           consumed={creditsByType.free.consumed}
           total={creditsByType.free.total}
-          renewalDate={formatRenewalDate(billingCycle?.cycleEnd.getTime() ?? null)}
+          renewalDate={formatRenewalDate(
+            billingCycle?.cycleEnd.getTime() ?? null
+          )}
         />
         <CreditCategoryBar
           title="Purchased credits"
