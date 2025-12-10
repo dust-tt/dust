@@ -28,7 +28,7 @@ async function handler(
     });
   }
 
-  const { query, pageSize: pageSizeParam, stream } = req.query;
+  const { query, pageSize: pageSizeParam } = req.query;
   if (typeof query !== "string" || query.length < 1) {
     return apiError(req, res, {
       status_code: 400,
