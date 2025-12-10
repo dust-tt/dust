@@ -23,7 +23,13 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  ModelId,
+  Result,
+} from "@app/types";
 import {
   Err,
   formatUserFullName,
@@ -329,14 +335,14 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   async enableForMessage(
     auth: Authenticator,
     {
-      agentConfigurationId,
-      agentMessageId,
-      conversationId,
+      agentConfiguration,
+      agentMessage,
+      conversation,
       source,
     }: {
-      agentConfigurationId: ModelId;
-      agentMessageId: ModelId;
-      conversationId: ModelId;
+      agentConfiguration: AgentConfigurationType;
+      agentMessage: AgentMessageType;
+      conversation: ConversationType;
       source: AgentMessageSkillSource;
     }
   ): Promise<Result<void, Error>> {
@@ -353,12 +359,12 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     await AgentMessageSkillModel.create({
       workspaceId: workspace.id,
-      agentConfigurationId,
+      agentConfigurationId: agentConfiguration.id,
       isActive: true,
       customSkillId: this.id,
       globalSkillId: null,
-      agentMessageId,
-      conversationId,
+      agentMessageId: agentMessage.id,
+      conversationId: conversation.id,
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
     });
