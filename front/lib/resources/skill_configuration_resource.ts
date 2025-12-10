@@ -268,6 +268,41 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
+  async archive(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined | number, Error>> {
+    try {
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Remove all agent skill links before archiving
+      await AgentSkillModel.destroy({
+        where: {
+          customSkillId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+
+      const [affectedCount] = await this.model.update(
+        {
+          status: "archived",
+        },
+        {
+          where: {
+            id: this.id,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        }
+      );
+
+      return new Ok(affectedCount);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
