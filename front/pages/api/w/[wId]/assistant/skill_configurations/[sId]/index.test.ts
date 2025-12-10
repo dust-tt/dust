@@ -133,6 +133,9 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
       method: "PATCH",
     });
 
+    // Create system space (required for MCP server creation)
+    await SpaceFactory.system(workspace);
+
     // Create an MCP server and view for tools
     const server = await RemoteMCPServerFactory.create(workspace);
     const globalSpace = await SpaceFactory.global(workspace);
@@ -168,6 +171,9 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
       requestUserRole: "builder",
       method: "PATCH",
     });
+
+    // Create system space (required for MCP server creation)
+    await SpaceFactory.system(workspace);
 
     const server = await RemoteMCPServerFactory.create(workspace);
     const globalSpace = await SpaceFactory.global(workspace);
