@@ -149,7 +149,7 @@ export function ViewMCPServerViewTable({
                             connection.userId
                           )}`;
                         }
-                        return <CopyTokenButton owner={owner} tokenUrl={url} />;
+                        return <CopyTokenButton tokenUrl={url} />;
                       })()}
                     </PokeTableCell>
                   </PokeTableRow>

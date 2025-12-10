@@ -31,6 +31,7 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   decodeSqids,
   formatTimestampToFriendlyDate,
@@ -128,7 +129,6 @@ export function ViewDataSourceTable({
                   <PokeTableCell>
                     {connector ? (
                       <CopyTokenButton
-                        owner={owner}
                         tokenUrl={`/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/token`}
                         label="Get access token"
                       />
