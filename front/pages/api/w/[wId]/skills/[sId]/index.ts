@@ -6,7 +6,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isBuilder, isString } from "@app/types";
 
 export type DeleteSkillConfigurationResponseBody = {
   success: boolean;
@@ -19,7 +19,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.sId === "string")) {
+  if (!isString(req.query.sId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
