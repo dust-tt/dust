@@ -40,7 +40,7 @@ export async function search({
 }: ToolSearchParams): Promise<ToolSearchRawResult[]> {
   const drive = getGoogleDriveClient(accessToken);
 
-  const searchQuery = `(name contains '${query.replace(/'/g, "\\'")}' or fullText contains '${query.replace(/'/g, "\\'")}') and trashed = false`;
+  const searchQuery = `name contains '${query.replace(/'/g, "\\'")}' and trashed = false`;
 
   const res = await drive.files.list({
     q: searchQuery,
