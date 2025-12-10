@@ -2,8 +2,16 @@ import type { Client } from "@microsoft/microsoft-graph-client";
 import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import AdmZip from "adm-zip";
+import { Readable } from "stream";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 
+import config from "@app/lib/api/config";
+import { untrustedFetch } from "@app/lib/egress/server";
+import logger from "@app/logger/logger";
+import {
+  isTextExtractionSupportedContentType,
+  TextExtraction,
+} from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Microsoft Teams Message Types
@@ -316,4 +324,121 @@ export function parseCellRef(cell: string): { row: number; col: number } {
   }
 
   return { row: rowNum, col: colNum };
+}
+
+/**
+ * Searches for files in Microsoft OneDrive and SharePoint using the Graph Search API.
+ * Shared utility used by both the search_drive_items MCP tool and universal search.
+ *
+ * @param client - The authenticated Microsoft Graph client
+ * @param query - The search query string
+ * @param pageSize - Optional maximum number of results (defaults to 25)
+ * @returns The raw search response from Microsoft Graph
+ */
+export async function searchMicrosoftDriveItems({
+  client,
+  query,
+  pageSize = 25,
+}: {
+  client: Client;
+  query: string;
+  pageSize?: number;
+}): Promise<any> {
+  const endpoint = `/search/query`;
+
+  const requestBody = {
+    requests: [
+      {
+        entityTypes: ["driveItem"],
+        query: {
+          queryString: query,
+        },
+        size: pageSize,
+      },
+    ],
+  };
+
+  const response = await client.api(endpoint).post(requestBody);
+  return response;
+}
+
+/**
+ * Downloads and processes a Microsoft file to extract its text content.
+ * Shared utility used by both the get_file_content MCP tool and universal search.
+ *
+ * @param downloadUrl - The @microsoft.graph.downloadUrl from file metadata
+ * @param mimeType - The file's MIME type
+ * @param fileName - The file name (for error messages)
+ * @param extractAsXml - For Word documents, extract raw document.xml instead of text (optional, defaults to false)
+ * @returns The extracted content as a string
+ */
+export async function downloadAndProcessMicrosoftFile({
+  downloadUrl,
+  mimeType,
+  fileName,
+  extractAsXml = false,
+}: {
+  downloadUrl: string;
+  mimeType: string;
+  fileName: string;
+  extractAsXml?: boolean;
+}): Promise<string> {
+  // Download the file
+  const docResponse = await untrustedFetch(downloadUrl);
+  if (!docResponse.ok) {
+    throw new Error(
+      `Failed to download file: ${docResponse.status} ${docResponse.statusText}`
+    );
+  }
+
+  const buffer = Buffer.from(await docResponse.arrayBuffer());
+
+  let content: string;
+
+  // Handle special case: Word document XML extraction
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" &&
+    extractAsXml === true
+  ) {
+    try {
+      content = extractTextFromDocx(buffer);
+    } catch (error) {
+      throw new Error(
+        `Failed to extract XML from ${fileName}: ${normalizeError(error).message}`
+      );
+    }
+  } else if (mimeType.startsWith("text/")) {
+    // Plain text files - direct conversion
+    content = buffer.toString("utf-8");
+  } else if (isTextExtractionSupportedContentType(mimeType)) {
+    // Use TextExtraction service (Tika) for Office files and PDFs
+    try {
+      const textExtraction = new TextExtraction(config.getTextExtractionUrl(), {
+        enableOcr: false,
+        logger,
+      });
+
+      const bufferStream = Readable.from(buffer);
+      const textStream = await textExtraction.fromStream(
+        bufferStream,
+        mimeType as Parameters<typeof textExtraction.fromStream>[1]
+      );
+
+      const chunks: string[] = [];
+      for await (const chunk of textStream) {
+        chunks.push(chunk.toString());
+      }
+
+      content = chunks.join("");
+    } catch (error) {
+      throw new Error(
+        `Failed to extract text from ${fileName}: ${normalizeError(error).message}`
+      );
+    }
+  } else {
+    throw new Error(`Unsupported file type: ${mimeType}`);
+  }
+
+  return content;
 }
