@@ -31,7 +31,6 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { SKILL_ICON } from "@app/lib/skill";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 
