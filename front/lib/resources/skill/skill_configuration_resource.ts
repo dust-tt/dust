@@ -597,7 +597,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       isActive: true,
       customSkillId: this.id,
       globalSkillId: null,
-      agentMessageId: agentMessage.id,
+      agentMessageId: agentMessage.agentMessageId,
       conversationId: conversation.id,
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
