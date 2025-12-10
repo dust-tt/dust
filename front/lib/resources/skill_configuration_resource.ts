@@ -13,6 +13,7 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -24,7 +25,13 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  ModelId,
+  Result,
+} from "@app/types";
 import {
   Err,
   formatUserFullName,
@@ -32,6 +39,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
@@ -499,6 +507,46 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  async enableForMessage(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      agentMessage,
+      conversation,
+      source,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      agentMessage: AgentMessageType;
+      conversation: ConversationType;
+      source: AgentMessageSkillSource;
+    }
+  ): Promise<Result<void, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.user();
+    if (!user && source === "conversation") {
+      // If enabling from conversation and no user, we cannot track who enabled it.
+      return new Err(
+        new Error(
+          "Cannot enable skill from conversation without an authenticated user"
+        )
+      );
+    }
+
+    await AgentMessageSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      isActive: true,
+      customSkillId: this.id,
+      globalSkillId: null,
+      agentMessageId: agentMessage.id,
+      conversationId: conversation.id,
+      source,
+      addedByUserId: user && source === "conversation" ? user.id : null,
+    });
+
+    return new Ok(undefined);
   }
 
   toJSON(
