@@ -275,6 +275,15 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     try {
       const workspace = auth.getNonNullableWorkspace();
 
+      // Remove all agent skill links before archiving
+      await AgentSkillModel.destroy({
+        where: {
+          customSkillId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+
       const [affectedCount] = await this.model.update(
         {
           status: "archived",
