@@ -408,6 +408,59 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(r);
   }
 
+  /**
+   * Finds the specific editor groups associated with a set of skill configurations.
+   */
+  static async findEditorGroupsForSkills(
+    auth: Authenticator,
+    skillIds: ModelId[]
+  ): Promise<Result<Record<ModelId, GroupResource>, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (skillIds.length === 0) {
+      return new Ok({});
+    }
+
+    const groupSkills = await GroupSkillModel.findAll({
+      where: {
+        skillConfigurationId: {
+          [Op.in]: skillIds,
+        },
+        workspaceId: owner.id,
+      },
+      attributes: ["groupId", "skillConfigurationId"],
+    });
+
+    if (groupSkills.length === 0) {
+      return new Ok({});
+    }
+
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: groupSkills.map((gs) => gs.groupId),
+        },
+      },
+    });
+
+    const accessibleGroups = groups.filter((group) => group.canRead(auth));
+    const groupMap: Record<ModelId, GroupResource> = {};
+
+    for (const group of accessibleGroups) {
+      groupMap[group.id] = group;
+    }
+
+    const result: Record<ModelId, GroupResource> = {};
+    for (const gs of groupSkills) {
+      const group = groupMap[gs.groupId];
+      if (group && group.kind === "agent_editors") {
+        result[gs.skillConfigurationId] = group;
+      }
+    }
+
+    return new Ok(result);
+  }
+
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
     const existingGroups = (
       await GroupModel.findAll({

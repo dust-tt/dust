@@ -79,7 +79,7 @@ export function useUpdateSkillEditors({
           body.removeEditorIds != null &&
           body.removeEditorIds.length > 0
         ) {
-          title = "Successfully update editors";
+          title = "Successfully updated editors";
           description = "Successfully added and removed editors";
         } else if (
           (body.addEditorIds == null || body.addEditorIds.length <= 0) &&

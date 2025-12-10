@@ -99,6 +99,7 @@ export default function SkillBuilder({
       skillConfigurationId: !isCreatingNew
         ? skillConfiguration?.sId
         : undefined,
+      currentEditors: editors,
     });
 
     if (result.isErr()) {

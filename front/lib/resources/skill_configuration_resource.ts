@@ -148,28 +148,53 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     const user = auth.user();
     const canEditMap = new Map<number, boolean>();
 
-    for (const skill of skillConfigurations) {
-      let canEdit = false;
+    if (user) {
+      // Batch fetch all editor groups for all skills
+      const editorGroupsRes = await GroupResource.findEditorGroupsForSkills(
+        auth,
+        skillConfigurations.map((s) => s.id)
+      );
 
-      if (user) {
-        // Author can always edit
-        if (skill.authorId === user.id) {
-          canEdit = true;
-        } else {
-          // Check if user is in the editors group
-          const editorGroupRes = await GroupResource.findEditorGroupForSkill(
-            auth,
-            skill
-          );
+      if (editorGroupsRes.isOk()) {
+        const editorGroups = editorGroupsRes.value;
+        const uniqueGroups = Array.from(
+          new Set(Object.values(editorGroups).map((g) => g.id))
+        ).map((id) => Object.values(editorGroups).find((g) => g.id === id)!);
 
-          if (editorGroupRes.isOk()) {
-            const members = await editorGroupRes.value.getActiveMembers(auth);
-            canEdit = members.some((m) => m.id === user.id);
+        // Batch fetch active members for all editor groups
+        const groupMemberships =
+          await GroupResource.getActiveMembershipsForGroups(auth, uniqueGroups);
+
+        // Build canEdit map
+        for (const skill of skillConfigurations) {
+          let canEdit = false;
+
+          // Author can always edit
+          if (skill.authorId === user.id) {
+            canEdit = true;
+          } else {
+            // Check if user is in the editors group
+            const editorGroup = editorGroups[skill.id];
+            if (editorGroup) {
+              const memberIds = groupMemberships[editorGroup.id] || [];
+              canEdit = memberIds.includes(user.id);
+            }
           }
+
+          canEditMap.set(skill.id, canEdit);
+        }
+      } else {
+        // If we can't fetch editor groups, fall back to no edit permissions
+        for (const skill of skillConfigurations) {
+          const canEdit = user && skill.authorId === user.id;
+          canEditMap.set(skill.id, canEdit);
         }
       }
-
-      canEditMap.set(skill.id, canEdit);
+    } else {
+      // No user, no edit permissions
+      for (const skill of skillConfigurations) {
+        canEditMap.set(skill.id, false);
+      }
     }
 
     return skillConfigurations.map(
@@ -224,6 +249,25 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return this.fetchByModelIdWithAuth(auth, resourceId);
   }
 
+  static async fetchActiveByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<SkillConfigurationResource | null> {
+    const resources = await this.baseFetch(auth, {
+      where: {
+        name,
+        status: "active",
+      },
+      limit: 1,
+    });
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
+  }
+
   static async fetchByAgentConfigurationId(
     auth: Authenticator,
     agentConfigurationId: ModelId
@@ -249,25 +293,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     // and return it as a SkillConfigurationResource.
     const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
     return customSkills.map((skill) => new this(this.model, skill.get()));
-  }
-
-  static async fetchActiveByName(
-    auth: Authenticator,
-    name: string
-  ): Promise<SkillConfigurationResource | null> {
-    const resources = await this.baseFetch(auth, {
-      where: {
-        name,
-        status: "active",
-      },
-      limit: 1,
-    });
-
-    if (resources.length === 0) {
-      return null;
-    }
-
-    return resources[0];
   }
 
   static async fetchAllAvailableSkills(

@@ -10,11 +10,13 @@ export async function submitSkillBuilderForm({
   owner,
   user,
   skillConfigurationId,
+  currentEditors = [],
 }: {
   formData: SkillBuilderFormData;
   owner: WorkspaceType;
   user: UserType;
   skillConfigurationId?: string;
+  currentEditors?: UserType[];
 }): Promise<
   Result<
     | PostSkillConfigurationResponseBody["skillConfiguration"]
@@ -63,19 +65,24 @@ export async function submitSkillBuilderForm({
     const skillConfiguration = result.skillConfiguration;
 
     const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
+    const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
     const creatorId = user.sId;
 
     const addEditorIds: string[] = [];
     const removeEditorIds: string[] = [];
 
+    // Add editors who are in desired but not in current (excluding creator who is added automatically)
     for (const editor of formData.editors) {
-      if (editor.sId !== creatorId) {
+      if (editor.sId !== creatorId && !currentEditorIds.has(editor.sId)) {
         addEditorIds.push(editor.sId);
       }
     }
 
-    if (!desiredEditorIds.has(creatorId)) {
-      removeEditorIds.push(creatorId);
+    // Remove editors who are in current but not in desired
+    for (const editor of currentEditors) {
+      if (!desiredEditorIds.has(editor.sId)) {
+        removeEditorIds.push(editor.sId);
+      }
     }
 
     if (addEditorIds.length > 0 || removeEditorIds.length > 0) {

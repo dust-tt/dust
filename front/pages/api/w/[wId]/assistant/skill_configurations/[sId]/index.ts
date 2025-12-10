@@ -6,12 +6,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import {
   getResourceIdFromSId,
   isResourceSId,
@@ -130,13 +131,10 @@ async function handler(
       }
 
       // Check for existing active skill with the same name (excluding current skill)
-      const existingSkill = await SkillConfigurationModel.findOne({
-        where: {
-          workspaceId: owner.id,
-          name: body.name,
-          status: "active",
-        },
-      });
+      const existingSkill = await SkillConfigurationResource.fetchActiveByName(
+        auth,
+        body.name
+      );
 
       if (existingSkill && existingSkill.id !== skillResource.id) {
         return apiError(req, res, {
@@ -148,108 +146,97 @@ async function handler(
         });
       }
 
-      const updateResult = await skillResource.updateSkill(auth, {
-        name: body.name,
-        description: body.description,
-        instructions: body.instructions,
-      });
-
-      if (updateResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Error updating skill: ${updateResult.error.message}`,
-          },
-        });
-      }
-
-      const updatedSkill = updateResult.value;
-
-      // Update tools: delete existing and create new ones
+      // Wrap everything in a transaction to avoid inconsistent state
       try {
-        await SkillMCPServerConfigurationModel.destroy({
-          where: {
-            workspaceId: owner.id,
-            skillConfigurationId: updatedSkill.id,
-          },
+        const result = await frontSequelize.transaction(async (transaction) => {
+          const updateResult = await skillResource.updateSkill(
+            auth,
+            {
+              name: body.name,
+              description: body.description,
+              instructions: body.instructions,
+            },
+            { transaction }
+          );
+
+          if (updateResult.isErr()) {
+            throw new Error(updateResult.error.message);
+          }
+
+          const updatedSkill = updateResult.value;
+
+          // Update tools: delete existing and create new ones
+          await SkillMCPServerConfigurationModel.destroy({
+            where: {
+              workspaceId: owner.id,
+              skillConfigurationId: updatedSkill.id,
+            },
+            transaction,
+          });
+
+          // Create new tool associations
+          const createdTools: { mcpServerViewId: string }[] = [];
+          for (const tool of body.tools) {
+            if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
+              throw new Error(
+                `Invalid MCP server view ID: ${tool.mcpServerViewId}`
+              );
+            }
+
+            // Verify the MCP server view exists and belongs to this workspace
+            const mcpServerView = await MCPServerViewResource.fetchById(
+              auth,
+              tool.mcpServerViewId
+            );
+
+            if (!mcpServerView) {
+              throw new Error(
+                `MCP server view not found: ${tool.mcpServerViewId}`
+              );
+            }
+
+            await SkillMCPServerConfigurationModel.create(
+              {
+                workspaceId: owner.id,
+                skillConfigurationId: updatedSkill.id,
+                mcpServerViewId: mcpServerView.id,
+              },
+              { transaction }
+            );
+
+            createdTools.push({ mcpServerViewId: tool.mcpServerViewId });
+          }
+
+          return { updatedSkill, createdTools };
         });
 
-        // Create new tool associations
-        for (const tool of body.tools) {
-          if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `Invalid MCP server view ID: ${tool.mcpServerViewId}`,
-              },
-            });
-          }
-
-          const mcpServerViewId = getResourceIdFromSId(tool.mcpServerViewId);
-          if (!mcpServerViewId) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `Could not parse MCP server view ID: ${tool.mcpServerViewId}`,
-              },
-            });
-          }
-
-          // Verify the MCP server view exists and belongs to this workspace
-          const mcpServerView = await MCPServerViewModel.findOne({
-            where: {
-              id: mcpServerViewId,
-              workspaceId: owner.id,
-            },
-          });
-
-          if (!mcpServerView) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `MCP server view not found: ${tool.mcpServerViewId}`,
-              },
-            });
-          }
-
-          await SkillMCPServerConfigurationModel.create({
-            workspaceId: owner.id,
-            skillConfigurationId: updatedSkill.id,
-            mcpServerViewId: mcpServerViewId,
-          });
-        }
+        return res.status(200).json({
+          skillConfiguration: {
+            id: result.updatedSkill.id,
+            sId: makeSId("skill", {
+              id: result.updatedSkill.id,
+              workspaceId: result.updatedSkill.workspaceId,
+            }),
+            name: result.updatedSkill.name,
+            description: result.updatedSkill.description,
+            instructions: result.updatedSkill.instructions,
+            status: result.updatedSkill.status,
+            version: result.updatedSkill.version,
+            createdAt: result.updatedSkill.createdAt,
+            updatedAt: result.updatedSkill.updatedAt,
+            requestedSpaceIds: result.updatedSkill.requestedSpaceIds,
+            tools: result.createdTools,
+          },
+        });
       } catch (error) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Error updating skill tools: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: `Error updating skill: ${error instanceof Error ? error.message : "Unknown error"}`,
           },
         });
       }
-
-      return res.status(200).json({
-        skillConfiguration: {
-          id: updatedSkill.id,
-          sId: makeSId("skill", {
-            id: updatedSkill.id,
-            workspaceId: updatedSkill.workspaceId,
-          }),
-          name: updatedSkill.name,
-          description: updatedSkill.description,
-          instructions: updatedSkill.instructions,
-          status: updatedSkill.status,
-          version: updatedSkill.version,
-          createdAt: updatedSkill.createdAt,
-          updatedAt: updatedSkill.updatedAt,
-          requestedSpaceIds: updatedSkill.requestedSpaceIds,
-          tools: [],
-        },
-      });
     }
 
     case "DELETE": {

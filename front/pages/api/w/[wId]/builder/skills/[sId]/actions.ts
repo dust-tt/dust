@@ -60,80 +60,66 @@ async function handler(
     });
   }
 
-  try {
-    const skillResource = await SkillConfigurationResource.fetchBySId(
-      auth,
-      sId
-    );
+  const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
 
-    if (!skillResource) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "skill_not_found",
-          message: "Skill configuration not found.",
-        },
-      });
-    }
-
-    if (!skillResource.canEdit && !auth.isAdmin()) {
-      return apiError(req, res, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Only editors can view skill actions.",
-        },
-      });
-    }
-
-    const { mcpServerViews } =
-      await getAccessibleSourcesAndAppsForActions(auth);
-    const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
-
-    // Build actions from skill's MCP server configurations
-    const actions: AgentBuilderMCPConfiguration[] = [];
-    for (const mcpConfig of skillResource.mcpServerConfigurations) {
-      const mcpServerView = mcpServerViewsJSON.find(
-        (view) => view.id === mcpConfig.mcpServerViewId
-      );
-      if (!mcpServerView) {
-        continue;
-      }
-
-      // Generate name using same logic as agent builder
-      const rawName = mcpServerView.name ?? mcpServerView.server.name ?? "";
-      const sanitizedName = rawName ? nameToStorageFormat(rawName) : "";
-
-      actions.push({
-        type: "MCP",
-        name: sanitizedName,
-        description: mcpServerView.server.description,
-        configuration: {
-          mcpServerViewId: mcpServerView.sId,
-          dataSourceConfigurations: null,
-          tablesConfigurations: null,
-          childAgentId: null,
-          timeFrame: null,
-          additionalConfiguration: {},
-          dustAppConfiguration: null,
-          secretName: null,
-          jsonSchema: null,
-          reasoningModel: null,
-          _jsonSchemaString: null,
-        },
-      });
-    }
-
-    res.status(200).json({ actions });
-  } catch (error) {
+  if (!skillResource) {
     return apiError(req, res, {
-      status_code: 500,
+      status_code: 404,
       api_error: {
-        type: "internal_server_error",
-        message: `Failed to fetch skill actions: ${error instanceof Error ? error.message : "Unknown error"}`,
+        type: "skill_not_found",
+        message: "Skill configuration not found.",
       },
     });
   }
+
+  if (!skillResource.canEdit && !auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only editors can view skill actions.",
+      },
+    });
+  }
+
+  const { mcpServerViews } = await getAccessibleSourcesAndAppsForActions(auth);
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
+  // Build actions from skill's MCP server configurations
+  const actions: AgentBuilderMCPConfiguration[] = [];
+  for (const mcpConfig of skillResource.mcpServerConfigurations) {
+    const mcpServerView = mcpServerViewsJSON.find(
+      (view) => view.id === mcpConfig.mcpServerViewId
+    );
+    if (!mcpServerView) {
+      continue;
+    }
+
+    // Generate name using same logic as agent builder
+    const rawName = mcpServerView.name ?? mcpServerView.server.name ?? "";
+    const sanitizedName = rawName ? nameToStorageFormat(rawName) : "";
+
+    actions.push({
+      type: "MCP",
+      name: sanitizedName,
+      description: mcpServerView.server.description,
+      configuration: {
+        mcpServerViewId: mcpServerView.sId,
+        dataSourceConfigurations: null,
+        tablesConfigurations: null,
+        childAgentId: null,
+        timeFrame: null,
+        additionalConfiguration: {},
+        dustAppConfiguration: null,
+        secretName: null,
+        jsonSchema: null,
+        reasoningModel: null,
+        _jsonSchemaString: null,
+      },
+    });
+  }
+
+  return res.status(200).json({ actions });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

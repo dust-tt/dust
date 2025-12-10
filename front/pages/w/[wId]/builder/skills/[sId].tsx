@@ -42,9 +42,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  if (typeof context.params?.sId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
   const skillResource = await SkillConfigurationResource.fetchBySId(
     auth,
-    context.params.sId as string
+    context.params.sId
   );
 
   if (!skillResource) {
