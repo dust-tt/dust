@@ -97,6 +97,7 @@ AgentMessageSkillModel.init(
           "agentConfigurationId",
           "isActive",
         ],
+        name: "agent_message_skills_wid_cid_acid_active",
       },
     ],
     validate: {
