@@ -86,3 +86,32 @@ export class MCPServerPersonalAuthenticationRequiredError extends Error {
     );
   }
 }
+
+const MCPServerRequiresAdminAuthenticationErrorName =
+  "MCPServerRequiresAdminAuthenticationError";
+
+export class MCPServerRequiresAdminAuthenticationError extends Error {
+  mcpServerId: string;
+  provider: OAuthProvider;
+  scope?: string;
+
+  constructor(mcpServerId: string, provider: OAuthProvider, scope?: string) {
+    super(
+      `MCP server ${mcpServerId} requires your admin(s) to setup the connection for your workspace on Dust.`
+    );
+    this.name = MCPServerRequiresAdminAuthenticationErrorName;
+    this.mcpServerId = mcpServerId;
+    this.provider = provider;
+    this.scope = scope;
+  }
+
+  static is(
+    error: unknown
+  ): error is MCPServerRequiresAdminAuthenticationError {
+    return (
+      error instanceof Error &&
+      error.name === MCPServerRequiresAdminAuthenticationErrorName &&
+      "mcpServerId" in error
+    );
+  }
+}
