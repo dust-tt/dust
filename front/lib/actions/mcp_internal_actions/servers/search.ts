@@ -162,13 +162,7 @@ export async function searchFunction({
         },
         view_filter: args.view_filter,
       };
-    }),
-    null,
-    {
-      hasUseBulkSearchFF: featureFlags.includes(
-        "use_bulk_search_data_sources_api"
-      ),
-    }
+    })
   );
 
   if (searchResults.isErr()) {
