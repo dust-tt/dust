@@ -744,10 +744,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  get functionCalldId(): string {
-    return this.stepContent.value.value.id;
-  }
-
   get functionCallName(): string {
     return this.stepContent.value.value.name;
   }

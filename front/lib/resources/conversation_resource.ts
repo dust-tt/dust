@@ -815,10 +815,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  getUserParticipation(): UserParticipation | undefined {
-    return this.userParticipation;
-  }
-
   static async upsertParticipation(
     auth: Authenticator,
     {
