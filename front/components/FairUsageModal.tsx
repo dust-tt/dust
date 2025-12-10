@@ -16,20 +16,24 @@ interface FairUsageModalProps {
 
 const FAIR_USE_CONTENT = `
 # Fair use principles
-**Dust Pro** is designed company setting and team use
-of AI. It is not designed as a model wrapper for programmatic usage.
 
-**Dust Enterprise** provides programmatic usage (though
-API), with custom prices.
-___
-# What is "unfair" usage?
-Is considered *"Unfair"* usage:
-- Sharing single seat between multiple people.
-- Using Dust programmatically at a large scale on a Pro plan.
+Fair usage applies to messages typed and sent by human users, without using programmatic methods (scripts, API calls, etc.).
 ___
 # "Fair use" limitations
-- For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programmatic (API) use as well.
-- For **Business plans**, a limit at 150 messages / seat / day (Enough to cover any fair usage) is in place and apply to programmatic (API) use as well.
+- For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is applied.
+- For **Enterprise plans**, a limit at 200 messages / seat / day (Enough to cover any fair usage) is applied.
+___
+# What is "unfair" usage?
+The following usage is considered *"Unfair"*:
+- sharing a single seat between multiple people;
+- sending messages programmatically using a regular user seat.
+___
+# Can messages be sent programmatically with Dust?
+Yes. Such messages are not covered by fair use limits, and are billed separately.
+
+Check out [Programmatic usage](https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e) documentation for more information
+
+
 `;
 
 export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
