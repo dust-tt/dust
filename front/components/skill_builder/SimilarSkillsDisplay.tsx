@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { SKILL_ICON } from "@app/lib/skill";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
 
 type SimilarSkillsDisplayProps = {
   similarSkills: SkillConfigurationWithAuthorType[];

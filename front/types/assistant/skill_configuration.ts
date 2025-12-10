@@ -1,5 +1,5 @@
-import type { ModelId } from "./shared/model_id";
-import type { UserType } from "./user";
+import type { ModelId } from "../shared/model_id";
+import type { UserType } from "../user";
 
 export type SkillStatus = "active" | "archived";
 

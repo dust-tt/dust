@@ -13,7 +13,7 @@ import type { GetSkillConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export function useSkillConfigurations({
   workspaceId,

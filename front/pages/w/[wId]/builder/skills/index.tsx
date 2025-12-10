@@ -16,7 +16,7 @@ import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

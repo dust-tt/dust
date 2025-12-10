@@ -13,7 +13,7 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
   skillConfiguration: SkillConfigurationType;

@@ -7,7 +7,7 @@ import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_confi
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
   skillConfigurations: SkillConfigurationWithAuthorType[];

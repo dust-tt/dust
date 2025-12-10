@@ -10,7 +10,7 @@ import type { LightWorkspaceType, UserType } from "@app/types";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
-} from "@app/types/skill_configuration";
+} from "@app/types/assistant/skill_configuration";
 
 type RowData = {
   sId: string;

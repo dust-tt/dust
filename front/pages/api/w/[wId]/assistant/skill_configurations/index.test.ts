@@ -15,7 +15,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
 
