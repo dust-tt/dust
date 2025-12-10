@@ -51,7 +51,7 @@ function createServer(
           );
         }
 
-        // TODO(skill): Create a AgentMessageSkillResource to encapsulate this logic
+        // TODO(skill): Use SkillConfigurationResource to encapsulate this logic
         await AgentMessageSkillModel.create({
           workspaceId: workspace.id,
           agentConfigurationId: agentConfiguration.id,
