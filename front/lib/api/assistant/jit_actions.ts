@@ -27,7 +27,8 @@ import {
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -41,6 +42,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types";
 import { CoreAPI } from "@app/types";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 
 export async function getJITServers(
   auth: Authenticator,
@@ -152,15 +154,18 @@ export async function getJITServers(
     jitServers.push(commonUtilitiesServer);
   }
 
+  // Add skill_management MCP server if the agent has any skills configured
   const owner = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(owner);
   if (featureFlags.includes("skills")) {
-    // Add skill_management MCP server if the agent has any skills configured
-    const skillCount =
-      await SkillConfigurationResource.countByAgentConfigurationId(
-        auth,
-        agentConfiguration.id
-      );
+    // TODO(resources): Add a countSkills method to the future AgentConfigurationResource
+    // and use that instead of querying the model directly.
+    const skillCount = await AgentSkillModel.count({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+      },
+    });
 
     if (skillCount > 0) {
       const skillManagementView =
