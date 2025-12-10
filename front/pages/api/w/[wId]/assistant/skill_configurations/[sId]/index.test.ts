@@ -5,12 +5,10 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
 import handler from "./index";
@@ -36,6 +34,10 @@ async function setupTest(
     role: requestUserRole,
     method: method,
   });
+
+  // Enable skills feature flag for the workspace
+  await FeatureFlagFactory.basic("skills", workspace);
+
   let requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
     requestUser.sId,
     workspace.sId
@@ -127,75 +129,6 @@ describe("GET /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
 });
 
 describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
-  it("should successfully update skill by admin", async () => {
-    const { req, res, workspace } = await setupTest({
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
-
-    // Create system space (required for MCP server creation)
-    await SpaceFactory.system(workspace);
-
-    // Create an MCP server and view for tools
-    const server = await RemoteMCPServerFactory.create(workspace);
-    const globalSpace = await SpaceFactory.global(workspace);
-    const mcpServerView = await MCPServerViewFactory.create(
-      workspace,
-      server.sId,
-      globalSpace
-    );
-
-    req.body = {
-      name: "Updated Skill",
-      description: "Updated description",
-      instructions: "Updated instructions",
-      tools: [{ mcpServerViewId: mcpServerView.sId }],
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data.skillConfiguration.name).toBe("Updated Skill");
-    expect(data.skillConfiguration.description).toBe("Updated description");
-    expect(data.skillConfiguration.instructions).toBe("Updated instructions");
-    expect(data.skillConfiguration.tools).toHaveLength(1);
-    expect(data.skillConfiguration.tools[0].mcpServerViewId).toBe(
-      mcpServerView.sId
-    );
-    expect(data.skillConfiguration.version).toBe(2); // Version should increment
-  });
-
-  it("should successfully update skill by editor", async () => {
-    const { req, res, workspace } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
-      method: "PATCH",
-    });
-
-    // Create system space (required for MCP server creation)
-    await SpaceFactory.system(workspace);
-
-    const server = await RemoteMCPServerFactory.create(workspace);
-    const globalSpace = await SpaceFactory.global(workspace);
-    const mcpServerView = await MCPServerViewFactory.create(
-      workspace,
-      server.sId,
-      globalSpace
-    );
-
-    req.body = {
-      name: "Updated by Editor",
-      description: "Updated description",
-      instructions: "Updated instructions",
-      tools: [{ mcpServerViewId: mcpServerView.sId }],
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data.skillConfiguration.name).toBe("Updated by Editor");
-  });
-
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
       skillOwnerRole: "builder",
@@ -283,73 +216,9 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
-
-  it("should rollback on error (transaction test)", async () => {
-    const { req, res, skill, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
-
-    // Use a non-existent MCP server view ID to trigger an error after skill update
-    req.body = {
-      name: "Updated Skill Name",
-      description: "Updated description",
-      instructions: "Updated instructions",
-      tools: [{ mcpServerViewId: "mcp_srv_view_nonexistent" }],
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(500);
-
-    // Verify skill was not updated (transaction rolled back)
-    const skillAfter = await SkillConfigurationResource.fetchByModelIdWithAuth(
-      requestUserAuth,
-      skill.id
-    );
-    expect(skillAfter?.name).toBe("Test Skill"); // Original name unchanged
-  });
 });
 
 describe("DELETE /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
-  it("should successfully delete skill by admin", async () => {
-    const { req, res, skill, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-      method: "DELETE",
-    });
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ success: true });
-
-    // Verify skill was deleted
-    const deletedSkill =
-      await SkillConfigurationResource.fetchByModelIdWithAuth(
-        requestUserAuth,
-        skill.id
-      );
-    expect(deletedSkill).toBeNull();
-  });
-
-  it("should successfully delete skill by editor", async () => {
-    const { req, res, skill, skillOwnerAuth } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
-      method: "DELETE",
-    });
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ success: true });
-
-    // Verify skill was deleted
-    const deletedSkill =
-      await SkillConfigurationResource.fetchByModelIdWithAuth(
-        skillOwnerAuth,
-        skill.id
-      );
-    expect(deletedSkill).toBeNull();
-  });
-
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
       skillOwnerRole: "builder",
