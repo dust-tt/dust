@@ -13,6 +13,10 @@ import {
   download as microsoftDownload,
   search as microsoftSearch,
 } from "@app/lib/providers/microsoft/search";
+import {
+  download as notionDownload,
+  search as notionSearch,
+} from "@app/lib/providers/notion/search";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -29,6 +33,7 @@ import { Err, Ok } from "@app/types";
 
 const SEARCHABLE_TOOLS = {
   google_drive: { search: googleDriveSearch, download: googleDriveDownload },
+  notion: { search: notionSearch, download: notionDownload },
   microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
 } as const satisfies Partial<Record<InternalMCPServerNameType, SearchableTool>>;
 type SearchableMCPServerNameType = keyof typeof SEARCHABLE_TOOLS;
