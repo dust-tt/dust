@@ -157,6 +157,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_organization_projects: "never_ask",
       list_issues: "never_ask",
       list_pull_requests: "never_ask",
+      search_advanced: "never_ask",
       get_issue: "never_ask",
     },
     tools_retry_policies: undefined,
