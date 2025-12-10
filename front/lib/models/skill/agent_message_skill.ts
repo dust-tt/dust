@@ -10,6 +10,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
 
 export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkillModel> {
   declare createdAt: CreationOptional<Date>;
@@ -30,7 +31,7 @@ export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkil
   declare conversation: NonAttribute<ConversationModel>;
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 
-  declare source: "agent_enabled" | "conversation";
+  declare source: AgentMessageSkillSource;
 
   declare addedByUser: NonAttribute<UserModel> | null;
   declare addedByUserId: ForeignKey<UserModel["id"]> | null;
@@ -74,7 +75,7 @@ AgentMessageSkillModel.init(
       allowNull: false,
     },
     source: {
-      type: DataTypes.ENUM("agent_enabled", "conversation"),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     addedByUserId: {
