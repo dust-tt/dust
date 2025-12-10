@@ -71,6 +71,101 @@ async function _getToolAndAccessTokenForView(
   };
 }
 
+async function searchServerView(
+  auth: Authenticator,
+  serverView: MCPServerViewResource,
+  query: string,
+  pageSize: number
+): Promise<ToolSearchResult[]> {
+  const result = await _getToolAndAccessTokenForView(auth, serverView);
+  if (!result) {
+    return [];
+  }
+
+  let rawResults: ToolSearchRawResult[] = [];
+  try {
+    rawResults = await result.tool.search({
+      accessToken: result.accessToken,
+      query,
+      pageSize,
+    });
+  } catch (error) {
+    const r = getInternalMCPServerNameAndWorkspaceId(serverView.mcpServerId);
+    logger.error(
+      {
+        error,
+        serverName: r.isOk() ? r.value.name : "unknown",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Error searching for attachments"
+    );
+    return [];
+  }
+
+  const serverJson = serverView.toJSON();
+  return rawResults.map((rawResult) => ({
+    ...rawResult,
+    serverViewId: serverView.sId,
+    serverName: serverJson.server.name,
+    serverIcon: serverJson.server.icon,
+  }));
+}
+
+export async function* streamToolFiles({
+  auth,
+  query,
+  pageSize,
+}: {
+  auth: Authenticator;
+  query: string;
+  pageSize: number;
+}): AsyncGenerator<ToolSearchResult[], void, undefined> {
+  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  const serverViews = await MCPServerViewResource.listBySpaces(auth, spaces);
+
+  const searchableServerViews = serverViews.filter((view) => {
+    const r = getInternalMCPServerNameAndWorkspaceId(view.mcpServerId);
+    return r.isOk() && _isSearchableTool(r.value.name);
+  });
+
+  if (searchableServerViews.length === 0) {
+    return;
+  }
+
+  // Create promises for all searches with unique IDs to track them
+  interface PromiseWithId {
+    promise: Promise<ToolSearchResult[]>;
+    id: symbol;
+  }
+
+  const pending: PromiseWithId[] = searchableServerViews.map((serverView) => ({
+    promise: searchServerView(auth, serverView, query, pageSize),
+    id: Symbol(),
+  }));
+
+  // Yield results as each promise completes (not in order)
+  while (pending.length > 0) {
+    // Wrap each pending promise to include its ID when it resolves
+    const wrappedPromises = pending.map(({ promise, id }) =>
+      promise.then((results) => ({ results, id }))
+    );
+
+    // Wait for the first one to complete
+    const completed = await Promise.race(wrappedPromises);
+
+    // Remove the completed promise from pending
+    const index = pending.findIndex((p) => p.id === completed.id);
+    if (index !== -1) {
+      pending.splice(index, 1);
+    }
+
+    // Yield results if not empty
+    if (completed.results.length > 0) {
+      yield completed.results;
+    }
+  }
+}
+
 export async function searchToolFiles({
   auth,
   query,
@@ -94,42 +189,7 @@ export async function searchToolFiles({
 
   const results = await concurrentExecutor(
     searchableServerViews,
-    async (serverView) => {
-      const result = await _getToolAndAccessTokenForView(auth, serverView);
-      if (!result) {
-        return [];
-      }
-
-      let rawResults: ToolSearchRawResult[] = [];
-      try {
-        rawResults = await result.tool.search({
-          accessToken: result.accessToken,
-          query,
-          pageSize,
-        });
-      } catch (error) {
-        const r = getInternalMCPServerNameAndWorkspaceId(
-          serverView.mcpServerId
-        );
-        logger.error(
-          {
-            error,
-            serverName: r.isOk() ? r.value.name : "unknown",
-            workspaceId: auth.getNonNullableWorkspace().sId,
-          },
-          "Error searching for attachments"
-        );
-        return [];
-      }
-
-      const serverJson = serverView.toJSON();
-      return rawResults.map((rawResult) => ({
-        ...rawResult,
-        serverViewId: serverView.sId,
-        serverName: serverJson.server.name,
-        serverIcon: serverJson.server.icon,
-      }));
-    },
+    async (serverView) => searchServerView(auth, serverView, query, pageSize),
     { concurrency: 4 }
   );
 
