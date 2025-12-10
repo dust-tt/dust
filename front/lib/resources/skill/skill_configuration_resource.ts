@@ -17,6 +17,12 @@ import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skil
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import {
+  GLOBAL_DUST_AUTHOR,
+  GlobalSkillsRegistry,
+} from "@app/lib/resources/skill/global/registry";
+import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -24,7 +30,6 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -56,35 +61,87 @@ export type SkillConfigurationResourceWithAuthor =
     author: Attributes<UserModel>;
   };
 
+/**
+ * SkillConfigurationResource handles both custom (database-backed) and global (code-defined)
+ * skills in a single resource class.
+ *
+ * ## Architectural Trade-offs
+ *
+ * This design prioritizes convenience (single API for 90% of use cases) over perfect separation of
+ * concerns. The alternative would be separate resource classes, which adds conceptual overhead and
+ * forces most code to handle unions.
+ *
+ * ### What We Gain
+ * - Single entry point: `fetchAll()`, `fetchById()` work for both types
+ * - No new concepts: Just one resource class to understand
+ * - Type-safe constraints: Sequelize operators only available with `onlyCustom: true`
+ *
+ * ### What We Pay
+ * - Global skills use synthetic database fields (id: -1, authorId: -1)
+ * - Mutations (update/delete) require runtime checks to reject global skills
+ * - Mixed queries limited to simple equality filters (name, sId, status)
+ * - Some internal complexity to distinguish types via `globalSId` presence
+ *
+ * ## Key Limitations
+ *
+ * 1. **Query Constraints**: Default queries (both types) only support string equality.
+ *    Complex operators require `onlyCustom: true`.
+ *
+ * 2. **No Sequelize Features for Global Skills**: Pagination, ordering, and joins only work fully
+ *    for custom skills. Global skills are in-memory filtered.
+ *
+ * 3. **Type Detection is Implicit**: Global skills identified by presence of `globalSId` field.
+ *    No explicit type enum exposed externally.
+ *
+ * 4. **Synthetic Fields Never Exposed**: The fake `id: -1` is internal only.
+ *    External code must use `sId` (string) for all operations.
+ *
+ * ## When This Breaks Down
+ *
+ * If you find yourself adding many special cases for global skills, or if the
+ * synthetic fields cause bugs, consider refactoring to separate resource classes
+ * with a thin coordination layer.
+ *
+ * @see GlobalSkillsRegistry for global skill definitions
+ */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillConfigurationResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly author?: Attributes<UserModel>;
-  readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
   readonly canEdit: boolean;
+  readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
 
-  constructor(
+  private readonly globalSId?: string;
+
+  private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
       author,
-      mcpServerConfigurations,
       canEdit = true,
+      globalSId,
+      mcpServerConfigurations,
     }: {
       author?: Attributes<UserModel>;
-      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
       canEdit?: boolean;
+      globalSId?: string;
+      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
     } = {}
   ) {
     super(SkillConfigurationModel, blob);
 
     this.author = author;
-    this.mcpServerConfigurations = mcpServerConfigurations ?? [];
     this.canEdit = canEdit;
+    this.globalSId = globalSId;
+    this.mcpServerConfigurations = mcpServerConfigurations ?? [];
   }
 
   get sId(): string {
+    if (this.globalSId) {
+      return this.globalSId;
+    }
+
     return SkillConfigurationResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
@@ -119,6 +176,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         id,
       },
       limit: 1,
+      onlyCustom: true,
     });
 
     if (resources.length === 0) {
@@ -130,13 +188,20 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
   static async fetchById(
     auth: Authenticator,
-    skillId: string
+    sId: string
   ): Promise<SkillConfigurationResource | null> {
-    if (!isResourceSId("skill", skillId)) {
+    // Try global first.
+    const globalSkill = GlobalSkillsRegistry.getById(sId);
+    if (globalSkill) {
+      return this.fromGlobalSkill(auth, globalSkill);
+    }
+
+    // Try as custom skill sId.
+    if (!isResourceSId("skill", sId)) {
       return null;
     }
 
-    const resourceId = getResourceIdFromSId(skillId);
+    const resourceId = getResourceIdFromSId(sId);
     if (resourceId === null) {
       return null;
     }
@@ -183,9 +248,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       ],
     });
 
-    // TODO(skills 2025-12-09): Add support for global skills.
-    // When globalSkillId is set, we need to fetch the skill from the global registry
-    // and return it as a SkillConfigurationResource.
+    // TODO(SKILLS 2025-12-09): Use `baseFetch` to fetch global skills as well.
     const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
     return customSkills.map((skill) => new this(this.model, skill.get()));
   }
@@ -205,25 +268,25 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
   private static async baseFetch<T extends Model, S extends string>(
     auth: Authenticator,
-    options: ResourceFindOptions<SkillConfigurationModel> & {
+    options: SkillConfigurationFindOptions & {
       includes: [{ model: ModelStatic<T>; as: S; required: true }];
     }
   ): Promise<(SkillConfigurationResource & { [K in S]: Attributes<T> })[]>;
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<SkillConfigurationModel>
+    options?: SkillConfigurationFindOptions
   ): Promise<SkillConfigurationResource[]>;
 
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<SkillConfigurationModel> = {}
+    options: SkillConfigurationFindOptions = {}
   ): Promise<SkillConfigurationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const { where, includes, ...otherOptions } = options;
+    const { where, includes, onlyCustom, ...otherOptions } = options;
 
-    const skillConfigurations = await this.model.findAll({
+    const customSkillConfigurations = await this.model.findAll({
       ...otherOptions,
       where: {
         ...where,
@@ -232,90 +295,105 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       include: includes,
     });
 
-    if (skillConfigurations.length === 0) {
-      return [];
-    }
+    let customSkillConfigurationsRes: SkillConfigurationResource[] = [];
 
-    const mcpServerConfigurations =
-      await SkillMCPServerConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: {
-            [Op.in]: skillConfigurations.map((c) => c.id),
+    if (customSkillConfigurations.length > 0) {
+      const mcpServerConfigurations =
+        await SkillMCPServerConfigurationModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: customSkillConfigurations.map((c) => c.id),
+            },
           },
-        },
-      });
+        });
 
-    const mcpServerConfigsBySkillId = new Map<
-      number,
-      Attributes<SkillMCPServerConfigurationModel>[]
-    >();
-    for (const config of mcpServerConfigurations) {
-      const existing = mcpServerConfigsBySkillId.get(
-        config.skillConfigurationId
-      );
-      if (existing) {
-        existing.push(config.get());
-      } else {
-        mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
-          config.get(),
-        ]);
-      }
-    }
-
-    // Compute canEdit for each skill
-    const user = auth.user();
-    const canEditMap = new Map<number, boolean>();
-
-    if (user) {
-      // Batch fetch all editor groups for all skills
-      const editorGroupsRes = await GroupResource.findEditorGroupsForSkills(
-        auth,
-        skillConfigurations.map((s) => s.id)
-      );
-
-      if (editorGroupsRes.isOk()) {
-        const editorGroups = editorGroupsRes.value;
-        const uniqueGroups = Array.from(
-          new Set(Object.values(editorGroups).map((g) => g.id))
-        ).map((id) => Object.values(editorGroups).find((g) => g.id === id)!);
-
-        // Batch fetch active members for all editor groups
-        const groupMemberships =
-          await GroupResource.getActiveMembershipsForGroups(auth, uniqueGroups);
-
-        // Build canEdit map
-        for (const skill of skillConfigurations) {
-          const canEdit = this.computeCanEdit({
-            skill,
-            user,
-            editorGroups,
-            groupMemberships,
-          });
-          canEditMap.set(skill.id, canEdit);
-        }
-      } else {
-        // If we can't fetch editor groups, fall back to no edit permissions
-        for (const skill of skillConfigurations) {
-          const canEdit = user && skill.authorId === user.id;
-          canEditMap.set(skill.id, canEdit);
+      const mcpServerConfigsBySkillId = new Map<
+        number,
+        Attributes<SkillMCPServerConfigurationModel>[]
+      >();
+      for (const config of mcpServerConfigurations) {
+        const existing = mcpServerConfigsBySkillId.get(
+          config.skillConfigurationId
+        );
+        if (existing) {
+          existing.push(config.get());
+        } else {
+          mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
+            config.get(),
+          ]);
         }
       }
-    } else {
-      // No user, no edit permissions
-      for (const skill of skillConfigurations) {
-        canEditMap.set(skill.id, false);
+
+      // Compute canEdit for each skill
+      const user = auth.user();
+      const canEditMap = new Map<number, boolean>();
+
+      if (user) {
+        // Batch fetch all editor groups for all skills
+        const editorGroupsRes = await GroupResource.findEditorGroupsForSkills(
+          auth,
+          customSkillConfigurations.map((s) => s.id)
+        );
+
+        if (editorGroupsRes.isOk()) {
+          const editorGroups = editorGroupsRes.value;
+          const uniqueGroups = Array.from(
+            new Set(Object.values(editorGroups).map((g) => g.id))
+          ).map((id) => Object.values(editorGroups).find((g) => g.id === id)!);
+
+          // Batch fetch active members for all editor groups
+          const groupMemberships =
+            await GroupResource.getActiveMembershipsForGroups(
+              auth,
+              uniqueGroups
+            );
+
+          // Build canEdit map
+          for (const skill of customSkillConfigurations) {
+            const canEdit = this.computeCanEdit({
+              skill,
+              user,
+              editorGroups,
+              groupMemberships,
+            });
+            canEditMap.set(skill.id, canEdit);
+          }
+        } else {
+          // If we can't fetch editor groups, fall back to no edit permissions
+          for (const skill of customSkillConfigurations) {
+            const canEdit = user && skill.authorId === user.id;
+            canEditMap.set(skill.id, canEdit);
+          }
+        }
+      } else {
+        // No user, no edit permissions
+        for (const skill of customSkillConfigurations) {
+          canEditMap.set(skill.id, false);
+        }
       }
+
+      customSkillConfigurationsRes = customSkillConfigurations.map(
+        (c) =>
+          new this(this.model, c.get(), {
+            author: c.author?.get(),
+            canEdit: canEditMap.get(c.id) ?? false,
+            mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
+          })
+      );
     }
 
-    return skillConfigurations.map(
-      (c) =>
-        new this(this.model, c.get(), {
-          author: c.author?.get(),
-          mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
-          canEdit: canEditMap.get(c.id) ?? false,
-        })
-    );
+    // Only include global skills if onlyCustom is not true.
+    if (onlyCustom === true) {
+      return customSkillConfigurationsRes;
+    }
+
+    const globalSkillConfigurations: SkillConfigurationResource[] =
+      GlobalSkillsRegistry.findAll(where).map((def) =>
+        this.fromGlobalSkill(auth, def)
+      );
+
+    return [...customSkillConfigurationsRes, ...globalSkillConfigurations];
   }
 
   private static computeCanEdit({
@@ -448,10 +526,29 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     );
   }
 
+  private get isGlobal(): boolean {
+    return this.globalSId !== undefined;
+  }
+
+  async update(
+    blob: Partial<Attributes<SkillConfigurationModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    if (this.isGlobal) {
+      throw new Error("Cannot update a global skill configuration.");
+    }
+
+    return super.update(blob, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined | number, Error>> {
+    if (this.isGlobal) {
+      return new Err(new Error("Cannot delete a global skill configuration."));
+    }
+
     try {
       const workspace = auth.getNonNullableWorkspace();
 
@@ -507,6 +604,30 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
 
     return new Ok(undefined);
+  }
+
+  private static fromGlobalSkill(
+    auth: Authenticator,
+    def: GlobalSkillDefinition
+  ): SkillConfigurationResource {
+    return new SkillConfigurationResource(
+      this.model,
+      {
+        authorId: -1,
+        createdAt: new Date(),
+        description: def.description,
+        // We fake the id here. We should rely exclusively on sId for global skills.
+        id: -1,
+        instructions: def.instructions,
+        name: def.name,
+        requestedSpaceIds: [],
+        status: "active",
+        updatedAt: new Date(),
+        version: def.version,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      { author: GLOBAL_DUST_AUTHOR, globalSId: def.sId }
+    );
   }
 
   toJSON(
