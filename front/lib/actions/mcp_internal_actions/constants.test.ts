@@ -59,6 +59,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "data_warehouses", id: 1012 },
       { name: "toolsets", id: 1013 },
       { name: "common_utilities", id: 1017 },
+      { name: "skill_management", id: 1019 },
     ];
     expect(
       autoInternalTools,
