@@ -1055,23 +1055,8 @@ export class CoreAPI {
       filter?: CoreAPISearchFilter | null;
       view_filter: CoreAPISearchFilter;
     }[],
-    target_document_tokens?: number | null,
-    { hasUseBulkSearchFF }: { hasUseBulkSearchFF: boolean } = {
-      hasUseBulkSearchFF: false,
-    }
+    target_document_tokens?: number | null
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
-    // If FF is not enabled, fallback to regular search.
-    if (!hasUseBulkSearchFF) {
-      return this.searchDataSources(
-        query,
-        topK,
-        credentials,
-        fullText,
-        searches,
-        target_document_tokens
-      );
-    }
-
     const dataSourceChunks = chunk(
       searches,
       BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES
