@@ -167,7 +167,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  private static async fetchByModelIdWithAuth(
+  static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
   ): Promise<SkillConfigurationResource | null> {
