@@ -529,7 +529,7 @@ export async function handleProgrammaticCostRequest(
         // Add "total" to available groups
         availableGroups.push({
           groupKey: "total",
-          groupLabel: "Cumulative Cost",
+          groupLabel: "Total cost consumed",
         });
       }
 

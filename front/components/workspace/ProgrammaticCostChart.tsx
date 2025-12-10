@@ -483,7 +483,7 @@ export function BaseProgrammaticCostChart({
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Usage Graph</span>
+          <span>Usage cost graph</span>
           <Button
             icon={ChevronLeftIcon}
             size="xs"
@@ -506,7 +506,7 @@ export function BaseProgrammaticCostChart({
           )}
         </div>
       }
-      description="Total cost accumulated. Filter by clicking on legend items."
+      description={groupBy ? "Filter by clicking on legend items." : undefined}
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError
