@@ -271,7 +271,6 @@ function UpdateConnectionOAuthModal({
   const { connectorProvider, editedByUser } = dataSource;
 
   const isSlack = connectorProvider === "slack";
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
@@ -422,18 +421,13 @@ function UpdateConnectionOAuthModal({
             </ContentMessage>
           </div>
         )}
-        {connectorUIConfiguration.oauthExtraConfigComponent &&
-          // TODO(slackstorm) fabien: remove flag and rely on isLegacySlackApp
-          !(
-            isSlack &&
-            !featureFlags.includes("self_created_slack_app_connector_rollout")
-          ) && (
-            <connectorUIConfiguration.oauthExtraConfigComponent
-              extraConfig={extraConfig}
-              setExtraConfig={setExtraConfig}
-              setIsExtraConfigValid={setIsExtraConfigValid}
-            />
-          )}
+        {connectorUIConfiguration.oauthExtraConfigComponent && (
+          <connectorUIConfiguration.oauthExtraConfigComponent
+            extraConfig={extraConfig}
+            setExtraConfig={setExtraConfig}
+            setIsExtraConfigValid={setIsExtraConfigValid}
+          />
+        )}
 
         <div className="flex items-center justify-center">
           <Dialog>

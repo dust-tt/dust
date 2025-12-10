@@ -184,8 +184,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     },
   },
   slack: {
-    // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
-    hide: true,
+    hide: false,
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
