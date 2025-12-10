@@ -6,18 +6,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { isResourceSId, makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
@@ -156,6 +147,19 @@ async function handler(
         });
       }
 
+      // Validate MCP server view IDs
+      for (const tool of body.tools) {
+        if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid MCP server view ID: ${tool.mcpServerViewId}`,
+            },
+          });
+        }
+      }
+
       // Wrap everything in a transaction to avoid inconsistent state
       try {
         const result = await frontSequelize.transaction(async (transaction) => {
@@ -175,49 +179,20 @@ async function handler(
 
           const updatedSkill = updateResult.value;
 
-          // Update tools: delete existing and create new ones
-          await SkillMCPServerConfigurationModel.destroy({
-            where: {
-              workspaceId: owner.id,
-              skillConfigurationId: updatedSkill.id,
+          // Update tools
+          const toolsResult = await updatedSkill.updateTools(
+            auth,
+            {
+              mcpServerViewIds: body.tools.map((t) => t.mcpServerViewId),
             },
-            transaction,
-          });
+            { transaction }
+          );
 
-          // Create new tool associations
-          const createdTools: { mcpServerViewId: string }[] = [];
-          for (const tool of body.tools) {
-            if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
-              throw new Error(
-                `Invalid MCP server view ID: ${tool.mcpServerViewId}`
-              );
-            }
-
-            // Verify the MCP server view exists and belongs to this workspace
-            const mcpServerView = await MCPServerViewResource.fetchById(
-              auth,
-              tool.mcpServerViewId
-            );
-
-            if (!mcpServerView) {
-              throw new Error(
-                `MCP server view not found: ${tool.mcpServerViewId}`
-              );
-            }
-
-            await SkillMCPServerConfigurationModel.create(
-              {
-                workspaceId: owner.id,
-                skillConfigurationId: updatedSkill.id,
-                mcpServerViewId: mcpServerView.id,
-              },
-              { transaction }
-            );
-
-            createdTools.push({ mcpServerViewId: tool.mcpServerViewId });
+          if (toolsResult.isErr()) {
+            throw new Error(toolsResult.error.message);
           }
 
-          return { updatedSkill, createdTools };
+          return { updatedSkill, createdTools: toolsResult.value };
         });
 
         return res.status(200).json({

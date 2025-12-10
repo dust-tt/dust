@@ -15,6 +15,7 @@ import {
 } from "@app/lib/models/skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -428,6 +429,59 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       }
 
       return new Ok(updated);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
+  async updateTools(
+    auth: Authenticator,
+    {
+      mcpServerViewIds,
+    }: {
+      mcpServerViewIds: string[];
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<{ mcpServerViewId: string }[], Error>> {
+    try {
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Delete existing tool associations
+      await SkillMCPServerConfigurationModel.destroy({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: this.id,
+        },
+        transaction,
+      });
+
+      // Create new tool associations
+      const createdTools: { mcpServerViewId: string }[] = [];
+      for (const mcpServerViewId of mcpServerViewIds) {
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          mcpServerViewId
+        );
+
+        if (!mcpServerView) {
+          return new Err(
+            new Error(`MCP server view not found: ${mcpServerViewId}`)
+          );
+        }
+
+        await SkillMCPServerConfigurationModel.create(
+          {
+            workspaceId: workspace.id,
+            skillConfigurationId: this.id,
+            mcpServerViewId: mcpServerView.id,
+          },
+          { transaction }
+        );
+
+        createdTools.push({ mcpServerViewId });
+      }
+
+      return new Ok(createdTools);
     } catch (error) {
       return new Err(normalizeError(error));
     }
