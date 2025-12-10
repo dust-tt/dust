@@ -425,7 +425,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       mcpServerViews: MCPServerViewResource[];
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<{ mcpServerViewId: string }[]> {
+  ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
     // Delete existing tool associations.
@@ -446,10 +446,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       })),
       { transaction }
     );
-
-    return mcpServerViews.map((mcpServerView) => ({
-      mcpServerViewId: mcpServerView.sId,
-    }));
   }
 
   async delete(

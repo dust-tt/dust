@@ -195,7 +195,7 @@ async function handler(
           );
         }
 
-        const createdTools = await updatedSkill.updateTools(
+        await updatedSkill.updateTools(
           auth,
           {
             mcpServerViews,
@@ -203,7 +203,10 @@ async function handler(
           { transaction }
         );
 
-        return new Ok({ updatedSkill, createdTools });
+        return new Ok({
+          updatedSkill,
+          createdTools: mcpServerViews.map((t) => ({ mcpServerViewId: t.sId })),
+        });
       });
 
       if (result.isErr()) {
