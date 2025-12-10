@@ -1,5 +1,8 @@
 import { isFullBlock, isFullPage } from "@notionhq/client";
-import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import type {
+  BlockObjectResponse,
+  PageObjectResponse,
+} from "@notionhq/client/build/src/api-endpoints";
 
 import {
   getNotionClient,
@@ -55,6 +58,78 @@ export async function search({
   });
 }
 
+function extractBlockDirectContent(
+  block: BlockObjectResponse,
+  depth: number
+): string {
+  // Indentation based on the nesting level
+  let content = "  ".repeat(depth);
+
+  // Extract markup-like text content based on block type
+  switch (block.type) {
+    case "paragraph":
+      content +=
+        block.paragraph.rich_text.map((t) => t.plain_text).join("") + "\n\n";
+      break;
+    case "heading_1":
+      content +=
+        "# " +
+        block.heading_1.rich_text.map((t) => t.plain_text).join("") +
+        "\n\n";
+      break;
+    case "heading_2":
+      content +=
+        "## " +
+        block.heading_2.rich_text.map((t) => t.plain_text).join("") +
+        "\n\n";
+      break;
+    case "heading_3":
+      content +=
+        "### " +
+        block.heading_3.rich_text.map((t) => t.plain_text).join("") +
+        "\n\n";
+      break;
+    case "bulleted_list_item":
+      content +=
+        "- " +
+        block.bulleted_list_item.rich_text.map((t) => t.plain_text).join("") +
+        "\n";
+      break;
+    case "numbered_list_item":
+      content +=
+        "1. " +
+        block.numbered_list_item.rich_text.map((t) => t.plain_text).join("") +
+        "\n";
+      break;
+    case "to_do":
+      const checkbox = block.to_do.checked ? "[x]" : "[ ]";
+      content += `${checkbox} ${block.to_do.rich_text.map((t) => t.plain_text).join("")}\n`;
+      break;
+    case "toggle":
+      content +=
+        block.toggle.rich_text.map((t) => t.plain_text).join("") + "\n";
+      break;
+    case "code":
+      content += "```" + (block.code.language ?? "") + "\n";
+      content += block.code.rich_text.map((t) => t.plain_text).join("") + "\n";
+      content += "```\n\n";
+      break;
+    case "quote":
+      content +=
+        "> " + block.quote.rich_text.map((t) => t.plain_text).join("") + "\n\n";
+      break;
+    case "callout":
+      content +=
+        block.callout.rich_text.map((t) => t.plain_text).join("") + "\n\n";
+      break;
+    case "divider":
+      content += "---\n\n";
+      break;
+  }
+
+  return content;
+}
+
 async function extractBlockContent(
   notion: ReturnType<typeof getNotionClient>,
   blockId: string,
@@ -76,88 +151,28 @@ async function extractBlockContent(
     "Notion: Fetched children for block"
   );
 
-  let content = "";
-
-  for (const block of response.results) {
+  // Process all blocks and create promises for child content concurrently
+  const blockContentPromises = response.results.map(async (block) => {
     if (!isFullBlock(block)) {
-      continue;
+      return "";
     }
 
-    // Indentation based on the nesting level
-    content += "  ".repeat(depth);
-
-    // Extract text content based on block type
-    switch (block.type) {
-      case "paragraph":
-        content +=
-          block.paragraph.rich_text.map((t) => t.plain_text).join("") + "\n\n";
-        break;
-      case "heading_1":
-        content +=
-          "# " +
-          block.heading_1.rich_text.map((t) => t.plain_text).join("") +
-          "\n\n";
-        break;
-      case "heading_2":
-        content +=
-          "## " +
-          block.heading_2.rich_text.map((t) => t.plain_text).join("") +
-          "\n\n";
-        break;
-      case "heading_3":
-        content +=
-          "### " +
-          block.heading_3.rich_text.map((t) => t.plain_text).join("") +
-          "\n\n";
-        break;
-      case "bulleted_list_item":
-        content +=
-          "- " +
-          block.bulleted_list_item.rich_text.map((t) => t.plain_text).join("") +
-          "\n";
-        break;
-      case "numbered_list_item":
-        content +=
-          "1. " +
-          block.numbered_list_item.rich_text.map((t) => t.plain_text).join("") +
-          "\n";
-        break;
-      case "to_do":
-        const checkbox = block.to_do.checked ? "[x]" : "[ ]";
-        content += `${checkbox} ${block.to_do.rich_text.map((t) => t.plain_text).join("")}\n`;
-        break;
-      case "toggle":
-        content +=
-          block.toggle.rich_text.map((t) => t.plain_text).join("") + "\n";
-        break;
-      case "code":
-        content += "```" + (block.code.language || "") + "\n";
-        content +=
-          block.code.rich_text.map((t) => t.plain_text).join("") + "\n";
-        content += "```\n\n";
-        break;
-      case "quote":
-        content +=
-          "> " +
-          block.quote.rich_text.map((t) => t.plain_text).join("") +
-          "\n\n";
-        break;
-      case "callout":
-        content +=
-          block.callout.rich_text.map((t) => t.plain_text).join("") + "\n\n";
-        break;
-      case "divider":
-        content += "---\n\n";
-        break;
-    }
+    // Extract direct content for this block
+    const directContent = extractBlockDirectContent(block, depth);
 
     // Recursively fetch child blocks if they exist, up to a reasonable depth
+    let childContent = "";
     if (block.has_children && depth < 10) {
-      content += await extractBlockContent(notion, block.id, depth + 1);
+      childContent = await extractBlockContent(notion, block.id, depth + 1);
     }
-  }
 
-  return content;
+    return directContent + childContent;
+  });
+
+  // Wait for all blocks to be processed (children are fetched concurrently)
+  const blockContents = await Promise.all(blockContentPromises);
+
+  return blockContents.join("");
 }
 
 export async function download({
@@ -176,7 +191,7 @@ export async function download({
 
   const title = getPageTitle(page);
 
-  // Extract all content from the page
+  // Extract all content from the page and render it as markdown-like text
   const content = await extractBlockContent(notion, externalId);
 
   // Check content size
