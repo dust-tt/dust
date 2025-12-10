@@ -42,7 +42,7 @@ impl SnowflakeClient {
         let mut builder = ClientBuilder::new()
             .gzip(true)
             .use_rustls_tls()
-            .timeout(std::time::Duration::from_secs(60));
+            .timeout(std::time::Duration::from_secs(90));
 
         // Only enable verbose connection logging in debug mode
         if tracing::enabled!(tracing::Level::DEBUG) {
@@ -66,7 +66,7 @@ impl SnowflakeClient {
             .gzip(true)
             .use_rustls_tls()
             .proxy(proxy)
-            .timeout(std::time::Duration::from_secs(60));
+            .timeout(std::time::Duration::from_secs(90));
 
         // Only enable verbose connection logging in debug mode
         if tracing::enabled!(tracing::Level::DEBUG) {
