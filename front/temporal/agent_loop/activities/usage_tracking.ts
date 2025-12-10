@@ -1,4 +1,5 @@
 import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
   isProgrammaticUsage,
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage_tracking";
@@ -9,13 +10,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import type { AgentMessageStatus } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-
-const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
-  "succeeded",
-  "cancelled",
-];
 
 export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
