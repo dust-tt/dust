@@ -60,7 +60,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="group flex flex-row items-center justify-center space-x-1 rounded-lg bg-muted-background p-1 text-xs font-medium text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
+                <div className="group flex flex-row items-center justify-center space-x-1 rounded-lg bg-muted-background py-1 px-1.5 translate-y-1 text-xs font-medium text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
                   <span className="grayscale-[100%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
                     <IconForAttachmentCitation
                       provider={document.provider}
