@@ -2,6 +2,7 @@ import { isFullBlock, isFullPage } from "@notionhq/client";
 import type {
   BlockObjectResponse,
   PageObjectResponse,
+  PartialBlockObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
 import {
@@ -15,6 +16,9 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
+
+// Maximum time to spend extracting content (in milliseconds)
+const MAX_EXTRACTION_TIME_MS = 5000;
 
 function getPageTitle(page: PageObjectResponse): string {
   const titleProperty = Object.values(page.properties).find(
@@ -133,26 +137,63 @@ function extractBlockDirectContent(
 async function extractBlockContent(
   notion: ReturnType<typeof getNotionClient>,
   blockId: string,
-  depth = 0
+  depth = 0,
+  deadline?: number
 ): Promise<string> {
   const now = Date.now();
 
-  // Right now, we only handle the first page of results. We should get more, as long
-  // as we can do it within some time limit.
-  const response = await notion.blocks.children.list({
-    block_id: blockId,
-    page_size: 100,
-  });
+  // Check if we've exceeded the deadline
+  if (deadline && now >= deadline) {
+    logger.warn(
+      {
+        blockId,
+        depth,
+      },
+      "Notion extractBlockContent: Exceeded deadline, stopping extraction"
+    );
+    return "";
+  }
+
+  // Fetch all pages of blocks (handling pagination)
+  const allBlocks: (BlockObjectResponse | PartialBlockObjectResponse)[] = [];
+  let cursor: string | undefined = undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    // Check deadline before fetching next page
+    if (deadline && Date.now() >= deadline) {
+      logger.warn(
+        {
+          blockId,
+          blocksFetched: allBlocks.length,
+        },
+        "Notion extractBlockContent: Exceeded deadline during pagination, stopping"
+      );
+      break;
+    }
+
+    const response = await notion.blocks.children.list({
+      block_id: blockId,
+      page_size: 100,
+      start_cursor: cursor,
+    });
+
+    allBlocks.push(...response.results);
+    hasMore = response.has_more;
+    cursor = response.next_cursor ?? undefined;
+  }
+
   logger.info(
     {
       blockId,
+      blockCount: allBlocks.length,
       durationMs: Date.now() - now,
     },
-    "Notion: Fetched children for block"
+    "Notion extractBlockContent: Fetched all children for block"
   );
 
   // Process all blocks and create promises for child content concurrently
-  const blockContentPromises = response.results.map(async (block) => {
+  const blockContentPromises = allBlocks.map(async (block) => {
     if (!isFullBlock(block)) {
       return "";
     }
@@ -161,9 +202,25 @@ async function extractBlockContent(
     const directContent = extractBlockDirectContent(block, depth);
 
     // Recursively fetch child blocks if they exist, up to a reasonable depth
+    // and if we haven't exceeded the deadline
     let childContent = "";
     if (block.has_children && depth < 10) {
-      childContent = await extractBlockContent(notion, block.id, depth + 1);
+      if (!deadline || Date.now() < deadline) {
+        childContent = await extractBlockContent(
+          notion,
+          block.id,
+          depth + 1,
+          deadline
+        );
+      } else {
+        logger.warn(
+          {
+            blockId: block.id,
+            depth: depth + 1,
+          },
+          "Notion extractBlockContent: Skipping child extraction due to deadline"
+        );
+      }
     }
 
     return directContent + childContent;
@@ -192,7 +249,9 @@ export async function download({
   const title = getPageTitle(page);
 
   // Extract all content from the page and render it as markdown-like text
-  const content = await extractBlockContent(notion, externalId);
+  // Set a deadline to avoid spending too much time on large pages
+  const deadline = Date.now() + MAX_EXTRACTION_TIME_MS;
+  const content = await extractBlockContent(notion, externalId, 0, deadline);
 
   // Check content size
   const contentSize = Buffer.byteLength(content, "utf8");
