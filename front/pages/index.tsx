@@ -3,12 +3,13 @@ import type { ReactElement } from "react";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import { getSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import {
   getUserFromSession,
   makeGetServerSidePropsRequirementsWrapper,
 } from "@app/lib/iam/session";
 import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
@@ -74,6 +75,21 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     const { goto, templateId } = context.query;
     if (goto === "template" && isString(templateId)) {
       url = url + `/builder/agents/create?templateId=${templateId}`;
+    }
+
+    // This allows linking to the Slack connection configuration modal.
+    if (goto === "configureSlack") {
+      const targetWorkspace = user.workspaces.find(
+        (w) => w.sId === url.replace("/w/", "")
+      );
+      if (targetWorkspace) {
+        const auth = await Authenticator.fromSuperUserSession(
+          session,
+          targetWorkspace.sId
+        );
+        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+        url = `/w/${targetWorkspace.sId}/spaces/${systemSpace.sId}/categories/managed?configureConnection=slack`;
+      }
     }
 
     if (context.query.inviteToken) {
