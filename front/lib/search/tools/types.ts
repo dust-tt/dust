@@ -32,7 +32,7 @@ export type ToolDownloadParams = {
 export type ToolDownloadResult = {
   content: string;
   fileName: string;
-  mimeType: string;
+  contentType: "text/markdown" | "text/csv" | "text/plain";
 };
 
 export type SearchableTool = {

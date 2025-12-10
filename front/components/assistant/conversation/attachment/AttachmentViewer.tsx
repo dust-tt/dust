@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
@@ -49,6 +50,7 @@ export const AttachmentViewer = ({
   const [text, setText] = useState<string | undefined>();
 
   const isAudio = isAudioContentType(attachmentCitation);
+  const isMarkdown = attachmentCitation.contentType === "text/markdown";
 
   // For input bar attachments, try to get the local file blob for reading content directly.
   // For fragments/mcp, we always fetch from server.
@@ -179,6 +181,9 @@ export const AttachmentViewer = ({
                 className={"mr-2 align-middle"}
               />
             )}
+            <span className="mr-2 inline-flex align-middle">
+              {attachmentCitation.visual}
+            </span>
             {attachmentCitation.title}
           </DialogTitle>
         </DialogHeader>
@@ -189,10 +194,11 @@ export const AttachmentViewer = ({
             </div>
           )}
           {!isLoading && audioPlayer}
-          {!isLoading && (
-            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
-              {text}
-            </pre>
+          {!isLoading && isMarkdown && text && (
+            <Markdown content={text} isStreaming={false} isLastMessage />
+          )}
+          {!isLoading && !isMarkdown && !isAudio && (
+            <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
           )}
         </DialogContainer>
         <DialogFooter
