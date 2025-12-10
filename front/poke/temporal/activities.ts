@@ -66,6 +66,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -503,6 +504,10 @@ export async function deleteWebhookSourcesActivity({
 
   const webhookSources = await WebhookSourceResource.listByWorkspace(auth);
   for (const webhookSource of webhookSources) {
+    await WebhookRequestResource.deleteByWebhookSourceId(
+      auth,
+      webhookSource.id
+    );
     await webhookSource.delete(auth);
   }
 }
