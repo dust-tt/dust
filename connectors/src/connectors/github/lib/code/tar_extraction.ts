@@ -273,7 +273,15 @@ export async function extractGitHubTarballToGCS(
   });
 
   // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
-  await pipeline(tarballStream, gunzip(), extract);
+  try {
+    await pipeline(tarballStream, gunzip(), extract);
+  } catch (error) {
+    childLogger.error(
+      { error, repoId, connectorId, filesUploaded, filesSkipped },
+      "Error during tarball extraction pipeline"
+    );
+    throw error;
+  }
 
   childLogger.info({ repoId, connectorId }, "All files uploaded");
 
