@@ -275,7 +275,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
       sharedSecret: "test-secret-123",
       customHeaders: [
         { key: "X-Custom-Header", value: "custom-value" },
-        { key: "Authorization", value: "Bearer should-be-stripped" },
+        { key: "Authorization", value: "Bearer should-be-kept" },
       ],
     };
 
@@ -306,9 +306,9 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(credential).toBeDefined();
     expect(credential?.sharedSecret).toBe("test-secret-123");
     expect(credential?.customHeaders).toEqual({
+      Authorization: "Bearer should-be-kept",
       "X-Custom-Header": "custom-value",
     });
-    expect(credential?.customHeaders).not.toHaveProperty("Authorization");
   });
 });
 

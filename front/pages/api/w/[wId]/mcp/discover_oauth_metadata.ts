@@ -60,9 +60,7 @@ async function handler(
 
       const { url, customHeaders } = r.right;
 
-      const headers = headersArrayToRecord(customHeaders, {
-        stripAuthorization: false,
-      });
+      const headers = headersArrayToRecord(customHeaders);
 
       const r2 = await connectToMCPServer(auth, {
         params: {
