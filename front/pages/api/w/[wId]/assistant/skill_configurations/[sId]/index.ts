@@ -6,11 +6,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { isResourceSId, makeSId } from "@app/lib/resources/string_ids";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
@@ -84,7 +86,7 @@ async function handler(
   }
 
   const sId = req.query.sId;
-  const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
+  const skillResource = await SkillConfigurationResource.fetchById(auth, sId);
 
   if (!skillResource) {
     return apiError(req, res, {
@@ -180,10 +182,22 @@ async function handler(
           const updatedSkill = updateResult.value;
 
           // Update tools
+          const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+          const mcpServerViews = await MCPServerViewResource.fetchByIds(
+            auth,
+            mcpServerViewIds
+          );
+
+          if (mcpServerViewIds.length !== mcpServerViews.length) {
+            throw new Error(
+              `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`
+            );
+          }
+
           const toolsResult = await updatedSkill.updateTools(
             auth,
             {
-              mcpServerViewIds: body.tools.map((t) => t.mcpServerViewId),
+              mcpServerViews,
             },
             { transaction }
           );
@@ -197,19 +211,7 @@ async function handler(
 
         return res.status(200).json({
           skillConfiguration: {
-            id: result.updatedSkill.id,
-            sId: makeSId("skill", {
-              id: result.updatedSkill.id,
-              workspaceId: result.updatedSkill.workspaceId,
-            }),
-            name: result.updatedSkill.name,
-            description: result.updatedSkill.description,
-            instructions: result.updatedSkill.instructions,
-            status: result.updatedSkill.status,
-            version: result.updatedSkill.version,
-            createdAt: result.updatedSkill.createdAt,
-            updatedAt: result.updatedSkill.updatedAt,
-            requestedSpaceIds: result.updatedSkill.requestedSpaceIds,
+            ...result.updatedSkill.toJSON(),
             tools: result.createdTools,
           },
         });
@@ -218,7 +220,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Error updating skill: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: `Error updating skill: ${normalizeError(error).message}`,
           },
         });
       }

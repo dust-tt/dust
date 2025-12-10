@@ -29,7 +29,7 @@ import {
 import { setQueryParam } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
-  UserMessageType,
+  UserMessageTypeWithContentFragments,
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
@@ -37,7 +37,7 @@ import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
 interface AgentSuggestionProps {
   conversationId: string;
   owner: WorkspaceType;
-  userMessage: UserMessageType;
+  userMessage: UserMessageTypeWithContentFragments;
 }
 
 const MAX_SUGGESTED_AGENTS = 4;
@@ -165,8 +165,9 @@ export function AgentSuggestion({
       !dustAgent ||
       userMessage.id === -1 ||
       userMessage.sId === autoSelectedMessageIdRef.current ||
-      // Only auto-select the dust agent if it is the first message in the conversation
-      userMessage.rank !== 0
+      // Only auto-select the dust agent if it is the first user message in the conversation
+      // Rank might be > 0 if there are content fragments (as they account for message ranks)
+      userMessage.rank !== userMessage.contentFragments.length
     ) {
       return;
     }
@@ -181,6 +182,7 @@ export function AgentSuggestion({
     userMessage.rank,
     setSelectedAgent,
     handleSelectSuggestion,
+    userMessage.contentFragments.length,
   ]);
 
   if (!showSuggestion) {

@@ -215,11 +215,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         )}
         {label && (
           <span
-            className={cn(
-              "s-grow s-truncate",
-              onClick && "s-cursor-pointer",
-              size === "mini" && "s-uppercase"
-            )}
+            className={cn("s-grow s-truncate", onClick && "s-cursor-pointer")}
           >
             {isBusy ? (
               <AnimatedText variant={color}>{label}</AnimatedText>
