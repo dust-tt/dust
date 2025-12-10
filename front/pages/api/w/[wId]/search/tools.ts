@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { searchToolFiles } from "@app/lib/search/tools/search";
+import {
+  searchToolFiles,
+  streamToolFiles,
+} from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -28,7 +31,7 @@ async function handler(
     });
   }
 
-  const { query, pageSize: pageSizeParam } = req.query;
+  const { query, pageSize: pageSizeParam, stream } = req.query;
   if (typeof query !== "string" || query.length < 1) {
     return apiError(req, res, {
       status_code: 400,
@@ -60,6 +63,48 @@ async function handler(
   }
 
   try {
+    // Handle streaming mode
+    if (stream === "true") {
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      res.flushHeaders();
+
+      // Create an AbortController to handle client disconnection
+      const controller = new AbortController();
+      const { signal } = controller;
+
+      // Handle client disconnection
+      req.on("close", () => {
+        controller.abort();
+      });
+
+      let totalCount = 0;
+
+      for await (const results of streamToolFiles({ auth, query, pageSize })) {
+        // If the client disconnected, stop streaming
+        if (signal.aborted) {
+          break;
+        }
+
+        totalCount += results.length;
+        res.write(
+          `data: ${JSON.stringify({ results, resultsCount: results.length })}\n\n`
+        );
+        // @ts-expect-error - We need it for streaming but it does not exist in the types.
+        res.flush();
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true, totalCount })}\n\n`);
+      // @ts-expect-error - We need it for streaming but it does not exist in the types.
+      res.flush();
+      res.status(200).end();
+      return;
+    }
+
+    // Non-streaming mode (existing behavior)
     const results = await searchToolFiles({ auth, query, pageSize });
 
     return res.status(200).json({
