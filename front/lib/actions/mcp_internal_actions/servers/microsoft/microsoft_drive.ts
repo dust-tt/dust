@@ -113,7 +113,6 @@ function createServer(
         }
 
         try {
-          // Use shared search function
           const response = await searchMicrosoftDriveItems({
             client,
             query,
@@ -315,7 +314,6 @@ function createServer(
           const downloadUrl = response["@microsoft.graph.downloadUrl"];
           const mimeType = response.file.mimeType;
 
-          // Use shared download and processing logic
           let content: string = "";
           try {
             content = await downloadAndProcessMicrosoftFile({
