@@ -31,7 +31,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView);
+  const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView, auth);
 
   return {
     props: {

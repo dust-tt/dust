@@ -185,9 +185,16 @@ export async function downloadAndUploadToolFile({
     );
   }
 
+  const contentTypeToExtension: Record<string, string> = {
+    "text/markdown": "md",
+    "text/csv": "csv",
+    "text/plain": "txt",
+  };
+  const extension = contentTypeToExtension[downloadResult.contentType] ?? "txt";
+
   const file = await FileResource.makeNew({
-    contentType: "text/plain",
-    fileName: `${downloadResult.fileName}.txt`,
+    contentType: downloadResult.contentType,
+    fileName: `${downloadResult.fileName}.${extension}`,
     fileSize: Buffer.byteLength(downloadResult.content, "utf8"),
     userId: user.id,
     workspaceId: owner.id,

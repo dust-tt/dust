@@ -133,7 +133,7 @@ SkillMCPServerConfigurationModel.init(
 // Skill config <> MCP Server Configuration
 SkillConfigurationModel.hasMany(SkillMCPServerConfigurationModel, {
   foreignKey: { name: "skillConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
   as: "mcpServerConfigurations",
 });
 SkillMCPServerConfigurationModel.belongsTo(SkillConfigurationModel, {

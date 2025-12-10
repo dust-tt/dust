@@ -53,6 +53,7 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -201,6 +202,7 @@ async function main() {
   await SkillConfigurationModel.sync({ alter: true });
   await GroupSkillModel.sync({ alter: true });
   await AgentSkillModel.sync({ alter: true });
+  await AgentMessageSkillModel.sync({ alter: true });
   await SkillMCPServerConfigurationModel.sync({ alter: true });
 
   process.exit(0);

@@ -278,6 +278,11 @@ const r = someFunction(aId);
 Resources and associated types should consistently expose both `sId` (string) and `id` (ModelId) in
 their interfaces. This pattern ensures consistency across the codebase and proper type safety.
 
+When extracting identifiers from resource objects into variables, follow this naming convention:
+
+- For the string identifier (`sId` field): use `<resourceName>Id` (e.g., `agentId`, `conversationId`)
+- For the numeric identifier (`id` field): use `<resourceName>ModelId` (e.g., `agentModelId`, `conversationModelId`)
+
 Example:
 
 ```
@@ -291,6 +296,10 @@ interface ResourceType {
 sId: string;
 id: ModelId;
 }
+
+// Variable naming
+const agentId = agent.sId;           // String identifier
+const agentModelId = agent.id;       // Numeric ModelId
 ```
 
 ### [BACK11] Resource invariant: Use "Model" suffix for Sequelize models when creating Resources

@@ -494,6 +494,19 @@ export async function deleteMembersActivity({
   }
 }
 
+export async function deleteWebhookSourcesActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  const webhookSources = await WebhookSourceResource.listByWorkspace(auth);
+  for (const webhookSource of webhookSources) {
+    await webhookSource.delete(auth);
+  }
+}
+
 export async function deleteSpacesActivity({
   workspaceId,
 }: {
@@ -615,7 +628,6 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
-  await WebhookSourceResource.deleteAllForWorkspace(auth);
   await TriggerResource.deleteAllForWorkspace(auth);
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
