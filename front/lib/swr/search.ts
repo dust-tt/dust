@@ -48,7 +48,7 @@ export function useSearchToolFiles({
 
     setIsSearchLoading(true);
 
-    const url = `/api/w/${owner.sId}/search/tools?query=${encodeURIComponent(query)}&pageSize=${pageSize}&stream=true`;
+    const url = `/api/w/${owner.sId}/search/tools?query=${encodeURIComponent(query)}&pageSize=${pageSize}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
