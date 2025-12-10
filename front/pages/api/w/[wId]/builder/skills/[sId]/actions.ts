@@ -60,7 +60,7 @@ async function handler(
     });
   }
 
-  const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
+  const skillResource = await SkillConfigurationResource.fetchById(auth, sId);
 
   if (!skillResource) {
     return apiError(req, res, {
