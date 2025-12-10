@@ -253,6 +253,7 @@ export class GCSRepositoryManager {
             return;
           } catch (error) {
             lastError = error;
+            // If we're not on the last attempt, back off before retrying.
             if (attempt < SMALL_FILE_UPLOAD_MAX_RETRIES - 1) {
               const delay =
                 SMALL_FILE_UPLOAD_BASE_DELAY_MS * Math.pow(2, attempt);
