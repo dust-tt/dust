@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -26,7 +25,7 @@ export function useSkillConfigurations({
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
     fetcher;
 
-  const { data, error, isLoading } = useSWRWithDefaults(
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/skills`,
     skillConfigurationsFetcher,
     { disabled }
@@ -36,6 +35,7 @@ export function useSkillConfigurations({
     skillConfigurations: data?.skillConfigurations ?? emptyArray(),
     isSkillConfigurationsError: !!error,
     isSkillConfigurationsLoading: isLoading,
+    mutateSkillConfigurations: mutate,
   };
 }
 
@@ -69,7 +69,10 @@ export function useArchiveSkillConfiguration({
   skillConfiguration: SkillConfigurationType;
 }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateSkillConfigurations } = useSWRConfig();
+  const { mutateSkillConfigurations } = useSkillConfigurations({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
   const doArchive = async () => {
     if (!skillConfiguration.sId) {
@@ -83,7 +86,7 @@ export function useArchiveSkillConfiguration({
     );
 
     if (res.ok) {
-      void mutateSkillConfigurations(`/api/w/${owner.sId}/skills`);
+      void mutateSkillConfigurations();
 
       sendNotification({
         type: "success",
