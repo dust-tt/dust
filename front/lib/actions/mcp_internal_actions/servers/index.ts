@@ -59,6 +59,7 @@ import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
+import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -214,6 +215,8 @@ export async function getInternalMCPServer(
       return frontServer(auth, agentLoopContext);
     case "zendesk":
       return zendeskServer(auth, agentLoopContext);
+    case "skill_management":
+      return skillManagementServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
