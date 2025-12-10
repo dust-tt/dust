@@ -17,6 +17,24 @@ import { useCallback, useContext, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+/**
+ * Fix markdown by moving spaces from inside to outside of bold/italic markers.
+ * This ensures proper rendering for messages that have spaces inside the markers.
+ */
+function fixMarkdownSpacing(content: string): string {
+  let fixed = content;
+
+  // Move spaces from inside to outside of bold markers
+  fixed = fixed.replace(/\*\*(\s+)(.+?)\*\*/g, "$1**$2**");
+  fixed = fixed.replace(/\*\*(.+?)(\s+)\*\*/g, "**$1**$2");
+
+  // Move spaces from inside to outside of italic markers
+  fixed = fixed.replace(/_(\s+)(.+?)_/g, "$1*$2*");
+  fixed = fixed.replace(/_(.+?)(\s+)_/g, "*$1*$2");
+
+  return fixed;
+}
+
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
@@ -131,9 +149,11 @@ function UserMessageContent({
     return <DeletedMessage />;
   }
 
+  const fixedContent = fixMarkdownSpacing(message.content);
+
   return (
     <Markdown
-      content={message.content}
+      content={fixedContent}
       isStreaming={false}
       isLastMessage={isLastMessage}
       additionalMarkdownComponents={additionalMarkdownComponents}
@@ -389,17 +409,13 @@ export function UserMessage({
           citations={citations}
           actions={actions}
         >
-          {isDeleted ? (
-            <DeletedMessage />
-          ) : (
-            <Markdown
-              content={message.content}
-              isStreaming={false}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
-          )}
+          <UserMessageContent
+            message={message}
+            isDeleted={isDeleted}
+            isLastMessage={isLastMessage}
+            additionalMarkdownComponents={additionalMarkdownComponents}
+            additionalMarkdownPlugins={additionalMarkdownPlugins}
+          />
         </ConversationMessage>
       </div>
       {showAgentSuggestions && (
