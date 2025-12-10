@@ -8,13 +8,11 @@ import { Err, normalizeError, Ok } from "@app/types";
 export async function submitSkillBuilderForm({
   formData,
   owner,
-  user,
   skillConfigurationId,
   currentEditors = [],
 }: {
   formData: SkillBuilderFormData;
   owner: WorkspaceType;
-  user: UserType;
   skillConfigurationId?: string;
   currentEditors?: UserType[];
 }): Promise<
@@ -66,14 +64,13 @@ export async function submitSkillBuilderForm({
 
     const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
     const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
-    const creatorId = user.sId;
 
     const addEditorIds: string[] = [];
     const removeEditorIds: string[] = [];
 
-    // Add editors who are in desired but not in current (excluding creator who is added automatically)
+    // Add editors who are in desired but not in current
     for (const editor of formData.editors) {
-      if (editor.sId !== creatorId && !currentEditorIds.has(editor.sId)) {
+      if (!currentEditorIds.has(editor.sId)) {
         addEditorIds.push(editor.sId);
       }
     }

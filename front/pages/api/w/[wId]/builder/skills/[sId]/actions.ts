@@ -88,6 +88,7 @@ async function handler(
   // Build actions from skill's MCP server configurations
   const actions: AgentBuilderMCPConfiguration[] = [];
   for (const mcpConfig of skillResource.mcpServerConfigurations) {
+    /**/
     const mcpServerView = mcpServerViewsJSON.find(
       (view) => view.id === mcpConfig.mcpServerViewId
     );

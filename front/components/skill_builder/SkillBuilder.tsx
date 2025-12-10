@@ -95,7 +95,6 @@ export default function SkillBuilder({
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      user,
       skillConfigurationId: !isCreatingNew
         ? skillConfiguration?.sId
         : undefined,
