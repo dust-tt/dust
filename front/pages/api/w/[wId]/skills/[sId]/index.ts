@@ -53,7 +53,6 @@ async function handler(
   }
 
   const skillId = req.query.sId;
-  g;
 
   const skillConfiguration = await SkillConfigurationResource.fetchById(
     auth,
