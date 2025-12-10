@@ -245,19 +245,31 @@ export async function botReplaceMention(
       channelId: slackChannel,
       useCase: "bot",
     });
-    if (e instanceof ProviderRateLimitError) {
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
-        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
-        thread_ts: slackMessageTs,
-        unfurl_links: false,
-      });
-    } else {
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
-        text: SLACK_ERROR_TEXT,
-        thread_ts: slackMessageTs,
-      });
+    try {
+      if (e instanceof ProviderRateLimitError) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
+          thread_ts: slackMessageTs,
+          unfurl_links: false,
+        });
+      } else {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          text: SLACK_ERROR_TEXT,
+          thread_ts: slackMessageTs,
+        });
+      }
+    } catch (postError) {
+      logger.error(
+        {
+          slackChannel,
+          slackMessageTs,
+          slackTeamId,
+          error: postError,
+        },
+        "Failed to post error message to Slack"
+      );
     }
     return new Err(new Error("An unexpected error occurred"));
   }
@@ -468,17 +480,29 @@ export async function botValidateToolExecution(
     );
     const slackClient = await getSlackClient(connector.id);
 
-    reportSlackUsage({
-      connectorId: connector.id,
-      method: "chat.postMessage",
-      channelId: slackChannel,
-      useCase: "bot",
-    });
-    await slackClient.chat.postMessage({
-      channel: slackChannel,
-      text: "An unexpected error occurred while sending the validation. Our team has been notified.",
-      thread_ts: slackMessageTs,
-    });
+    try {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.postMessage",
+        channelId: slackChannel,
+        useCase: "bot",
+      });
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: "An unexpected error occurred while sending the validation. Our team has been notified.",
+        thread_ts: slackMessageTs,
+      });
+    } catch (postError) {
+      logger.error(
+        {
+          slackChannel,
+          slackMessageTs,
+          slackTeamId,
+          error: postError,
+        },
+        "Failed to post error message to Slack"
+      );
+    }
 
     return new Err(new Error("An unexpected error occurred"));
   }

@@ -5,8 +5,8 @@ export type SkillStatus = "active" | "archived";
 
 export type SkillConfigurationType = {
   sId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: number;
+  updatedAt: number;
   version: number;
   status: SkillStatus;
   name: string;

@@ -795,10 +795,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return this.ds as DataSourceResource;
   }
 
-  isDefault(): boolean {
-    return this.kind === "default";
-  }
-
   // sId logic.
 
   get sId(): string {

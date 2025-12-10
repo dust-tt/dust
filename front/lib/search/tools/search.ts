@@ -10,6 +10,10 @@ import {
   search as googleDriveSearch,
 } from "@app/lib/providers/google_drive/search";
 import {
+  download as microsoftDownload,
+  search as microsoftSearch,
+} from "@app/lib/providers/microsoft/search";
+import {
   download as notionDownload,
   search as notionSearch,
 } from "@app/lib/providers/notion/search";
@@ -30,6 +34,7 @@ import { Err, Ok } from "@app/types";
 const SEARCHABLE_TOOLS = {
   google_drive: { search: googleDriveSearch, download: googleDriveDownload },
   notion: { search: notionSearch, download: notionDownload },
+  microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
 } as const satisfies Partial<Record<InternalMCPServerNameType, SearchableTool>>;
 type SearchableMCPServerNameType = keyof typeof SEARCHABLE_TOOLS;
 
@@ -190,9 +195,16 @@ export async function downloadAndUploadToolFile({
     );
   }
 
+  const contentTypeToExtension: Record<string, string> = {
+    "text/markdown": "md",
+    "text/csv": "csv",
+    "text/plain": "txt",
+  };
+  const extension = contentTypeToExtension[downloadResult.contentType] ?? "txt";
+
   const file = await FileResource.makeNew({
-    contentType: "text/plain",
-    fileName: `${downloadResult.fileName}.txt`,
+    contentType: downloadResult.contentType,
+    fileName: `${downloadResult.fileName}.${extension}`,
     fileSize: Buffer.byteLength(downloadResult.content, "utf8"),
     userId: user.id,
     workspaceId: owner.id,

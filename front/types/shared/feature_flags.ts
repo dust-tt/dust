@@ -148,10 +148,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
   },
-  use_bulk_search_data_sources_api: {
-    description: "Use bulk search API for data sources searches",
-    stage: "dust_only",
-  },
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
@@ -227,6 +223,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   skills: {
     description:
       "Access to Skills, which are packaged sets of instructions and tools",
+    stage: "dust_only",
+  },
+  skills_similar_display: {
+    description:
+      "Display similar skills when creating a new skill to avoid duplicates",
     stage: "dust_only",
   },
   universal_search: {

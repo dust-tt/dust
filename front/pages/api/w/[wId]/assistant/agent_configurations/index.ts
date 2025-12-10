@@ -419,7 +419,7 @@ export async function createOrUpgradeAgentConfiguration({
     assistant.skills,
     async (skill) => {
       // Validate the skill exists and belongs to this workspace
-      const skillResource = await SkillConfigurationResource.fetchBySId(
+      const skillResource = await SkillConfigurationResource.fetchById(
         auth,
         skill.sId
       );

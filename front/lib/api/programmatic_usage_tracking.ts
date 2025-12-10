@@ -103,7 +103,12 @@ export function getShouldTrackTokenUsageCostsESFilter(
   // Track for API keys, listed programmatic origins or unspecified user message origins.
   // This must be in sync with the shouldTrackTokenUsageCosts function.
   const shouldClauses: estypes.QueryDslQueryContainer[] = [
-    { term: { auth_method: "api_key" } },
+    {
+      bool: {
+        must: [{ term: { auth_method: "api_key" } }],
+        must_not: [{ term: { context_origin: "zendesk" } }],
+      },
+    },
     { bool: { must_not: { exists: { field: "context_origin" } } } },
     { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
   ];

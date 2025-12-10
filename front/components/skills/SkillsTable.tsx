@@ -1,19 +1,25 @@
-import { DataTable } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
+import { DataTable, TrashIcon } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { UserType } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { LightWorkspaceType, UserType } from "@app/types";
+import type {
+  SkillConfigurationType,
+  SkillConfigurationWithAuthorType,
+} from "@app/types/skill_configuration";
 
 type RowData = {
   sId: string;
   name: string;
   description: string;
   author: SkillConfigurationWithAuthorType["author"];
-  updatedAt: Date;
+  updatedAt: number;
   onClick?: () => void;
+  menuItems?: MenuItem[];
 };
 
 const getTableColumns = () => {
@@ -22,6 +28,7 @@ const getTableColumns = () => {
    * - Name (always)
    * - Author (hidden on mobile)
    * - Last Edited (hidden on mobile)
+   * - Actions (always)
    */
 
   return [
@@ -82,19 +89,33 @@ const getTableColumns = () => {
       ),
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
+    {
+      header: "",
+      accessorKey: "actions",
+      cell: (info: CellContext<RowData, number>) => {
+        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
+      },
+      meta: {
+        className: "w-14",
+      },
+    },
   ];
 };
 
 type SkillsTableProps = {
   skillConfigurations: SkillConfigurationWithAuthorType[];
   setSkillConfiguration: (skill: SkillConfigurationWithAuthorType) => void;
+  owner: LightWorkspaceType;
 };
 
 export function SkillsTable({
+  owner,
   skillConfigurations,
   setSkillConfiguration,
 }: SkillsTableProps) {
   const { pagination, setPagination } = usePaginationFromUrl({});
+  const [skillConfigurationToArchive, setSkillConfigurationToArchive] =
+    useState<SkillConfigurationType | null>(null);
 
   const rows: RowData[] = useMemo(
     () =>
@@ -104,6 +125,18 @@ export function SkillsTable({
           onClick: () => {
             setSkillConfiguration(skillConfiguration);
           },
+          menuItems: [
+            {
+              label: "Archive",
+              icon: TrashIcon,
+              variant: "warning" as const,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                setSkillConfigurationToArchive(skillConfiguration);
+              },
+              kind: "item" as const,
+            },
+          ],
         };
       }),
     [skillConfigurations, setSkillConfiguration]
@@ -114,12 +147,24 @@ export function SkillsTable({
   }
 
   return (
-    <DataTable
-      className="relative"
-      data={rows}
-      columns={getTableColumns()}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
+    <>
+      {skillConfigurationToArchive && (
+        <ArchiveSkillDialog
+          owner={owner}
+          isOpen={true}
+          skillConfiguration={skillConfigurationToArchive}
+          onClose={() => {
+            setSkillConfigurationToArchive(null);
+          }}
+        />
+      )}
+      <DataTable
+        className="relative"
+        data={rows}
+        columns={getTableColumns()}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+    </>
   );
 }

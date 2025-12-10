@@ -58,6 +58,7 @@ export const SEARCH_SERVER_NAME = "search";
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
+export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
@@ -122,6 +123,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  SKILL_MANAGEMENT_SERVER_NAME,
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -157,6 +159,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_organization_projects: "never_ask",
       list_issues: "never_ask",
       list_pull_requests: "never_ask",
+      search_advanced: "never_ask",
       get_issue: "never_ask",
     },
     tools_retry_policies: undefined,
@@ -1292,6 +1295,33 @@ export const INTERNAL_MCP_SERVERS = {
       developerSecretSelection: "required",
     },
   },
+  zendesk: {
+    id: 42,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_ticket: "never_ask",
+      search_tickets: "never_ask",
+      draft_reply: "low", // Low because it's a draft.
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "zendesk",
+      version: "1.0.0",
+      description:
+        "Access and manage support tickets, help center, and customer interactions.",
+      authorization: {
+        provider: "zendesk" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ZendeskLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
   slab: {
     id: 43,
     availability: "manual",
@@ -1346,44 +1376,6 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  [SEARCH_SERVER_NAME]: {
-    id: 1006,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: undefined,
-    serverInfo: {
-      name: SEARCH_SERVER_NAME,
-      version: "1.0.0",
-      description: "Search content to find the most relevant information.",
-      icon: "ActionMagnifyingGlassIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  run_agent: {
-    id: 1008,
-    availability: "auto",
-    allowMultipleInstances: true,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-    serverInfo: {
-      name: "run_agent",
-      version: "1.0.0",
-      description: "Run a child agent (agent as tool).",
-      icon: "ActionRobotIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -1406,42 +1398,20 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  common_utilities: {
-    id: 1017,
-    availability: "auto_hidden_builder",
+  [SEARCH_SERVER_NAME]: {
+    id: 1006,
+    availability: "auto",
     allowMultipleInstances: false,
-    isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "common_utilities",
-      version: "1.0.0",
-      description:
-        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
-      icon: "ActionAtomIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  jit_testing: {
-    id: 1016,
-    availability: "manual",
-    allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
-      name: "jit_testing",
+      name: SEARCH_SERVER_NAME,
       version: "1.0.0",
-      description: "Demo server to test if can be added to JIT.",
-      icon: "ActionEmotionLaughIcon",
+      description: "Search content to find the most relevant information.",
+      icon: "ActionMagnifyingGlassIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
@@ -1462,6 +1432,25 @@ export const INTERNAL_MCP_SERVERS = {
       description:
         "Agent can decide to trigger a reasoning model for complex tasks.",
       icon: "ActionLightbulbIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  run_agent: {
+    id: 1008,
+    availability: "auto",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+    serverInfo: {
+      name: "run_agent",
+      version: "1.0.0",
+      description: "Run a child agent (agent as tool).",
+      icon: "ActionRobotIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
@@ -1601,6 +1590,47 @@ export const INTERNAL_MCP_SERVERS = {
       developerSecretSelection: "required",
     },
   },
+  jit_testing: {
+    id: 1016,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("dev_mcp_actions");
+    },
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "jit_testing",
+      version: "1.0.0",
+      description: "Demo server to test if can be added to JIT.",
+      icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  common_utilities: {
+    id: 1017,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "common_utilities",
+      version: "1.0.0",
+      description:
+        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
+      icon: "ActionAtomIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
   front: {
     id: 1018,
     availability: "manual",
@@ -1649,29 +1679,24 @@ export const INTERNAL_MCP_SERVERS = {
       developerSecretSelection: "required",
     },
   },
-  zendesk: {
-    id: 42,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: undefined,
+  [SKILL_MANAGEMENT_SERVER_NAME]: {
+    id: 1019,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
     isPreview: false,
-    tools_stakes: {
-      get_ticket: "never_ask",
-      search_tickets: "never_ask",
-      draft_reply: "low", // Low because it's a draft.
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("skills");
     },
+    tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "zendesk",
+      name: SKILL_MANAGEMENT_SERVER_NAME,
       version: "1.0.0",
-      description:
-        "Access and manage support tickets, help center, and customer interactions.",
-      authorization: {
-        provider: "zendesk" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "ZendeskLogo",
+      description: "",
+      // TODO(skill): Add proper skill icon here once in ActionsIcons
+      icon: "ActionLightbulbIcon",
+      authorization: null,
       documentationUrl: null,
       instructions: null,
     },
