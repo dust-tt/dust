@@ -383,7 +383,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
   }
 
-
   async updateSkill(
     auth: Authenticator,
     {
