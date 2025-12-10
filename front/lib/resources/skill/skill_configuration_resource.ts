@@ -114,7 +114,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
   private readonly globalSId?: string;
 
-  constructor(
+  private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {

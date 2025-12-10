@@ -45,7 +45,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      console.log(">> Handling GET skill configurations request");
       const skillConfigurations =
         await SkillConfigurationResource.fetchWithAuthor(auth);
 
