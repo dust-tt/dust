@@ -18,11 +18,10 @@ export function useDatadogLogs() {
       });
       window.DD_RUM.onReady(() => {
         window.DD_RUM.setUser({
-          id: user.sId,
+          id: userId,
         });
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {

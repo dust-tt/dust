@@ -97,12 +97,12 @@ export function useZendeskTicketTagFilters({
         });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      owner.sId,
-      dataSource.sId,
       includedTags,
       excludedTags,
+      owner.sId,
+      dataSource.sId,
+      sendNotification,
       mutateIncludedTags,
       mutateExcludedTags,
     ]
@@ -167,12 +167,12 @@ export function useZendeskTicketTagFilters({
         });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      owner.sId,
-      dataSource.sId,
       includedTags,
       excludedTags,
+      owner.sId,
+      dataSource.sId,
+      sendNotification,
       mutateIncludedTags,
       mutateExcludedTags,
     ]

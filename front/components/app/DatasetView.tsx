@@ -534,14 +534,15 @@ export default function DatasetView({
         inferSchema()
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    datasetName,
     datasetDescription,
-    datasetData,
-    datasetKeys,
-    datasetKeyDescriptions,
-    datasetTypes,
+    datasetInitializing,
+    datasetName,
+    datasetNameValidation,
+    datasetTypesValidation,
+    exportDataset,
+    inferSchema,
+    onUpdate,
   ]);
 
   const theme = localStorage.getItem("theme");
