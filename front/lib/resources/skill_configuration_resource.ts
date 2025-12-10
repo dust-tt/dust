@@ -190,6 +190,20 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     return customSkills.map((skill) => new this(this.model, skill.get()));
   }
 
+  static async countByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: ModelId
+  ): Promise<number> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return AgentSkillModel.count({
+      where: {
+        agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+    });
+  }
+
   static modelIdToSId({
     id,
     workspaceId,
