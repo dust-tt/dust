@@ -1,12 +1,21 @@
 import {
   Avatar,
+  InformationCircleIcon,
   Sheet,
+  SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useState } from "react";
 
+import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { SKILL_ICON } from "@app/lib/skill";
 import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
 
@@ -19,6 +28,12 @@ export function SkillDetails({
   skillConfiguration,
   onClose,
 }: SkillDetailsProps) {
+  const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
+
+  // TODO(skills 2025-12-10): Check based on GLOBAL_SKILLS_SID enum
+  const isGlobalSkill = false;
+  const showEditorsTabs = !isGlobalSkill;
+
   return (
     <Sheet
       open={!!skillConfiguration}
@@ -35,6 +50,37 @@ export function SkillDetails({
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
           <DescriptionSection skillConfiguration={skillConfiguration} />
         </SheetHeader>
+        <SheetContainer className="pb-4">
+          {showEditorsTabs ? (
+            <Tabs value={selectedTab}>
+              <TabsList border={false}>
+                <TabsTrigger
+                  value="info"
+                  label="Info"
+                  icon={InformationCircleIcon}
+                  onClick={() => setSelectedTab("info")}
+                />
+                <TabsTrigger
+                  value="editors"
+                  label="Editors"
+                  icon={UserGroupIcon}
+                  onClick={() => setSelectedTab("editors")}
+                />
+              </TabsList>
+              <div className="mt-4">
+                <TabsContent value="info">
+                  <SkillInfoTab skillConfiguration={skillConfiguration} />
+                </TabsContent>
+                <TabsContent value="editors">
+                  {/* TODO(skills 2025-12-10): Editors list */}
+                  <></>
+                </TabsContent>
+              </div>
+            </Tabs>
+          ) : (
+            <SkillInfoTab skillConfiguration={skillConfiguration} />
+          )}
+        </SheetContainer>
       </SheetContent>
     </Sheet>
   );
