@@ -1,7 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
@@ -62,8 +62,8 @@ Skill ID 20aaa:
 ---
 Skill ID 25iju:
 "Manage customer support emails"
- 
-Output: 
+
+Output:
 set_similar_skills({
   "similar_skills_array": [abc12, 20aaa]
 })
@@ -82,7 +82,7 @@ Skill ID 20aaa:
 Skill ID 25iju:
 "Manage customer support emails"
 
-Output: 
+Output:
 set_similar_skills({
   "similar_skills_array": []
 })
