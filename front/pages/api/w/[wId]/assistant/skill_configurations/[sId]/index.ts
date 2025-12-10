@@ -12,7 +12,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { Err } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
@@ -189,10 +188,8 @@ async function handler(
           );
 
           if (mcpServerViewIds.length !== mcpServerViews.length) {
-            return new Err(
-              new Error(
-                `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`
-              )
+            throw new Error(
+              `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`
             );
           }
 
