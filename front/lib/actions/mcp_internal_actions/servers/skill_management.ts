@@ -24,7 +24,7 @@ function createServer(
     {
       skillId: z
         .string()
-        .describe("The sId of the skill to enable for the conversation"),
+        .describe("The id of the skill to enable for the conversation"),
     },
     withToolLogging(
       auth,
