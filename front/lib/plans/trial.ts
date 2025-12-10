@@ -1,4 +1,4 @@
-import type { Plan, Subscription } from "@app/lib/models/plan";
+import type { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import type { SubscriptionType } from "@app/types";
 
@@ -10,7 +10,7 @@ const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxImagesPerWeek: 50,
 };
 
-export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
+export function getTrialVersionForPlan(plan: PlanModel): PlanAttributes {
   return {
     ...plan.get(),
     ...TRIAL_LIMITS,
@@ -18,7 +18,7 @@ export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
 }
 
 export function isTrial(
-  subscription: SubscriptionType | Subscription
+  subscription: SubscriptionType | SubscriptionModel
 ): boolean {
   return subscription.trialing === true;
 }

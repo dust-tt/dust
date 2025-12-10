@@ -1,4 +1,4 @@
-import type { Subscription } from "@app/lib/models/plan";
+import type { SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import type { PlanType, SubscriptionType } from "@app/types";
 
@@ -60,7 +60,7 @@ export function renderSubscriptionFromModels({
   activeSubscription,
 }: {
   plan: PlanAttributes;
-  activeSubscription: Subscription | null;
+  activeSubscription: SubscriptionModel | null;
 }): SubscriptionType {
   return {
     status: activeSubscription?.status ?? "active",

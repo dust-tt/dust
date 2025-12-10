@@ -1,4 +1,4 @@
-import { UserMessage } from "@app/lib/models/assistant/conversation";
+import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -51,7 +51,7 @@ async function backfillImageUrl(workspaceId: number) {
   // for each user, find the last usermessage
   // and set the user's imageUrl to the usermessage's userContextProfilePictureUrl
   for (const user of users) {
-    const userMessage = await UserMessage.findOne({
+    const userMessage = await UserMessageModel.findOne({
       where: {
         userId: user.id,
       },

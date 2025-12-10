@@ -24,6 +24,7 @@ import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
@@ -368,7 +369,7 @@ const ConversationPage = ({
     setRenderError(null);
     setRenderResult(null);
     try {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/poke/workspaces/${workspaceId}/conversations/${conversationId}/render`,
         {
           method: "POST",
@@ -383,6 +384,7 @@ const ConversationPage = ({
       );
       const data = await response.json();
       if (!response.ok) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(data.error?.message || "Failed to render conversation");
       }
       setRenderResult({

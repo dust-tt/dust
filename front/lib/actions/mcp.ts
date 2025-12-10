@@ -9,7 +9,11 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  MCPApproveExecutionEvent,
+  ToolExecution,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -19,7 +23,7 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type {
   DustAppRunConfigurationType,
   ModelId,
@@ -137,20 +141,6 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
-export type ToolExecution = {
-  conversationId: string;
-  messageId: string;
-  actionId: string;
-
-  inputs: Record<string, unknown>;
-  stake?: MCPToolStakeLevelType;
-
-  metadata: MCPValidationMetadataType & {
-    mcpServerId?: string;
-    mcpServerDisplayName?: string;
-  };
-};
-
 export type BlockedToolExecution = ToolExecution &
   (
     | {
@@ -172,14 +162,6 @@ export type BlockedToolExecution = ToolExecution &
         authorizationInfo: AuthorizationInfo;
       }
   );
-
-// TODO(durable-agents): cleanup the types of the events.
-export type MCPApproveExecutionEvent = ToolExecution & {
-  type: "tool_approve_execution";
-  created: number;
-  configurationId: string;
-  isLastBlockingEventForStep?: boolean;
-};
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType
@@ -273,7 +255,7 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isToolPersonalAuthRequiredEvent(
+function isLegacyToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolErrorEvent & {
   error: PersonalAuthenticationRequiredErrorContent;
@@ -288,6 +270,17 @@ function isToolPersonalAuthRequiredEvent(
   );
 }
 
+function isToolPersonalAuthRequiredEvent(
+  event: unknown
+): event is ToolPersonalAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_personal_auth_required"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
 ): event is MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent {
@@ -296,6 +289,7 @@ export function isBlockedActionEvent(
     event !== null &&
     "type" in event &&
     (isMCPApproveExecutionEvent(event) ||
-      isToolPersonalAuthRequiredEvent(event))
+      isToolPersonalAuthRequiredEvent(event) ||
+      isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

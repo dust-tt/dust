@@ -23,6 +23,7 @@ import React, {
 } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -130,6 +131,7 @@ function useVisualizationDataHandler({
           title: "Export Failed",
           type: "error",
           description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             data.errorMessage ||
             "An error occurred while exporting the content.",
         });
@@ -277,7 +279,7 @@ export const VisualizationActionIframe = forwardRef<
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${workspaceId}/files/${fileId}?action=view`
       );
       if (!response.ok) {
@@ -398,7 +400,7 @@ export const VisualizationActionIframe = forwardRef<
                     ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={vizUrl}
-                    sandbox="allow-scripts allow-popups"
+                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                   />
                 </div>
               )}

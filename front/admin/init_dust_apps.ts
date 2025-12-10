@@ -31,7 +31,9 @@ async function main() {
   if (!w) {
     console.log("Creating workspace");
     w = await WorkspaceResource.makeNew({
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       sId: argv.sId || generateRandomModelSId(),
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       name: argv.name || DEFAULT_WORKSPACE_NAME,
     });
 

@@ -3,7 +3,8 @@ use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider,
-        confluence_tools::ConfluenceToolsConnectionProvider, discord::DiscordConnectionProvider,
+        confluence_tools::ConfluenceToolsConnectionProvider,
+        databricks::DatabricksConnectionProvider, discord::DiscordConnectionProvider,
         fathom::FathomConnectionProvider, freshservice::FreshserviceConnectionProvider,
         github::GithubConnectionProvider, gmail::GmailConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
@@ -13,6 +14,7 @@ use crate::oauth::{
         microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
         monday::MondayConnectionProvider, notion::NotionConnectionProvider,
         salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
+        slack_tools::SlackToolsConnectionProvider, vanta::VantaConnectionProvider,
         zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
@@ -98,6 +100,7 @@ impl std::error::Error for ConnectionError {}
 pub enum ConnectionProvider {
     Confluence,
     ConfluenceTools,
+    Databricks,
     Discord,
     Fathom,
     Freshservice,
@@ -113,10 +116,12 @@ pub enum ConnectionProvider {
     Monday,
     Notion,
     Slack,
+    SlackTools,
     Mock,
     Zendesk,
     Salesforce,
     Hubspot,
+    Vanta,
     Mcp,
     McpStatic,
 }
@@ -243,6 +248,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
+        ConnectionProvider::Databricks => Box::new(DatabricksConnectionProvider::new()),
         ConnectionProvider::Discord => Box::new(DiscordConnectionProvider::new()),
         ConnectionProvider::Fathom => Box::new(FathomConnectionProvider::new()),
         ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
@@ -258,10 +264,12 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Monday => Box::new(MondayConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
+        ConnectionProvider::SlackTools => Box::new(SlackToolsConnectionProvider::new()),
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
+        ConnectionProvider::Vanta => Box::new(VantaConnectionProvider::new()),
         ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
         // MCP Static is the same as MCP but does not require the discovery process on the front end.
         ConnectionProvider::McpStatic => Box::new(MCPStaticConnectionProvider::new()),
@@ -970,6 +978,37 @@ impl Connection {
         info!(
             connection_id = self.connection_id(),
             "Successfully updated related_credential_id"
+        );
+
+        Ok(())
+    }
+
+    pub async fn update_metadata(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        extra_metadata: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<(), ConnectionError> {
+        // Merge extra_metadata into existing connection metadata
+        let mut merged_metadata = match self.metadata.clone() {
+            serde_json::Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        };
+        for (key, value) in extra_metadata {
+            merged_metadata.insert(key, value);
+        }
+        self.metadata = serde_json::Value::Object(merged_metadata);
+
+        store.update_connection_metadata(self).await.map_err(|e| {
+            error!(error = %e, "Failed to update connection metadata");
+            ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to update connection metadata".to_string(),
+            }
+        })?;
+
+        info!(
+            connection_id = self.connection_id(),
+            "Successfully updated connection metadata"
         );
 
         Ok(())

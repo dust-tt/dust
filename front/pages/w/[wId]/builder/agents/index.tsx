@@ -28,6 +28,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -223,8 +224,7 @@ export default function WorkspaceAssistants({
     return { uniqueTags };
   }, [agentConfigurations]);
 
-  const [showDetails, setShowDetails] =
-    useState<LightAgentConfigurationType | null>(null);
+  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
   const handleToggleAgentStatus = async (
     agent: LightAgentConfigurationType
@@ -233,7 +233,7 @@ export default function WorkspaceAssistants({
       setShowDisabledFreeWorkspacePopup(agent.sId);
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
       {
         method: "PATCH",
@@ -308,9 +308,8 @@ export default function WorkspaceAssistants({
         <AgentDetails
           owner={owner}
           user={user}
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          agentId={showDetails?.sId || null}
-          onClose={() => setShowDetails(null)}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
         />
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
           <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
@@ -413,7 +412,7 @@ export default function WorkspaceAssistants({
                   setSelection={setSelection}
                   owner={owner}
                   agents={agentsByTab[activeTab]}
-                  setShowDetails={setShowDetails}
+                  setDetailedAgentId={setDetailedAgentId}
                   handleToggleAgentStatus={handleToggleAgentStatus}
                   showDisabledFreeWorkspacePopup={
                     showDisabledFreeWorkspacePopup

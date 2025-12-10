@@ -1,13 +1,14 @@
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Mention } from "@app/lib/models/assistant/conversation";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { MentionModel } from "@app/lib/models/agent/conversation";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -24,7 +25,7 @@ import type { LightWorkspaceType } from "@app/types";
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
   workspace: LightWorkspaceType,
-  agent: AgentConfiguration,
+  agent: AgentConfigurationModel,
   logger: Logger,
   execute: boolean
 ): Promise<boolean> {
@@ -34,7 +35,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   }
 
   // Only deletes draft agent configuration without mentions.
-  const hasAtLeastOneMention = await Mention.findOne({
+  const hasAtLeastOneMention = await MentionModel.findOne({
     where: {
       workspaceId: workspace.id,
       agentConfigurationId: agent.sId,
@@ -51,31 +52,32 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
     return true;
   }
 
-  const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-    },
-  });
+  const mcpServerConfigurations =
+    await AgentMCPServerConfigurationModel.findAll({
+      where: {
+        agentConfigurationId: agent.id,
+      },
+    });
 
-  await AgentDataSourceConfiguration.destroy({
-    where: {
-      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
-    },
-  });
-
-  await AgentTablesQueryConfigurationTable.destroy({
+  await AgentDataSourceConfigurationModel.destroy({
     where: {
       mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
     },
   });
 
-  await AgentReasoningConfiguration.destroy({
+  await AgentTablesQueryConfigurationTableModel.destroy({
     where: {
       mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
     },
   });
 
-  await AgentChildAgentConfiguration.destroy({
+  await AgentReasoningConfigurationModel.destroy({
+    where: {
+      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
+    },
+  });
+
+  await AgentChildAgentConfigurationModel.destroy({
     where: {
       mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
     },
@@ -87,8 +89,14 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
     },
   });
 
+  await AgentSkillModel.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
   // Finally delete the agent configuration.
-  await AgentConfiguration.destroy({
+  await AgentConfigurationModel.destroy({
     where: {
       id: agent.id,
     },
@@ -104,7 +112,7 @@ async function removeDraftAgentConfigurationsForWorkspace(
 ) {
   let nbAgentsDeleted = 0;
 
-  const draftAgents = await AgentConfiguration.findAll({
+  const draftAgents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       status: "draft",

@@ -89,6 +89,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<GetFeedbacksResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -152,6 +153,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

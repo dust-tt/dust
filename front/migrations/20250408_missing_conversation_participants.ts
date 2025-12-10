@@ -4,9 +4,9 @@ import { Op, UniqueConstraintError } from "sequelize";
 import {
   ConversationModel,
   ConversationParticipantModel,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -80,7 +80,7 @@ async function processConversation(
   execute: boolean
 ) {
   // Getting all the user messages in the conversation.
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
       userMessageId: {
@@ -89,7 +89,7 @@ async function processConversation(
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         attributes: ["userId", "createdAt"],
         order: [["createdAt", "DESC"]],

@@ -225,7 +225,7 @@ export const GoogleDriveCommandSchema = t.type({
   majorCommand: t.literal("google_drive"),
   command: t.union([
     t.literal("garbage-collect-all"),
-    t.literal("get-file"),
+    t.literal("get-file-metadata"),
     t.literal("check-file"),
     t.literal("get-google-parents"),
     t.literal("clean-invalid-parents"),
@@ -238,6 +238,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
     t.literal("list-labels"),
+    t.literal("export-folder-structure"),
   ]),
   args: t.record(
     t.string,
@@ -618,6 +619,17 @@ export const SlackJoinResponseSchema = t.type({
 });
 export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
 
+export const SlackCheckChannelResponseSchema = t.type({
+  success: t.literal(true),
+  channel: t.type({
+    name: t.union([t.string, t.undefined]),
+    isPrivate: t.union([t.boolean, t.undefined]),
+  }),
+});
+export type SlackCheckChannelResponseType = t.TypeOf<
+  typeof SlackCheckChannelResponseSchema
+>;
+
 /**
  * </Slack>
  */
@@ -870,6 +882,7 @@ export const AdminResponseSchema = t.union([
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
+  SlackCheckChannelResponseSchema,
   SlackJoinResponseSchema,
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,

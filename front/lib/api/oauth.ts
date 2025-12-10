@@ -26,6 +26,8 @@ import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
+import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
+import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -72,7 +74,9 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   notion: new NotionOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
+  slack_tools: new SlackToolsOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
+  vanta: new VantaOAuthProvider(),
 };
 
 function getProviderStrategy(

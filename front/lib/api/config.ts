@@ -17,32 +17,8 @@ const config = {
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );
   },
-  getAuth0TenantUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
-  },
-  getAuth0AudienceUri: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_AUDIENCE_URI");
-  },
   getDustApiAudience: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
-  },
-  getAuth0M2MClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_M2M_CLIENT_ID");
-  },
-  getAuth0M2MClientSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_M2M_CLIENT_SECRET");
-  },
-  getAuth0WebApplicationId: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_WEB_APP_CLIENT_ID");
-  },
-  getAuth0ExtensionApplicationId: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
-  },
-  getAuth0CliApplicationId: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_CLI_CLIENT_ID");
-  },
-  getAuth0NamespaceClaim: (): string => {
-    return EnvironmentConfig.getEnvVariable("AUTH0_CLAIM_NAMESPACE");
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
@@ -105,10 +81,17 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("CORE_API_KEY") ?? null,
     };
   },
-  getConnectorsAPIConfig: (): { url: string; secret: string } => {
+  getConnectorsAPIConfig: (): {
+    url: string;
+    secret: string;
+    webhookSecret: string;
+  } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CONNECTORS_API"),
       secret: EnvironmentConfig.getEnvVariable("DUST_CONNECTORS_SECRET"),
+      webhookSecret: EnvironmentConfig.getEnvVariable(
+        "DUST_CONNECTORS_WEBHOOKS_SECRET"
+      ),
     };
   },
   getDustAPIConfig: (): { url: string; nodeEnv: string } => {
@@ -301,6 +284,23 @@ const config = {
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
+  getApolloApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
+  },
+  getContentfulSpaceId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
+  },
+  getContentfulAccessToken: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ACCESS_TOKEN");
+  },
+  getContentfulPreviewSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "CONTENTFUL_PREVIEW_SECRET"
+    );
+  },
+  getContentfulPreviewToken: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_PREVIEW_TOKEN");
   },
   // Untrusted egress proxy.
   getUntrustedEgressProxyHost: (): string | undefined => {

@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
@@ -19,7 +19,7 @@ interface AgentUpdateStats {
 
 async function updateAgentRequestedSpaceIds(
   auth: Authenticator,
-  agent: AgentConfiguration,
+  agent: AgentConfigurationModel,
   execute: boolean,
   logger: Logger
 ): Promise<{ updated: boolean; error?: string }> {
@@ -74,7 +74,7 @@ async function updateAgentRequestedSpaceIds(
   );
 
   if (execute) {
-    await AgentConfiguration.update(
+    await AgentConfigurationModel.update(
       {
         requestedSpaceIds: requirements.requestedSpaceIds,
       },
@@ -114,7 +114,7 @@ async function updateAgentsForWorkspace(
   });
 
   // Find all agent configurations (active and archived, but not draft) with empty requestedSpaceIds
-  const agents = await AgentConfiguration.findAll({
+  const agents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       status: {

@@ -12,13 +12,13 @@ import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -33,7 +33,7 @@ import type {
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentStepContentResource
   extends ReadonlyAttributesType<AgentStepContentModel> {}
 
@@ -60,7 +60,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   ): Promise<ModelId[]> {
     const uniqueAgentMessageIds = [...new Set(agentMessageIds)];
 
-    const agentMessages = await AgentMessage.findAll({
+    const agentMessages = await AgentMessageModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: uniqueAgentMessageIds },
@@ -236,7 +236,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     const includeClause: IncludeOptions[] = [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
         where: {
@@ -244,7 +244,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
         include: [
           {
-            model: Message,
+            model: MessageModel,
             as: "message",
             required: true,
             include: [

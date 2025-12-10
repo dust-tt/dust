@@ -116,6 +116,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "speech_generator",
   "toolsets",
   "val_town",
+  "vanta",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -130,6 +131,7 @@ export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
 
 // Whether the server is available by default in the global space.
 // Hidden servers are available by default in the global space but are not visible in the assistant builder.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_SERVER_AVAILABILITY = [
   "manual",
   "auto",
@@ -287,7 +289,7 @@ export const INTERNAL_MCP_SERVERS = {
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "HubspotLogo",
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/hubspot",
       instructions: null,
     },
   },
@@ -307,9 +309,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionRobotIcon",
       authorization: null,
       documentationUrl: null,
-      instructions: `These tools provide discoverability to published agents available in the workspace.
-The tools return agents with their "mention" markdown directive.
-The directive should be used to display a clickable version of the agent name in the response.`,
+      instructions: null,
     },
   },
   include_data: {
@@ -392,7 +392,7 @@ The directive should be used to display a clickable version of the agent name in
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "NotionLogo",
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/notion-mcp",
       instructions: null,
     },
   },
@@ -582,7 +582,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description: "Slack tools for searching and posting messages.",
       authorization: {
-        provider: "slack" as const,
+        provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
       },
       icon: "SlackLogo",
@@ -624,7 +624,7 @@ The directive should be used to display a clickable version of the agent name in
       description: "Work with spreadsheet data and tables.",
       authorization: {
         provider: "gmail",
-        supported_use_cases: ["personal_actions"] as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
         scope:
           "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
       },
@@ -750,7 +750,7 @@ The directive should be used to display a clickable version of the agent name in
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "JiraLogo",
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/jira",
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
@@ -971,7 +971,7 @@ The directive should be used to display a clickable version of the agent name in
       description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
       authorization: null,
       icon: "ActionAtomIcon",
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/go-deep",
       instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
@@ -1048,7 +1048,9 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
+      get_page: "never_ask",
       get_pages: "never_ask",
+      get_spaces: "never_ask",
 
       // Write operations - ask
       create_page: "low",
@@ -1074,7 +1076,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "auto",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       text_to_speech: "low",
       text_to_dialogue: "low",
@@ -1158,7 +1160,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "manual",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       generate_music: "low",
       generate_sound_effects: "low",
@@ -1313,6 +1315,33 @@ The directive should be used to display a clickable version of the agent name in
       description: "Search and read from your Slab knowledge base",
       authorization: null,
       icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  vanta: {
+    id: 44,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("vanta_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_tests: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "vanta",
+      version: "1.0.0",
+      description:
+        "Review compliance posture powered by Vanta's security platform.",
+      authorization: {
+        provider: "vanta" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ActionScanIcon",
       documentationUrl: null,
       instructions: null,
     },

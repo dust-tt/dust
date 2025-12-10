@@ -40,6 +40,7 @@ function getSavedTheme() {
     }
 
     return DEFAULT_THEME;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     // do nothing
   }
@@ -131,6 +132,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateTheme(theme);
   }, [theme, updateTheme]);
 

@@ -17,11 +17,12 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
+import { handleMentionsActivity } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
-import { trackUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
+import { trackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 
@@ -40,6 +41,7 @@ export async function runAgentLoopWorker() {
       conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
       finalizeCancellationActivity,
+      handleMentionsActivity,
       launchAgentMessageAnalyticsActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
@@ -48,7 +50,7 @@ export async function runAgentLoopWorker() {
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
-      trackUsageActivity,
+      trackProgrammaticUsageActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,
@@ -72,7 +74,7 @@ export async function runAgentLoopWorker() {
       // modules that are not available in Temporal environment.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },

@@ -2,6 +2,12 @@ import { Button } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import { visit } from "unist-util-visit";
 
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
+
 interface QuickReplyBlockProps {
   label: string;
   message: string;
@@ -21,6 +27,12 @@ export function QuickReplyBlock({
     if (isSending || disabled) {
       return;
     }
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "onboarding_conversation",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: { click_target: "quick_reply", label },
+    });
     setIsSending(true);
     try {
       await onSend(message);
@@ -46,6 +58,7 @@ export function quickReplyDirective() {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "quickReply" && node.children?.[0]) {
         const label = node.children[0].value;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "quickReply";
         data.hProperties = {

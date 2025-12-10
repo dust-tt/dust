@@ -21,6 +21,7 @@ import { useState } from "react";
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { clientFetch } from "@app/lib/egress/client";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -180,7 +181,7 @@ export function AgentDetailsDropdownMenu({
 
   const handleExportToYAML = async () => {
     setIsExporting(true);
-    const response = await fetch(
+    const response = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration?.sId}/export/yaml`
     );
 
@@ -189,6 +190,7 @@ export function AgentDetailsDropdownMenu({
       sendNotification({
         title: "Export failed",
         description:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorData.error?.message || "An error occurred while exporting",
         type: "error",
       });

@@ -21,6 +21,7 @@ import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
   sendInvitations,
@@ -94,7 +95,7 @@ export function InviteEmailButtonWithModal({
 
     const existingMembersResponses = await Promise.all(
       inviteEmailsList.map(async (email) => {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}`
         );
         if (!response.ok) {
@@ -184,6 +185,7 @@ export function InviteEmailButtonWithModal({
 
   useEffect(() => {
     if (open && prefillText && isEmailValid(prefillText)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInviteEmails((prev) => {
         if (prev.includes(prefillText)) {
           return prev;

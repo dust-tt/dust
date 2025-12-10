@@ -1,4 +1,4 @@
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { GPT_4_TURBO_MODEL_ID } from "@app/types";
 import { Err } from "@app/types";
@@ -27,7 +27,7 @@ async function updateWorkspaceAssistants(wId: string) {
     throw new Error(`Workspace ${wId} not found`);
   }
 
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: { workspaceId: w.id },
   });
 

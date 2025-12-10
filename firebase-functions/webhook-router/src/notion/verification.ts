@@ -1,8 +1,13 @@
 import crypto from "crypto";
 import type { Request, RequestHandler } from "express";
+import type express from "express";
+import { error } from "firebase-functions/logger";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import type { Region } from "../webhook-router-config.js";
+import { ALL_REGIONS } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -59,28 +64,31 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
 
 // Creates middleware that verifies Notion signature.
 export function createNotionVerificationMiddleware(
-  secretManager: SecretManager
+  secretManager: SecretManager,
+  webhookRouterConfigManager: WebhookRouterConfigManager,
+  { useClientCredentials }: { useClientCredentials: boolean }
 ): RequestHandler {
-  return async (req, res, next): Promise<void> => {
+  return async (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ): Promise<void> => {
+    let providerWorkspaceId: string | undefined;
+    let connectorIdsByRegion: Record<string, number[]> | undefined;
+
     try {
-      // Get secrets for Notion signature verification (webhook secret already validated)
-      const secrets = await secretManager.getSecrets();
-
-      // Skip verification if signing secret missing or empty.
-      // This is expected when we first set up the webhook and are waiting for
-      // Notion to send the verification_token.
-      if (
-        !secrets.notionSigningSecret ||
-        secrets.notionSigningSecret.trim() === ""
-      ) {
-        console.warn(
-          "Notion signing secret is missing or empty, skipping verification. This should only happen during initial setup."
-        );
-        return next();
-      }
-
       // Get the raw body for Notion signature verification.
       const stringBody = await parseExpressRequestRawBody(req);
+
+      // Parse body as JSON for routes to access the object.
+      req.body = JSON.parse(stringBody);
+
+      // Skip signature verification for the initial verification_token request, since
+      // that is what gives us the signing secret in the first place. This applies to
+      // both private client integrations and standard Dust integrations.
+      if (req.body.verification_token) {
+        return next();
+      }
 
       // Verify Notion signature.
       // Even though it's documented as "X-Notion-Signature", the actual header name is lowercase in practice.
@@ -97,29 +105,52 @@ export function createNotionVerificationMiddleware(
         );
       }
 
+      let signingSecret: string;
+      if (useClientCredentials) {
+        // It's a private client integration, so get the signing secret and regions from
+        // the webhook router config.
+        providerWorkspaceId = req.params.providerWorkspaceId;
+        const notionWebhookConfig = await webhookRouterConfigManager.getEntry(
+          "notion",
+          providerWorkspaceId
+        );
+        // Set the regions for the forwarder
+        req.regions = Object.keys(notionWebhookConfig.regions).filter(
+          (key): key is Region => ALL_REGIONS.includes(key as Region)
+        );
+        // Extract connectorIds by region for potential error logging
+        connectorIdsByRegion = notionWebhookConfig.regions;
+        signingSecret = notionWebhookConfig.signingSecret;
+      } else {
+        // Get secrets for Notion signature verification (webhook secret already validated)
+        const secrets = await secretManager.getSecrets();
+        signingSecret = secrets.notionSigningSecret;
+      }
+
       verifyRequestSignature({
         body: stringBody,
         signature: signature.slice(signaturePrefix.length),
-        signingSecret: secrets.notionSigningSecret,
+        signingSecret: signingSecret,
       });
 
-      // Parse body as JSON for routes to access the object.
-      req.body = JSON.parse(stringBody);
-
       return next();
-    } catch (error) {
-      if (error instanceof ReceiverAuthenticityError) {
-        console.error("Notion request verification failed", {
+    } catch (e) {
+      if (e instanceof ReceiverAuthenticityError) {
+        error("Notion request verification failed", {
           component: "notion-verification",
-          error: error.message,
+          error: e.message,
+          ...(providerWorkspaceId && { providerWorkspaceId }),
+          ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
         res.status(401).send();
         return;
       }
 
-      console.error("Notion request verification failed", {
+      error("Notion request verification failed", {
         component: "notion-verification",
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
+        ...(providerWorkspaceId && { providerWorkspaceId }),
+        ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });
       res.status(400).send();
       return;

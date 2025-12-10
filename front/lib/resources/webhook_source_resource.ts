@@ -7,8 +7,8 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -30,7 +30,7 @@ const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WebhookSourceResource
   extends ReadonlyAttributesType<WebhookSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -149,6 +149,13 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return this.baseFetch(auth, {
       order: [["createdAt", "DESC"]],
     });
+  }
+
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    const webhookSources = await this.listByWorkspace(auth);
+    for (const webhookSource of webhookSources) {
+      await webhookSource.delete(auth);
+    }
   }
 
   async updateRemoteMetadata(

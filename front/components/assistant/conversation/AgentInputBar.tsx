@@ -2,6 +2,9 @@ import {
   ArrowDownDashIcon,
   ArrowPathIcon,
   Button,
+  ContentMessageAction,
+  ContentMessageInline,
+  InformationCircleIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
 import {
@@ -10,6 +13,7 @@ import {
 } from "@virtuoso.dev/message-list";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -17,15 +21,14 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  hasHumansInteracting,
-  isHiddenContextOrigin,
+  isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { AgentMention } from "@app/types";
-import { isAgentMention } from "@app/types";
+import type { RichMention } from "@app/types";
+import { conjugate, pluralize, toRichAgentMentionType } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -34,7 +37,10 @@ export const AgentInputBar = ({
 }: {
   context: VirtuosoMessageListContext;
 }) => {
+  const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const generationContext = useContext(GenerationContext);
+  const { getBlockedActions, hasPendingValidations } =
+    useBlockedActionsContext();
 
   if (!generationContext) {
     throw new Error(
@@ -52,7 +58,8 @@ export const AgentInputBar = ({
     conversationId: context.conversationId,
   });
 
-  const isGenerating = !!generationContext.generatingMessages.length;
+  const generatingMessages =
+    generationContext.getConversationGeneratingMessages(context.conversationId);
 
   const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
@@ -62,34 +69,36 @@ export const AgentInputBar = ({
       (m) =>
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
-        m.visibility !== "deleted" &&
-        !isHiddenContextOrigin(m.context.origin)
+        m.visibility !== "deleted"
     );
 
-  const agentMentions = useMemo(() => {
+  const draftAgent = context.agentBuilderContext?.draftAgent;
+
+  const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
-    if (context.agentBuilderContext?.draftAgent) {
-      return [{ configurationId: context.agentBuilderContext.draftAgent.sId }];
+    if (draftAgent) {
+      return [toRichAgentMentionType(draftAgent)];
     }
     if (
       !lastUserMessage ||
       !isUserMessage(lastUserMessage) ||
-      hasHumansInteracting(methods.data.get())
+      lastUserMessage.richMentions.length > 1
     ) {
-      return emptyArray<AgentMention>();
+      return emptyArray<RichMention>();
     }
-    return lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage, context.agentBuilderContext?.draftAgent, methods.data]);
+
+    return lastUserMessage.richMentions;
+  }, [draftAgent, lastUserMessage]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisible = 100;
   const showScrollToBottomButton = bottomOffset >= distanceUntilButtonVisible;
   const showClearButton =
-    context.agentBuilderContext?.resetConversation && !isGenerating;
-  const showStopButton = generationContext.generatingMessages.some(
-    (m) => m.conversationId === context.conversationId
-  );
+    context.agentBuilderContext?.resetConversation &&
+    generatingMessages.length > 0;
+  const showStopButton = generatingMessages.length > 0;
+  const blockedActions = getBlockedActions(context.user.sId);
 
   const scrollToBottom = useCallback(() => {
     methods.scrollToItem({
@@ -106,10 +115,8 @@ export const AgentInputBar = ({
     if (isStopping) {
       return "Stopping...";
     }
-    const generatingCount = generationContext.generatingMessages.filter(
-      (m) => m.conversationId === context.conversationId
-    ).length;
-    return generatingCount > 1 ? "Stop all" : "Stop";
+
+    return generatingMessages.length > 1 ? "Stop all" : "Stop";
   };
 
   const handleStopGeneration = async () => {
@@ -132,6 +139,7 @@ export const AgentInputBar = ({
         (m) => m.conversationId === context.conversationId
       )
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsStopping(false);
     }
   }, [
@@ -143,7 +151,7 @@ export const AgentInputBar = ({
   return (
     <div
       className={
-        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-3xl sm:py-4"
+        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
       <div
@@ -180,15 +188,55 @@ export const AgentInputBar = ({
           />
         )}
       </div>
+      {blockedActions.length > 0 && (
+        <ContentMessageInline
+          icon={InformationCircleIcon}
+          variant="primary"
+          className="max-h-dvh mb-5 flex w-full"
+        >
+          <span className="font-bold">
+            {blockedActions.length} action
+            {pluralize(blockedActions.length)}
+          </span>{" "}
+          require{conjugate(blockedActions.length)} a manual action
+          {/* If there are pending validations, we show a button allowing to cycle through the blocked actions messages. */}
+          {hasPendingValidations(context.user.sId) && (
+            <ContentMessageAction
+              label="Review actions"
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                const blockedActionTargetMessageId =
+                  blockedActions[blockedActionIndex].messageId;
+
+                const blockedActionMessageIndex = methods.data.findIndex(
+                  (m) =>
+                    isMessageTemporayState(m) &&
+                    blockedActionTargetMessageId === m.message.sId
+                );
+
+                methods.scrollToItem({
+                  index: blockedActionMessageIndex,
+                  behavior: "smooth",
+                  align: "end",
+                });
+
+                setBlockedActionIndex((prevIndex) =>
+                  blockedActions.length > prevIndex + 1 ? prevIndex + 1 : 0
+                );
+              }}
+            />
+          )}
+        </ContentMessageInline>
+      )}
       <InputBar
         owner={context.owner}
         onSubmit={context.handleSubmit}
-        stickyMentions={agentMentions}
-        additionalAgentConfiguration={context.agentBuilderContext?.draftAgent}
+        stickyMentions={autoMentions}
         conversationId={context.conversationId}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
-        disable={context.agentBuilderContext?.isSavingDraftAgent}
+        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
       />
     </div>
   );

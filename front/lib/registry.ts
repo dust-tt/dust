@@ -207,7 +207,6 @@ export const getDustProdAction = (name: DustRegistryActionName) => {
   return registry[name];
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function cloneBaseConfig(config: { [model: string]: any }) {
   return JSON.parse(JSON.stringify(config));
 }

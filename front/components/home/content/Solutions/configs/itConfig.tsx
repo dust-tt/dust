@@ -37,6 +37,11 @@ export const pageSettings: pageSettingsProps = {
     "Surface IT trends for proactive improvements.",
   ],
   image: "/static/landing/it/itHelpdesk.png",
+  seo: {
+    title: "AI IT Support Agents: Automate Support, Empower Employees",
+    description:
+      "Scale IT support, automate routine requests, and keep your IT desk clean. Answer employee questions instantly, guide troubleshooting, streamline procurement.",
+  },
 };
 
 export const Hero: HeroProps = {
@@ -180,21 +185,21 @@ export const Stories: CustomerStory[] = [
     title: "Lifen Saves Two Hours per Week per Employee with Dust", // Soon to be replaced with Clay for RFP?
     content:
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
+    href: "/customers/customer-story-lifen",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },
   {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
       "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
-    href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+    href: "/customers/generative-ai-insights-alan-payfit-leaders",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+    href: "/customers/kyriba-accelerating-innovation-with-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },
 ];

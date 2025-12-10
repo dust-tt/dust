@@ -37,6 +37,7 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
@@ -599,7 +600,7 @@ function SearchResultsTable({
       try {
         let res;
         if (existingViewForSpace) {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${existingViewForSpace.sId}`,
             {
               method: "PATCH",
@@ -612,7 +613,7 @@ function SearchResultsTable({
             }
           );
         } else {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views`,
             {
               method: "POST",
@@ -654,6 +655,7 @@ function SearchResultsTable({
 
   // Transform search results into format for DataTable.
   const rows: RowData[] = React.useMemo(() => {
+    // eslint-disable-next-line react-hooks/refs
     return searchResultNodes.map((node) => {
       const { dataSourceView, internalId: parentId } = node;
 

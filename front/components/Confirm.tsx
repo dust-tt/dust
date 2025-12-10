@@ -2,7 +2,6 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -15,6 +14,7 @@ export type ConfirmDataType = {
   message: string | ReactNode;
   validateLabel?: string;
   validateVariant?: "primary" | "warning";
+  cancelLabel?: string;
 };
 
 export const ConfirmContext = createContext<
@@ -38,6 +38,7 @@ export function ConfirmPopupArea({ children }: { children: ReactNode }) {
       {children}
       <ConfirmDialog
         confirmData={confirmData}
+        // eslint-disable-next-line react-hooks/refs
         resolveConfirm={resolveConfirmRef.current}
         clearConfirmData={() => setConfirmData(null)}
       />
@@ -84,14 +85,12 @@ export function ConfirmDialog({
         <DialogHeader hideButton>
           <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <DialogDescription className="whitespace-normal break-words">
-            {confirmData?.message ?? ""}
-          </DialogDescription>
+        <DialogContainer className="whitespace-normal break-words">
+          {confirmData?.message ?? ""}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: confirmData?.cancelLabel ?? "Cancel",
             variant: "outline",
             onClick: () => resolveConfirm(false),
           }}

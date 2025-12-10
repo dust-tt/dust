@@ -1,13 +1,11 @@
-// @ts-nocheck
-// This migration file references deleted process modules but has already been run in production
 import fs from "fs";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -20,13 +18,14 @@ import type { ModelId } from "@app/types";
 const DEFAULT_PROCESS_ACTION_NAME = "extract_structured_data_from_data_sources";
 
 async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
+  // @ts-ignore
   const processConfigurations = await AgentProcessConfiguration.findAll({
     attributes: ["workspaceId"],
     // Filter on active agents.
     include: [
       {
         attributes: [],
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         required: true,
         where: {
           status: "active",
@@ -36,6 +35,7 @@ async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
     order: [["id", "ASC"]],
   });
 
+  // @ts-ignore
   return processConfigurations.map((config) => config.workspaceId);
 }
 
@@ -63,6 +63,7 @@ async function migrateWorkspaceExtractActions(
 
   // Find all existing process configurations that are linked to an agent configuration
   // (non-MCP version) and not yet linked to an MCP server configuration.
+  // @ts-ignore
   const processConfigs = await AgentProcessConfiguration.findAll({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -71,7 +72,7 @@ async function migrateWorkspaceExtractActions(
     include: [
       {
         attributes: [],
-        model: AgentConfiguration,
+        model: AgentConfigurationModel,
         required: true,
         where: {
           status: "active",
@@ -119,35 +120,46 @@ async function migrateWorkspaceExtractActions(
     processConfigs,
     async (processConfig) => {
       if (execute) {
-        const mcpConfig = await AgentMCPServerConfiguration.create({
+        const mcpConfig = await AgentMCPServerConfigurationModel.create({
           sId: generateRandomModelSId(),
+          // @ts-ignore
           agentConfigurationId: processConfig.agentConfigurationId,
           workspaceId: auth.getNonNullableWorkspace().id,
           mcpServerViewId: mcpServerView.id,
           internalMCPServerId: mcpServerView.mcpServerId,
           additionalConfiguration: {},
           timeFrame:
+            // @ts-ignore
             processConfig.relativeTimeFrameDuration &&
+            // @ts-ignore
             processConfig.relativeTimeFrameUnit
               ? {
+                  // @ts-ignore
                   duration: processConfig.relativeTimeFrameDuration,
+                  // @ts-ignore
                   unit: processConfig.relativeTimeFrameUnit,
                 }
               : null,
           name:
+            // @ts-ignore
             !processConfig.name ||
+            // @ts-ignore
             processConfig.name === DEFAULT_PROCESS_ACTION_NAME
               ? null
-              : processConfig.name,
+              : // @ts-ignore
+                processConfig.name,
+          // @ts-ignore
           singleToolDescriptionOverride: processConfig.description,
           appId: null,
+          // @ts-ignore
           jsonSchema: processConfig.jsonSchema,
         });
 
         // Move the datasources to the new MCP server configuration.
-        const datasources = await AgentDataSourceConfiguration.findAll({
+        const datasources = await AgentDataSourceConfigurationModel.findAll({
           where: {
             workspaceId: auth.getNonNullableWorkspace().id,
+            // @ts-ignore
             processConfigurationId: processConfig.id,
           },
         });
@@ -155,18 +167,23 @@ async function migrateWorkspaceExtractActions(
         // Before due to foreign key constraint.
         revertSql +=
           getInsertSQL(
+            // @ts-ignore
             AgentProcessConfiguration,
+            // @ts-ignore
             processConfig.get({ plain: true })
           ) + "\n";
 
         for (const datasource of datasources) {
           await datasource.update({
+            // @ts-ignore
             processConfigurationId: null,
             mcpServerConfigurationId: mcpConfig.id,
           });
+          // @ts-ignore
           revertSql += `UPDATE "agent_data_source_configurations" SET "processConfigurationId" = ${processConfig.id}, "mcpServerConfigurationId" = NULL WHERE "id" = '${datasource.id}';\n`;
         }
 
+        // @ts-ignore
         await processConfig.destroy();
 
         // After due to foreign key constraint.
@@ -175,6 +192,7 @@ async function migrateWorkspaceExtractActions(
         // Log the model IDs for an easier rollback.
         logger.info(
           {
+            // @ts-ignore
             processConfigurationId: processConfig.id,
             mcpServerConfigurationId: mcpConfig.id,
           },
@@ -183,6 +201,7 @@ async function migrateWorkspaceExtractActions(
       } else {
         logger.info(
           {
+            // @ts-ignore
             processConfigurationId: processConfig.id,
           },
           `Would create MCP server config and migrate process config to it.`

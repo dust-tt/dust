@@ -1,6 +1,7 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { DustAPI } from "@dust-tt/client";
+import { useMemo } from "react";
 
 export const useDustAPI = () => {
   const platform = usePlatform();
@@ -16,18 +17,20 @@ export const useDustAPI = () => {
     throw new Error("Dust domain or node env not set");
   }
 
-  return new DustAPI(
-    {
-      url: user.dustDomain,
-    },
-    {
-      apiKey: () => platform.auth.getAccessToken(),
-      workspaceId: workspace.sId,
-      extraHeaders: {
-        "X-Dust-Extension-Version": extensionVersion || "development",
-        "X-Commit-Hash": commitHash || "development",
+  return useMemo(() => {
+    return new DustAPI(
+      {
+        url: user.dustDomain,
       },
-    },
-    console
-  );
+      {
+        apiKey: () => platform.auth.getAccessToken(),
+        workspaceId: workspace.sId,
+        extraHeaders: {
+          "X-Dust-Extension-Version": extensionVersion || "development",
+          "X-Commit-Hash": commitHash || "development",
+        },
+      },
+      console
+    );
+  }, [user.dustDomain, workspace.sId, platform]);
 };

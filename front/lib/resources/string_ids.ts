@@ -39,6 +39,7 @@ const RESOURCES_PREFIX = {
   agent_message_feedback: "amf",
   onboarding_task: "obt",
   programmatic_usage_configuration: "puc",
+  credit: "crd",
 
   // Resource relative to triggers.
   trigger: "trg",
@@ -55,6 +56,9 @@ const RESOURCES_PREFIX = {
 
   // Virtual resources (no database models associated).
   internal_mcp_server: "ims",
+
+  // Skills.
+  skill: "skl",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

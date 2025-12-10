@@ -3,7 +3,7 @@ import type { GroupedCountResultItem } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -37,7 +37,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
 
   // Count agent tables query configurations that uses those data sources and have no dataSourceViewId.
   const agentTablesQueryConfigurationsCount: GroupedCountResultItem[] =
-    await AgentTablesQueryConfigurationTable.count({
+    await AgentTablesQueryConfigurationTableModel.count({
       // @ts-expect-error `dataSourceViewId` is not nullable.
       where: {
         dataSourceId: dataSources.map((ds) => ds.id),
@@ -64,7 +64,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
       `Data source view not found for data source ${ds.id}.`
     );
 
-    await AgentTablesQueryConfigurationTable.update(
+    await AgentTablesQueryConfigurationTableModel.update(
       { dataSourceViewId: dataSourceView.id },
       {
         where: {

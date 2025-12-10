@@ -40,7 +40,6 @@ function getCacheKey<T, Args extends unknown[]>(
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
 // if caching big objects, there is a possible race condition (multiple calls to
 // caching), therefore, we use a lock
@@ -146,8 +145,6 @@ export function invalidateCacheWithRedis<T, Args extends unknown[]>(
     await redisCli.del(key);
   };
 }
-
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const locks: Record<string, (() => void)[]> = {};
 

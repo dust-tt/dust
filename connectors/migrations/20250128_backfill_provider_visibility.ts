@@ -8,7 +8,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -22,7 +22,7 @@ makeScript({}, async ({ execute }, logger) => {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const connectorId = connector.id;
 
-    const channels = await SlackChannel.findAll({
+    const channels = await SlackChannelModel.findAll({
       where: {
         connectorId: connectorId,
         permission: { [Op.or]: ["read", "read_write"] },

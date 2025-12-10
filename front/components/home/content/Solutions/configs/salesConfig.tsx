@@ -43,6 +43,11 @@ export const pageSettings: pageSettingsProps = {
     "Coach sales reps with call insights.",
   ],
   image: "/static/landing/sales/accountSnapshot.png",
+  seo: {
+    title: "AI Sales Agents: Build Custom Agents in Minutes",
+    description:
+      "Optimize every touchpoint, automate administrative overhead, and close deals faster. Generate account snapshots, auto-complete RFPs, create personalized outreach.",
+  },
 };
 
 export const Hero: HeroProps = {
@@ -174,28 +179,28 @@ export const Stories: CustomerStory[] = [
     title: "Clay powers 4x sales team growth with Dust AI agents",
     content:
       "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity.",
-    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    href: "/customers/clay-scaling-gtme-team",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
   {
     title: "Alan's teams save 3h weekly scraping sales transcripts",
     content:
       "Alan’s sales & marketing team transforms sales conversations into intelligence with AI agents",
-    href: "https://blog.dust.tt/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents/",
+    href: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1-1.png",
   },
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+    href: "/customers/kyriba-accelerating-innovation-with-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
   },
   {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
       "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
-    href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+    href: "/customers/generative-ai-insights-alan-payfit-leaders",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
 ];
@@ -295,7 +300,7 @@ export const salesFAQItems = [
         meetings and account handovers faster than manual research could ever
         achieve.{" "}
         <a
-          href="https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/"
+          href="/blog/generative-ai-insights-alan-payfit-leaders"
           target="_blank"
           rel="noreferrer"
           className="underline underline-offset-4"

@@ -8,8 +8,8 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { untrustedFetch } from "@app/lib/egress/server";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -41,7 +41,7 @@ async function getValTownClient(
     return null;
   }
 
-  const secret = await DustAppSecret.findOne({
+  const secret = await DustAppSecretModel.findOne({
     where: {
       name: toolConfig.secretName,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -457,7 +457,9 @@ function createServer(
           let resultText = `Found ${files.length} file(s) in val ${valId} at path "${path || "root"}":\n\n`;
 
           for (const file of files) {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             resultText += `Path: ${file.path || "Unknown"}\n`;
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             resultText += `Type: ${file.type || "Unknown"}\n`;
             if (file.links) {
               if (file.links.self) {

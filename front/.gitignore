@@ -37,3 +37,7 @@ next-env.d.ts
 
 # build output
 dist/
+
+# cache
+.cache/
+.eslintcache

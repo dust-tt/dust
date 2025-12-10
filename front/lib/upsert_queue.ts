@@ -135,24 +135,34 @@ async function enqueueUpsert({
       upsertQueueId: string;
       launchWorkflowFn: typeof launchUpsertTableWorkflow;
     }): Promise<Result<string, Error>> {
-  const now = Date.now();
-
   try {
     const storage = new Storage({ keyFilename: config.getServiceAccount() });
     const bucket = storage.bucket(config.getGcsUpsertQueueBucket());
+    const now = Date.now();
     await bucket
       .file(`${upsertQueueId}.json`)
       .save(JSON.stringify(upsertItem), {
         contentType: "application/json",
       });
-
+    const latencyGcsMs = Date.now() - now;
     const launchRes = await launchWorkflowFn({
       workspaceId: upsertItem.workspaceId,
       dataSourceId: upsertItem.dataSourceId,
       upsertQueueId,
       enqueueTimestamp: now,
     });
+    const latencyTemporalMs = Date.now() - now - latencyGcsMs;
 
+    logger.info(
+      {
+        upsertQueueId,
+        workspaceId: upsertItem.workspaceId,
+        dataSourceId: upsertItem.dataSourceId,
+        latencyGcsMs,
+        latencyTemporalMs,
+      },
+      "[UpsertQueue] Enqueued item"
+    );
     if (launchRes.isErr()) {
       return launchRes;
     }

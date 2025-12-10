@@ -155,6 +155,7 @@ export async function getWorkspaceTagSuggestions(
       },
       prompt: instructionsWithAgents,
       specifications,
+      forceToolCall: SEND_TAGS_FUNCTION_NAME,
     },
     {
       context: {

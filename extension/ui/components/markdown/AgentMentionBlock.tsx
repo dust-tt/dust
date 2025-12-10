@@ -10,7 +10,7 @@ export function AgentMentionBlock({
   agentName: string;
   agentSId: string;
 }) {
-  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
+  const { setAnimate, setSelectedAgent } = useContext(InputBarContext);
 
   return (
     <span
@@ -19,7 +19,7 @@ export function AgentMentionBlock({
         "dark:text-highlight-night"
       )}
       onClick={() => {
-        setSelectedAssistant({ configurationId: agentSId });
+        setSelectedAgent({ configurationId: agentSId });
         setAnimate(true);
       }}
     >

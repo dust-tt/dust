@@ -44,7 +44,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -139,7 +139,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 
   const owner = auth.getNonNullableWorkspace();
 
-  const agentConfiguration = await AgentConfiguration.findOne({
+  const agentConfiguration = await AgentConfigurationModel.findOne({
     where: {
       sId: agentId,
       workspaceId: owner.id,
@@ -454,6 +454,7 @@ export default async function createServer(
             return;
           }
 
+          /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
           if (!childCancellationPromise) {
             childCancellationPromise = cancelMessageGenerationEvent(auth, {
               messageIds: [agentMessage.sId],
@@ -800,41 +801,18 @@ export default async function createServer(
                 );
                 return await finalizeAndReturn(new Ok(blockedResponse.content));
               }
-            } else if (event.type === "tool_error") {
-              // Handle personal authentication required errors.
-              if (
-                event.error.code ===
-                "mcp_server_personal_authentication_required"
-              ) {
-                const metadata = event.error.metadata ?? {};
+            } else if (event.type === "tool_personal_auth_required") {
+              collectedBlockingEvents.push(event);
 
-                collectedBlockingEvents.push({
-                  type: "tool_personal_auth_required",
-                  created: event.created,
-                  configurationId: event.configurationId,
-                  messageId: event.messageId,
-                  conversationId: conversation.sId,
-                  authError: {
-                    mcpServerId: metadata.mcp_server_id,
-                    provider: metadata.provider,
-                    toolName: metadata.toolName,
-                    message: metadata.message,
-                    scope: metadata.scope,
-                  },
-                });
-
-                if (event.isLastBlockingEventForStep) {
-                  const blockedResponse = makeToolBlockedAwaitingInputResponse(
-                    collectedBlockingEvents,
-                    {
-                      conversationId: conversation.sId,
-                      userMessageId,
-                    }
-                  );
-                  return await finalizeAndReturn(
-                    new Ok(blockedResponse.content)
-                  );
-                }
+              if (event.isLastBlockingEventForStep) {
+                const blockedResponse = makeToolBlockedAwaitingInputResponse(
+                  collectedBlockingEvents,
+                  {
+                    conversationId: conversation.sId,
+                    userMessageId,
+                  }
+                );
+                return await finalizeAndReturn(new Ok(blockedResponse.content));
               }
             }
           }
@@ -870,8 +848,8 @@ export default async function createServer(
           const normalizedError = normalizeError(streamError);
           const isNotConnected = normalizedError.message === "Not connected";
           const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
-          /* eslint-disable-next-line @typescript-eslint/return-await */
-          return await finalizeAndReturn(
+
+          return finalizeAndReturn(
             new Err(
               new MCPError(errorMessage, {
                 tracked: !isNotConnected,

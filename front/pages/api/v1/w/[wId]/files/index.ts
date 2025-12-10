@@ -87,6 +87,7 @@ import {
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -195,6 +196,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { POST: "create:file" },
-});
+export default withPublicAPIAuthentication(handler);

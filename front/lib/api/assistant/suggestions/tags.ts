@@ -122,6 +122,7 @@ export async function getBuilderTagSuggestions(
       conversation: getConversationContext(inputs),
       prompt: auth.isAdmin() && isAdminInput ? ADMIN_PROMPT : USER_PROMPT,
       specifications,
+      forceToolCall: FUNCTION_NAME,
     },
     {
       context: {

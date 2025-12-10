@@ -1,9 +1,9 @@
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { AgentsUsageType, ModelId } from "@app/types";
 
@@ -55,7 +55,7 @@ async function getAccessibleAgentsInfoBySId({
         ],
       };
 
-  const accessibleAgents = await AgentConfiguration.findAll({
+  const accessibleAgents = await AgentConfigurationModel.findAll({
     attributes: ["id", "sId", "name"],
     where: agentWhereClause,
   });

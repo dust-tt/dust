@@ -131,7 +131,11 @@ async function handler(
 
     const finalMembershipInvite = membershipInvite ?? pendingInvitations?.[0];
     const loginFctn = finalMembershipInvite
-      ? async () => handleMembershipInvite(user, finalMembershipInvite)
+      ? async () =>
+          handleMembershipInvite({
+            user,
+            membershipInvite: finalMembershipInvite,
+          })
       : async () =>
           handleRegularSignupFlow(
             session,

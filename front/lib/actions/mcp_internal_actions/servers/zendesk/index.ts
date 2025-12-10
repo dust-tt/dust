@@ -5,16 +5,24 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getUniqueCustomFieldIds,
   getZendeskClient,
+  ZendeskApiError,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
   renderTicket,
+  renderTicketComments,
   renderTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
+import type { ZendeskUser } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
+
+function isTrackedError(error: Error): boolean {
+  return !(error instanceof ZendeskApiError && error.isInvalidInput);
+}
 
 const ZENDESK_TOOL_NAME = "zendesk";
 
@@ -28,7 +36,8 @@ function createServer(
     "get_ticket",
     "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, " +
       "description, status, priority, assignee, and other metadata. Optionally include ticket metrics " +
-      "such as resolution times, wait times, and reply counts.",
+      "such as resolution times, wait times, and reply counts. Optionally include the full conversation " +
+      "with all comments.",
     {
       ticketId: z
         .number()
@@ -41,6 +50,12 @@ function createServer(
         .describe(
           "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
         ),
+      includeConversation: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
+        ),
     },
     withToolLogging(
       auth,
@@ -48,7 +63,10 @@ function createServer(
         toolNameForMonitoring: ZENDESK_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ ticketId, includeMetrics }, { authInfo }) => {
+      async (
+        { ticketId, includeMetrics, includeConversation },
+        { authInfo }
+      ) => {
         const clientResult = getZendeskClient(authInfo);
         if (clientResult.isErr()) {
           return clientResult;
@@ -60,7 +78,8 @@ function createServer(
         if (ticketResult.isErr()) {
           return new Err(
             new MCPError(
-              `Failed to retrieve ticket: ${ticketResult.error.message}`
+              `Failed to retrieve ticket: ${ticketResult.error.message}`,
+              { tracked: isTrackedError(ticketResult.error) }
             )
           );
         }
@@ -78,12 +97,48 @@ function createServer(
           if (metricsResult.isErr()) {
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`
+                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`,
+                { tracked: isTrackedError(metricsResult.error) }
               )
             );
           }
 
           ticketText += "\n" + renderTicketMetrics(metricsResult.value);
+        }
+
+        if (includeConversation) {
+          const commentsResult = await client.getTicketComments(ticketId);
+
+          if (commentsResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to retrieve ticket conversation: ${commentsResult.error.message}`,
+                { tracked: isTrackedError(commentsResult.error) }
+              )
+            );
+          }
+
+          const comments = commentsResult.value;
+          const authorIds = Array.from(
+            new Set(comments.map((comment) => comment.author_id))
+          );
+
+          let users: ZendeskUser[] = [];
+          if (authorIds.length > 0) {
+            const usersResult = await client.getUsersByIds(authorIds);
+            if (usersResult.isErr()) {
+              logger.warn(
+                {
+                  error: usersResult.error.message,
+                },
+                "[Zendesk] Failed to retrieve user information for comments"
+              );
+            } else {
+              users = usersResult.value;
+            }
+          }
+
+          ticketText += renderTicketComments(comments, users);
         }
 
         return new Ok([
@@ -138,7 +193,9 @@ function createServer(
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to search tickets: ${result.error.message}`)
+            new MCPError(`Failed to search tickets: ${result.error.message}`, {
+              tracked: isTrackedError(result.error),
+            })
           );
         }
 
@@ -206,7 +263,9 @@ function createServer(
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to draft reply: ${result.error.message}`)
+            new MCPError(`Failed to draft reply: ${result.error.message}`, {
+              tracked: isTrackedError(result.error),
+            })
           );
         }
 

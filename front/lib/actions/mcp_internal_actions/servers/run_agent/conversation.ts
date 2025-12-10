@@ -1,4 +1,5 @@
 import type {
+  APIError,
   ConversationPublicType,
   DustAPI,
   PublicPostContentFragmentRequestBody,
@@ -23,6 +24,18 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 import { Err, isUserMessageType, Ok } from "@app/types";
+
+/**
+ * Determines if an error should be considered user-side.
+ * User-side errors should not trigger alerts and their messages should be
+ * surfaced to the model.
+ */
+function isUserSideError(error: APIError): boolean {
+  return (
+    error.type === "invalid_request_error" ||
+    error.type === "plan_message_limit_exceeded"
+  );
+}
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -67,10 +80,7 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -125,9 +135,16 @@ export async function getOrCreateConversation(
   const parentMessage = mainConversation.content
     .flat()
     .find((m) => m.sId === originMessage.parentMessageId);
-  if (parentMessage && isUserMessageType(parentMessage)) {
-    parentOrigin = parentMessage.context.origin ?? null;
+
+  if (!parentMessage) {
+    return new Err(new MCPError("Parent message not found."));
   }
+
+  if (!isUserMessageType(parentMessage)) {
+    return new Err(new MCPError("Parent message is not a user message."));
+  }
+
+  parentOrigin = parentMessage.context.origin ?? null;
 
   if (parentOrigin === "run_agent" || parentOrigin === "agent_handover") {
     logger.error(
@@ -166,10 +183,7 @@ export async function getOrCreateConversation(
     });
 
     if (messageRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = messageRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(messageRes.error);
       const message = isUserSide
         ? messageRes.error.message
         : "Failed to create message";
@@ -186,10 +200,7 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -243,10 +254,7 @@ export async function getOrCreateConversation(
       "Failed to create conversation"
     );
 
-    // Do not track invalid request errors, since they are user-side and should
-    // not trigger an alert on our end. For user-side errors, surface the
-    // underlying message to the model.
-    const isUserSide = convRes.error.type === "invalid_request_error";
+    const isUserSide = isUserSideError(convRes.error);
     const message = isUserSide
       ? convRes.error.message
       : "Failed to create conversation";

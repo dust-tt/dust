@@ -7,6 +7,7 @@ import {
   DiscordLogo,
   GlobeAltIcon,
   Input,
+  LockIcon,
   MicIcon,
   MicrosoftLogo,
   Page,
@@ -33,13 +34,13 @@ import { ProviderManagementModal } from "@app/components/workspace/ProviderManag
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
-import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
-import logger from "@app/logger/logger";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
@@ -50,12 +51,11 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { ConnectorsAPI, Err, Ok, setupOAuthConnection } from "@app/types";
+import { Err, Ok, setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  isSlackDataSourceBotEnabled: boolean;
   isDiscordBotAvailable: boolean;
   slackBotDataSource: DataSourceType | null;
   microsoftBotDataSource: DataSourceType | null;
@@ -71,31 +71,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const [
-    [slackDataSource],
     [slackBotDataSource],
     [microsoftBotDataSource],
     [discordBotDataSource],
   ] = await Promise.all([
-    DataSourceResource.listByConnectorProvider(auth, "slack"),
     DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
     DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
     DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
   ]);
-
-  let isSlackDataSourceBotEnabled = false;
-  if (slackDataSource && slackDataSource.connectorId) {
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const configRes = await connectorsAPI.getConnectorConfig(
-      slackDataSource.connectorId,
-      "botEnabled"
-    );
-    if (configRes.isOk()) {
-      isSlackDataSourceBotEnabled = configRes.value.configValue === "true";
-    }
-  }
 
   const featureFlags = await getFeatureFlags(owner);
   const isDiscordBotAvailable = featureFlags.includes("discord_bot");
@@ -106,7 +89,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      isSlackDataSourceBotEnabled,
       isDiscordBotAvailable,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
@@ -119,7 +101,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
-  isSlackDataSourceBotEnabled,
   isDiscordBotAvailable,
   slackBotDataSource,
   microsoftBotDataSource,
@@ -133,6 +114,8 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -156,12 +139,13 @@ export default function WorkspaceAdmin({
   }, [owner.name, workspaceName]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);
 
   const handleUpdateWorkspace = async () => {
     setUpdating(true);
-    const res = await fetch(`/api/w/${owner.sId}`, {
+    const res = await clientFetch(`/api/w/${owner.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -191,7 +175,11 @@ export default function WorkspaceAdmin({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "workspace",
+        featureFlags,
+      })}
     >
       <Page.Vertical align="stretch" gap="xl">
         <Page.Header title="Workspace Settings" icon={GlobeAltIcon} />
@@ -262,25 +250,26 @@ export default function WorkspaceAdmin({
             <div className="h-full border-b border-border dark:border-border-night" />
             <InteractiveContentSharingToggle owner={owner} />
             <VoiceTranscriptionToggle owner={owner} />
+            {featureFlags.includes("restrict_agents_publishing") && (
+              <RestrictAgentsPublishingCapability />
+            )}
           </ContextItem.List>
         </Page.Vertical>
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h4">Integrations</Page.H>
           <ContextItem.List>
             <div className="h-full border-b border-border dark:border-border-night" />
-            {!isSlackDataSourceBotEnabled && (
-              <BotToggle
-                owner={owner}
-                botDataSource={slackBotDataSource}
-                systemSpace={systemSpace}
-                oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
-                connectorProvider="slack_bot"
-                name="Slack Bot"
-                description="Use Dust Agents in Slack with the Dust Slack app"
-                visual={<SlackLogo className="h-6 w-6" />}
-                documentationUrl="https://docs.dust.tt/docs/slack"
-              />
-            )}
+            <BotToggle
+              owner={owner}
+              botDataSource={slackBotDataSource}
+              systemSpace={systemSpace}
+              oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
+              connectorProvider="slack_bot"
+              name="Slack Bot"
+              description="Use Dust Agents in Slack with the Dust Slack app"
+              visual={<SlackLogo className="h-6 w-6" />}
+              documentationUrl="https://docs.dust.tt/docs/slack"
+            />
             <BotToggle
               owner={owner}
               botDataSource={microsoftBotDataSource}
@@ -375,7 +364,7 @@ function BotToggle({
 
     const connectionId = cRes.value.connection_id;
 
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
       {
         method: "POST",
@@ -466,6 +455,7 @@ function BotToggle({
                 } else {
                   const updateRes = await updateConnectorConnectionId(
                     cRes.value.connection_id,
+                    oauth.extraConfig,
                     connectorProvider,
                     botDataSource,
                     owner
@@ -541,6 +531,20 @@ function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
           disabled={isChanging}
           onClick={doToggleVoiceTranscription}
         />
+      }
+    />
+  );
+}
+
+function RestrictAgentsPublishingCapability() {
+  return (
+    <ContextItem
+      title="Restricted agents publication"
+      subElement="Publishing agents is restricted to builders and admins"
+      visual={<LockIcon className="h-6 w-6" />}
+      hasSeparatorIfLast={true}
+      action={
+        <SliderToggle selected={true} disabled={true} onClick={() => {}} />
       }
     />
   );

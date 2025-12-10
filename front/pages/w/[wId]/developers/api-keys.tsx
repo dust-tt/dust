@@ -39,9 +39,11 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type {
   GroupType,
@@ -117,13 +119,14 @@ export function APIKeys({
     useSubmitFunction(
       async ({ name, group }: { name: string; group: GroupType | null }) => {
         const globalGroup = groups.find((g) => g.kind === "global");
-        const response = await fetch(`/api/w/${owner.sId}/keys`, {
+        const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             name,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             group_id: group?.sId ? group.sId : globalGroup?.sId,
           }),
         });
@@ -150,7 +153,7 @@ export function APIKeys({
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (key: KeyType) => {
-      await fetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
+      await clientFetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -421,6 +424,7 @@ export function APIKeys({
                             )}
                           >
                             Name:{" "}
+                            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
                           </p>
                           <p
@@ -506,11 +510,17 @@ export default function APIKeysPage({
   subscription,
   groups,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "api_keys",
+        featureFlags,
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header

@@ -81,6 +81,7 @@ if (
           "color: #54B47D; font-size: 16px; font-weight: bold; text-decoration: underline;"
         );
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // Silently fail if localStorage is not available or throws an error.
       // This can happen in private browsing mode or when cookies are disabled.

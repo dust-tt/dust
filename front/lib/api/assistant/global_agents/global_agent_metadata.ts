@@ -264,6 +264,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
           "Same as dust but on another model to experiment internally.",
         pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.DUST_QUICK:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_QUICK,
+        name: "dust-quick",
+        description:
+          "Same as dust but running Gemini 3 with minimal reasoning for faster responses.",
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+      };
     case GLOBAL_AGENTS_SID.DUST:
       return {
         sId: GLOBAL_AGENTS_SID.DUST,

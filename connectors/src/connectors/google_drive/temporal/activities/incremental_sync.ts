@@ -24,16 +24,16 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveSyncToken,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveSyncTokenModel,
 } from "@connectors/lib/models/google_drive";
 import { heartbeat } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
-import { WithRetriesError } from "@connectors/types";
+import { FILE_ATTRIBUTES_TO_FETCH, WithRetriesError } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 
 export async function incrementalSync(
@@ -45,22 +45,20 @@ export async function incrementalSync(
 ): Promise<
   { nextPageToken: string | undefined; newFolders: string[] } | undefined
 > {
-  const localLogger = logger.child({
-    provider: "google_drive",
-    connectorId: connectorId,
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const localLogger = getActivityLogger(connector).child({
     driveId: driveId,
-    activity: "incrementalSync",
     runInstance: uuid4(),
   });
+
   const redisCli = await redisClient({
     origin: "google_drive_incremental_sync",
   });
   const newFolders = [];
   try {
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      throw new Error(`Connector ${connectorId} not found`);
-    }
     if (!nextPageToken) {
       nextPageToken = await getSyncPageToken(
         connectorId,
@@ -68,7 +66,7 @@ export async function incrementalSync(
         isSharedDrive
       );
     }
-    const config = await GoogleDriveConfig.findOne({
+    const config = await GoogleDriveConfigModel.findOne({
       where: {
         connectorId: connectorId,
       },
@@ -87,7 +85,7 @@ export async function incrementalSync(
     let opts: drive_v3.Params$Resource$Changes$List = {
       pageToken: nextPageToken,
       pageSize: 1000,
-      fields: "*",
+      fields: `nextPageToken, newStartPageToken, changes(changeType, fileId, time, removed, file(${FILE_ATTRIBUTES_TO_FETCH.join(",")}))`,
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,
       includeLabels: labels.map((l) => l.id).join(","),
@@ -166,7 +164,7 @@ export async function incrementalSync(
       ) {
         // The current file is not in the list of selected folders.
         // If we have it locally, we need to garbage collect it.
-        const localFile = await GoogleDriveFiles.findOne({
+        const localFile = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connectorId,
             driveFileId: change.file.id,
@@ -216,7 +214,7 @@ export async function incrementalSync(
           driveFile,
           startSyncTs
         );
-        const localFolder = await GoogleDriveFiles.findOne({
+        const localFolder = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connectorId,
             driveFileId: change.file.id,
@@ -226,7 +224,7 @@ export async function incrementalSync(
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
         if (localFolder && localFolder.parentId !== parentGoogleIds[1]) {
-          logger.info(
+          localLogger.info(
             {
               fileId: change.file.id,
               localParentId: localFolder.parentId,
@@ -276,7 +274,7 @@ export async function incrementalSync(
       ? changesRes.data.nextPageToken
       : undefined;
     if (changesRes.data.newStartPageToken) {
-      await GoogleDriveSyncToken.upsert({
+      await GoogleDriveSyncTokenModel.upsert({
         connectorId: connectorId,
         driveId: driveId,
         syncToken: changesRes.data.newStartPageToken,
@@ -322,12 +320,12 @@ export async function incrementalSync(
 
 async function recurseUpdateParents(
   connector: ConnectorResource,
-  file: GoogleDriveFiles,
+  file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger
 ) {
   await heartbeat();
-  const children = await GoogleDriveFiles.findAll({
+  const children = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connector.id,
       parentId: file.driveFileId,

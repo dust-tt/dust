@@ -62,7 +62,7 @@ function getToolStake(
   return toolName in stakes ? stakes[toolName] : undefined;
 }
 
-function getDefaultInternalToolStakeLevel(
+export function getDefaultInternalToolStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
 ): MCPToolStakeLevelType {

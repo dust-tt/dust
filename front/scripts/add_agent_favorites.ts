@@ -1,4 +1,4 @@
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -43,7 +43,7 @@ makeScript(
         continue;
       }
 
-      const agentRelation = await AgentUserRelation.findOne({
+      const agentRelation = await AgentUserRelationModel.findOne({
         where: {
           workspaceId: workspace.id,
           agentConfiguration: agentConfigurationSID,
@@ -72,7 +72,7 @@ makeScript(
     for (const membership of memberships) {
       for (const agentConfigurationSID of agents) {
         // Check if relation already exists
-        const [, created] = await AgentUserRelation.findOrCreate({
+        const [, created] = await AgentUserRelationModel.findOrCreate({
           where: {
             workspaceId: workspace.id,
             userId: membership.userId,

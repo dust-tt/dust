@@ -1,4 +1,4 @@
-name: Lint & Build (connectors)
+name: Lint & Build & Test (connectors)
 
 on:
   push:
@@ -12,7 +12,16 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-eslint:
+  tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Typecheck
+        working-directory: connectors
+        run: npm install && npm run tsgo -- --version && npm run tsgo
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -26,7 +35,16 @@ jobs:
         run: npm install && npm run build
       - name: Lint and format:check
         working-directory: connectors
-        run: npm install && npm run build && npm run lint && npm run format:check
+        run: npm install && npm run lint && npm run format:check
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: ./connectors/package-lock.json
       - name: Install Postgres
         uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
@@ -36,12 +54,15 @@ jobs:
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
+      - name: Build sdk js
+        working-directory: sdks/js
+        run: npm install && npm run build
       - name: Run Tests
         working-directory: connectors
         env:
           CONNECTORS_DATABASE_URI: "postgres://test:test@localhost:5433/connectors_test"
           NODE_ENV: test
-        run: npx tsx src/admin/db.ts && npm run test:ci
+        run: npm install && npx tsx src/admin/db.ts && npm run test:ci
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -51,3 +72,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
+      - name: Knip
+        uses: ./.github/actions/knip
+        with:
+          working_directory: connectors

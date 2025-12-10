@@ -1,4 +1,5 @@
 import assert from "assert";
+import { Op } from "sequelize";
 
 import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
 import {
@@ -10,12 +11,16 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { Message } from "@app/lib/models/assistant/conversation";
+import {
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 async function getUserMessageIdFromMessageId(
@@ -26,12 +31,14 @@ async function getUserMessageIdFromMessageId(
   agentMessageVersion: number;
   userMessageId: string;
   userMessageVersion: number;
+  userMessageUserId: number;
 }> {
   // Query 1: Get the message and its parentId.
-  const agentMessage = await Message.findOne({
+  const agentMessage = await MessageModel.findOne({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       sId: messageId,
+      agentMessageId: { [Op.ne]: null },
     },
     attributes: ["parentId", "version", "sId"],
   });
@@ -42,27 +49,41 @@ async function getUserMessageIdFromMessageId(
   );
 
   // Query 2: Get the parent message's sId (which is the user message).
-  const parentMessage = await Message.findOne({
+  const parentMessage = await MessageModel.findOne({
     where: {
       id: agentMessage.parentId,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     attributes: ["sId", "version"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        attributes: ["userId"],
+      },
+    ],
   });
 
-  assert(parentMessage, "A user message is expected for the agent message");
+  assert(
+    parentMessage &&
+      parentMessage.userMessage &&
+      parentMessage.userMessage.userId,
+    "A user message with a linked user is expected for the agent message"
+  );
 
   return {
     agentMessageId: agentMessage.sId,
     agentMessageVersion: agentMessage.version,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
+    userMessageUserId: parentMessage.userMessage.userId,
   };
 }
 
 export async function validateAction(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationResource,
   {
     actionId,
     approvalState,
@@ -94,9 +115,19 @@ export async function validateAction(
     agentMessageVersion,
     userMessageId,
     userMessageVersion,
+    userMessageUserId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
+
+  if (userMessageUserId !== user?.id) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "User is not authorized to validate this action"
+      )
+    );
+  }
 
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
@@ -165,7 +196,7 @@ export async function validateAction(
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
-      conversationId
+      conversation
     );
 
   // Harmless very rare race condition here where 2 validations get

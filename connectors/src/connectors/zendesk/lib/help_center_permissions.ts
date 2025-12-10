@@ -4,6 +4,7 @@ import logger from "@connectors/logger/logger";
 import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 
@@ -22,11 +23,19 @@ export async function allowSyncZendeskHelpCenter({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const { subdomain, accessToken } =
     await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskClient = await ZendeskClient.createClient(
+
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -108,6 +117,12 @@ export async function allowSyncZendeskCategory({
   brandId: number;
   categoryId: number;
 }): Promise<boolean> {
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
@@ -120,9 +135,11 @@ export async function allowSyncZendeskCategory({
   } else {
     const { accessToken, subdomain } =
       await getZendeskSubdomainAndAccessToken(connectionId);
-    const zendeskClient = await ZendeskClient.createClient(
+
+    const zendeskClient = new ZendeskClient(
       accessToken,
-      connectorId
+      connectorId,
+      configuration.rateLimitTransactionsPerSecond
     );
     /// creating the brand if missing
     let brand = await ZendeskBrandResource.fetchByBrandId({

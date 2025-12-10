@@ -51,6 +51,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -356,20 +357,18 @@ export const SpaceDataSourceViewContentList = ({
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 
-  const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
-    useStaticDataSourceViewHasContent({
-      owner,
-      dataSourceView,
-      parentId,
-      viewType: "document",
-    });
-  const { hasContent: hasTables, isNodesValidating: isTablesValidating } =
-    useStaticDataSourceViewHasContent({
-      owner,
-      dataSourceView,
-      parentId,
-      viewType: "table",
-    });
+  const { hasContent: hasDocuments } = useStaticDataSourceViewHasContent({
+    owner,
+    dataSourceView,
+    parentId,
+    viewType: "document",
+  });
+  const { hasContent: hasTables } = useStaticDataSourceViewHasContent({
+    owner,
+    dataSourceView,
+    parentId,
+    viewType: "table",
+  });
 
   useEffect(() => {
     if (childrenNodes.length === 0) {
@@ -378,8 +377,6 @@ export const SpaceDataSourceViewContentList = ({
       setIsSearchDisabled(false);
     }
   }, [childrenNodes.length, setIsSearchDisabled]);
-
-  const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
   const addToSpace = useCallback(
     async (contentNode: DataSourceViewContentNode, spaceSId: string) => {
@@ -392,7 +389,7 @@ export const SpaceDataSourceViewContentList = ({
       try {
         let res;
         if (existingViewForSpace) {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
             {
               method: "PATCH",
@@ -405,7 +402,7 @@ export const SpaceDataSourceViewContentList = ({
             }
           );
         } else {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
             {
               method: "POST",
@@ -451,30 +448,9 @@ export const SpaceDataSourceViewContentList = ({
     ]
   );
 
-  useEffect(() => {
-    if (!isTablesValidating && !isDocumentsValidating) {
-      // If the view only has content in one of the two views, we switch to that view.
-      // if both views have content, or neither view has content, we default to documents.
-      if (hasTables && !hasDocuments) {
-        handleViewTypeChange("table");
-      } else if (!hasTables && hasDocuments) {
-        handleViewTypeChange("document");
-      } else if (!viewType) {
-        handleViewTypeChange(DEFAULT_VIEW_TYPE);
-      }
-    }
-  }, [
-    hasDocuments,
-    hasTables,
-    handleViewTypeChange,
-    viewType,
-    isTablesValidating,
-    isDocumentsValidating,
-    isDataSourceManaged,
-  ]);
-
   const rows: RowData[] = useMemo(
     () =>
+      // eslint-disable-next-line react-hooks/refs
       childrenNodes?.map((contentNode) => ({
         ...contentNode,
         icon: getVisualForDataSourceViewContentNode(contentNode),
@@ -542,11 +518,10 @@ export const SpaceDataSourceViewContentList = ({
 
       if (
         action === "DocumentUploadOrEdit" ||
-        action === "MultipleDocumentsUpload"
+        action === "MultipleFilesUpload" ||
+        action === "TableUploadOrEdit"
       ) {
-        handleViewTypeChange("document");
-      } else if (action === "TableUploadOrEdit") {
-        handleViewTypeChange("table");
+        handleViewTypeChange("all");
       }
     },
     [handleViewTypeChange, mutateContentNodes, startPeriodicRefresh]
@@ -606,6 +581,10 @@ export const SpaceDataSourceViewContentList = ({
                 <DropdownMenuItem
                   label="Tables"
                   onClick={() => handleViewTypeChange("table")}
+                />
+                <DropdownMenuItem
+                  label="All"
+                  onClick={() => handleViewTypeChange("all")}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -667,7 +646,7 @@ export const SpaceDataSourceViewContentList = ({
   );
 
   return (
-    // MultipleDocumentsUpload listens to the file drop context and uploads the files.
+    // MultipleFilesUpload listens to the file drop context and uploads the files.
     <FileDropProvider>
       <DropzoneContainer
         description="Drag and drop your files here."
@@ -715,6 +694,7 @@ export const SpaceDataSourceViewContentList = ({
         <ContentActions
           ref={contentActionsRef}
           dataSourceView={dataSourceView}
+          existingNodes={childrenNodes}
           totalNodesCount={totalNodesCount}
           owner={owner}
           plan={plan}

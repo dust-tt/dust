@@ -8,13 +8,20 @@ import type {
 
 export type FileAttachment = {
   type: "file";
+  // Client-side blob identifier for local operations (removal, deduplication, local content lookup).
+  // For regular uploads this equals the filename during upload. For tool uploads this is a custom
+  // key like "tool-{serverViewId}-{externalId}".
   id: string;
   title: string;
   contentType: SupportedFileContentType;
   isUploading: boolean;
-  onRemove: () => void;
+  onRemove?: () => void;
   description?: string;
   sourceUrl?: string;
+  iconName?: string;
+  // Server-side file resource sId for API calls (fetching content, downloading).
+  // Null while the file is still uploading.
+  fileId: string | null;
 };
 
 export type NodeAttachment = {
@@ -25,7 +32,7 @@ export type NodeAttachment = {
   spaceIcon: React.ComponentType;
   visual: React.ReactNode;
   path: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   url: string | null;
 };
 

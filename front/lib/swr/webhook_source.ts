@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,
@@ -128,7 +129,7 @@ export function useCreateWebhookSource({
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
   ): Promise<WebhookSourceForAdminType | null> => {
-    const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
+    const response = await clientFetch(`/api/w/${owner.sId}/webhook_sources`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -174,7 +175,7 @@ export function useUpdateWebhookSourceView({
       updates: { name: string; description?: string; icon?: string }
     ): Promise<boolean> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/webhook_sources/views/${webhookSourceViewId}`,
           {
             method: "PATCH",
@@ -195,6 +196,7 @@ export function useUpdateWebhookSourceView({
         });
 
         return true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -231,7 +233,7 @@ export function useDeleteWebhookSource({
       setIsDeleting(true);
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}`,
           {
             method: "DELETE",
@@ -258,6 +260,7 @@ export function useDeleteWebhookSource({
         } else {
           throw new Error("Delete operation failed");
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -324,7 +327,7 @@ export function useAddWebhookSourceViewToSpace({
       webhookSource: WebhookSourceForAdminType;
     }): Promise<void> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
           {
             method: "POST",
@@ -345,6 +348,7 @@ export function useAddWebhookSourceViewToSpace({
         });
 
         await mutateWebhookSourcesWithViews();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -380,7 +384,7 @@ export function useRemoveWebhookSourceViewFromSpace({
       space: SpaceType;
     }): Promise<void> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${webhookSourceView.sId}`,
           {
             method: "DELETE",
@@ -417,11 +421,13 @@ export function useRemoveWebhookSourceViewFromSpace({
               type: "error",
               title: "Failed to remove webhook source",
               description:
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 res.error?.message ||
                 `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
             });
           }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

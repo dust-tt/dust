@@ -12,7 +12,10 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { hasReachedPublicAPILimits } from "@app/lib/api/programmatic_usage_tracking";
+import {
+  hasReachedProgrammaticUsageLimits,
+  isProgrammaticUsage,
+} from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -67,6 +70,7 @@ import { isEmptyString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
@@ -102,7 +106,22 @@ async function handler(
         });
       }
 
-      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
+      const {
+        content,
+        context,
+        mentions,
+        blocking,
+        skipToolsValidation,
+        agenticMessageData,
+      } = r.data;
+
+      const origin = context.origin ?? "api";
+
+      const hasReachedLimits = isProgrammaticUsage(auth, {
+        userMessageOrigin: origin,
+      })
+        ? await hasReachedProgrammaticUsageLimits(auth)
+        : false;
       if (hasReachedLimits) {
         return apiError(req, res, {
           status_code: 429,
@@ -114,15 +133,6 @@ async function handler(
           },
         });
       }
-
-      const {
-        content,
-        context,
-        mentions,
-        blocking,
-        skipToolsValidation,
-        agenticMessageData,
-      } = r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -198,7 +208,7 @@ async function handler(
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
-        origin: context.origin ?? "api",
+        origin,
         originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,
@@ -244,6 +254,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { POST: "update:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

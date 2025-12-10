@@ -39,6 +39,7 @@ export const OAUTH_PROVIDERS = [
   "monday",
   "notion",
   "slack",
+  "slack_tools",
   "gong",
   "microsoft",
   "microsoft_tools",
@@ -47,6 +48,7 @@ export const OAUTH_PROVIDERS = [
   "hubspot",
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
+  "vanta",
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -64,6 +66,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   monday: "Monday",
   notion: "Notion",
   slack: "Slack",
+  slack_tools: "Slack Tools",
   gong: "Gong",
   microsoft: "Microsoft",
   microsoft_tools: "Microsoft Tools",
@@ -72,6 +75,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   hubspot: "Hubspot",
   mcp: "MCP",
   mcp_static: "MCP",
+  vanta: "Vanta",
 };
 
 const SUPPORTED_OAUTH_CREDENTIALS = [
@@ -201,6 +205,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
       return null;
     case "hubspot":
     case "slack":
+    case "slack_tools":
     case "gong":
     case "microsoft":
     case "microsoft_tools":
@@ -217,6 +222,23 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "discord":
     case "fathom":
       return null;
+    case "vanta": {
+      const result: OAuthCredentialInputs = {
+        client_id: {
+          label: "Vanta Client ID",
+          value: undefined,
+          helpMessage: "The client ID from your Vanta application.",
+          validator: isValidClientIdOrSecret,
+        },
+        client_secret: {
+          label: "Vanta Client Secret",
+          value: undefined,
+          helpMessage: "The client secret from your Vanta application.",
+          validator: isValidClientIdOrSecret,
+        },
+      };
+      return result;
+    }
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
@@ -276,6 +298,7 @@ export type OAuthConnectionType = {
   metadata: Record<string, string>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
+  related_credential_id?: string | null;
 };
 
 export function isOAuthConnectionType(
@@ -334,6 +357,7 @@ export const CREDENTIALS_PROVIDERS = [
   "bigquery",
   "salesforce",
   "notion",
+  "slack",
   // LABS
   "modjo",
 ] as const;

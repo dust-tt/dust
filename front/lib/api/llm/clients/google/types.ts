@@ -1,7 +1,5 @@
-import flatMap from "lodash/flatMap";
-
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType } from "@app/types";
+import type { ModelIdType, ReasoningEffort } from "@app/types";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
@@ -9,67 +7,37 @@ import {
   GEMINI_3_PRO_MODEL_ID,
 } from "@app/types";
 
-const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
-export const GOOGLE_AI_STUDIO_MODEL_FAMILIES = [
-  "gemini-2",
-  "gemini-3",
-] as const;
-export type GoogleAIStudioModelFamily =
-  (typeof GOOGLE_AI_STUDIO_MODEL_FAMILIES)[number];
+export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 
-export const GOOGLE_AI_STUDIO_MODEL_FAMILY_CONFIGS = {
-  "gemini-2": {
-    modelIds: [
-      GEMINI_2_5_FLASH_MODEL_ID,
-      GEMINI_2_5_FLASH_LITE_MODEL_ID,
-      GEMINI_2_5_PRO_MODEL_ID,
-    ],
-    overwrites: {},
+export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
+  GEMINI_2_5_FLASH_MODEL_ID,
+  GEMINI_2_5_FLASH_LITE_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
+  GEMINI_3_PRO_MODEL_ID,
+] as const;
+export type GoogleAIStudioWhitelistedModelId =
+  (typeof GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS)[number];
+
+export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
+  GoogleAIStudioWhitelistedModelId,
+  {
+    overwrites?: Omit<LLMParameters, "modelId">;
+    thinkingBudgetConfigMapping?: Partial<Record<ReasoningEffort, number>>;
+  }
+> = {
+  [GEMINI_2_5_FLASH_MODEL_ID]: { thinkingBudgetConfigMapping: { none: 0 } },
+  [GEMINI_2_5_FLASH_LITE_MODEL_ID]: {
+    thinkingBudgetConfigMapping: { none: 0 },
   },
-  "gemini-3": {
-    modelIds: [GEMINI_3_PRO_MODEL_ID],
+  [GEMINI_2_5_PRO_MODEL_ID]: { thinkingBudgetConfigMapping: { none: 128 } },
+  [GEMINI_3_PRO_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3
       temperature: 1,
     },
+    thinkingBudgetConfigMapping: { none: 128 },
   },
-} as const satisfies Record<
-  GoogleAIStudioModelFamily,
-  {
-    modelIds: ModelIdType[];
-    overwrites: Partial<LLMParameters>;
-  }
->;
-
-export type GoogleAIStudioWhitelistedModelId = {
-  [K in GoogleAIStudioModelFamily]: (typeof GOOGLE_AI_STUDIO_MODEL_FAMILY_CONFIGS)[K]["modelIds"][number];
-}[GoogleAIStudioModelFamily];
-export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS =
-  flatMap<GoogleAIStudioWhitelistedModelId>(
-    Object.values(GOOGLE_AI_STUDIO_MODEL_FAMILY_CONFIGS).map(
-      (config) => config.modelIds
-    )
-  );
-
-export function isGoogleAIStudioWhitelistedModelId(
-  modelId: ModelIdType
-): modelId is GoogleAIStudioWhitelistedModelId {
-  return new Set<string>(GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS).has(modelId);
-}
-
-export function getGoogleAIStudioModelFamilyFromModelId(
-  modelId: GoogleAIStudioWhitelistedModelId
-): GoogleAIStudioModelFamily {
-  const family = GOOGLE_AI_STUDIO_MODEL_FAMILIES.find((family) =>
-    new Set(GOOGLE_AI_STUDIO_MODEL_FAMILY_CONFIGS[family].modelIds).has(modelId)
-  );
-  if (!family) {
-    throw new Error(
-      `Model ID ${modelId} does not belong to any Google model family`
-    );
-  }
-  return family;
-}
+};
 
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
@@ -78,13 +46,17 @@ export function overwriteLLMParameters(
 ): LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId } & {
   clientId: typeof GOOGLE_AI_STUDIO_PROVIDER_ID;
 } {
-  const config = Object.values(GOOGLE_AI_STUDIO_MODEL_FAMILY_CONFIGS).find(
-    (config) => new Set<string>(config.modelIds).has(llmParameters.modelId)
-  );
-
   return {
     ...llmParameters,
-    ...config?.overwrites,
+    ...GOOGLE_AI_STUDIO_MODEL_CONFIGS[llmParameters.modelId].overwrites,
     clientId: GOOGLE_AI_STUDIO_PROVIDER_ID,
   };
+}
+
+export function isGoogleAIStudioWhitelistedModelId(
+  modelId: ModelIdType
+): modelId is GoogleAIStudioWhitelistedModelId {
+  return (GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS as readonly string[]).includes(
+    modelId
+  );
 }

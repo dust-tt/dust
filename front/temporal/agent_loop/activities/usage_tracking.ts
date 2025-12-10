@@ -1,11 +1,14 @@
-import { maybeTrackTokenUsageCost } from "@app/lib/api/programmatic_usage_tracking";
+import {
+  isProgrammaticUsage,
+  trackProgrammaticCost,
+} from "@app/lib/api/programmatic_usage_tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import type { AgentMessageStatus } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
@@ -14,7 +17,7 @@ const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   "cancelled",
 ];
 
-export async function trackUsageActivity(
+export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
@@ -24,14 +27,14 @@ export async function trackUsageActivity(
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
   // Query the Message/AgentMessage/Conversation rows.
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },
@@ -41,14 +44,14 @@ export async function trackUsageActivity(
   const agentMessage = agentMessageRow?.agentMessage;
 
   // Query the UserMessage row to get user.
-  const userMessageRow = await Message.findOne({
+  const userMessageRow = await MessageModel.findOne({
     where: {
       sId: userMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
       },
@@ -63,12 +66,14 @@ export async function trackUsageActivity(
 
   if (
     AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
-    agentMessage.runIds
+    agentMessage.runIds &&
+    isProgrammaticUsage(auth, {
+      userMessageOrigin: userMessage.userContextOrigin,
+    })
   ) {
-    // Track token usage cost for programmatic usage.
-    await maybeTrackTokenUsageCost(auth, {
+    await trackProgrammaticCost(auth, {
       dustRunIds: agentMessage.runIds,
-      userMessageOrigin: userMessage.userContextOrigin ?? null,
+      userMessageOrigin: userMessage.userContextOrigin,
     });
   }
 }

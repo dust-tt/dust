@@ -7,7 +7,11 @@ import {
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
-import { toThinkingConfig } from "@app/lib/api/llm/clients/google/utils/to_thinking";
+import {
+  toResponseSchemaParam,
+  toThinkingConfig,
+  toToolConfigParam,
+} from "@app/lib/api/llm/clients/google/utils/to_thinking";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -22,16 +26,18 @@ import { handleError } from "./utils/errors";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
+  protected modelId: GoogleAIStudioWhitelistedModelId;
 
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
   ) {
     super(auth, overwriteLLMParameters(llmParameters));
+    this.modelId = llmParameters.modelId;
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
       throw new Error(
-        "GOOGLE_AI_STUDIO_API_KEY environment variable is required"
+        "DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY environment variable is required"
       );
     }
 
@@ -44,12 +50,12 @@ export class GoogleLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const contents = await Promise.all(
         conversation.messages.map((message) => toContent(message, this.modelId))
       );
-
       const generateContentResponses =
         await this.client.models.generateContentStream({
           model: this.modelId,
@@ -60,10 +66,17 @@ export class GoogleLLM extends LLM {
             systemInstruction: { text: prompt },
             // We only need one
             candidateCount: 1,
-            thinkingConfig: toThinkingConfig(
-              this.reasoningEffort,
-              this.modelConfig.useNativeLightReasoning
-            ),
+            thinkingConfig: toThinkingConfig({
+              modelId: this.modelId,
+              reasoningEffort: this.reasoningEffort,
+              useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
+            }),
+            toolConfig: toToolConfigParam(specifications, forceToolCall),
+            // Structured response format
+            responseMimeType: this.responseFormat
+              ? "application/json"
+              : undefined,
+            responseSchema: toResponseSchemaParam(this.responseFormat),
           },
         });
 

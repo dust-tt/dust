@@ -1,5 +1,5 @@
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
-import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -80,7 +80,7 @@ export async function getConfluenceConfig({
 }: {
   connectorId: ModelId;
 }) {
-  const confluenceConfig = await ConfluenceConfiguration.findOne({
+  const confluenceConfig = await ConfluenceConfigurationModel.findOne({
     where: {
       connectorId,
     },

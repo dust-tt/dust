@@ -4,7 +4,7 @@ import type { WhereOptions } from "sequelize";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
@@ -38,7 +38,7 @@ async function updateAgentRequestedSpaceIds(
   );
 
   // Build where clause
-  const whereClause: WhereOptions<AgentConfiguration> = {
+  const whereClause: WhereOptions<AgentConfigurationModel> = {
     workspaceId: workspace.id,
   };
 
@@ -52,7 +52,7 @@ async function updateAgentRequestedSpaceIds(
 
   // Fetch all agent configurations that match the criteria
   // Note: We filter out global agents as they may reference cross-workspace resources
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: {
       ...whereClause,
       scope: ["workspace", "published", "hidden", "visible"],
@@ -142,7 +142,7 @@ async function updateAgentRequestedSpaceIds(
     );
 
     if (execute) {
-      await AgentConfiguration.update(
+      await AgentConfigurationModel.update(
         {
           requestedSpaceIds: newSpaceIds,
         },

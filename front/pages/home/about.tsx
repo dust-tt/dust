@@ -9,6 +9,7 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import {
@@ -21,6 +22,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
@@ -300,13 +302,6 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
     github: "https://github.com/laurianepao",
   },
-  landry: {
-    name: "Landry Monga",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
-    github: "https://github.com/lvndry",
-    linkedIn: "https://www.linkedin.com/in/landry-monga",
-  },
   come: {
     name: "Côme Lucien-Brun",
     title: "Account Executive",
@@ -553,8 +548,15 @@ const VideoPlayer = () => {
 };
 
 export default function About() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="About Dust: Our Mission to Transform How Work Gets Done"
+        description="Dust is building the AI operating system for the enterprise. Meet our team, learn our operating principles, and discover our vision for AI-driven companies."
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
         <div
           className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}

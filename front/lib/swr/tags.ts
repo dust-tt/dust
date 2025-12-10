@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/tags";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
@@ -96,7 +97,7 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
     name: string,
     agentIds?: string[]
   ): Promise<TagType | null> => {
-    const res = await fetch(`/api/w/${owner.sId}/tags`, {
+    const res = await clientFetch(`/api/w/${owner.sId}/tags`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -109,6 +110,7 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to create tag",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: json.error.message || "Failed to create tag",
       });
 
@@ -132,7 +134,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
 
   const deleteTag = async (tagId: string) => {
-    const res = await fetch(`/api/w/${owner.sId}/tags/${tagId}`, {
+    const res = await clientFetch(`/api/w/${owner.sId}/tags/${tagId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -145,6 +147,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to delete tag",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: json.error.message || "Failed to delete tag",
       });
 
@@ -177,7 +180,7 @@ export function useUpdateTag({
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
 
   const updateTag = async ({ name, kind }: { name: string; kind: TagKind }) => {
-    const res = await fetch(`/api/w/${owner.sId}/tags/${tagId}`, {
+    const res = await clientFetch(`/api/w/${owner.sId}/tags/${tagId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -194,6 +197,7 @@ export function useUpdateTag({
       sendNotification({
         type: "error",
         title: "Failed to delete tag",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: json.error.message || "Failed to create tag",
       });
       return;
@@ -216,7 +220,7 @@ export function useUpdateTag({
 export function useUpdateAgentTags({ owner }: { owner: LightWorkspaceType }) {
   const updateAgentTags = useCallback(
     async (agentConfigurationId: string, body: PatchAgentTagsRequestBody) => {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/tags`,
         {
           method: "PATCH",

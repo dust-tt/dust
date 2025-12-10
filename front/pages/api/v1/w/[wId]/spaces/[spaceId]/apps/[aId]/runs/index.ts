@@ -2,7 +2,7 @@ import type { RunAppResponseType } from "@dust-tt/client";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -13,7 +13,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -75,7 +75,7 @@ function extractUsageFromExecutions(
           const cachedTokens = token_usage.cached_tokens;
           const cacheCreationTokens = token_usage.cache_creation_input_tokens;
 
-          const usageCostUsd = calculateTokenUsageCostForUsage({
+          const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
             modelId: block.model_id,
             promptTokens,
             completionTokens,
@@ -90,7 +90,7 @@ function extractUsageFromExecutions(
             completionTokens,
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
-            costUsd: usageCostUsd,
+            costMicroUsd: usageCostMicroUsd,
           });
         }
       }
@@ -204,6 +204,7 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
   { space }: { space: SpaceResource },
@@ -213,7 +214,7 @@ async function handler(
   const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
   const [app, providers, secrets] = await Promise.all([
     AppResource.fetchById(auth, req.query.aId as string),
-    Provider.findAll({
+    ProviderModel.findAll({
       where: {
         workspaceId: keyWorkspaceId,
       },

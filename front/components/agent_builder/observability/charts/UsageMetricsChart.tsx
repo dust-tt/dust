@@ -59,7 +59,7 @@ function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
   }
-): JSX.Element | null {
+) {
   const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;

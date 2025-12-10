@@ -59,8 +59,8 @@ import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sour
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
 import {
-  SlackChannel,
-  SlackChatBotMessage,
+  SlackChannelModel,
+  SlackChatBotMessageModel,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import { throttleWithRedis } from "@connectors/lib/throttle";
@@ -212,7 +212,7 @@ export async function botReplaceMention(
   const { slackConfig, connector } = connectorRes.value;
 
   try {
-    const slackChatBotMessage = await SlackChatBotMessage.findOne({
+    const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
       where: { id: messageId },
     });
     if (!slackChatBotMessage) {
@@ -299,7 +299,7 @@ export async function botValidateToolExecution(
   const { connector, slackConfig } = connectorRes.value;
 
   try {
-    const slackChatBotMessage = await SlackChatBotMessage.findOne({
+    const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
       where: { id: slackChatBotMessageId },
     });
     if (!slackChatBotMessage) {
@@ -495,6 +495,7 @@ async function processErrorResult(
       {
         error: res.error,
         errorMessage: res.error.message,
+        connectorId: connector.id,
         ...params,
       },
       "Failed answering to Slack Chat Bot message"
@@ -582,9 +583,9 @@ async function answerMessage(
   connector: ConnectorResource,
   slackConfig: SlackConfigurationResource
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
-  let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
+  let lastSlackChatBotMessage: SlackChatBotMessageModel | null = null;
   if (slackThreadTs) {
-    lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
+    lastSlackChatBotMessage = await SlackChatBotMessageModel.findOne({
       where: {
         connectorId: connector.id,
         channelId: slackChannel,
@@ -709,7 +710,7 @@ async function answerMessage(
     throw new Error("Failed to get slack user id or bot id");
   }
 
-  const slackChatBotMessage = await SlackChatBotMessage.create({
+  const slackChatBotMessage = await SlackChatBotMessageModel.create({
     connectorId: connector.id,
     message: message,
     slackUserId: slackUserIdOrBotId,
@@ -878,7 +879,7 @@ async function answerMessage(
 
   if (!mention) {
     // If no mention is found, we look at channel-based routing rules.
-    const channel = await SlackChannel.findOne({
+    const channel = await SlackChannelModel.findOne({
       where: {
         connectorId: connector.id,
         slackChannelId: slackChannel,
@@ -1017,6 +1018,8 @@ async function answerMessage(
     message = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${message}`;
   }
 
+  const origin = slackBotId ? "slack_workflow" : "slack";
+
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.agentId }],
@@ -1027,7 +1030,7 @@ async function answerMessage(
         slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
       email: slackChatBotMessage.slackEmail,
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
-      origin: "slack" as const,
+      origin,
     },
     skipToolsValidation,
   };
@@ -1169,7 +1172,7 @@ async function makeContentFragments(
   const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
   let allMessages: MessageElement[] = [];
 
-  const slackBotMessages = await SlackChatBotMessage.findAll({
+  const slackBotMessages = await SlackChatBotMessageModel.findAll({
     where: {
       connectorId: connector.id,
       channelId: channelId,
@@ -1250,6 +1253,7 @@ async function makeContentFragments(
         fileSize: f.size!,
         useCase: "conversation",
         useCaseMetadata: conversationId ? { conversationId } : undefined,
+        // @ts-expect-error -- migration to tsgo
         fileObject: new File([fileContent], fileName, {
           type: f.mimetype,
         }),

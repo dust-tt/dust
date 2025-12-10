@@ -11,8 +11,8 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { untrustedFetch } from "@app/lib/egress/server";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, normalizeError, Ok } from "@app/types";
 
 const MAX_RESPONSE_SIZE = 1_000_000; // 1MB
@@ -82,7 +82,7 @@ async function getBearerToken(
     return null;
   }
 
-  const secret = await DustAppSecret.findOne({
+  const secret = await DustAppSecretModel.findOne({
     where: {
       name: toolConfig.secretName,
       workspaceId: auth.getNonNullableWorkspace().id,

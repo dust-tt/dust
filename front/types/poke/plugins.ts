@@ -7,6 +7,11 @@ interface BaseArgDefinition {
   label: string;
   redact?: boolean;
   async?: boolean;
+  asyncDescription?: boolean;
+  dependsOn?: {
+    field: string;
+    value: boolean;
+  };
 }
 
 type AtLeastTwoElements<T> = readonly [T, T, ...T[]];
@@ -62,10 +67,16 @@ interface TextArgDefinition extends BaseArgDefinition {
 interface BooleanArgDefinition extends BaseArgDefinition {
   type: "boolean";
   values?: never;
+  variant?: "checkbox" | "toggle";
 }
 
 interface FileArgDefinition extends BaseArgDefinition {
   type: "file";
+  values?: never;
+}
+
+interface DateArgDefinition extends BaseArgDefinition {
+  type: "date";
   values?: never;
 }
 
@@ -76,7 +87,8 @@ export type PluginArgDefinition =
   | TextArgDefinition
   | NumberArgDefinition
   | BooleanArgDefinition
-  | FileArgDefinition;
+  | FileArgDefinition
+  | DateArgDefinition;
 
 export type StrictPluginArgs = {
   [key: string]: PluginArgDefinition;
@@ -174,6 +186,10 @@ export function createIoTsCodecFromArgs(
       case "file":
         codecProps[key] = t.any;
         break;
+
+      case "date":
+        codecProps[key] = t.string;
+        break;
     }
   }
 
@@ -201,11 +217,13 @@ export function isSupportedResourceType(
 }
 
 export interface PluginRunType {
-  createdAt: number;
-  author: string;
-  pluginId: string;
-  status: string;
-  resourceType: string;
-  resourceId: string | null;
   args: object;
+  author: string;
+  createdAt: number;
+  error: string | null;
+  pluginId: string;
+  resourceId: string | null;
+  resourceType: string;
+  result: string | null;
+  status: string;
 }

@@ -277,6 +277,7 @@ export function ConversationMenu({
             icon={PencilSquareIcon}
           />
 
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <ConversationActionMenuItem />
 
           {shareLink && (
@@ -305,6 +306,7 @@ export function ConversationMenu({
                           size="xs"
                           visual={user.pictureUrl}
                           name={user.fullName ?? user.username}
+                          isRounded
                         />
                       }
                       className="!text-foreground dark:!text-foreground-night"

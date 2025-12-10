@@ -1,4 +1,4 @@
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -20,14 +20,14 @@ async function main() {
     }
 
     if (connector.type === "notion") {
-      const notionState = await NotionConnectorState.findOne({
+      const notionState = await NotionConnectorStateModel.findOne({
         where: { connectorId: connector.id },
       });
       if (!notionState) {
         console.log(
           `Creating NotionConnectorState for connector ${connector.id}...`
         );
-        await NotionConnectorState.create({
+        await NotionConnectorStateModel.create({
           connectorId: connector.id,
           notionWorkspaceId: "",
         });

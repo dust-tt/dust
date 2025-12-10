@@ -21,7 +21,7 @@ import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { Message } from "@app/lib/models/assistant/conversation";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -63,7 +63,7 @@ export const CONTENT_OUTDATED_MSG =
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ContentFragmentResource
   extends ReadonlyAttributesType<ContentFragmentModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -151,7 +151,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static fromMessage(
-    message: Message & { contentFragment?: ContentFragmentModel }
+    message: MessageModel & { contentFragment?: ContentFragmentModel }
   ) {
     if (!message.contentFragment) {
       throw new Error(
@@ -188,7 +188,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static async fromMessageId(auth: Authenticator, id: ModelId) {
-    const message = await Message.findOne({
+    const message = await MessageModel.findOne({
       where: {
         id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -280,7 +280,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }: {
     auth: Authenticator;
     conversationId: string;
-    message: Message;
+    message: MessageModel;
   }): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {

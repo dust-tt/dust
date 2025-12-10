@@ -1,0 +1,152 @@
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  cn,
+  ScrollArea,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/router";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import {
+  SkillBuilderFormContext,
+  skillBuilderFormSchema,
+} from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
+import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
+import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
+import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
+import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useSendNotification } from "@app/hooks/useNotification";
+
+export default function SkillBuilder() {
+  const { owner, user } = useSkillBuilderContext();
+  const router = useRouter();
+  const sendNotification = useSendNotification();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const form = useForm<SkillBuilderFormData>({
+    resolver: zodResolver(skillBuilderFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      instructions: "",
+      scope: "private",
+      editors: [user],
+      tools: [],
+    },
+  });
+
+  const handleSubmit = async (data: SkillBuilderFormData) => {
+    setIsSaving(true);
+
+    const result = await submitSkillBuilderForm({
+      formData: data,
+      owner,
+      user,
+    });
+
+    if (result.isErr()) {
+      sendNotification({
+        title: "Error creating skill",
+        description: result.error.message,
+        type: "error",
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    sendNotification({
+      title: "Skill created",
+      description: "Your skill has been successfully created.",
+      type: "success",
+    });
+
+    await appLayoutBack(owner, router);
+  };
+
+  const handleCancel = async () => {
+    await appLayoutBack(owner, router);
+  };
+
+  const handleSave = () => {
+    void form.handleSubmit(handleSubmit)();
+  };
+
+  return (
+    <SkillBuilderFormContext.Provider value={form}>
+      <FormProvider form={form} asForm={false}>
+        <div
+          className={cn(
+            "h-dvh flex flex-row",
+            "bg-background text-foreground",
+            "dark:bg-background-night dark:text-foreground-night"
+          )}
+        >
+          <div className="flex h-full w-full flex-col">
+            <BarHeader
+              variant="default"
+              className="mx-4"
+              title="Skill"
+              rightActions={
+                <Button
+                  icon={XMarkIcon}
+                  onClick={handleCancel}
+                  variant="ghost"
+                  type="button"
+                />
+              }
+            />
+
+            <ScrollArea className="flex-1">
+              <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
+                <div>
+                  <h2 className="heading-lg text-foreground dark:text-foreground-night">
+                    Create new skill
+                  </h2>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Create custom capabilities for specific tasks
+                  </p>
+                </div>
+                <SkillBuilderDescriptionSection />
+                <SkillBuilderInstructionsSection />
+                <MCPServerViewsProvider owner={owner}>
+                  <SkillBuilderToolsSection />
+                </MCPServerViewsProvider>
+                <SkillBuilderSettingsSection />
+              </div>
+            </ScrollArea>
+            <BarFooter
+              variant="default"
+              className="mx-4 justify-between"
+              leftActions={
+                <Button
+                  variant="outline"
+                  label="Cancel"
+                  onClick={handleCancel}
+                  type="button"
+                />
+              }
+              rightActions={
+                <Button
+                  variant="highlight"
+                  label={isSaving ? "Saving..." : "Save"}
+                  onClick={handleSave}
+                  disabled={isSaving}
+                />
+              }
+            />
+          </div>
+        </div>
+      </FormProvider>
+    </SkillBuilderFormContext.Provider>
+  );
+}

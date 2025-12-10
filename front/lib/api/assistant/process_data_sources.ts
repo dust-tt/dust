@@ -178,6 +178,7 @@ export async function processDataSources({
           conversation,
           prompt,
           specifications,
+          forceToolCall: EXTRACT_DATA_FUNCTION_NAME,
         },
         {
           context: {

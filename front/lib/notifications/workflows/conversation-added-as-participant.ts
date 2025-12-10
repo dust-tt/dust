@@ -9,7 +9,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ConversationType, Result } from "@app/types";
+import type { ConversationWithoutContentType, Result } from "@app/types";
 import { Err } from "@app/types";
 import { Ok } from "@app/types";
 
@@ -163,7 +163,7 @@ export const conversationAddedAsParticipantWorkflow = workflow(
           },
         });
         return {
-          subject: `[Dust] You have been added to a conversation`,
+          subject: `[Dust] You were mentioned in a conversation`,
           body,
         };
       },
@@ -187,7 +187,7 @@ export const triggerConversationAddedAsParticipantNotification = async (
     conversation,
     addedUserId,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     addedUserId: string;
   }
 ): Promise<Result<void, DustError<"internal_error">>> => {
@@ -237,6 +237,7 @@ export const triggerConversationAddedAsParticipantNotification = async (
         cause: r.statusText,
       });
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return new Err({
       name: "dust_error",

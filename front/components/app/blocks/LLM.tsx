@@ -143,8 +143,10 @@ export default function LLM({
   };
 
   const fewShotPresent =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (block.spec.few_shot_prompt && block.spec.few_shot_prompt.length > 0) ||
     (block.spec.few_shot_preprompt &&
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       block.spec.few_shot_preprompt.length > 0) ||
     (block.spec.few_shot_count && block.spec.few_shot_count > 0);
 
@@ -224,6 +226,7 @@ export default function LLM({
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {(block.spec.stop || ([] as string[])).map(
                     (stop: string, i: number) => (
                       <div

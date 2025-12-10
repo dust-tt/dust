@@ -12,7 +12,6 @@ import { selectTopTools } from "@app/components/agent_builder/observability/util
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
-  useAgentErrorRate,
   useAgentLatency,
   useAgentToolExecution,
   useAgentToolStepIndex,
@@ -39,17 +38,6 @@ type ToolDataItem = {
     }
   >;
   total?: number;
-};
-
-type ErrorRateDataResult = {
-  data: {
-    timestamp: number;
-    count: number;
-    failedMessages: number;
-    errorRate: number;
-  }[];
-  isLoading: boolean;
-  errorMessage: string | undefined;
 };
 
 export type LatencyPoint = {
@@ -320,35 +308,6 @@ export function useToolUsageData(params: {
     default:
       assertNever(mode);
   }
-}
-
-export function useErrorRateData(params: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  period: number;
-  mode: ObservabilityMode;
-  filterVersion?: string | null;
-}): ErrorRateDataResult {
-  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
-    params;
-
-  const { errorRate, isErrorRateLoading, isErrorRateError } = useAgentErrorRate(
-    {
-      workspaceId,
-      agentConfigurationId,
-      days: period,
-      version: mode === "version" ? (filterVersion ?? undefined) : undefined,
-      disabled: !workspaceId || !agentConfigurationId,
-    }
-  );
-
-  return {
-    data: errorRate,
-    isLoading: isErrorRateLoading,
-    errorMessage: isErrorRateError
-      ? "Failed to load error rate data."
-      : undefined,
-  };
 }
 
 export function useLatencyData(params: {

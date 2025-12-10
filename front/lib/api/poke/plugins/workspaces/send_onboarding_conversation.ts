@@ -1,4 +1,4 @@
-import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/conversation";
+import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

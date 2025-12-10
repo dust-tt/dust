@@ -24,6 +24,7 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { redactString } from "@app/types";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -98,6 +99,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       : false;
 
   const configForSelected =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (selectedProviderId && configs[selectedProviderId]) || {};
 
   return (
@@ -226,11 +228,17 @@ export default function ProvidersPage({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "providers" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "providers",
+        featureFlags,
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header

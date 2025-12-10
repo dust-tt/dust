@@ -1,5 +1,6 @@
 import type { Fetcher } from "swr";
 
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
@@ -177,7 +178,7 @@ export function useCancelRun({
 }) {
   const doCancel = async (runId: string): Promise<boolean> => {
     try {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/cancel`,
         {
           method: "POST",

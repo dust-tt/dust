@@ -43,7 +43,7 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
 type PublicAPILimitsEnabled = {
   enabled: true;
   markup: number;
-  monthlyLimit: number;
+  monthlyLimit: number; // in USD
   billingDay: number; // Best-effort, represents the day of the month when the billing period starts.
 };
 
@@ -133,13 +133,11 @@ export type EditedByUser = {
   userId: string | null;
 };
 
-export function formatUserFullName(user?: {
+export function formatUserFullName(user: {
   firstName?: string;
   lastName?: string | null;
-}) {
-  return user
-    ? [user.firstName, user.lastName].filter(Boolean).join(" ")
-    : null;
+}): string {
+  return [user.firstName, user.lastName].filter(Boolean).join(" ");
 }
 
 export function isAdmin(

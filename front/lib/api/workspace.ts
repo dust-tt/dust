@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -218,15 +218,19 @@ export async function searchMembers(
     );
     total = users.length;
   } else {
-    const results = await UserResource.listUsersWithEmailPredicat(
-      owner,
-      {
-        email: options.searchTerm,
-      },
-      paginationParams
-    );
-    users = results.users;
-    total = results.total;
+    const results = await UserResource.searchUsers(auth, {
+      searchTerm: options.searchTerm ?? "",
+      offset: paginationParams.offset,
+      limit: paginationParams.limit,
+    });
+
+    if (results.isErr()) {
+      logger.error({ err: results.error }, "Error searching users");
+      return { members: [], total: 0 };
+    }
+
+    users = results.value.users;
+    total = results.value.total;
   }
 
   const usersWithWorkspace = await Promise.all(
@@ -330,7 +334,7 @@ export async function unsafeGetWorkspacesByModelId(
 export async function areAllSubscriptionsCanceled(
   workspace: LightWorkspaceType
 ): Promise<boolean> {
-  const subscriptions = await Subscription.findAll({
+  const subscriptions = await SubscriptionModel.findAll({
     where: {
       workspaceId: workspace.id,
       stripeSubscriptionId: {
@@ -399,6 +403,8 @@ export interface WorkspaceMetadata {
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
+  disableManualInvitations?: boolean;
+  creditAlertIdempotencyKey?: string;
 }
 
 export async function updateWorkspaceMetadata(
@@ -491,12 +497,12 @@ export async function whitelistWorkspaceToBusinessPlan(
 export async function checkSeatCountForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<Result<string, Error>> {
-  const subscription = await Subscription.findOne({
+  const subscription = await SubscriptionModel.findOne({
     where: {
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
   if (!subscription) {
     return new Err(new Error("Workspace has no active subscription."));

@@ -35,6 +35,7 @@ export async function* streamLLMEvents({
   // Mistral does not send a "report" with concatenated text chunks
   // So we have to aggregate it ourselves as we receive text chunks
   let textDelta = "";
+  let hasYieldedResponseId = false;
 
   const aggregate = new SuccessAggregate();
 
@@ -49,6 +50,18 @@ export async function* streamLLMEvents({
   }
 
   for await (const completionEvent of completionEvents) {
+    const modelInteractionId = completionEvent.data.id;
+    if (!hasYieldedResponseId) {
+      yield {
+        type: "interaction_id",
+        content: {
+          modelInteractionId,
+        },
+        metadata,
+      };
+      hasYieldedResponseId = true;
+    }
+
     // Ensure we have at least 1 choice
     if (!isCorrectCompletionEvent(completionEvent)) {
       continue;

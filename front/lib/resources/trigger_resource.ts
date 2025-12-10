@@ -10,12 +10,12 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -42,7 +42,7 @@ import type {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TriggerResource extends BaseResource<TriggerModel> {
@@ -123,6 +123,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         agentConfigurationId,
       },
     });
+  }
+
+  static async listByAgentConfigurationIdAndEditors(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      editorIds,
+    }: {
+      agentConfigurationId: string;
+      editorIds: ModelId[];
+    }
+  ): Promise<Result<TriggerResource[], Error>> {
+    if (editorIds.length === 0) {
+      return new Ok([]);
+    }
+    const triggers = await this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        editor: { [Op.in]: editorIds },
+      },
+    });
+    return new Ok(triggers);
   }
 
   static listByWorkspace(auth: Authenticator) {
@@ -394,7 +416,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Query latest versions of all agent configurations at once
-    const agentConfigs = await AgentConfiguration.findAll({
+    const agentConfigs = await AgentConfigurationModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: agentConfigurationIds,
@@ -402,7 +424,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     // Get only the latest version of each agent config (by latest createdAt)
-    const latestAgentConfigs = new Map<string, AgentConfiguration>();
+    const latestAgentConfigs = new Map<string, AgentConfigurationModel>();
     for (const config of agentConfigs) {
       const existing = latestAgentConfigs.get(config.sId);
       if (

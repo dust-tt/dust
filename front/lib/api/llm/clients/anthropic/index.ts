@@ -2,7 +2,11 @@ import Anthropic, { APIError } from "@anthropic-ai/sdk";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/anthropic/types";
-import { toThinkingConfig } from "@app/lib/api/llm/clients/anthropic/utils";
+import {
+  toOutputFormatParam,
+  toThinkingConfig,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
@@ -29,7 +33,9 @@ export class AnthropicLLM extends LLM {
     super(auth, overwriteLLMParameters(llmParameters));
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
+      );
     }
 
     this.client = new Anthropic({
@@ -41,11 +47,12 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = conversation.messages.map(toMessage);
 
-      const events = this.client.messages.stream({
+      const events = this.client.beta.messages.stream({
         model: this.modelId,
         thinking: toThinkingConfig(
           this.reasoningEffort,
@@ -65,6 +72,11 @@ export class AnthropicLLM extends LLM {
         stream: true,
         tools: specifications.map(toTool),
         max_tokens: this.modelConfig.generationTokensCount,
+        tool_choice: toToolChoiceParam(specifications, forceToolCall),
+        // Structured output
+        // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available
+        betas: ["structured-outputs-2025-11-13"],
+        output_format: toOutputFormatParam(this.responseFormat),
       });
 
       yield* streamLLMEvents(events, this.metadata);

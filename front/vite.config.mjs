@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
@@ -9,6 +9,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./vite.setup.ts",
     globalSetup: "./vite.globalSetup.ts",
+    passWithNoTests: true,
 
     // We use forks by default to isolate tests in separate processes that can rely on CLS for
     // transactions isolation. However, when a debugger is attached (Node --inspect), we switch to

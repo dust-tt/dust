@@ -17,7 +17,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -430,7 +430,7 @@ export function _getDeepDiveGlobalAgent(
     toolsetsMCPServerView,
     slideshowMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
@@ -624,7 +624,7 @@ export function _getDustTaskGlobalAgent(
     dataSourcesFileSystemMCPServerView,
     dataWarehousesMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
@@ -736,7 +736,7 @@ export function _getDustTaskGlobalAgent(
 
 export function _getPlanningAgent(
   auth: Authenticator,
-  { settings }: { settings: GlobalAgentSettings | null }
+  { settings }: { settings: GlobalAgentSettingsModel | null }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
@@ -798,7 +798,7 @@ export function _getPlanningAgent(
 
 export function _getBrowserSummaryAgent(
   auth: Authenticator,
-  { settings }: { settings: GlobalAgentSettings | null }
+  { settings }: { settings: GlobalAgentSettingsModel | null }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 

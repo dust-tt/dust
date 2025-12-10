@@ -7,10 +7,10 @@ import type {
 import { literal, Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { WebhookRequestStatus } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -31,7 +31,7 @@ type CleanUpWorkspaceOptions = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WebhookRequestResource
   extends ReadonlyAttributesType<WebhookRequestModel> {}
 

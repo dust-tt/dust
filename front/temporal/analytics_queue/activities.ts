@@ -4,14 +4,14 @@ import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -43,7 +43,7 @@ export async function storeAgentAnalyticsActivity(
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
   // Query the Message/AgentMessage/Conversation rows.
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
       workspaceId: workspace.id,
@@ -55,7 +55,7 @@ export async function storeAgentAnalyticsActivity(
         required: true,
       },
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },
@@ -74,14 +74,14 @@ export async function storeAgentAnalyticsActivity(
   }
 
   // Query the UserMessage row to get user.
-  const userMessageRow = await Message.findOne({
+  const userMessageRow = await MessageModel.findOne({
     where: {
       sId: userMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: true,
         include: [
@@ -120,8 +120,8 @@ export async function storeAgentAnalyticsActivity(
 export async function storeAgentAnalytics(
   auth: Authenticator,
   params: {
-    agentMessageRow: Message;
-    agentAgentMessageRow: AgentMessage;
+    agentMessageRow: MessageModel;
+    agentAgentMessageRow: AgentMessageModel;
     userModel: UserModel | null;
     conversationRow: ConversationModel;
     contextOrigin: UserMessageOrigin | null;
@@ -188,7 +188,7 @@ export async function storeAgentAnalytics(
  */
 async function collectTokenUsage(
   auth: Authenticator,
-  agentMessage: AgentMessage
+  agentMessage: AgentMessageModel
 ): Promise<AgentMessageAnalyticsTokens> {
   if (!agentMessage.runIds || agentMessage.runIds.length === 0) {
     return {
@@ -196,7 +196,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
-      cost_cents: 0,
+      cost_micro_usd: 0,
     };
   }
 
@@ -210,11 +210,6 @@ async function collectTokenUsage(
     { concurrency: 5 }
   );
 
-  const usageCostUsd = runUsages
-    .flat()
-    .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const usageCostCents = usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
-
   return runUsages.flat().reduce(
     (acc, usage) => {
       return {
@@ -222,7 +217,7 @@ async function collectTokenUsage(
         completion: acc.completion + usage.completionTokens,
         reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
         cached: acc.cached + (usage.cachedTokens ?? 0),
-        cost_cents: acc.cost_cents,
+        cost_micro_usd: acc.cost_micro_usd + usage.costMicroUsd,
       };
     },
     {
@@ -230,7 +225,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
-      cost_cents: usageCostCents,
+      cost_micro_usd: 0,
     }
   );
 }
@@ -247,7 +242,7 @@ async function collectToolUsageFromMessage(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfiguration.findAll({
+  const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId,
       id: uniqueConfigIds,
@@ -311,7 +306,9 @@ async function storeToElasticsearch(
 }
 
 function getAgentMessageFeedbackAnalytics(
-  agentMessageFeedbacks: AgentMessageFeedbackResource[] | AgentMessageFeedback[]
+  agentMessageFeedbacks:
+    | AgentMessageFeedbackResource[]
+    | AgentMessageFeedbackModel[]
 ): AgentMessageAnalyticsFeedback[] {
   return agentMessageFeedbacks.map((agentMessageFeedback) => ({
     feedback_id: agentMessageFeedback.id,
@@ -335,14 +332,14 @@ export async function storeAgentMessageFeedbackActivity(
 
   const workspace = auth.getNonNullableWorkspace();
 
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: message.agentMessageId,
       workspaceId: workspace.id,
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },

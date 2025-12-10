@@ -119,6 +119,7 @@ export async function getFileFromConversationAttachment(
   return new Ok({
     buffer: bufferResult.value,
     filename: sanitizeFilename(attachment.title || `attachment-${fileId}`),
+
     contentType: attachment.contentType || "application/octet-stream",
     fileResource,
   });

@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { Message } from "@app/lib/models/assistant/conversation";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
@@ -13,7 +13,7 @@ async function main() {
 
   let messages = [];
   do {
-    messages = await Message.findAll({
+    messages = await MessageModel.findAll({
       where: {
         contentFragmentId: {
           [Op.not]: null,

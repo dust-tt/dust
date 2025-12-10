@@ -235,6 +235,7 @@ export const getBoardItems = async (
     boardIds: [boardIdInt],
     limit: RETRIEVAL_LIMIT,
   });
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return data.boards[0]?.items_page?.items || [];
 };
 
@@ -277,6 +278,7 @@ export const getItemDetails = async (
   `;
 
   const data = await makeGraphQLRequest(accessToken, query, { itemId });
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return data.items?.[0] || null;
 };
 
@@ -397,11 +399,13 @@ export const searchItems = async (
   // Get all items
   let allItems: MondayItem[] = [];
   if (filters.boardId) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     allItems = data.boards[0]?.items_page?.items || [];
   } else {
     // For global search, collect items from all boards
     if (data.boards && Array.isArray(data.boards)) {
       allItems = data.boards.flatMap(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (board: any) => board.items_page?.items || []
       );
     }
@@ -444,6 +448,7 @@ export const searchItems = async (
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const value = JSON.parse(col.value || "{}");
           const personsIds =
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             value.personsAndTeams?.map((p: any) => p.id.toString()) || [];
           return personsIds.includes(filters.assigneeId);
         } catch {
@@ -1079,6 +1084,7 @@ export const getItemsByColumnValue = async (
     columnValue,
     limit: RETRIEVAL_LIMIT,
   });
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return data.items_page_by_column_values?.items || [];
 };
 
@@ -1099,11 +1105,13 @@ export const findUserByName = async (
   `;
 
   const data = await makeGraphQLRequest(accessToken, query);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const users = data.users || [];
 
   return (
     users.find(
       (user: MondayUser) => user.name.toLowerCase() === name.toLowerCase()
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ) || null
   );
 };
@@ -1145,6 +1153,7 @@ export const getBoardValues = async (
   const data = await makeGraphQLRequest(accessToken, query, {
     boardIds: [boardIdInt],
   });
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return data.boards[0] || null;
 };
 
@@ -1175,6 +1184,7 @@ export const getColumnValues = async (
     columnId,
   });
   const item = data.items?.[0];
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return item?.column_values?.[0] || null;
 };
 
@@ -1222,6 +1232,7 @@ export const getFileColumnValues = async (
   if (columnValue?.type === "file") {
     return {
       ...columnValue,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       files: JSON.parse(columnValue.value || "[]"),
     };
   }
@@ -1257,6 +1268,7 @@ export const getGroupDetails = async (
     groupId,
   });
   const board = data.boards?.[0];
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return board?.groups?.[0] || null;
 };
 
@@ -1302,6 +1314,7 @@ export const getSubitemValues = async (
 
   const data = await makeGraphQLRequest(accessToken, query, { itemId });
   const item = data.items?.[0];
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return item?.subitems || [];
 };
 
@@ -1322,6 +1335,7 @@ export const getUserDetails = async (
   `;
 
   const data = await makeGraphQLRequest(accessToken, query, { userId });
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return data.users?.[0] || null;
 };
 
@@ -1491,6 +1505,7 @@ export const getActivityLogs = async (
   };
 
   const data = await makeGraphQLRequest(accessToken, query, variables);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return data.boards?.[0]?.activity_logs || [];
 };
 
@@ -1549,6 +1564,7 @@ export const getBoardAnalytics = async (
     throw new Error("Board not found");
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const items = board.items_page?.items || [];
 
   const analytics: BoardAnalytics = {
@@ -1564,6 +1580,7 @@ export const getBoardAnalytics = async (
   let completedCount = 0;
 
   items.forEach((item: any) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const groupTitle = item.group?.title || "No Group";
     analytics.itemsByGroup[groupTitle] =
       (analytics.itemsByGroup[groupTitle] || 0) + 1;

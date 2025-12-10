@@ -52,6 +52,7 @@ export function MCPServerSettings({
       return;
     }
 
+    // eslint-disable-next-line react-hooks/immutability
     setSelectedUseCase(null);
     void deleteMCPServerConnection({
       connection,

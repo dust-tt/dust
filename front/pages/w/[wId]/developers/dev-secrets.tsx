@@ -24,8 +24,10 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DustAppSecretType,
   SubscriptionType,
@@ -70,11 +72,13 @@ export default function SecretsPage({
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const { secrets } = useDustAppSecrets(owner);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
-      const r = await fetch(`/api/w/${owner.sId}/dust_app_secrets`, {
+      const r = await clientFetch(`/api/w/${owner.sId}/dust_app_secrets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,7 +106,7 @@ export default function SecretsPage({
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (secret: DustAppSecretType) => {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/destroy`,
         {
           method: "DELETE",
@@ -194,6 +198,8 @@ export default function SecretsPage({
               }
             />
             <Input
+              // prevent autocompletion of secrets
+              autoComplete="off"
               message="Secret values are encrypted and stored securely in our database."
               name="Secret value"
               placeholder="Type the secret value"
@@ -225,7 +231,11 @@ export default function SecretsPage({
       <AppCenteredLayout
         subscription={subscription}
         owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "dev_secrets" })}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "dev_secrets",
+          featureFlags,
+        })}
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header

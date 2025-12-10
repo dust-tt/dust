@@ -15,13 +15,7 @@ import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
-
-async function hasFeatureFlag(auth: Authenticator): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  return featureFlags.includes("llm_router_direct_requests");
-}
 
 export async function getLLM(
   auth: Authenticator,
@@ -41,11 +35,6 @@ export async function getLLM(
     return null;
   }
 
-  const hasFeature = bypassFeatureFlag || (await hasFeatureFlag(auth));
-  if (!hasFeature) {
-    return null;
-  }
-
   if (isMistralWhitelistedModelId(modelId)) {
     return new MistralLLM(auth, {
       modelId,
@@ -61,6 +50,7 @@ export async function getLLM(
       modelId,
       temperature,
       reasoningEffort,
+      responseFormat,
       bypassFeatureFlag,
       context,
     });
@@ -82,6 +72,7 @@ export async function getLLM(
       modelId,
       temperature,
       reasoningEffort,
+      responseFormat,
       bypassFeatureFlag,
       context,
     });
@@ -93,6 +84,7 @@ export async function getLLM(
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+      responseFormat,
     });
   }
   if (isNoopWhitelistedModelId(modelId)) {

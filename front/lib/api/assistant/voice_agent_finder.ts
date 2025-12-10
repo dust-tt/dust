@@ -162,6 +162,7 @@ export async function findAgentsInMessageGeneration(
       },
       prompt: instructionsWithAgents,
       specifications,
+      forceToolCall: FIND_AGENTS_AND_TOOLS_FUNCTION_NAME,
     },
     {
       context: {

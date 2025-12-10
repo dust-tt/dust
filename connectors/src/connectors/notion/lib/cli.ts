@@ -20,7 +20,10 @@ import {
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -69,7 +72,7 @@ const getConnector = async (args: NotionCommandType["args"]) => {
 };
 
 async function listSkippedDatabaseIdsForConnectorId(connectorId: ModelId) {
-  const skippedDatabases = await NotionDatabase.findAll({
+  const skippedDatabases = await NotionDatabaseModel.findAll({
     where: {
       connectorId: connectorId,
       skipReason: {
@@ -121,7 +124,7 @@ export async function findNotionUrl({
 }): Promise<NotionFindUrlResponseType> {
   const pageOrDbId = pageOrDbIdFromUrl(url);
 
-  const page = await NotionPage.findOne({
+  const page = await NotionPageModel.findOne({
     where: {
       notionPageId: pageOrDbId,
       connectorId,
@@ -135,7 +138,7 @@ export async function findNotionUrl({
     logger.info({ pageOrDbId, url }, "findNotionUrl: Page not found");
   }
 
-  const db = await NotionDatabase.findOne({
+  const db = await NotionDatabaseModel.findOne({
     where: {
       notionDatabaseId: pageOrDbId,
       connectorId,
@@ -161,7 +164,7 @@ export async function deleteNotionUrl({
 }) {
   const pageOrDbId = pageOrDbIdFromUrl(url);
 
-  const page = await NotionPage.findOne({
+  const page = await NotionPageModel.findOne({
     where: {
       notionPageId: pageOrDbId,
       connectorId: connector.id,
@@ -186,7 +189,7 @@ export async function deleteNotionUrl({
     }
   }
 
-  const db = await NotionDatabase.findOne({
+  const db = await NotionDatabaseModel.findOne({
     where: {
       notionDatabaseId: pageOrDbId,
       connectorId: connector.id,
@@ -307,7 +310,7 @@ export const notion = async ({
       const pageId = parseNotionResourceId(args.pageId);
 
       const connectorId = connector.id;
-      const existingPage = await NotionPage.findOne({
+      const existingPage = await NotionPageModel.findOne({
         where: {
           notionPageId: pageId,
           connectorId: connector.id,
@@ -335,7 +338,7 @@ export const notion = async ({
           skipReason,
         });
       } else {
-        await NotionPage.create({
+        await NotionPageModel.create({
           notionPageId: pageId,
           skipReason,
           connectorId,
@@ -355,7 +358,7 @@ export const notion = async ({
 
       const connectorId = connector.id;
 
-      const existingDatabase = await NotionDatabase.findOne({
+      const existingDatabase = await NotionDatabaseModel.findOne({
         where: {
           notionDatabaseId: databaseId,
           connectorId,
@@ -400,7 +403,7 @@ export const notion = async ({
         `[Admin] Creating new skipped database ${databaseId} with reason ${skipReason}`
       );
 
-      await NotionDatabase.create({
+      await NotionDatabaseModel.create({
         notionDatabaseId: databaseId,
         skipReason,
         connectorId,

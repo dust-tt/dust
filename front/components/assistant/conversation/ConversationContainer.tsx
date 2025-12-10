@@ -1,15 +1,9 @@
-import {
-  ContentMessageAction,
-  ContentMessageInline,
-  InformationCircleIcon,
-  Page,
-} from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -31,7 +25,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { conjugate, Err, Ok, pluralize, toMentionType } from "@app/types";
+import { Err, Ok, toMentionType, toRichAgentMentionType } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -49,9 +43,6 @@ export function ConversationContainerVirtuoso({
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
   const { setSelectedAgent } = useContext(InputBarContext);
-
-  const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
-    useActionValidationContext();
 
   const router = useRouter();
 
@@ -153,33 +144,12 @@ export function ConversationContainerVirtuoso({
       title="Attach files to the conversation"
     >
       {activeConversationId ? (
-        <>
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            setPlanLimitReached={setPlanLimitReached}
-          />
-          {hasBlockedActions && (
-            <ContentMessageInline
-              icon={InformationCircleIcon}
-              variant="primary"
-              className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
-            >
-              <span className="font-bold">
-                {totalBlockedActions} action
-                {pluralize(totalBlockedActions)}
-              </span>{" "}
-              require{conjugate(totalBlockedActions)} manual approval
-              <ContentMessageAction
-                label="Review actions"
-                variant="outline"
-                size="xs"
-                onClick={() => showBlockedActionsDialog()}
-              />
-            </ContentMessageInline>
-          )}
-        </>
+        <ConversationViewer
+          owner={owner}
+          user={user}
+          conversationId={activeConversationId}
+          setPlanLimitReached={setPlanLimitReached}
+        />
       ) : (
         <>
           <div
@@ -200,13 +170,12 @@ export function ConversationContainerVirtuoso({
               owner={owner}
               onSubmit={handleConversationCreation}
               conversationId={null}
-              disable={false}
               disableAutoFocus={false}
             />
           </div>
           <AgentBrowserContainer
-            onAgentConfigurationClick={(agentId) => {
-              setSelectedAgent({ configurationId: agentId });
+            onAgentConfigurationClick={(agent) => {
+              setSelectedAgent(toRichAgentMentionType(agent));
             }}
             owner={owner}
             user={user}

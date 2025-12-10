@@ -1,5 +1,6 @@
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
+import chunk from "lodash/chunk";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { EmbeddingProviderIdType } from "@app/types";
@@ -85,7 +86,6 @@ export type CoreAPIDatasetWithoutData = CoreAPIDatasetVersion & {
 };
 
 export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: { [key: string]: any }[];
 };
 
@@ -108,7 +108,7 @@ type CoreAPICreateRunParams = {
   specification?: string | null;
   specificationHash?: string | null;
   datasetId?: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   inputs?: any[] | null;
   config: RunConfig;
   credentials: CredentialsType;
@@ -373,6 +373,9 @@ function topKSortedDocuments(
   return result;
 }
 
+const BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES = 100;
+const CORE_API_CALLS_CONCURRENCY = 10;
+
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
@@ -463,7 +466,7 @@ export class CoreAPI {
   }: {
     projectId: string;
     datasetId: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     data: any[];
   }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
     const response = await this._fetchWithError(
@@ -1004,17 +1007,23 @@ export class CoreAPI {
     const searchResults = await concurrentExecutor(
       searches,
       async (search) => {
-        return this.searchDataSource(search.projectId, search.dataSourceId, {
-          query: query,
-          topK: topK,
-          filter: search.filter,
-          view_filter: search.view_filter,
-          fullText: fullText,
-          credentials: credentials,
-          target_document_tokens: target_document_tokens,
-        });
+        const r = await this.searchDataSource(
+          search.projectId,
+          search.dataSourceId,
+          {
+            query: query,
+            topK: topK,
+            filter: search.filter,
+            view_filter: search.view_filter,
+            fullText: fullText,
+            credentials: credentials,
+            target_document_tokens: target_document_tokens,
+          }
+        );
+
+        return r;
       },
-      { concurrency: 10 }
+      { concurrency: CORE_API_CALLS_CONCURRENCY }
     );
 
     // Check if all search results are successful, if not return the first error
@@ -1029,6 +1038,90 @@ export class CoreAPI {
     );
 
     const sortedDocuments = topKSortedDocuments(query, topK, allDocuments);
+
+    return new Ok({
+      documents: sortedDocuments,
+    });
+  }
+
+  async bulkSearchDataSources(
+    query: string,
+    topK: number,
+    credentials: { [key: string]: string },
+    fullText: boolean,
+    searches: {
+      projectId: string;
+      dataSourceId: string;
+      filter?: CoreAPISearchFilter | null;
+      view_filter: CoreAPISearchFilter;
+    }[],
+    target_document_tokens?: number | null,
+    { hasUseBulkSearchFF }: { hasUseBulkSearchFF: boolean } = {
+      hasUseBulkSearchFF: false,
+    }
+  ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
+    // If FF is not enabled, fallback to regular search.
+    if (!hasUseBulkSearchFF) {
+      return this.searchDataSources(
+        query,
+        topK,
+        credentials,
+        fullText,
+        searches,
+        target_document_tokens
+      );
+    }
+
+    const dataSourceChunks = chunk(
+      searches,
+      BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES
+    );
+
+    const results = await concurrentExecutor(
+      dataSourceChunks,
+      async (chunk) => {
+        const response = await this._fetchWithError(
+          `${this._url}/data_sources/search/bulk`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query,
+              full_text: fullText,
+              credentials,
+              top_k: topK,
+              searches: chunk.map((search) => ({
+                project_id: parseInt(search.projectId),
+                data_source_id: search.dataSourceId,
+                top_k: topK,
+                filter: search.filter,
+                view_filter: search.view_filter,
+                target_document_tokens: target_document_tokens,
+              })),
+            }),
+          }
+        );
+
+        return this._resultFromResponse<{
+          documents: CoreAPIDocument[];
+        }>(response);
+      },
+      { concurrency: CORE_API_CALLS_CONCURRENCY }
+    );
+
+    const errors = results.filter((result) => result.isErr());
+    if (errors.length > 0) {
+      // If any of the bulk search requests failed, return the first error.
+      return errors[0];
+    }
+
+    const sortedDocuments = topKSortedDocuments(
+      query,
+      topK,
+      results.flatMap((r) => (r.isOk() ? r.value.documents : []))
+    );
 
     return new Ok({
       documents: sortedDocuments,
@@ -1150,7 +1243,7 @@ export class CoreAPI {
     CoreAPIResponse<{
       text: string;
       total_characters: number;
-      offset: number;
+      offset: number | null;
       limit: number | null;
     }>
   > {

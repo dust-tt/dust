@@ -1,10 +1,22 @@
-import { createContext, useState } from "react";
+import { createContext, useCallback, useState } from "react";
+
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+
+type GeneratingMessage = {
+  messageId: string;
+  conversationId: string;
+};
 
 type GenerationContextType = {
-  generatingMessages: { messageId: string; conversationId: string }[];
-  setGeneratingMessages: React.Dispatch<
-    React.SetStateAction<{ messageId: string; conversationId: string }[]>
-  >;
+  generatingMessages: GeneratingMessage[];
+  addGeneratingMessage: (params: {
+    messageId: string;
+    conversationId: string;
+  }) => void;
+  removeGeneratingMessage: (params: { messageId: string }) => void;
+  getConversationGeneratingMessages: (
+    conversationId: string
+  ) => GeneratingMessage[];
 };
 
 export const GenerationContext = createContext<
@@ -17,13 +29,60 @@ export const GenerationContextProvider = ({
   children: React.ReactNode;
 }) => {
   const [generatingMessages, setGeneratingMessages] = useState<
-    { messageId: string; conversationId: string }[]
+    GeneratingMessage[]
   >([]);
+
+  const { getFirstBlockedActionForMessage } = useBlockedActionsContext();
+
+  const addGeneratingMessage = useCallback(
+    ({
+      messageId,
+      conversationId,
+    }: {
+      messageId: string;
+      conversationId: string;
+    }) => {
+      setGeneratingMessages((prev) => {
+        if (prev.some((m) => m.messageId === messageId)) {
+          return prev;
+        }
+        return [...prev, { messageId, conversationId }];
+      });
+    },
+    []
+  );
+
+  const removeGeneratingMessage = useCallback(
+    ({ messageId }: { messageId: string }) => {
+      setGeneratingMessages((prev) => {
+        if (!prev.some((m) => m.messageId === messageId)) {
+          return prev;
+        }
+        return prev.filter((m) => m.messageId !== messageId);
+      });
+    },
+    []
+  );
+
+  const getConversationGeneratingMessages = useCallback(
+    (conversationId: string) => {
+      return generatingMessages.filter(
+        (m) =>
+          m.conversationId === conversationId &&
+          // Ignore messages that have a blocked action
+          !getFirstBlockedActionForMessage(m.messageId)
+      );
+    },
+    [generatingMessages, getFirstBlockedActionForMessage]
+  );
+
   return (
     <GenerationContext.Provider
       value={{
         generatingMessages,
-        setGeneratingMessages,
+        addGeneratingMessage,
+        removeGeneratingMessage,
+        getConversationGeneratingMessages,
       }}
     >
       {children}

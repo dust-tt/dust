@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types";
 
 interface UseVoiceTranscriptionToggleProps {
@@ -19,7 +20,7 @@ export function useVoiceTranscriptionToggle({
   const doToggleVoiceTranscription = async () => {
     setIsChanging(true);
     try {
-      const res = await fetch(`/api/w/${owner.sId}`, {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -33,6 +34,7 @@ export function useVoiceTranscriptionToggle({
       if (!res.ok) {
         throw new Error("Failed to update Voice transcription setting");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",

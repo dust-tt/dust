@@ -1,8 +1,10 @@
 import type { RequestHandler } from "express";
 import express from "express";
+import { error } from "firebase-functions/logger";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
+import { ALL_REGIONS } from "../webhook-router-config.js";
 
 export function createTeamsRoutes(
   secretManager: SecretManager,
@@ -34,6 +36,7 @@ async function handleTeamsWebhook(
       endpoint,
       method: req.method,
       headers: req.headers,
+      regions: ALL_REGIONS,
     });
 
     // Find one successful response that is a 200 status code
@@ -48,11 +51,11 @@ async function handleTeamsWebhook(
       res.set("Content-Type", "application/json; charset=utf-8");
       res.status(200).json(responseBody);
     }
-  } catch (error) {
-    console.error("Teams webhook router error", {
+  } catch (e) {
+    error("Teams webhook router error", {
       component: "teams-routes",
       endpoint,
-      error: error instanceof Error ? error.message : String(error),
+      error: e instanceof Error ? e.message : String(e),
     });
   } finally {
     if (!res.headersSent) {

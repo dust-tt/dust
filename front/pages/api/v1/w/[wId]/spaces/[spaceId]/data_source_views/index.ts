@@ -57,6 +57,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<DataSourceViewsListResponseType>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }

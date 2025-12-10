@@ -193,6 +193,7 @@ export function ReasoningModelSection() {
                 </div>
               </div>
               <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                 {selectedReasoningModelConfig.description ||
                   "No description available"}
               </div>

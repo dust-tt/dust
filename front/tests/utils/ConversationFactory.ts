@@ -3,17 +3,20 @@ import type { Transaction } from "sequelize";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import type {
-  ConversationType,
   ConversationVisibility,
+  ConversationWithoutContentType,
   ModelId,
+  SupportedContentFragmentType,
   UserMessageOrigin,
   UserMessageType,
   WorkspaceType,
@@ -37,8 +40,8 @@ export class ConversationFactory {
       visibility?: ConversationVisibility;
       t?: Transaction;
     }
-  ): Promise<ConversationType> {
-    const user = auth.getNonNullableUser();
+  ): Promise<ConversationWithoutContentType> {
+    const user = auth.user();
     const workspace = auth.getNonNullableWorkspace();
 
     const conversation = await createConversation(auth, {
@@ -64,7 +67,7 @@ export class ConversationFactory {
     // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
-      await createMessageAndUserMessage({
+      const userMessageRow = await createUserMessage({
         user,
         workspace,
         conversationModelId: conversation.id,
@@ -78,6 +81,7 @@ export class ConversationFactory {
         agentConfigurationId,
         createdAt,
         rank: i * 2 + 1,
+        parentId: userMessageRow.id,
         t,
       });
     }
@@ -99,13 +103,13 @@ export class ConversationFactory {
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     content: string;
     origin?: UserMessageOrigin;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
-  }): Promise<{ messageRow: Message; userMessage: UserMessageType }> {
-    const userMessageRow = await UserMessage.create({
+  }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
+    const userMessageRow = await UserMessageModel.create({
       userId: auth.getNonNullableUser().id,
       workspaceId: workspace.id,
       content,
@@ -118,7 +122,7 @@ export class ConversationFactory {
       clientSideMCPServerIds: [],
     });
 
-    const messageRow = await Message.create({
+    const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
       rank: 0,
       conversationId: conversation.id,
@@ -132,10 +136,11 @@ export class ConversationFactory {
       created: userMessageRow.createdAt.getTime(),
       sId: messageRow.sId,
       type: "user_message",
-      visibility: "visible",
+      visibility: messageRow.visibility,
       version: 0,
       user: auth.getNonNullableUser().toJSON(),
       mentions: [],
+      richMentions: [],
       content: userMessageRow.content,
       context: {
         username: userMessageRow.userContextUsername,
@@ -157,9 +162,150 @@ export class ConversationFactory {
 
     return { messageRow, userMessage };
   }
+
+  /**
+   * Creates a user message with a specific rank
+   */
+  static async createUserMessageWithRank({
+    auth,
+    workspace,
+    conversationId,
+    rank,
+    content,
+    origin = "web",
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    content: string;
+    origin?: UserMessageOrigin;
+  }): Promise<MessageModel> {
+    const userMessageRow = await UserMessageModel.create({
+      userId: auth.user()?.id,
+      workspaceId: workspace.id,
+      content,
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: origin,
+      clientSideMCPServerIds: [],
+    });
+
+    return MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+      workspaceId: workspace.id,
+    });
+  }
+
+  /**
+   * Creates an agent message with a specific rank
+   */
+  static async createAgentMessageWithRank({
+    workspace,
+    conversationId,
+    rank,
+    agentConfigurationId,
+  }: {
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    agentConfigurationId: string;
+  }): Promise<MessageModel> {
+    const agentMessageRow = await AgentMessageModel.create({
+      status: "created",
+      agentConfigurationId,
+      agentConfigurationVersion: 0,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+
+    return MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      agentMessageId: agentMessageRow.id,
+      workspaceId: workspace.id,
+    });
+  }
+
+  /**
+   * Creates a content fragment message with a specific rank
+   * If fileId is not provided, a file will be created automatically
+   */
+  static async createContentFragmentMessage({
+    auth,
+    workspace,
+    conversationId,
+    rank,
+    fileId,
+    title,
+    contentType = "text/plain",
+    fileName,
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    fileId?: ModelId;
+    title: string;
+    contentType?: SupportedContentFragmentType;
+    fileName?: string;
+  }): Promise<MessageModel> {
+    let finalFileId = fileId;
+    if (!finalFileId) {
+      // Default to text/plain for file creation if contentType is not a valid file content type
+      const fileContentType =
+        contentType === "text/plain" || contentType === "text/markdown"
+          ? contentType
+          : "text/plain";
+      const file = await FileFactory.create(
+        workspace,
+        auth.getNonNullableUser(),
+        {
+          contentType: fileContentType,
+          fileName: fileName ?? `${title}.txt`,
+          fileSize: 100,
+          status: "ready",
+          useCase: "conversation",
+        }
+      );
+      finalFileId = file.id;
+    }
+
+    const contentFragment = await ContentFragmentResource.makeNew({
+      workspaceId: workspace.id,
+      title,
+      contentType: contentType ?? "text/plain",
+      fileId: finalFileId,
+      userId: auth.getNonNullableUser().id,
+      userContextUsername: "testuser",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      sourceUrl: null,
+      textBytes: null,
+    });
+
+    return MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      contentFragmentId: contentFragment.id,
+      workspaceId: workspace.id,
+    });
+  }
 }
 
-const createMessageAndUserMessage = async ({
+const createUserMessage = async ({
   user,
   workspace,
   conversationModelId,
@@ -167,14 +313,14 @@ const createMessageAndUserMessage = async ({
   rank,
   t,
 }: {
-  user: UserResource;
+  user: UserResource | null;
   workspace: WorkspaceType;
   conversationModelId: ModelId;
   createdAt: Date;
   rank: number;
   t?: Transaction;
-}) => {
-  return Message.create(
+}): Promise<MessageModel> => {
+  return MessageModel.create(
     {
       createdAt,
       updatedAt: createdAt,
@@ -183,11 +329,11 @@ const createMessageAndUserMessage = async ({
       conversationId: conversationModelId,
       parentId: null,
       userMessageId: (
-        await UserMessage.create(
+        await UserMessageModel.create(
           {
             createdAt,
             updatedAt: createdAt,
-            userId: user.id,
+            userId: user?.id,
             workspaceId: workspace.id,
             content: "Test user Message.",
             userContextUsername: "soupinou",
@@ -215,6 +361,7 @@ const createMessageAndAgentMessage = async ({
   agentConfigurationId,
   createdAt,
   rank,
+  parentId,
   t,
 }: {
   workspace: WorkspaceType;
@@ -222,9 +369,10 @@ const createMessageAndAgentMessage = async ({
   agentConfigurationId: string;
   createdAt: Date;
   rank: number;
+  parentId?: ModelId | null;
   t?: Transaction;
 }) => {
-  const agentMessageRow = await AgentMessage.create(
+  const agentMessageRow = await AgentMessageModel.create(
     {
       createdAt,
       updatedAt: createdAt,
@@ -236,14 +384,14 @@ const createMessageAndAgentMessage = async ({
     },
     { transaction: t }
   );
-  const messageRow = await Message.create(
+  const messageRow = await MessageModel.create(
     {
       createdAt,
       updatedAt: createdAt,
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversationModelId,
-      parentId: null,
+      parentId: parentId ?? null,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     },

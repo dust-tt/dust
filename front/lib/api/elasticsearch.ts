@@ -9,6 +9,16 @@ import { Err, Ok } from "@app/types/shared/result";
 let esClient: Client | null = null;
 
 export const ANALYTICS_ALIAS_NAME = "front.agent_message_analytics";
+export const USER_SEARCH_ALIAS_NAME = "front.user_search";
+
+/**
+ * Mapping of index names to their directory locations.
+ * This allows different features to organize their indices in feature-specific directories.
+ */
+export const INDEX_DIRECTORIES: Record<string, string> = {
+  agent_message_analytics: "lib/analytics/indices",
+  user_search: "lib/user_search/indices",
+};
 
 export interface ElasticsearchBaseDocument {
   workspace_id: string;
@@ -142,7 +152,7 @@ export function formatUTCDateFromMillis(ms: number): string {
  *
  * @param groups - Array of groups with parsed points, already sorted by priority (e.g., by total cost)
  * @param max - Maximum number of groups to return (default: 5)
- * @param valueKey - Key of the numeric value to aggregate (e.g., "costCents")
+ * @param valueKey - Key of the numeric value to aggregate (e.g., "costMicroUsd")
  * @returns Array with at most N groups (top N-1 + optional "others" group)
  */
 export function ensureAtMostNGroups<

@@ -14,12 +14,15 @@ import {
   getMessageDate,
   getMessageSId,
   isHandoverUserMessage,
+  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 interface MessageItemProps {
@@ -35,6 +38,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
+    const { hasFeature } = useFeatureFlags({ workspaceId: context.owner.sId });
+    const userMentionsEnabled = hasFeature("mentions_v2");
+
     const sId = getMessageSId(data);
 
     const sendNotification = useSendNotification();
@@ -53,7 +59,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           feedbackContent: string | null;
           isConversationShared: boolean;
         }) => {
-          const res = await fetch(
+          const res = await clientFetch(
             `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/messages/${sId}/feedbacks`,
             {
               method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
@@ -97,6 +103,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         : null,
       onSubmitThumb,
       isSubmittingThumb,
+      owner: context.owner,
     };
 
     const citations =
@@ -135,14 +142,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto min-w-60",
-            "pt-6 md:pt-10",
-            "max-w-3xl"
+            userMentionsEnabled ? "mb-4" : "pt-6 md:pt-10",
+            "max-w-4xl"
           )}
         >
-          {isUserMessage(data) && (
+          {isUserMessage(data) && !isHiddenMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
+              currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}

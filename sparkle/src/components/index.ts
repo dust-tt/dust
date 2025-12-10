@@ -17,7 +17,7 @@ export type {
   RegularButtonProps,
 } from "./Button";
 export { Button } from "./Button";
-export type { ButtonGroupProps } from "./ButtonGroup";
+export type { ButtonGroupItem, ButtonGroupProps } from "./ButtonGroup";
 export { ButtonGroup } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
 export type { CardProps } from "./Card";
@@ -45,6 +45,7 @@ export {
   ContentMessageInline,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
+export type { ConversationMessageAction } from "./ConversationMessage";
 export {
   ConversationContainer,
   ConversationMessage,
@@ -179,6 +180,7 @@ export { default as Spinner } from "./Spinner";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
+export { Timeline, TimelineItem } from "./Timeline";
 export {
   Tooltip,
   TooltipContent,

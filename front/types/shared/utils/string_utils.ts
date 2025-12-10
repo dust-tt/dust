@@ -25,6 +25,7 @@ export function safeSubstring(
   while (isTrailingLoneSurrogate(str.charCodeAt(start))) {
     start++;
   }
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (end === undefined) {
     end = str.length;
   }

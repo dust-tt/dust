@@ -33,7 +33,8 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { FREE_NO_PLAN_CODE, isProPlan } from "@app/lib/plans/plan_codes";
+import { clientFetch } from "@app/lib/egress/client";
+import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
@@ -63,6 +64,8 @@ function prepareSubscriptionsForDisplay(
             s.endDate
           ).toLocaleTimeString()}`
         : null,
+      startDateValue: s.startDate ? new Date(s.startDate).getTime() : null,
+      endDateValue: s.endDate ? new Date(s.endDate).getTime() : null,
     };
   });
 }
@@ -308,12 +311,15 @@ function UpgradeDowngradeModal({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/downgrade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const r = await clientFetch(
+        `/api/poke/workspaces/${owner.sId}/downgrade`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (!r.ok) {
         throw new Error("Failed to downgrade workspace.");
       }
@@ -334,15 +340,18 @@ function UpgradeDowngradeModal({
         return;
       }
       try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            planCode: plan.code,
-          }),
-        });
+        const r = await clientFetch(
+          `/api/poke/workspaces/${owner.sId}/upgrade`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              planCode: plan.code,
+            }),
+          }
+        );
         if (!r.ok) {
           throw new Error("Failed to upgrade workspace to plan.");
         }
@@ -396,7 +405,7 @@ function UpgradeDowngradeModal({
             <div>
               <EnterpriseUpgradeDialog owner={owner} />
             </div>
-            {isProPlan(subscription.plan.code) && (
+            {isProPlanPrefix(subscription.plan.code) && (
               <>
                 <Page.SectionHeader
                   title="Change the Pro Plan of this workspace"
@@ -404,7 +413,7 @@ function UpgradeDowngradeModal({
                 />
                 <div>
                   {plans
-                    .filter((p) => isProPlan(p.code))
+                    .filter((p) => isProPlanPrefix(p.code))
                     .map((p) => {
                       return (
                         <div key={p.code} className="pt-2">

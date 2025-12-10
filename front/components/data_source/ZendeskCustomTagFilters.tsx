@@ -12,6 +12,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 import { safeParseJSON } from "@app/types";
@@ -93,7 +94,7 @@ export function ZendeskCustomFieldFilters({
       const currentFieldIds = customFields.map((field) => field.id);
       const updatedFieldIds = [...currentFieldIds, numericFieldId];
 
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
         {
           headers: { "Content-Type": "application/json" },
@@ -117,6 +118,7 @@ export function ZendeskCustomFieldFilters({
           type: "error",
           title: "Failed to add custom field",
           description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             err.error?.connectors_error?.message || "An unknown error occurred",
         });
       }
@@ -146,7 +148,7 @@ export function ZendeskCustomFieldFilters({
         .filter((field) => field.id !== fieldId)
         .map((field) => field.id);
 
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
         {
           headers: { "Content-Type": "application/json" },
@@ -168,6 +170,7 @@ export function ZendeskCustomFieldFilters({
           type: "error",
           title: "Failed to remove custom field",
           description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             err.error?.connectors_error?.message || "An unknown error occurred",
         });
       }

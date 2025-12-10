@@ -13,7 +13,7 @@ import type {
 export type TestConfig = {
   modelId: ModelIdType;
   temperature?: number | undefined;
-  reasoningEffort?: ReasoningEffort | undefined;
+  reasoningEffort?: ReasoningEffort | null;
   testStructuredOutputKey?: TestStructuredOutputKey;
   provider: ModelProviderIdType;
 };
@@ -42,11 +42,20 @@ export interface TestConversation {
   /** Array of response checkers aligned with the conversation actions */
   expectedInResponses: ResponseChecker[];
   specifications?: AgentActionSpecification[];
+  configs?: Pick<
+    TestConfig,
+    "temperature" | "reasoningEffort" | "testStructuredOutputKey"
+  >[];
+  forceToolCall?: string;
 }
 
 export interface RunnabletestConversation {
   name: string;
   run: (config: TestConfig) => Promise<void>;
+  configs: Pick<
+    TestConfig,
+    "temperature" | "reasoningEffort" | "testStructuredOutputKey"
+  >[];
 }
 
 export interface ConfigParams {

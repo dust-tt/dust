@@ -1,6 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
@@ -100,9 +100,8 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static override async fetchByModelId(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _id: ModelId,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     _transaction?: Transaction
   ): Promise<null> {
     // Workspace isolation is handled in `fetchByModelIdWithAuth`.
@@ -550,6 +549,7 @@ export class FileResource extends BaseResource<FileModel> {
 
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return null;
     }

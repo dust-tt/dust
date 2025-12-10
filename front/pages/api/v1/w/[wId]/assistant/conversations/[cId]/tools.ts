@@ -30,6 +30,7 @@ export type ConversationToolActionRequest = z.infer<
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       FetchConversationToolsResponse | PatchConversationResponseType

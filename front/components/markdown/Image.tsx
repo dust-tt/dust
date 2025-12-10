@@ -70,6 +70,7 @@ export function Img({ src, alt, owner }: ImgProps) {
 export function imgDirective() {
   return (tree: any) => {
     visit(tree, ["image"], (node) => {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const data = node.data || (node.data = {});
       data.hName = "dustimg";
       data.hProperties = {

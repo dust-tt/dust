@@ -25,26 +25,6 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const SUPPORTED_METHODS = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-] as const;
-export type MethodType = (typeof SUPPORTED_METHODS)[number];
-
-export type ScopeType =
-  | "read:user_profile"
-  | "read:conversation"
-  | "update:conversation"
-  | "create:conversation"
-  | "read:file"
-  | "update:file"
-  | "create:file"
-  | "delete:file"
-  | "read:agent";
-
 /**
  * This function is a wrapper for API routes that require session authentication.
  *
@@ -243,7 +223,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: U;
-    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
   } = {}
 ) {
   const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
@@ -277,13 +256,13 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       }
       const token = bearerTokenRes.value;
 
-      // Authentification with  token.
+      // Authentification with a token.
       // Straightforward since the token is attached to the user.
       if (isOAuthToken(token)) {
         try {
           const authRes = await handleWorkOSAuth(req, res, token, wId);
           if (authRes.isErr()) {
-            // If WorkOS errors and Auth0 also fails, return an ApiError.
+            // If WorkOS errors return an ApiError.
             return apiError(req, res, authRes.error);
           }
 
@@ -457,19 +436,14 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
 /**
  * This function is a wrapper for Public API routes that require authentication without a workspace.
- * It automatically detects whether to use Auth0 or WorkOS authentication based on the token's issuer.
+ * It automatically detects whether to use WorkOS authentication based on the token's issuer.
  */
 export function withTokenAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     user: UserTypeWithWorkspaces
-  ) => Promise<void> | void,
-  // TODO(workos): Handle required scopes.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  opts: {
-    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
-  } = {}
+  ) => Promise<void> | void
 ) {
   return withLogging(
     async (
@@ -521,7 +495,7 @@ export function withTokenAuthentication<T>(
         }
 
         if (workOSDecoded.isErr()) {
-          // We were not able to decode the token for Workos, nor Auth0,
+          // We were not able to decode the token for Workos,
           // so we log the error and return an API error.
           logger.error(
             {

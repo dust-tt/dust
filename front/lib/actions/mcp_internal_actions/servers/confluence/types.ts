@@ -93,6 +93,58 @@ export const ConfluencePageSchema = z
 
 export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
 
+// Schema for v1 API search response (used for CQL queries)
+export const ConfluenceV1SearchPageSchema = z
+  .object({
+    id: z.string(),
+    type: z.literal("page"),
+    status: z.string(),
+    title: z.string(),
+    space: z
+      .object({
+        id: z.union([z.string(), z.number()]),
+        key: z.string().optional(),
+      })
+      .optional(),
+    ancestors: z
+      .array(
+        z.object({
+          id: z.string(),
+          type: z.string(),
+        })
+      )
+      .optional(),
+    body: z
+      .object({
+        storage: z
+          .object({
+            value: z.string(),
+            representation: z.literal("storage"),
+          })
+          .optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export type ConfluenceV1SearchPage = z.infer<
+  typeof ConfluenceV1SearchPageSchema
+>;
+
+export const ConfluenceV1SearchResultSchema = z.object({
+  results: z.array(ConfluenceV1SearchPageSchema),
+  _links: z
+    .object({
+      next: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
+});
+
+export type ConfluenceV1SearchResult = z.infer<
+  typeof ConfluenceV1SearchResultSchema
+>;
+
 export const ConfluenceListPagesResultSchema = z.object({
   results: z.array(ConfluencePageSchema),
   _links: z
@@ -190,3 +242,97 @@ export const UpdatePagePayloadSchema = z.object({
 });
 
 export type UpdatePagePayload = z.infer<typeof UpdatePagePayloadSchema>;
+
+export type ConfluenceUser = {
+  accountId?: string;
+  displayName?: string;
+  publicName?: string;
+  email?: string;
+};
+
+export type ConfluenceLinks = {
+  base?: string;
+  webui?: string;
+  tinyui?: string;
+};
+
+export type ConfluenceVersionInfo = {
+  number?: number;
+  message?: string;
+  authorId?: string;
+  createdAt?: string;
+  createdBy?: ConfluenceUser;
+};
+
+export type ConfluenceLabel = {
+  name?: string;
+};
+
+export const ConfluenceSpaceSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string(),
+    type: z.string().optional(),
+    status: z.string().optional(),
+    homepageId: z.string().optional(),
+  })
+  .passthrough();
+
+export type ConfluenceSpace = z.infer<typeof ConfluenceSpaceSchema>;
+
+export const ConfluenceListSpacesResultSchema = z.object({
+  results: z.array(ConfluenceSpaceSchema),
+  _links: z
+    .object({
+      next: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
+});
+
+export type ConfluenceListSpacesResult = z.infer<
+  typeof ConfluenceListSpacesResultSchema
+>;
+
+export const ConfluenceListSpacesRequestSchema = z.object({
+  limit: z
+    .number()
+    .optional()
+    .describe("Number of results per page (default 25)"),
+  cursor: z
+    .string()
+    .optional()
+    .describe("Pagination cursor from previous response for next page"),
+});
+
+export type ConfluenceListSpacesRequest = z.infer<
+  typeof ConfluenceListSpacesRequestSchema
+>;
+
+export type ConfluenceAncestor = {
+  id: string;
+  title?: string;
+};
+
+export type RenderablePage = (ConfluencePage | ConfluenceV1SearchPage) & {
+  _links?: ConfluenceLinks;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: ConfluenceUser;
+  version?: ConfluenceVersionInfo;
+  labels?: { results?: ConfluenceLabel[] };
+  space?: {
+    id: string | number;
+    key?: string;
+    name?: string;
+    type?: string;
+    status?: string;
+    homepageId?: string;
+  };
+  ancestors?: ConfluenceAncestor[];
+};
+
+export type RenderConfluencePageOptions = {
+  includeBody?: boolean;
+};

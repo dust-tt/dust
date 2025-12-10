@@ -24,7 +24,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -37,6 +37,7 @@ import type {
 import {
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -321,7 +322,7 @@ function _getDustLikeGlobalAgent(
     memories,
     availableToolsets,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -436,7 +437,6 @@ function _getDustLikeGlobalAgent(
   };
 
   if (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (settings && settings.status === "disabled_by_admin") ||
     !modelConfiguration
   ) {
@@ -564,7 +564,7 @@ function _getDustLikeGlobalAgent(
 export function _getDustGlobalAgent(
   auth: Authenticator,
   args: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -588,7 +588,7 @@ export function _getDustGlobalAgent(
 export function _getDustEdgeGlobalAgent(
   auth: Authenticator,
   args: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -606,6 +606,31 @@ export function _getDustEdgeGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
     preferredModelConfiguration: CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustQuickGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettingsModel | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
+    name: "dust-quick",
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }

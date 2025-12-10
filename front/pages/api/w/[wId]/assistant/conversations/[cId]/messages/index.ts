@@ -16,7 +16,8 @@ import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
   ContentFragmentType,
-  FetchConversationMessagesResponse,
+  LegacyLightMessageType,
+  LightMessageType,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
@@ -33,11 +34,26 @@ export type PostMessagesResponseBody = {
   agentMessages: AgentMessageType[];
 };
 
+// TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
+interface LegacyFetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: LegacyLightMessageType[];
+}
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: LightMessageType[];
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      PostMessagesResponseBody | FetchConversationMessagesResponse
+      | PostMessagesResponseBody
+      | LegacyFetchConversationMessagesResponse
+      | FetchConversationMessagesResponse
     >
   >,
   auth: Authenticator
@@ -81,11 +97,15 @@ async function handler(
         );
       }
 
-      const messagesRes = await fetchConversationMessages(
-        auth,
+      const useNewResponseFormat = req.query.newResponseFormat === "1";
+
+      // Note that we don't use the order column and order direction here because we enforce sorting by rank in descending order.
+      const messagesRes = await fetchConversationMessages(auth, {
         conversationId,
-        paginationRes.value
-      );
+        limit: paginationRes.value.limit,
+        lastRank: paginationRes.value.lastValue,
+        viewType: useNewResponseFormat ? "light" : "legacy-light",
+      });
 
       if (messagesRes.isErr()) {
         return apiErrorForConversation(req, res, messagesRes.error);

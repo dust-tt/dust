@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type {
   BuilderSuggestionInputType,
   ModelConversationTypeMultiActions,
@@ -75,7 +75,7 @@ async function filterSuggestedNames(
   }
   // Filter out suggested names that are already in use in the workspace.
   const existingNames = (
-    await AgentConfiguration.findAll({
+    await AgentConfigurationModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         status: "active",

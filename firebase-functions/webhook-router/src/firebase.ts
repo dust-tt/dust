@@ -1,6 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
+import { error, log } from "firebase-functions/logger";
 import { defineString } from "firebase-functions/params";
 import { onObjectFinalized } from "firebase-functions/storage";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -21,37 +22,53 @@ setGlobalOptions({
 });
 
 const firebaseApp = initializeApp();
+const app = createApp(firebaseApp);
 
 // Synchronizes GCS config file update with cache
-export const syncWebhookRouterConfig = onObjectFinalized({ bucket, serviceAccount }, async (event) => {
-  const { name: webhookRouterConfigFilePath, bucket: webhookRouterConfigBucket } = event.data;
+export const syncWebhookRouterConfig = onObjectFinalized(
+  { bucket, serviceAccount },
+  async (event) => {
+    const {
+      name: webhookRouterConfigFilePath,
+      bucket: webhookRouterConfigBucket,
+    } = event.data;
 
-  if (webhookRouterConfigFilePath !== CONFIG.DUST_WEBHOOK_ROUTER_CONFIG_FILE_PATH) {
-    // Ignore other files updates
-    return;
-  }
-
-  try {
-    const webhookRouterConfigFile = new Storage().bucket(webhookRouterConfigBucket).file(webhookRouterConfigFilePath);
-    const [rawConfig] = await webhookRouterConfigFile.download();
-
-    const parsedConfig = JSON.parse(rawConfig.toString("utf-8"));
-    if (typeof parsedConfig !== "object") {
-      throw new Error("Invalid webhook configuration format. Expected an object.");
+    if (
+      webhookRouterConfigFilePath !==
+      CONFIG.DUST_WEBHOOK_ROUTER_CONFIG_FILE_PATH
+    ) {
+      // Ignore other files updates
+      return;
     }
 
-    // We set the updated webhook router configuration at the root of Firebase Realtime Database
-    await getDatabase(firebaseApp).ref().set(parsedConfig);
+    try {
+      const webhookRouterConfigFile = new Storage()
+        .bucket(webhookRouterConfigBucket)
+        .file(webhookRouterConfigFilePath);
+      const [rawConfig] = await webhookRouterConfigFile.download();
 
-    console.log("Webhook router configuration sync succeeded", { component: "webhook-router-config-sync" });
-  } catch (error) {
-    console.error("Webhook router configuration sync failed", {
-      component: "webhook-router-config-sync",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
+      const parsedConfig = JSON.parse(rawConfig.toString("utf-8"));
+      if (parsedConfig === null || typeof parsedConfig !== "object") {
+        throw new Error(
+          "Invalid webhook configuration format. Expected an object."
+        );
+      }
+
+      // We set the updated webhook router configuration at the root of Firebase Realtime Database
+      await getDatabase(firebaseApp).ref().set(parsedConfig);
+
+      log("Webhook router configuration sync succeeded", {
+        component: "webhook-router-config-sync",
+      });
+    } catch (e) {
+      error("Webhook router configuration sync failed", {
+        component: "webhook-router-config-sync",
+        error: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
   }
-});
+);
 
 // Create and export the Firebase Function.
 export const webhookRouter = onRequest(
@@ -64,7 +81,6 @@ export const webhookRouter = onRequest(
   },
   async (req, res) => {
     // Firebase automatically provides req.rawBody for signature verification.
-    const app = await createApp();
     app(req, res);
   }
 );

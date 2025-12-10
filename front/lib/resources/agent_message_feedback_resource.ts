@@ -10,14 +10,13 @@ import { Op } from "sequelize";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  AgentMessage,
-  AgentMessage as AgentMessageModel,
-  AgentMessageFeedback,
+  AgentMessageFeedbackModel,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -26,7 +25,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageType,
@@ -39,32 +37,33 @@ import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageFeedbackResource
-  extends ReadonlyAttributesType<AgentMessageFeedback> {}
+  extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedback> {
-  static model: ModelStatic<AgentMessageFeedback> = AgentMessageFeedback;
+export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedbackModel> {
+  static model: ModelStatic<AgentMessageFeedbackModel> =
+    AgentMessageFeedbackModel;
 
-  readonly message?: Attributes<Message>;
+  readonly message?: Attributes<MessageModel>;
   readonly user?: Attributes<UserModel>;
   readonly conversationId?: string;
 
   constructor(
-    model: ModelStatic<AgentMessageFeedback>,
-    blob: Attributes<AgentMessageFeedback>,
+    model: ModelStatic<AgentMessageFeedbackModel>,
+    blob: Attributes<AgentMessageFeedbackModel>,
     {
       message,
       user,
       conversationId,
     }: {
-      message?: Attributes<Message>;
+      message?: Attributes<MessageModel>;
       user?: Attributes<UserModel>;
       conversationId?: string;
     } = {}
   ) {
-    super(AgentMessageFeedback, blob);
+    super(AgentMessageFeedbackModel, blob);
 
     this.message = message;
     this.user = user;
@@ -92,23 +91,23 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async makeNew(
-    blob: CreationAttributes<AgentMessageFeedback>,
+    blob: CreationAttributes<AgentMessageFeedbackModel>,
     {
       message,
       user,
       conversationId,
     }: {
-      message?: Attributes<Message>;
+      message?: Attributes<MessageModel>;
       user?: Attributes<UserModel>;
       conversationId?: string;
     } = {}
   ): Promise<AgentMessageFeedbackResource> {
-    const agentMessageFeedback = await AgentMessageFeedback.create({
+    const agentMessageFeedback = await AgentMessageFeedbackModel.create({
       ...blob,
     });
 
     return new AgentMessageFeedbackResource(
-      AgentMessageFeedback,
+      AgentMessageFeedbackModel,
       agentMessageFeedback.get(),
       { message, user, conversationId }
     );
@@ -130,7 +129,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   async updateFields(
     blob: Partial<
       Pick<
-        AgentMessageFeedback,
+        AgentMessageFeedbackModel,
         "content" | "thumbDirection" | "isConversationShared"
       >
     >
@@ -165,7 +164,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       return null;
     }
 
-    const where: WhereOptions<AgentMessageFeedback> = {
+    const where: WhereOptions<AgentMessageFeedbackModel> = {
       id: resourceId,
       workspaceId: auth.getNonNullableWorkspace().id,
     };
@@ -174,14 +173,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where.agentConfigurationId = agentConfigurationId;
     }
 
-    const feedback = await AgentMessageFeedback.findOne({ where });
+    const feedback = await AgentMessageFeedbackModel.findOne({ where });
 
     if (!feedback) {
       return null;
     }
 
     return new AgentMessageFeedbackResource(
-      AgentMessageFeedback,
+      AgentMessageFeedbackModel,
       feedback.get()
     );
   }
@@ -197,7 +196,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     paginationParams: PaginationParams;
     filter?: "active" | "all";
   }) {
-    const where: WhereOptions<AgentMessageFeedback> = {
+    const where: WhereOptions<AgentMessageFeedbackModel> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
@@ -214,7 +213,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       };
     }
 
-    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+    const agentMessageFeedback = await AgentMessageFeedbackModel.findAll({
       where,
       include: [
         {
@@ -223,7 +222,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           as: "agentMessage",
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               attributes: ["id", "sId"],
               include: [
@@ -255,7 +254,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     return agentMessageFeedback.map((feedback) => {
       return new AgentMessageFeedbackResource(
-        AgentMessageFeedback,
+        AgentMessageFeedbackModel,
         feedback.get(),
         {
           message: feedback.agentMessage?.message,
@@ -277,7 +276,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     workspace: WorkspaceType;
     transaction?: Transaction;
   }) {
-    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+    const agentMessageFeedback = await AgentMessageFeedbackModel.findAll({
       where: {
         // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
@@ -293,7 +292,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           as: "agentMessage",
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               attributes: ["id", "sId"],
               include: [
@@ -320,7 +319,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       .filter((feedback) => Boolean(feedback.user))
       .map((feedback) => {
         return new AgentMessageFeedbackResource(
-          AgentMessageFeedback,
+          AgentMessageFeedbackModel,
           feedback.get(),
           {
             user: feedback.user,
@@ -340,7 +339,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       dateMinusXDays.setDate(dateMinusXDays.getDate() - daysOld);
     }
     const workspace = auth.getNonNullableWorkspace();
-    const feedbackCount = await AgentMessageFeedback.findAndCountAll({
+    const feedbackCount = await AgentMessageFeedbackModel.findAndCountAll({
       attributes: ["agentConfigurationId", "thumbDirection"],
       where: {
         workspaceId: workspace.id,
@@ -359,11 +358,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
-    conversation: ConversationType | ConversationWithoutContentType
+    conversation: ConversationWithoutContentType
   ) {
     const user = auth.getNonNullableUser();
 
-    const feedbackForMessages = await Message.findAll({
+    const feedbackForMessages = await MessageModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
@@ -374,7 +373,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       attributes: ["id", "sId", "agentMessageId"],
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           attributes: ["id"],
           include: [
@@ -393,8 +392,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       .filter(
         (
           message
-        ): message is Message & {
-          agentMessage: { feedbacks: AgentMessageFeedback[] };
+        ): message is MessageModel & {
+          agentMessage: { feedbacks: AgentMessageFeedbackModel[] };
         } =>
           !!message.agentMessage?.feedbacks &&
           message.agentMessage.feedbacks.length > 0
@@ -402,7 +401,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       .map((message) => {
         const feedback = message.agentMessage?.feedbacks?.[0];
         return new AgentMessageFeedbackResource(
-          AgentMessageFeedback,
+          AgentMessageFeedbackModel,
           feedback.get(),
           {
             message,
@@ -420,7 +419,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }: {
     auth: Authenticator;
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
   }): Promise<
     Result<
@@ -440,7 +439,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       Error
     >
   > {
-    const message = await Message.findOne({
+    const message = await MessageModel.findOne({
       attributes: ["id", "sId"],
       where: {
         sId: messageId,
@@ -449,7 +448,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       },
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           attributes: [
             "id",
@@ -470,7 +469,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       return new Err(new Error("Agent message not found"));
     }
 
-    const agentMessageFeedback = await AgentMessageFeedback.findOne({
+    const agentMessageFeedback = await AgentMessageFeedbackModel.findOne({
       where: {
         userId: user.id,
         agentMessageId: message.agentMessage.id,
@@ -479,7 +478,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
     const agentMessageFeedbackResource = agentMessageFeedback
       ? new AgentMessageFeedbackResource(
-          AgentMessageFeedback,
+          AgentMessageFeedbackModel,
           agentMessageFeedback.get()
         )
       : null;
@@ -510,7 +509,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       });
     }
 
-    const agentConfiguration = await AgentConfiguration.findOne({
+    const agentConfiguration = await AgentConfigurationModel.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: message.agentMessage.agentConfigurationId,
@@ -549,7 +548,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   ): Promise<AgentMessageFeedbackResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const feedbacks = await AgentMessageFeedback.findAll({
+    const feedbacks = await AgentMessageFeedbackModel.findAll({
       where: {
         agentMessageId,
         workspaceId: workspace.id,

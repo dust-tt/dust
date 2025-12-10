@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
@@ -35,7 +35,7 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
 
   const [provider] = await Promise.all([
-    Provider.findOne({
+    ProviderModel.findOne({
       where: {
         workspaceId: owner.id,
         providerId: req.query.pId,

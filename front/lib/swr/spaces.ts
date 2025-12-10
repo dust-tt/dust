@@ -7,6 +7,7 @@ import type {
   SortingParams,
 } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   emptyArray,
@@ -243,7 +244,7 @@ export function useCreateFolder({
       return null;
     }
 
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources`,
       {
         method: "POST",
@@ -296,7 +297,7 @@ export function useUpdateFolder({
     if (!dataSourceView || !description) {
       return false;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "PATCH",
@@ -351,7 +352,7 @@ export function useDeleteFolderOrWebsite({
     if (!dataSourceView) {
       return false;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       { method: "DELETE" }
     );
@@ -431,7 +432,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         return null;
       }
 
-      res = await fetch(url, {
+      res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -445,7 +446,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         }),
       });
     } else {
-      res = await fetch(url, {
+      res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -623,7 +624,7 @@ export function useDeleteSpace({
       return false;
     }
     const url = `/api/w/${owner.sId}/spaces/${space.sId}?force=${force}`;
-    const res = await fetch(url, {
+    const res = await clientFetch(url, {
       method: "DELETE",
     });
 
@@ -753,7 +754,6 @@ export function useSpacesSearch({
 
   // Only perform a query if we have a valid search
   const url =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
       ? `/api/w/${owner.sId}/search?${params}`
       : null;
@@ -783,7 +783,9 @@ export function useSpacesSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
   };
 }
@@ -820,7 +822,6 @@ export function useSpacesSearchWithInfiniteScroll({
 
   // Only perform a query if we have a valid search
   const url =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (search && search.length >= 1) || nodeIds
       ? `/api/w/${owner.sId}/search`
       : null;

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentMemoriesResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/memories";
 import type { PatchAgentMemoryRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/memories/[mId]";
@@ -50,7 +51,7 @@ export function useUpdateAgentMemory({
 
   const updateMemory = useCallback(
     async (memoryId: string, body: PatchAgentMemoryRequestBody) => {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
         {
           method: "PATCH",
@@ -66,6 +67,7 @@ export function useUpdateAgentMemory({
         sendNotification({
           type: "error",
           title: "Failed to update memory",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           description: json.error?.message || "Failed to update memory",
         });
         return null;
@@ -102,7 +104,7 @@ export function useDeleteAgentMemory({
 
   const deleteMemory = useCallback(
     async (memoryId: string) => {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/memories/${memoryId}`,
         {
           method: "DELETE",
@@ -117,6 +119,7 @@ export function useDeleteAgentMemory({
         sendNotification({
           type: "error",
           title: "Failed to delete memory",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           description: json.error?.message || "Failed to delete memory",
         });
         return false;

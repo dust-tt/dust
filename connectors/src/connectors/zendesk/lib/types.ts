@@ -9,6 +9,22 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
   );
 }
 
+export const ZendeskPaginatedResponseSchema = z.object({
+  meta: z
+    .object({
+      has_more: z.boolean(),
+      after_cursor: z.string().nullable().optional(),
+      before_cursor: z.string().nullable().optional(),
+    })
+    .optional(),
+  links: z
+    .object({
+      prev: z.string().nullable().optional(),
+      next: z.string().nullable().optional(),
+    })
+    .optional(),
+});
+
 // Ticket schemas
 export const ZendeskTicketSchema = z
   .object({
@@ -204,13 +220,11 @@ export const ZendeskArticleResponseSchema = z.object({
   article: ZendeskArticleSchema,
 });
 
-export const ZendeskArticlesResponseSchema = z.object({
-  articles: z.array(ZendeskArticleSchema),
-  next_page: z.string().nullable().optional(),
-  end_time: z.number().optional(),
-  meta: z.object({ has_more: z.boolean() }).optional(),
-  links: z.object({ next: z.string().optional() }).optional(),
-});
+export const ZendeskArticlesResponseSchema =
+  ZendeskPaginatedResponseSchema.extend({
+    articles: z.array(ZendeskArticleSchema),
+    end_time: z.number().optional(),
+  });
 
 // Category schemas
 export const ZendeskCategorySchema = z
@@ -232,11 +246,10 @@ export const ZendeskCategoryResponseSchema = z.object({
   category: ZendeskCategorySchema,
 });
 
-export const ZendeskCategoriesResponseSchema = z.object({
-  categories: z.array(ZendeskCategorySchema),
-  meta: z.object({ has_more: z.boolean() }).optional(),
-  links: z.object({ next: z.string().optional() }).optional(),
-});
+export const ZendeskCategoriesResponseSchema =
+  ZendeskPaginatedResponseSchema.extend({
+    categories: z.array(ZendeskCategorySchema),
+  });
 
 // Section schemas
 export const ZendeskSectionSchema = z
@@ -349,12 +362,10 @@ export const ZendeskTicketCommentSchema = z
 
 export type ZendeskTicketComment = z.infer<typeof ZendeskTicketCommentSchema>;
 
-export const ZendeskTicketCommentsResponseSchema = z.object({
-  comments: z.array(ZendeskTicketCommentSchema),
-  next_page: z.string().nullable().optional(),
-  hasMore: z.boolean().optional(),
-  nextLink: z.string().optional(),
-});
+export const ZendeskTicketCommentsResponseSchema =
+  ZendeskPaginatedResponseSchema.extend({
+    comments: z.array(ZendeskTicketCommentSchema),
+  });
 
 // Search count schema
 export const ZendeskSearchCountResponseSchema = z.object({

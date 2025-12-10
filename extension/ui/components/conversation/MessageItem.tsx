@@ -97,17 +97,21 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     switch (type) {
       case "user_message":
         const citations = message.contenFragments
-          ? message.contenFragments.map((contentFragment) => {
-              const attachmentCitation =
-                contentFragmentToAttachmentCitation(contentFragment);
+          ? message.contenFragments
+              .map((contentFragment) => {
+                const attachmentCitation =
+                  contentFragmentToAttachmentCitation(contentFragment);
 
-              return (
-                <AttachmentCitation
-                  key={attachmentCitation.id}
-                  attachmentCitation={attachmentCitation}
-                />
-              );
-            })
+                return (
+                  attachmentCitation && (
+                    <AttachmentCitation
+                      key={attachmentCitation.id}
+                      attachmentCitation={attachmentCitation}
+                    />
+                  )
+                );
+              })
+              .filter((x) => x !== null)
           : undefined;
 
         return (

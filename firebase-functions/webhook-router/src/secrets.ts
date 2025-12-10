@@ -1,4 +1,5 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
+import { error, log } from "firebase-functions/logger";
 
 import { CONFIG, getProjectIds } from "./config.js";
 
@@ -37,7 +38,7 @@ export class SecretManager {
   private async loadSecrets(): Promise<Secrets> {
     // Try local development environment variables first.
     if (CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET) {
-      console.log("Using secrets from environment variables", {
+      log("Using secrets from environment variables", {
         component: "secrets",
         source: "environment",
       });
@@ -52,7 +53,7 @@ export class SecretManager {
     }
 
     // Load from Secret Manager.
-    console.log("Loading secrets from Secret Manager", {
+    log("Loading secrets from Secret Manager", {
       component: "secrets",
       source: "secret-manager",
     });
@@ -107,10 +108,10 @@ export class SecretManager {
         notionSigningSecret:
           notionSigningSecretResponse[0].payload?.data?.toString() || "",
       };
-    } catch (error) {
-      console.error("Failed to load secrets from Secret Manager", {
+    } catch (e) {
+      error("Failed to load secrets from Secret Manager", {
         component: "secrets",
-        error: error instanceof Error ? error.message : String(error),
+        error: e instanceof Error ? e.message : String(e),
       });
       throw new Error("Unable to load required secrets");
     }

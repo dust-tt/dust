@@ -5,10 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type {
-  AdditionalConfigurationInBuilderType,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   AgentBuilderFormContext,
   agentBuilderFormSchema,
@@ -17,7 +14,6 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
@@ -29,28 +25,30 @@ import {
   transformDuplicateAgentToFormData,
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
-import type {
-  AgentBuilderAction,
-  AgentBuilderMCPConfigurationWithId,
-} from "@app/components/agent_builder/types";
+import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
+import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, normalizeError, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
-): AgentBuilderAction[] {
+): BuilderAction[] {
   return [
     ...actions.map((action) => {
       if (action.type === "MCP") {
@@ -93,6 +91,7 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useRouter();
   const sendNotification = useSendNotification(true);
@@ -106,6 +105,14 @@ export default function AgentBuilder({
   const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+
+  const agentConfigurationSIdForSkills =
+    duplicateAgentId ?? agentConfiguration?.sId ?? null;
+  const { skills, isSkillsLoading } = useAgentConfigurationSkills({
+    owner,
+    agentConfigurationSId: agentConfigurationSIdForSkills ?? "",
+    disabled: !hasFeature("skills") || !agentConfigurationSIdForSkills,
   });
 
   const { editors } = useEditors({
@@ -136,6 +143,14 @@ export default function AgentBuilder({
   const processedActions = useMemo(() => {
     return processActionsFromStorage(actions ?? emptyArray());
   }, [actions]);
+
+  const processedSkills = useMemo(() => {
+    return skills.map((skill) => ({
+      sId: skill.sId,
+      name: skill.name,
+      description: skill.description,
+    }));
+  }, [skills]);
 
   const agentSlackChannels = useMemo(() => {
     if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
@@ -191,6 +206,7 @@ export default function AgentBuilder({
     form.reset({
       ...currentValues,
       actions: processedActions,
+      skills: processedSkills,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
@@ -204,8 +220,7 @@ export default function AgentBuilder({
         slackProvider,
         editors: duplicateAgentId
           ? [user]
-          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            agentConfiguration || editors.length > 0
+          : agentConfiguration || editors.length > 0
             ? editors
             : [user],
         slackChannels: agentSlackChannels,
@@ -215,7 +230,9 @@ export default function AgentBuilder({
     triggers,
     isTriggersLoading,
     isActionsLoading,
+    isSkillsLoading,
     processedActions,
+    processedSkills,
     form,
     duplicateAgentId,
     user,
@@ -404,6 +421,7 @@ export default function AgentBuilder({
               }}
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               agentConfigurationId={agentConfiguration?.sId || null}
+              isSkillsLoading={isSkillsLoading}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}
             />

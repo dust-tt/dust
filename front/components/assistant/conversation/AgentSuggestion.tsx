@@ -20,6 +20,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { serializeMention } from "@app/lib/mentions/format";
 import {
   useAgentConfigurations,
@@ -31,7 +32,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -78,14 +79,23 @@ export function AgentSuggestion({
 
   useEffect(() => {
     if (!dustAgent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowSuggestion(true);
     }
   }, [dustAgent]);
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
-      const editedContent = `${serializeMention(agent)} ${userMessage.content}`;
-      const mRes = await fetch(
+      // Ensure proper formatting: if content starts with markdown that requires being at
+      // the beginning of a line (code blocks, list items, etc.), add a newline after the
+      // mention so the markdown remains valid.
+      const contentStartsWithLineStartMarkdown = userMessage.content.match(
+        /^(\s*)(```|`|---|\*\*\*|#{1,6}\s|[-*+]\s|>\s|\d+\.\s)/
+      );
+      const editedContent = contentStartsWithLineStartMarkdown
+        ? `${serializeMention(agent)}\n\n${userMessage.content}`
+        : `${serializeMention(agent)} ${userMessage.content}`;
+      const mRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
         {
           method: "POST",
@@ -154,18 +164,21 @@ export function AgentSuggestion({
     if (
       !dustAgent ||
       userMessage.id === -1 ||
-      userMessage.sId === autoSelectedMessageIdRef.current
+      userMessage.sId === autoSelectedMessageIdRef.current ||
+      // Only auto-select the dust agent if it is the first message in the conversation
+      userMessage.rank !== 0
     ) {
       return;
     }
 
     autoSelectedMessageIdRef.current = userMessage.sId;
-    setSelectedAgent({ configurationId: dustAgent.sId });
+    setSelectedAgent(toRichAgentMentionType(dustAgent));
     void handleSelectSuggestion(dustAgent);
   }, [
     dustAgent,
     userMessage.id,
     userMessage.sId,
+    userMessage.rank,
     setSelectedAgent,
     handleSelectSuggestion,
   ]);
@@ -201,7 +214,7 @@ export function AgentSuggestion({
                   return;
                 }
                 setIsLoading(true);
-                setSelectedAgent({ configurationId: agent.sId });
+                setSelectedAgent(toRichAgentMentionType(agent));
                 await handleSelectSuggestion(agent);
                 setIsLoading(false);
               }}
@@ -223,7 +236,7 @@ export function AgentSuggestion({
               return;
             }
             setIsLoading(true);
-            setSelectedAgent({ configurationId: agent.sId });
+            setSelectedAgent(toRichAgentMentionType(agent));
             await handleSelectSuggestion(agent);
             setIsLoading(false);
           }}

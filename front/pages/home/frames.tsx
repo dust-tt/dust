@@ -5,13 +5,14 @@ import {
   LockIcon,
   PlanetIcon,
 } from "@dust-tt/sparkle";
-import Head from "next/head";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -488,7 +489,7 @@ function JustUseDustSection() {
               variant="highlight"
               size="md"
               label="Start free trial"
-              href="/pricing"
+              href="/api/workos/login?screenHint=sign-up"
               className="w-full sm:w-auto"
               onClick={withTracking(
                 TRACKING_AREAS.FRAMES,
@@ -511,26 +512,16 @@ function JustUseDustSection() {
 }
 
 export default function Frames() {
+  const router = useRouter();
+
   return (
     <>
-      <Head>
-        <title>Dust - Frames</title>
-        <meta
-          name="description"
-          content="Create frames with Dust. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
-        />
-        <meta property="og:title" content="Dust - Frames" />
-        <meta
-          property="og:description"
-          content="Create frames with Dust. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
-        />
-        <meta property="og:type" content="website" />
-        <meta
-          property="og:image"
-          content="https://dust.tt/static/landing/hero_dust.png"
-        />
-        <meta property="og:url" content="https://dust.tt/home/frames" />
-      </Head>
+      <PageMetadata
+        title="Dust Frames: Collaborative AI-Generated Visuals"
+        description="Create frames with Dust. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
+        pathname={router.asPath}
+        ogImage="https://dust.tt/static/landing/hero_dust.png"
+      />
 
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />

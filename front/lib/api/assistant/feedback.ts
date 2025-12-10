@@ -4,7 +4,6 @@ import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import type {
-  ConversationType,
   ConversationWithoutContentType,
   Result,
   UserType,
@@ -46,7 +45,7 @@ export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType &
 
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType
+  conversation: ConversationWithoutContentType
 ) {
   const feedbacksRes =
     await AgentMessageFeedbackResource.getConversationFeedbacksForUser(
@@ -76,7 +75,7 @@ export async function upsertMessageFeedback(
     isConversationShared,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
     thumbDirection: AgentMessageFeedbackDirection;
     content?: string;
@@ -98,23 +97,28 @@ export async function upsertMessageFeedback(
   const { agentMessage, feedback, agentConfiguration, isGlobalAgent } =
     feedbackWithConversationContext.value;
 
+  const agentConfigurationId = isGlobalAgent
+    ? agentMessage.agentConfigurationId
+    : agentConfiguration.sId;
+
   if (feedback) {
     await feedback.updateFields({
       content,
       thumbDirection,
       isConversationShared,
     });
-    return new Ok(undefined);
+    return new Ok({
+      agentConfigurationId,
+      feedbackId: feedback.sId,
+    });
   }
 
   try {
-    await AgentMessageFeedbackResource.makeNew({
+    const newFeedback = await AgentMessageFeedbackResource.makeNew({
       workspaceId: auth.getNonNullableWorkspace().id,
       // If the agent is global, we use the agent configuration id from the agent message
       // Otherwise, we use the agent configuration id from the agent configuration
-      agentConfigurationId: isGlobalAgent
-        ? agentMessage.agentConfigurationId
-        : agentConfiguration.sId,
+      agentConfigurationId,
       agentConfigurationVersion: agentMessage.agentConfigurationVersion,
       agentMessageId: agentMessage.id,
       userId: user.id,
@@ -123,10 +127,13 @@ export async function upsertMessageFeedback(
       isConversationShared: isConversationShared ?? false,
       dismissed: false,
     });
+    return new Ok({
+      agentConfigurationId,
+      feedbackId: newFeedback.sId,
+    });
   } catch (e) {
     return new Err(normalizeError(e));
   }
-  return new Ok(undefined);
 }
 
 /**
@@ -141,7 +148,7 @@ export async function deleteMessageFeedback(
     user,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
   }
 ) {

@@ -19,6 +19,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsvId } = context.params || {};
   if (typeof dsvId !== "string") {
     return {

@@ -19,6 +19,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
+import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   LightWorkspaceType,
   MembershipOriginType,
@@ -26,6 +27,7 @@ import type {
   ModelId,
   RequireAtLeastOne,
   Result,
+  UserType,
 } from "@app/types";
 import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
@@ -52,7 +54,7 @@ type MembershipsWithTotal = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -407,19 +409,23 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     activeOnly,
     rolesFilter,
     transaction,
+    membershipSpan,
   }: {
     workspace: LightWorkspaceType;
     activeOnly: boolean;
     rolesFilter?: MembershipRoleType[];
     transaction?: Transaction;
+    membershipSpan?: { fromDate: Date; toDate: Date };
   }): Promise<number> {
+    const fromDate = membershipSpan?.fromDate ?? new Date();
+    const toDate = membershipSpan?.toDate ?? new Date();
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
       ? {
           endAt: {
-            [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: new Date() }],
+            [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: fromDate }],
           },
           startAt: {
-            [Op.lte]: new Date(),
+            [Op.lte]: toDate,
           },
         }
       : {};
@@ -542,6 +548,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       newRole: role,
     });
 
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -626,6 +641,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return new Ok({
       role: membership.role,
       startAt: membership.startAt,
@@ -643,6 +667,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated = false,
     allowLastAdminRemoval = false,
     transaction,
+    author,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
@@ -651,6 +676,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated?: boolean;
     allowLastAdminRemoval?: boolean;
     transaction?: Transaction;
+    author: UserType | "no-author";
   }): Promise<
     Result<
       { previousRole: MembershipRoleType; newRole: MembershipRoleType },
@@ -735,6 +761,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
+        author,
         userId: user.id,
         workspaceId: workspace.id,
         previousRole,
@@ -742,6 +769,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership role updated"
     );
+
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return new Ok({ previousRole, newRole });
   }
 
@@ -799,11 +836,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newOrigin,
     transaction,
+    author,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newOrigin: MembershipOriginType;
     transaction?: Transaction;
+    author: UserType | "no-author";
   }): Promise<{
     previousOrigin: MembershipOriginType;
     newOrigin: MembershipOriginType;
@@ -814,6 +853,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
+        author,
         userId: user.id,
         workspaceId: workspace.id,
         previousOrigin,

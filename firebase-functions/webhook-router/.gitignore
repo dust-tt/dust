@@ -38,3 +38,7 @@ Thumbs.db
 
 # Environment variables
 .env
+!.env.local
+
+# Firebase emulator data
+.emulator-data/

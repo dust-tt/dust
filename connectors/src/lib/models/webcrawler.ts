@@ -81,7 +81,7 @@ WebCrawlerConfigurationModel.init(
   }
 );
 
-export class WebCrawlerConfigurationHeader extends ConnectorBaseModel<WebCrawlerConfigurationHeader> {
+export class WebCrawlerConfigurationHeaderModel extends ConnectorBaseModel<WebCrawlerConfigurationHeaderModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare key: string;
@@ -91,7 +91,7 @@ export class WebCrawlerConfigurationHeader extends ConnectorBaseModel<WebCrawler
   >;
 }
 
-WebCrawlerConfigurationHeader.init(
+WebCrawlerConfigurationHeaderModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -125,9 +125,9 @@ WebCrawlerConfigurationHeader.init(
   }
 );
 
-WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeader);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeaderModel);
 
-export class WebCrawlerFolder extends ConnectorBaseModel<WebCrawlerFolder> {
+export class WebCrawlerFolderModel extends ConnectorBaseModel<WebCrawlerFolderModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare parentUrl: string | null;
@@ -141,7 +141,7 @@ export class WebCrawlerFolder extends ConnectorBaseModel<WebCrawlerFolder> {
   >;
 }
 
-WebCrawlerFolder.init(
+WebCrawlerFolderModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -186,9 +186,9 @@ WebCrawlerFolder.init(
     modelName: "webcrawler_folders",
   }
 );
-WebCrawlerConfigurationModel.hasMany(WebCrawlerFolder);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerFolderModel);
 
-export class WebCrawlerPage extends ConnectorBaseModel<WebCrawlerPage> {
+export class WebCrawlerPageModel extends ConnectorBaseModel<WebCrawlerPageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare title: string | null;
@@ -202,7 +202,7 @@ export class WebCrawlerPage extends ConnectorBaseModel<WebCrawlerPage> {
   >;
 }
 
-WebCrawlerPage.init(
+WebCrawlerPageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -255,4 +255,4 @@ WebCrawlerPage.init(
     modelName: "webcrawler_pages",
   }
 );
-WebCrawlerConfigurationModel.hasMany(WebCrawlerPage);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerPageModel);

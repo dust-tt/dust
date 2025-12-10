@@ -8,7 +8,7 @@ import {
   _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types";
 import {
@@ -34,7 +34,7 @@ export function _getMistralLargeGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -92,7 +92,7 @@ export function _getMistralMediumGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -148,7 +148,7 @@ export function _getMistralSmallGlobalAgent({
   webSearchBrowseMCPServerView,
   interactiveContentMCPServerView,
 }: {
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {

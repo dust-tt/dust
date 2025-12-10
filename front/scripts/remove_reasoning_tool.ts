@@ -1,6 +1,6 @@
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -9,9 +9,9 @@ import { makeScript } from "@app/scripts/helpers";
  * This script performs cascading deletions in the correct order to avoid foreign key constraints.
  */
 async function deleteReasoningConfigurationAndRelatedResources(
-  reasoningConfig: AgentReasoningConfiguration & {
-    agent_mcp_server_configuration: AgentMCPServerConfiguration & {
-      agent_configuration: AgentConfiguration;
+  reasoningConfig: AgentReasoningConfigurationModel & {
+    agent_mcp_server_configuration: AgentMCPServerConfigurationModel & {
+      agent_configuration: AgentConfigurationModel;
     };
   },
   logger: Logger,
@@ -43,14 +43,14 @@ async function deleteReasoningConfigurationAndRelatedResources(
   try {
     // Delete in the correct order to avoid foreign key constraint violations
     // 1. Delete agent_reasoning_configurations
-    await AgentReasoningConfiguration.destroy({
+    await AgentReasoningConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId,
       },
     });
 
     // 2. Finally delete agent_mcp_server_configurations
-    await AgentMCPServerConfiguration.destroy({
+    await AgentMCPServerConfigurationModel.destroy({
       where: {
         id: mcpServerConfigurationId,
       },
@@ -86,29 +86,30 @@ makeScript({}, async ({ execute }, logger) => {
 
   // Get all reasoning configurations with agent information
 
-  const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
-    attributes: ["id", "sId", "mcpServerConfigurationId"],
-    include: [
-      {
-        model: AgentMCPServerConfiguration,
-        required: true,
-        include: [
-          {
-            model: AgentConfiguration,
-            required: true,
-            attributes: [
-              "id",
-              "sId",
-              "name",
-              "modelId",
-              "providerId",
-              "status",
-            ],
-          },
-        ],
-      },
-    ],
-  });
+  const reasoningConfigurations =
+    await AgentReasoningConfigurationModel.findAll({
+      attributes: ["id", "sId", "mcpServerConfigurationId"],
+      include: [
+        {
+          model: AgentMCPServerConfigurationModel,
+          required: true,
+          include: [
+            {
+              model: AgentConfigurationModel,
+              required: true,
+              attributes: [
+                "id",
+                "sId",
+                "name",
+                "modelId",
+                "providerId",
+                "status",
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
   if (reasoningConfigurations.length === 0) {
     logger.info("No reasoning configurations found");
@@ -138,9 +139,9 @@ makeScript({}, async ({ execute }, logger) => {
   // Process each reasoning configuration
   for (const reasoningConfig of reasoningConfigurations) {
     const success = await deleteReasoningConfigurationAndRelatedResources(
-      reasoningConfig as AgentReasoningConfiguration & {
-        agent_mcp_server_configuration: AgentMCPServerConfiguration & {
-          agent_configuration: AgentConfiguration;
+      reasoningConfig as AgentReasoningConfigurationModel & {
+        agent_mcp_server_configuration: AgentMCPServerConfigurationModel & {
+          agent_configuration: AgentConfigurationModel;
         };
       },
       logger,

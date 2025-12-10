@@ -1,3 +1,5 @@
+import type { EditedByUser } from "@app/types/user";
+
 export const CREDIT_TYPES = ["free", "payg", "committed"] as const;
 
 export type CreditType = (typeof CREDIT_TYPES)[number];
@@ -10,13 +12,14 @@ export function isCreditType(value: unknown): value is CreditType {
 export const CREDIT_EXPIRATION_DAYS = 365;
 
 export type CreditDisplayData = {
-  id: number;
+  sId: string;
   type: CreditType;
-  initialAmount: number;
-  remainingAmount: number;
-  consumedAmount: number;
+  initialAmountMicroUsd: number;
+  remainingAmountMicroUsd: number;
+  consumedAmountMicroUsd: number;
   startDate: number | null;
   expirationDate: number | null;
+  boughtByUser: EditedByUser | null;
 };
 
 export type GetCreditsResponseBody = {

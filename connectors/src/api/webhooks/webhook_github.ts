@@ -22,8 +22,8 @@ import {
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import {
-  GithubCodeRepository,
-  GithubConnectorState,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -102,7 +102,7 @@ const _webhookGithubAPIHandler = async (
 
   const installationId = payload.installation.id.toString();
 
-  const githubConnectorStates = await GithubConnectorState.findAll({
+  const githubConnectorStates = await GithubConnectorStateModel.findAll({
     where: {
       installationId,
     },
@@ -425,7 +425,7 @@ async function syncCode(
 
   await Promise.all(
     connectors.map(async (c) => {
-      const githubCodeRepository = await GithubCodeRepository.findOne({
+      const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
         where: {
           connectorId: c.id,
           repoId: repoId.toString(),

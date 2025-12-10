@@ -36,6 +36,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
@@ -258,6 +259,7 @@ export async function syncOneFile({
     ];
 
     result = await handleCsvFile({
+      // @ts-expect-error -- migration to tsgo
       data,
       tableId: documentId,
       fileName: file.name || "",
@@ -315,6 +317,7 @@ export async function syncOneFile({
       result = handleTextFile(downloadRes.data, maxDocumentLen);
     } else {
       const data = Buffer.from(downloadRes.data);
+      // @ts-expect-error -- migration to tsgo
       result = await handleTextExtraction(data, localLogger, mimeType);
     }
 
@@ -406,6 +409,21 @@ export async function syncOneFile({
             ? new Date(upsertTimestampMs)
             : null;
         } catch (error) {
+          if (error instanceof DataSourceQuotaExceededError) {
+            localLogger.warn(
+              {
+                connectorId,
+                error,
+                documentId,
+                fileName: file.name,
+                internalId: documentId,
+                webUrl: file.webUrl,
+              },
+              "Microsoft file exceeding plan document size limit, marking as skipped"
+            );
+            return false;
+          }
+
           if (
             error instanceof WithRetriesError &&
             error.errors.every(

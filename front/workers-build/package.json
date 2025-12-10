@@ -1,0 +1,26 @@
+{
+  "name": "front-worker",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "npm run build:workers",
+    "build:workers": "tsx scripts/esbuild.worker.ts",
+    "start": "node ./dist/start_worker.js"
+  },
+  "dependencies": {
+    "@temporalio/common": "^1.12.1",
+    "@temporalio/worker": "^1.12.1",
+    "blake3": "^2.1.7",
+    "dd-trace": "^5.52.0",
+    "isomorphic-dompurify": "^2.32.0",
+    "pg": "^8.8.0",
+    "tsconfig-paths-webpack-plugin": "^4.1.0"
+  },
+  "devDependencies": {},
+  "browser": {
+    "net": false,
+    "tls": false,
+    "fs": false,
+    "dgram": false,
+    "child_process": false
+  }
+}

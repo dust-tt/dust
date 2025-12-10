@@ -2,12 +2,13 @@ import {
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -34,33 +35,53 @@ import {
   getSourceColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
-import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import type {
   AvailableGroup,
+  GetWorkspaceProgrammaticCostResponse,
   GroupByType,
-} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+} from "@app/lib/api/analytics/programmatic_cost";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
+  billingCycleStartDay: number;
+}
+
+export interface BaseProgrammaticCostChartProps {
+  programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
+  isProgrammaticCostLoading: boolean;
+  isProgrammaticCostError: boolean;
+  groupBy: GroupByType | undefined;
+  setGroupBy: (groupBy: GroupByType | undefined) => void;
+  filter: Partial<Record<GroupByType, string[]>>;
+  setFilter: React.Dispatch<
+    React.SetStateAction<Partial<Record<GroupByType, string[]>>>
+  >;
+  selectedPeriod: string;
+  setSelectedPeriod: (period: string) => void;
+  billingCycleStartDay: number;
 }
 
 type ChartDataPoint = {
-  date: string;
   timestamp: number;
-  totalInitialCreditsCents: number;
-  programmaticCostCents?: number;
+  totalCreditsMicroUsd?: number;
   [key: string]: string | number | undefined;
 };
 
-const GROUP_BY_OPTIONS: {
-  value: "global" | GroupByType;
+const GROUP_BY_TYPE_OPTIONS: {
+  value: GroupByType;
   label: string;
 }[] = [
-  { value: "global", label: "Global" },
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
   { value: "apiKey", label: "By Api Key" },
 ];
+
+const GROUP_BY_OPTIONS: {
+  value: "global" | GroupByType;
+  label: string;
+}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
 
 function getColorClassName(
   groupBy: GroupByType | undefined,
@@ -68,7 +89,7 @@ function getColorClassName(
   groups: string[]
 ): string {
   if (!groupBy) {
-    return COST_PALETTE.costCents;
+    return COST_PALETTE.costMicroUsd;
   } else if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
     return getSourceColor(groupName);
   } else {
@@ -95,7 +116,7 @@ function GroupedTooltip(
   const rows = payload
     .filter(
       (p) =>
-        p.dataKey !== "totalInitialCreditsCents" &&
+        p.dataKey !== "totalCreditsMicroUsd" &&
         p.value != null &&
         typeof p.value === "number"
     )
@@ -119,7 +140,7 @@ function GroupedTooltip(
 
       return {
         label,
-        value: `$${(p.value / 100).toFixed(2)}`,
+        value: `$${(p.value / 1_000_000).toFixed(2)}`,
         colorClassName,
       };
     });
@@ -127,72 +148,102 @@ function GroupedTooltip(
   // Add credits row
   rows.push({
     label: "Total Credits",
-    value: `$${(data.totalInitialCreditsCents / 100).toFixed(2)}`,
+    value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
     colorClassName: COST_PALETTE.totalCredits,
   });
-
-  return <ChartTooltipCard title={data.date} rows={rows} />;
+  const date = new Date(data.timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+  });
+  return <ChartTooltipCard title={date} rows={rows} />;
 }
 
-function formatMonth(date: Date): string {
+export function formatPeriod(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export function ProgrammaticCostChart({
-  workspaceId,
-}: ProgrammaticCostChartProps) {
-  const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
-  const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
-    {}
-  );
+/**
+ * Base chart component that renders the programmatic cost chart.
+ * This component is agnostic of how the data is fetched.
+ */
+export function BaseProgrammaticCostChart({
+  programmaticCostData,
+  isProgrammaticCostLoading,
+  isProgrammaticCostError,
+  groupBy,
+  setGroupBy,
+  filter,
+  setFilter,
+  selectedPeriod,
+  setSelectedPeriod,
+  billingCycleStartDay,
+}: BaseProgrammaticCostChartProps) {
+  // Cache labels for each groupBy type so they persist when switching modes
+  const [labelCache, setLabelCache] = useState<
+    Partial<Record<GroupByType, Record<string, string>>>
+  >({});
 
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
+  // selectedPeriod is "YYYY-MM", so we parse it and create a UTC date.
+  // To get the correct billing cycle, we need a date within that cycle, so we set
+  // the day to billingCycleStartDay.
+  const [year, month] = selectedPeriod.split("-").map(Number);
+  const currentDate = new Date(Date.UTC(year, month - 1, billingCycleStartDay));
 
-  const {
-    programmaticCostData,
-    isProgrammaticCostLoading,
-    isProgrammaticCostError,
-  } = useWorkspaceProgrammaticCost({
-    workspaceId,
-    selectedMonth,
-    groupBy,
-    filter,
-  });
-
-  const currentDate = new Date(selectedMonth);
-
-  // Get current month name
-  const currentMonth = currentDate.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-
-  // Calculate next and previous month dates
-  const nextMonthDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
-  );
-  const previousMonthDate = new Date(
-    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
+  // Calculate the billing cycle for the selected month
+  const billingCycle = getBillingCycleFromDay(
+    billingCycleStartDay,
+    currentDate,
+    true
   );
 
-  // Check if we can go to next month (not in the future)
-  const canGoNext = nextMonthDate.getTime() <= now.getTime();
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
 
-  // Navigate to next month
-  const handleNextMonth = () => {
-    setSelectedMonth(formatMonth(nextMonthDate));
+  // Format period label based on billing cycle
+  // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
+  const inclusiveEndDate = new Date(billingCycle.cycleEnd);
+  inclusiveEndDate.setDate(inclusiveEndDate.getDate() - 1);
+  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
+
+  // Calculate next and previous period dates
+  const nextPeriodDate = new Date(
+    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+  );
+  const previousPeriodDate = new Date(
+    Date.UTC(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+  );
+
+  // Check if we can go to next period (not in the future)
+  const canGoNext = billingCycle.cycleEnd.getTime() <= now.getTime();
+
+  // Navigate to next period
+  const handleNextPeriod = () => {
+    setSelectedPeriod(formatPeriod(nextPeriodDate));
   };
 
-  // Navigate to previous month
-  const handlePreviousMonth = () => {
-    setSelectedMonth(formatMonth(previousMonthDate));
+  // Navigate to previous period
+  const handlePreviousPeriod = () => {
+    setSelectedPeriod(formatPeriod(previousPeriodDate));
   };
 
   // Group by change
   const handleGroupByChange = (newGroupBy: GroupByType | undefined) => {
     setGroupBy(newGroupBy);
   };
+
+  // Getting list of all available groups.
+  const availableGroupsArray = useMemo(
+    () => programmaticCostData?.availableGroups ?? [],
+    [programmaticCostData]
+  );
+  const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
   // Filter change
   const handleFilterChange = (group: AvailableGroup) => {
@@ -237,9 +288,21 @@ export function ProgrammaticCostChart({
     setFilter({});
   };
 
-  // Getting list of all available groups.
-  const availableGroupsArray = programmaticCostData?.availableGroups ?? [];
-  const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
+  // Cache labels when availableGroupsArray changes
+  // Otherwise, labels would be lost when switching groupBy types, and would display raw keys instead
+  useEffect(() => {
+    if (groupBy && availableGroupsArray.length > 0) {
+      const newLabels: Record<string, string> = {};
+      for (const group of availableGroupsArray) {
+        newLabels[group.groupKey] = group.groupLabel;
+      }
+
+      setLabelCache((prev) => ({
+        ...prev,
+        [groupBy]: { ...prev[groupBy], ...newLabels },
+      }));
+    }
+  }, [groupBy, availableGroupsArray]);
 
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
@@ -284,37 +347,6 @@ export function ProgrammaticCostChart({
     };
   });
 
-  // Add Total Credits to legend (not clickable)
-  legendItems.push({
-    key: "totalCredits",
-    label: "Total Credits",
-    colorClassName: COST_PALETTE.totalCredits,
-    isActive: true,
-  });
-
-  // Transform points into chart data using labels from availableGroups
-  const chartData = points.map((point) => {
-    const date = new Date(point.timestamp);
-    const dataPoint: ChartDataPoint = {
-      date: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      timestamp: point.timestamp,
-      totalInitialCreditsCents: point.totalInitialCreditsCents,
-    };
-
-    // Add each group's cumulative cost to the data point using labels from availableGroups
-    // Keep undefined values as-is so Recharts doesn't render those points
-    point.groups.forEach((g) => {
-      dataPoint[g.groupKey] = g.cumulatedCostCents;
-    });
-
-    return dataPoint;
-  });
-
-  const ChartComponent = groupBy ? AreaChart : LineChart;
-
   // Check if any filters are applied
   const hasFilters = useMemo(() => {
     return Object.values(filter).some(
@@ -322,34 +354,159 @@ export function ProgrammaticCostChart({
     );
   }, [filter]);
 
+  // Compute maximum cumulated cost among all groups.
+  const maxCumulatedCost = useMemo(() => {
+    return programmaticCostData?.points.reduce((max, point) => {
+      return Math.max(
+        max,
+        point.groups.reduce((max, group) => {
+          return Math.max(max, group.cumulatedCostMicroUsd ?? 0);
+        }, 0)
+      );
+    }, 0);
+  }, [programmaticCostData]);
+
+  const shouldShowTotalCredits = useMemo(() => {
+    // Don't show total credits when a filter is applied, since credits are global
+    // but the cumulative cost shown would be filtered.
+    if (hasFilters) {
+      return false;
+    }
+    // If all points in the future have total credits higher than twice the max
+    // cumulated cost, don't show total credits.
+    const futurePoints = points.filter(
+      (point) => point.timestamp > now.getTime()
+    );
+    return !futurePoints.every(
+      (point) =>
+        point.totalRemainingCreditsMicroUsd > 4 * (maxCumulatedCost ?? 0)
+    );
+  }, [points, maxCumulatedCost, now, hasFilters]);
+
+  // Add Total Credits to legend (not clickable)
+  if (shouldShowTotalCredits) {
+    legendItems.push({
+      key: "totalCredits",
+      label: "Total Credits",
+      colorClassName: COST_PALETTE.totalCredits,
+      isActive: true,
+    });
+  }
+
+  // Transform points into chart data using labels from availableGroups
+  const chartData = points.map((point) => {
+    const dataPoint: ChartDataPoint = {
+      timestamp: point.timestamp,
+    };
+
+    // Compute total credits as cumulative cost + remaining credits.
+    // This avoids showing a total credits line below cumulative cost when credits expire
+    // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
+    // usage is still in cumulative cost).
+    const cumulativeCost = point.groups.reduce(
+      (acc, g) => acc + (g.cumulatedCostMicroUsd ?? 0),
+      0
+    );
+    dataPoint.totalCreditsMicroUsd =
+      cumulativeCost + point.totalRemainingCreditsMicroUsd;
+
+    // Add each group's cumulative cost to the data point using labels from availableGroups
+    // Keep undefined values as-is so Recharts doesn't render those points
+    point.groups.forEach((g) => {
+      dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
+    });
+
+    return dataPoint;
+  });
+
+  const ChartComponent = groupBy ? AreaChart : LineChart;
+
+  // Filter to only show ticks for midnight dates
+  const midnightTicks = useMemo(() => {
+    return chartData
+      .map((point) => point.timestamp)
+      .filter((timestamp) => new Date(timestamp).getUTCHours() === 0);
+  }, [chartData]);
+
+  // Util function to get label for a filter key based on type
+  const getFilterLabel = useCallback(
+    (type: GroupByType, key: string): string => {
+      if (key === "others") {
+        return OTHER_LABEL.label;
+      }
+      if (type === "origin" && isUserMessageOrigin(key)) {
+        return USER_MESSAGE_ORIGIN_LABELS[key].label;
+      }
+      // Fallback to cached label if present, else original key
+      return labelCache[type]?.[key] ?? key;
+    },
+    [labelCache]
+  );
+
+  // Build active filter chips for all groupBy types
+  const activeFilterChips = useMemo(() => {
+    return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) => {
+      const filterKeys = filter[type];
+      if (!filterKeys) {
+        return [];
+      }
+      return filterKeys.map((key) => ({
+        groupByType: type,
+        filterKey: key,
+        label: getFilterLabel(type, key),
+      }));
+    });
+  }, [filter, getFilterLabel]);
+
+  // Remove a specific filter
+  const handleRemoveFilter = useCallback(
+    (groupByType: GroupByType, filterKey: string) => {
+      setFilter((prev) => {
+        const currentFilter = prev[groupByType] ?? [];
+        const newFilter = currentFilter.filter((k) => k !== filterKey);
+        if (newFilter.length === 0) {
+          return {
+            ...prev,
+            [groupByType]: undefined,
+          };
+        }
+        return {
+          ...prev,
+          [groupByType]: newFilter,
+        };
+      });
+    },
+    [setFilter]
+  );
+
   return (
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Programmatic Cost</span>
+          <span>Usage Graph</span>
           <Button
             icon={ChevronLeftIcon}
             size="xs"
             variant="ghost"
-            onClick={handlePreviousMonth}
-            tooltip="Previous month"
+            onClick={handlePreviousPeriod}
+            tooltip="Previous period"
           />
 
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {currentMonth}
+            {periodLabel}
           </span>
           {canGoNext && (
             <Button
               icon={ChevronRightIcon}
               size="xs"
               variant="ghost"
-              onClick={handleNextMonth}
-              tooltip="Next month"
+              onClick={handleNextPeriod}
+              tooltip="Next period"
             />
           )}
         </div>
       }
-      description="Total cost accumulated since the start of the month."
+      description="Total cost accumulated. Filter by clicking on legend items."
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError
@@ -399,6 +556,23 @@ export function ProgrammaticCostChart({
           </DropdownMenu>
         </div>
       }
+      bottomControls={
+        activeFilterChips.length > 0 ? (
+          <div className="flex items-center gap-2">
+            {activeFilterChips.map((chip) => (
+              <Chip
+                key={`${chip.groupByType}:${chip.filterKey}`}
+                label={`${chip.groupByType}: ${chip.label}`}
+                size="xs"
+                onRemove={() =>
+                  handleRemoveFilter(chip.groupByType, chip.filterKey)
+                }
+                className="capitalize"
+              />
+            ))}
+          </div>
+        ) : undefined
+      }
       height={CHART_HEIGHT}
       legendItems={legendItems}
       isAllowFullScreen
@@ -412,20 +586,27 @@ export function ProgrammaticCostChart({
           className="stroke-border dark:stroke-border-night"
         />
         <XAxis
-          dataKey="date"
+          dataKey="timestamp"
           type="category"
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
+          tickLine={true}
           axisLine={false}
           tickMargin={8}
-          minTickGap={16}
+          minTickGap={8}
+          ticks={midnightTicks}
+          tickFormatter={(value) =>
+            new Date(value).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })
+          }
         />
         <YAxis
           className="text-xs text-muted-foreground dark:text-muted-foreground-night"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+          tickFormatter={(value) => `$${(value / 1_000_000).toFixed(0)}`}
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>
@@ -439,17 +620,6 @@ export function ProgrammaticCostChart({
             padding: 0,
             boxShadow: "none",
           }}
-        />
-        <Line
-          type="monotone"
-          dataKey="totalInitialCreditsCents"
-          name="Total Credits"
-          stroke="currentColor"
-          strokeWidth={2}
-          className="text-green-500"
-          strokeDasharray="5 5"
-          dot={false}
-          activeDot={{ r: 5 }}
         />
         {groupKeys.map((groupKey) => {
           const colorClassName = getColorClassName(
@@ -484,7 +654,76 @@ export function ProgrammaticCostChart({
             />
           );
         })}
+        {shouldShowTotalCredits && (
+          <Line
+            type="monotone"
+            dataKey="totalCreditsMicroUsd"
+            name="Total Credits"
+            stroke="currentColor"
+            strokeWidth={2}
+            className={COST_PALETTE.totalCredits}
+            strokeDasharray="5 5"
+            dot={false}
+            activeDot={{ r: 5 }}
+          />
+        )}
       </ChartComponent>
     </ChartContainer>
+  );
+}
+
+/**
+ * Workspace-specific wrapper component that handles data fetching
+ * using the workspace API endpoint.
+ */
+export function ProgrammaticCostChart({
+  workspaceId,
+  billingCycleStartDay,
+}: ProgrammaticCostChartProps) {
+  const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
+    {}
+  );
+
+  // Initialize selectedPeriod to a date within the current billing cycle.
+  // Using just formatPeriod(now) would create a date on the 1st of the month,
+  // which may fall in the previous billing cycle if billingCycleStartDay > 1.
+  // By using the billing cycle's start date, we ensure we're in the correct cycle.
+  const now = new Date();
+  const currentBillingCycle = getBillingCycleFromDay(
+    billingCycleStartDay,
+    now,
+    false
+  );
+
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    formatPeriod(currentBillingCycle.cycleStart)
+  );
+
+  const {
+    programmaticCostData,
+    isProgrammaticCostLoading,
+    isProgrammaticCostError,
+  } = useWorkspaceProgrammaticCost({
+    workspaceId,
+    selectedPeriod,
+    billingCycleStartDay,
+    groupBy,
+    filter,
+  });
+
+  return (
+    <BaseProgrammaticCostChart
+      programmaticCostData={programmaticCostData}
+      isProgrammaticCostLoading={isProgrammaticCostLoading}
+      isProgrammaticCostError={!!isProgrammaticCostError}
+      groupBy={groupBy}
+      setGroupBy={setGroupBy}
+      filter={filter}
+      setFilter={setFilter}
+      selectedPeriod={selectedPeriod}
+      setSelectedPeriod={setSelectedPeriod}
+      billingCycleStartDay={billingCycleStartDay}
+    />
   );
 }

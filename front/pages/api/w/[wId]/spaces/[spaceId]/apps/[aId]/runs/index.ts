@@ -9,7 +9,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -74,7 +74,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const [providers, secrets] = await Promise.all([
-        Provider.findAll({
+        ProviderModel.findAll({
           where: {
             workspaceId: owner.id,
           },
@@ -225,6 +225,7 @@ async function handler(
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const runType = req.query.runType ? req.query.runType : "local";
 
       const userRuns = await RunResource.listByAppAndRunType(

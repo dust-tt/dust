@@ -1,6 +1,4 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type {
-  MCPApproveExecutionEvent,
   MCPErrorEvent,
   MCPParamsEvent,
   MCPSuccessEvent,
@@ -12,6 +10,7 @@ import {
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type {
+  MCPApproveExecutionEvent,
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
@@ -138,7 +137,7 @@ export async function* runToolWithStreaming(
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
-  const agentPauseEvents = await getExitOrPauseEvents({
+  const agentPauseEvents = await getExitOrPauseEvents(auth, {
     outputItems,
     action,
     agentConfiguration,

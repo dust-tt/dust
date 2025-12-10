@@ -7,16 +7,16 @@ import {
 import React, { useMemo } from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import {
   InternalActionIcons,
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { WhitelistableFeature } from "@app/types";
 
-interface MCPServerCardProps {
+export interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
@@ -73,7 +73,7 @@ function MCPServerCard({
         onClick={onClick}
         cardContainerClassName="h-36"
         mountPortal
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
         footer={{
           label: "More info",
@@ -114,9 +114,7 @@ export function MCPServerSelectionPage({
 
   const hasTopViews = topMCPServerViews.length > 0;
   const hasNonTopViews = nonTopMCPServerViews.length > 0;
-  const hasAnyResults =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    hasTopViews || hasNonTopViews;
+  const hasAnyResults = hasTopViews || hasNonTopViews;
 
   if (!hasAnyResults) {
     return (

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
@@ -19,11 +20,7 @@ const ObservabilityContext = createContext<ObservabilityContextValue | null>(
   null
 );
 
-export function ObservabilityProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function ObservabilityProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ObservabilityMode>("timeRange");
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);

@@ -31,7 +31,6 @@ import {
   areSameRank,
   getMessageRank,
   hasHumansInteracting,
-  isHiddenContextOrigin,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -58,7 +57,6 @@ import type {
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
-  ContentFragmentType,
   ConversationTitleEvent,
   LightMessageType,
   Result,
@@ -67,8 +65,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isRichAgentMention, toMentionType } from "@app/types";
-import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
+import {
+  isRichAgentMention,
+  isUserMessageTypeWithContentFragments,
+  toMentionType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -184,14 +186,11 @@ export const ConversationViewer = ({
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
     if (!initialListData && messages.length > 0 && !isValidating) {
-      const raw = messages
-        .flatMap((m) => m.messages)
-        .filter((m) =>
-          isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
-        );
+      const raw = messages.flatMap((m) => m.messages);
 
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialListData(messagesToRender);
     }
   }, [initialListData, messages, setInitialListData, isValidating]);
@@ -215,11 +214,8 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
-      const filtered = olderMessagesFromBackend.filter((m) =>
-        isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
-      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(filtered)
+        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
       );
     }
 
@@ -286,23 +282,17 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
-              if (isHiddenContextOrigin(event.message.context.origin)) {
-                break;
-              }
-              const userMessage: VirtuosoMessage = {
-                ...event.message,
-                contentFragments: [],
-              };
+              const userMessage = event.message;
               const predicate = (m: VirtuosoMessage) =>
                 isUserMessage(m) && areSameRank(m, userMessage);
 
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append(
-                  [{ ...event.message, contentFragments: [] }],
-                  true
-                );
+                // Do not scroll if the message is from the current user.
+                // Can happen with fake user messages (like handover messages).
+                const scroll = userMessage.user?.sId !== user.sId;
+                ref.current.data.append([userMessage], scroll);
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
                 // We only update if the version is greater than the existing version.
@@ -313,25 +303,32 @@ export const ConversationViewer = ({
                 }
               }
 
-              void mutateConversationParticipants(
-                async (participants) =>
-                  getUpdatedParticipantsFromEvent(participants, event),
-                { revalidate: false }
-              );
+              // Update the participants and the conversation list if the message is not from the current user.
+              if (userMessage.user?.sId !== user.sId) {
+                void mutateConversationParticipants(
+                  async (participants) =>
+                    getUpdatedParticipantsFromEvent(participants, event),
+                  { revalidate: false }
+                );
 
-              void mutateConversations(
-                (currentData) => {
-                  if (!currentData?.conversations) {
-                    return currentData;
-                  }
-                  return {
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId ? { ...c, hasError: false } : c
-                    ),
-                  };
-                },
-                { revalidate: false }
-              );
+                void mutateConversations(
+                  (currentData) => {
+                    if (!currentData?.conversations) {
+                      return currentData;
+                    }
+                    return {
+                      conversations: currentData.conversations.map((c) =>
+                        c.sId === conversationId
+                          ? { ...c, hasError: false, unread: false }
+                          : c
+                      ),
+                    };
+                  },
+                  { revalidate: false }
+                );
+
+                void debouncedMarkAsRead(conversationId, false);
+              }
             }
             break;
           case "agent_message_new":
@@ -433,6 +430,7 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      user.sId,
     ]
   );
 
@@ -495,7 +493,11 @@ export const ConversationViewer = ({
           // +1 per agent message mentioned
           rank += 1;
           placeholderAgentMessages.push(
-            createPlaceholderAgentMessage({ mention, rank })
+            createPlaceholderAgentMessage({
+              userMessage: placeholderUserMsg,
+              mention,
+              rank,
+            })
           );
         }
       }
@@ -726,30 +728,9 @@ export const ConversationViewer = ({
 
 const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
-) => {
-  const output: VirtuosoMessage[] = [];
-  let tempContentFragments: ContentFragmentType[] = [];
-
-  messages.forEach((message) => {
-    if (isContentFragmentType(message)) {
-      tempContentFragments.push(message); // Collect content fragments.
-    } else {
-      let messageWithContentFragments: VirtuosoMessage;
-      if (isUserMessageType(message)) {
-        // Attach collected content fragments to the user message.
-        messageWithContentFragments = {
-          ...message,
-          contentFragments: tempContentFragments,
-        };
-        tempContentFragments = []; // Reset the collected content fragments.
-
-        // Start a new group for user messages.
-        output.push(messageWithContentFragments);
-      } else {
-        messageWithContentFragments = makeInitialMessageStreamState(message);
-        output.push(messageWithContentFragments);
-      }
-    }
-  });
-  return output;
-};
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );

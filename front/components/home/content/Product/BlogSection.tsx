@@ -22,7 +22,7 @@ const blogPosts: BlogPost[] = [
     title: "How Clay is powering 4x team growth with Dust",
     content:
       "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
-    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    href: "/customers/clay-scaling-gtme-team",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
@@ -30,7 +30,7 @@ const blogPosts: BlogPost[] = [
     title: "Doctolib uses Dust for AI adoption of 3,000 employees",
     content:
       "Doctolib achieved 70% weekly usage across 3,000 employees by treating AI transformation as a cultural imperative, not just tool deployment.",
-    href: "https://blog.dust.tt/why-doctolib-made-company-wide-enterprise-ai-a-national-cause/",
+    href: "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Doctolib-__-Dust---Part-1.jpg",
   },
@@ -38,7 +38,7 @@ const blogPosts: BlogPost[] = [
     title: "Qonto partners with Dust to upgrade its customer experience",
     content:
       "Qonto streamlines operations with Dust’s AI agents, saving 50,000 hours yearly.",
-    href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
+    href: "/customers/qonto-dust-ai-partnership",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
   },
@@ -46,7 +46,7 @@ const blogPosts: BlogPost[] = [
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
       "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",
-    href: "https://blog.dust.tt/malt-customer-support/",
+    href: "/customers/malt-customer-support",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/malt_dust.png",
   },
@@ -55,7 +55,7 @@ const blogPosts: BlogPost[] = [
       "How Vincent, Engineer at Alan, reduces project completion time by 20%",
     content:
       "Discover how Alan’s Engineering team built Dust agents to accelerate their workflows beyond coding.",
-    href: "https://blog.dust.tt/integrating-ai-workflows-alan/",
+    href: "/customers/integrating-ai-workflows-alan",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1--1--1.png",
   },
@@ -63,7 +63,7 @@ const blogPosts: BlogPost[] = [
     title: "Pennylane’s journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane’s operations.",
-    href: "https://blog.dust.tt/pennylane-customer-support-journey/",
+    href: "/customers/pennylane-customer-support-journey",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
   },
@@ -71,7 +71,7 @@ const blogPosts: BlogPost[] = [
     title: "Lifen uses Dust AI agents to boost team productivity",
     content:
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
+    href: "/customers/customer-story-lifen",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Lifen-__-Dust.png",
   },
@@ -80,7 +80,7 @@ const blogPosts: BlogPost[] = [
       "PayFit Accelerates Content Creation and Knowledge Sharing with Dust",
     content:
       "PayFit boosts efficiency with instant AI agents for knowledge sharing.",
-    href: "https://blog.dust.tt/dust-ai-payfit-efficiency/",
+    href: "/customers/dust-ai-payfit-efficiency",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Payfit-__-Dust.png",
   },
@@ -88,7 +88,7 @@ const blogPosts: BlogPost[] = [
     title: "Kyriba accelerates innovation with Dust",
     content:
       "Kyriba saves thousands of hours by turning AI agents into innovation catalysts.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+    href: "/customers/kyriba-accelerating-innovation-with-dust",
     imageUrl:
       "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
   },

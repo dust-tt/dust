@@ -47,6 +47,7 @@ export function useMCPActions({
 
   // Update cursors when we get new data
   const handleSetPage = useCallback(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     (page: number) => {
       setCurrentPage(page);
 

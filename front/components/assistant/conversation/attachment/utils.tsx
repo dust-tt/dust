@@ -25,12 +25,15 @@ import {
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import {
+  getIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import type {
   ConnectorProvider,
   ContentFragmentType,
@@ -70,16 +73,22 @@ export const IconForAttachmentCitation = ({
   nodeType,
   contentType,
   sourceUrl,
+  iconName,
 }: {
   provider?: string;
   nodeType?: ContentNodeType;
   contentType?: string;
   sourceUrl?: string;
+  iconName?: string;
 }): ReactNode => {
   const { isDark } = useTheme();
 
   if (provider === "webcrawler") {
-    return <FaviconIcon className="h-3 w-3" websiteUrl={sourceUrl} />;
+    return (
+      <div className="h-6 w-6">
+        <FaviconIcon size="md" websiteUrl={sourceUrl} />
+      </div>
+    );
   }
 
   if (provider && provider in CONNECTOR_CONFIGURATIONS) {
@@ -111,6 +120,19 @@ export const IconForAttachmentCitation = ({
     if (isPastedFile(contentType)) {
       return <Icon visual={DoubleQuotesIcon} size="md" />;
     }
+  }
+
+  if (
+    iconName &&
+    (isCustomResourceIconType(iconName) || isInternalAllowedIcon(iconName))
+  ) {
+    return (
+      <DoubleIcon
+        mainIcon={DocumentIcon}
+        secondaryIcon={getIcon(iconName)}
+        size="md"
+      />
+    );
   }
 
   return <Icon visual={DocumentIcon} size="md" />;
@@ -198,10 +220,13 @@ export function attachmentToAttachmentCitation(
       sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
       visual: (
-        <IconForAttachmentCitation contentType={attachment.contentType} />
+        <IconForAttachmentCitation
+          contentType={attachment.contentType}
+          iconName={attachment.iconName}
+        />
       ),
       description: attachment.description ?? null,
-      fileId: attachment.id,
+      fileId: attachment.fileId,
       contentType: attachment.contentType,
       onRemove: attachment.onRemove,
       attachmentCitationType: "inputBar",

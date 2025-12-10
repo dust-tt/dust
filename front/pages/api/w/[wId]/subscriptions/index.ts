@@ -37,7 +37,11 @@ export const PostSubscriptionRequestBody = t.type({
 });
 
 export const PatchSubscriptionRequestBody = t.type({
-  action: t.union([t.literal("cancel_free_trial"), t.literal("pay_now")]),
+  action: t.union([
+    t.literal("cancel_free_trial"),
+    t.literal("pay_now"),
+    t.literal("upgrade_to_business"),
+  ]),
 });
 
 async function handler(
@@ -188,6 +192,31 @@ async function handler(
             await skipSubscriptionFreeTrial({
               stripeSubscriptionId: subscription.stripeSubscriptionId,
             });
+          }
+          break;
+
+        case "upgrade_to_business":
+          {
+            const owner = auth.getNonNullableWorkspace();
+            const subscriptionResource =
+              auth.getNonNullableSubscriptionResource();
+
+            const result =
+              await subscriptionResource.upgradeToBusinessPlan(owner);
+
+            if (result.isErr()) {
+              logger.error(
+                { error: result.error },
+                "Error while upgrading to business plan"
+              );
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "subscription_state_invalid",
+                  message: result.error.message,
+                },
+              });
+            }
           }
           break;
 

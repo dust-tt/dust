@@ -20,8 +20,9 @@ export const INVALID_TIMEZONE_MESSAGE =
 export const TOO_FREQUENT_MESSAGE =
   "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
 
+// Standard cron regex - does NOT support # (nth occurrence) or L (last) operators
 const CRON_REGEXP =
-  /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
+  /^((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*(\/\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
 
 export async function generateCronRule(
   auth: Authenticator,

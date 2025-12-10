@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   trackEvent,
   TRACKING_ACTIONS,
@@ -39,7 +40,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(true);
       const yamlContent = await file.text();
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
         {
           method: "POST",
@@ -56,6 +57,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
           {
             workspaceId: owner.sId,
           },
+
           normalizeError(errorData).message ||
             "Failed to create agent from YAML file."
         );

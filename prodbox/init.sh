@@ -21,7 +21,7 @@ git remote set-url origin git@github.com:dust-tt/dust.git
 
 git pull origin main
 
-echo "export PS1='\[\e[0;31m\]prodbox(${DUST_REGION})\[\e[0m\]:\w\$ '" >> /root/.bashrc
+echo "export PS1='\[\e[0;31m\]prodbox(${REGION})\[\e[0m\]:\w\$ '" >> /root/.bashrc
 
 # This is the script used to start the container, so it needs to stay alive, otherwise the
 # kube pod (container) dies.

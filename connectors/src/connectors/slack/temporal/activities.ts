@@ -2,6 +2,7 @@ import type { DataSourceViewType } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type {
   CodedError,
+  ConversationsInfoResponse,
   WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
@@ -27,6 +28,7 @@ import {
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
+import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import {
   getSlackClient,
@@ -55,7 +57,10 @@ import {
   ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
-import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
+import {
+  SlackChannelModel,
+  SlackMessagesModel,
+} from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
   syncSucceeded,
@@ -132,7 +137,7 @@ export async function syncChannel(
   }
 
   // Check if channel has a skipReason
-  const slackChannel = await SlackChannel.findOne({
+  const slackChannel = await SlackChannelModel.findOne({
     where: {
       connectorId,
       slackChannelId: channelId,
@@ -394,7 +399,7 @@ export async function syncNonThreaded({
 
   // Retrieve the SlackMessage if it exists to skip sync if done already in the last hour + enforce
   // skipReason
-  let [existingMessage] = await SlackMessages.findAll({
+  let [existingMessage] = await SlackMessagesModel.findAll({
     where: {
       channelId,
       connectorId,
@@ -545,7 +550,7 @@ export async function syncNonThreaded({
 
   // Reload existingMessage in case it was created since then to decide if we need to create or
   // update it.
-  [existingMessage] = await SlackMessages.findAll({
+  [existingMessage] = await SlackMessagesModel.findAll({
     where: {
       channelId,
       connectorId,
@@ -556,7 +561,7 @@ export async function syncNonThreaded({
   });
 
   if (!existingMessage) {
-    await SlackMessages.create({
+    await SlackMessagesModel.create({
       connectorId,
       channelId,
       messageTs: undefined,
@@ -709,7 +714,7 @@ async function syncThreads(
       // we first check if the bot still has read permissions on the channel
       // there could be a race condition if we are in the middle of syncing a channel but
       // the user revokes the bot's permissions
-      const channel = await SlackChannel.findOne({
+      const channel = await SlackChannelModel.findOne({
         where: {
           connectorId: connectorId,
           slackChannelId: channelId,
@@ -911,7 +916,7 @@ export async function syncThread(
     threadTs,
   });
 
-  const firstMessageObject = await SlackMessages.findOne({
+  const firstMessageObject = await SlackMessagesModel.findOne({
     where: {
       connectorId: connectorId,
       channelId: channelId,
@@ -932,7 +937,7 @@ export async function syncThread(
   }
 
   // Only create the document if it doesn't already exist based on the documentId
-  const existingMessages = await SlackMessages.findAll({
+  const existingMessages = await SlackMessagesModel.findAll({
     where: {
       connectorId: connectorId,
       channelId: channelId,
@@ -946,7 +951,7 @@ export async function syncThread(
       messageTs: threadTs,
     });
   } else {
-    await SlackMessages.create({
+    await SlackMessagesModel.create({
       connectorId: connectorId,
       channelId: channelId,
       messageTs: threadTs,
@@ -1058,7 +1063,7 @@ export async function getChannelsToGarbageCollect(
   // no longer visible to the integration (subset of channelsToDeleteFromDatasource)
   channelsToDeleteFromConnectorsDb: string[];
 }> {
-  const channelsInConnectorsDb = await SlackChannel.findAll({
+  const channelsInConnectorsDb = await SlackChannelModel.findAll({
     where: {
       connectorId: connectorId,
     },
@@ -1087,7 +1092,7 @@ export async function getChannelsToGarbageCollect(
       .map((c) => c.id as string)
   );
 
-  const localChannels = await SlackMessages.findAll({
+  const localChannels = await SlackMessagesModel.findAll({
     attributes: [
       [Sequelize.fn("DISTINCT", Sequelize.col("channelId")), "channelId"],
     ],
@@ -1123,9 +1128,9 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
     throw new Error(`Could not find connector ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  let slackMessages: SlackMessages[] = [];
+  let slackMessages: SlackMessagesModel[] = [];
   do {
-    slackMessages = await SlackMessages.findAll({
+    slackMessages = await SlackMessagesModel.findAll({
       where: {
         channelId: channelId,
         connectorId: connectorId,
@@ -1155,7 +1160,7 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
     }
 
     // Batch delete after we deleted from the remote datasource
-    await SlackMessages.destroy({
+    await SlackMessagesModel.destroy({
       where: {
         channelId: channelId,
         connectorId: connectorId,
@@ -1180,7 +1185,7 @@ export async function deleteChannelsFromConnectorDb(
   channelsToDeleteFromConnectorsDb: string[],
   connectorId: ModelId
 ) {
-  await SlackChannel.destroy({
+  await SlackChannelModel.destroy({
     where: {
       connectorId: connectorId,
       slackChannelId: {
@@ -1304,9 +1309,33 @@ export async function autoReadChannelActivity(
     channelId,
   });
 
-  const remoteChannel = await slackClient.conversations.info({
-    channel: channelId,
-  });
+  let remoteChannel: ConversationsInfoResponse | undefined;
+  try {
+    remoteChannel = await slackClient.conversations.info({
+      channel: channelId,
+    });
+  } catch (error) {
+    if (
+      isWebAPIPlatformError(error) &&
+      error.data.error === "channel_not_found"
+    ) {
+      // If the channel is not found, we can't auto-read it.
+      // We gracefully exit the activity in this case, with a warning log.
+      logger.warn(
+        {
+          connectorId,
+          channelId,
+        },
+        "Channel not found, skipping auto-read activity."
+      );
+      return false;
+    }
+    throw error;
+  }
+
+  if (!remoteChannel) {
+    throw new Error("Could not get the Slack channel information.");
+  }
 
   const channelName = remoteChannel.channel?.name;
   const isPrivate = remoteChannel.channel?.is_private ?? false;
@@ -1340,7 +1369,7 @@ export async function autoReadChannelActivity(
   }
 
   const provider = connector.type as "slack" | "slack_bot";
-  let channel = await SlackChannel.findOne({
+  let channel = await SlackChannelModel.findOne({
     where: {
       slackChannelId: channelId,
       connectorId,
@@ -1348,7 +1377,7 @@ export async function autoReadChannelActivity(
   });
 
   if (!channel) {
-    channel = await SlackChannel.create({
+    channel = await SlackChannelModel.create({
       connectorId,
       slackChannelId: channelId,
       slackChannelName: channelName,

@@ -1,7 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { getDustProdAction } from "@app/lib/registry";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
@@ -38,7 +38,7 @@ export async function getPokeConversation(
       for (const m of messages) {
         if (m.type === "agent_message") {
           const runIds = (
-            await AgentMessage.findOne({
+            await AgentMessageModel.findOne({
               where: {
                 id: m.agentMessageId,
                 workspaceId: owner.id,

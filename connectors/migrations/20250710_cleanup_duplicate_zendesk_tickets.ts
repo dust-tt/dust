@@ -52,10 +52,7 @@ async function cleanupConnector(
   const { accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskClient = await ZendeskClient.createClient(
-    accessToken,
-    connector.id
-  );
+  const zendeskClient = new ZendeskClient(accessToken, connector.id, null);
   const brandSubdomains = new Map<number, string>();
   const ticketIdsSeen = new Set();
 

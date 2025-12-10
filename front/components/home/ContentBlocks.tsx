@@ -58,6 +58,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
       )}
     >
       <div className="flex aspect-video w-full items-center justify-center bg-primary-800 p-4">
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         <div className="max-w-lg">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
@@ -77,6 +78,8 @@ interface BlogBlockProps {
   href: string;
   className?: string;
   style?: React.CSSProperties;
+  target?: string;
+  tags?: string[];
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -86,11 +89,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   href,
   className = "",
   style,
+  target,
+  tags = [],
 }) => {
   return (
     <a
       href={href}
-      target="_blank"
+      target={target}
       className={classNames(
         className,
         "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",
@@ -119,6 +124,18 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
             }
             return child;
           })}
+          {tags.length > 0 && (
+            <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
       <div className="flex flex-col p-8">

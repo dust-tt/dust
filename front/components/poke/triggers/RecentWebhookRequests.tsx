@@ -45,7 +45,7 @@ export function PokeRecentWebhookRequests({
         )}
         {trigger.kind === "webhook" && (
           <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
-            <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+            <p className="pb-4 text-sm font-medium text-foreground dark:text-foreground-night">
               Filter
             </p>
             {trigger.configuration.filter ? (

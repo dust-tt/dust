@@ -4,7 +4,7 @@ import type { DustMimeType } from "@dust-tt/client";
 import type { ConnectorProvider } from "@app/types/data_source";
 
 import type {
-  LightMessageType,
+  LegacyLightMessageType,
   MessageType,
   MessageVisibility,
 } from "./assistant/conversation";
@@ -110,7 +110,7 @@ export type ContentFragmentsType = {
 };
 
 export function isContentFragmentType(
-  arg: MessageType | LightMessageType
+  arg: MessageType | LegacyLightMessageType
 ): arg is ContentFragmentType {
   return arg.type === "content_fragment";
 }

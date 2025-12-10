@@ -1,6 +1,6 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -10,7 +10,7 @@ export class AgentMCPServerConfigurationFactory {
   static async create(
     auth: Authenticator,
     space: SpaceResource
-  ): Promise<AgentMCPServerConfiguration> {
+  ): Promise<AgentMCPServerConfigurationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
@@ -23,7 +23,7 @@ export class AgentMCPServerConfigurationFactory {
       space
     );
 
-    return AgentMCPServerConfiguration.create({
+    return AgentMCPServerConfigurationModel.create({
       sId: generateRandomModelSId(),
       agentConfigurationId: agent.id,
       workspaceId: owner.id,

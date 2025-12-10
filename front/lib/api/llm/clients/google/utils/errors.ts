@@ -68,6 +68,15 @@ function categorizeGenAIError(
     };
   }
 
+  if (statusCode === 503) {
+    return {
+      type: "server_error",
+      message: `Server error from ${metadata.clientId}. The model is overloaded or unavailable. Please try again later.`,
+      isRetryable: true,
+      originalError,
+    };
+  }
+
   if (statusCode >= 500 && statusCode < 600) {
     return {
       type: "server_error",

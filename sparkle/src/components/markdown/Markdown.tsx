@@ -24,7 +24,10 @@ import {
   TableHeadBlock,
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
-import { sanitizeContent } from "@sparkle/components/markdown/utils";
+import {
+  preprocessDollarSigns,
+  sanitizeContent,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 export const markdownHeaderClasses = {
@@ -70,7 +73,10 @@ export function Markdown({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
-  const processedContent = useMemo(() => sanitizeContent(content), [content]);
+  const processedContent = useMemo(() => {
+    const sanitized = sanitizeContent(content);
+    return preprocessDollarSigns(sanitized);
+  }, [content]);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -214,7 +220,7 @@ export function Markdown({
     () => [
       remarkDirective,
       remarkGfm,
-      [remarkMath, { singleDollarTextMath: false }],
+      [remarkMath, { singleDollarTextMath: true }],
       ...(additionalMarkdownPlugins || []),
       showUnsupportedDirective,
     ],
@@ -268,6 +274,7 @@ function LinkBlock({
   return (
     <a
       href={href}
+      title={href}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(

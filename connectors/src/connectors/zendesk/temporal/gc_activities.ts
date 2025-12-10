@@ -134,6 +134,13 @@ export async function removeMissingArticleBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -146,9 +153,11 @@ export async function removeMissingArticleBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskClient = await ZendeskClient.createClient(
+
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
     brandId,

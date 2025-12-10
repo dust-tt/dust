@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeTables } from "@app/poke/swr";
@@ -15,6 +16,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsId } = context.params || {};
   if (typeof dsId !== "string") {
     return {
@@ -92,7 +94,7 @@ export default function DataSourceQueryPage({
     setQueryResult(null);
 
     try {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/query`,
         {
           method: "POST",
@@ -108,6 +110,7 @@ export default function DataSourceQueryPage({
 
       if (!response.ok) {
         const errorData = await response.json();
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(errorData.error?.message || "Failed to execute query");
       }
 

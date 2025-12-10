@@ -1,19 +1,19 @@
 import type { Icon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import uniqueId from "lodash/uniqueId";
+import type { ComponentProps } from "react";
 import { z } from "zod";
 
-import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
-import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { mcpServerConfigurationSchema } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
@@ -21,34 +21,6 @@ import type {
   TimeFrame,
   WhitelistableFeature,
 } from "@app/types";
-
-type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
-
-export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
-
-export const AGENT_CREATIVITY_LEVELS = [
-  "deterministic",
-  "factual",
-  "balanced",
-  "creative",
-] as const;
-export type AgentCreativityLevel = (typeof AGENT_CREATIVITY_LEVELS)[number];
-
-export const AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES = {
-  deterministic: "Deterministic",
-  factual: "Factual",
-  balanced: "Balanced",
-  creative: "Creative",
-} as const;
-export const AGENT_CREATIVITY_LEVEL_TEMPERATURES: Record<
-  AgentCreativityLevel,
-  number
-> = {
-  deterministic: 0.0,
-  factual: 0.2,
-  balanced: 0.7,
-  creative: 1.0,
-};
 
 export const BUILDER_FLOWS = [
   "workspace_assistants",
@@ -73,28 +45,6 @@ export const TOOLS_SHEET_PAGE_IDS = {
 
 export type ConfigurationPagePageId =
   (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
-
-// Zod validation schema for data source configuration - defines the contract/shape
-export const dataSourceConfigurationSchema = z.object({
-  sId: z.string().optional(),
-  workspaceId: z.string(),
-  dataSourceViewId: z.string().min(1, "DataSourceViewId cannot be empty"),
-  filter: z.object({
-    parents: z
-      .object({
-        in: z.array(z.string()),
-        not: z.array(z.string()),
-      })
-      .nullable(),
-    tags: z
-      .object({
-        in: z.array(z.string()),
-        not: z.array(z.string()),
-        mode: z.enum(["custom", "auto"]),
-      })
-      .nullable(),
-  }),
-});
 
 // TODO: merge this with MCP form schema. Right now it only validates two fields.
 export const capabilityFormSchema = z
@@ -175,7 +125,7 @@ export const capabilityFormSchema = z
 
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
-): AgentBuilderAction {
+): BuilderAction {
   const {
     requiresDataSourceConfiguration,
     requiresDataWarehouseConfiguration,
@@ -204,15 +154,11 @@ export function getDefaultMCPAction(
   };
 }
 
-export function isDefaultActionName(action: AgentBuilderAction) {
-  return action.name.includes(DEFAULT_MCP_ACTION_NAME);
-}
-
 export interface ActionSpecification {
   label: string;
   description: string;
-  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  dropDownIcon: NonNullable<ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<ComponentProps<typeof Icon>["visual"]>;
   flag: WhitelistableFeature | null;
 }
 

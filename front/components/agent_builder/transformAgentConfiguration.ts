@@ -2,7 +2,6 @@ import uniqueId from "lodash/uniqueId";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   LightAgentConfigurationType,
@@ -10,6 +9,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
+  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   isProviderWhitelisted,
@@ -48,6 +48,7 @@ export function transformAgentConfigurationToFormData(
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Will be populated reactively from useAgentConfigurationActions hook
+    skills: [], // Will be populated reactively from useAgentConfigurationSkills hook
     triggersToCreate: [],
     triggersToUpdate: [], // Will be populated reactively from the hook
     triggersToDelete: [],
@@ -94,6 +95,7 @@ export function getDefaultAgentFormData({
       responseFormat: undefined,
     },
     actions: [],
+    skills: [],
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],
@@ -102,7 +104,7 @@ export function getDefaultAgentFormData({
 }
 
 /**
- * Transforms an assistant template into agent builder form data with defaults.
+ * Transforms an agent template into agent builder form data with defaults.
  * Merges template presets with default form data to create a complete configuration.
  */
 export function transformTemplateToFormData(
@@ -138,6 +140,7 @@ export function transformTemplateToFormData(
         : defaultFormData.generationSettings.temperature,
     },
     actions: [],
+    skills: [],
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],

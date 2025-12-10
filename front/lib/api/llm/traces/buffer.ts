@@ -62,6 +62,7 @@ export class LLMTraceBuffer {
   private reasoning = "";
   private tokenUsage: TokenUsage | undefined;
   private toolCalls: ToolCall[] = [];
+  private modelInteractionId: string | undefined;
 
   constructor(
     private readonly traceId: LLMTraceId,
@@ -98,6 +99,10 @@ export class LLMTraceBuffer {
       specifications,
       temperature,
     };
+  }
+
+  setModelInteractionId(id: string) {
+    this.modelInteractionId = id;
   }
 
   /**
@@ -249,6 +254,7 @@ export class LLMTraceBuffer {
       },
       traceId: this.traceId,
       workspaceId: this.workspaceId,
+      modelInteractionId: this.modelInteractionId,
     };
 
     if (this.endingError) {
@@ -386,6 +392,7 @@ export class LLMTraceBuffer {
   private getByteSize(obj: unknown): number {
     try {
       return Buffer.byteLength(JSON.stringify(obj), "utf8");
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       return Buffer.byteLength(String(obj), "utf8");
     }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { additionalConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { additionalConfigurationSchema } from "@app/components/shared/tools_picker/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";

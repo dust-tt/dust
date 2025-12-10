@@ -29,11 +29,9 @@ export const LATENCY_LEGEND = [
 ] as const;
 
 export const COST_PALETTE = {
-  costCents: "text-blue-400 dark:text-blue-400-night",
-  totalCredits: "text-green-500 dark:text-green-500-night",
+  costMicroUsd: "text-blue-400 dark:text-blue-400-night",
+  totalCredits: "text-orange-400 dark:text-orange-400-night",
 } as const;
-
-export const COST_LEGEND = [{ key: "costCents", label: "Cost" }] as const;
 
 export const CHART_HEIGHT = 260;
 
@@ -82,6 +80,11 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     color: "text-gray-300 dark:text-gray-300-night",
   },
   api: { label: "API", color: "text-blue-300 dark:text-blue-300-night" },
+  cli: { label: "CLI", color: "text-gray-500 dark:text-gray-500-night" },
+  cli_programmatic: {
+    label: "CLI",
+    color: "text-gray-500 dark:text-gray-500-night",
+  },
   email: {
     label: "Email",
     color: "text-violet-300 dark:text-violet-300-night",
@@ -113,6 +116,10 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     color: "text-golden-500 dark:text-golden-500-night",
   },
   slack: { label: "Slack", color: "text-green-500 dark:text-green-500-night" },
+  slack_workflow: {
+    label: "Slack",
+    color: "text-green-500 dark:text-green-500-night",
+  },
   teams: {
     label: "Teams",
     color: "text-highlight-muted dark:text-highlight-muted-night",

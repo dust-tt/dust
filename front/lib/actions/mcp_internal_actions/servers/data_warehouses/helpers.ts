@@ -128,6 +128,7 @@ export async function getWarehouseNodes(
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!dataSourceById) {
     dataSourceById = _.keyBy(
       await DataSourceResource.fetchByDustAPIDataSourceIds(

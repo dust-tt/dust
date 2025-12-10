@@ -1,6 +1,7 @@
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   fetcher,
   getErrorFromResponse,
@@ -80,6 +81,21 @@ export function useDeleteMetadata() {
   return { deleteMetadata };
 }
 
+export function useIsOnboardingConversation(conversationId: string | null) {
+  const { metadata, isMetadataLoading } = useUserMetadata(
+    "onboarding:conversation",
+    { disabled: !conversationId }
+  );
+
+  return {
+    isOnboardingConversation:
+      !!conversationId &&
+      !!metadata?.value &&
+      metadata.value === conversationId,
+    isLoading: isMetadataLoading,
+  };
+}
+
 export function usePatchUser() {
   const { mutateUser } = useUser();
   const sendNotification = useSendNotification();
@@ -91,7 +107,7 @@ export function usePatchUser() {
     jobType?: JobType,
     imageUrl?: string | null
   ) => {
-    const res = await fetch("/api/user", {
+    const res = await clientFetch("/api/user", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

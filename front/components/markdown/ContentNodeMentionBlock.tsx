@@ -16,6 +16,7 @@ export function contentNodeMentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "content_node_mention" && node.children[0]) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "content_node_mention";
         data.hProperties = {

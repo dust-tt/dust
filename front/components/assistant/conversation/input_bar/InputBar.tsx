@@ -1,5 +1,5 @@
 import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
@@ -16,13 +16,16 @@ import {
   useAddDeleteConversationTool,
   useConversationTools,
 } from "@app/lib/swr/conversations";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { useIsOnboardingConversation } from "@app/lib/swr/user";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
-  AgentMention,
   ContentFragmentsType,
   DataSourceViewContentNode,
-  LightAgentConfigurationType,
   Result,
   RichMention,
   WorkspaceType,
@@ -40,43 +43,36 @@ interface InputBarProps {
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
-  stickyMentions?: AgentMention[];
-  additionalAgentConfiguration?: LightAgentConfigurationType;
+  stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
+  isSubmitting?: boolean;
   disable?: boolean;
 }
 
-/**
- *
- * @param additionalAgentConfiguration when trying an agent in a modal or drawer we
- * need to pass the agent configuration to the input bar (it may not be in the
- * user's list of agents)
- */
 export const InputBar = React.memo(function InputBar({
   owner,
   onSubmit,
   conversationId,
   stickyMentions,
-  additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
+  isSubmitting = false,
   disable = false,
 }: InputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(disable);
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
 
   // We use this specific hook because this component is involved in the new conversation page.
-  const { agentConfigurations: baseAgentConfigurations } =
-    useUnifiedAgentConfigurations({
-      workspaceId: owner.sId,
-    });
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   // Files upload.
 
@@ -98,21 +94,10 @@ export const InputBar = React.memo(function InputBar({
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
-  const agentConfigurations = useMemo(() => {
-    if (
-      baseAgentConfigurations.find(
-        (a) => a.sId === additionalAgentConfiguration?.sId
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      ) ||
-      !additionalAgentConfiguration
-    ) {
-      return baseAgentConfigurations;
-    }
-    return [...baseAgentConfigurations, additionalAgentConfiguration];
-  }, [baseAgentConfigurations, additionalAgentConfiguration]);
-
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, setAnimate, selectedAgent } = useContext(InputBarContext);
+  const { isOnboardingConversation } =
+    useIsOnboardingConversation(conversationId);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -220,11 +205,19 @@ export const InputBar = React.memo(function InputBar({
       },
     });
 
+    if (isOnboardingConversation) {
+      trackEvent({
+        area: TRACKING_AREAS.CONVERSATION,
+        object: "onboarding_conversation",
+        action: TRACKING_ACTIONS.SUBMIT,
+      });
+    }
+
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
     if (!conversationId) {
       setLoading(true);
-      setDisableSendButton(true);
+      setIsLocalSubmitting(true);
 
       const r = await onSubmit(
         markdown,
@@ -245,7 +238,7 @@ export const InputBar = React.memo(function InputBar({
       );
 
       setLoading(false);
-      setDisableSendButton(false);
+      setIsLocalSubmitting(false);
       if (r.isOk()) {
         resetEditorText();
         fileUploaderService.resetUpload();
@@ -282,8 +275,8 @@ export const InputBar = React.memo(function InputBar({
   };
 
   useEffect(() => {
-    setDisableSendButton(disable);
-  }, [disable]);
+    setIsLocalSubmitting(isSubmitting);
+  }, [isSubmitting]);
 
   return (
     <div className="flex w-full flex-col">
@@ -319,22 +312,22 @@ export const InputBar = React.memo(function InputBar({
               onRemove: handleNodesAttachmentRemove,
             }}
             conversationId={conversationId}
+            disable={disable}
           />
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
             allAgents={activeAgents}
-            agentConfigurations={agentConfigurations}
             owner={owner}
             conversationId={conversationId}
             selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
             fileUploaderService={fileUploaderService}
-            disableSendButton={
-              disableSendButton || fileUploaderService.isProcessingFiles
+            isSubmitting={
+              isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableTextInput={disable}
+            disableInput={disable}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}

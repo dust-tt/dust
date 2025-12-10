@@ -44,7 +44,7 @@ export type TrackerMaintainedScopeType = Array<{
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TrackerConfigurationResource
   extends ReadonlyAttributesType<TrackerConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -362,7 +362,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         workspaceId: this.workspaceId,
       }),
       filter:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         m.parentsIn || m.parentsNotIn
           ? {
               parents: {

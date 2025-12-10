@@ -21,9 +21,11 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
@@ -40,9 +42,11 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
@@ -59,15 +63,17 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_3_PRO_MODEL_ID,
-  displayName: "Gemini 3 Pro",
+  displayName: "Gemini 3 Pro (Preview)",
   contextSize: 1_000_000,
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
@@ -78,10 +84,10 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
-  featureFlag: "google_ai_studio_experimental_models_feature",
 };

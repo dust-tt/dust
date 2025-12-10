@@ -3,17 +3,19 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
-} from "@app/lib/credits/purchase";
+} from "@app/lib/credits/committed";
+import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -24,8 +26,9 @@ export const PostCreditPurchaseRequestBody = t.type({
 
 type PostCreditPurchaseResponseBody = {
   success: boolean;
-  creditsAdded: number;
+  creditsAddedMicroUsd: number;
   invoiceId: string | null;
+  paymentUrl: string | null;
 };
 
 async function handler(
@@ -57,19 +60,7 @@ async function handler(
     });
   }
 
-  // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-
-  if (!featureFlags.includes("ppul_credits_purchase_flow")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "This feature is not enabled for your workspace.",
-      },
-    });
-  }
 
   switch (req.method) {
     case "POST": {
@@ -119,15 +110,70 @@ async function handler(
           },
         });
       }
-      // Convert dollars to cents for internal storage.
-      const amountCents = Math.round(amountDollars * 100);
+      // Convert dollars to micro USD for internal storage.
+      const amountMicroUsd = Math.round(amountDollars * 1_000_000);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+
+      // Validate against purchase limits.
+      const limits = await getCreditPurchaseLimits(auth, stripeSubscription);
+      if (!limits.canPurchase) {
+        const message =
+          limits.reason === "trialing"
+            ? "Credit purchases are not available during trial. Please contact support."
+            : "Credit purchases require an active subscription. Please ensure your payment method is up to date.";
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message,
+          },
+        });
+      }
+
+      if (amountMicroUsd > limits.maxAmountMicroUsd) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Amount exceeds maximum allowed: $${limits.maxAmountMicroUsd / 1_000_000}. Please contact support for higher limits.`,
+          },
+        });
+      }
+
+      // Fetch discount from programmatic usage configuration.
+      const programmaticConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      let discountPercent =
+        programmaticConfig?.defaultDiscountPercent &&
+        programmaticConfig.defaultDiscountPercent > 0
+          ? programmaticConfig.defaultDiscountPercent
+          : undefined;
+
+      // Validate discount does not exceed maximum (should be enforced at config level, but double-check).
+      if (
+        discountPercent !== undefined &&
+        discountPercent > MAX_DISCOUNT_PERCENT
+      ) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            discountPercent,
+            maxDiscountPercent: MAX_DISCOUNT_PERCENT,
+          },
+          "[Credit Purchase] Discount exceeds maximum allowed"
+        );
+        discountPercent = undefined;
+      }
+
+      const user = auth.getNonNullableUser();
 
       if (isEnterprise) {
         const result = await createEnterpriseCreditPurchase({
           auth,
           stripeSubscriptionId: subscription.stripeSubscriptionId,
-          amountCents,
+          amountMicroUsd,
+          discountPercent,
+          boughtByUserId: user.id,
         });
 
         if (result.isErr()) {
@@ -142,14 +188,17 @@ async function handler(
 
         return res.status(200).json({
           success: true,
-          creditsAdded: amountCents,
+          creditsAddedMicroUsd: amountMicroUsd,
           invoiceId: null,
+          paymentUrl: null,
         });
       }
       const result = await createProCreditPurchase({
         auth,
         stripeSubscriptionId: subscription.stripeSubscriptionId,
-        amountCents,
+        amountMicroUsd,
+        discountPercent,
+        boughtByUserId: user.id,
       });
 
       if (result.isErr()) {
@@ -164,8 +213,9 @@ async function handler(
 
       return res.status(200).json({
         success: true,
-        creditsAdded: amountCents,
+        creditsAddedMicroUsd: amountMicroUsd,
         invoiceId: result.value.invoiceId,
+        paymentUrl: result.value.paymentUrl,
       });
     }
 

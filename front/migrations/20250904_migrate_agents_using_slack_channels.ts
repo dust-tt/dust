@@ -2,10 +2,10 @@ import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
 import config from "@app/lib/api/config";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
 import { OAuthAPI } from "@app/types";
 
@@ -58,7 +58,7 @@ makeScript(
     );
 
     // Get the agent MCP server configuration
-    const mcpServerConfig = await AgentMCPServerConfiguration.findByPk(
+    const mcpServerConfig = await AgentMCPServerConfigurationModel.findByPk(
       agentMcpServerConfigurationId
     );
     if (!mcpServerConfig) {
@@ -95,7 +95,7 @@ makeScript(
     }
 
     // Get the MCP server connection
-    const mcpServerConnection = await MCPServerConnection.findOne({
+    const mcpServerConnection = await MCPServerConnectionModel.findOne({
       where: {
         internalMCPServerId: mcpServerView.internalMCPServerId,
         connectionType: "workspace",
@@ -164,7 +164,7 @@ makeScript(
     logger.info(`Generated instruction text: ${instructionText}`);
 
     // Get the agent configuration with workspace context
-    const agentConfig = await AgentConfiguration.findOne({
+    const agentConfig = await AgentConfigurationModel.findOne({
       where: {
         id: mcpServerConfig.agentConfigurationId,
         workspaceId: mcpServerConfig.workspaceId,

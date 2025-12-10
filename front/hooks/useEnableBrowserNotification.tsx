@@ -39,6 +39,7 @@ export const useEnableBrowserNotification = () => {
       return true;
     }
 
+    // eslint-disable-next-line react-hooks/purity
     const delay = Date.now() - parseInt(metadata.value);
 
     return delay > DELAY_BEFORE_ASKING_AGAIN;
@@ -69,13 +70,11 @@ export const useEnableBrowserNotification = () => {
 
     const confirmed = await confirm({
       title: (
-        <div className="flex items-center gap-2">
-          Enable notifications for new messages
-        </div>
+        <div className="flex items-center gap-2">Enable notifications</div>
       ),
       message: "Get notified in your browser when messages arrive.",
       validateLabel: "Enable",
-      validateVariant: "primary",
+      cancelLabel: "Later",
     });
 
     if (confirmed) {

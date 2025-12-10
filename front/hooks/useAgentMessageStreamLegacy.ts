@@ -47,7 +47,7 @@ type AgentMessageStateEvent = (AgentMessageEvents | ToolNotificationEvent) & {
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
-  { type: "tool_approve_execution" }
+  { type: "tool_approve_execution" } | { type: "tool_personal_auth_required" }
 >;
 
 function updateMessageWithAction(
@@ -85,6 +85,7 @@ function updateProgress(
 }
 
 const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RETRY_BLOCKED_ACTIONS_STARTED_EVENT = {
   type: "retry_blocked_actions_started" as const,
 };
@@ -324,7 +325,10 @@ export function useAgentMessageStreamLegacy({
         return;
       }
 
-      if (eventType === "tool_approve_execution") {
+      if (
+        eventType === "tool_approve_execution" ||
+        eventType === "tool_personal_auth_required"
+      ) {
         if (customOnEventCallback) {
           customOnEventCallback(eventStr);
         }

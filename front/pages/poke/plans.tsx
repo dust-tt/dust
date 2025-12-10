@@ -22,6 +22,7 @@ import {
 } from "@app/components/poke/plans/form";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
@@ -77,7 +78,6 @@ const PlansPage = () => {
       (plan) => plan.code.trim() === editingPlan.code.trim()
     );
     if (
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (editingPlan.isNewPlan && plansWithSameCode.length > 0) ||
       (!editingPlan.isNewPlan && plansWithSameCode.length > 1)
     ) {
@@ -91,7 +91,7 @@ const PlansPage = () => {
 
     const requestBody: PlanType = toPlanType(editingPlan);
 
-    const r = await fetch("/api/poke/plans", {
+    const r = await clientFetch("/api/poke/plans", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

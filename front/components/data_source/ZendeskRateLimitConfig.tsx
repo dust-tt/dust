@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
@@ -41,6 +42,7 @@ export function ZendeskRateLimitConfig({
   // Initialize input state based on current config
   useEffect(() => {
     if (rateLimitTransactionsPerSecond) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRateLimitInput(rateLimitTransactionsPerSecond);
     } else {
       setRateLimitInput("");
@@ -52,7 +54,7 @@ export function ZendeskRateLimitConfig({
     configValue: number | string
   ) => {
     setLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: { "Content-Type": "application/json" },
@@ -75,6 +77,7 @@ export function ZendeskRateLimitConfig({
         type: "info",
         title: "Failed to edit Zendesk configuration",
         description:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           err.error?.connectors_error.message || "An unknown error occurred",
       });
     }

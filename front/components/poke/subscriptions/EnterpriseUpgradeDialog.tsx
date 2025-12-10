@@ -20,7 +20,8 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { clientFetch } from "@app/lib/egress/client";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { EnterpriseUpgradeFormType, WorkspaceType } from "@app/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
@@ -66,7 +67,7 @@ export default function EnterpriseUpgradeDialog({
         setIsSubmitting(true);
         setError(null);
         try {
-          const r = await fetch(
+          const r = await clientFetch(
             `/api/poke/workspaces/${owner.sId}/upgrade_enterprise`,
             {
               method: "POST",
@@ -131,7 +132,7 @@ export default function EnterpriseUpgradeDialog({
                       name="planCode"
                       title="Enterprise Plan"
                       options={plans
-                        .filter((plan) => isEntreprisePlan(plan.code))
+                        .filter((plan) => isEntreprisePlanPrefix(plan.code))
                         .map((plan) => ({
                           value: plan.code,
                           display: `${plan.name} (${plan.code})`,

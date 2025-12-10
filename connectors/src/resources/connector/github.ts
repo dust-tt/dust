@@ -1,12 +1,12 @@
 import type { Transaction } from "sequelize";
 
 import {
-  GithubCodeDirectory,
-  GithubCodeFile,
-  GithubCodeRepository,
-  GithubConnectorState,
-  GithubDiscussion,
-  GithubIssue,
+  GithubCodeDirectoryModel,
+  GithubCodeFileModel,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
+  GithubDiscussionModel,
+  GithubIssueModel,
 } from "@connectors/lib/models/github";
 import type {
   ConnectorProviderConfigurationType,
@@ -22,10 +22,10 @@ export class GithubConnectorStrategy
 {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<GithubConnectorState>,
+    blob: WithCreationAttributes<GithubConnectorStateModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["github"] | null> {
-    await GithubConnectorState.create(
+    await GithubConnectorStateModel.create(
       {
         ...blob,
         connectorId,
@@ -36,37 +36,37 @@ export class GithubConnectorStrategy
   }
 
   async delete(connector: ConnectorResource, transaction: Transaction) {
-    await GithubIssue.destroy({
+    await GithubIssueModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GithubDiscussion.destroy({
+    await GithubDiscussionModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GithubCodeRepository.destroy({
+    await GithubCodeRepositoryModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GithubCodeFile.destroy({
+    await GithubCodeFileModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GithubCodeDirectory.destroy({
+    await GithubCodeDirectoryModel.destroy({
       where: {
         connectorId: connector.id,
       },
       transaction,
     });
-    await GithubConnectorState.destroy({
+    await GithubConnectorStateModel.destroy({
       where: {
         connectorId: connector.id,
       },

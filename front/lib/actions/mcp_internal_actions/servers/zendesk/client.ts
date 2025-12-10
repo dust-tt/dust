@@ -5,19 +5,36 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
+  ZendeskTicketComment,
   ZendeskTicketField,
   ZendeskTicketMetrics,
+  ZendeskUser,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import {
   isValidZendeskSubdomain,
   ZendeskSearchResponseSchema,
+  ZendeskTicketCommentsResponseSchema,
   ZendeskTicketFieldsResponseSchema,
   ZendeskTicketMetricsResponseSchema,
   ZendeskTicketResponseSchema,
+  ZendeskUsersResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+export class ZendeskApiError extends Error {
+  public readonly isInvalidInput: boolean;
+
+  constructor(
+    message: string,
+    { isInvalidInput }: { isInvalidInput: boolean }
+  ) {
+    super(message);
+    this.isInvalidInput = isInvalidInput;
+  }
+}
 
 const MAX_CUSTOM_FIELDS_TO_FETCH = 50;
 
@@ -89,7 +106,7 @@ class ZendeskClient {
     }
   ): Promise<Result<z.infer<T>, Error>> {
     const url = `https://${this.subdomain}.zendesk.com/api/v2/${endpoint}`;
-    const response = await fetch(url, {
+    const response = await untrustedFetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -101,8 +118,9 @@ class ZendeskClient {
     if (!response.ok) {
       const errorText = await response.text();
       return new Err(
-        new Error(
-          `Zendesk API error (${response.status}): ${errorText || response.statusText}`
+        new ZendeskApiError(
+          `Zendesk API error (${response.status}): ${errorText || response.statusText}`,
+          { isInvalidInput: response.status === 422 }
         )
       );
     }
@@ -230,5 +248,52 @@ class ZendeskClient {
     }
 
     return new Ok(result.value.ticket_fields.filter((f) => f.active));
+  }
+
+  async getTicketComments(
+    ticketId: number
+  ): Promise<Result<ZendeskTicketComment[], Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}/comments`,
+      ZendeskTicketCommentsResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.comments);
+  }
+
+  async getUsersByIds(
+    userIds: number[]
+  ): Promise<Result<ZendeskUser[], Error>> {
+    if (userIds.length === 0) {
+      return new Ok([]);
+    }
+
+    // Zendesk API supports up to 100 user IDs per request
+    const chunks: number[][] = [];
+    for (let i = 0; i < userIds.length; i += 100) {
+      chunks.push(userIds.slice(i, i + 100));
+    }
+
+    const allUsers: ZendeskUser[] = [];
+
+    for (const chunk of chunks) {
+      const idsParam = chunk.join(",");
+      const result = await this.request(
+        `users/show_many?ids=${idsParam}`,
+        ZendeskUsersResponseSchema
+      );
+
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+
+      allUsers.push(...result.value.users);
+    }
+
+    return new Ok(allUsers);
   }
 }

@@ -26,6 +26,7 @@ import {
   NavigationListLabel,
   PencilSquareIcon,
   PlusIcon,
+  RobotIcon,
   SearchInput,
   Spinner,
   TrashIcon,
@@ -36,6 +37,7 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import {
   forwardRef,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -62,7 +64,8 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { SKILL_ICON } from "@app/lib/skill";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
@@ -72,6 +75,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -100,9 +104,9 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
-  const { agentConfigurations } = useAgentConfigurations({
+  // Use the same hook as the input bar and the new conversation page to avoid concurrent calls to getAgentConfigurations.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "list",
   });
   const editableAgents = useMemo(
     () => agentConfigurations.filter((agent) => agent.canEdit),
@@ -150,6 +154,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+
+  const hasSkills = featureFlags.includes("skills");
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -269,6 +275,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 
   const { ref, inView, entry } = useInView({
+    // eslint-disable-next-line react-hooks/refs
     root: conversationsNavigationRef.current,
     threshold: 0,
   });
@@ -455,7 +462,28 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         )}
                       </>
                     )}
-                    {isBuilder(owner) && (
+                    {!isBuilder(owner) ? null : hasSkills ? (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
+                          icon={ContactsRobotIcon}
+                          label="Manage"
+                        />
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent className="pointer-events-auto">
+                            <DropdownMenuItem
+                              href={getAgentBuilderRoute(owner.sId, "manage")}
+                              icon={RobotIcon}
+                              label="Agents"
+                            />
+                            <DropdownMenuItem
+                              href={getSkillBuilderRoute(owner.sId, "manage")}
+                              icon={SKILL_ICON}
+                              label="Skills"
+                            />
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    ) : (
                       <DropdownMenuItem
                         href={getAgentBuilderRoute(owner.sId, "manage")}
                         icon={ContactsRobotIcon}
@@ -526,6 +554,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         owner={owner}
                       />
                     ))}
+                    {/* eslint-disable-next-line react-hooks/refs */}
                     {conversationsNavigationRef.current && (
                       <div
                         // Change the key each page to force a re-render and get a new entry
@@ -549,8 +578,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 }
 
 interface InboxConversationListProps {
-  unreadConversations: ConversationWithoutContentType[];
-  actionRequiredConversations: ConversationWithoutContentType[];
+  inboxConversations: ConversationWithoutContentType[];
   dateLabel: string;
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
@@ -573,8 +601,7 @@ const ConversationListContainer = ({
 };
 
 const InboxConversationList = ({
-  unreadConversations,
-  actionRequiredConversations,
+  inboxConversations,
   dateLabel,
   isMultiSelect,
   isMarkingAllAsRead,
@@ -582,22 +609,15 @@ const InboxConversationList = ({
   onMarkAllAsRead,
   ...props
 }: InboxConversationListProps) => {
-  if (!unreadConversations.length && !actionRequiredConversations.length) {
+  if (inboxConversations.length === 0) {
     return null;
   }
 
   const shouldShowMarkAllAsReadButton =
-    unreadConversations.length > 0 &&
+    inboxConversations.length > 0 &&
     titleFilter.length === 0 &&
     !isMultiSelect &&
     onMarkAllAsRead;
-
-  const sortedInboxConversations = [
-    ...unreadConversations,
-    ...actionRequiredConversations,
-  ].sort((a, b) => {
-    return (b.updated ?? b.created) - (a.updated ?? a.created);
-  });
 
   return (
     <ConversationListContainer>
@@ -612,7 +632,7 @@ const InboxConversationList = ({
               size="xs"
               variant="ghost"
               label={`Mark as read`}
-              onClick={() => onMarkAllAsRead(unreadConversations)}
+              onClick={() => onMarkAllAsRead(inboxConversations)}
               isLoading={isMarkingAllAsRead}
               className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
             />
@@ -620,7 +640,7 @@ const InboxConversationList = ({
         )}
       </div>
 
-      {sortedInboxConversations.map((conversation) => (
+      {inboxConversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
           conversation={conversation}
@@ -683,90 +703,92 @@ function getConversationDotStatus(
   return "idle";
 }
 
-const ConversationListItem = ({
-  conversation,
-  isMultiSelect,
-  selectedConversations,
-  toggleConversationSelection,
-  router,
-  owner,
-}: {
-  conversation: ConversationWithoutContentType;
-  isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: NextRouter;
-  owner: WorkspaceType;
-}) => {
-  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const {
-    isMenuOpen,
-    menuTriggerPosition,
-    handleRightClick,
-    handleMenuOpenChange,
-  } = useConversationMenu();
+const ConversationListItem = memo(
+  ({
+    conversation,
+    isMultiSelect,
+    selectedConversations,
+    toggleConversationSelection,
+    router,
+    owner,
+  }: {
+    conversation: ConversationWithoutContentType;
+    isMultiSelect: boolean;
+    selectedConversations: ConversationWithoutContentType[];
+    toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+    router: NextRouter;
+    owner: WorkspaceType;
+  }) => {
+    const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+    const {
+      isMenuOpen,
+      menuTriggerPosition,
+      handleRightClick,
+      handleMenuOpenChange,
+    } = useConversationMenu();
 
-  const conversationLabel =
-    conversation.title ??
-    (moment(conversation.created).isSame(moment(), "day")
-      ? "New Conversation"
-      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+    const conversationLabel =
+      conversation.title ??
+      (moment(conversation.created).isSame(moment(), "day")
+        ? "New Conversation"
+        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  return (
-    <>
-      {isMultiSelect ? (
-        <div className="flex items-center px-2 py-2">
-          <Checkbox
-            id={`conversation-${conversation.sId}`}
-            className="bg-background dark:bg-background-night"
-            checked={selectedConversations.includes(conversation)}
-            onCheckedChange={() => toggleConversationSelection(conversation)}
-          />
-          <Label
-            htmlFor={`conversation-${conversation.sId}`}
-            className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
-          >
-            {conversationLabel}
-          </Label>
-        </div>
-      ) : (
-        <NavigationListItem
-          selected={router.query.cId === conversation.sId}
-          status={getConversationDotStatus(conversation)}
-          label={conversationLabel}
-          moreMenu={
-            <ConversationMenu
-              activeConversationId={conversation.sId}
-              conversation={conversation}
-              owner={owner}
-              trigger={<NavigationListItemAction />}
-              isConversationDisplayed={router.query.cId === conversation.sId}
-              isOpen={isMenuOpen}
-              onOpenChange={handleMenuOpenChange}
-              triggerPosition={menuTriggerPosition}
+    return (
+      <>
+        {isMultiSelect ? (
+          <div className="flex items-center px-2 py-2">
+            <Checkbox
+              id={`conversation-${conversation.sId}`}
+              className="bg-background dark:bg-background-night"
+              checked={selectedConversations.includes(conversation)}
+              onCheckedChange={() => toggleConversationSelection(conversation)}
             />
-          }
-          onContextMenu={handleRightClick}
-          onClick={async () => {
-            // Side bar is the floating sidebar that appears when the screen is small.
-            if (sidebarOpen) {
-              setSidebarOpen(false);
-              // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-              await new Promise((resolve) => setTimeout(resolve, 600));
+            <Label
+              htmlFor={`conversation-${conversation.sId}`}
+              className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
+            >
+              {conversationLabel}
+            </Label>
+          </div>
+        ) : (
+          <NavigationListItem
+            selected={router.query.cId === conversation.sId}
+            status={getConversationDotStatus(conversation)}
+            label={conversationLabel}
+            moreMenu={
+              <ConversationMenu
+                activeConversationId={conversation.sId}
+                conversation={conversation}
+                owner={owner}
+                trigger={<NavigationListItemAction />}
+                isConversationDisplayed={router.query.cId === conversation.sId}
+                isOpen={isMenuOpen}
+                onOpenChange={handleMenuOpenChange}
+                triggerPosition={menuTriggerPosition}
+              />
             }
-            await router.push(
-              getConversationRoute(owner.sId, conversation.sId),
-              undefined,
-              {
-                shallow: true,
+            onContextMenu={handleRightClick}
+            onClick={async () => {
+              // Side bar is the floating sidebar that appears when the screen is small.
+              if (sidebarOpen) {
+                setSidebarOpen(false);
+                // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+                await new Promise((resolve) => setTimeout(resolve, 600));
               }
-            );
-          }}
-        />
-      )}
-    </>
-  );
-};
+              await router.push(
+                getConversationRoute(owner.sId, conversation.sId),
+                undefined,
+                {
+                  shallow: true,
+                }
+              );
+            }}
+          />
+        )}
+      </>
+    );
+  }
+);
 
 interface NavigationListWithInboxProps {
   conversations: ConversationWithoutContentType[];
@@ -800,11 +822,7 @@ const NavigationListWithInbox = forwardRef<
     },
     ref
   ) => {
-    const {
-      readConversations,
-      unreadConversations,
-      actionRequiredConversations,
-    } = useMemo(() => {
+    const { readConversations, inboxConversations } = useMemo(() => {
       return getGroupConversationsByUnreadAndActionRequired(
         conversations,
         titleFilter
@@ -817,8 +835,7 @@ const NavigationListWithInbox = forwardRef<
       }
     );
 
-    const shouldDisplayInbox =
-      unreadConversations.length > 0 || actionRequiredConversations.length > 0;
+    const shouldDisplayInbox = inboxConversations.length > 0;
 
     // TODO: Remove filtering by titleFilter when we release the inbox.
     const conversationsByDate = readConversations?.length
@@ -839,9 +856,8 @@ const NavigationListWithInbox = forwardRef<
         {shouldDisplayInbox && (
           <div className="bg-background pb-3 dark:bg-background-night">
             <InboxConversationList
-              unreadConversations={unreadConversations}
-              actionRequiredConversations={actionRequiredConversations}
-              dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
+              inboxConversations={inboxConversations}
+              dateLabel={`Inbox (${inboxConversations.length})`}
               isMultiSelect={isMultiSelect}
               isMarkingAllAsRead={isMarkingAllAsRead}
               titleFilter={titleFilter}
@@ -867,6 +883,7 @@ const NavigationListWithInbox = forwardRef<
                 owner={owner}
               />
             ))}
+            {/* eslint-disable-next-line react-hooks/refs */}
             {conversationsNavigationRef.current && (
               <div
                 // Change the key each page to force a re-render and get a new entry

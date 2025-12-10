@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
-import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { markAgentMessageAsFailed } from "@app/temporal/agent_loop/activities/common";
@@ -44,7 +44,7 @@ async function processBlockedAuthAgentMessages(
     ];
 
     // Find agent messages with status "created"
-    const agentMessages = await AgentMessage.findAll({
+    const agentMessages = await AgentMessageModel.findAll({
       where: {
         id: { [Op.in]: agentMessageIds },
         status: "created",

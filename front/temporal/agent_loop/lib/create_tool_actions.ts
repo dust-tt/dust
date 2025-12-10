@@ -1,10 +1,8 @@
 import assert from "assert";
 
-import type {
-  MCPApproveExecutionEvent,
-  MCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
@@ -13,7 +11,7 @@ import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
@@ -125,7 +123,7 @@ async function createActionForTool(
     actionConfiguration: MCPToolConfigurationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
+    agentMessageRow: AgentMessageModel;
     conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;
@@ -145,8 +143,10 @@ async function createActionForTool(
     agentMessage
   );
 
-  const stepContent =
-    await AgentStepContentResource.fetchByModelId(stepContentId);
+  const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
+    auth,
+    stepContentId
+  );
   assert(
     stepContent,
     `Step content not found for stepContentId: ${stepContentId}`
@@ -229,13 +229,14 @@ async function createActionForTool(
       status === "blocked_validation_required"
         ? {
             type: "tool_approve_execution",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            conversationId: conversation.sId,
             actionId: action.sId,
+            configurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+            created: Date.now(),
             inputs: action.augmentedInputs,
+            messageId: agentMessage.sId,
             stake: actionConfiguration.permission,
+            userId: auth.user()?.sId,
             metadata: {
               toolName: actionConfiguration.originalName,
               mcpServerName: actionConfiguration.mcpServerName,

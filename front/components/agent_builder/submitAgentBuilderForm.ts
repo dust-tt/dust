@@ -1,14 +1,13 @@
-import type {
-  AdditionalConfigurationInBuilderType,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import { clientFetch } from "@app/lib/egress/client";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import {
   trackEvent,
@@ -241,7 +240,7 @@ async function processTriggers({
   // Process triggers in order: DELETE -> PATCH -> POST (batch operations)
   // 1. Batch delete triggers
   if (formData.triggersToDelete.length > 0) {
-    const deleteRes = await fetch(
+    const deleteRes = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
       {
         method: "DELETE",
@@ -261,6 +260,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggerIds: formData.triggersToDelete,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to delete triggers"
@@ -271,7 +271,7 @@ async function processTriggers({
 
   // 2. Batch update existing triggers
   if (formData.triggersToUpdate.length > 0) {
-    const updateRes = await fetch(
+    const updateRes = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
       {
         method: "PATCH",
@@ -312,6 +312,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggersCount: formData.triggersToUpdate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to update triggers"
@@ -322,7 +323,7 @@ async function processTriggers({
 
   // 3. Batch create new triggers
   if (formData.triggersToCreate.length > 0) {
-    const createRes = await fetch(
+    const createRes = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
       {
         method: "POST",
@@ -362,6 +363,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggersCount: formData.triggersToCreate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to create triggers"
@@ -471,6 +473,9 @@ export async function submitAgentBuilderForm({
         reasoningEffort: formData.generationSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
+      skills: formData.skills.map((skill) => ({
+        sId: skill.sId,
+      })),
       actions: processedActions,
       templateId: null,
       tags: formData.agentSettings.tags,
@@ -487,7 +492,7 @@ export async function submitAgentBuilderForm({
   const method = agentConfigurationId ? "PATCH" : "POST";
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await clientFetch(endpoint, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -510,6 +515,7 @@ export async function submitAgentBuilderForm({
           "[Agent builder] - Form submission failed"
         );
         return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {
@@ -574,7 +580,7 @@ export async function submitAgentBuilderForm({
         ),
         auto_respond_without_mention: autoRespondWithoutMention,
       });
-      const slackLinkRes = await fetch(
+      const slackLinkRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
           method: "PATCH",

@@ -3,8 +3,8 @@ import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -15,8 +15,8 @@ import type { LightWorkspaceType } from "@app/types";
 
 async function backfillMissingEditorGroupForAgent(
   auth: Authenticator,
-  agentConfigs: AgentConfiguration[],
-  currentConfig: AgentConfiguration,
+  agentConfigs: AgentConfigurationModel[],
+  currentConfig: AgentConfigurationModel,
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
@@ -152,7 +152,7 @@ const migrateWorkspaceMissingEditorGroups = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   // First, find active agent configurations that currently have no editor group associated.
-  const activeAgents = await AgentConfiguration.findAll({
+  const activeAgents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       status: "active",
@@ -183,7 +183,7 @@ const migrateWorkspaceMissingEditorGroups = async (
 
   // For those agents, load all non-draft versions so we can reuse an existing
   // editor group if one is already associated with any version.
-  const agents = await AgentConfiguration.findAll({
+  const agents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       status: {

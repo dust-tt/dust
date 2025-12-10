@@ -51,6 +51,16 @@ function textDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
   };
 }
 
+function responseId(id: string, metadata: LLMClientMetadata): LLMEvent {
+  return {
+    type: "interaction_id",
+    content: {
+      modelInteractionId: id,
+    },
+    metadata,
+  };
+}
+
 function reasoningDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
   return {
     type: "reasoning_delta",
@@ -188,6 +198,8 @@ function toEvents({
   metadata: LLMClientMetadata;
 }): LLMEvent[] {
   switch (event.type) {
+    case "response.created":
+      return [responseId(event.response.id, metadata)];
     case "response.output_text.delta":
       return [textDelta(event.delta, metadata)];
     case "response.reasoning_summary_text.delta":

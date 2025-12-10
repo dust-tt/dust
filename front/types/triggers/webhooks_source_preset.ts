@@ -9,7 +9,7 @@ import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
 } from "@app/components/triggers/webhook_preset_components";
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -45,6 +45,9 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   // For example, GitHub uses a specific header "X-GitHub-Event" to indicate the event type.
   eventCheck: EventCheck | null;
   events: WebhookEvent[];
+
+  // Optional instructions to help the LLM generate better webhook filters for this provider.
+  filterGenerationInstructions: string | null;
   // List of event values to ignore. For example, GitHub sends a "ping" event when a webhook is created.
   // We will not want to implement it, and don't want to throw errors when receiving it.
   event_blacklist?: string[];

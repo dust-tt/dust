@@ -12,7 +12,7 @@ import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
@@ -176,10 +176,10 @@ export class Authenticator {
   }
 
   /**
-   * Get a an Authenticator for the target workspace associated with the authentified user from the
-   * Auth0 session.
+   * Get an Authenticator for the target workspace associated with the authentified user from the
+   * workos session.
    *
-   * @param session any Auth0 session
+   * @param session any workos session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
@@ -238,10 +238,10 @@ export class Authenticator {
 
   /**
    * Get a an Authenticator for the target workspace and the authentified Super User user from the
-   * Auth0 session.
+   * workos session.
    * Super User will have `role` set to `admin` regardless of their actual role in the workspace.
    *
-   * @param session any Auth0 session
+   * @param session any workos session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
@@ -609,6 +609,15 @@ export class Authenticator {
     { userEmail }: { userEmail: string }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
+      logger.error(
+        {
+          keyId: auth.key()?.id,
+          userEmail,
+          workspaceId: auth.workspace()?.sId,
+        },
+        "Attempted to exchange non-system key authenticator for user authenticator"
+      );
+
       throw new Error("Provided authenticator does not have a system key.");
     }
 
@@ -989,7 +998,7 @@ export class Authenticator {
 }
 
 /**
- * Retrieves the Auth0 session from the request/response.
+ * Retrieves the workos session from the request/response.
  * @param req NextApiRequest request object
  * @param res NextApiResponse response object
  * @returns Promise<any>
@@ -1170,7 +1179,7 @@ export const getFeatureFlags = memoizer.sync({
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
     } else {
-      const res = await FeatureFlag.findAll({
+      const res = await FeatureFlagModel.findAll({
         where: { workspaceId: workspace.id },
       });
       return res.map((flag) => flag.name);

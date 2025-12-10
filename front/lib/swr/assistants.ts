@@ -8,6 +8,7 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,
@@ -100,6 +101,7 @@ export function useAssistantTemplate({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     assistantTemplate: data ? data : null,
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
@@ -472,6 +474,7 @@ export function useAgentAnalytics({
   });
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentAnalytics: data ? data : null,
     isAgentAnalyticsLoading: !error && !data && !disabled,
     isAgentAnalyticsError: error,
@@ -561,7 +564,7 @@ export function useDeleteAgentConfiguration({
     if (!agentConfiguration) {
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {
         method: "DELETE",
@@ -611,7 +614,7 @@ export function useBatchDeleteAgentConfigurations({
     if (agentConfigurationIds.length === 0) {
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
       {
         method: "POST",
@@ -677,7 +680,7 @@ export function useUpdateUserFavorite({
           userFavorite: userFavorite,
         };
 
-        const res = await fetch(
+        const res = await clientFetch(
           `/api/w/${owner.sId}/members/me/agent_favorite`,
           {
             method: "POST",
@@ -755,7 +758,7 @@ export function useRestoreAgentConfiguration({
     if (!agentConfiguration) {
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
       {
         method: "POST",
@@ -796,7 +799,7 @@ export function useBatchUpdateAgentTags({
       agentIds: string[],
       body: { addTagIds?: string[]; removeTagIds?: string[] }
     ) => {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
         {
           method: "POST",
@@ -823,7 +826,7 @@ export function useBatchUpdateAgentScope({
 }) {
   const batchUpdateAgentScope = useCallback(
     async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
         {
           method: "POST",

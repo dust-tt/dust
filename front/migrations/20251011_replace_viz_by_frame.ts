@@ -7,7 +7,7 @@ import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/cons
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -25,7 +25,7 @@ async function updateLegacyVizByFrame(
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const agentWithVisualization = await AgentConfiguration.findAll({
+  const agentWithVisualization = await AgentConfigurationModel.findAll({
     where: {
       // @ts-expect-error visualizationEnabled is not exposed in the types.
       visualizationEnabled: true,
@@ -141,7 +141,7 @@ async function updateLegacyVizByFrame(
 
   // Finally, disable visualization on all agents that had it enabled.
   if (execute) {
-    await AgentConfiguration.update(
+    await AgentConfigurationModel.update(
       // @ts-expect-error visualizationEnabled is not exposed in the types.
       { visualizationEnabled: false },
       {

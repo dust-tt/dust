@@ -2,7 +2,7 @@ import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import datadogLogger from "@app/logger/datadogLogger";
 
@@ -14,7 +14,7 @@ import datadogLogger from "@app/logger/datadogLogger";
  * @returns Reset function that accepts form instance when called
  */
 export function createFormResetHandler(
-  configurationTool: AgentBuilderAction | null,
+  configurationTool: BuilderAction | null,
   mcpServerView: MCPServerViewType | null,
   isOpen: boolean
 ) {

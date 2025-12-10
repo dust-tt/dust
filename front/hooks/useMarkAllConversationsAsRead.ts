@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useConversationMarkAsRead } from "@app/lib/swr/conversations";
+import { clientFetch } from "@app/lib/egress/client";
+import { useConversations } from "@app/lib/swr/conversations";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 
 interface useMarkAllConversationsAsReadParams {
@@ -13,54 +14,67 @@ export function useMarkAllConversationsAsRead({
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
-  const { markAsRead } = useConversationMarkAsRead({
-    conversation: null,
+  const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+    options: {
+      disabled: true,
+    },
   });
 
   const markAllAsRead = useCallback(
-    async (unreadConversations: ConversationWithoutContentType[]) => {
-      if (!unreadConversations || unreadConversations.length === 0) {
+    async (conversations: ConversationWithoutContentType[]) => {
+      if (conversations.length === 0) {
         return;
       }
 
       setIsMarkingAllAsRead(true);
 
-      const total = unreadConversations.length;
-      let successCount = 0;
+      const total = conversations.length;
+      const conversationIds = conversations.map((c) => c.sId);
 
-      for (const conversation of unreadConversations) {
-        try {
-          await markAsRead(conversation.sId, true);
-          successCount += 1;
-        } catch (error) {
-          // do nothing
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/assistant/conversations/bulk-actions`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "mark_as_read",
+              conversationIds,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to mark conversations as read");
         }
-      }
 
-      setIsMarkingAllAsRead(false);
+        const { success } = await response.json();
 
-      if (successCount === total) {
+        if (!success) {
+          throw new Error("Failed to mark conversations as read");
+        }
+
+        void mutateConversations();
+
         sendNotification({
           type: "success",
           title: "All conversations marked as read",
           description: `${total} conversation${total > 1 ? "s" : ""} marked as read.`,
         });
-      } else if (successCount === 0) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to mark conversations as read",
           description: `Could not mark the ${total > 1 ? "conversations" : "conversation"} as read.`,
         });
-      } else {
-        sendNotification({
-          type: "error",
-          title: "Some conversations couldn't be marked as read",
-          description: `Marked ${successCount} of ${total} conversations as read.`,
-        });
+      } finally {
+        setIsMarkingAllAsRead(false);
       }
     },
-    [markAsRead, sendNotification]
+    [owner.sId, mutateConversations, sendNotification]
   );
 
   return {

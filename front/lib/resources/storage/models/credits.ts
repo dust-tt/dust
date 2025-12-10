@@ -1,7 +1,8 @@
-import type { CreationOptional } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreditType } from "@app/types/credits";
 import { CREDIT_TYPES } from "@app/types/credits";
@@ -18,13 +19,17 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   // When credit becomes active (null = not yet paid/active).
   declare startDate: Date | null;
   declare expirationDate: Date | null;
-  // Amount in cents (immutable after creation).
-  declare initialAmountCents: number;
-  declare consumedAmountCents: number; // in cents
+  // Amount in microUsd (immutable after creation).
+  declare initialAmountMicroUsd: number;
+  declare consumedAmountMicroUsd: number;
   // Discount percentage (0-100), nullable
   declare discount: number | null;
   // Stripe invoice ID or line item ID for idempotency.
   declare invoiceOrLineItemId: string | null;
+  // User who purchased the credit (null for free/system-generated credits).
+  declare boughtByUserId: ForeignKey<UserModel["id"]> | null;
+
+  declare boughtByUser: NonAttribute<UserModel>;
 }
 
 CreditModel.init(
@@ -56,12 +61,12 @@ CreditModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    initialAmountCents: {
-      type: DataTypes.INTEGER,
+    initialAmountMicroUsd: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
-    consumedAmountCents: {
-      type: DataTypes.INTEGER,
+    consumedAmountMicroUsd: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     discount: {
@@ -91,8 +96,8 @@ CreditModel.init(
         fields: ["workspaceId", "expirationDate"],
         name: "credits_nonzero_remaining_idx",
         where: {
-          consumedAmountCents: {
-            [Op.lt]: frontSequelize.col("initialAmountCents"),
+          consumedAmountMicroUsd: {
+            [Op.lt]: frontSequelize.col("initialAmountMicroUsd"),
           },
         },
       },
@@ -108,6 +113,18 @@ CreditModel.init(
         fields: ["workspaceId", "startDate", "expirationDate"],
         name: "credits_workspace_start_expiration_idx",
       },
+      // Unique constraint on (type, workspaceId, startDate, expirationDate) for active credits
+      {
+        fields: ["workspaceId", "type", "startDate", "expirationDate"],
+        unique: true,
+        name: "credits_type_workspace_dates_unique_idx",
+        where: { startDate: { [Op.ne]: null } },
+      },
     ],
   }
 );
+
+CreditModel.belongsTo(UserModel, {
+  as: "boughtByUser",
+  foreignKey: { name: "boughtByUserId", allowNull: true },
+});

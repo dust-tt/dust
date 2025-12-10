@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   BracesIcon,
+  CardIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
@@ -51,7 +52,8 @@ export type SubNavigationAdminId =
   | "api_keys"
   | "dev_secrets"
   | "analytics"
-  | "actions";
+  | "actions"
+  | "credits_usage";
 
 export type SubNavigationAppId =
   | "specification"
@@ -101,7 +103,13 @@ export type TabAppLayoutNavigation = {
 };
 
 export type SidebarNavigation = {
-  id: "assistants" | "data_sources" | "workspace" | "developers" | "help";
+  id:
+    | "assistants"
+    | "data_sources"
+    | "workspace"
+    | "developers"
+    | "help"
+    | "api";
   label: string | null;
   variant: "primary" | "secondary";
   menus: AppLayoutNavigation[];
@@ -149,6 +157,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/subscription",
           "/w/[wId]/analytics",
           "/w/[wId]/actions",
+          "/w/[wId]/developers/credits-usage",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -165,11 +174,13 @@ export const subNavigationAdmin = ({
   current,
   subMenuLabel,
   subMenu,
+  featureFlags: _featureFlags,
 }: {
   owner: WorkspaceType;
   current: SubNavigationAdminId;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  featureFlags: WhitelistableFeature[];
 }) => {
   const nav: SidebarNavigation[] = [];
 
@@ -180,7 +191,7 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: "Workspace Management",
+      label: "Workspace",
       variant: "primary",
       menus: [
         {
@@ -223,8 +234,34 @@ export const subNavigationAdmin = ({
     });
 
     nav.push({
+      id: "api",
+      label: "API & Programmatic",
+      variant: "primary",
+      menus: [
+        {
+          id: "api_keys",
+          label: "API Keys",
+          icon: LockIcon,
+          href: `/w/${owner.sId}/developers/api-keys`,
+          current: current === "api_keys",
+          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+          subMenu: current === "api_keys" ? subMenu : undefined,
+        },
+        {
+          id: "credits_usage",
+          label: "Programmatic usage",
+          icon: CardIcon,
+          href: `/w/${owner.sId}/developers/credits-usage`,
+          current: current === "credits_usage",
+          subMenuLabel: current === "credits_usage" ? subMenuLabel : undefined,
+          subMenu: current === "credits_usage" ? subMenu : undefined,
+        },
+      ],
+    });
+
+    nav.push({
       id: "developers",
-      label: "Builder Tools Management",
+      label: "Builder Tools",
       variant: "primary",
       menus: [
         {
@@ -235,15 +272,6 @@ export const subNavigationAdmin = ({
           current: current === "providers",
           subMenuLabel: current === "providers" ? subMenuLabel : undefined,
           subMenu: current === "providers" ? subMenu : undefined,
-        },
-        {
-          id: "api_keys",
-          label: "API Keys",
-          icon: LockIcon,
-          href: `/w/${owner.sId}/developers/api-keys`,
-          current: current === "api_keys",
-          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-          subMenu: current === "api_keys" ? subMenu : undefined,
         },
         {
           id: "dev_secrets",

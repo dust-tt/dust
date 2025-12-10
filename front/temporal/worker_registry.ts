@@ -1,7 +1,9 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
+import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
+import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
@@ -25,8 +27,10 @@ export type WorkerName =
   | "agent_schedule"
   | "agent_trigger_webhook"
   | "analytics_queue"
+  | "credit_alerts"
   | "data_retention"
   | "document_tracker"
+  | "es_indexation_queue"
   | "hard_delete"
   | "labs"
   | "mentions_count"
@@ -46,6 +50,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
   analytics_queue: runAnalyticsWorker,
+  credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
@@ -60,6 +65,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
+  es_indexation_queue: runESIndexationQueueWorker,
   workos_events_queue: runWorkOSEventsWorker,
 };
 

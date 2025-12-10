@@ -1,14 +1,14 @@
 import memoizer from "lru-memoizer";
 
 import type { Authenticator } from "@app/lib/auth";
-import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export const isDeepDiveDisabledByAdmin = memoizer.sync({
   load: async (auth: Authenticator): Promise<boolean> => {
     // We cannot call getGlobalAgents here because it will cause a dependency cycle.
     // Can be cached if too many calls are made.
-    const settings = await GlobalAgentSettings.findOne({
+    const settings = await GlobalAgentSettingsModel.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,

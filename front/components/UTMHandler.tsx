@@ -11,6 +11,7 @@ const UTMHandler = ({ utmParams }: Props) => {
     if (utmParams && Object.keys(utmParams)?.length > 0) {
       try {
         sessionStorage?.setItem("utm_data", JSON.stringify(utmParams));
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         // Do nothing
       }

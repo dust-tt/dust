@@ -1,7 +1,6 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -19,12 +18,14 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type {
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, removeNulls } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -69,6 +70,35 @@ export abstract class LLM {
     this.traceId = createLLMTraceId(randomUUID());
   }
 
+  private async *completeStream({
+    conversation,
+    prompt,
+    specifications,
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+    let currentEvent: LLMEvent | null = null;
+    for await (const event of this.internalStream({
+      conversation,
+      prompt,
+      specifications,
+    })) {
+      currentEvent = event;
+      yield event;
+    }
+
+    if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
+      currentEvent = new EventError(
+        {
+          type: "stream_error",
+          message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
+          isRetryable: true,
+          originalError: { lastEventType: currentEvent?.type },
+        },
+        this.metadata
+      );
+      yield currentEvent;
+    }
+  }
+
   /**
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
@@ -78,7 +108,7 @@ export abstract class LLM {
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.internalStream({ conversation, prompt, specifications });
+      yield* this.completeStream({ conversation, prompt, specifications });
       return;
     }
 
@@ -103,14 +133,21 @@ export abstract class LLM {
     );
 
     generation.updateTrace({
-      tags: [
+      tags: removeNulls([
+        this.authenticator.user()?.sId
+          ? `actualUserId:${this.authenticator.user()?.sId}`
+          : null,
+        this.authenticator.key()
+          ? `apiKeyId:${this.authenticator.key()?.id}`
+          : null,
+        `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
         `operationType:${this.context.operationType}`,
-        `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
-      ],
+      ]),
       metadata: {
         dustTraceId: this.traceId,
       },
-      userId: this.authenticator.user()?.sId,
+      // In observability, userId maps to workspaceId for consistent grouping.
+      userId: this.authenticator.getNonNullableWorkspace().sId,
     });
 
     const startTime = Date.now();
@@ -125,10 +162,18 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
+    // Track LLM interaction metric
+    const metricTags = [
+      `model_id:${this.modelId}`,
+      `client_id:${this.metadata.clientId}`,
+      `operation_type:${this.context.operationType}`,
+    ];
+    statsDClient.increment("llm_interaction.count", 1, metricTags);
+
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     try {
-      for await (const event of this.internalStream({
+      for await (const event of this.completeStream({
         conversation,
         prompt,
         specifications,
@@ -136,10 +181,21 @@ export abstract class LLM {
         currentEvent = event;
         buffer.addEvent(event);
 
+        if (event.type === "interaction_id") {
+          buffer.setModelInteractionId(event.content.modelInteractionId);
+          generation.updateTrace({
+            metadata: {
+              modelInteractionId: event.content.modelInteractionId,
+            },
+          });
+        }
+
         yield event;
       }
     } finally {
       if (currentEvent?.type === "error") {
+        // Temporary: track LLM error metric
+        statsDClient.increment("llm_error.count", 1, metricTags);
         generation.updateTrace({
           tags: ["isError:true", `errorType:${currentEvent.content.type}`],
         });
@@ -155,6 +211,9 @@ export abstract class LLM {
           "LLM Error"
         );
       } else if (currentEvent?.type === "success") {
+        // Temporary: track LLM success metric
+        statsDClient.increment("llm_success.count", 1, metricTags);
+
         logger.info(
           {
             llmEventType: "success",
@@ -163,17 +222,6 @@ export abstract class LLM {
             traceId: this.traceId,
           },
           "LLM Success"
-        );
-      } else {
-        logger.warn(
-          {
-            llmEventType: "uncategorized",
-            lastEventType: currentEvent?.type,
-            modelId: this.modelId,
-            context: this.context,
-            traceId: this.traceId,
-          },
-          "LLM uncategorized"
         );
       }
 
@@ -239,34 +287,20 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    let lastEvent: LLMEvent | null = null;
-
-    for await (const event of this.streamWithTracing({
+    yield* this.streamWithTracing({
       conversation,
       prompt,
       specifications,
-    })) {
-      lastEvent = event;
-      yield event;
-    }
-
-    if (lastEvent?.type !== "success" && lastEvent?.type !== "error") {
-      yield new EventError(
-        {
-          type: "stream_error",
-          message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
-          isRetryable: true,
-          originalError: { lastEventType: lastEvent?.type },
-        },
-        this.metadata
-      );
-    }
+      forceToolCall,
+    });
   }
 
   protected abstract internalStream({
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
 }

@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
-let sgMailClient: sgMail.MailService | null = null;
+let sgMailClient: typeof sgMail | null = null;
 
 export function getSgMailClient(): any {
   if (!sgMailClient) {
@@ -159,6 +159,47 @@ export async function sendProactiveTrialCancelledEmail(
       <p>If you did intend to continue on Dust, you can subscribe again. If you'd like to extend further, feel free to just email me.</p>
 
       <p>Thanks again for trying Dust out. If you have a second, please let me know if you have any thoughts about what we could do to improve Dust for your needs!</p>`,
+  });
+}
+
+export async function sendCreditUsageAlertEmail({
+  email,
+  workspaceName,
+  workspaceSId,
+  percentUsed,
+  totalInitialMicroUsd,
+  totalConsumedMicroUsd,
+}: {
+  email: string;
+  workspaceName: string;
+  workspaceSId: string;
+  percentUsed: number;
+  totalInitialMicroUsd: number;
+  totalConsumedMicroUsd: number;
+}): Promise<void> {
+  const remainingMicroUsd = totalInitialMicroUsd - totalConsumedMicroUsd;
+  const formatCents = (microUsd: number) =>
+    `$${(microUsd / 1_000_000).toFixed(2)}`;
+
+  await sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: `[Dust] Credit usage alert - ${percentUsed}% of your credits consumed`,
+    body: `
+      <p>You're receiving this as Admin of the Dust workspace <strong>${workspaceName}</strong>.</p>
+      <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available programmatic usage credits.</p>
+      <ul>
+        <li>Total credits: ${formatCents(totalInitialMicroUsd)}</li>
+        <li>Consumed: ${formatCents(totalConsumedMicroUsd)}</li>
+        <li>Remaining: ${formatCents(remainingMicroUsd)}</li>
+      </ul>
+      <p>To avoid service interruption, consider:</p>
+      <ul>
+        <li>Purchasing additional credits</li>
+        <li>Reviewing your <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage</a></li>
+      </ul>
+      <p>View your usage details at: <a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">https://dust.tt/w/${workspaceSId}/developers/credits-usage</a></p>
+      <p>Please reply to this email if you have any questions.</p>`,
   });
 }
 

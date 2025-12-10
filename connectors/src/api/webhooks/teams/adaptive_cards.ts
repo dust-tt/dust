@@ -260,6 +260,57 @@ export function createThinkingAdaptiveCard(): Partial<Activity> {
   };
 }
 
+export function createPersonalAuthenticationAdaptiveCard({
+  conversationUrl,
+  workspaceId,
+}: {
+  conversationUrl: string | null;
+  workspaceId: string;
+}): Partial<Activity> {
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.4",
+          body: [
+            {
+              type: "TextBlock",
+              text:
+                "The agent took an action that requires personal authentication. " +
+                (conversationUrl
+                  ? `Please go to [the conversation](${conversationUrl}) to authenticate.`
+                  : ""),
+              wrap: true,
+            },
+            {
+              type: "Container",
+              spacing: "Medium",
+              separator: true,
+              items: [
+                {
+                  type: "TextBlock",
+                  text: createFooterText({
+                    workspaceId,
+                    conversationUrl,
+                    isError: true,
+                  }),
+                  wrap: true,
+                  size: "Small",
+                  color: "Good",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
 /**
  * Creates an error adaptive card
  */

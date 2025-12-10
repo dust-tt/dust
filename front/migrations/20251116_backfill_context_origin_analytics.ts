@@ -2,11 +2,11 @@ import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -43,7 +43,7 @@ async function backfillContextOriginForWorkspace(
     },
   };
 
-  const totalAgentMessages = await Message.count({
+  const totalAgentMessages = await MessageModel.count({
     where: baseWhere,
   });
 
@@ -81,12 +81,12 @@ async function backfillContextOriginForWorkspace(
       };
     }
 
-    const agentMessagesBatch = await Message.findAll({
+    const agentMessagesBatch = await MessageModel.findAll({
       where,
       attributes: ["id", "sId", "version", "parentId"],
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
         },
@@ -124,7 +124,7 @@ async function backfillContextOriginForWorkspace(
       continue;
     }
 
-    const parentMessages = await Message.findAll({
+    const parentMessages = await MessageModel.findAll({
       where: {
         id: parentIds,
         workspaceId: workspace.id,
@@ -132,7 +132,7 @@ async function backfillContextOriginForWorkspace(
       attributes: ["id"],
       include: [
         {
-          model: UserMessage,
+          model: UserMessageModel,
           as: "userMessage",
           required: true,
           attributes: ["userContextOrigin"],

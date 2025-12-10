@@ -1,5 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
-import Head from "next/head";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import {
@@ -11,6 +11,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 
 export async function getStaticProps() {
   return {
@@ -23,20 +24,15 @@ export async function getStaticProps() {
 const ASSET_BASE_PATH = "/static/landing/logos/dust";
 
 export default function BrandResources() {
+  const router = useRouter();
+
   return (
     <>
-      <Head>
-        <title>Brand resources - Dust</title>
-        <meta
-          name="description"
-          content="Download official Dust logos in SVG and PNG formats. Includes primary and square logo variants with usage guidelines."
-        />
-        <meta property="og:title" content="Brand resources - Dust" />
-        <meta
-          property="og:description"
-          content="Download official Dust logos in SVG and PNG formats. Includes primary and square logo variants with usage guidelines."
-        />
-      </Head>
+      <PageMetadata
+        title="Brand Resources"
+        description="Download official Dust logos in SVG and PNG formats. Includes primary and square logo variants with usage guidelines."
+        pathname={router.asPath}
+      />
 
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-20">
         <Grid>

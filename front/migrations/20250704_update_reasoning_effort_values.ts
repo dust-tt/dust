@@ -2,8 +2,8 @@ import { Op } from "sequelize";
 
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -33,7 +33,7 @@ async function updateReasoningEffortForWorkspace(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // Update agent configurations with "low" reasoning effort
-  const agentConfigsWithLow = await AgentConfiguration.findAll({
+  const agentConfigsWithLow = await AgentConfigurationModel.findAll({
     where: {
       workspaceId,
       reasoningEffort: "low",
@@ -63,7 +63,7 @@ async function updateReasoningEffortForWorkspace(
   }
 
   // Update agent configurations with null/undefined reasoning effort
-  const agentConfigsWithNull = await AgentConfiguration.findAll({
+  const agentConfigsWithNull = await AgentConfigurationModel.findAll({
     where: {
       workspaceId,
       reasoningEffort: {
@@ -109,12 +109,13 @@ async function updateReasoningEffortForWorkspace(
   }
 
   // Update agent reasoning configurations with "low"
-  const reasoningConfigsWithLow = await AgentReasoningConfiguration.findAll({
-    where: {
-      workspaceId,
-      reasoningEffort: "low",
-    },
-  });
+  const reasoningConfigsWithLow =
+    await AgentReasoningConfigurationModel.findAll({
+      where: {
+        workspaceId,
+        reasoningEffort: "low",
+      },
+    });
 
   workspaceLogger.info(
     `Found ${reasoningConfigsWithLow.length} agent reasoning configurations with reasoning effort "low"`

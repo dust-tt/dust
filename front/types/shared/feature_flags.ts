@@ -13,16 +13,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to dust-edge global agent that we use internally to test other models on dust",
     stage: "dust_only",
   },
+  dust_quick_global_agent: {
+    description:
+      "Access to dust-quick global agent running Gemini 3 with minimal reasoning",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
   },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
-    stage: "dust_only",
-  },
-  agent_builder_instructions_autocomplete: {
-    description: "Autocomplete feature for agent builder instructions (wip)",
     stage: "dust_only",
   },
   ashby_tool: {
@@ -46,6 +47,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
     stage: "on_demand",
   },
+  fireworks_new_model_feature: {
+    description: "Access to Fireworks new model",
+    stage: "on_demand",
+  },
   deepseek_r1_global_agent_feature: {
     description: "Access to DeepSeek R1 model as global agent",
     stage: "on_demand",
@@ -63,8 +68,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  google_ai_studio_experimental_models_feature: {
-    description: "Access to experimental Google AI Studio models",
+  restrict_agents_publishing: {
+    description: "Restrict publishing agents to builders and admins",
     stage: "on_demand",
   },
   google_sheets_tool: {
@@ -100,10 +105,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
   },
-  openai_o1_high_reasoning_custom_assistants_feature: {
-    description: "OpenAI o1 high reasoning model for custom assistants",
-    stage: "on_demand",
-  },
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
     stage: "on_demand",
@@ -112,14 +113,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
-  ppul_credits_purchase_flow: {
-    description:
-      "Purchase credits flow for workspace admins via Stripe invoices",
-    stage: "dust_only",
-  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
+  },
+  self_created_slack_app_connector_rollout: {
+    description:
+      "Slack Connection: rollout for self-created Slack app connector",
+    stage: "rolling_out",
   },
   salesforce_tool: {
     description:
@@ -147,6 +148,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
   },
+  use_bulk_search_data_sources_api: {
+    description: "Use bulk search API for data sources searches",
+    stage: "dust_only",
+  },
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
@@ -172,10 +177,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
   },
-  hootl_dev_webhooks: {
-    description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
-    stage: "dust_only",
-  },
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
@@ -194,20 +195,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
-  slack_semantic_search: {
-    description: "Slack semantic search feature",
-    stage: "on_demand",
-  },
   slab_mcp: {
     description: "Slab MCP server",
     stage: "on_demand",
   },
+  vanta_tool: {
+    description: "Vanta MCP tool for security and compliance testing",
+    stage: "dust_only",
+  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
-    stage: "on_demand",
-  },
-  elevenlabs_tool: {
-    description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
   legacy_dust_apps: {
@@ -219,18 +216,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  llm_router_direct_requests: {
-    description: "Use direct LLM call over Dust app run in a conversation.",
-    stage: "on_demand",
-  },
-  llm_comparison_mode_enabled: {
-    description: "Enable LLM comparison mode.",
-    stage: "on_demand",
-  },
-  use_requested_space_ids: {
-    description: "Use requested spaces Ids for permissions checking.",
-    stage: "dust_only",
-  },
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
@@ -239,8 +224,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
-  programmatic_usage_metrics: {
-    description: "Enable programmatic usage metrics",
+  skills: {
+    description:
+      "Access to Skills, which are packaged sets of instructions and tools",
+    stage: "dust_only",
+  },
+  universal_search: {
+    description:
+      "WIP - Search from Input bar search in Knowledge and MCP tools. ",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

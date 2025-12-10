@@ -21,6 +21,7 @@ import { CoreAPI } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<AppsCheckResponseType>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }

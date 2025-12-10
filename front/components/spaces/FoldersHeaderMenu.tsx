@@ -129,9 +129,9 @@ const AddDataDropDownButton = ({
           <DropdownMenuItem
             icon={CloudArrowUpIcon}
             onClick={() => {
-              contentActionsRef.current?.callAction("MultipleDocumentsUpload");
+              contentActionsRef.current?.callAction("MultipleFilesUpload");
             }}
-            label="Upload multiple documents"
+            label="Upload multiple files"
           />
         </DropdownMenuContent>
       )}

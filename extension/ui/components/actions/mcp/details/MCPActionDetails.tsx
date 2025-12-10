@@ -12,6 +12,7 @@ import {
 import { asDisplayName } from "@app/shared/lib/utils";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPConversationCatFileDetails } from "@app/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
@@ -53,6 +54,7 @@ export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const RUN_AGENT_TOOL_NAME = "run_agent";
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 export const FIND_TAGS_TOOL_NAME = "find_tags";
+const CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
@@ -189,6 +191,12 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   //   if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
   //     return <MCPAgentManagementActionDetails {...props} />;
   //   }
+
+  if (internalMCPServerName === "conversation_files") {
+    if (toolName === CONVERSATION_CAT_FILE_ACTION_NAME) {
+      return <MCPConversationCatFileDetails {...props} />;
+    }
+  }
 
   return <GenericActionDetails {...props} />;
 }

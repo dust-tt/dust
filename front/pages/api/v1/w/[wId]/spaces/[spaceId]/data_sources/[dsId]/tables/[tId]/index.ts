@@ -101,6 +101,7 @@ import { assertNever, CoreAPI, isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<GetTableResponseType>>,
   auth: Authenticator
 ): Promise<void> {

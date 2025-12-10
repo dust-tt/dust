@@ -23,13 +23,13 @@ import type { ReactElement } from "react";
 
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeAlert,
@@ -47,8 +47,9 @@ import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
@@ -62,7 +63,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
-import { WHITELISTABLE_FEATURES } from "@app/types";
+import { isString, WHITELISTABLE_FEATURES } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
@@ -85,12 +86,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const subscriptionModels = await Subscription.findAll({
+  const subscriptionModels = await SubscriptionModel.findAll({
     where: { workspaceId: owner.id },
   });
 
   const plans = keyBy(
-    await Plan.findAll({
+    await PlanModel.findAll({
       where: {
         id: subscriptionModels.map((s) => s.planId),
       },
@@ -141,10 +142,25 @@ const WorkspacePage = ({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
+  const currentTab = !isString(router.query.tab)
+    ? "datasources"
+    : router.query.tab;
+
+  const handleTabChange = (value: string) => {
+    void router.push(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, tab: value },
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
+
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
       try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
+        const r = await clientFetch(`/api/poke/workspaces/${owner.sId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -268,7 +284,11 @@ const WorkspacePage = ({
               />
             </div>
           </div>
-          <Tabs defaultValue="datasources" className="min-h-[1024px] w-full">
+          <Tabs
+            value={currentTab}
+            onValueChange={handleTabChange}
+            className="min-h-[1024px] w-full"
+          >
             <TabsList>
               <TabsTrigger value="agents" label="Agents" />
               <TabsTrigger value="apps" label="Apps" />
@@ -280,9 +300,7 @@ const WorkspacePage = ({
               <TabsTrigger value="spaces" label="Spaces" />
 
               <TabsTrigger value="triggers" label="Triggers" />
-
-              {/* Plugin Logs on the far right */}
-              <TabsTrigger value="plugins" label="Plugins Logs" />
+              <TabsTrigger value="credits" label="Credits" />
             </TabsList>
 
             <TabsContent value="datasources">
@@ -321,8 +339,12 @@ const WorkspacePage = ({
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
             </TabsContent>
-            <TabsContent value="plugins">
-              <PluginRunsDataTable owner={owner} loadOnInit />
+            <TabsContent value="credits">
+              <CreditsDataTable
+                owner={owner}
+                subscription={activeSubscription}
+                loadOnInit
+              />
             </TabsContent>
           </Tabs>
         </div>

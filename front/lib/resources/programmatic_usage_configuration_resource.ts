@@ -11,7 +11,6 @@ import { Err, Ok } from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProgrammaticUsageConfigurationResource
   extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
@@ -105,9 +104,9 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
   async updateConfiguration(
     auth: Authenticator,
     blob: Partial<{
-      freeCreditCents: number | null;
+      freeCreditMicroUsd: number | null;
       defaultDiscountPercent: number;
-      paygCapCents: number | null;
+      paygCapMicroUsd: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -149,9 +148,9 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
     return {
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
-      freeCreditCents: this.freeCreditCents,
+      freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
-      paygCapCents: this.paygCapCents,
+      paygCapMicroUsd: this.paygCapMicroUsd,
     };
   }
 
@@ -159,9 +158,17 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
     return {
       sId: this.sId,
       workspaceId: this.workspaceId,
-      freeCreditCents: this.freeCreditCents,
+      freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
-      paygCapCents: this.paygCapCents,
+      paygCapMicroUsd: this.paygCapMicroUsd,
     };
+  }
+
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
   }
 }

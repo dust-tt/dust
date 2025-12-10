@@ -49,6 +49,7 @@ export const AddToolsMenu = ({
   >(undefined);
   useEffect(() => {
     if (typeof document !== "undefined") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPortalContainer(document.body);
     }
   }, []);

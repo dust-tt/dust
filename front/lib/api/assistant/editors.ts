@@ -1,7 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { LightAgentConfigurationType, UserType } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -38,18 +37,32 @@ export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
-  const editors = await concurrentExecutor(
-    agentConfigurations,
-    (agentConfiguration) => getEditors(auth, agentConfiguration),
-    { concurrency: 10 }
+  const editorGroups = await GroupResource.findEditorGroupsForAgents(
+    auth,
+    agentConfigurations
+  );
+  if (editorGroups.isErr()) {
+    return {};
+  }
+
+  const activeMemberships = await GroupResource.getActiveMembershipsForGroups(
+    auth,
+    Object.values(editorGroups.value)
   );
 
-  // Return a map { agentId: [editors] }
-  return editors.reduce(
-    (acc, editor, index) => {
-      acc[agentConfigurations[index].sId] = editor;
-      return acc;
-    },
-    {} as Record<string, UserType[]>
-  );
+  const users = await UserResource.fetchByModelIds([
+    ...new Set(Object.values(activeMemberships).flat()),
+  ]);
+
+  // Create a map from userId to UserType for quick lookup
+  const userMap = new Map(users.map((u) => [u.id, u.toJSON()]));
+
+  // Build the result map: { agentId: [editors] }
+  const result: Record<string, UserType[]> = {};
+  for (const [agentId, group] of Object.entries(editorGroups.value)) {
+    const userIds = activeMemberships[group.id] || [];
+    result[agentId] = removeNulls(userIds.map((userId) => userMap.get(userId)));
+  }
+
+  return result;
 };

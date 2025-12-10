@@ -1,8 +1,9 @@
-// Maxmimum allowed number of unconsumed invitations per workspace per day.
+// Maximum allowed number of unconsumed invitations per workspace per day.
 import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
@@ -46,13 +47,16 @@ export async function updateInvitation({
     initialRole: newRole ?? invitation.initialRole,
   };
 
-  const res = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const res = await clientFetch(
+    `/api/w/${owner.sId}/invitations/${invitation.sId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
 
   if (!res.ok) {
     const error: { error: { message: string } } = await res.json();
@@ -96,7 +100,7 @@ export async function sendInvitations({
     role: invitationRole,
   }));
 
-  const res = await fetch(`/api/w/${owner.sId}/invitations`, {
+  const res = await clientFetch(`/api/w/${owner.sId}/invitations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -108,6 +112,7 @@ export async function sendInvitations({
     let data: any = {};
     try {
       data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // ignore
     }
@@ -122,6 +127,7 @@ export async function sendInvitations({
     }
 
     const errorMessage =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       data?.error?.message || "Failed to invite new members to workspace";
 
     sendNotification({

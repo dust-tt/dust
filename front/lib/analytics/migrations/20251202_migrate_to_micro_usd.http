@@ -1,0 +1,25 @@
+POST /front.agent_message_analytics_2/_update_by_query
+{
+  "script": {
+    "source": "ctx._source.tokens.cost_micro_usd = ctx._source.tokens.cost_cents * 10000L",
+    "lang": "painless"
+  },
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "exists": {
+            "field": "tokens.cost_cents"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "exists": {
+            "field": "tokens.cost_micro_usd"
+          }
+        }
+      ]
+    }
+  }
+}

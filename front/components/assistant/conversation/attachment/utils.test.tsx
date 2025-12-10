@@ -14,6 +14,13 @@ vi.mock("@app/lib/connector_providers", () => ({
     google_drive: {},
     github: {},
   },
+}));
+
+vi.mock("@app/lib/connector_providers_ui", () => ({
+  CONNECTOR_UI_CONFIGURATIONS: {
+    google_drive: {},
+    github: {},
+  },
   getConnectorProviderLogoWithFallback: ({
     provider,
     isDark,
@@ -32,9 +39,18 @@ vi.mock(
   })
 );
 
+vi.mock("@app/components/resources/resources_icons", () => ({
+  getIcon: (iconName: string) => `MockedIcon(${iconName})`,
+  isCustomResourceIconType: () => false,
+  isInternalAllowedIcon: () => false,
+}));
+
 // Mock sparkle icon components and wrappers with light-weight test doubles.
 vi.mock("@dust-tt/sparkle", () => ({
   // Visual icon identifiers
+  ActionAtomIcon: "ActionAtomIcon",
+  ActionBrainIcon: "ActionBrainIcon",
+  ActionIcons: "ActionIcons",
   ActionVolumeUpIcon: "ActionVolumeUpIcon",
   DocumentIcon: "DocumentIcon",
   DoubleQuotesIcon: "DoubleQuotesIcon",

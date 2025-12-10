@@ -1,7 +1,7 @@
 import { Input } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import { isValidClientIdOrSecret, isValidSalesforceDomain } from "@app/types";
 
@@ -21,7 +21,7 @@ export function SalesforceOauthExtraConfig({
     }
 
     void generatePKCE();
-  }, [extraConfig.instance_url, extraConfig.code_verifier, setExtraConfig]);
+  }, [extraConfig.instance_url, setExtraConfig]);
 
   useEffect(() => {
     setIsExtraConfigValid(

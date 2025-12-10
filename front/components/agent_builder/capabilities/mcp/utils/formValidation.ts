@@ -1,5 +1,5 @@
 import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -27,7 +27,7 @@ export function getMCPConfigurationFormSchema(
  * @returns Object with validation result and error message if invalid
  */
 export function validateMCPActionConfiguration(
-  action: AgentBuilderAction,
+  action: BuilderAction,
   serverView: MCPServerViewType
 ): { isValid: boolean; errorMessage?: string } {
   try {
@@ -46,6 +46,7 @@ export function validateMCPActionConfiguration(
     });
 
     return { isValid: true };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return {
       isValid: false,

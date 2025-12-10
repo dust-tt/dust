@@ -15,6 +15,12 @@ export const makeAgentMentionsRateLimitKeyForWorkspace = (
   return `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`;
 };
 
+export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
+  owner: LightWorkspaceType
+) => {
+  return `workspace:${owner.id}:programmatic_usage_rate_limit`;
+};
+
 export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();

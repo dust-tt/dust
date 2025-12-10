@@ -9,11 +9,24 @@ const config: KnipConfig = {
     "mailing/**/*.{ts,js}",
     "next-sitemap.config.js",
   ],
+  ignoreFiles: ["**/vite.config.js", "**/esbuild.worker.ts"],
   project: ["**/*.{js,jsx,ts,tsx}"],
   rules: {
     binaries: "off",
     exports: "off",
   },
+  ignoreDependencies: [
+    "@vitest/coverage-v8",
+    "lint-staged",
+    "nodemon", // used for development only for workers
+    "yalc",
+    "pino-pretty",
+    "posthog-node",
+    "eslint-plugin-dust",
+    "sqlite3", // used during the build process by sequelize
+    "@dust-tt/client",
+  ],
+  ignoreBinaries: ["sleep"],
   paths: {
     "@app/*": ["./*"],
   },

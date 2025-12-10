@@ -6,8 +6,10 @@ import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -552,53 +554,40 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
   describe("conversation hierarchy access tests", () => {
     it("should allow access to files from sub-conversations created by agent handover", async () => {
       const {
-        req: parentReq,
-        res: parentRes,
-        workspace,
+        req: childReq,
+        res: childRes,
         key,
+        workspace,
       } = await createPublicApiMockRequest({
         systemKey: true,
         method: "POST",
       });
 
-      // Create parent conversation A using API.
-      const parentBody: PublicPostConversationsRequestBody = {
-        title: "Parent Conversation",
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "not_a_real_agent_configuration_id",
+        messagesCreatedAt: [],
         visibility: "unlisted",
-        depth: 0,
-        message: {
-          content: `${serializeMention({
-            name: "noop",
-            sId: "noop",
-          })} Hello from parent`,
-          mentions: [{ configurationId: "noop" }],
-          context: {
-            timezone: "UTC",
-            username: "test-user",
-            fullName: "Test User",
-            email: "test@example.com",
-            profilePictureUrl: null,
-            origin: "web",
-          },
-        },
-      };
+      });
 
-      parentReq.body = parentBody;
-      parentReq.query.wId = workspace.sId;
-
-      await publicConversationsHandler(parentReq, parentRes);
-
-      expect(parentRes._getStatusCode()).toBe(200);
-      const parentData = parentRes._getJSONData();
-      const parentConversation = parentData.conversation;
-      const parentMessageId = parentData.message.sId;
-
-      const { req: childReq, res: childRes } = await createPublicApiMockRequest(
+      await ConversationFactory.createUserMessageWithRank({
+        auth,
+        workspace,
+        conversationId: conversation.id,
+        content: "Hello from parent",
+        rank: 0,
+      });
+      const agentMessage = await ConversationFactory.createAgentMessageWithRank(
         {
-          systemKey: true,
-          method: "POST",
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: "not_a_real_agent_configuration_id",
         }
       );
+
+      const parentMessageId = agentMessage.sId;
 
       // Use a new request to avoid state carry-over. But reuse same workspace and key.
       childReq.headers = {
@@ -635,7 +624,6 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       childReq.body = body;
 
       await publicConversationsHandler(childReq, childRes);
-
       expect(childRes._getStatusCode()).toBe(200);
       const childData = childRes._getJSONData();
       const childConversation = childData.conversation;
@@ -647,7 +635,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         fileSize: 1000,
         status: "ready",
         useCase: "conversation",
-        useCaseMetadata: { conversationId: parentConversation.sId },
+        useCaseMetadata: { conversationId: conversation.sId },
       });
 
       // Create target file in sub-conversation B.
@@ -701,6 +689,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         workspace,
         key,
       } = await createPublicApiMockRequest({
+        systemKey: true,
         method: "POST",
       });
 
@@ -736,6 +725,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
       const { req: conversationBReq, res: conversationBRes } =
         await createPublicApiMockRequest({
+          systemKey: true,
           method: "POST",
         });
 

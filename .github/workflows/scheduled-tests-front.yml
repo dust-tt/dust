@@ -1,0 +1,73 @@
+name: Scheduled Lint (front)
+
+on:
+  schedule:
+    # Run twice a day at 8 AM and 8 PM UTC
+    - cron: "0 8,20 * * *"
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Notify Test Start
+        id: start_notification
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_FRONT_TESTS_NOTIFICATIONS_CHANNEL_ID }}
+            text: |
+              🧪 Starting scheduled front tests
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+      - name: Install SDK/JS dependencies
+        working-directory: sdks/js
+        run: npm ci
+      - name: Build SDK/JS
+        working-directory: sdks/js
+        run: npm run build
+      - name: Install Front dependencies
+        working-directory: front
+        run: npm ci
+      - name: Run ESLint (Full Check, No Cache)
+        working-directory: front
+        run: npm run lint
+
+      - name: Notify Test Success
+        if: success()
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_FRONT_TESTS_NOTIFICATIONS_CHANNEL_ID }}
+            thread_ts: "${{ steps.start_notification.outputs.ts }}"
+            text: |
+              ✅ Scheduled front lint passed
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+
+      - name: Notify Test Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_FRONT_TESTS_NOTIFICATIONS_CHANNEL_ID }}
+            thread_ts: "${{ steps.start_notification.outputs.ts }}"
+            text: |
+              ❌ Scheduled front lint failed <!subteam^${{ secrets.SLACK_ENGINEERING_TEAM_GROUP_ID }}>
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>

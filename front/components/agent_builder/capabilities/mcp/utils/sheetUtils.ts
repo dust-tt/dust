@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -5,12 +6,10 @@ import type {
   SelectedTool,
   SheetMode,
 } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import type {
-  AgentBuilderAction,
-  ConfigurationPagePageId,
-} from "@app/components/agent_builder/types";
+import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { pluralize } from "@app/types";
 
@@ -37,7 +36,7 @@ export function getInitialPageId(
 
 export function getInitialConfigurationTool(
   mode: SheetMode | null
-): AgentBuilderAction | null {
+): BuilderAction | null {
   if (!mode) {
     return null;
   }
@@ -167,11 +166,11 @@ export function getFooterButtons({
 
 export interface SaveConfigurationOptions {
   mode: SheetMode | null;
-  configuredAction: AgentBuilderAction;
+  configuredAction: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;
-  onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
+  onActionUpdate?: (action: BuilderAction, index: number) => void;
   onModeChange: (mode: SheetMode | null) => void;
-  setSelectedToolsInSheet: React.Dispatch<React.SetStateAction<SelectedTool[]>>;
+  setSelectedToolsInSheet: Dispatch<SetStateAction<SelectedTool[]>>;
   setIsOpen: (open: boolean) => void;
   sendNotification: (notification: {
     title: string;

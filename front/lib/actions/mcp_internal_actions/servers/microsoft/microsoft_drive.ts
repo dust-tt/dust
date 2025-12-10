@@ -20,7 +20,7 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import {
   Err,
@@ -611,6 +611,7 @@ function createServer(
           ]);
         } catch (err) {
           const error = normalizeError(err);
+
           const errorMessage = error.message || "Failed to upload file";
           return new Err(new MCPError(errorMessage));
         }

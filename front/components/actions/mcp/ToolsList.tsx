@@ -13,14 +13,9 @@ import { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import {
-  CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
-  FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVELS,
-} from "@app/lib/actions/constants";
-import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
-import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
@@ -39,6 +34,7 @@ interface ToolItemProps {
     enabled: boolean;
     permission: MCPToolStakeLevelType;
   };
+  defaultPermission: MCPToolStakeLevelType;
 }
 
 function ToolItem({
@@ -46,6 +42,7 @@ function ToolItem({
   mayUpdate,
   availableStakeLevels,
   metadata,
+  defaultPermission,
 }: ToolItemProps) {
   const { control } = useFormContext<MCPServerFormValues>();
   const { field } = useController({
@@ -53,7 +50,7 @@ function ToolItem({
     name: `toolSettings.${tool.name}`,
     defaultValue: {
       enabled: metadata?.enabled ?? true,
-      permission: metadata?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      permission: metadata?.permission ?? defaultPermission,
     },
   });
 
@@ -109,6 +106,7 @@ function ToolItem({
                 <Button
                   variant="outline"
                   label={toolPermissionLabel[toolPermission]}
+                  isSelect
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -145,19 +143,7 @@ export function ToolsList({
     [mcpServerView.server.tools]
   );
 
-  const getAvailableStakeLevelsForTool = (
-    toolName: string
-  ): MCPToolStakeLevelType[] => {
-    if (isRemoteMCPServerType(mcpServerView.server)) {
-      const defaultRemoteServer = getDefaultRemoteMCPServerByURL(
-        mcpServerView.server.url
-      );
-      // We only allow users to set the "never_ask" stake level for tools that are configured with it in the default server.
-      if (defaultRemoteServer?.toolStakes?.[toolName] === "never_ask") {
-        return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS, "never_ask"];
-      }
-      return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS];
-    }
+  const getAvailableStakeLevels = (): MCPToolStakeLevelType[] => {
     return [...MCP_TOOL_STAKE_LEVELS];
   };
 
@@ -165,17 +151,23 @@ export function ToolsList({
     <>
       {tools && tools.length > 0 && (
         <ContentMessage
-          className="mb-4 w-fit"
+          className="mb-4 w-full"
           variant="blue"
+          size="lg"
           icon={InformationCircleIcon}
           title="User Approval Settings"
         >
-          <p>
-            <b>High stake</b> tools need explicit user approval. <br />
-            Users can disable confirmations for <b>low stake</b> tools.
-            <br />
-            <b>Never ask</b> tools run automatically.
-          </p>
+          <ul>
+            <li>
+              <b>High stake</b> tools need explicit user approval.
+            </li>
+            <li>
+              Users can disable confirmations for <b>low stake</b> tools.
+            </li>
+            <li>
+              <b>Never ask</b> tools run automatically.
+            </li>
+          </ul>
         </ContentMessage>
       )}
       <div>
@@ -183,11 +175,14 @@ export function ToolsList({
           <div className="flex flex-col gap-4">
             {tools.map(
               (tool: { name: string; description: string }, index: number) => {
-                const availableStakeLevels = getAvailableStakeLevelsForTool(
-                  tool.name
-                );
+                const availableStakeLevels = getAvailableStakeLevels();
                 const metadata = mcpServerView.toolsMetadata?.find(
                   (m) => m.toolName === tool.name
+                );
+
+                const defaultPermission = getDefaultInternalToolStakeLevel(
+                  mcpServerView.server,
+                  tool.name
                 );
 
                 return (
@@ -197,6 +192,7 @@ export function ToolsList({
                     mayUpdate={mayUpdate}
                     availableStakeLevels={availableStakeLevels}
                     metadata={metadata}
+                    defaultPermission={defaultPermission}
                   />
                 );
               }

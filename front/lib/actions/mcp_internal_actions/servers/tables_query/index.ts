@@ -159,25 +159,39 @@ function createServer(
           dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
 
-        // Call Core API's /database_schema endpoint
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const schemaResult = await coreAPI.getDatabaseSchema({
-          tables: tableConfigurations.map((t) => {
-            const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-            if (
-              !dataSourceView ||
-              !dataSourceView.dataSource.dustAPIDataSourceId
-            ) {
-              throw new Error(
-                `Missing data source ID for view ${t.dataSourceViewId}`
-              );
-            }
-            return {
+        // Build table list, filtering out invalid configurations
+        const validTables: Array<{
+          project_id: number;
+          data_source_id: string;
+          table_id: string;
+        }> = [];
+        const invalidTableIds: string[] = [];
+        for (const t of tableConfigurations) {
+          const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
+          if (dataSourceView && dataSourceView.dataSource.dustAPIDataSourceId) {
+            validTables.push({
               project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
               data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
               table_id: t.tableId,
-            };
-          }),
+            });
+          } else {
+            invalidTableIds.push(t.tableId);
+          }
+        }
+
+        if (validTables.length === 0) {
+          return new Ok([
+            {
+              type: "text",
+              text: "The agent does not have access to any valid tables. Some table configurations may be outdated.",
+            },
+          ]);
+        }
+
+        // Call Core API's /database_schema endpoint
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const schemaResult = await coreAPI.getDatabaseSchema({
+          tables: validTables,
         });
 
         if (schemaResult.isErr()) {
@@ -188,7 +202,18 @@ function createServer(
           );
         }
 
+        const warning =
+          invalidTableIds.length > 0
+            ? [
+                {
+                  type: "text" as const,
+                  text: `Warning: ${invalidTableIds.length} table(s) could not be loaded (${invalidTableIds.join(", ")}). Their configurations may be outdated.`,
+                },
+              ]
+            : [];
+
         return new Ok([
+          ...warning,
           {
             type: "resource",
             resource: {

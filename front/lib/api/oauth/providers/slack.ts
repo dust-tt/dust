@@ -2,17 +2,18 @@ import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { assertNever, Err, OAuthAPI, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
@@ -20,62 +21,35 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     connection,
     useCase,
     extraConfig,
+    clientId: providedClientId,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
     extraConfig?: ExtraConfigType;
+    clientId?: string;
   }) {
-    const { user_scopes, bot_scopes } = (() => {
+    const bot_scopes = (() => {
       switch (useCase) {
-        case "personal_actions":
-          return {
-            user_scopes: [
-              // Write permissions.
-              "chat:write",
-              // Get and read chat and thread in any channels.
-              "channels:history",
-              "groups:history",
-              "im:history",
-              "mpim:history",
-              "channels:read",
-              "files:write",
-              "groups:read",
-              "im:read",
-              "mpim:read",
-              // Semantic search scopes.
-              "search:read.public",
-              "search:read.private",
-              "search:read.im",
-              "search:read.mpim",
-              // User info scopes.
-              "users:read.email",
-              "users:read",
-            ],
-            bot_scopes: [],
-          };
         case "connection": {
-          return {
-            user_scopes: [],
-            bot_scopes: [
-              "app_mentions:read",
-              "channels:history",
-              "channels:join",
-              "channels:manage",
-              "channels:read",
-              "chat:write",
-              "files:read",
-              "groups:history",
-              "groups:read",
-              "im:history",
-              "im:read",
-              "metadata.message:read",
-              "mpim:history",
-              "mpim:read",
-              "team:read",
-              "users:read.email",
-              "users:read",
-            ],
-          };
+          return [
+            "app_mentions:read",
+            "channels:history",
+            "channels:join",
+            "channels:manage",
+            "channels:read",
+            "chat:write",
+            "files:read",
+            "groups:history",
+            "groups:read",
+            "im:history",
+            "im:read",
+            "metadata.message:read",
+            "mpim:history",
+            "mpim:read",
+            "team:read",
+            "users:read.email",
+            "users:read",
+          ];
         }
         case "bot":
         case "platform_actions":
@@ -96,7 +70,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             "im:read",
             "users:read",
             "users:read.email",
-            "search:read.public",
           ];
 
           // TODO: This is temporary until our Slack app scope is approved.
@@ -104,44 +77,38 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             scopes.push("reactions:read", "reactions:write");
           }
 
-          return {
-            user_scopes: [],
-            bot_scopes: scopes,
-          };
+          return scopes;
         case "labs_transcripts":
           assert(
+            false,
             "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
           );
-          return { user_scopes: [], bot_scopes: [] };
+          break;
         case "webhooks":
-          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
-          return { user_scopes: [], bot_scopes: [] };
+          assert(false, "Unreachable useCase `webhooks` in SlackOAuthProvider");
+          break;
+        case "personal_actions":
+          assert(
+            false,
+            "Unreachable useCase `personal_actions` in SlackOAuthProvider"
+          );
+          break;
         default:
           assertNever(useCase);
       }
     })();
 
-    // To simplify the implementation, we don't support both user and bot scopes at the same time.
-    assert(!(user_scopes.length !== 0 && bot_scopes.length !== 0));
-
     const clientId = (() => {
       switch (useCase) {
-        case "personal_actions":
-          return config.getOAuthSlackToolsClientId();
         case "connection": {
+          if (providedClientId) {
+            return providedClientId;
+          }
           return config.getOAuthSlackClientId();
         }
         case "bot":
         case "platform_actions":
           return config.getOAuthSlackBotClientId();
-        case "labs_transcripts":
-          assert(
-            "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
-          );
-          return "";
-        case "webhooks":
-          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
-          return "";
         default:
           assertNever(useCase);
       }
@@ -150,12 +117,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     return (
       `https://slack.com/oauth/v2/authorize?` +
       `client_id=${clientId}` +
-      (bot_scopes.length > 0
-        ? `&scope=${encodeURIComponent(bot_scopes.join(" "))}`
-        : "") +
-      (user_scopes.length > 0
-        ? `&user_scope=${encodeURIComponent(user_scopes.join(" "))}`
-        : "") +
+      `&scope=${encodeURIComponent(bot_scopes.join(" "))}` +
       `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("slack"))}` +
       // Force the team id to be the same as the admin-setup.
       // Edge-case: if the user is not in the team of not logged, it might still connect to the wrong team.
@@ -175,6 +137,46 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
+  async getRelatedCredential(
+    auth: Authenticator,
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<RelatedCredential | undefined> {
+    if (useCase !== "connection") {
+      return undefined;
+    }
+
+    const { client_id, client_secret } = extraConfig;
+    if (!client_id || !client_secret) {
+      return undefined;
+    }
+
+    // Check if the feature flag is enabled
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    if (!featureFlags.includes("self_created_slack_app_connector_rollout")) {
+      return undefined;
+    }
+
+    // Note: we don't store the signing secret as it's not needed for OAuth connections.
+    // It is only used for webhook validation
+    return {
+      content: {
+        client_id,
+        client_secret,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
+    };
+  }
+
   async getUpdatedExtraConfig(
     auth: Authenticator,
     {
@@ -185,50 +187,14 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we fetch the team id of the admin-setup to enforce the team id to be the same as the admin-setup.
-      // workspace connection (setup by admin) if we have it.
-      const { mcp_server_id, ...restConfig } = extraConfig;
-
-      if (mcp_server_id) {
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer(auth, {
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
-          });
-
-        if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
-        }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: mcpServerConnectionRes.value.connectionId,
-        });
-        if (connectionRes.isErr()) {
-          logger.error(
-            "Failed to get access token for admin-setup connection when updating the config for personal actions",
-            {
-              error: connectionRes.error,
-            }
-          );
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
-        }
-
-        const teamId = connectionRes.value.connection.metadata.team_id;
-        const teamName = connectionRes.value.connection.metadata.team_name;
-
-        return {
-          ...restConfig,
-          requested_team_id: teamId,
-          requested_team_name: teamName,
-        };
-      }
+    if (useCase === "connection") {
+      // Remove the secrets from the stored config (they're stored in relatedCredential)
+      const {
+        client_secret: _,
+        signing_secret: __,
+        ...restConfig
+      } = extraConfig;
+      return restConfig;
     } else if (useCase === "platform_actions") {
       const feature_flags = await getFeatureFlags(
         auth.getNonNullableWorkspace()
@@ -244,9 +210,16 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
-      return (
-        Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig
+    if (useCase === "connection") {
+      // Accept either empty config or config with all required Slack app credentials
+      const keys = Object.keys(extraConfig);
+      if (keys.length === 0) {
+        return true;
+      }
+      return !!(
+        extraConfig.client_id &&
+        extraConfig.client_secret &&
+        extraConfig.signing_secret
       );
     }
     return Object.keys(extraConfig).length === 0;

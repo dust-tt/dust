@@ -5,9 +5,12 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam,
   ChatCompletionTool,
+  ChatCompletionToolChoiceOption,
 } from "openai/resources/chat/completions";
+import type { ResponseFormatJSONSchema } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type {
   ModelConversationTypeMultiActions,
   ReasoningEffort,
@@ -196,4 +199,26 @@ export function toReasoningParam(
     return effort;
   }
   return undefined;
+}
+
+export function toToolChoiceParam(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ChatCompletionToolChoiceOption {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? { type: "function", function: { name: forceToolCall } }
+    : ("auto" as const);
+}
+
+export function toOutputFormatParam(
+  responseFormat: string | null
+): ResponseFormatJSONSchema | undefined {
+  const responseFormatObject = parseResponseFormatSchema(responseFormat);
+  if (!responseFormatObject) {
+    return;
+  }
+  return {
+    type: "json_schema",
+    json_schema: { name: "", schema: responseFormatObject.json_schema.schema },
+  };
 }

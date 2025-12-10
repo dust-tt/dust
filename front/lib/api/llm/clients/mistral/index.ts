@@ -2,6 +2,7 @@ import { Mistral } from "@mistralai/mistralai";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
   toTool,
@@ -41,7 +42,9 @@ export class MistralLLM extends LLM {
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
-      throw new Error("MISTRAL_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_MISTRAL_API_KEY environment variable is required"
+      );
     }
     this.client = new Mistral({
       apiKey: MISTRAL_API_KEY,
@@ -52,6 +55,7 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = [
@@ -67,7 +71,7 @@ export class MistralLLM extends LLM {
         messages,
         temperature: this.temperature,
         stream: true,
-        toolChoice: "auto" as const,
+        toolChoice: toToolChoiceParam(specifications, forceToolCall),
         tools: specifications.map(toTool),
       });
 

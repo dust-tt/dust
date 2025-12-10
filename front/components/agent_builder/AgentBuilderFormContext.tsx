@@ -1,106 +1,14 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
-import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
-import { MODEL_IDS } from "@app/types/assistant/models/models";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
+import {
+  actionSchema,
+  generationSettingsSchema,
+} from "@app/components/shared/tools_picker/types";
+import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
-
-const modelIdSchema = z.enum(MODEL_IDS);
-const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
-const reasoningEffortSchema = z.enum(REASONING_EFFORTS);
-
-const supportedModelSchema = z.object({
-  modelId: modelIdSchema,
-  providerId: providerIdSchema,
-});
-
-export const generationSettingsSchema = z.object({
-  modelSettings: supportedModelSchema,
-  temperature: z.number().min(0).max(1),
-  reasoningEffort: reasoningEffortSchema,
-  responseFormat: z.string().optional(),
-});
-
-export const mcpServerViewIdSchema = z.string();
-
-export const childAgentIdSchema = z.string().nullable();
-
-export const additionalConfigurationSchema = z.record(
-  z.string(),
-  z.union([
-    z.boolean(),
-    z.number(),
-    z.string(),
-    z.array(z.string()),
-    // Allow only one level of nesting
-    z.record(
-      z.string(),
-      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
-    ),
-  ])
-);
-
-export type AdditionalConfigurationInBuilderType = z.infer<
-  typeof additionalConfigurationSchema
->;
-
-export const dustAppConfigurationSchema = z
-  .object({
-    id: z.number(),
-    sId: z.string(),
-    type: z.literal("dust_app_run_configuration"),
-    appWorkspaceId: z.string(),
-    appId: z.string(),
-    name: z.string(),
-    description: z.string().nullable(),
-  })
-  .nullable();
-
-export const secretNameSchema = z.string().nullable();
-
-export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
-
-export const jsonSchemaStringSchema = z.string().nullable();
-
-const tagsFilterSchema = z
-  .object({
-    in: z.array(z.string()),
-    not: z.array(z.string()),
-    mode: z.enum(["custom", "auto"]),
-  })
-  .nullable();
-
-const dataSourceViewSelectionConfigurationSchema = z.object({
-  dataSourceView: z.custom<DataSourceViewType>(),
-  selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
-  excludedResources: z.array(z.custom<DataSourceViewContentNode>()),
-  isSelectAll: z.boolean(),
-  tagsFilter: tagsFilterSchema,
-});
-
-export const dataSourceConfigurationSchema = z
-  .record(z.string(), dataSourceViewSelectionConfigurationSchema)
-  .nullable();
-
-export const timeFrameSchema = z
-  .object({
-    duration: z.number().min(1),
-    unit: z.enum(["hour", "day", "week", "month", "year"]),
-  })
-  .nullable();
-
-export const mcpTimeFrameSchema = timeFrameSchema;
-
-const baseActionSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  configurationRequired: z.boolean().optional(),
-});
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
 
@@ -108,54 +16,6 @@ const tagSchema = z.object({
   sId: z.string(),
   name: z.string(),
   kind: TAG_KINDS,
-});
-
-export const reasoningModelSchema = z
-  .object({
-    modelId: modelIdSchema,
-    providerId: providerIdSchema,
-    temperature: z.number().min(0).max(1).nullable(),
-    reasoningEffort: reasoningEffortSchema.nullable(),
-  })
-  .nullable();
-
-export const mcpServerConfigurationSchema = z.object({
-  mcpServerViewId: mcpServerViewIdSchema,
-  dataSourceConfigurations: dataSourceConfigurationSchema,
-  tablesConfigurations: dataSourceConfigurationSchema,
-  childAgentId: childAgentIdSchema,
-  timeFrame: mcpTimeFrameSchema,
-  additionalConfiguration: additionalConfigurationSchema,
-  dustAppConfiguration: dustAppConfigurationSchema,
-  secretName: secretNameSchema,
-  jsonSchema: jsonSchemaFieldSchema,
-  reasoningModel: reasoningModelSchema,
-  _jsonSchemaString: jsonSchemaStringSchema,
-});
-
-export type MCPServerConfigurationType = z.infer<
-  typeof mcpServerConfigurationSchema
->;
-
-const actionSchema = baseActionSchema.extend({
-  type: z.literal("MCP"),
-  configuration: mcpServerConfigurationSchema,
-});
-
-const userSchema = z.object({
-  sId: z.string(),
-  id: z.number(),
-  createdAt: z.number(),
-  provider: z
-    .enum(["auth0", "github", "google", "okta", "samlp", "waad"])
-    .nullable(),
-  username: z.string(),
-  email: z.string(),
-  firstName: z.string(),
-  lastName: z.string().nullable(),
-  fullName: z.string(),
-  image: z.string().nullable(),
-  lastLoginAt: z.number().nullable(),
 });
 
 const agentSettingsSchema = z.object({
@@ -166,7 +26,7 @@ const agentSettingsSchema = z.object({
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
   scope: z.enum(["hidden", "visible"]),
-  editors: z.array(userSchema),
+  editors: z.array(editorUserSchema),
   slackProvider: z.enum(["slack", "slack_bot"]).nullable(),
   slackChannels: z.array(
     z.object({
@@ -222,6 +82,12 @@ const triggerSchema = z.discriminatedUnion("kind", [
   scheduleTriggerSchema,
 ]);
 
+const skillsSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  description: z.string(),
+});
+
 export type AgentBuilderWebhookTriggerType = z.infer<
   typeof webhookTriggerSchema
 >;
@@ -233,6 +99,7 @@ export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
+  skills: z.array(skillsSchema),
   actions: z.array(actionSchema),
   triggersToCreate: z.array(triggerSchema),
   triggersToUpdate: z.array(triggerSchema),
@@ -245,8 +112,8 @@ export const agentBuilderFormSchema = z.object({
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
+export type AgentBuilderSkillsType = z.infer<typeof skillsSchema>;
 export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
-export type AgentBuilderAction = z.infer<typeof actionSchema>;
 
 // TODO: create types from schema
 export interface MCPFormData {

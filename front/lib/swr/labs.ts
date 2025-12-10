@@ -3,6 +3,7 @@
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
@@ -96,7 +97,7 @@ export function useUpdateTranscriptsConfiguration({
   const doUpdate = async (
     data: Partial<PatchTranscriptsConfiguration>
   ): Promise<Result<undefined, Error>> => {
-    const response = await fetch(
+    const response = await clientFetch(
       `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.sId}`,
       {
         method: "PATCH",
@@ -111,6 +112,7 @@ export function useUpdateTranscriptsConfiguration({
       sendNotification({
         type: "error",
         title: "Failed to update transcript configuration",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: error.error?.message || "Unknown error",
       });
       return new Err(normalizeError(error));

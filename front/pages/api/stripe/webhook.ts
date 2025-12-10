@@ -1,19 +1,30 @@
+import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
 import { promisify } from "util";
+import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
 import {
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/api/email";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { startCreditFromProOneOffInvoice } from "@app/lib/credits/purchase";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import {
+  startCreditFromProOneOffInvoice,
+  voidFailedProCreditPurchaseInvoice,
+} from "@app/lib/credits/committed";
+import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
+import {
+  allocatePAYGCreditsOnCycleRenewal,
+  invoiceEnterprisePAYGCredits,
+  isPAYGEnabled,
+} from "@app/lib/credits/payg";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -23,23 +34,21 @@ import {
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  launchScheduleWorkspaceScrubWorkflow,
-  terminateScheduleWorkspaceScrubWorkflow,
-} from "@app/temporal/scrub_workspace/client";
+import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever, ConnectorsAPI, removeNulls } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 export type GetResponseBody = {
   success: boolean;
@@ -51,6 +60,11 @@ export const config = {
     bodyParser: false, // Disable the default body parser
   },
 };
+
+export const StripeBillingPeriodSchema = z.object({
+  current_period_start: z.number(),
+  current_period_end: z.number(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -168,7 +182,7 @@ async function handler(
               // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
-            const plan = await Plan.findOne({
+            const plan = await PlanModel.findOne({
               where: { code: planCode },
             });
             if (!plan) {
@@ -178,11 +192,11 @@ async function handler(
             }
 
             await withTransaction(async (t) => {
-              const activeSubscription = await Subscription.findOne({
+              const activeSubscription = await SubscriptionModel.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
                   {
-                    model: Plan,
+                    model: PlanModel,
                     as: "plan",
                   },
                 ],
@@ -242,7 +256,7 @@ async function handler(
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-              await Subscription.create(
+              await SubscriptionModel.create(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
@@ -267,7 +281,7 @@ async function handler(
                 subscriptionStartAt: now,
               });
             }
-            await onCancelScrub(
+            await restoreWorkspaceAfterSubscription(
               await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
 
@@ -297,13 +311,13 @@ async function handler(
               },
             });
           }
-        case "invoice.paid":
+        case "invoice.paid": {
           // This is what confirms the subscription is active and payments are being made.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
-          invoice = event.data.object as Stripe.Invoice;
+          const invoice = event.data.object as Stripe.Invoice;
           if (typeof invoice.subscription !== "string") {
             return _returnStripeApiError(
               req,
@@ -313,7 +327,7 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          subscription = await Subscription.findOne({
+          const subscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
@@ -331,9 +345,10 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          stripeSubscription = await getStripeSubscription(
+          const stripeSubscription = await getStripeSubscription(
             subscription.stripeSubscriptionId
           );
+
           if (!stripeSubscription) {
             logger.warn(
               {
@@ -351,10 +366,11 @@ async function handler(
             isCreditPurchaseInvoice(invoice) &&
             !isEnterpriseSubscription(stripeSubscription);
 
+          const auth = await Authenticator.internalAdminForWorkspace(
+            subscription.workspace.sId
+          );
+
           if (isProCreditPurchaseInvoice) {
-            const auth = await Authenticator.internalAdminForWorkspace(
-              subscription.workspace.sId
-            );
             const creditPurchaseResult = await startCreditFromProOneOffInvoice({
               auth,
               invoice,
@@ -372,10 +388,10 @@ async function handler(
               );
             }
           } else if (!isCreditPurchaseInvoice(invoice)) {
-            // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
             await subscription.update({ paymentFailingSince: null });
           }
           break;
+        }
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
@@ -401,7 +417,7 @@ async function handler(
           }
 
           // Logging that we have a failed payment
-          subscription = await Subscription.findOne({
+          subscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
@@ -425,51 +441,205 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          if (subscription.paymentFailingSince === null) {
-            await subscription.update({ paymentFailingSince: now });
-          }
-
           // Send email to admins + customer email who subscribed in Stripe
           const auth = await Authenticator.internalAdminForWorkspace(
             subscription.workspace.sId
           );
-          const owner = auth.workspace();
-          const subscriptionType = auth.subscription();
-          if (!owner || !subscriptionType) {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.payment_failed",
-              "Couldn't get owner or subscription from `auth`."
-            );
-          }
-          const { members } = await getMembers(auth, {
-            roles: ["admin"],
-            activeOnly: true,
-          });
-          const adminEmails = members.map((u) => u.email);
-          const customerEmail = invoice.customer_email;
-          if (customerEmail && !adminEmails.includes(customerEmail)) {
-            adminEmails.push(customerEmail);
-          }
-          const portalUrl = await createCustomerPortalSession({
-            owner,
-            subscription: subscriptionType,
-          });
-          for (const adminEmail of adminEmails) {
-            await sendAdminSubscriptionPaymentFailedEmail(
-              adminEmail,
-              portalUrl
-            );
-          }
-          break;
-        case "charge.dispute.created":
-          const dispute = event.data.object as Stripe.Dispute;
-          logger.warn(
-            { dispute, stripeError: true },
-            "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
+
+          // Handle Pro credit purchase invoice failures
+          stripeSubscription = await getStripeSubscription(
+            invoice.subscription
           );
+
+          if (!stripeSubscription) {
+            logger.error(
+              {
+                event,
+                stripeError: true,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Stripe Subscription not found."
+            );
+          }
+          const isProCreditPurchaseInvoice =
+            stripeSubscription &&
+            isCreditPurchaseInvoice(invoice) &&
+            !isEnterpriseSubscription(stripeSubscription);
+          // When we received a failed payment for a pro credit purchase,
+          // We do NOT want to send an email to the admin telling them
+          // their subscription is going to be cancelled
+          // This is because credits have not been provisioned yet, and we
+          // will end-up voiding the invoice if it continues failing
+          if (isProCreditPurchaseInvoice) {
+            const result = await voidFailedProCreditPurchaseInvoice({
+              auth,
+              invoice,
+            });
+            if (result.isErr()) {
+              // For eng-oncall
+              // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+              // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+              // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+              // contact Stripe owners in case of doubt
+              logger.error(
+                {
+                  error: result.error,
+                  panic: true,
+                  stripeError: true,
+                  invoiceId: invoice.id,
+                },
+                "[Stripe Webhook] Error handling failed credit purchase"
+              );
+            } else if (result.value.voided) {
+              logger.warn(
+                { invoiceId: invoice.id },
+                "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+              );
+            }
+            // On the other hand credit purchase from enterprise are paid in arrears or with a 30days notice
+            // Either way, we want to go through the usual flow for payment failures
+          } else {
+            const owner = auth.workspace();
+            const subscriptionType = auth.subscription();
+
+            if (!owner || !subscriptionType) {
+              return _returnStripeApiError(
+                req,
+                res,
+                "invoice.payment_failed",
+                "Couldn't get owner or subscription from `auth`."
+              );
+            }
+
+            if (subscription.paymentFailingSince === null) {
+              await subscription.update({ paymentFailingSince: now });
+            }
+
+            const { members } = await getMembers(auth, {
+              roles: ["admin"],
+              activeOnly: true,
+            });
+            const adminEmails = members.map((u) => u.email);
+            const customerEmail = invoice.customer_email;
+            if (customerEmail && !adminEmails.includes(customerEmail)) {
+              adminEmails.push(customerEmail);
+            }
+            const portalUrl = await createCustomerPortalSession({
+              owner,
+              subscription: subscriptionType,
+            });
+            for (const adminEmail of adminEmails) {
+              await sendAdminSubscriptionPaymentFailedEmail(
+                adminEmail,
+                portalUrl
+              );
+            }
+          }
           break;
+        case "charge.dispute.created": {
+          const dispute = event.data.object as Stripe.Dispute;
+          const charge = isString(dispute.charge)
+            ? await stripe.charges.retrieve(dispute.charge)
+            : dispute.charge;
+
+          if (!charge.invoice) {
+            logger.warn(
+              { disputeId: dispute.id, chargeId: charge.id, stripeError: true },
+              "[Stripe Webhook] Dispute charge has no associated invoice."
+            );
+            break;
+          }
+
+          const disputeInvoice = isString(charge.invoice)
+            ? await stripe.invoices.retrieve(charge.invoice)
+            : charge.invoice;
+
+          if (!isCreditPurchaseInvoice(disputeInvoice)) {
+            logger.warn(
+              { dispute, stripeError: true },
+              "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
+            );
+            break;
+          }
+
+          if (!isString(disputeInvoice.subscription)) {
+            logger.error(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Credit purchase invoice has no subscription."
+            );
+            break;
+          }
+
+          const disputeSubscription = await SubscriptionModel.findOne({
+            where: { stripeSubscriptionId: disputeInvoice.subscription },
+            include: [WorkspaceModel],
+          });
+
+          if (!disputeSubscription) {
+            logger.warn(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                stripeSubscriptionId: disputeInvoice.subscription,
+              },
+              "[Stripe Webhook] Subscription not found for disputed credit purchase."
+            );
+            break;
+          }
+
+          const disputeAuth = await Authenticator.internalAdminForWorkspace(
+            disputeSubscription.workspace.sId
+          );
+
+          const credit = await CreditResource.fetchByInvoiceOrLineItemId(
+            disputeAuth,
+            disputeInvoice.id
+          );
+
+          if (!credit) {
+            logger.error(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                workspaceId: disputeSubscription.workspace.sId,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Credit not found for disputed credit purchase invoice."
+            );
+            break;
+          }
+
+          const freezeResult = await credit.freeze(disputeAuth);
+          if (freezeResult.isErr()) {
+            logger.error(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                creditId: credit.id,
+                workspaceId: disputeSubscription.workspace.sId,
+                error: freezeResult.error,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Failed to freeze credit for disputed payment."
+            );
+          } else {
+            logger.info(
+              {
+                disputeId: dispute.id,
+                invoiceId: disputeInvoice.id,
+                creditId: credit.id,
+                workspaceId: disputeSubscription.workspace.sId,
+              },
+              "[Stripe Webhook] Successfully froze credit due to payment dispute."
+            );
+          }
+
+          break;
+        }
 
         case "customer.subscription.created": {
           const stripeSubscription = event.data.object as Stripe.Subscription;
@@ -482,9 +652,13 @@ async function handler(
             assertStripeSubscriptionIsValid(stripeSubscription);
 
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.created",
+            ]);
+
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
@@ -494,6 +668,37 @@ async function handler(
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
           }
+
+          const subscription = await SubscriptionModel.findOne({
+            where: { stripeSubscriptionId: stripeSubscription.id },
+            include: [WorkspaceModel],
+          });
+
+          if (subscription) {
+            const auth = await Authenticator.internalAdminForWorkspace(
+              subscription.workspace.sId
+            );
+
+            const freeCreditsResult =
+              await grantFreeCreditsFromSubscriptionStateChange({
+                auth,
+                stripeSubscription,
+              });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  panic: true,
+                  stripeError: true,
+                  error: freeCreditsResult.error,
+                  subscriptionId: stripeSubscription.id,
+                  workspaceId: subscription.workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits on subscription created"
+              );
+            }
+          }
+
           break;
         }
 
@@ -513,6 +718,100 @@ async function handler(
             break;
           } // should not happen by definition of the subscription.updated event
 
+          // Billing cycle changed
+          if ("current_period_start" in previousAttributes) {
+            const subscription = await SubscriptionModel.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [WorkspaceModel],
+            });
+
+            if (subscription) {
+              const auth = await Authenticator.internalAdminForWorkspace(
+                subscription.workspace.sId
+              );
+
+              const freeCreditsResult =
+                await grantFreeCreditsFromSubscriptionStateChange({
+                  auth,
+                  stripeSubscription,
+                });
+
+              if (freeCreditsResult.isErr()) {
+                logger.error(
+                  {
+                    panic: true,
+                    stripeError: true,
+                    error: freeCreditsResult.error,
+                    subscriptionId: stripeSubscription.id,
+                    workspaceId: subscription.workspace.sId,
+                  },
+                  "[Stripe Webhook] Error granting free credits on renewal"
+                );
+              }
+
+              // TODO(PPUL): should we enforce that enterprise always has PAYG enabled?
+              const paygEnabled = await isPAYGEnabled(auth);
+
+              if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {
+                // Allocate PAYG credits for the new billing cycle
+                const currentPeriod = StripeBillingPeriodSchema.safeParse({
+                  current_period_start: stripeSubscription.current_period_start,
+                  current_period_end: stripeSubscription.current_period_end,
+                });
+
+                assert(
+                  currentPeriod.success,
+                  "Unexpected current period missing or malformed"
+                );
+                await allocatePAYGCreditsOnCycleRenewal({
+                  auth,
+                  nextPeriodStartSeconds:
+                    currentPeriod.data.current_period_start,
+                  nextPeriodEndSeconds: currentPeriod.data.current_period_end,
+                });
+
+                const previousPeriod =
+                  StripeBillingPeriodSchema.safeParse(previousAttributes);
+                assert(
+                  previousPeriod.success,
+                  "Unexpected previous period missing or malformed"
+                );
+                const previousPeriodStartSeconds =
+                  previousPeriod.data.current_period_start;
+                const previousPeriodEndSeconds =
+                  previousPeriod.data.current_period_end;
+                const paygResult = await invoiceEnterprisePAYGCredits({
+                  auth,
+                  stripeSubscription,
+                  previousPeriodStartSeconds,
+                  previousPeriodEndSeconds,
+                });
+
+                if (paygResult.isErr()) {
+                  logger.error(
+                    {
+                      panic: true,
+                      stripeError: true,
+                      error: paygResult.error,
+                      subscriptionId: stripeSubscription.id,
+                      workspaceId: subscription.workspace.sId,
+                    },
+                    "[Stripe Webhook] Error invoicing PAYG credits"
+                  );
+                }
+              }
+            } else {
+              logger.warn(
+                {
+                  stripeEventId: event.id,
+                  stripeEventType: event.type,
+                  stripeSubscriptionId: stripeSubscription.id,
+                },
+                "[Stripe Webhook] Subscription not found for billing cycle change."
+              );
+            }
+          }
+
           if (stripeSubscription.status === "trialing") {
             // We check if the trialing subscription is being canceled.
             if (
@@ -520,7 +819,7 @@ async function handler(
               stripeSubscription.cancel_at
             ) {
               const endDate = new Date(stripeSubscription.cancel_at * 1000);
-              const subscription = await Subscription.findOne({
+              const subscription = await SubscriptionModel.findOne({
                 where: { stripeSubscriptionId: stripeSubscription.id },
                 include: [WorkspaceModel],
               });
@@ -557,7 +856,7 @@ async function handler(
               : null;
 
             // get subscription
-            const subscription = await Subscription.findOne({
+            const subscription = await SubscriptionModel.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
               include: [WorkspaceModel],
             });
@@ -584,7 +883,7 @@ async function handler(
             );
             if (!endDate) {
               // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
-              await onCancelScrub(auth);
+              await restoreWorkspaceAfterSubscription(auth);
 
               ServerSideTracking.trackSubscriptionReactivated({
                 workspace: renderLightWorkspaceType({
@@ -647,7 +946,7 @@ async function handler(
               }
             }
           } else if (stripeSubscription.status === "active") {
-            const subscription = await Subscription.findOne({
+            const subscription = await SubscriptionModel.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
             });
             if (!subscription) {
@@ -671,13 +970,17 @@ async function handler(
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.updated",
+            ]);
+
             const priceId =
               stripeSubscription.items.data.length > 0
                 ? stripeSubscription.items.data[0].price?.id
                 : null;
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
@@ -707,7 +1010,7 @@ async function handler(
             });
           }
 
-          const matchingSubscription = await Subscription.findOne({
+          const matchingSubscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
             include: [WorkspaceModel],
           });
@@ -792,7 +1095,7 @@ async function handler(
           );
           stripeSubscription = event.data.object as Stripe.Subscription;
 
-          const trialingSubscription = await Subscription.findOne({
+          const trialingSubscription = await SubscriptionModel.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
             include: [WorkspaceModel],
           });
@@ -850,53 +1153,6 @@ function _returnStripeApiError(
       message: `[Stripe Webhook][${event}] ${message}`,
     },
   });
-}
-
-/**
- * When a subscription is re-activated, we need to:
- * - Terminate the scheduled workspace scrub workflow (if any)
- * - Unpause all connectors
- * - Re-enable all triggers that point to non-archived agents
- */
-async function onCancelScrub(auth: Authenticator) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Missing workspace on auth.");
-  }
-  const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
-    workspaceId: owner.sId,
-  });
-  if (scrubCancelRes.isErr()) {
-    logger.error(
-      { stripeError: true, error: scrubCancelRes.error },
-      "Error terminating scrub workspace workflow."
-    );
-  }
-  const dataSources = await getDataSources(auth);
-  const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
-  const connectorsApi = new ConnectorsAPI(
-    apiConfig.getConnectorsAPIConfig(),
-    logger
-  );
-  for (const connectorId of connectorIds) {
-    const r = await connectorsApi.unpauseConnector(connectorId);
-    if (r.isErr()) {
-      logger.error(
-        { connectorId, stripeError: true, error: r.error },
-        "Error unpausing connector after subscription reactivation."
-      );
-    }
-  }
-
-  // Re-enable all triggers that point to non-archived agents
-  const enableTriggersRes = await TriggerResource.enableAllForWorkspace(auth);
-  if (enableTriggersRes.isErr()) {
-    logger.error(
-      { stripeError: true, error: enableTriggersRes.error },
-      "Error re-enabling workspace triggers on subscription reactivation"
-    );
-    // Don't throw error here - we want the function to continue even if trigger re-enabling fails
-  }
 }
 
 export default withLogging(handler);

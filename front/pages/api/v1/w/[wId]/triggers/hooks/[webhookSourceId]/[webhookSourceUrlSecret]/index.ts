@@ -66,6 +66,7 @@ export const config = {
 
 async function handler(
   req: NextApiRequestWithContext,
+
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
   const { method, body, headers, query } = req;
@@ -163,7 +164,8 @@ async function handler(
   const filteredHeaders: Record<string, string> = Object.fromEntries(
     Object.entries(headers).filter(
       ([key]) =>
-        HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) &&
+        (HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) ||
+          webhookSource.signatureHeader?.toLowerCase() === key.toLowerCase()) &&
         isString(headers[key])
     ) as [string, string][] // Type assertion to satisfy TypeScript, we've already filtered to strings
   );

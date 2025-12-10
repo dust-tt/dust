@@ -1,7 +1,7 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
-import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
-import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
+import { AgentPicker } from "@app/ui/components/agents/AgentPicker";
+import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
   LightAgentConfigurationType,
@@ -110,9 +110,9 @@ export function AgentSuggestion({
           <span className="grow text-sm text-muted-foreground dark:text-muted-foreground-night">
             Which Agent would you like to chat with?
           </span>
-          <AssistantPicker
+          <AgentPicker
             owner={owner}
-            assistants={otherAgents}
+            agents={otherAgents}
             onItemClick={async (agent) => {
               if (!isLoading) {
                 setIsLoading(true);

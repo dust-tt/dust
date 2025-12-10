@@ -8,10 +8,11 @@ import { ConversationLayout } from "@app/components/assistant/conversation/Conve
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/conversation";
+import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isString } from "@app/types";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { isString, toRichAgentMentionType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
@@ -121,6 +122,18 @@ export default function AgentConversation({
 
   const { agent } = router.query;
 
+  const { agentConfiguration: selectedAgentConfiguration } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: agent && isString(agent) ? agent : null,
+    });
+
+  useEffect(() => {
+    if (selectedAgentConfiguration) {
+      setSelectedAgent(toRichAgentMentionType(selectedAgentConfiguration));
+    }
+  }, [selectedAgentConfiguration, setSelectedAgent]);
+
   // This useEffect handles whether to change the key of the ConversationContainer
   // or not. Altering the key forces a re-render of the component. A random number
   // is used in the key to maintain the component during the transition from new
@@ -128,25 +141,13 @@ export default function AgentConversation({
   useEffect(() => {
     if (activeConversationId) {
       // Set conversation id as key if it exists.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConversationKey(activeConversationId);
     } else if (!activeConversationId) {
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
     }
-
-    const agentId = agent ?? null;
-    if (agentId && typeof agentId === "string") {
-      setSelectedAgent({ configurationId: agentId });
-    } else {
-      setSelectedAgent(null);
-    }
-  }, [
-    agent,
-    setConversationKey,
-    initialConversationId,
-    activeConversationId,
-    setSelectedAgent,
-  ]);
+  }, [setConversationKey, initialConversationId, activeConversationId]);
 
   return (
     <ConversationContainerVirtuoso

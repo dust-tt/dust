@@ -32,7 +32,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -177,7 +177,7 @@ const _webhookSlackAPIHandler = async (
             // Get valid slack configurations for this channel once
             const validConfigurations = await Promise.all(
               slackConfigurations.map(async (c) => {
-                const slackChannel = await SlackChannel.findOne({
+                const slackChannel = await SlackChannelModel.findOne({
                   where: {
                     connectorId: c.connectorId,
                     slackChannelId: channel,

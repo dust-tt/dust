@@ -10,15 +10,18 @@ import React, { useMemo, useState } from "react";
 
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import type { EditedByUser } from "@app/types/user";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 
 type RowData = {
-  id: number;
+  sId: string;
   type: CreditType;
   initialAmount: string;
   consumedAmount: string;
   remainingAmount: string;
   expirationDate: string;
   isExpired: boolean;
+  boughtByUser: EditedByUser | null;
   onClick?: () => void;
 };
 
@@ -33,7 +36,7 @@ const TYPE_SORT_ORDER: Record<CreditType, number> = {
 
 // Display labels for credit types
 const TYPE_LABELS: Record<CreditType, string> = {
-  free: "Free",
+  free: "Included",
   committed: "Committed",
   payg: "Pay-as-you-go",
 };
@@ -75,19 +78,19 @@ function isExpired(credit: CreditDisplayData): boolean {
 
 function getTableRows(credits: CreditDisplayData[]): RowData[] {
   return credits.map((credit) => ({
-    id: credit.id,
+    sId: credit.sId,
     type: credit.type,
     initialAmount: getPriceAsString({
       currency: "usd",
-      priceInCents: credit.initialAmount,
+      priceInMicroUsd: credit.initialAmountMicroUsd,
     }),
     consumedAmount: getPriceAsString({
       currency: "usd",
-      priceInCents: credit.consumedAmount,
+      priceInMicroUsd: credit.consumedAmountMicroUsd,
     }),
     remainingAmount: getPriceAsString({
       currency: "usd",
-      priceInCents: credit.remainingAmount,
+      priceInMicroUsd: credit.remainingAmountMicroUsd,
     }),
     expirationDate:
       credit.expirationDate !== null
@@ -98,6 +101,7 @@ function getTableRows(credits: CreditDisplayData[]): RowData[] {
           })
         : "Never",
     isExpired: isExpired(credit),
+    boughtByUser: credit.boughtByUser,
   }));
 }
 
@@ -149,6 +153,24 @@ const creditColumns: ColumnDef<RowData, string>[] = [
       className: "text-right",
     },
     cell: (info: Info) => Cell(info, info.row.original.expirationDate),
+  },
+  {
+    id: "by" as const,
+    header: "Bought By",
+    cell: (info: Info) => {
+      const boughtByUser = info.row.original.boughtByUser;
+      return (
+        <DataTable.CellContent
+          className={info.row.original.isExpired ? "opacity-40" : ""}
+          avatarUrl={boughtByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
+          avatarTooltipLabel={boughtByUser?.fullName ?? "System"}
+          roundedAvatar
+        />
+      );
+    },
+    meta: {
+      className: "w-10",
+    },
   },
 ];
 

@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
@@ -32,7 +32,7 @@ makeScript({}, async ({ execute }, logger) => {
     return;
   }
 
-  const existingFlags = await FeatureFlag.findAll({
+  const existingFlags = await FeatureFlagModel.findAll({
     attributes: ["workspaceId"],
     where: {
       name: FEATURE_FLAG_NAME,
@@ -85,7 +85,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   for (const workspace of targetWorkspaces) {
     if (execute) {
-      await FeatureFlag.create({
+      await FeatureFlagModel.create({
         workspaceId: workspace.id,
         name: FEATURE_FLAG_NAME,
       });

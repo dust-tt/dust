@@ -74,6 +74,7 @@ function createServer(
       sessionCache.set(cacheKey, { sessionId, expiresAt });
 
       return sessionId;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       // Session creation failed, proceed without session
       return null;

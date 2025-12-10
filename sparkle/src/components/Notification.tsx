@@ -7,7 +7,8 @@ import {
   InformationCircleIcon,
   XCircleIcon,
 } from "@sparkle/icons/app";
-import { assertNever, cn } from "@sparkle/lib/utils";
+import { assertNever } from "@sparkle/lib/internal_utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 

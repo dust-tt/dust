@@ -1,15 +1,12 @@
 import {
   BookOpenIcon,
   Button,
-  Card,
-  CardActionButton,
   CardGrid,
   ContentMessage,
   EmptyCTA,
   Hoverable,
   Spinner,
   ToolsIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -21,101 +18,14 @@ import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/M
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import {
-  getDefaultMCPAction,
-  isDefaultActionName,
-} from "@app/components/agent_builder/types";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import type { TemplateActionPreset } from "@app/types";
 import { pluralize } from "@app/types";
-
-const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
-const BACKGROUND_IMAGE_STYLE_PROPS = {
-  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 14px",
-  backgroundSize: "auto 60px",
-  paddingTop: "90px",
-};
-
-function actionIcon(
-  action: AgentBuilderAction,
-  mcpServerView: MCPServerViewType | null
-) {
-  if (mcpServerView?.server) {
-    return getAvatar(mcpServerView.server, "xs");
-  }
-}
-
-function actionDisplayName(
-  action: AgentBuilderAction,
-  mcpServerView: MCPServerViewType | null
-) {
-  if (mcpServerView && action.type === "MCP") {
-    return getMcpServerViewDisplayName(mcpServerView, action);
-  }
-
-  return `${MCP_SPECIFICATION.label}${
-    !isDefaultActionName(action) ? " - " + action.name : ""
-  }`;
-}
-
-interface ActionCardProps {
-  action: AgentBuilderAction;
-  onRemove: () => void;
-  onEdit?: () => void;
-}
-
-function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
-
-  const mcpServerView =
-    action.type === "MCP" && !isMCPServerViewsLoading
-      ? (mcpServerViews.find(
-          (mcpServerView) =>
-            mcpServerView.sId === action.configuration.mcpServerViewId
-        ) ?? null)
-      : null;
-
-  const displayName = actionDisplayName(action, mcpServerView);
-  const description = action.description ?? "";
-
-  return (
-    <Card
-      variant="primary"
-      className="h-28"
-      onClick={onEdit}
-      action={
-        <CardActionButton
-          size="mini"
-          icon={XMarkIcon}
-          onClick={(e: Event) => {
-            onRemove();
-            e.stopPropagation();
-          }}
-        />
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {actionIcon(action, mcpServerView)}
-          <span className="truncate">{displayName}</span>
-        </div>
-
-        <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <span className="line-clamp-2 break-words">{description}</span>
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
@@ -142,7 +52,7 @@ export function AgentBuilderCapabilitiesBlock({
 
   const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
-    action: AgentBuilderAction;
+    action: BuilderAction;
     index: number | null;
     presetData?: TemplateActionPreset;
   } | null>(null);
@@ -153,7 +63,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction,
   });
 
-  const handleEditSave = (updatedAction: AgentBuilderAction) => {
+  const handleEditSave = (updatedAction: BuilderAction) => {
     if (dialogMode?.type === "edit") {
       update(dialogMode.index, updatedAction);
     } else if (knowledgeAction && knowledgeAction.index !== null) {
@@ -165,7 +75,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction(null);
   };
 
-  const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+  const handleActionEdit = (action: BuilderAction, index: number) => {
     const mcpServerView = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
@@ -188,7 +98,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction(null);
   };
 
-  const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
+  const handleMcpActionUpdate = (action: BuilderAction, index: number) => {
     update(index, action);
   };
 

@@ -5,8 +5,8 @@ import type { StoredUser } from "@app/shared/services/auth";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
-} from "@app/ui/components/assistants/state/messageReducer";
-import { messageReducer } from "@app/ui/components/assistants/state/messageReducer";
+} from "@app/ui/components/agents/state/messageReducer";
+import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
@@ -21,6 +21,10 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
+import {
+  getImgPlugin,
+  imgDirective,
+} from "@app/ui/components/markdown/ImageBlock";
 import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
@@ -431,12 +435,18 @@ export function AgentMessage({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: AgentMentionBlock,
+      dustimg: getImgPlugin(),
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId]
+    [owner, conversationId, message.sId, agentConfiguration.sId, user]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [agentMentionDirective, getCiteDirective(), visualizationDirective],
+    () => [
+      agentMentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      imgDirective,
+    ],
     []
   );
 
@@ -524,9 +534,9 @@ export function AgentMessage({
         .filter(
           (msg): msg is UserMessageType =>
             msg.type === "user_message" &&
-            msg.context.origin === "agent_handover"
+            msg.agenticMessageData?.type === "agent_handover"
         )
-        .map((msg) => msg.context.originMessageId)
+        .map((msg) => msg.agenticMessageData?.originMessageId)
     );
     const handingOver = handoverOrigins.has(message.sId);
 

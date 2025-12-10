@@ -11,6 +11,7 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
   autoReadChannel,
   findMatchingChannelPatterns,
@@ -21,6 +22,7 @@ import {
   joinChannelWithRetries,
 } from "@connectors/connectors/slack/lib/channels";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
+import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
 import {
   getSlackAccessToken,
@@ -29,9 +31,11 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
+import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -42,12 +46,14 @@ import type {
   ModelId,
   SlackConfigurationType,
 } from "@connectors/types";
+import type { SlackCredentials } from "@connectors/types";
 import {
   concurrentExecutor,
   isSlackAutoReadPatterns,
   normalizeError,
   safeParseJSON,
 } from "@connectors/types";
+import { getConnectionCredentials } from "@connectors/types/oauth/client/credentials";
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   readonly provider: ConnectorProvider = "slack";
@@ -97,6 +103,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           configuration.restrictedSpaceAgentsEnabled ?? true,
         feedbackVisibleToAuthorOnly:
           configuration.feedbackVisibleToAuthorOnly ?? true,
+        privateIntegrationCredentialId:
+          configuration.privateIntegrationCredentialId,
       }
     );
 
@@ -143,8 +151,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
       const newTeamId = teamInfoRes.team.id;
       if (newTeamId !== currentSlackConfig.slackTeamId) {
-        const configurations =
-          await SlackConfigurationResource.listForTeamId(newTeamId);
+        const configurations = await SlackConfigurationResource.listForTeamId(
+          newTeamId,
+          "slack"
+        );
 
         // Revoke the token if no other slack connector is active on the same slackTeamId.
         if (configurations.length == 0) {
@@ -156,10 +166,19 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             },
             `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
           );
+
+          const credentialsRes =
+            await getSlackClientCredentials(currentSlackConfig);
+          if (credentialsRes.isErr()) {
+            throw credentialsRes.error;
+          }
+
+          const { slackClientId, slackClientSecret } = credentialsRes.value;
+
           const uninstallRes = await uninstallSlack(
             connectionId,
-            slackConfig.getRequiredSlackClientId(),
-            slackConfig.getRequiredSlackClientSecret()
+            slackClientId,
+            slackClientSecret
           );
 
           if (uninstallRes.isErr()) {
@@ -228,7 +247,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }
 
     const configurations = await SlackConfigurationResource.listForTeamId(
-      configuration.slackTeamId
+      configuration.slackTeamId,
+      "slack"
     );
 
     // We deactivate our connections only if we are the only live slack connection for this team.
@@ -242,29 +262,41 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         `Attempting Slack app deactivation [cleanupSlackConnector]`
       );
 
-      try {
+      const credentialsRes = await getSlackClientCredentials(configuration);
+      if (credentialsRes.isErr()) {
+        if (!force) {
+          return credentialsRes;
+        }
+        logger.error(
+          {
+            connectorId: connector.id,
+            error: credentialsRes.error,
+          },
+          "Failed to retrieve Slack credentials, continuing due to force flag"
+        );
+      } else {
+        const { slackClientId, slackClientSecret } = credentialsRes.value;
+
         const uninstallRes = await uninstallSlack(
           connector.connectionId,
-          slackConfig.getRequiredSlackClientId(),
-          slackConfig.getRequiredSlackClientSecret()
+          slackClientId,
+          slackClientSecret
         );
 
         if (uninstallRes.isErr() && !force) {
           return uninstallRes;
         }
-      } catch (e) {
-        if (!force) {
-          throw e;
+
+        if (uninstallRes.isOk()) {
+          logger.info(
+            {
+              connectorId: connector.id,
+              slackTeamId: configuration.slackTeamId,
+            },
+            `Deactivated Slack app [cleanupSlackConnector]`
+          );
         }
       }
-
-      logger.info(
-        {
-          connectorId: connector.id,
-          slackTeamId: configuration.slackTeamId,
-        },
-        `Deactivated Slack app [cleanupSlackConnector]`
-      );
     } else {
       logger.info(
         {
@@ -274,6 +306,16 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         },
         `Skipping deactivation of the Slack app [cleanupSlackConnector]`
       );
+    }
+
+    // Resync webhook router configuration to remove deleted connector entry
+    const webhookUpdateRes = await resyncWebhookRouterConfig(
+      connector.id,
+      configuration.slackTeamId,
+      configurations
+    );
+    if (webhookUpdateRes.isErr() && !force) {
+      return webhookUpdateRes;
     }
 
     const res = await connector.delete();
@@ -346,7 +388,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }
 
     const channels = (
-      await SlackChannel.findAll({
+      await SlackChannelModel.findAll({
         where: {
           connectorId: this.connectorId,
           slackChannelId: Object.keys(permissions).map((k) =>
@@ -357,7 +399,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     ).reduce(
       (acc, c) => Object.assign(acc, { [c.slackChannelId]: c }),
       {} as {
-        [key: string]: SlackChannel;
+        [key: string]: SlackChannelModel;
       }
     );
 
@@ -386,7 +428,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
               `Could not get the Slack channel name for #${slackChannelId}.`
             );
           }
-          const slackChannel = await SlackChannel.create({
+          const slackChannel = await SlackChannelModel.create({
             connectorId: this.connectorId,
             slackChannelId: slackChannelId,
             slackChannelName: channelInfo.name,
@@ -609,6 +651,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Ok(undefined);
       }
 
+      case "privateIntegrationCredentialId": {
+        await slackConfig.model.update(
+          { privateIntegrationCredentialId: configValue },
+          { where: { id: slackConfig.id } }
+        );
+        return new Ok(undefined);
+      }
+
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -650,6 +700,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return restrictedSpaceAgentsEnabled;
       }
 
+      case "privateIntegrationCredentialId": {
+        const credentialId = await getPrivateIntegrationCredentialId(
+          this.connectorId
+        );
+        return credentialId;
+      }
+
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -682,6 +739,122 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
+  }
+}
+
+/**
+ * Retrieves Slack client credentials from either customer-specific credentials or environment variables.
+ */
+async function getSlackClientCredentials(
+  configuration: SlackConfigurationResource
+): Promise<
+  Result<{ slackClientId: string; slackClientSecret: string }, Error>
+> {
+  let slackClientId: string | undefined;
+  let slackClientSecret: string | undefined;
+
+  if (configuration.privateIntegrationCredentialId) {
+    const credentialsRes = await getConnectionCredentials({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      credentialsId: configuration.privateIntegrationCredentialId,
+    });
+
+    if (credentialsRes.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to retrieve customer credentials: ${credentialsRes.error.message}`
+        )
+      );
+    }
+
+    const credentials = credentialsRes.value.credential;
+    if (credentials.provider !== "slack") {
+      return new Err(
+        new Error(
+          `Invalid credential provider: expected 'slack', got '${credentials.provider}'`
+        )
+      );
+    }
+
+    const slackCredentials = credentials.content as SlackCredentials;
+    slackClientId = slackCredentials.client_id;
+    slackClientSecret = slackCredentials.client_secret;
+
+    logger.info(
+      {
+        connectorId: configuration.connectorId,
+        credentialId: configuration.privateIntegrationCredentialId,
+      },
+      "Using customer-specific Slack credentials"
+    );
+  } else {
+    slackClientId = slackConfig.getRequiredSlackClientId();
+    slackClientSecret = slackConfig.getRequiredSlackClientSecret();
+
+    logger.info(
+      { connectorId: configuration.connectorId },
+      "Using environment variable credentials for Slack (legacy connector)"
+    );
+  }
+
+  if (!slackClientId || !slackClientSecret) {
+    return new Err(new Error("Slack client credentials are not available"));
+  }
+
+  return new Ok({ slackClientId, slackClientSecret });
+}
+
+/**
+ * Resyncs webhook router configuration for a Slack team.
+ * Removes this connector from the list of active connectors for the region.
+ * If this is the last connector, the region entry is removed entirely.
+ */
+async function resyncWebhookRouterConfig(
+  connectorId: number,
+  slackTeamId: string,
+  configurations: SlackConfigurationResource[]
+): Promise<Result<undefined, Error>> {
+  try {
+    const webhookService = new WebhookRouterConfigService();
+    const currentRegion = connectorsConfig.getCurrentRegion();
+
+    const remainingConnectorIds = configurations
+      .filter((c) => c.connectorId !== connectorId)
+      .map((c) => c.connectorId);
+
+    await webhookService.syncEntry(
+      "slack",
+      slackTeamId,
+      undefined,
+      currentRegion,
+      remainingConnectorIds
+    );
+
+    logger.info(
+      {
+        connectorId,
+        slackTeamId,
+        region: currentRegion,
+        remainingConnectors: remainingConnectorIds.length,
+        isLastConnector: remainingConnectorIds.length === 0,
+      },
+      remainingConnectorIds.length === 0
+        ? "Resynced webhook router: removed region entry (last connector)"
+        : "Resynced webhook router: updated with remaining connectors"
+    );
+
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        connectorId,
+        slackTeamId,
+        error: normalizeError(e),
+      },
+      "Failed to resync webhook router configuration"
+    );
+    return new Err(normalizeError(e));
   }
 }
 
@@ -721,10 +894,19 @@ export async function uninstallSlack(
       );
     }
   } catch (e) {
-    if (e instanceof ExternalOAuthTokenError) {
+    // Handle auth-related errors by logging and continuing (the app can't be uninstalled if auth is invalid).
+    const isAuthError =
+      e instanceof ExternalOAuthTokenError ||
+      (isWebAPIPlatformError(e) &&
+        ["account_inactive", "invalid_auth", "missing_scope"].includes(
+          e.data.error
+        ));
+
+    if (isAuthError) {
       logger.info(
         {
           connectionId: connectionId,
+          error: normalizeError(e),
         },
         `Slack auth is invalid, skipping uninstallation of the Slack app`
       );
@@ -774,6 +956,21 @@ export async function getRestrictedSpaceAgentsEnabled(
   return new Ok(slackConfiguration.restrictedSpaceAgentsEnabled.toString());
 }
 
+export async function getPrivateIntegrationCredentialId(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfig =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+  return new Ok(slackConfig.privateIntegrationCredentialId ?? null);
+}
+
 async function getFilteredChannels(
   connectorId: number,
   filterPermission: ConnectorPermission | null
@@ -800,7 +997,7 @@ async function getFilteredChannels(
   }[] = [];
 
   if (filterPermission === "read") {
-    const localChannels = await SlackChannel.findAll({
+    const localChannels = await SlackChannelModel.findAll({
       where: {
         connectorId,
         permission: permissionToFilter,
@@ -820,7 +1017,7 @@ async function getFilteredChannels(
 
     const [remoteChannels, localChannels] = await Promise.all([
       getAllChannels(slackClient, connectorId),
-      SlackChannel.findAll({
+      SlackChannelModel.findAll({
         where: {
           connectorId,
           // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
@@ -829,11 +1026,11 @@ async function getFilteredChannels(
     ]);
 
     const localChannelsById = localChannels.reduce(
-      (acc: Record<string, SlackChannel>, ch: SlackChannel) => {
+      (acc: Record<string, SlackChannelModel>, ch: SlackChannelModel) => {
         acc[ch.slackChannelId] = ch;
         return acc;
       },
-      {} as Record<string, SlackChannel>
+      {} as Record<string, SlackChannelModel>
     );
 
     for (const remoteChannel of remoteChannels) {

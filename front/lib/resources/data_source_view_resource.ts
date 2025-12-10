@@ -1,6 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 import assert from "assert";
 import keyBy from "lodash/keyBy";
 import type {
@@ -16,9 +16,9 @@ import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -725,7 +725,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const agentDataSourceConfigurations =
-      await AgentDataSourceConfiguration.findAll({
+      await AgentDataSourceConfigurationModel.findAll({
         where: {
           dataSourceViewId: this.id,
           workspaceId,
@@ -733,7 +733,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       });
 
     const agentTablesQueryConfigurations =
-      await AgentTablesQueryConfigurationTable.findAll({
+      await AgentTablesQueryConfigurationTableModel.findAll({
         where: {
           dataSourceViewId: this.id,
           workspaceId,
@@ -746,7 +746,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       )
     );
 
-    await AgentDataSourceConfiguration.destroy({
+    await AgentDataSourceConfigurationModel.destroy({
       where: {
         dataSourceViewId: this.id,
         workspaceId,
@@ -754,7 +754,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       transaction,
     });
 
-    await AgentTablesQueryConfigurationTable.destroy({
+    await AgentTablesQueryConfigurationTableModel.destroy({
       where: {
         dataSourceViewId: this.id,
         workspaceId,
@@ -764,7 +764,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     // Delete associated MCP server configurations.
     if (mcpServerConfigurationIds.length > 0) {
-      await AgentMCPServerConfiguration.destroy({
+      await AgentMCPServerConfigurationModel.destroy({
         where: {
           id: {
             [Op.in]: mcpServerConfigurationIds,

@@ -1,4 +1,6 @@
-import { isString, safeParseJSON } from "@app/types";
+import logger from "@app/logger/logger";
+import type { ResponseFormat } from "@app/types";
+import { isString, ResponseFormatSchema, safeParseJSON } from "@app/types";
 
 export async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   for (const item of items) {
@@ -34,4 +36,34 @@ export function extractIdFromMetadata(metadata: string): string {
       ? parsed.value.id
       : "";
   return id;
+}
+
+export function parseResponseFormatSchema(
+  responseFormat: string | null,
+  providerId?: string
+): ResponseFormat | undefined {
+  if (!responseFormat) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseFormat);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    logger.info(
+      { responseFormat, providerId },
+      "Failed to parse response format to JSON"
+    );
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+  if (responseFormatResult.error) {
+    logger.info(
+      { responseFormat, providerId },
+      "Failed to parse response format JSON to schema"
+    );
+    return;
+  }
+  return responseFormatResult.data;
 }

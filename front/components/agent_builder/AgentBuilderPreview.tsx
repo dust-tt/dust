@@ -7,7 +7,6 @@ import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
@@ -17,6 +16,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
 import type {
@@ -28,6 +28,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { toRichAgentMentionType } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
 interface EmptyStateProps {
@@ -111,14 +112,13 @@ function PreviewContent({
         {!conversation && (
           <div className="mx-4 flex-shrink-0 py-4">
             <InputBar
-              disable={isSavingDraftAgent}
+              isSubmitting={isSavingDraftAgent}
               owner={owner}
               onSubmit={createConversation}
               stickyMentions={
-                draftAgent ? [{ configurationId: draftAgent.sId }] : []
+                draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
               conversationId={null}
-              additionalAgentConfiguration={draftAgent ?? undefined}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
@@ -197,6 +197,7 @@ export function AgentBuilderPreview() {
 
       // Update existing draft if agent name changed (with debouncing)
       // Normalize names for comparison (empty string becomes "Preview")
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedCurrentName = agentName?.trim() || "Preview";
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedDraftName = draftAgent?.name?.trim() || "Preview";

@@ -12,6 +12,7 @@ import type { MouseEvent } from "react";
 import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { clientFetch } from "@app/lib/egress/client";
 import { checkProvider } from "@app/lib/providers";
 import type { WorkspaceType } from "@app/types";
 
@@ -314,6 +315,7 @@ export function ProviderSetup({
     for (const field of fields) {
       newValues[field.name] = config[field.name] || "";
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues(newValues);
     setTestSuccessful(false);
     setTestError("");
@@ -347,7 +349,7 @@ export function ProviderSetup({
       payload[field.name] = values[field.name];
     }
 
-    await fetch(`/api/w/${owner.sId}/providers/${providerId}`, {
+    await clientFetch(`/api/w/${owner.sId}/providers/${providerId}`, {
       headers: { "Content-Type": "application/json" },
       method: "POST",
       body: JSON.stringify({ config: JSON.stringify(payload) }),
@@ -358,7 +360,7 @@ export function ProviderSetup({
   };
 
   const handleDisable = async () => {
-    await fetch(`/api/w/${owner.sId}/providers/${providerId}`, {
+    await clientFetch(`/api/w/${owner.sId}/providers/${providerId}`, {
       method: "DELETE",
     });
     await mutate(`/api/w/${owner.sId}/providers`);

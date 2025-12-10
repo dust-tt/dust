@@ -24,16 +24,18 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
-import { CreditsList } from "@app/components/workspace/CreditsList";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isEntreprisePlan, isUpgraded } from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isProPlan,
+  isWhitelistedBusinessPlan,
+} from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -107,18 +109,9 @@ export default function Subscription({
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
-  const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const isEnterprise = isEntreprisePlan(subscription.plan.code);
-  const isPPULEnabled = hasFeature("ppul_credits_purchase_flow");
-  const { credits, isCreditsLoading } = useCredits({
-    workspaceId: owner.sId,
-    disabled: !isPPULEnabled,
-  });
-  const { isLoading: isPurchasingCredits } = usePurchaseCredits({
-    workspaceId: owner.sId,
-  });
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   useEffect(() => {
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
@@ -148,7 +141,7 @@ export default function Subscription({
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -189,10 +182,41 @@ export default function Subscription({
     window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });
 
+  const {
+    submit: handleUpgradeToBusiness,
+    isSubmitting: isUpgradingToBusiness,
+  } = useSubmitFunction(async () => {
+    const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "upgrade_to_business",
+      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+    });
+
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Upgrade failed",
+        description: "Failed to upgrade to Enterprise seat-based plan.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Upgrade successful",
+        description:
+          "Your workspace has been upgraded to Enterprise seat-based plan.",
+      });
+      router.reload();
+    }
+  });
+
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -224,7 +248,7 @@ export default function Subscription({
   const { submit: cancelFreeTrial, isSubmitting: cancelFreeTrialSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -252,9 +276,15 @@ export default function Subscription({
       }
     });
 
-  const isProcessing = isSubscribingPlan || isGoingToStripePortal;
-
   const plan = subscription.plan;
+  const isWorkspaceOnProPlan = isProPlan(plan);
+  const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
+  const canUpsellToBusinessPlan =
+    isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
+
+  const isProcessing =
+    isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
+
   const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
   const onClickProPlan = async () => handleSubscribePlan();
@@ -278,7 +308,11 @@ export default function Subscription({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "subscription",
+        featureFlags,
+      })}
     >
       {perSeatPricing && (
         <>
@@ -302,13 +336,6 @@ export default function Subscription({
           />
         </>
       )}
-
-      <BuyCreditDialog
-        isOpen={showBuyCreditDialog}
-        onClose={() => setShowBuyCreditDialog(false)}
-        workspaceId={owner.sId}
-        isEnterprise={isEnterprise}
-      />
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
@@ -444,32 +471,27 @@ export default function Subscription({
               </div>
             </Page.Vertical>
           )}
-          {isPPULEnabled && subscription.stripeSubscriptionId && (
+          {canUpsellToBusinessPlan && (
             <Page.Vertical gap="sm">
-              <div className="flex w-full items-center justify-between">
-                <Page.H variant="h5">Programmatic Usage Credits</Page.H>
+              <Page.H variant="h5">Upgrade your plan</Page.H>
+              <Page.P>
+                You are eligible to upgrade to the Enteprise seat-based plan
+                with additional features.
+              </Page.P>
+              <div>
                 <Button
-                  label="Buy Credits"
+                  label="Upgrade to Enterprise seat-based plan"
                   variant="primary"
-                  disabled={subscription.trialing || isPurchasingCredits}
-                  isLoading={isPurchasingCredits}
+                  disabled={isProcessing}
                   onClick={withTracking(
                     TRACKING_AREAS.AUTH,
-                    "subscription_buy_credits",
+                    "subscription_upgrade_to_business",
                     () => {
-                      setShowBuyCreditDialog(true);
+                      void handleUpgradeToBusiness();
                     }
                   )}
                 />
               </div>
-              <Page.P>Purchase credits for programmatic API usage</Page.P>
-              <CreditsList credits={credits} isLoading={isCreditsLoading} />
-              {subscription.trialing && (
-                <ContentMessage title="Available after trial" variant="info">
-                  Credit purchases are available once you upgrade to a paid
-                  plan.
-                </ContentMessage>
-              )}
             </Page.Vertical>
           )}
           {displayPricingTable && (
@@ -478,6 +500,7 @@ export default function Subscription({
                 <Page.H variant="h5">Manage my plan</Page.H>
                 <div className="h-full w-full pt-2">
                   <PricePlans
+                    owner={owner}
                     plan={plan}
                     onClickProPlan={onClickProPlan}
                     isProcessing={isProcessing}

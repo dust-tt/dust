@@ -41,6 +41,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/triggers/webhook");
     case "analytics_queue":
       return path.join(baseDir, "temporal/analytics_queue");
+    case "credit_alerts":
+      return path.join(baseDir, "temporal/credit_alerts");
     case "data_retention":
       return path.join(baseDir, "temporal/data_retention");
     case "document_tracker":
@@ -69,6 +71,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/upsert_queue");
     case "upsert_table_queue":
       return path.join(baseDir, "temporal/upsert_tables");
+    case "es_indexation_queue":
+      return path.join(baseDir, "temporal/es_indexation");
     case "workos_events_queue":
       return path.join(baseDir, "temporal/workos_events_queue");
     default:

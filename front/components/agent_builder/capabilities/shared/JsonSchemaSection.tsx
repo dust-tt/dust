@@ -6,6 +6,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { clientFetch } from "@app/lib/egress/client";
 
 interface JsonSchemaSectionProps {
   getAgentInstructions: () => string;
@@ -48,7 +49,7 @@ export function JsonSchemaSection({
         fullInstructions += `\n\nTool description:\n${toolDescription}`;
       }
 
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
         {
           method: "POST",
@@ -66,6 +67,7 @@ export function JsonSchemaSection({
       }
 
       const data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const schemaObject = data.schema || null;
       const schemaString = schemaObject
         ? JSON.stringify(schemaObject, null, 2)
@@ -73,6 +75,7 @@ export function JsonSchemaSection({
 
       jsonSchemaField.onChange(schemaObject);
       jsonSchemaStringField.onChange(schemaString);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       sendNotification({
         title: "Failed to generate schema.",

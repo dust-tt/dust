@@ -14,23 +14,16 @@ permissions:
 
 jobs:
   tests:
+    name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
+    strategy:
+      matrix:
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
-        working-directory: front
-        run: npm ci
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:
@@ -53,58 +46,59 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
+        run: npx tsx admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
         with:
-          report_paths: "**/front/junit*.xml"
+          report_paths: "front/junit-shard-${{ matrix.shardIndex }}.xml"
           detailed_summary: true
           flaky_summary: true
           group_suite: true
-          check_name: Tests Report
+          check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
   tsc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
-        working-directory: front
-        run: npm ci
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Typecheck
         working-directory: front
-        run: npx tsc --version && npm run tsc
+        run: npx tsgo --version && npm run tsgo
+  circular:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Biome - Circular Dependency Check
+        working-directory: front
+        run: |
+          npm run lint:circular
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Cache ESLint
+        id: eslint-cache
+        uses: actions/cache@v4
         with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Install SDK/JS
-        working-directory: sdks/js
-        run: npm install
-      - name: Install Front
-        working-directory: front
-        run: npm install
+          path: front/.cache/
+          key: eslint-cache-v4-${{ runner.os }}-${{ hashFiles('front/eslint.config.ts', 'front/tsconfig.json', 'front/package-lock.json') }}
+          restore-keys: |
+            eslint-cache-v4-${{ runner.os }}-
       - name: Lint
         working-directory: front
-        run: npm run lint && npm run format:check
-      # - name: Validate API Doc
-      #   working-directory: front
-      #   run: npm run docs
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        run: npm run lint
+      - name: Format Check
+        working-directory: front
+        run: |
+          npm run format:check
+      - name: Knip
+        uses: ./.github/actions/knip
+        with:
+          working_directory: front

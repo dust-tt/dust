@@ -4,7 +4,7 @@ import { BREVITY_PROMPT } from "@app/lib/api/assistant/global_agents/guidelines"
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -30,7 +30,7 @@ function _getManagedDataSourceAgent(
     preFetchedDataSources,
     searchMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     connectorProvider: ConnectorProvider;
     agentId: GLOBAL_AGENTS_SID;
     name: string;
@@ -79,7 +79,6 @@ function _getManagedDataSourceAgent(
 
   // Check if deactivated by an admin
   if (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (settings && settings.status === "disabled_by_admin") ||
     !modelConfiguration
   ) {
@@ -155,7 +154,7 @@ export function _getGoogleDriveGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
   }
@@ -185,7 +184,7 @@ export function _getSlackGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
   }
@@ -215,7 +214,7 @@ export function _getGithubGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
   }
@@ -245,7 +244,7 @@ export function _getNotionGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
   }
@@ -275,7 +274,7 @@ export function _getIntercomGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView,
   }: {
-    settings: GlobalAgentSettings | null;
+    settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
   }

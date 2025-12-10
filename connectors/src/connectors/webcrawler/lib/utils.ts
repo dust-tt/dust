@@ -5,8 +5,8 @@ import { NonRetryableError } from "crawlee";
 import dns from "dns";
 
 import type {
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import type { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
@@ -49,6 +49,7 @@ export function stableIdForUrl({
       : ressourceType === "table"
         ? "database"
         : "folder";
+  // @ts-expect-error -- migration to tsgo
   return Buffer.from(blake3(`${typePrefix}-${url}`)).toString("hex");
 }
 
@@ -122,7 +123,7 @@ export function normalizeFolderUrl(url: string) {
   return result;
 }
 
-export function getDisplayNameForPage(page: WebCrawlerPage): string {
+export function getDisplayNameForPage(page: WebCrawlerPageModel): string {
   const parsed = new URL(page.url);
   let result = "";
   const fragments = parsed.pathname.split("/").filter((x) => x);
@@ -141,7 +142,7 @@ export function getDisplayNameForPage(page: WebCrawlerPage): string {
   return result;
 }
 
-export function getDisplayNameForFolder(folder: WebCrawlerFolder): string {
+export function getDisplayNameForFolder(folder: WebCrawlerFolderModel): string {
   return (
     new URL(folder.url).pathname
       .split("/")

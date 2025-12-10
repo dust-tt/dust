@@ -15,8 +15,20 @@ export async function* streamLLMEvents(
     number,
     { id: string; name: string; arguments: string }
   > = new Map();
+  let hasYieldedResponseId = false;
 
   for await (const chunk of chatCompletionStream) {
+    if (!hasYieldedResponseId) {
+      yield {
+        type: "interaction_id",
+        content: {
+          modelInteractionId: chunk.id,
+        },
+        metadata,
+      };
+      hasYieldedResponseId = true;
+    }
+
     const choice = chunk.choices[0];
     if (!choice) {
       continue;

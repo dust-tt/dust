@@ -9,7 +9,6 @@ export function listGeneratedFiles(
 
   for (const versions of conversation.content) {
     const message = versions[versions.length - 1];
-
     if (isAgentMessageType(message)) {
       const generatedFiles = message.actions.flatMap(
         (action) => action.generatedFiles

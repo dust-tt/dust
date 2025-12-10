@@ -13,11 +13,18 @@ export function useMentionSuggestions({
   workspaceId,
   conversationId,
   query = "",
+  preferredAgentId,
+  select,
   disabled = false,
 }: {
   workspaceId: string;
   conversationId: string | null;
   query?: string;
+  preferredAgentId?: string | null;
+  select: {
+    agents: boolean;
+    users: boolean;
+  };
   disabled?: boolean;
 }) {
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
@@ -34,25 +41,34 @@ export function useMentionSuggestions({
   }, [query]);
 
   const searchParams = new URLSearchParams({ query: debouncedSearchQuery });
-  if (conversationId) {
-    searchParams.append("conversationId", conversationId);
+
+  if (select.agents) {
+    searchParams.append("select", "agents");
+  }
+  if (select.users) {
+    searchParams.append("select", "users");
+  }
+  if (preferredAgentId) {
+    searchParams.append("preferredAgentId", preferredAgentId);
   }
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/mentions/suggestions?${searchParams.toString()}`,
-    suggestionsFetcher,
-    {
-      // Keep previous data while fetching new suggestions for better UX
-      keepPreviousData: true,
-      // We don't revalidate on focus to avoid unnecessary requests
-      revalidateOnFocus: false,
-      // Don't revalidate on reconnect for better performance
-      revalidateOnReconnect: false,
-      // Cache suggestions for 5 minutes
-      dedupingInterval: 5 * 60 * 1000,
-      disabled,
-    }
-  );
+  const url =
+    (conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/mentions/suggestions`
+      : `/api/w/${workspaceId}/assistant/mentions/suggestions`) +
+    `?${searchParams.toString()}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, suggestionsFetcher, {
+    // Keep previous data while fetching new suggestions for better UX
+    keepPreviousData: true,
+    // We don't revalidate on focus to avoid unnecessary requests
+    revalidateOnFocus: false,
+    // Don't revalidate on reconnect for better performance
+    revalidateOnReconnect: false,
+    // Cache suggestions for 5 minutes
+    dedupingInterval: 5 * 60 * 1000,
+    disabled,
+  });
 
   return {
     suggestions: data?.suggestions ?? [],

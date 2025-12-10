@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId, SupportedModel } from "@app/types";
@@ -27,7 +27,7 @@ async function findMatchingWorkspaces(
     };
   }
 
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: whereClause,
     attributes: ["workspaceId"],
     raw: true,
@@ -56,7 +56,7 @@ async function updateWorkspaceAssistants(
     };
   }
 
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: whereClause,
   });
 

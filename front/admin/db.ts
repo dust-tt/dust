@@ -1,60 +1,66 @@
-import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/assistant/actions/internal_mcp_server_credentials";
+import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import {
-  AgentChildAgentConfiguration,
+  AgentChildAgentConfigurationModel,
   AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+  AgentMCPActionOutputItemModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
+import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
-  AgentConfiguration,
-  AgentUserRelation,
-  GlobalAgentSettings,
-} from "@app/lib/models/assistant/agent";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+  AgentConfigurationModel,
+  AgentUserRelationModel,
+  GlobalAgentSettingsModel,
+} from "@app/lib/models/agent/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
-  AgentMessageFeedback,
+  AgentMessageFeedbackModel,
+  AgentMessageModel,
   ConversationModel,
   ConversationParticipantModel,
-  Mention,
-  Message,
-  MessageReaction,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+  MentionModel,
+  MessageModel,
+  MessageReactionModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
   TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import {
+  SkillConfigurationModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
+import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import {
   AppModel,
-  Clone,
-  Dataset,
-  Provider,
+  CloneModel,
+  DatasetModel,
+  ProviderModel,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
@@ -110,13 +116,13 @@ async function main() {
 
   await SpaceModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
-  await Dataset.sync({ alter: true });
-  await Provider.sync({ alter: true });
-  await Clone.sync({ alter: true });
+  await DatasetModel.sync({ alter: true });
+  await ProviderModel.sync({ alter: true });
+  await CloneModel.sync({ alter: true });
   await KeyModel.sync({ alter: true });
   await FileModel.sync({ alter: true });
   await ShareableFileModel.sync({ alter: true });
-  await DustAppSecret.sync({ alter: true });
+  await DustAppSecretModel.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
 
   await WebhookSourceModel.sync({ alter: true });
@@ -141,47 +147,47 @@ async function main() {
 
   await ExtensionConfigurationModel.sync({ alter: true });
 
-  await Plan.sync({ alter: true });
-  await Subscription.sync({ alter: true });
+  await PlanModel.sync({ alter: true });
+  await SubscriptionModel.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
   await CreditModel.sync({ alter: true });
   await ProgrammaticUsageConfigurationModel.sync({ alter: true });
 
-  await AgentConfiguration.sync({ alter: true });
-  await AgentUserRelation.sync({ alter: true });
-  await GlobalAgentSettings.sync({ alter: true });
+  await AgentConfigurationModel.sync({ alter: true });
+  await AgentUserRelationModel.sync({ alter: true });
+  await GlobalAgentSettingsModel.sync({ alter: true });
   await TagAgentModel.sync({ alter: true });
   await GroupAgentModel.sync({ alter: true });
 
   await RemoteMCPServerModel.sync({ alter: true });
   await MCPServerViewModel.sync({ alter: true });
-  await MCPServerConnection.sync({ alter: true });
+  await MCPServerConnectionModel.sync({ alter: true });
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
   await InternalMCPServerCredentialModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 
-  await AgentMCPServerConfiguration.sync({ alter: true });
-  await AgentTablesQueryConfigurationTable.sync({ alter: true });
-  await AgentReasoningConfiguration.sync({ alter: true });
+  await AgentMCPServerConfigurationModel.sync({ alter: true });
+  await AgentTablesQueryConfigurationTableModel.sync({ alter: true });
+  await AgentReasoningConfigurationModel.sync({ alter: true });
 
-  await AgentDataSourceConfiguration.sync({ alter: true });
+  await AgentDataSourceConfigurationModel.sync({ alter: true });
 
-  await UserMessage.sync({ alter: true });
-  await AgentMessage.sync({ alter: true });
-  await AgentMessageFeedback.sync({ alter: true });
+  await UserMessageModel.sync({ alter: true });
+  await AgentMessageModel.sync({ alter: true });
+  await AgentMessageFeedbackModel.sync({ alter: true });
   await ContentFragmentModel.sync({ alter: true });
-  await Message.sync({ alter: true });
-  await MessageReaction.sync({ alter: true });
-  await Mention.sync({ alter: true });
+  await MessageModel.sync({ alter: true });
+  await MessageReactionModel.sync({ alter: true });
+  await MentionModel.sync({ alter: true });
 
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
   await AgentMCPActionModel.sync({ alter: true });
-  await AgentMCPActionOutputItem.sync({ alter: true });
-  await AgentChildAgentConfiguration.sync({ alter: true });
+  await AgentMCPActionOutputItemModel.sync({ alter: true });
+  await AgentChildAgentConfigurationModel.sync({ alter: true });
 
-  await FeatureFlag.sync({ alter: true });
+  await FeatureFlagModel.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
 
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
@@ -191,6 +197,11 @@ async function main() {
 
   await AgentMemoryModel.sync({ alter: true });
   await OnboardingTaskModel.sync({ alter: true });
+
+  await SkillConfigurationModel.sync({ alter: true });
+  await GroupSkillModel.sync({ alter: true });
+  await AgentSkillModel.sync({ alter: true });
+  await SkillMCPServerConfigurationModel.sync({ alter: true });
 
   process.exit(0);
 }

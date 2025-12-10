@@ -1,25 +1,17 @@
 import { z } from "zod";
 
+import { FlexibleEnumSchema } from "./helpers";
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationInteractiveContentFileContentSchema } from "./output_schemas";
+import {
+  NotificationInteractiveContentFileContentSchema,
+  OAuthProviderSchema,
+} from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
-
-type StringLiteral<T> = T extends string
-  ? string extends T
-    ? never
-    : T
-  : never;
-
-// Custom schema to get a string literal type and yet allow any string when parsing
-const FlexibleEnumSchema = <T extends string>() =>
-  z.custom<StringLiteral<T>>((val) => {
-    return typeof val === "string";
-  });
 
 const ModelProviderIdSchema = FlexibleEnumSchema<
   | "openai"
@@ -78,7 +70,9 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
-  | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
+  | "accounts/fireworks/models/deepseek-v3p2" // fireworks
+  | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
+  | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -305,6 +299,8 @@ export function isSupportedAudioContentType(
 const UserMessageOriginSchema = FlexibleEnumSchema<
   | "agent_handover"
   | "api"
+  | "cli"
+  | "cli_programmatic"
   | "email"
   | "excel"
   | "extension"
@@ -316,6 +312,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "raycast"
   | "run_agent"
   | "slack"
+  | "slack_workflow"
   | "teams"
   | "transcript"
   | "triggered_programmatic"
@@ -641,27 +638,26 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
-  | "agent_builder_instructions_autocomplete"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
-  | "claude_4_opus_feature"
   | "claude_4_5_opus_feature"
+  | "claude_4_opus_feature"
   | "confluence_tool"
+  | "databricks_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
-  | "dust_edge_global_agent"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
-  | "elevenlabs_tool"
+  | "dust_edge_global_agent"
+  | "dust_quick_global_agent"
+  | "fireworks_new_model_feature"
   | "freshservice_tool"
   | "front_tool"
-  | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
-  | "hootl_dev_webhooks"
   | "hootl_subscriptions"
   | "http_client_tool"
   | "index_private_slack_channel"
@@ -669,8 +665,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
-  | "llm_comparison_mode_enabled"
-  | "llm_router_direct_requests"
   | "mentions_v2"
   | "monday_tool"
   | "noop_model_feature"
@@ -678,26 +672,27 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
-  | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
-  | "ppul_credits_purchase_flow"
+  | "restrict_agents_publishing"
   | "salesforce_synced_queries"
-  | "salesforce_tool"
   | "salesforce_tool_write"
+  | "salesforce_tool"
   | "salesloft_tool"
+  | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
+  | "skills"
+  | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
-  | "slack_semantic_search"
-  | "slab_mcp"
   | "slideshow"
+  | "universal_search"
   | "usage_data_api"
-  | "use_requested_space_ids"
+  | "use_bulk_search_data_sources_api"
+  | "vanta_tool"
   | "web_summarization"
   | "xai_feature"
-  | "programmatic_usage_metrics"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -972,6 +967,8 @@ export type UserMentionType = z.infer<typeof UserMentionSchema>;
 
 const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
 
+export type MentionType = z.infer<typeof MentionSchema>;
+
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
@@ -1135,13 +1132,13 @@ export type ConversationMessageReactionsType = z.infer<
 const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
 
 const MCPValidationMetadataSchema = z.object({
-  mcpServerName: z.string(),
-  toolName: z.string(),
   agentName: z.string(),
-  pubsubMessageId: z.string().optional(),
   icon: z
     .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
     .optional(),
+  mcpServerName: z.string(),
+  pubsubMessageId: z.string().optional(),
+  toolName: z.string(),
 });
 
 const MCPParamsEventSchema = z.object({
@@ -1263,7 +1260,10 @@ const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
-  metadata: MCPValidationMetadataSchema,
+  metadata: MCPValidationMetadataSchema.extend({
+    mcpServerDisplayName: z.string().optional(),
+    mcpServerId: z.string().optional(),
+  }),
 });
 
 const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
@@ -1278,6 +1278,7 @@ export type BlockedActionExecutionType = z.infer<
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
+  userId: z.string().optional(),
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
@@ -1287,6 +1288,32 @@ const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
 
 export type MCPApproveExecutionEvent = z.infer<
   typeof MCPApproveExecutionEventSchema
+>;
+
+const AuthErrorSchema = z.object({
+  mcpServerId: z.string(),
+  message: z.string(),
+  provider: OAuthProviderSchema,
+  scope: z.string().optional(),
+  toolName: z.string(),
+});
+
+const ToolPersonalAuthRequiredEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_personal_auth_required"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  authError: AuthErrorSchema,
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+  metadata: MCPValidationMetadataSchema.extend({
+    mcpServerDisplayName: z.string(),
+    mcpServerId: z.string(),
+  }),
+});
+
+export type ToolPersonalAuthRequiredEvent = z.infer<
+  typeof ToolPersonalAuthRequiredEventSchema
 >;
 
 const ToolErrorEventSchema = z.object({
@@ -1331,6 +1358,7 @@ const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
+  ToolPersonalAuthRequiredEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -1513,6 +1541,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "rate_limit_error"
   | "run_error"
   | "run_not_found"
+  | "skill_not_found"
   | "space_already_exists"
   | "space_not_found"
   | "stripe_invalid_product_id_error"
@@ -2751,7 +2780,7 @@ export type CancelMessageGenerationRequestType = z.infer<
 
 // Typeguards.
 
-export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
+export function isAgentMention(arg: MentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
 
@@ -2834,31 +2863,6 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
-const OAuthProviderSchema = FlexibleEnumSchema<
-  | "confluence"
-  | "confluence_tools"
-  | "discord"
-  | "fathom"
-  | "freshservice"
-  | "github"
-  | "google_drive"
-  | "gmail"
-  | "intercom"
-  | "jira"
-  | "linear"
-  | "monday"
-  | "notion"
-  | "slack"
-  | "gong"
-  | "microsoft"
-  | "microsoft_tools"
-  | "zendesk"
-  | "salesforce"
-  | "hubspot"
-  | "mcp"
-  | "mcp_static"
->();
-
 const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionBrainIcon"
   | "ActionCloudArrowLeftRightIcon"
@@ -2903,6 +2907,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
+  | "SupabaseLogo"
   | "ValTownLogo"
   | "ZendeskLogo"
 >();
@@ -3347,3 +3352,41 @@ export interface GetSpaceMembersResponseBody {
 export interface GetWorkspaceMembersResponseBody {
   users: Pick<UserType, "sId" | "id" | "email">[];
 }
+
+const RichMentionSchema = z.object({
+  id: z.string(),
+  type: z.enum(["agent", "user"]),
+  label: z.string(),
+  pictureUrl: z.string(),
+  description: z.string(),
+  userFavorite: z.boolean().optional(),
+});
+
+export type RichMention = z.infer<typeof RichMentionSchema>;
+
+export const GetMentionSuggestionsRequestQuerySchema = z.object({
+  query: z.string(),
+  select: z
+    .union([z.array(z.enum(["agents", "users"])), z.enum(["agents", "users"])])
+    .optional(),
+});
+
+export const GetMentionSuggestionsResponseBodySchema = z.object({
+  suggestions: z.array(RichMentionSchema),
+});
+
+export type GetMentionSuggestionsResponseBodyType = z.infer<
+  typeof GetMentionSuggestionsResponseBodySchema
+>;
+
+export const ParseMentionsRequestBodySchema = z.object({
+  markdown: z.string(),
+});
+
+export const ParseMentionsResponseBodySchema = z.object({
+  markdown: z.string(),
+});
+
+export type ParseMentionsResponseBodyType = z.infer<
+  typeof ParseMentionsResponseBodySchema
+>;

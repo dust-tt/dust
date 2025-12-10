@@ -33,6 +33,7 @@ export async function* streamLLMEvents({
   // So we have to aggregate it ourselves as we receive text chunks
   let textContentParts = "";
   let reasoningContentParts = "";
+  let hasYieldedResponseId = false;
 
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
@@ -58,6 +59,18 @@ export async function* streamLLMEvents({
         generateContentResponse.candidates.length > 0,
       "Expected at least one candidate in the response"
     );
+
+    const modelInteractionId = generateContentResponse.responseId;
+    if (!hasYieldedResponseId && modelInteractionId) {
+      yield {
+        type: "interaction_id",
+        content: {
+          modelInteractionId,
+        },
+        metadata,
+      };
+      hasYieldedResponseId = true;
+    }
 
     const candidate = generateContentResponse.candidates[0];
 

@@ -8,7 +8,7 @@ import {
   _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationStatus,
@@ -40,7 +40,7 @@ export function _getGPT35TurboGlobalAgent({
   webSearchBrowseMCPServerView,
   interactiveContentMCPServerView,
 }: {
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -94,7 +94,7 @@ export function _getGPT4GlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -155,7 +155,7 @@ export function _getGPT5GlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -226,7 +226,7 @@ export function _getGPT5ThinkingGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -291,7 +291,7 @@ export function _getGPT5MiniGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -355,7 +355,7 @@ export function _getGPT5NanoGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -420,7 +420,7 @@ export function _getO3MiniGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -482,7 +482,7 @@ export function _getO1GlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -537,7 +537,7 @@ export function _getO1MiniGlobalAgent({
   settings,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -583,7 +583,7 @@ export function _getO1HighReasoningGlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
@@ -641,7 +641,7 @@ export function _getO3GlobalAgent({
   interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {

@@ -43,10 +43,10 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
+  GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -265,7 +265,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       if (filterPermission === "read") {
         if (parentDriveId === null) {
           // Return the list of folders explicitly selected by the user.
-          const folders = await GoogleDriveFolders.findAll({
+          const folders = await GoogleDriveFoldersModel.findAll({
             where: {
               connectorId: this.connectorId,
             },
@@ -286,7 +286,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           return new Ok(nodes);
         } else {
           // Return the list of all folders and files synced in a parent folder.
-          const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
+          const where: WhereOptions<InferAttributes<GoogleDriveFilesModel>> = {
             connectorId: this.connectorId,
             parentId: parentDriveId,
           };
@@ -298,12 +298,12 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
               "application/vnd.google-apps.spreadsheet",
             ];
           }
-          const folderOrFiles = await GoogleDriveFiles.findAll({
+          const folderOrFiles = await GoogleDriveFilesModel.findAll({
             where,
           });
-          let sheets: GoogleDriveSheet[] = [];
+          let sheets: GoogleDriveSheetModel[] = [];
           if (isTablesView) {
-            sheets = await GoogleDriveSheet.findAll({
+            sheets = await GoogleDriveSheetModel.findAll({
               where: {
                 connectorId: this.connectorId,
                 driveFileId: parentDriveId,
@@ -400,7 +400,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   this.connectorId,
                   driveObject.id
                 ),
-                permission: (await GoogleDriveFolders.findOne({
+                permission: (await GoogleDriveFoldersModel.findOne({
                   where: {
                     connectorId: this.connectorId,
                     folderId: driveObject.id,
@@ -495,7 +495,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   driveObject.id
                 ),
                 lastUpdatedAt: driveObject.updatedAtMs || null,
-                permission: (await GoogleDriveFolders.findOne({
+                permission: (await GoogleDriveFoldersModel.findOne({
                   where: {
                     connectorId: this.connectorId,
                     folderId: driveObject.id,
@@ -554,7 +554,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       const id = getDriveFileId(internalId);
       if (permission === "none") {
         removedFolderIds.push(id);
-        await GoogleDriveFolders.destroy({
+        await GoogleDriveFoldersModel.destroy({
           where: {
             connectorId: this.connectorId,
             folderId: id,
@@ -562,7 +562,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
       } else if (permission === "read") {
         addedFolderIds.push(id);
-        await GoogleDriveFolders.upsert({
+        await GoogleDriveFoldersModel.upsert({
           connectorId: this.connectorId,
           folderId: id,
         });
@@ -613,7 +613,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new Error(`Connector not found with id ${this.connectorId}`)
       );
     }
-    const config = await GoogleDriveConfig.findOne({
+    const config = await GoogleDriveConfigModel.findOne({
       where: { connectorId: this.connectorId },
     });
     if (!config) {
@@ -741,7 +741,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new Error(`Connector not found with id ${this.connectorId}`)
       );
     }
-    const config = await GoogleDriveConfig.findOne({
+    const config = await GoogleDriveConfigModel.findOne({
       where: { connectorId: this.connectorId },
     });
     if (!config) {
@@ -812,7 +812,7 @@ async function getFoldersAsContentNodes({
   viewType,
 }: {
   authCredentials: OAuth2Client;
-  folders: GoogleDriveFolders[];
+  folders: GoogleDriveFoldersModel[];
   viewType: ContentNodesViewType;
 }) {
   return concurrentExecutor(
@@ -849,9 +849,9 @@ async function getFoldersAsContentNodes({
 }
 
 export function getSourceUrlForGoogleDriveFiles(
-  f: GoogleDriveFiles | GoogleDriveObjectType
+  f: GoogleDriveFilesModel | GoogleDriveObjectType
 ): string {
-  const driveFileId = f instanceof GoogleDriveFiles ? f.driveFileId : f.id;
+  const driveFileId = f instanceof GoogleDriveFilesModel ? f.driveFileId : f.id;
 
   if (isGoogleDriveSpreadSheetFile(f)) {
     return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit`;
@@ -863,10 +863,11 @@ export function getSourceUrlForGoogleDriveFiles(
 }
 
 export function getSourceUrlForGoogleDriveSheet(
-  s: GoogleDriveSheet | Sheet
+  s: GoogleDriveSheetModel | Sheet
 ): string {
   const driveFileId =
-    s instanceof GoogleDriveSheet ? s.driveFileId : s.spreadsheet.id;
-  const driveSheetId = s instanceof GoogleDriveSheet ? s.driveSheetId : s.id;
+    s instanceof GoogleDriveSheetModel ? s.driveFileId : s.spreadsheet.id;
+  const driveSheetId =
+    s instanceof GoogleDriveSheetModel ? s.driveSheetId : s.id;
   return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit#gid=${driveSheetId}`;
 }

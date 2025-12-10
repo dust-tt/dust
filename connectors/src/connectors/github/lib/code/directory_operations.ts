@@ -6,7 +6,7 @@ import {
   getDirectoryUrl,
 } from "@connectors/connectors/github/lib/utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { GithubCodeDirectory } from "@connectors/lib/models/github";
+import { GithubCodeDirectoryModel } from "@connectors/lib/models/github";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
@@ -87,7 +87,7 @@ export async function upsertCodeDirectory({
   });
 
   // Find or create directory in database.
-  let githubCodeDirectory = await GithubCodeDirectory.findOne({
+  let githubCodeDirectory = await GithubCodeDirectoryModel.findOne({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -96,7 +96,7 @@ export async function upsertCodeDirectory({
   });
 
   if (!githubCodeDirectory) {
-    githubCodeDirectory = await GithubCodeDirectory.create({
+    githubCodeDirectory = await GithubCodeDirectoryModel.create({
       codeUpdatedAt: codeSyncStartedAt,
       connectorId: connector.id,
       createdAt: codeSyncStartedAt,

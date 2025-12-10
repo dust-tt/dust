@@ -1,16 +1,17 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import {
   SlackBotWhitelistModel,
-  SlackChannel,
-  SlackChatBotMessage,
+  SlackChannelModel,
+  SlackChatBotMessageModel,
   SlackConfigurationModel,
-  SlackMessages,
+  SlackMessagesModel,
 } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type {
   ModelId,
@@ -48,6 +49,8 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     whitelistedDomains,
     restrictedSpaceAgentsEnabled,
     feedbackVisibleToAuthorOnly,
+    privateIntegrationCredentialId,
+    botEnabled,
     transaction,
   }: {
     slackTeamId: string;
@@ -56,6 +59,8 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     whitelistedDomains?: string[];
     restrictedSpaceAgentsEnabled?: boolean;
     feedbackVisibleToAuthorOnly?: boolean;
+    privateIntegrationCredentialId?: string | null;
+    botEnabled: boolean;
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -70,12 +75,14 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     const model = await SlackConfigurationModel.create(
       {
         autoReadChannelPatterns: autoReadChannelPatterns ?? [],
-        botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
+        // We want at most 1 Slack bot enabled per team id.
+        botEnabled: otherSlackConfigurationWithBotEnabled ? false : botEnabled,
         connectorId,
         slackTeamId,
         restrictedSpaceAgentsEnabled: restrictedSpaceAgentsEnabled ?? true,
         whitelistedDomains,
         feedbackVisibleToAuthorOnly: feedbackVisibleToAuthorOnly ?? true,
+        privateIntegrationCredentialId,
       },
       { transaction }
     );
@@ -120,8 +127,8 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   static async findChannelWithAutoRespond(
     connectorId: ModelId,
     slackChannelId: string
-  ): Promise<SlackChannel | null> {
-    return SlackChannel.findOne({
+  ): Promise<SlackChannelModel | null> {
+    return SlackChannelModel.findOne({
       where: {
         connectorId,
         slackChannelId,
@@ -221,12 +228,26 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   static async listForTeamId(
-    slackTeamId: string
+    slackTeamId: string,
+    provider?: Extract<ConnectorProvider, "slack" | "slack_bot">
   ): Promise<SlackConfigurationResource[]> {
     const blobs = await this.model.findAll({
       where: {
         slackTeamId,
       },
+      include: provider
+        ? [
+            {
+              model: ConnectorModel,
+              as: "connector",
+              attributes: [],
+              required: true,
+              where: {
+                type: provider,
+              },
+            },
+          ]
+        : undefined,
     });
 
     return blobs.map(
@@ -310,21 +331,21 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
     try {
-      await SlackChannel.destroy({
+      await SlackChannelModel.destroy({
         where: {
           connectorId: this.connectorId,
         },
         transaction,
       });
 
-      await SlackMessages.destroy({
+      await SlackMessagesModel.destroy({
         where: {
           connectorId: this.connectorId,
         },
         transaction,
       });
 
-      await SlackChatBotMessage.destroy({
+      await SlackChatBotMessageModel.destroy({
         where: {
           connectorId: this.connectorId,
         },

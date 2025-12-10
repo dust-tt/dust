@@ -1,6 +1,5 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -8,19 +7,14 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  getGoogleDriveClient,
+  MAX_CONTENT_SIZE,
+  MAX_FILE_SIZE,
+  SUPPORTED_MIMETYPES,
+} from "@app/lib/providers/google_drive/utils";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-const SUPPORTED_MIMETYPES = [
-  "application/vnd.google-apps.document",
-  "application/vnd.google-apps.presentation",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-];
-
-const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
 
 function createServer(
   auth: Authenticator,
@@ -33,13 +27,7 @@ function createServer(
     if (!accessToken) {
       return null;
     }
-
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
-    return google.drive({
-      version: "v3",
-      auth: oauth2Client,
-    });
+    return getGoogleDriveClient(accessToken);
   }
 
   server.tool(

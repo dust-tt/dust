@@ -50,22 +50,32 @@ export const AttachmentViewer = ({
 
   const isAudio = isAudioContentType(attachmentCitation);
 
-  // Yes this is weird, but for fragments we have the fileId directly
-  // For input bar attachments, we need to get the file blob first
-  // because the attachment fileId is actually the blob id
-  // TODO: to fix
-  const fileId =
+  // For input bar attachments, try to get the local file blob for reading content directly.
+  // For fragments/mcp, we always fetch from server.
+  const fileBlob =
+    attachmentCitation.attachmentCitationType === "inputBar"
+      ? fileUploaderService.getFileBlob(attachmentCitation.id)
+      : undefined;
+
+  // Fetch from server if:
+  // - It's a fragment or mcp attachment (always server-side)
+  // - It's an input bar attachment but we don't have local content (e.g., tool uploads)
+  const hasLocalContent = fileBlob && fileBlob.file.size > 0;
+  const shouldFetchFromServer =
     attachmentCitation.attachmentCitationType === "fragment" ||
-    attachmentCitation.attachmentCitationType === "mcp"
-      ? attachmentCitation.fileId
-      : fileUploaderService.getFileBlob(attachmentCitation.fileId)?.fileId;
+    attachmentCitation.attachmentCitationType === "mcp" ||
+    !hasLocalContent;
+
+  // Use the fileId from the citation (which is the real server file sId).
+  const fileId = attachmentCitation.fileId;
 
   const { fileContent, isFileContentLoading } = useFileContent({
     fileId,
     owner,
     config: {
       // Only fetch if we are on text, as for audio we use the processed content, which is the transcript
-      disabled: isAudio || !viewerOpen,
+
+      disabled: isAudio || !viewerOpen || !shouldFetchFromServer,
     },
   });
 
@@ -104,10 +114,7 @@ export const AttachmentViewer = ({
         return;
       }
 
-      if (
-        attachmentCitation.attachmentCitationType === "fragment" ||
-        attachmentCitation.attachmentCitationType === "mcp"
-      ) {
+      if (shouldFetchFromServer) {
         if (isFileContentLoading) {
           return;
         }
@@ -117,7 +124,7 @@ export const AttachmentViewer = ({
 
       setText(
         await fileUploaderService
-          .getFileBlob(attachmentCitation.fileId)
+          .getFileBlob(attachmentCitation.id)
           ?.file.text()
       );
     };
@@ -132,6 +139,7 @@ export const AttachmentViewer = ({
     isFileContentLoading,
     isProcessedContentLoading,
     processedContent,
+    shouldFetchFromServer,
   ]);
 
   const audioPlayer = isAudio && (

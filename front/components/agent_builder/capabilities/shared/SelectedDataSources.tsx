@@ -13,25 +13,25 @@ import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getVisualForContentNodeType } from "@app/lib/content_nodes";
 import {
   CHANNEL_INTERNAL_MIME_TYPES,
   DATABASE_INTERNAL_MIME_TYPES,
   FILE_INTERNAL_MIME_TYPES,
-  getVisualForContentNodeType,
   SPREADSHEET_INTERNAL_MIME_TYPES,
-} from "@app/lib/content_nodes";
+} from "@app/lib/content_nodes_constants";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";

@@ -3,8 +3,8 @@ import type {
   DataSourceFilter,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
-import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import type { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import type { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
@@ -17,7 +17,7 @@ export type RetrievalTimeframe =
     };
 
 export function renderDataSourceConfiguration(
-  dataSourceConfig: AgentDataSourceConfiguration
+  dataSourceConfig: AgentDataSourceConfigurationModel
 ): DataSourceConfiguration & { sId: string } {
   const { dataSourceView } = dataSourceConfig;
 
@@ -56,7 +56,7 @@ export function renderDataSourceConfiguration(
 }
 
 export function renderTableConfiguration(
-  table: AgentTablesQueryConfigurationTable
+  table: AgentTablesQueryConfigurationTableModel
 ): TableDataSourceConfiguration & { sId: string } {
   const { dataSourceView } = table;
 

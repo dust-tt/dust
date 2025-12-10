@@ -2,16 +2,16 @@ import chunk from "lodash/chunk";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
-  AgentMessage,
-  AgentMessageFeedback,
-  Mention,
-  Message,
-  MessageReaction,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  AgentMessageFeedbackModel,
+  AgentMessageModel,
+  MentionModel,
+  MessageModel,
+  MessageReactionModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -37,7 +37,7 @@ async function destroyActionsRelatedResources(
   );
 
   // Destroy MCP action output items.
-  await AgentMCPActionOutputItem.destroy({
+  await AgentMCPActionOutputItemModel.destroy({
     where: { agentMCPActionId: mcpActions.map((a) => a.id) },
   });
 
@@ -48,14 +48,14 @@ async function destroyActionsRelatedResources(
 }
 
 async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
-  await MessageReaction.destroy({
+  await MessageReactionModel.destroy({
     where: { messageId: messageIds },
   });
-  await Mention.destroy({
+  await MentionModel.destroy({
     where: { messageId: messageIds },
   });
   // TODO: We should also destroy the parent message
-  await Message.destroy({
+  await MessageModel.destroy({
     where: { id: messageIds },
   });
 }
@@ -151,7 +151,7 @@ export async function destroyConversation(
 
   const conversation = conversationRes.value;
 
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     attributes: [
       "id",
       "sId",
@@ -183,16 +183,16 @@ export async function destroyConversation(
 
     await destroyActionsRelatedResources(auth, agentMessageIds);
 
-    await UserMessage.destroy({
+    await UserMessageModel.destroy({
       where: { id: userMessageIds },
     });
     await AgentStepContentModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
-    await AgentMessageFeedback.destroy({
+    await AgentMessageFeedbackModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
-    await AgentMessage.destroy({
+    await AgentMessageModel.destroy({
       where: { id: agentMessageIds },
     });
 

@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
@@ -5,35 +7,41 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessage,
-  Mention,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+  AgentMessageModel,
+  MentionModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
-  AgentMention,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
+  LegacyLightMessageType,
   LightAgentConfigurationType,
   LightAgentMessageType,
-  LightMessageType,
   MessageType,
   Result,
-  UserMention,
   UserMessageType,
 } from "@app/types";
-import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import {
+  ConversationError,
+  Err,
+  isContentFragmentType,
+  isUserMessageType,
+  Ok,
+  removeNulls,
+  toMentionType,
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
@@ -46,8 +54,9 @@ import {
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type {
-  FetchConversationMessagesResponse,
+  LightMessageType,
   ParsedContentItem,
+  UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
 export async function generateParsedContents(
@@ -133,36 +142,48 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
 
 async function batchRenderUserMessages(
   auth: Authenticator,
-  messages: Message[]
+  messages: MessageModel[]
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
 
+  const mentionRows = await MentionModel.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      messageId: userMessages.map((m) => m.id),
+    },
+  });
+
   const userIds = [
     ...new Set(
-      userMessages
-        .map((m) => m.userMessage?.userId)
-        .filter((id) => !!id) as number[]
+      removeNulls([
+        ...userMessages.map((m) => m.userMessage?.userId),
+        ...mentionRows.map((m) => m.userId),
+      ])
     ),
   ];
 
-  const [mentions, users] = await Promise.all([
-    Mention.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        messageId: userMessages.map((m) => m.id),
-      },
-      include: {
-        model: UserModel,
-        as: "user",
-        attributes: ["sId"],
-      },
-    }),
-    userIds.length === 0
-      ? []
-      : UserResource.fetchByModelIds([...new Set(userIds)]),
+  const agentConfigurationSIds = [
+    ...new Set(
+      removeNulls([...mentionRows.map((m) => m.agentConfigurationId)])
+    ),
+  ];
+
+  const [users, agentConfigurations] = await Promise.all([
+    userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
+    agentConfigurationSIds.length > 0
+      ? getAgentConfigurations(auth, {
+          agentIds: agentConfigurationSIds,
+          variant: "extra_light",
+        })
+      : [],
   ]);
+
+  const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
+  const agentConfigurationsById = new Map(
+    agentConfigurations.map((a) => [a.sId, a])
+  );
 
   return userMessages.map((message) => {
     if (!message.userMessage) {
@@ -171,9 +192,59 @@ async function batchRenderUserMessages(
       );
     }
     const userMessage = message.userMessage;
-    const messageMentions = mentions.filter((m) => m.messageId === message.id);
-    const user = users.find((u) => u.id === userMessage.userId) ?? null;
+    const messageMentions = mentionRows.filter(
+      (m) => m.messageId === message.id
+    );
+    const user = userMessage.userId ? usersById.get(userMessage.userId) : null;
 
+    const richMentions = removeNulls(
+      messageMentions.map((m) => {
+        if (m.agentConfigurationId) {
+          const agentConfiguration = agentConfigurationsById.get(
+            m.agentConfigurationId
+          );
+          if (agentConfiguration) {
+            return toRichAgentMentionType(agentConfiguration);
+          }
+        } else if (m.userId) {
+          const mentionnedUser = usersById.get(m.userId);
+          if (mentionnedUser) {
+            return toRichUserMentionType(mentionnedUser);
+          }
+        } else {
+          throw new Error(
+            "Unreachable: Mention type not supported, it must either be an agent mention or a user mention"
+          );
+        }
+      })
+    );
+
+    let username = userMessage.userContextUsername;
+    let fullName = userMessage.userContextFullName;
+    let email = userMessage.userContextEmail;
+    let profilePictureUrl = userMessage.userContextProfilePictureUrl;
+
+    // We have a linked user and this is not an agentic message, so we can override the user context with the latest user data.
+    if (userMessage.userId !== null && !userMessage.agenticMessageType) {
+      const user = usersById.get(userMessage.userId);
+      if (user) {
+        username = user.username;
+        fullName = user.fullName;
+        email = user.email;
+        profilePictureUrl = user.image;
+      } else {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            userId: userMessage.userId,
+          },
+          "User not found for user message while it should have been fetched before. Falling back to user context."
+        );
+      }
+    }
+
+    const mentions = richMentions.map(toMentionType);
     return {
       id: message.id,
       sId: message.sId,
@@ -182,36 +253,17 @@ async function batchRenderUserMessages(
       version: message.version,
       rank: message.rank,
       created: message.createdAt.getTime(),
-      user: user ? user.toJSON() : null,
-      mentions: messageMentions
-        ? messageMentions.map((m) => {
-            if (m.agentConfigurationId) {
-              return {
-                configurationId: m.agentConfigurationId,
-              } satisfies AgentMention;
-            }
-            if (m.user) {
-              return {
-                type: "user",
-                userId: m.user.sId,
-              } satisfies UserMention;
-            }
-            throw new Error("Mention Must Be An Agent or User: Unreachable.");
-          })
-        : [],
+      user: user ?? null,
+      mentions,
+      richMentions,
       content: userMessage.content,
       context: {
-        username: userMessage.userContextUsername,
+        username,
         timezone: userMessage.userContextTimezone,
-        fullName: userMessage.userContextFullName,
-        email: userMessage.userContextEmail,
-        profilePictureUrl: userMessage.userContextProfilePictureUrl,
-        // TODO(2025-11-24 PPUL): Return real user origin even in case of run_agent, once extensions have been updated
-        origin: userMessage.agenticMessageType ?? userMessage.userContextOrigin,
-        // TODO(2025-11-24 PPUL): Remove once extensions have been updated
-        originMessageId:
-          userMessage.agenticOriginMessageId ??
-          userMessage.userContextOriginMessageId,
+        fullName,
+        email,
+        profilePictureUrl,
+        origin: userMessage.userContextOrigin,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
@@ -229,7 +281,7 @@ async function batchRenderUserMessages(
 
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
-  messages: Message[],
+  messages: MessageModel[],
   viewType: V
 ): Promise<
   Result<
@@ -416,35 +468,59 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
-      const parentMessage = message.parentId
+      assert(message.parentId !== null, "Agent message must have a parentId.");
+
+      let parentMessage = message.parentId
         ? (messagesById.get(message.parentId) ?? null)
         : null;
 
-      let parentAgentMessage: Message | null = null;
+      if (!parentMessage) {
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            agentMessageId: agentMessage.id,
+          },
+          "Couldn't find parent message for agent message in the messages map, can happen if you are only rendering a subset of the messages. Falling back to fetch the message from the database."
+        );
+        parentMessage = await MessageModel.findOne({
+          where: {
+            id: message.parentId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            conversationId: message.conversationId,
+          },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        });
+      }
+
+      assert(!!parentMessage, "Parent message must be found.");
+      const userMessage = parentMessage.userMessage;
+      assert(!!userMessage, "Parent message must be a userMessage.");
+
+      let parentAgentMessage: MessageModel | null = null;
 
       // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
       if (
-        parentMessage &&
-        parentMessage?.userMessage &&
-        parentMessage.userMessage.userContextOrigin === "agent_handover" &&
-        parentMessage.userMessage.userContextOriginMessageId
+        userMessage.userContextOrigin === "agent_handover" &&
+        userMessage.userContextOriginMessageId
       ) {
         parentAgentMessage =
-          messagesBySId.get(
-            parentMessage.userMessage.userContextOriginMessageId
-          ) ?? null;
+          messagesBySId.get(userMessage.userContextOriginMessageId) ?? null;
       }
       // END TODO
 
       if (
-        parentMessage &&
-        parentMessage?.userMessage &&
-        parentMessage.userMessage.agenticMessageType === "agent_handover" &&
-        parentMessage.userMessage.agenticOriginMessageId
+        userMessage.agenticMessageType === "agent_handover" &&
+        userMessage.agenticOriginMessageId
       ) {
         parentAgentMessage =
-          messagesBySId.get(parentMessage.userMessage.agenticOriginMessageId) ??
-          null;
+          messagesBySId.get(userMessage.agenticOriginMessageId) ?? null;
       }
 
       const m = {
@@ -457,7 +533,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
-        parentMessageId: parentMessage?.sId ?? null,
+        parentMessageId: parentMessage.sId,
         parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,
@@ -500,7 +576,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
-  messages: Message[]
+  messages: MessageModel[]
 ): Promise<ContentFragmentType[]> {
   const messagesWithContentFragment = messages.filter(
     (m) => !!m.contentFragment
@@ -512,7 +588,7 @@ async function batchRenderContentFragment(
   }
 
   return Promise.all(
-    messagesWithContentFragment.map(async (message: Message) => {
+    messagesWithContentFragment.map(async (message: MessageModel) => {
       const contentFragment = ContentFragmentResource.fromMessage(message);
       const render = await contentFragment.renderFromMessage({
         auth,
@@ -525,16 +601,22 @@ async function batchRenderContentFragment(
   );
 }
 
-type RenderMessageVariant = "light" | "full";
+type RenderMessageVariant = "legacy-light" | "full" | "light";
 
 export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversation: ConversationResource,
-  messages: Message[],
+  messages: MessageModel[],
   viewType: V
 ): Promise<
   Result<
-    V extends "full" ? MessageType[] : LightMessageType[],
+    V extends "full"
+      ? MessageType[]
+      : V extends "legacy-light"
+        ? LegacyLightMessageType[]
+        : V extends "light"
+          ? LightMessageType[]
+          : never,
     ConversationError
   >
 > {
@@ -550,22 +632,82 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 
   const agentMessages = agentMessagesRes.value;
 
-  const renderedMessages = [
+  let renderedMessages = [
     ...userMessages,
     ...agentMessages,
     ...contentFragments,
   ].sort((a, b) => a.rank - b.rank || a.version - b.version);
 
+  if (viewType === "light") {
+    // We need to attach the content fragments to the user messages.
+    const output: LightMessageType[] = [];
+    let tempContentFragments: ContentFragmentType[] = [];
+
+    renderedMessages.forEach((message) => {
+      if (isContentFragmentType(message)) {
+        tempContentFragments.push(message); // Collect content fragments.
+      } else {
+        let messageWithContentFragments: UserMessageTypeWithContentFragments;
+        if (isUserMessageType(message)) {
+          // Attach collected content fragments to the user message.
+          messageWithContentFragments = {
+            ...message,
+            contentFragments: tempContentFragments,
+          };
+          tempContentFragments = []; // Reset the collected content fragments.
+
+          // Start a new group for user messages.
+          output.push(messageWithContentFragments);
+        } else {
+          // I know this is safe because we are in the light view.
+          output.push(message as LightAgentMessageType);
+        }
+      }
+    });
+
+    renderedMessages = output;
+  }
+
   return new Ok(
-    renderedMessages as V extends "full" ? MessageType[] : LightMessageType[]
+    renderedMessages as V extends "full"
+      ? MessageType[]
+      : V extends "legacy-light"
+        ? LegacyLightMessageType[]
+        : V extends "light"
+          ? LightMessageType[]
+          : never
   );
 }
 
-export async function fetchConversationMessages(
+type MessageVariant = "legacy-light" | "light";
+
+export async function fetchConversationMessages<V extends MessageVariant>(
   auth: Authenticator,
-  conversationId: string,
-  paginationParams: PaginationParams
-): Promise<Result<FetchConversationMessagesResponse, Error>> {
+  {
+    conversationId,
+    limit,
+    lastRank,
+    viewType,
+  }: {
+    conversationId: string;
+    limit: number;
+    lastRank: number | null;
+    viewType: V;
+  }
+): Promise<
+  Result<
+    {
+      hasMore: boolean;
+      lastValue: number | null;
+      messages: V extends "legacy-light"
+        ? LegacyLightMessageType[]
+        : V extends "light"
+          ? LightMessageType[]
+          : never;
+    },
+    Error
+  >
+> {
   const owner = auth.workspace();
   if (!owner) {
     return new Err(new Error("Unexpected `auth` without `workspace`."));
@@ -580,17 +722,16 @@ export async function fetchConversationMessages(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const { hasMore, messages } = await conversation.fetchMessagesForPage(
-    auth,
-
-    paginationParams
-  );
+  const { hasMore, messages } = await conversation.fetchMessagesForPage(auth, {
+    limit,
+    lastRank,
+  });
 
   const renderedMessagesRes = await batchRenderMessages(
     auth,
     conversation,
     messages,
-    "light"
+    viewType
   );
 
   if (renderedMessagesRes.isErr()) {
@@ -602,7 +743,11 @@ export async function fetchConversationMessages(
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
-    messages: renderedMessages,
+    messages: renderedMessages as V extends "legacy-light"
+      ? LegacyLightMessageType[]
+      : V extends "light"
+        ? LightMessageType[]
+        : never,
   });
 }
 
@@ -612,7 +757,7 @@ export async function fetchMessageInConversation(
   messageId: string,
   version?: number
 ) {
-  return Message.findOne({
+  return MessageModel.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -621,12 +766,12 @@ export async function fetchMessageInConversation(
     },
     include: [
       {
-        model: UserMessage,
+        model: UserMessageModel,
         as: "userMessage",
         required: false,
       },
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: false,
       },

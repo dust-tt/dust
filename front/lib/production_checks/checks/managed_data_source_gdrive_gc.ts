@@ -51,7 +51,6 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
           logger,
           async () =>
             connectorsReplica.query(
-              // eslint-disable-next-line dust/no-raw-sql -- Legit
               'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
               {
                 replacements: {

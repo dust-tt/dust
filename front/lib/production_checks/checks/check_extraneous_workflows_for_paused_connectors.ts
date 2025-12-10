@@ -35,12 +35,12 @@ async function areTemporalWorkflowsRunning(
       query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _ of workflowInfos) {
       // workflowInfos is an async iterable, so we need to consume it to actually get the results
       return true;
     }
     return false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
     return true;
   }

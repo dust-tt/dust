@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
-} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+} from "@app/lib/api/analytics/programmatic_cost";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
@@ -74,6 +74,7 @@ export function useWorkspaceAnalytics({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,
@@ -155,21 +156,24 @@ export function useFeatureFlags({
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
-  selectedMonth,
+  selectedPeriod,
+  billingCycleStartDay,
   filter,
   disabled,
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
-  selectedMonth?: string;
+  selectedPeriod?: string;
+  billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
 
   const queryParams = new URLSearchParams();
-  if (selectedMonth) {
-    queryParams.set("selectedMonth", selectedMonth);
+  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
+  if (selectedPeriod) {
+    queryParams.set("selectedPeriod", selectedPeriod);
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
@@ -178,7 +182,7 @@ export function useWorkspaceProgrammaticCost({
     queryParams.set("filter", JSON.stringify(filter));
   }
   const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/programmatic-cost${queryString ? `?${queryString}` : ""}`;
+  const key = `/api/w/${workspaceId}/analytics/programmatic-cost?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

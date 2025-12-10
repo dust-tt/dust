@@ -2,7 +2,7 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 import { config } from "@app/lib/api/regions/config";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -148,7 +148,7 @@ async function fixTemplateMismatch(
         );
         assert(templateCopy.id === remoteTemplate.id);
 
-        const [affectedCount] = await AgentConfiguration.update(
+        const [affectedCount] = await AgentConfigurationModel.update(
           {
             templateId: templateCopy.id,
           },
@@ -175,7 +175,7 @@ async function fixTemplateMismatch(
       "Successfully fixed template ID mismatch"
     );
   } else {
-    const affectedAgentConfigurations = await AgentConfiguration.findAll({
+    const affectedAgentConfigurations = await AgentConfigurationModel.findAll({
       where: { templateId: localTemplate.id },
     });
     logger.info(

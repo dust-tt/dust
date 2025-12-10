@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
 
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { upsertProPlans } from "@app/lib/plans/pro_plans";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -19,12 +19,12 @@ export class WorkspaceFactory {
       workOSOrganizationId: faker.string.alpha(10),
     });
 
-    const newPlan = await Plan.findOne({
+    const newPlan = await PlanModel.findOne({
       where: { code: PRO_PLAN_SEAT_29_CODE },
     });
     const now = new Date();
 
-    await Subscription.create({
+    await SubscriptionModel.create({
       sId: generateRandomModelSId(),
       workspaceId: workspace.id,
       planId: newPlan?.id,

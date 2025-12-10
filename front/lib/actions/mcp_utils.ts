@@ -19,7 +19,7 @@ import {
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -41,7 +41,7 @@ export function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
-}: AgentMCPActionOutputItem): CallToolResult["content"][number] | null {
+}: AgentMCPActionOutputItemModel): CallToolResult["content"][number] | null {
   // For tool-generated files and non-file content, we keep the resource as is.
   if (!fileId || isToolGeneratedFile(content)) {
     return content;
@@ -92,6 +92,7 @@ export function rewriteContentForModel(
     if (text) {
       text += `\n`;
     }
+
     text += xml;
     return {
       type: "text",

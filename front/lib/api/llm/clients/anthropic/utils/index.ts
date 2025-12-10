@@ -1,5 +1,12 @@
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages.mjs";
+import type { BetaJSONOutputFormat } from "@anthropic-ai/sdk/resources/beta.mjs";
+import type {
+  ThinkingConfigParam,
+  ToolChoice,
+} from "@anthropic-ai/sdk/resources/messages.mjs";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -39,4 +46,32 @@ export function toThinkingConfig(
     default:
       assertNever(reasoningEffort);
   }
+}
+
+export function toToolChoiceParam(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ToolChoice {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? {
+        type: "tool" as const,
+        name: forceToolCall,
+      }
+    : { type: "auto" };
+}
+
+export function toOutputFormatParam(
+  responseFormat: string | null
+): BetaJSONOutputFormat | undefined {
+  const responseFormatObject = parseResponseFormatSchema(
+    responseFormat,
+    ANTHROPIC_PROVIDER_ID
+  );
+  if (!responseFormatObject) {
+    return;
+  }
+  return {
+    type: "json_schema",
+    schema: responseFormatObject.json_schema.schema,
+  };
 }

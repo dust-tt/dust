@@ -22,6 +22,7 @@ const OutlookRecipientSchema = z.object({
   emailAddress: OutlookEmailAddressSchema,
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OutlookMessageSchema = z.object({
   id: z.string(),
   conversationId: z.string().optional(),
@@ -48,6 +49,7 @@ const OutlookMessageSchema = z.object({
   internetMessageId: z.string().optional(),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OutlookContactSchema = z.object({
   id: z.string(),
   displayName: z.string().optional(),
@@ -157,6 +159,7 @@ function createServer(
             type: "text" as const,
             text: JSON.stringify(
               {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 messages: (result.value || []) as OutlookMessage[],
                 nextLink: result["@odata.nextLink"],
                 totalCount: result["@odata.count"],
@@ -225,6 +228,7 @@ function createServer(
 
         // Get detailed information for each draft
         const draftDetails = await concurrentExecutor(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           result.value || [],
           async (draft: { id: string }): Promise<OutlookMessage | null> => {
             const draftResponse = await fetchFromOutlook(
@@ -518,6 +522,7 @@ function createServer(
         const createDraftResult = await createDraftResponse.json();
 
         // Get the existing body content from the created draft (includes quoted original message)
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const existingBody = createDraftResult.body?.content || "";
 
         // Prepend the new body to the existing HTML content
@@ -646,6 +651,7 @@ function createServer(
             type: "text" as const,
             text: JSON.stringify(
               {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 contacts: (result.value || []) as OutlookContact[],
                 nextLink: result["@odata.nextLink"],
                 totalCount: result["@odata.count"],
@@ -934,6 +940,7 @@ const fetchFromOutlook = async (
 const getErrorText = async (response: Response): Promise<string> => {
   try {
     const errorData = await response.json();
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return errorData.error?.message || errorData.error?.code || "Unknown error";
   } catch {
     return "Unknown error";

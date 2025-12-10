@@ -10,7 +10,7 @@ import {
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
-import { Message } from "@app/lib/models/assistant/conversation";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -30,7 +30,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
-  ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
@@ -888,7 +888,7 @@ describe("listConversationsForUser", () => {
   it("should return conversations with populated participation data", async () => {
     // First, get the raw participation data from the database to compare
     const { ConversationParticipantModel } = await import(
-      "@app/lib/models/assistant/conversation"
+      "@app/lib/models/agent/conversation"
     );
     const participation = await ConversationParticipantModel.findOne({
       where: {
@@ -1827,7 +1827,7 @@ describe("Space Handling", () => {
 
   describe("getMessageById", () => {
     let auth: Authenticator;
-    let conversation: ConversationType;
+    let conversation: ConversationWithoutContentType;
     let agents: LightAgentConfigurationType[];
     let conversationIds: string[];
 
@@ -1863,7 +1863,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find a user message
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -1902,7 +1902,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find an agent message
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -1969,7 +1969,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get a message from the other conversation
-      const otherMessages = await Message.findAll({
+      const otherMessages = await MessageModel.findAll({
         where: {
           conversationId: (await ConversationResource.fetchById(
             auth,
@@ -2001,7 +2001,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -2046,7 +2046,7 @@ describe("Space Handling", () => {
       assert(conversationResource, "Conversation resource not found");
 
       // Get the first message
-      const messages = await Message.findAll({
+      const messages = await MessageModel.findAll({
         where: {
           conversationId: conversationResource.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -2073,5 +2073,1004 @@ describe("Space Handling", () => {
         expect(message.rank).toBeDefined();
       }
     });
+  });
+
+  describe("fetchMessagesForPage", () => {
+    let auth: Authenticator;
+    let conversation: ConversationWithoutContentType;
+    let agents: LightAgentConfigurationType[];
+
+    beforeEach(async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      agents = await setupTestAgents(workspace, user);
+
+      conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [],
+      });
+    });
+
+    it("should handle content fragments spanning across pages", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages: CF(0), CF(1), CF(2), User(3)
+      const [
+        contentFragment1,
+        contentFragment2,
+        contentFragment3,
+        userMessage,
+      ] = await Promise.all([
+        ...Array.from({ length: 3 }, (_, i) =>
+          ConversationFactory.createContentFragmentMessage({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: i,
+            title: `Content Fragment ${i + 1}`,
+            fileName: `fragment${i + 1}.txt`,
+          })
+        ),
+        ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 3,
+          content: "User message content",
+        }),
+      ]);
+
+      // Test pagination with page size 2
+      // With 3 content fragments + 1 user message, limit 2 should return all 4 messages
+      // because content fragments don't count toward limit
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+      });
+
+      // Should get all 4 messages (3 content fragments + 1 user message)
+      // hasMore should be false because we only have 1 non-content-fragment message (< limit 2)
+      expect(page1.hasMore).toBe(false);
+      expect(page1.messages).toHaveLength(4);
+      expect(page1.messages[0].rank).toBe(3); // User message
+      expect(page1.messages[0].userMessageId).toBe(userMessage.userMessageId);
+      expect(page1.messages[1].rank).toBe(2); // Content fragment 3
+      expect(page1.messages[1].contentFragmentId).toBe(
+        contentFragment3.contentFragmentId
+      );
+      expect(page1.messages[2].rank).toBe(1); // Content fragment 2
+      expect(page1.messages[2].contentFragmentId).toBe(
+        contentFragment2.contentFragmentId
+      );
+      expect(page1.messages[3].rank).toBe(0); // Content fragment 1
+      expect(page1.messages[3].contentFragmentId).toBe(
+        contentFragment1.contentFragmentId
+      );
+
+      // Verify content fragments are properly included
+      for (const message of page1.messages) {
+        if (message.contentFragmentId) {
+          expect(message.contentFragment).toBeDefined();
+          expect(message.contentFragment).not.toBeNull();
+        }
+        if (message.userMessageId) {
+          expect(message.userMessage).toBeDefined();
+          expect(message.userMessage).not.toBeNull();
+        }
+      }
+    });
+
+    it("should exclude content fragments from limit but include them in results", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages: CF(0), CF(1), User(2), Agent(3)
+      const [contentFragment1, contentFragment2, userMessage] =
+        await Promise.all([
+          ConversationFactory.createContentFragmentMessage({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 0,
+            title: "Content Fragment 1",
+            fileName: "fragment1.txt",
+          }),
+          ConversationFactory.createContentFragmentMessage({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 1,
+            title: "Content Fragment 2",
+            fileName: "fragment2.txt",
+          }),
+          ConversationFactory.createUserMessageWithRank({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 2,
+            content: "User message",
+          }),
+          ConversationFactory.createAgentMessageWithRank({
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 3,
+            agentConfigurationId: agents[0].sId,
+          }),
+        ]);
+
+      // Test with limit 2: should get all 4 messages (2 content fragments + 2 non-content-fragment)
+      // because we have exactly 2 non-content-fragment messages (user + agent) which equals limit
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+      });
+
+      expect(page1.hasMore).toBe(false);
+      expect(page1.messages).toHaveLength(4);
+      expect(page1.messages[0].rank).toBe(3); // Agent message
+      expect(page1.messages[0].agentMessageId).toBeDefined();
+      expect(page1.messages[1].rank).toBe(2); // User message
+      expect(page1.messages[1].userMessageId).toBe(userMessage.userMessageId);
+      expect(page1.messages[2].rank).toBe(1); // Content fragment 2
+      expect(page1.messages[2].contentFragmentId).toBe(
+        contentFragment2.contentFragmentId
+      );
+      expect(page1.messages[3].rank).toBe(0); // Content fragment 1
+      expect(page1.messages[3].contentFragmentId).toBe(
+        contentFragment1.contentFragmentId
+      );
+    });
+
+    it("should respect limit for non-content-fragment messages only", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create 3 user messages (no content fragments)
+      await Promise.all(
+        [1, 2, 3].map((i, rank) =>
+          ConversationFactory.createUserMessageWithRank({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank,
+            content: `User message ${i}`,
+          })
+        )
+      );
+
+      // Test with limit 2: should get only 2 messages (normal pagination behavior)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+      });
+
+      expect(page1.hasMore).toBe(true);
+      expect(page1.messages).toHaveLength(2);
+      expect(page1.messages[0].rank).toBe(2); // User message 3
+      expect(page1.messages[1].rank).toBe(1); // User message 2
+    });
+
+    it("should handle pagination with lastValue correctly when content fragments are present", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages in pattern: CF(0), User(1), CF(2), User(3), CF(4), User(5)
+      const messageConfigs = [
+        { type: "cf" as const, index: 0, rank: 0 },
+        { type: "user" as const, content: "User message 1", rank: 1 },
+        { type: "cf" as const, index: 1, rank: 2 },
+        { type: "user" as const, content: "User message 2", rank: 3 },
+        { type: "cf" as const, index: 2, rank: 4 },
+        { type: "user" as const, content: "User message 3", rank: 5 },
+      ];
+
+      await Promise.all(
+        messageConfigs.map((config) =>
+          config.type === "cf"
+            ? ConversationFactory.createContentFragmentMessage({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                title: `Content Fragment ${config.index + 1}`,
+                fileName: `fragment${config.index + 1}.txt`,
+              })
+            : ConversationFactory.createUserMessageWithRank({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                content: config.content,
+              })
+        )
+      );
+
+      // First page with limit 2: should get user message 3 + content fragment 3 + user message 2 + content fragment 2 + content fragment 1
+      // (5 messages total: 2 non-content-fragment messages which equals limit)
+      // We include CF(1) because it comes before User(1) in the sequence
+      // hasMore should be true because there's 1 more non-content-fragment message (user message 1)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+      });
+
+      // Verify we have exactly 2 non-content-fragment messages (the limit)
+      const nonCfCount1 = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount1).toBe(2);
+      expect(page1.hasMore).toBe(true); // There's 1 more non-content-fragment message (user message 1)
+      expect(page1.messages[0].rank).toBe(5); // User message 3
+      expect(page1.messages[1].rank).toBe(4); // Content fragment 3
+      expect(page1.messages[2].rank).toBe(3); // User message 2
+      // May include additional content fragments depending on batch processing
+
+      // Test pagination with lastRank (starting from rank 2)
+      const page2 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        lastRank: 2, // Start from content fragment 2
+      });
+
+      // Should get user message 1 + content fragment 1 (2 messages: 1 non-content-fragment)
+      expect(page2.hasMore).toBe(false);
+      expect(page2.messages).toHaveLength(2);
+      expect(page2.messages[0].rank).toBe(1); // User message 1
+      expect(page2.messages[1].rank).toBe(0); // Content fragment 1
+    });
+
+    it("should handle pagination when lastRank is a content fragment", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages: User(0), CF(1), User(2), CF(3)
+      const [userMessage1] = await Promise.all([
+        ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 0,
+          content: "User message 1",
+        }),
+        ConversationFactory.createContentFragmentMessage({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 1,
+          title: "Content Fragment 1",
+          fileName: "fragment1.txt",
+        }),
+        ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 2,
+          content: "User message 2",
+        }),
+        ConversationFactory.createContentFragmentMessage({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 3,
+          title: "Content Fragment 2",
+          fileName: "fragment2.txt",
+        }),
+      ]);
+
+      // First page with limit 1: should get content fragment 2 + user message 2
+      // (2 messages total: 1 non-content-fragment message which equals limit)
+      // hasMore should be true because there's 1 more non-content-fragment message (user message 1)
+      // Note: CF(1) should NOT be included on page 1 as it should be bundled with User(1) on page 2
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 1,
+      });
+
+      expect(page1.hasMore).toBe(true); // There's 1 more non-content-fragment message (user message 1)
+      expect(page1.messages.length).toEqual(2);
+      expect(page1.messages[0].rank).toBe(2); // Content fragment 1
+      expect(page1.messages[1].rank).toBe(1); // User message 2
+      // Verify we have exactly 1 non-content-fragment message
+      const nonCfCount = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount).toBe(1);
+
+      // Second page: paginate from content fragment 1 (rank 1)
+      const page2 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 1,
+        lastRank: 1, // lastRank is a content fragment
+      });
+
+      // Should get user message 1 (rank 0)
+      expect(page2.hasMore).toBe(false);
+      expect(page2.messages).toHaveLength(1);
+      expect(page2.messages[0].rank).toBe(0); // User message 1
+      expect(page2.messages[0].userMessageId).toBe(userMessage1.userMessageId);
+    });
+
+    it("should handle pagination with multiple pages correctly", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages in order: CF(0), User(1), CF(2), User(3), CF(4), User(5), CF(6), User(7)
+      const messageConfigs = [
+        { type: "cf" as const, index: 0, rank: 0 },
+        { type: "user" as const, content: "User message 1", rank: 1 },
+        { type: "cf" as const, index: 1, rank: 2 },
+        { type: "user" as const, content: "User message 2", rank: 3 },
+        { type: "cf" as const, index: 2, rank: 4 },
+        { type: "user" as const, content: "User message 3", rank: 5 },
+        { type: "cf" as const, index: 3, rank: 6 },
+        { type: "user" as const, content: "User message 4", rank: 7 },
+      ];
+
+      await Promise.all(
+        messageConfigs.map((config) =>
+          config.type === "cf"
+            ? ConversationFactory.createContentFragmentMessage({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                title: `Content Fragment ${config.index + 1}`,
+                fileName: `fragment${config.index + 1}.txt`,
+              })
+            : ConversationFactory.createUserMessageWithRank({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                content: config.content,
+              })
+        )
+      );
+
+      // Page 1 with limit 2: should get User(7), CF(6), User(5), CF(4) (4 messages: 2 non-CF)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+      });
+
+      expect(page1.hasMore).toBe(true);
+      // Verify we have exactly 2 non-content-fragment messages
+      const nonCfCount2 = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount2).toBe(2);
+      expect(page1.messages[0].rank).toBe(7); // User message 4
+      expect(page1.messages[1].rank).toBe(6); // Content fragment 4
+      expect(page1.messages[2].rank).toBe(5); // User message 3
+      // May include additional content fragments depending on batch processing
+
+      // Page 2: paginate from CF(4) - should get remaining messages
+      const page2 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        lastRank: 4,
+      });
+
+      // Should get User(3), CF(2), User(1), CF(0) (4 messages: 2 non-CF)
+      expect(page2.hasMore).toBe(false);
+      const nonCfCount3 = page2.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount3).toBe(2);
+      expect(page2.messages).toHaveLength(4);
+      expect(page2.messages[0].rank).toBe(3); // User message 2
+      expect(page2.messages[1].rank).toBe(2); // Content fragment 2
+      expect(page2.messages[2].rank).toBe(1); // User message 1
+      expect(page2.messages[3].rank).toBe(0); // Content fragment 1
+    });
+
+    it("should not include content fragments that come after the last included non-CF message", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages in order: CF(0), CF(1), User(2), Agent(3), CF(4), CF(5), User(6)
+      const messageConfigs = [
+        { type: "cf" as const, index: 0, rank: 0 },
+        { type: "cf" as const, index: 1, rank: 1 },
+        { type: "user" as const, content: "User message 1", rank: 2 },
+        { type: "agent" as const, rank: 3 },
+        { type: "cf" as const, index: 2, rank: 4 },
+        { type: "cf" as const, index: 3, rank: 5 },
+        { type: "user" as const, content: "User message 2", rank: 6 },
+      ];
+
+      await Promise.all(
+        messageConfigs.map((config) =>
+          config.type === "cf"
+            ? ConversationFactory.createContentFragmentMessage({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                title: `Content Fragment ${config.index + 1}`,
+                fileName: `fragment${config.index + 1}.txt`,
+              })
+            : config.type === "user"
+              ? ConversationFactory.createUserMessageWithRank({
+                  auth,
+                  workspace,
+                  conversationId: conversationResource.id,
+                  rank: config.rank,
+                  content: config.content,
+                })
+              : ConversationFactory.createAgentMessageWithRank({
+                  workspace,
+                  conversationId: conversationResource.id,
+                  rank: config.rank,
+                  agentConfigurationId: agents[0].sId,
+                })
+        )
+      );
+
+      // So final: User(6), CF(5), CF(4), Agent(3)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+      });
+
+      expect(page1.hasMore).toBe(true);
+      // Should have User(6), CF(5), CF(4), Agent(3) - 2 non-CF, 2 CF
+      expect(page1.messages.length).toBe(4);
+      expect(page1.messages[0].rank).toBe(6); // User message 2
+      expect(page1.messages[1].rank).toBe(5); // Content fragment 4
+      expect(page1.messages[2].rank).toBe(4); // Content fragment 3
+      expect(page1.messages[3].rank).toBe(3); // Agent message
+
+      // Verify CF(1) and CF(0) are NOT included (they come after Agent(3))
+      const includedRanks = page1.messages.map((m) => m.rank);
+      expect(includedRanks).not.toContain(1);
+      expect(includedRanks).not.toContain(0);
+
+      // Verify we have exactly 2 non-content-fragment messages
+      const nonCfCount = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount).toBe(2);
+    });
+  });
+});
+
+describe("markAsUnreadForOtherParticipants", () => {
+  let auth: Authenticator;
+  let user1Auth: Authenticator;
+  let user2Auth: Authenticator;
+  let user3Auth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+  let agents: LightAgentConfigurationType[];
+  let conversationId: string;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    // Ensure default groups exist
+    await GroupResource.makeDefaultsForWorkspace(workspace);
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    agents = await setupTestAgents(workspace, user);
+
+    // Create additional users
+    const user1 = await UserFactory.basic();
+    const user2 = await UserFactory.basic();
+    const user3 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user1, { role: "user" });
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+    user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user1.sId,
+      workspace.sId
+    );
+    user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+    user3Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user3.sId,
+      workspace.sId
+    );
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(5)],
+    });
+    conversationId = conversation.sId;
+
+    // Add all users as participants
+    await ConversationResource.upsertParticipation(user1Auth, {
+      conversation,
+      action: "posted",
+      user: user1Auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.upsertParticipation(user2Auth, {
+      conversation,
+      action: "posted",
+      user: user2Auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.upsertParticipation(user3Auth, {
+      conversation,
+      action: "posted",
+      user: user3Auth.getNonNullableUser().toJSON(),
+    });
+  });
+
+  afterEach(async () => {
+    await destroyConversation(auth, { conversationId });
+  });
+
+  it("should not update rows that are already unread", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user1 and user2 to unread: true, user3 to unread: false
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user1Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user2Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user3Auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Get the updatedAt timestamps before calling markAsUnreadForOtherParticipants
+    const participant1Before = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    const participant2Before = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    const participant3Before = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+
+    assert(participant1Before, "Participant 1 not found");
+    assert(participant2Before, "Participant 2 not found");
+    assert(participant3Before, "Participant 3 not found");
+
+    const updatedAt1Before = participant1Before.updatedAt.getTime();
+    const updatedAt2Before = participant2Before.updatedAt.getTime();
+    const updatedAt3Before = participant3Before.updatedAt.getTime();
+
+    // Wait a bit to ensure updatedAt would change if updated
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Call markAsUnreadForOtherParticipants
+    const result = await ConversationResource.markAsUnreadForOtherParticipants(
+      auth,
+      {
+        conversation,
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should only update 1 row (user3, who had unread: false)
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify user1 (already unread: true) was NOT updated
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found after update");
+    expect(participant1After.unread).toBe(true);
+    expect(participant1After.updatedAt.getTime()).toBe(updatedAt1Before);
+
+    // Verify user2 (already unread: true) was NOT updated
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found after update");
+    expect(participant2After.unread).toBe(true);
+    expect(participant2After.updatedAt.getTime()).toBe(updatedAt2Before);
+
+    // Verify user3 (unread: false) WAS updated to unread: true
+    const participant3After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant3After, "Participant 3 not found after update");
+    expect(participant3After.unread).toBe(true);
+    expect(participant3After.updatedAt.getTime()).toBeGreaterThan(
+      updatedAt3Before
+    );
+  });
+
+  it("should update only participants with unread: false when excludedUser is provided", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user1 to unread: true, user2 and user3 to unread: false
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user1Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user2Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user3Auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Call markAsUnreadForOtherParticipants with excludedUser (user1)
+    const result = await ConversationResource.markAsUnreadForOtherParticipants(
+      auth,
+      {
+        conversation,
+        excludedUser: user1Auth.getNonNullableUser().toJSON(),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should update 2 rows (user2 and user3, who had unread: false)
+      expect(result.value[0]).toBe(2);
+    }
+
+    // Verify user1 (excluded) remains unchanged
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found after update");
+    expect(participant1After.unread).toBe(true);
+
+    // Verify user2 (unread: false, not excluded) was updated
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found after update");
+    expect(participant2After.unread).toBe(true);
+
+    // Verify user3 (unread: false, not excluded) was updated
+    const participant3After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant3After, "Participant 3 not found after update");
+    expect(participant3After.unread).toBe(true);
+  });
+});
+
+describe("markAsActionRequired", () => {
+  let auth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+  let agents: LightAgentConfigurationType[];
+  let conversationId: string;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    agents = await setupTestAgents(workspace, user);
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(5)],
+    });
+    conversationId = conversation.sId;
+  });
+
+  afterEach(async () => {
+    await destroyConversation(auth, { conversationId });
+  });
+
+  it("should set actionRequired to true for the user's participant", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    // Create a participant first
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+
+    // Verify initial state is false
+    const participantBefore = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participantBefore, "Participant not found");
+    expect(participantBefore.actionRequired).toBe(false);
+
+    // Call markAsActionRequired
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should update 1 row
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify actionRequired is now true
+    const participantAfter = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participantAfter, "Participant not found after update");
+    expect(participantAfter.actionRequired).toBe(true);
+  });
+
+  it("should update actionRequired even when it's already true", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    // Create a participant with actionRequired already set to true
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Manually set actionRequired to true
+    await ConversationParticipantModel.update(
+      { actionRequired: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Call markAsActionRequired again
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should still update 1 row (even though value is already true)
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify actionRequired remains true
+    const participantAfter = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participantAfter, "Participant not found after update");
+    expect(participantAfter.actionRequired).toBe(true);
+  });
+
+  it("should only update the specific user's participant", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const workspace = auth.getNonNullableWorkspace();
+
+    await GroupResource.makeDefaultsForWorkspace(workspace);
+
+    const user2 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    const user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+
+    // Create participants for both users
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.upsertParticipation(user2Auth, {
+      conversation,
+      action: "posted",
+      user: user2Auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user2's actionRequired to false
+    await ConversationParticipantModel.update(
+      { actionRequired: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: workspace.id,
+          userId: user2Auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Call markAsActionRequired for user1
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should only update 1 row (user1's participant)
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify user1's actionRequired is true
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: workspace.id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found");
+    expect(participant1After.actionRequired).toBe(true);
+
+    // Verify user2's actionRequired remains false
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: workspace.id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found");
+    expect(participant2After.actionRequired).toBe(false);
+  });
+
+  it("should return 0 updated rows when participant does not exist", async () => {
+    // Don't create a participant - call markAsActionRequired directly
+    const result = await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should update 0 rows since participant doesn't exist
+      expect(result.value[0]).toBe(0);
+    }
   });
 });

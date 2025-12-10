@@ -11,7 +11,9 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import {
   toMessages,
+  toOutputFormatParam,
   toReasoningParam,
+  toToolChoiceParam,
   toTools,
 } from "@app/lib/api/llm/utils/openai_like/chat/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
@@ -32,7 +34,9 @@ export class FireworksLLM extends LLM {
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {
-      throw new Error("FIREWORKS_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_FIREWORKS_API_KEY environment variable is required"
+      );
     }
     this.client = new OpenAI({
       apiKey: FIREWORKS_API_KEY,
@@ -44,6 +48,7 @@ export class FireworksLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const tools =
@@ -58,7 +63,9 @@ export class FireworksLLM extends LLM {
           this.reasoningEffort,
           this.modelConfig.useNativeLightReasoning
         ),
+        tool_choice: toToolChoiceParam(specifications, forceToolCall),
         ...(tools ? { tools } : {}),
+        response_format: toOutputFormatParam(this.responseFormat),
       });
 
       yield* streamLLMEvents(events, this.metadata);

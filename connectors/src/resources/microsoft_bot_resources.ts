@@ -4,7 +4,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import {
   MicrosoftBotConfigurationModel,
-  MicrosoftBotMessage,
+  MicrosoftBotMessageModel,
 } from "@connectors/lib/models/microsoft_bot";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
@@ -93,7 +93,7 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await MicrosoftBotMessage.destroy({
+    await MicrosoftBotMessageModel.destroy({
       where: {
         connectorId: this.connectorId,
       },

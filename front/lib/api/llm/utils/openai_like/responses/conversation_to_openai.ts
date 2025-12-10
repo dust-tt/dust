@@ -6,16 +6,20 @@ import type {
   ResponseInput,
   ResponseInputContent,
   ResponseInputItem,
+  ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type {
   Reasoning,
-  ReasoningEffort as OpenAiReasoningEffort,
+  ReasoningEffort as OpenAIReasoningEffort,
 } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { OPENAI_MODEL_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
 import {
   extractEncryptedContentFromMetadata,
   extractIdFromMetadata,
+  parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
@@ -28,7 +32,7 @@ import type {
   FunctionMessageTypeModel,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
+import { assertNever } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 function toInputContent(content: Content): ResponseInputContent {
@@ -168,57 +172,62 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
   };
 }
 
-const REASONING_EFFORT_TO_OPENAI_REASONING: {
-  [key in ReasoningEffort]: OpenAiReasoningEffort;
-} = {
-  none: null,
-  light: "low",
-  medium: "medium",
-  high: "high",
-};
+const REASONING_CONFIG_MAPPING: Record<ReasoningEffort, OpenAIReasoningEffort> =
+  {
+    none: "none",
+    light: "low",
+    medium: "medium",
+    high: "high",
+  };
 
 export function toReasoning(
-  reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean
+  modelId: OpenAIWhitelistedModelId,
+  reasoningEffort: ReasoningEffort | null
 ): Reasoning | null {
-  if (!reasoningEffort || reasoningEffort === "none") {
+  if (!reasoningEffort) {
     return null;
   }
 
-  if (reasoningEffort !== "light" || useNativeLightReasoning) {
-    // For light, we might not use native reasoning but Chain of Thought instead
-    return {
-      effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
-      summary: "auto",
-    };
-  }
-  return null;
+  const reasoningConfigMapping = {
+    ...REASONING_CONFIG_MAPPING,
+    ...OPENAI_MODEL_CONFIGS[modelId].reasoningConfigMapping,
+  };
+
+  return {
+    effort: reasoningConfigMapping[reasoningEffort],
+    summary: "auto",
+  };
+}
+
+export function toToolOption(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ToolChoiceFunction | "auto" {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? {
+        type: "function" as const,
+        name: forceToolCall,
+      }
+    : "auto";
 }
 
 export function toResponseFormat(
-  responseFormat: string | null
+  responseFormat: string | null,
+  providerId: string
 ): ResponseFormatTextJSONSchemaConfig | undefined {
-  if (!responseFormat) {
-    return;
-  }
-
-  const responseFormatJson = safeParseJSON(responseFormat);
-  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
-    return;
-  }
-
-  const responseFormatResult = ResponseFormatSchema.safeParse(
-    responseFormatJson.value
+  const responseFormatObject = parseResponseFormatSchema(
+    responseFormat,
+    providerId
   );
-  if (responseFormatResult.error) {
+  if (!responseFormatObject) {
     return;
   }
 
   return {
     type: "json_schema",
-    name: responseFormatResult.data.json_schema.name,
-    schema: responseFormatResult.data.json_schema.schema,
-    description: responseFormatResult.data.json_schema.description,
-    strict: responseFormatResult.data.json_schema.strict,
+    name: responseFormatObject.json_schema.name,
+    schema: responseFormatObject.json_schema.schema,
+    description: responseFormatObject.json_schema.description,
+    strict: responseFormatObject.json_schema.strict,
   };
 }

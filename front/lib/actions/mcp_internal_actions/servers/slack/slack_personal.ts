@@ -378,6 +378,7 @@ async function getSlackAIEnablementStatus({
     const status = data.is_ai_search_enabled ? "enabled" : "disabled";
 
     return status;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return "disconnected";
   }

@@ -41,10 +41,7 @@ import { ProcessingMethodSection } from "@app/components/agent_builder/capabilit
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import type {
-  AgentBuilderAction,
-  CapabilityFormData,
-} from "@app/components/agent_builder/types";
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
@@ -55,6 +52,7 @@ import {
   KnowledgePageProvider,
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   ADVANCED_SEARCH_SWITCH,
@@ -67,10 +65,10 @@ import type { TemplateActionPreset } from "@app/types";
 import { KnowledgeFooter } from "./KnowledgeFooter";
 
 interface KnowledgeConfigurationSheetProps {
-  onSave: (action: AgentBuilderAction) => void;
+  onSave: (action: BuilderAction) => void;
   onClose: () => void;
-  action: AgentBuilderAction | null;
-  actions: AgentBuilderAction[];
+  action: BuilderAction | null;
+  actions: BuilderAction[];
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
@@ -92,6 +90,7 @@ export function KnowledgeConfigurationSheet({
   const [debouncedOpen, setDebouncedOpen] = useState(() => open);
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedOpen(true);
     } else {
       setTimeout(() => {
@@ -186,7 +185,7 @@ function KnowledgeConfigurationSheetForm({
               : actions || [],
           });
 
-    const newAction: AgentBuilderAction = {
+    const newAction: BuilderAction = {
       id: uniqueId(),
       type: "MCP",
       name: newName,

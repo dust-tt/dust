@@ -11,8 +11,8 @@ import {
 } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import { getFoldersToSync } from "@connectors/connectors/google_drive/temporal/activities/get_folders_to_sync";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
@@ -29,18 +29,15 @@ export async function garbageCollector(
   }
 
   const authCredentials = await getAuthObject(connector.connectionId);
-  const localLogger = logger.child({
-    provider: "google_drive",
-    connectorId: connectorId,
+  const localLogger = getActivityLogger(connector).child({
     lastSeenTs,
-    activity: "garbageCollector",
   });
 
   localLogger.info("Google Drive: Starting garbage collector");
 
   const ts = lastSeenTs || Date.now();
 
-  const files = await GoogleDriveFiles.findAll({
+  const files = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connectorId,
       lastSeenTs: { [Op.or]: [{ [Op.lt]: new Date(lastSeenTs) }, null] },
