@@ -123,7 +123,6 @@ export function _getHelperGlobalAgent({
       ],
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,

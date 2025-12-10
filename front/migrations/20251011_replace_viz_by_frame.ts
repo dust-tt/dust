@@ -109,7 +109,6 @@ async function updateLegacyVizByFrame(
                 internalMCPServerId:
                   interactiveContentMCPServerView.internalMCPServerId,
                 dataSources: null,
-                reasoningModel: null,
                 tables: null,
                 childAgentId: null,
                 additionalConfiguration: {},

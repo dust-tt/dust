@@ -25,7 +25,6 @@ const createMockMCPAction = (
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tablesConfigurations: tablesConfigurations || null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,

@@ -430,7 +430,6 @@ export async function submitAgentBuilderForm({
                 )
               : null,
           childAgentId: action.configuration.childAgentId,
-          reasoningModel: action.configuration.reasoningModel,
           timeFrame: action.configuration.timeFrame,
           jsonSchema: action.configuration.jsonSchema,
           additionalConfiguration:
