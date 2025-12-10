@@ -3,7 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { PostSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/assistant/skill_configurations";
 import type { PatchSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/assistant/skill_configurations/[sId]";
 import type { Result, UserType, WorkspaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export async function submitSkillBuilderForm({
   formData,
@@ -112,11 +112,10 @@ export async function submitSkillBuilderForm({
 
     return new Ok(skillConfiguration);
   } catch (error) {
+    const normalizedError = normalizeError(error);
     return new Err(
       new Error(
-        `Unexpected error ${skillConfigurationId ? "updating" : "creating"} skill: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+        `Unexpected error ${skillConfigurationId ? "updating" : "creating"} skill: ${normalizedError.message}`
       )
     );
   }

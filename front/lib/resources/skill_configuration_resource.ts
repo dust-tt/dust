@@ -167,20 +167,12 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
         // Build canEdit map
         for (const skill of skillConfigurations) {
-          let canEdit = false;
-
-          // Author can always edit
-          if (skill.authorId === user.id) {
-            canEdit = true;
-          } else {
-            // Check if user is in the editors group
-            const editorGroup = editorGroups[skill.id];
-            if (editorGroup) {
-              const memberIds = groupMemberships[editorGroup.id] || [];
-              canEdit = memberIds.includes(user.id);
-            }
-          }
-
+          const canEdit = this.computeCanEdit({
+            skill,
+            user,
+            editorGroups,
+            groupMemberships,
+          });
           canEditMap.set(skill.id, canEdit);
         }
       } else {
@@ -205,6 +197,32 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
           canEdit: canEditMap.get(c.id) ?? false,
         })
     );
+  }
+
+  private static computeCanEdit({
+    skill,
+    user,
+    editorGroups,
+    groupMemberships,
+  }: {
+    skill: Attributes<SkillConfigurationModel>;
+    user: Attributes<UserModel>;
+    editorGroups: Record<ModelId, GroupResource>;
+    groupMemberships: Record<ModelId, ModelId[]>;
+  }): boolean {
+    // Author can always edit
+    if (skill.authorId === user.id) {
+      return true;
+    }
+
+    // Check if user is in the editors group
+    const editorGroup = editorGroups[skill.id];
+    if (!editorGroup) {
+      return false;
+    }
+
+    const memberIds = groupMemberships[editorGroup.id] || [];
+    return memberIds.includes(user.id);
   }
 
   static async fetchWithAuthor(
