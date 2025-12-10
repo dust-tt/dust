@@ -270,6 +270,6 @@ export async function download({
   return {
     content,
     fileName: title,
-    mimeType: "application/vnd.notion.page",
+    contentType: "text/markdown",
   };
 }
