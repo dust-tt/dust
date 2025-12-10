@@ -1,9 +1,5 @@
-import {
-  type CreationOptional,
-  type ForeignKey,
-  type NonAttribute,
-  DataTypes,
-} from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -11,9 +7,9 @@ import {
   ConversationModel,
 } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkillModel> {
   declare createdAt: CreationOptional<Date>;

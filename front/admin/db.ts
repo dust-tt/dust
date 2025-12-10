@@ -53,6 +53,7 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -98,7 +99,6 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { sendInitDbMessage } from "@app/types";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 
 async function main() {
   await sendInitDbMessage({
