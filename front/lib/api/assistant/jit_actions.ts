@@ -27,13 +27,13 @@ import {
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -42,7 +42,6 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types";
 import { CoreAPI } from "@app/types";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 
 export async function getJITServers(
   auth: Authenticator,
