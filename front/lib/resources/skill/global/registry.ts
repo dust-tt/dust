@@ -1,5 +1,8 @@
+import type { Attributes } from "sequelize";
+
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type { UserModel } from "@app/lib/resources/storage/models/user";
 
 export interface GlobalSkillDefinition {
   readonly description: string;
@@ -77,3 +80,21 @@ export class GlobalSkillsRegistry {
     });
   }
 }
+
+export const GLOBAL_DUST_AUTHOR: Attributes<UserModel> = {
+  createdAt: new Date(),
+  email: "",
+  firstName: "",
+  id: -1,
+  imageUrl: null,
+  isDustSuperUser: false,
+  lastLoginAt: null,
+  lastName: null,
+  name: "Dust",
+  provider: null,
+  providerId: null,
+  sId: "dust",
+  updatedAt: new Date(),
+  username: "",
+  workOSUserId: null,
+};

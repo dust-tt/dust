@@ -18,7 +18,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
+import {
+  GLOBAL_DUST_AUTHOR,
+  GlobalSkillsRegistry,
+} from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -238,9 +241,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   ): Promise<SkillConfigurationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const { where, includes, ...otherOptions } = options;
+    const { where, includes, onlyCustom, ...otherOptions } = options;
 
-    const skillConfigurations = await this.model.findAll({
+    const customSkillConfigurations = await this.model.findAll({
       ...otherOptions,
       where: {
         ...where,
@@ -249,90 +252,105 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       include: includes,
     });
 
-    if (skillConfigurations.length === 0) {
-      return [];
-    }
+    let customSkillConfigurationsRes: SkillConfigurationResource[] = [];
 
-    const mcpServerConfigurations =
-      await SkillMCPServerConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: {
-            [Op.in]: skillConfigurations.map((c) => c.id),
+    if (customSkillConfigurations.length > 0) {
+      const mcpServerConfigurations =
+        await SkillMCPServerConfigurationModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: customSkillConfigurations.map((c) => c.id),
+            },
           },
-        },
-      });
+        });
 
-    const mcpServerConfigsBySkillId = new Map<
-      number,
-      Attributes<SkillMCPServerConfigurationModel>[]
-    >();
-    for (const config of mcpServerConfigurations) {
-      const existing = mcpServerConfigsBySkillId.get(
-        config.skillConfigurationId
-      );
-      if (existing) {
-        existing.push(config.get());
-      } else {
-        mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
-          config.get(),
-        ]);
-      }
-    }
-
-    // Compute canEdit for each skill
-    const user = auth.user();
-    const canEditMap = new Map<number, boolean>();
-
-    if (user) {
-      // Batch fetch all editor groups for all skills
-      const editorGroupsRes = await GroupResource.findEditorGroupsForSkills(
-        auth,
-        skillConfigurations.map((s) => s.id)
-      );
-
-      if (editorGroupsRes.isOk()) {
-        const editorGroups = editorGroupsRes.value;
-        const uniqueGroups = Array.from(
-          new Set(Object.values(editorGroups).map((g) => g.id))
-        ).map((id) => Object.values(editorGroups).find((g) => g.id === id)!);
-
-        // Batch fetch active members for all editor groups
-        const groupMemberships =
-          await GroupResource.getActiveMembershipsForGroups(auth, uniqueGroups);
-
-        // Build canEdit map
-        for (const skill of skillConfigurations) {
-          const canEdit = this.computeCanEdit({
-            skill,
-            user,
-            editorGroups,
-            groupMemberships,
-          });
-          canEditMap.set(skill.id, canEdit);
-        }
-      } else {
-        // If we can't fetch editor groups, fall back to no edit permissions
-        for (const skill of skillConfigurations) {
-          const canEdit = user && skill.authorId === user.id;
-          canEditMap.set(skill.id, canEdit);
+      const mcpServerConfigsBySkillId = new Map<
+        number,
+        Attributes<SkillMCPServerConfigurationModel>[]
+      >();
+      for (const config of mcpServerConfigurations) {
+        const existing = mcpServerConfigsBySkillId.get(
+          config.skillConfigurationId
+        );
+        if (existing) {
+          existing.push(config.get());
+        } else {
+          mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
+            config.get(),
+          ]);
         }
       }
-    } else {
-      // No user, no edit permissions
-      for (const skill of skillConfigurations) {
-        canEditMap.set(skill.id, false);
+
+      // Compute canEdit for each skill
+      const user = auth.user();
+      const canEditMap = new Map<number, boolean>();
+
+      if (user) {
+        // Batch fetch all editor groups for all skills
+        const editorGroupsRes = await GroupResource.findEditorGroupsForSkills(
+          auth,
+          customSkillConfigurations.map((s) => s.id)
+        );
+
+        if (editorGroupsRes.isOk()) {
+          const editorGroups = editorGroupsRes.value;
+          const uniqueGroups = Array.from(
+            new Set(Object.values(editorGroups).map((g) => g.id))
+          ).map((id) => Object.values(editorGroups).find((g) => g.id === id)!);
+
+          // Batch fetch active members for all editor groups
+          const groupMemberships =
+            await GroupResource.getActiveMembershipsForGroups(
+              auth,
+              uniqueGroups
+            );
+
+          // Build canEdit map
+          for (const skill of customSkillConfigurations) {
+            const canEdit = this.computeCanEdit({
+              skill,
+              user,
+              editorGroups,
+              groupMemberships,
+            });
+            canEditMap.set(skill.id, canEdit);
+          }
+        } else {
+          // If we can't fetch editor groups, fall back to no edit permissions
+          for (const skill of customSkillConfigurations) {
+            const canEdit = user && skill.authorId === user.id;
+            canEditMap.set(skill.id, canEdit);
+          }
+        }
+      } else {
+        // No user, no edit permissions
+        for (const skill of customSkillConfigurations) {
+          canEditMap.set(skill.id, false);
+        }
       }
+
+      customSkillConfigurationsRes = customSkillConfigurations.map(
+        (c) =>
+          new this(this.model, c.get(), {
+            author: c.author?.get(),
+            canEdit: canEditMap.get(c.id) ?? false,
+            mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
+          })
+      );
     }
 
-    return skillConfigurations.map(
-      (c) =>
-        new this(this.model, c.get(), {
-          author: c.author?.get(),
-          mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
-          canEdit: canEditMap.get(c.id) ?? false,
-        })
-    );
+    // Only include global skills if onlyCustom is not true.
+    if (onlyCustom === true) {
+      return customSkillConfigurationsRes;
+    }
+
+    const globalSkillConfigurations: SkillConfigurationResource[] =
+      GlobalSkillsRegistry.findAll(where).map((def) =>
+        this.fromGlobalSkill(auth, def)
+      );
+
+    return [...customSkillConfigurationsRes, ...globalSkillConfigurations];
   }
 
   private static computeCanEdit({
@@ -565,7 +583,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         version: def.version,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      { globalSId: def.sId }
+      { author: GLOBAL_DUST_AUTHOR, globalSId: def.sId }
     );
   }
 
