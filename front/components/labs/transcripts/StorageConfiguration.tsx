@@ -48,7 +48,6 @@ export function StorageConfiguration({
     useState<DataSourceViewSelectionConfigurations>({});
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStoreInFolder(transcriptsConfiguration.dataSourceViewId !== null);
 
     if (transcriptsConfiguration.dataSourceViewId) {

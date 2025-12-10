@@ -110,7 +110,6 @@ export function AgentDetails({
 
   useEffect(() => {
     // Reset to info tab when we open/close the modal
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedTab("info");
   }, [agentId]);
 

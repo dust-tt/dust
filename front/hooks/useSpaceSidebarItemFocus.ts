@@ -17,7 +17,6 @@ export function useSpaceSidebarItemFocus({ path }: { path: string }) {
   // Unfold the space's category if it's an ancestor of the current page.
   useEffect(() => {
     if (isDescendant) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsExpanded(true);
     }
   }, [isDescendant]);

@@ -116,7 +116,6 @@ export function MCPActionDetails({
       };
 
       if (baseOutput === null) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setOutput([deniedMessage]);
       } else {
         setOutput([...baseOutput, deniedMessage]);

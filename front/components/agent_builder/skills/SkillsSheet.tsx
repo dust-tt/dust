@@ -66,7 +66,6 @@ export function SkillsSheet({
   // Reset local state when sheet opens
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalSelectedSkills(selectedSkills);
       setSearchQuery("");
     }

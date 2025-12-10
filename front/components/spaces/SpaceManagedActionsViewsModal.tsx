@@ -44,7 +44,6 @@ export default function SpaceManagedActionsViewsModel({
     if (!shouldOpenMenu) {
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMenuOpen(true);
     onOpenMenuHandled?.();
   }, [shouldOpenMenu, onOpenMenuHandled]);

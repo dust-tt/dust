@@ -59,7 +59,6 @@ export default function DataSourceView({
 
   useEffect(
     () =>
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayNameByDocId(
         documents.reduce(
           (acc, doc) =>
@@ -73,7 +72,6 @@ export default function DataSourceView({
   );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(false);
     let isCancelled = false;
     void (async () => {
