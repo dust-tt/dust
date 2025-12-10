@@ -1,9 +1,9 @@
 import type { Client } from "@microsoft/microsoft-graph-client";
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import AdmZip from "adm-zip";
-import { Readable } from "stream";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { Readable } from "stream";
 
 import config from "@app/lib/api/config";
 import { untrustedFetch } from "@app/lib/egress/server";
