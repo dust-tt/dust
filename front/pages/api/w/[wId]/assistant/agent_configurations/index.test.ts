@@ -5,6 +5,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
@@ -204,6 +205,9 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
         role: "admin",
         method: "POST",
       });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
 
     await SpaceFactory.defaults(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);

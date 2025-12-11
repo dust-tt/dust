@@ -21,8 +21,8 @@ import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assis
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
