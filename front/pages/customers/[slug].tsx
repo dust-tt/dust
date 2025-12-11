@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { Grid, H1, H2, H5 } from "@app/components/home/ContentComponents";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
