@@ -15,7 +15,7 @@ import { format } from "date-fns/format";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
-import { useEditors } from "@app/lib/swr/editors";
+import { useEditors } from "@app/lib/swr/agent_editors";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
