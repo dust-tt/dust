@@ -453,10 +453,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   async updatePermissions(
     auth: Authenticator,
-    params:
-      | { isRestricted: true; memberIds: string[]; managementMode: "manual" }
-      | { isRestricted: true; groupIds: string[]; managementMode: "group" }
-      | { isRestricted: false }
+    params: { name: string; isRestricted: boolean } & (
+      | { memberIds: string[]; managementMode: "manual" }
+      | { groupIds: string[]; managementMode: "group" }
+    )
   ): Promise<
     Result<
       undefined,
@@ -512,102 +512,57 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     return withTransaction(async (t) => {
       // Update managementMode if provided
-      if (isRestricted) {
-        const { managementMode } = params;
+      const { managementMode } = params;
 
-        // If the space should be restricted and was not restricted before, remove the global group.
-        if (!wasRestricted) {
-          await this.removeGroup(globalGroup);
+      // If the space should be restricted and was not restricted before, remove the global group.
+      if (!wasRestricted && isRestricted) {
+        await this.removeGroup(globalGroup);
+      }
+
+      // If the space should not be restricted and was restricted before, add the global group.
+      if (wasRestricted && !isRestricted) {
+        await this.addGroup(globalGroup);
+      }
+
+      const previousManagementMode = this.managementMode;
+      await this.update({ managementMode }, t);
+
+      // Handle member status updates based on management mode changes
+      if (previousManagementMode !== managementMode) {
+        if (managementMode === "group") {
+          // When switching to group mode, suspend all active members of the default group
+          await this.suspendDefaultGroupMembers(auth, t);
+        } else if (
+          managementMode === "manual" &&
+          previousManagementMode === "group"
+        ) {
+          // When switching from group to manual mode, restore suspended members
+          await this.restoreDefaultGroupMembers(auth, t);
         }
+      }
 
-        const previousManagementMode = this.managementMode;
-        await this.update({ managementMode }, t);
+      if (managementMode === "manual") {
+        const memberIds = params.memberIds;
+        // Handle member-based management
+        const users = await UserResource.fetchByIds(memberIds);
 
-        // Handle member status updates based on management mode changes
-        if (previousManagementMode !== managementMode) {
-          if (managementMode === "group") {
-            // When switching to group mode, suspend all active members of the default group
-            await this.suspendDefaultGroupMembers(auth, t);
-          } else if (
-            managementMode === "manual" &&
-            previousManagementMode === "group"
-          ) {
-            // When switching from group to manual mode, restore suspended members
-            await this.restoreDefaultGroupMembers(auth, t);
-          }
-        }
-
-        if (managementMode === "manual") {
-          const memberIds = params.memberIds;
-          // Handle member-based management
-          const users = await UserResource.fetchByIds(memberIds);
-
-          const setMembersRes = await defaultSpaceGroup.setMembers(
-            auth,
-            users.map((u) => u.toJSON()),
-            { transaction: t }
-          );
-          if (setMembersRes.isErr()) {
-            return setMembersRes;
-          }
-        } else if (managementMode === "group") {
-          // Handle group-based management
-          const groupIds = params.groupIds;
-
-          // Remove existing external groups
-          const existingExternalGroups = this.groups.filter(
-            (g) => g.kind === "provisioned"
-          );
-          for (const group of existingExternalGroups) {
-            await GroupSpaceModel.destroy({
-              where: {
-                groupId: group.id,
-                vaultId: this.id,
-              },
-              transaction: t,
-            });
-          }
-
-          // Add the new groups
-          const selectedGroupsResult = await GroupResource.fetchByIds(
-            auth,
-            groupIds
-          );
-          if (selectedGroupsResult.isErr()) {
-            return selectedGroupsResult;
-          }
-
-          const selectedGroups = selectedGroupsResult.value;
-          for (const selectedGroup of selectedGroups) {
-            await GroupSpaceModel.create(
-              {
-                groupId: selectedGroup.id,
-                vaultId: this.id,
-                workspaceId: this.workspaceId,
-              },
-              { transaction: t }
-            );
-          }
-        }
-      } else {
-        // If the space should not be restricted and was restricted before, add the global group.
-        if (wasRestricted) {
-          await this.addGroup(globalGroup);
-        }
-
-        // Remove all members from default group.
-        const setMembersRes = await defaultSpaceGroup.setMembers(auth, [], {
-          transaction: t,
-        });
+        const setMembersRes = await defaultSpaceGroup.setMembers(
+          auth,
+          users.map((u) => u.toJSON()),
+          { transaction: t }
+        );
         if (setMembersRes.isErr()) {
           return setMembersRes;
         }
+      } else if (managementMode === "group") {
+        // Handle group-based management
+        const groupIds = params.groupIds;
 
-        // Remove any external groups
-        const externalGroups = this.groups.filter(
+        // Remove existing external groups
+        const existingExternalGroups = this.groups.filter(
           (g) => g.kind === "provisioned"
         );
-        for (const group of externalGroups) {
+        for (const group of existingExternalGroups) {
           await GroupSpaceModel.destroy({
             where: {
               groupId: group.id,
@@ -615,6 +570,27 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             },
             transaction: t,
           });
+        }
+
+        // Add the new groups
+        const selectedGroupsResult = await GroupResource.fetchByIds(
+          auth,
+          groupIds
+        );
+        if (selectedGroupsResult.isErr()) {
+          return selectedGroupsResult;
+        }
+
+        const selectedGroups = selectedGroupsResult.value;
+        for (const selectedGroup of selectedGroups) {
+          await GroupSpaceModel.create(
+            {
+              groupId: selectedGroup.id,
+              vaultId: this.id,
+              workspaceId: this.workspaceId,
+            },
+            { transaction: t }
+          );
         }
       }
 

@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -8,7 +9,28 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, PostSpaceRequestBodySchema } from "@app/types";
+import { assertNever } from "@app/types";
+
+const PostSpaceRequestBodySchema = t.intersection([
+  t.type({
+    isRestricted: t.boolean,
+    name: t.string,
+  }),
+  t.union([
+    t.type({
+      memberIds: t.array(t.string),
+      managementMode: t.literal("manual"),
+    }),
+    t.type({
+      groupIds: t.array(t.string),
+      managementMode: t.literal("group"),
+    }),
+  ]),
+]);
+
+export type PostSpaceRequestBodyType = t.TypeOf<
+  typeof PostSpaceRequestBodySchema
+>;
 
 export type GetSpacesResponseBody = {
   spaces: SpaceType[];

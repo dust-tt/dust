@@ -257,20 +257,10 @@ export async function hardDeleteSpace(
 
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
-  params:
-    | {
-        name: string;
-        isRestricted: true;
-        memberIds: string[];
-        managementMode: "manual";
-      }
-    | {
-        name: string;
-        isRestricted: true;
-        groupIds: string[];
-        managementMode: "group";
-      }
-    | { name: string; isRestricted: false },
+  params: { name: string; isRestricted: boolean } & (
+    | { memberIds: string[]; managementMode: "manual" }
+    | { groupIds: string[]; managementMode: "group" }
+  ),
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<
   Result<
