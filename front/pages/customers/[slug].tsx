@@ -285,7 +285,7 @@ export default function CustomerStoryPage({
             )}
           </div>
 
-          <aside className={classNames(SIDEBAR_CLASSES, "mt-12 lg:mt-12")}>
+          <aside className={classNames(SIDEBAR_CLASSES, "mt-6")}>
             <div className="sticky top-24 space-y-6">
               <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
