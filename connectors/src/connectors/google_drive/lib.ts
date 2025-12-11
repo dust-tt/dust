@@ -19,6 +19,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
+  deleteDataSourceTable,
   updateDataSourceDocumentParents,
   updateDataSourceTableParents,
   upsertDataSourceFolder,
@@ -136,6 +137,17 @@ export async function internalDeleteFile(
     await deleteDataSourceFolder({
       dataSourceConfig,
       folderId: googleDriveFile.dustFileId,
+    });
+  } else if (googleDriveFile.mimeType === "text/csv") {
+    // CSV files are upserted as tables, so we need to delete them as tables
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteDataSourceTable({
+      dataSourceConfig,
+      tableId: googleDriveFile.dustFileId,
+      loggerArgs: {
+        connectorId: connector.id,
+        fileId: googleDriveFile.driveFileId,
+      },
     });
   } else {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
