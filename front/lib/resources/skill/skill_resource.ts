@@ -331,7 +331,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skillEditorGroupsMap = new Map<number, GroupResource>();
 
       // Batch fetch all editor groups for all skills.
-      const editorGroupIds = await GroupSkillModel.findAll({
+      const editorGroupSkills = await GroupSkillModel.findAll({
         where: {
           skillConfigurationId: {
             [Op.in]: customSkills.map((s) => s.id),
@@ -341,11 +341,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         attributes: ["groupId", "skillConfigurationId"],
       });
 
-      // TODO(SKILLS 2025-12-11): Ensure all skills have a group.
+      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
 
-      if (editorGroupIds.length > 0) {
+      if (editorGroupSkills.length > 0) {
         const uniqueGroupIds = Array.from(
-          new Set(editorGroupIds.map((eg) => eg.groupId))
+          new Set(editorGroupSkills.map((eg) => eg.groupId))
         );
         const editorGroups = await GroupResource.fetchByModelIds(
           auth,
@@ -353,12 +353,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
 
         // Build map from skill ID to editor group.
-        for (const editorGroupId of editorGroupIds) {
+        for (const editorGroupSkill of editorGroupSkills) {
           const group = editorGroups.find(
-            (g) => g.id === editorGroupId.groupId
+            (g) => g.id === editorGroupSkill.groupId
           );
           if (group) {
-            skillEditorGroupsMap.set(editorGroupId.skillConfigurationId, group);
+            skillEditorGroupsMap.set(
+              editorGroupSkill.skillConfigurationId,
+              group
+            );
           }
         }
       }
