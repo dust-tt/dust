@@ -515,6 +515,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
   private get isGlobal(): boolean {
     return this.globalSId !== undefined;
   }
