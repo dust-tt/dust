@@ -65,10 +65,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20.13.0
+          node-version: 20.x
           registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
 
       - name: Configure git
         run: |
@@ -101,10 +104,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20.13.0
+          node-version: 20.x
           registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
 
       - name: Generate RC version
         working-directory: sparkle
