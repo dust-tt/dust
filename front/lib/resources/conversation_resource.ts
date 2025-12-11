@@ -624,6 +624,75 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async listUnreadConversationsForUser(
+    auth: Authenticator
+  ): Promise<ConversationResource[]> {
+    const user = auth.user();
+    assert(user, "User is expected to be authenticated");
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Get all unread participations for the user
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        unread: true,
+      },
+      attributes: [
+        "actionRequired",
+        "conversationId",
+        "unread",
+        "updatedAt",
+        "userId",
+      ],
+    });
+
+    const conversationIds = participations.map((p) => p.conversationId);
+
+    if (conversationIds.length === 0) {
+      return [];
+    }
+
+    // Fetch conversations with proper authorization, filtered by conversation IDs
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: {
+          id: { [Op.in]: conversationIds },
+        },
+      }
+    );
+
+    // Create participation map for unread conversations
+    const participationMap = new Map(
+      participations.map((p) => [
+        p.conversationId,
+        {
+          actionRequired: p.actionRequired,
+          unread: p.unread,
+          updated: p.updatedAt.getTime(),
+        },
+      ])
+    );
+
+    // Attach participation data to resources
+    conversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
+
+    // Sort by participation updated time descending
+    return conversations.sort(
+      (a, b) =>
+        (b.userParticipation?.updated ?? 0) -
+        (a.userParticipation?.updated ?? 0)
+    );
+  }
+
   static async listConversationsForTrigger(
     auth: Authenticator,
     triggerId: string,

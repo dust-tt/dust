@@ -995,6 +995,302 @@ describe("listConversationsForUser", () => {
     await destroyConversation(adminAuth, { conversationId: testConvo.sId });
   });
 });
+
+describe("listUnreadConversationsForUser", () => {
+  let adminAuth: Authenticator;
+  let userAuth: Authenticator;
+  let workspace: LightWorkspaceType;
+  let agents: LightAgentConfigurationType[];
+  let conversationIds: string[];
+
+  beforeEach(async () => {
+    const {
+      authenticator,
+      user,
+      workspace: w,
+    } = await createResourceTest({
+      role: "admin",
+    });
+
+    workspace = w;
+    const adminUser = user;
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, {
+      role: "user",
+    });
+
+    adminAuth = authenticator;
+    userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+
+    agents = await setupTestAgents(workspace, adminUser);
+
+    // Create conversations for testing
+    const unreadConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(5)],
+    });
+
+    const readConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(3)],
+    });
+
+    conversationIds = [unreadConversation.sId, readConversation.sId];
+
+    // Add regular user as participant to both conversations
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: unreadConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: readConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    // Mark conversations with correct unread status
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const unreadConvoResource = await ConversationResource.fetchById(
+      adminAuth,
+      unreadConversation.sId
+    );
+    assert(unreadConvoResource, "Unread conversation not found");
+
+    const readConvoResource = await ConversationResource.fetchById(
+      adminAuth,
+      readConversation.sId
+    );
+    assert(readConvoResource, "Read conversation not found");
+
+    // Mark unread conversation as unread
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: unreadConvoResource.id,
+          workspaceId: workspace.id,
+          userId: userAuth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Mark read conversation as read
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: readConvoResource.id,
+          workspaceId: workspace.id,
+          userId: userAuth.getNonNullableUser().id,
+        },
+      }
+    );
+  });
+
+  afterEach(async () => {
+    for (const sId of conversationIds) {
+      await destroyConversation(adminAuth, { conversationId: sId });
+    }
+  });
+
+  it("should return only unread conversations", async () => {
+    const unreadConversations =
+      await ConversationResource.listUnreadConversationsForUser(userAuth);
+
+    expect(unreadConversations).toHaveLength(1);
+    expect(unreadConversations[0].sId).toBe(conversationIds[0]);
+    expect(unreadConversations[0]).toBeInstanceOf(ConversationResource);
+  });
+
+  it("should return conversations with populated participation data", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const participation = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          conversationIds[0]
+        ))!.id,
+        userId: userAuth.getNonNullableUser().id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(participation, "Participation not found");
+    expect(participation.unread).toBe(true);
+
+    const unreadConversations =
+      await ConversationResource.listUnreadConversationsForUser(userAuth);
+
+    expect(unreadConversations).toHaveLength(1);
+    const conversationData = unreadConversations[0].toJSON();
+
+    // Verify participation data is used in toJSON.
+    expect(conversationData.unread).toBe(true);
+    expect(conversationData.actionRequired).toBe(participation.actionRequired);
+
+    // Verify other fields are present.
+    expect(conversationData.id).toBeDefined();
+    expect(conversationData.sId).toBeDefined();
+    expect(conversationData.title).toBeDefined();
+    expect(conversationData.created).toBeDefined();
+    expect(conversationData.updated).toBeDefined();
+  });
+
+  it("should return conversations sorted by participation updated time", async () => {
+    // Create a new unread conversation with more recent participation
+    const recentUnreadConvo = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: recentUnreadConvo,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    // Mark as unread
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const recentConvoResource = await ConversationResource.fetchById(
+      adminAuth,
+      recentUnreadConvo.sId
+    );
+    assert(recentConvoResource, "Recent conversation not found");
+
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: recentConvoResource.id,
+          workspaceId: workspace.id,
+          userId: userAuth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    const unreadConversations =
+      await ConversationResource.listUnreadConversationsForUser(userAuth);
+
+    expect(unreadConversations).toHaveLength(2);
+    // Most recent participation should be first.
+    expect(unreadConversations[0].sId).toBe(recentUnreadConvo.sId);
+    expect(unreadConversations[1].sId).toBe(conversationIds[0]);
+
+    const serializedConvs = unreadConversations.map((c) => c.toJSON());
+
+    // Verify sorting by updated time.
+    expect(serializedConvs[0].updated).toBeGreaterThan(
+      serializedConvs[1].updated!
+    );
+
+    await destroyConversation(adminAuth, {
+      conversationId: recentUnreadConvo.sId,
+    });
+  });
+
+  it("should handle empty unread conversations list", async () => {
+    // Mark all conversations as read
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    for (const sId of conversationIds) {
+      const convo = await ConversationResource.fetchById(adminAuth, sId);
+      assert(convo, "Conversation not found");
+
+      await ConversationParticipantModel.update(
+        { unread: false },
+        {
+          where: {
+            conversationId: convo.id,
+            workspaceId: workspace.id,
+            userId: userAuth.getNonNullableUser().id,
+          },
+        }
+      );
+    }
+
+    const unreadConversations =
+      await ConversationResource.listUnreadConversationsForUser(userAuth);
+
+    expect(unreadConversations).toHaveLength(0);
+  });
+
+  it("should not return conversations user does not participate in", async () => {
+    // Create a conversation without adding user as participant
+    const unparticipatedConvo = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    const unreadConversations =
+      await ConversationResource.listUnreadConversationsForUser(userAuth);
+
+    const conversationIds = unreadConversations.map((c) => c.sId);
+    expect(conversationIds).not.toContain(unparticipatedConvo.sId);
+
+    await destroyConversation(adminAuth, {
+      conversationId: unparticipatedConvo.sId,
+    });
+  });
+
+  it("should only return unread conversations even if user has read conversations", async () => {
+    // Create another read conversation
+    const anotherReadConvo = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(2)],
+    });
+
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: anotherReadConvo,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    // Mark as read
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const readConvoResource = await ConversationResource.fetchById(
+      adminAuth,
+      anotherReadConvo.sId
+    );
+    assert(readConvoResource, "Read conversation not found");
+
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: readConvoResource.id,
+          workspaceId: workspace.id,
+          userId: userAuth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    const unreadConversations =
+      await ConversationResource.listUnreadConversationsForUser(userAuth);
+
+    // Should only return the one unread conversation
+    expect(unreadConversations).toHaveLength(1);
+    expect(unreadConversations[0].sId).toBe(conversationIds[0]);
+
+    await destroyConversation(adminAuth, {
+      conversationId: anotherReadConvo.sId,
+    });
+  });
+});
+
 describe("Space Handling", () => {
   describe("makeNew with optional space", () => {
     it("should create a conversation with a space when space is provided", async () => {
