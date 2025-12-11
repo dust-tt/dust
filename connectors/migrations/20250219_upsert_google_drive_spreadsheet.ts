@@ -4,6 +4,7 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import logger from "@connectors/logger/logger";
 
 makeScript(
   {
@@ -32,7 +33,8 @@ makeScript(
       authCredentials,
       connectorId,
       spreadsheetData,
-      new Date().getTime()
+      new Date().getTime(),
+      logger
     );
 
     if (!result.isSupported) {

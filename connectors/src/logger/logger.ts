@@ -78,7 +78,7 @@ const logger = pino(pinoOptions);
 export default logger;
 export type { Logger } from "pino";
 
-export const getActivityLogger = (
+export const getLoggerArgs = (
   connector: ConnectorResource | ConnectorModel,
   loggerArgs?: Record<string, string | number | null>
 ) => {
@@ -103,6 +103,12 @@ export const getActivityLogger = (
   } catch (e) {
     // Cannot read context, ignore
   }
+  return effectiveArgs;
+};
 
-  return logger.child(effectiveArgs);
+export const getActivityLogger = (
+  connector: ConnectorResource | ConnectorModel,
+  loggerArgs?: Record<string, string | number | null>
+) => {
+  return logger.child(getLoggerArgs(connector, loggerArgs));
 };

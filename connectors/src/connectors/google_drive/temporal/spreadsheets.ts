@@ -394,7 +394,8 @@ export async function syncSpreadSheet(
   oauth2client: OAuth2Client,
   connectorId: ModelId,
   file: GoogleDriveObjectType,
-  startSyncTs: number
+  startSyncTs: number,
+  logger: Logger
 ): Promise<
   | {
       isSupported: false;
@@ -418,7 +419,7 @@ export async function syncSpreadSheet(
         throw new Error("Connector not found.");
       }
 
-      const localLogger = getActivityLogger(connector).child({
+      const localLogger = logger.child({
         spreadsheet: {
           id: file.id,
           size: file.size,

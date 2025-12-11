@@ -42,6 +42,7 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import { getActivityLogger, getLoggerArgs } from "@connectors/logger/logger";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -130,6 +131,11 @@ export async function internalDeleteFile(
   connector: ConnectorResource,
   googleDriveFile: GoogleDriveFilesModel
 ) {
+  const loggerArgs = {
+    ...getLoggerArgs(connector),
+    fileId: googleDriveFile.driveFileId,
+  };
+
   if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
     await deleteSpreadsheet(connector, googleDriveFile);
   } else if (isGoogleDriveFolder(googleDriveFile)) {
@@ -137,6 +143,10 @@ export async function internalDeleteFile(
     await deleteDataSourceFolder({
       dataSourceConfig,
       folderId: googleDriveFile.dustFileId,
+      loggerArgs: {
+        ...loggerArgs,
+        folderId: getInternalId(googleDriveFile.dustFileId),
+      },
     });
   } else if (googleDriveFile.mimeType === "text/csv") {
     // CSV files are upserted as tables, so we need to delete them as tables
@@ -145,15 +155,16 @@ export async function internalDeleteFile(
       dataSourceConfig,
       tableId: googleDriveFile.dustFileId,
       loggerArgs: {
-        connectorId: connector.id,
-        fileId: googleDriveFile.driveFileId,
+        ...loggerArgs,
+        tableId: getInternalId(googleDriveFile.dustFileId),
       },
     });
   } else {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceDocument(
       dataSourceConfig,
-      googleDriveFile.dustFileId
+      googleDriveFile.dustFileId,
+      { ...loggerArgs, documentId: getInternalId(googleDriveFile.dustFileId) }
     );
   }
 
