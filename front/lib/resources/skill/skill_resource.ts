@@ -164,7 +164,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchByModelIdsWithAuth(
     auth: Authenticator,
     ids: ModelId[]
-  ): Promise<SkillConfigurationResource[]> {
+  ): Promise<SkillResource[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -683,8 +683,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [];
     }
 
-    const skillConfigurations =
-      await SkillConfigurationResource.fetchByModelIdsWithAuth(auth, skillIds);
+    const skillConfigurations = await SkillResource.fetchByModelIdsWithAuth(
+      auth,
+      skillIds
+    );
 
     return skillConfigurations;
   }
@@ -755,7 +757,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns a map of skill sId to their MCP server configurations.
    */
   static async fetchMCPServerConfigurationsIdsForSkills(
-    skills: SkillConfigurationResource[]
+    skills: SkillResource[]
   ): Promise<Set<number>> {
     // Collect all unique mcpServerViewIds from all skills
     const allMcpServerViewIds = new Set<number>();
