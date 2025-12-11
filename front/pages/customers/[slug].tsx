@@ -281,14 +281,14 @@ export default function CustomerStoryPage({
                 Visit our{" "}
                 <A
                   rel="noopener noreferrer"
-                  href={`/home/product?utm_source=customer_story&utm_medium=article${story.utmCampaign ? `&utm_campaign=${story.utmCampaign}` : ""}&utm_content=visit_product_page`}
+                  href={`/home/product?utm_source=blog&utm_medium=customer_story${story.utmCampaign ? `&utm_campaign=${story.utmCampaign}` : ""}&utm_content=visit_product_page`}
                 >
                   solutions page
                 </A>{" "}
                 or reach out to{" "}
                 <A
                   rel="noopener noreferrer"
-                  href={`/home/contact?utm_source=customer_story&utm_medium=article${story.utmCampaign ? `&utm_campaign=${story.utmCampaign}` : ""}&utm_content=contact_sales`}
+                  href={`/home/contact?utm_source=blog&utm_medium=customer_story${story.utmCampaign ? `&utm_campaign=${story.utmCampaign}` : ""}&utm_content=contact_sales`}
                 >
                   our sales team
                 </A>
