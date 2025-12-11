@@ -183,6 +183,7 @@ export function contentFragmentToAttachmentCitation(
           sourceUrl={contentFragment.sourceUrl ?? undefined}
         />
       ),
+      provider: provider ?? undefined,
       spaceName: contentFragment.contentNodeData.spaceName,
       attachmentCitationType: "fragment",
     };
@@ -236,6 +237,7 @@ export function attachmentToAttachmentCitation(
       contentType: attachment.contentType,
       onRemove: attachment.onRemove,
       attachmentCitationType: "inputBar",
+      provider: attachment.provider,
     };
   } else {
     return {
@@ -272,6 +274,7 @@ export function markdownCitationToAttachmentCitation(
         sourceUrl={citation.href}
       />
     ),
+    provider: citation.provider,
     isUploading: false,
   };
 }

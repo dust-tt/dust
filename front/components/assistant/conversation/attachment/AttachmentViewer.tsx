@@ -1,12 +1,12 @@
 import {
   ArrowDownOnSquareIcon,
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExternalLinkIcon,
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -17,7 +17,12 @@ import type {
   MCPAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import {
+  INTERNAL_MCP_SERVERS,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getFileDownloadUrl,
   getFileViewUrl,
@@ -25,6 +30,7 @@ import {
   useFileProcessedContent,
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types";
+import { asDisplayToolName } from "@app/types";
 
 export const AttachmentViewer = ({
   viewerOpen,
@@ -166,21 +172,32 @@ export const AttachmentViewer = ({
     }
   };
 
+  const sourceUrl = attachmentCitation.sourceUrl;
+  const provider = attachmentCitation.provider;
+
+  const onClickOpenSourceUrl = () => {
+    if (sourceUrl) {
+      window.open(sourceUrl, "_blank");
+    }
+  };
+
+  const sourceUrlButtonLabel = provider
+    ? `Open on ${asDisplayToolName(provider)}`
+    : "Open source";
+
+  const getSourceUrlButtonIcon = () => {
+    if (provider && isInternalMCPServerName(provider)) {
+      const serverIcon = INTERNAL_MCP_SERVERS[provider].serverInfo.icon;
+      return getIcon(serverIcon);
+    }
+    return ExternalLinkIcon;
+  };
+
   return (
     <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
       <DialogContent size="xl" height="lg">
         <DialogHeader>
           <DialogTitle>
-            {canDownload && (
-              <Button
-                onClick={onClickDownload}
-                icon={ArrowDownOnSquareIcon}
-                size="mini"
-                tooltip="Download file"
-                variant="ghost"
-                className={"mr-2 align-middle"}
-              />
-            )}
             <span className="mr-2 inline-flex align-middle">
               {attachmentCitation.visual}
             </span>
@@ -202,9 +219,19 @@ export const AttachmentViewer = ({
           )}
         </DialogContainer>
         <DialogFooter
+          leftButtonProps={{
+            label: "Download file",
+            variant: "outline",
+            onClick: onClickDownload,
+            disabled: !canDownload,
+            icon: ArrowDownOnSquareIcon,
+          }}
           rightButtonProps={{
-            label: "Close",
-            variant: "highlight",
+            label: sourceUrlButtonLabel,
+            variant: "outline",
+            disabled: !sourceUrl,
+            onClick: onClickOpenSourceUrl,
+            icon: getSourceUrlButtonIcon(),
           }}
         />
       </DialogContent>

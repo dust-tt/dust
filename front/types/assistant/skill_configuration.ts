@@ -1,5 +1,6 @@
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { UserType } from "@app/types/user";
 
 export type SkillStatus = "active" | "archived";
 
@@ -19,4 +20,5 @@ export type SkillConfigurationType = {
 
 export type SkillConfigurationRelations = {
   usage: AgentsUsageType;
+  editors: UserType[];
 };
