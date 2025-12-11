@@ -19,7 +19,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
+import {
+  GLOBAL_DUST_AUTHOR,
+  GlobalSkillsRegistry,
+} from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -35,6 +38,7 @@ import type {
   ConversationType,
   ModelId,
   Result,
+  UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
@@ -434,6 +438,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       count: sortedAgents.length,
       agents: sortedAgents,
     };
+  }
+
+  async listEditors(auth: Authenticator): Promise<UserType[]> {
+    // Global skills are authored by Dust
+    if (this.isGlobal) {
+      return [GLOBAL_DUST_AUTHOR];
+    }
+
+    const editorGroupRes = await GroupResource.findEditorGroupForSkill(
+      auth,
+      this.id
+    );
+
+    if (editorGroupRes.isErr()) {
+      return [];
+    }
+
+    const members = await editorGroupRes.value.getActiveMembers(auth);
+
+    return members.map((m) => m.toJSON());
   }
 
   async archive(

@@ -98,7 +98,7 @@ async function handler(
 
   const editorGroupRes = await GroupResource.findEditorGroupForSkill(
     auth,
-    skill
+    skill.id
   );
   if (editorGroupRes.isErr()) {
     switch (editorGroupRes.error.code) {
