@@ -317,7 +317,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  // Fetch usage data for this skill
   // TODO(skills 2025-12-10): Add support for global skills
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
     const workspace = auth.getNonNullableWorkspace();
@@ -334,10 +333,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       return { count: 0, agents: [] };
     }
 
-    // Get agent configuration IDs
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
-    // Fetch active agent configurations
+    // Fetch related active agent configurations
     const agents = await AgentConfigurationModel.findAll({
       where: {
         id: { [Op.in]: agentConfigIds },
