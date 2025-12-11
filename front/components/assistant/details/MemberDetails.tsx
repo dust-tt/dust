@@ -70,7 +70,6 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                   </div>
                 )}
               </div>
-              {}
               {isUserDetailsError ? (
                 <ContentMessage title="Not Available" icon={LockIcon} size="md">
                   This user is not available.
