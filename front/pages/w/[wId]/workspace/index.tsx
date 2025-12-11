@@ -215,19 +215,19 @@ export default function WorkspaceAdmin({
                     />
                   </div>
                 </SheetContainer>
-                <SheetFooter>
-                  <Button
-                    variant="tertiary"
-                    label="Cancel"
-                    onClick={handleCancel}
-                  />
-                  <Button
-                    variant="primary"
-                    label={updating ? "Saving..." : "Save"}
-                    disabled={disable || updating}
-                    onClick={handleUpdateWorkspace}
-                  />
-                </SheetFooter>
+                <SheetFooter
+                  leftButtonProps={{
+                    onClick: handleCancel,
+                    variant: "outline",
+                    label: "Cancel",
+                  }}
+                  rightButtonProps={{
+                    onClick: handleUpdateWorkspace,
+                    variant: "primary",
+                    label: updating ? "Saving..." : "Save",
+                    disabled: disable || updating,
+                  }}
+                />
               </SheetContent>
             </Sheet>
           </div>
