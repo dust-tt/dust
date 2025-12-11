@@ -20,6 +20,7 @@ import { SkillsSheet } from "@app/components/agent_builder/skills/skillSheet/Ski
 import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILL_ICON } from "@app/lib/skill";
+import type { UserType, WorkspaceType } from "@app/types";
 
 const BACKGROUND_IMAGE_PATH = "/static/SkillsBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
@@ -69,6 +70,8 @@ function SkillCard({ skill, onRemove }: SkillCardProps) {
 
 interface AgentBuilderSkillsBlockProps {
   isSkillsLoading?: boolean;
+  owner: WorkspaceType;
+  user: UserType;
 }
 
 function AddSkillsButton({ onClick }: { onClick: () => void }) {
@@ -85,6 +88,8 @@ function AddSkillsButton({ onClick }: { onClick: () => void }) {
 
 export function AgentBuilderSkillsBlock({
   isSkillsLoading,
+  owner,
+  user,
 }: AgentBuilderSkillsBlockProps) {
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
   const { fields, remove } = useFieldArray<AgentBuilderFormData, "skills">({
@@ -147,6 +152,8 @@ export function AgentBuilderSkillsBlock({
         onClose={handleCloseSheet}
         onSave={handleSaveSkills}
         onModeChange={setSheetMode}
+        owner={owner}
+        user={user}
       />
     </AgentBuilderSectionContainer>
   );

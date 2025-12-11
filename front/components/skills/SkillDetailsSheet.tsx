@@ -15,18 +15,28 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
+import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { SKILL_ICON } from "@app/lib/skill";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { UserType, WorkspaceType } from "@app/types";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
   onClose: () => void;
+  owner: WorkspaceType;
+  user: UserType;
 };
 
 export function SkillDetailsSheet({
   skillConfiguration,
   onClose,
+  user,
+  owner,
 }: SkillDetailsProps) {
   return (
     <Sheet
@@ -45,7 +55,11 @@ export function SkillDetailsSheet({
           <DescriptionSection skillConfiguration={skillConfiguration} />
         </SheetHeader>
         <SheetContainer className="pb-4">
-          <SkillDetailsSheetContent skillConfiguration={skillConfiguration} />
+          <SkillDetailsSheetContent
+            skillConfiguration={skillConfiguration}
+            user={user}
+            owner={owner}
+          />
         </SheetContainer>
       </SheetContent>
     </Sheet>
@@ -53,16 +67,20 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
+  owner: WorkspaceType;
+  user: UserType;
 };
 
 export function SkillDetailsSheetContent({
   skillConfiguration,
+  owner,
+  user,
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  // TODO(skills 2025-12-10): Check based on GLOBAL_SKILLS_SID enum
-  const isGlobalSkill = false;
+  const isGlobalSkill =
+    GlobalSkillsRegistry.getById(skillConfiguration.sId) !== undefined;
   const showEditorsTabs = !isGlobalSkill;
 
   if (showEditorsTabs) {
@@ -87,8 +105,11 @@ export function SkillDetailsSheetContent({
             <SkillInfoTab skillConfiguration={skillConfiguration} />
           </TabsContent>
           <TabsContent value="editors">
-            {/* TODO(skills 2025-12-10): Editors list */}
-            <></>
+            <SkillEditorsTab
+              skillConfiguration={skillConfiguration}
+              owner={owner}
+              user={user}
+            />
           </TabsContent>
         </div>
       </Tabs>
