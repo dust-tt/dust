@@ -1,5 +1,7 @@
-import { Chip, Page, ReadOnlyTextArea } from "@dust-tt/sparkle";
+import { Chip, Page } from "@dust-tt/sparkle";
+import React from "react";
 
+import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AssistantEditedSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantToolsSection";
@@ -43,10 +45,12 @@ export function AgentInfoTab({
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>
-              <ReadOnlyTextArea
-                content={agentConfiguration.instructions}
-                minRows={15}
-              />
+              <div className="border-structure-200 bg-structure-50 rounded-lg border p-4">
+                <AgentMessageMarkdown
+                  content={agentConfiguration.instructions}
+                  owner={owner}
+                ></AgentMessageMarkdown>
+              </div>
             </div>
           ) : (
             "This agent has no instructions."

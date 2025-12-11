@@ -7,7 +7,6 @@ import {
   ClipboardIcon,
   ConversationMessage,
   InteractiveImageGrid,
-  Markdown,
   MoreIcon,
   StopIcon,
   TrashIcon,
@@ -17,8 +16,8 @@ import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import React, { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
@@ -52,22 +51,13 @@ import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
   CiteBlock,
-  getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
-import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import {
-  getQuickReplyPlugin,
-  quickReplyDirective,
-} from "@app/components/markdown/QuickReplyBlock";
-import {
-  getToolSetupPlugin,
-  toolDirective,
-} from "@app/components/markdown/tool/tool";
+import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
+import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
-  visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
@@ -75,12 +65,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
-import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-  getUserMentionPlugin,
-  userMentionDirective,
-} from "@app/lib/mentions/markdown/plugin";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
@@ -914,10 +898,6 @@ function AgentMessageContent({
         sId
       ),
       sup: CiteBlock,
-      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
-      mention: getAgentMentionPlugin(owner),
-      mention_user: getUserMentionPlugin(owner),
-      dustimg: getImgPlugin(owner),
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
     }),
@@ -930,19 +910,6 @@ function AgentMessageContent({
       isLastMessage,
       handleToolSetupComplete,
     ]
-  );
-
-  const additionalMarkdownPlugins: PluggableList = React.useMemo(
-    () => [
-      agentMentionDirective,
-      userMentionDirective,
-      getCiteDirective(),
-      visualizationDirective,
-      imgDirective,
-      toolDirective,
-      quickReplyDirective,
-    ],
-    []
   );
 
   // Auto-open interactive content drawer when interactive files are available.
@@ -1063,13 +1030,13 @@ function AgentMessageContent({
               updateActiveReferences,
             }}
           >
-            <Markdown
+            <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
+              owner={owner}
               isStreaming={streaming && lastTokenClassification === "tokens"}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
+            ></AgentMessageMarkdown>
           </CitationsContext.Provider>
         </div>
       )}
