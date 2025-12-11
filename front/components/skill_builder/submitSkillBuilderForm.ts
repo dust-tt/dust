@@ -1,7 +1,7 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PatchSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/assistant/skill_configurations/[sId]";
 import type { PostSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/skills";
+import type { PatchSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { Result, UserType, WorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -24,7 +24,7 @@ export async function submitSkillBuilderForm({
 > {
   try {
     const endpoint = skillConfigurationId
-      ? `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfigurationId}`
+      ? `/api/w/${owner.sId}/skills/${skillConfigurationId}`
       : `/api/w/${owner.sId}/skills`;
 
     const method = skillConfigurationId ? "PATCH" : "POST";
@@ -84,7 +84,7 @@ export async function submitSkillBuilderForm({
 
     if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
       const editorsResponse = await clientFetch(
-        `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfiguration.sId}/editors`,
+        `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/editors`,
         {
           method: "PATCH",
           headers: {
