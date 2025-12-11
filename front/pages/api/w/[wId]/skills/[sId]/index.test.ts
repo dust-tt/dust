@@ -160,7 +160,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       name: "Other Skill",
     });
 
-    // Try to update the skill anme to the duplicate name
+    // Try to update the skill name to the duplicate name
     req.body = {
       name: "Other Skill",
       description: "Description",
