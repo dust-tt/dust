@@ -38,7 +38,9 @@ function createServer(
               const result = await listWarehouses(accessToken, workspaceUrl);
 
               if (result.isErr()) {
-                return new Err(new MCPError(result.error));
+                return new Err(
+                  new MCPError(result.error.message ?? "Unknown error")
+                );
               }
 
               const warehouses = result.value;

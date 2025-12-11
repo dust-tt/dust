@@ -3,7 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { untrustedFetch } from "@app/lib/egress";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -16,7 +16,8 @@ function getWorkspaceUrl(authInfo?: AuthInfo): string | null {
   if (!authInfo?.extra) {
     return null;
   }
-  const databricksWorkspaceUrl = authInfo.extra.databricks_workspace_url;
+  const databricksWorkspaceUrl = authInfo.extra
+    .databricks_workspace_url as string;
   return databricksWorkspaceUrl ?? null;
 }
 
@@ -101,7 +102,7 @@ export async function listWarehouses(
   );
 
   if (result.isErr()) {
-    return result;
+    return new Err(new MCPError(result.error));
   }
 
   return new Ok(result.value.warehouses);

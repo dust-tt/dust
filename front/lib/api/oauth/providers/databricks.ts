@@ -36,7 +36,7 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
       throw new Error("Missing client ID for Databricks");
     }
 
-    const workspaceUrl = extraConfig.databricks_workspace_url as string;
+    const workspaceUrl = extraConfig.databricks_workspace_url;
     const scopes = ["sql", "offline_access"];
 
     const qs = querystring.stringify({
