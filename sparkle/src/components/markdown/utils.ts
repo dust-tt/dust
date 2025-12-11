@@ -41,6 +41,16 @@ export function detectLanguage(children: React.ReactNode) {
 }
 
 /**
+ * Converts consecutive newlines (\n\n) into hard breaks to preserve line spacing.
+ * Inserts an empty line with a non-breaking space to create visual spacing.
+ */
+export function preserveLineBreaks(content: string): string {
+  // Replace \n\n with \n&nbsp;\n\n to insert an empty line with content
+  // This creates visual spacing between paragraphs
+  return content.replace(/\n\n\n\n/g, "\n\n&nbsp;\n\n");
+}
+
+/**
  * Preprocesses content to escape dollar signs that are likely NOT inlione LaTeX math. This helps
  * prevent false positives when enabling single $ math rendering.
  *

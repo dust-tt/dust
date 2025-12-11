@@ -26,6 +26,7 @@ import {
 } from "@sparkle/components/markdown/TableBlock";
 import {
   preprocessDollarSigns,
+  preserveLineBreaks,
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
@@ -62,6 +63,7 @@ export function Markdown({
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
+  compactSpacing = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
@@ -69,14 +71,18 @@ export function Markdown({
   isStreaming?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
+  compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
   forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
   const processedContent = useMemo(() => {
-    const sanitized = sanitizeContent(content);
+    let sanitized = sanitizeContent(content);
+    if (compactSpacing) {
+      sanitized = preserveLineBreaks(sanitized);
+    }
     return preprocessDollarSigns(sanitized);
-  }, [content]);
+  }, [content, compactSpacing]);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -126,6 +132,7 @@ export function Markdown({
         <ParagraphBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          compactSpacing={compactSpacing}
         >
           {children}
         </ParagraphBlock>
@@ -214,7 +221,7 @@ export function Markdown({
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
-  }, [textColor, additionalMarkdownComponents]);
+  }, [textColor, compactSpacing, additionalMarkdownComponents]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
