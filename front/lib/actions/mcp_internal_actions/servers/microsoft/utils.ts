@@ -77,6 +77,33 @@ export interface TeamsMessage {
   messageHistory: unknown[];
 }
 
+export interface TeamsChat {
+  id: string;
+  topic: string | null;
+  createdDateTime: string;
+  lastUpdatedDateTime: string;
+  chatType: "oneOnOne" | "group" | "meeting";
+  webUrl: string;
+  tenantId: string;
+}
+
+export interface TeamsChannel {
+  id: string;
+  createdDateTime: string;
+  displayName: string;
+  description: string | null;
+  email: string;
+  tenantId: string;
+  webUrl: string;
+}
+
+export interface TeamsUser {
+  id: string;
+  displayName: string;
+  mail: string;
+  userPrincipalName: string;
+}
+
 export async function getGraphClient(
   authInfo?: AuthInfo
 ): Promise<Client | null> {

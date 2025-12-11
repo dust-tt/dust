@@ -3,7 +3,17 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { TeamsMessage } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import {
+  renderChannels,
+  renderChats,
+  renderUsers,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams_rendering";
+import type {
+  TeamsChannel,
+  TeamsChat,
+  TeamsMessage,
+  TeamsUser,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -112,16 +122,20 @@ function createServer(
     "list_users",
     "List all users in the organization. Returns user details including display name, email, and user ID.",
     {
+      nameFilter: z
+        .string()
+        .optional()
+        .describe("The name of the user to filter by (optional)"),
       limit: z
         .number()
         .optional()
         .default(25)
-        .describe("Maximum number of users to return (default: 25, max: 999)."),
+        .describe("Maximum number of users to return (default: 25, max: 25)."),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
-      async ({ limit }, { authInfo }) => {
+      async ({ nameFilter, limit }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
@@ -130,17 +144,33 @@ function createServer(
         }
 
         try {
-          const maxLimit = Math.min(limit || 25, 999);
-          const response = await client
+          const maxLimit = Math.min(limit || 25, 25);
+          let apiCall = client
             .api("/users")
             .top(maxLimit)
-            .select("id,displayName,mail,userPrincipalName")
-            .get();
+            .select("id,displayName,mail,userPrincipalName");
+
+          // Add filter if nameFilter is specified
+          if (nameFilter) {
+            apiCall = apiCall.filter(
+              `startswith(displayName,'${nameFilter}') or startswith(userPrincipalName,'${nameFilter}')`
+            );
+          }
+
+          const response = await apiCall.get();
+
+          // Map to TeamsUser type with only essential fields
+          const users: TeamsUser[] = response.value.map((user: any) => ({
+            id: user.id,
+            displayName: user.displayName,
+            mail: user.mail,
+            userPrincipalName: user.userPrincipalName,
+          }));
 
           return new Ok([
             {
               type: "text" as const,
-              text: JSON.stringify(response.value, null, 2),
+              text: renderUsers(users),
             },
           ]);
         } catch (err) {
@@ -154,18 +184,22 @@ function createServer(
 
   server.tool(
     "list_channels",
-    "List all channels in a specific team. Returns channel details including name, description, and channel ID.",
+    "List all channels in a specific team. Returns channel details including name, description, and channel ID. Can be filtered by channel name.",
     {
       teamId: z
         .string()
         .describe(
           "The ID of the team to list channels from. Use list_teams to get team IDs."
         ),
+      nameFilter: z
+        .string()
+        .optional()
+        .describe("Filter channels by name (optional, searches display name)."),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
-      async ({ teamId }, { authInfo }) => {
+      async ({ teamId, nameFilter }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
@@ -174,12 +208,32 @@ function createServer(
         }
 
         try {
-          const response = await client.api(`/teams/${teamId}/channels`).get();
+          let apiCall = client.api(`/teams/${teamId}/channels`);
+
+          // Add filter if nameFilter is specified
+          if (nameFilter) {
+            apiCall = apiCall.filter(`startswith(displayName,'${nameFilter}')`);
+          }
+
+          const response = await apiCall.get();
+
+          // Map to TeamsChannel type with only essential fields
+          const channels: TeamsChannel[] = response.value.map(
+            (channel: any) => ({
+              id: channel.id,
+              createdDateTime: channel.createdDateTime,
+              displayName: channel.displayName,
+              description: channel.description || null,
+              email: channel.email,
+              tenantId: channel.tenantId,
+              webUrl: channel.webUrl,
+            })
+          );
 
           return new Ok([
             {
               type: "text" as const,
-              text: JSON.stringify(response.value, null, 2),
+              text: renderChannels(channels),
             },
           ]);
         } catch (err) {
@@ -195,7 +249,7 @@ function createServer(
 
   server.tool(
     "list_chats",
-    "List all chats (one-on-one or group chats) for the authenticated user. Returns chat details including chat ID, topic, and participants. Can be filtered by chat type.",
+    "List all chats (one-on-one or group chats) for the authenticated user. Returns chat details including chat ID, topic, and participants. Can be filtered by chat type and chat topic.",
     {
       limit: z
         .number()
@@ -208,11 +262,17 @@ function createServer(
         .describe(
           "Filter chats by type: 'oneOnOne' for direct messages, 'group' for group chats, 'meeting' for meeting chats."
         ),
+      nameFilter: z
+        .string()
+        .optional()
+        .describe(
+          "Filter chats by topic name (optional, searches chat topic for group chats)."
+        ),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
-      async ({ limit, chatType }, { authInfo }) => {
+      async ({ limit, chatType, nameFilter }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
@@ -225,20 +285,39 @@ function createServer(
           let apiCall = client
             .api("/me/chats")
             .orderby("lastMessagePreview/createdDateTime desc")
-            .top(maxLimit)
-            .expand("members");
+            .top(maxLimit);
 
-          // Add filter if chatType is specified
+          // Build filter conditions
+          const filterConditions: string[] = [];
           if (chatType) {
-            apiCall = apiCall.filter(`chatType eq '${chatType}'`);
+            filterConditions.push(`chatType eq '${chatType}'`);
+          }
+          if (nameFilter) {
+            filterConditions.push(`startswith(topic,'${nameFilter}')`);
+          }
+
+          // Apply filter if any conditions exist
+          if (filterConditions.length > 0) {
+            apiCall = apiCall.filter(filterConditions.join(" and "));
           }
 
           const response = await apiCall.get();
 
+          // Map to TeamsChat type with only essential fields
+          const chats: TeamsChat[] = response.value.map((chat: any) => ({
+            id: chat.id,
+            topic: chat.topic || null,
+            createdDateTime: chat.createdDateTime,
+            lastUpdatedDateTime: chat.lastUpdatedDateTime,
+            chatType: chat.chatType,
+            webUrl: chat.webUrl,
+            tenantId: chat.tenantId,
+          }));
+
           return new Ok([
             {
               type: "text" as const,
-              text: JSON.stringify(response.value, null, 2),
+              text: renderChats(chats),
             },
           ]);
         } catch (err) {
