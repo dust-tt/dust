@@ -12,11 +12,13 @@ export type ToolSearchRawResult = {
   sourceUrl: string | null;
 };
 
-export type ToolSearchResult = ToolSearchRawResult & {
+export type ToolSearchServerResult = {
   serverViewId: string;
   serverName: string;
   serverIcon: CustomResourceIconType | InternalAllowedIconType;
 };
+
+export type ToolSearchResult = ToolSearchRawResult & ToolSearchServerResult;
 
 export type ToolSearchParams = {
   accessToken: string;
