@@ -392,15 +392,18 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  // TODO(skills 2025-12-10): Add support for global skills
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch agent-skill links for this skill
+    // Fetch agent-skill links for this skill.
+    // For global skills, we query by globalSkillId (sId string).
+    // For custom skills, we query by customSkillId (numeric id).
     const agentSkills = await AgentSkillModel.findAll({
       where: {
         workspaceId: workspace.id,
-        customSkillId: this.id,
+        ...(this.globalSId
+          ? { globalSkillId: this.globalSId }
+          : { customSkillId: this.id }),
       },
     });
 

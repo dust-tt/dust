@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -65,11 +66,13 @@ async function handler(
         // Each skill is used by N agents and each agent uses on average n skills
         // with N >> n, so the performance gain from batching is minimal.
         // Starting simple with per-skill queries.
-        const skillConfigurationsWithRelations = await Promise.all(
-          skillConfigurations.map(async (sc) => ({
+        const skillConfigurationsWithRelations = await concurrentExecutor(
+          skillConfigurations,
+          async (sc) => ({
             ...sc.toJSON(),
             usage: await sc.fetchUsage(auth),
-          }))
+          }),
+          { concurrency: 10 }
         );
 
         return res

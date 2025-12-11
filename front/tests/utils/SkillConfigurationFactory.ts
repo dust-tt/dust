@@ -61,4 +61,26 @@ export class SkillConfigurationFactory {
 
     return agentSkill;
   }
+
+  static async linkGlobalSkillToAgent(
+    auth: Authenticator,
+    {
+      globalSkillId,
+      agentConfigurationId,
+    }: {
+      globalSkillId: string;
+      agentConfigurationId: ModelId;
+    }
+  ): Promise<AgentSkillModel> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkill = await AgentSkillModel.create({
+      workspaceId: workspace.id,
+      customSkillId: null,
+      globalSkillId,
+      agentConfigurationId,
+    });
+
+    return agentSkill;
+  }
 }
