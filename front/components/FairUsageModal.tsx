@@ -15,21 +15,23 @@ interface FairUsageModalProps {
 }
 
 const FAIR_USE_CONTENT = `
-# Fair use principles
-**Dust Pro** is designed company setting and team use
-of AI. It is not designed as a model wrapper for programmatic usage.
+# **Fair use principles for user seats**
 
-**Dust Enterprise** provides programmatic usage (though
-API), with custom prices.
+Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately).
+
+"Fair use" limits apply to each user seat, as follows:
+- For **Pro plans**, a limit at 100 messages / seat / day is applied.
+- For **Enterprise plans**, a limit at 200 messages / seat / day is applied.
+
+These limits should be understood as a way to prevent abuse, not as an allowed quota of messages. In particular, it is considered unfair to share a single seat between multiple people.
+
 ___
-# What is "unfair" usage?
-Is considered *"Unfair"* usage:
-- Sharing single seat between multiple people.
-- Using Dust programmatically at a large scale on a Pro plan.
-___
-# "Fair use" limitations
-- For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programmatic (API) use as well.
-- For **Business plans**, a limit at 150 messages / seat / day (Enough to cover any fair usage) is in place and apply to programmatic (API) use as well.
+# **Can messages be sent programmatically with Dust?**
+
+Yes, and this usage is encouraged. However, such messages are not covered by individual user seats and fair use limits, and are billed separately. 
+
+Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust](https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e).
+
 `;
 
 export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
