@@ -185,6 +185,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.fetchByModelIdWithAuth(auth, resourceId);
   }
 
+  static async fetchByIds(
+    auth: Authenticator,
+    sIds: string[]
+  ): Promise<SkillResource[]> {
+    if (sIds.length === 0) {
+      return [];
+    }
+
+    // Extract valid custom skill model IDs from sIds.
+    const customSkillIds = removeNulls(
+      sIds
+        .filter((sId) => isResourceSId("skill", sId))
+        .map((sId) => getResourceIdFromSId(sId))
+    );
+
+    // Fetch custom skills in batch.
+    const customSkills =
+      customSkillIds.length > 0
+        ? await this.baseFetch(auth, {
+            where: {
+              id: customSkillIds,
+            },
+            onlyCustom: true,
+          })
+        : [];
+
+    // Find which sIds were not found as custom skills and fetch them from global skills.
+    const foundCustomSIds = new Set(customSkills.map((s) => s.sId));
+    const missingSIds = sIds.filter((sId) => !foundCustomSIds.has(sId));
+    const globalSkills = removeNulls(
+      missingSIds.map((sId) => {
+        const globalSkill = GlobalSkillsRegistry.getById(sId);
+        return globalSkill ? this.fromGlobalSkill(auth, globalSkill) : null;
+      })
+    );
+
+    return [...customSkills, ...globalSkills];
+  }
+
   static async fetchActiveByName(
     auth: Authenticator,
     name: string

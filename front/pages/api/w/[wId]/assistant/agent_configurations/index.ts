@@ -318,6 +318,24 @@ export async function createOrUpgradeAgentConfiguration({
     }
   );
 
+  // Collect requestedSpaceIds from skills
+  const skillResources = await SkillResource.fetchByIds(
+    auth,
+    assistant.skills.map((s) => s.sId)
+  );
+
+  const skillRequestedSpaceIds = new Set<number>();
+  for (const skillResource of skillResources) {
+    for (const spaceId of skillResource.requestedSpaceIds) {
+      skillRequestedSpaceIds.add(spaceId);
+    }
+  }
+
+  // Merge action and skill requestedSpaceIds
+  const allRequestedSpaceIds = [
+    ...new Set([...requirements.requestedSpaceIds, ...skillRequestedSpaceIds]),
+  ];
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -328,7 +346,7 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedSpaceIds: requirements.requestedSpaceIds,
+    requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
     editors,
   });
