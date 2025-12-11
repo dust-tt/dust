@@ -106,10 +106,10 @@ export interface SkillResource
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
+  readonly editorGroup: GroupResource | null = null;
   readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
 
   private readonly globalSId?: string;
-  private readonly editorGroup: GroupResource | null = null;
 
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,

@@ -75,22 +75,32 @@ async function handler(
     });
   }
 
+  const { editorGroup } = skillRes;
+  if (!editorGroup) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The skill does not have an editors group.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
-      const members = await skillRes.getActiveMembers(auth);
+      const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
       return res.status(200).json({ editors: memberUsers });
     }
 
     case "PATCH": {
-      if (!skillRes.canEdit) {
+      if (!skillRes.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "User is not authorized to view or edit the skill editors list.",
+            message: "User is not authorized to edit the skill editors list.",
           },
         });
       }
