@@ -152,10 +152,10 @@ describe("GET /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
 });
 
 describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
-  it("should return 403 for non-editor builder", async () => {
+  it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
-      skillOwnerRole: "admin",
-      requestUserRole: "builder",
+      skillOwnerRole: "builder",
+      requestUserRole: "user",
       method: "PATCH",
     });
 
@@ -327,10 +327,10 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
 });
 
 describe("DELETE /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
-  it("should return 403 for non-editor builder", async () => {
+  it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
-      skillOwnerRole: "admin",
-      requestUserRole: "builder",
+      skillOwnerRole: "builder",
+      requestUserRole: "user",
       method: "DELETE",
     });
 
