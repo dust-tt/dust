@@ -41,6 +41,7 @@ import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  GPT_5_2_MODEL_CONFIG,
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
@@ -631,6 +632,31 @@ export function _getDustQuickGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
     name: "dust-quick",
     preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustOaiGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettingsModel | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI,
+    name: "dust-oai",
+    preferredModelConfiguration: GPT_5_2_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
