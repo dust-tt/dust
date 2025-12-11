@@ -176,7 +176,7 @@ function formatSlackMessageForDisplay(match: SlackSearchMatch): string {
     (_m, _id, username) => `@${username}`
   );
 
-  return `From ${author} in #${channel}\n${content}`;
+  return `From ${author} in #${channel}:\n${content}`;
 }
 
 // Helper function to format date as YYYY-MM-DD with zero-padding.
