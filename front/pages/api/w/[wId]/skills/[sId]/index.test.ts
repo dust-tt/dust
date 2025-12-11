@@ -95,7 +95,7 @@ async function setupTest(
   };
 }
 
-describe("GET /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("GET /api/w/[wId]/skills/[sId]", () => {
   it("should return 200 and the skill configuration for admin", async () => {
     const { req, res, skill } = await setupTest({
       requestUserRole: "admin",
@@ -124,7 +124,7 @@ describe("GET /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
   });
 });
 
-describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
       skillOwnerRole: "builder",
@@ -160,7 +160,7 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
       name: "Other Skill",
     });
 
-    // Try to update the skill anme to the duplicate name
+    // Try to update the skill name to the duplicate name
     req.body = {
       name: "Other Skill",
       description: "Description",
@@ -214,7 +214,7 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
   });
 });
 
-describe("DELETE /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("DELETE /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
       skillOwnerRole: "builder",
@@ -247,7 +247,7 @@ describe("DELETE /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
   });
 });
 
-describe("Method Support /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("Method Support /api/w/[wId]/skills/[sId]", () => {
   it("only supports GET, PATCH, and DELETE methods", async () => {
     for (const method of ["POST", "PUT"] as const) {
       const { req, res } = await setupTest({ method });
