@@ -66,7 +66,6 @@ import type {
 } from "@app/types";
 import {
   isRichAgentMention,
-  isRichUserMention,
   isUserMessageTypeWithContentFragments,
   toMentionType,
 } from "@app/types";
