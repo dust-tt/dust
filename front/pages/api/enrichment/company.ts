@@ -3,8 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { promisify } from "util";
 
 import config from "@app/lib/api/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
-import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
@@ -453,18 +452,12 @@ export default async function handler(
 
   const encodedEmail = encodeURIComponent(email);
 
-  const regionAffinityResult = await checkUserRegionAffinity({
-    email,
-    email_verified: false,
-  });
-
-  // User has affinity to a region - redirect to that region.
-  if (regionAffinityResult.isOk() && regionAffinityResult.value.hasAffinity) {
-    const { region } = regionAffinityResult.value;
-    const regionUrl = regionConfig.getRegionUrl(region);
+  // Check if user already exists in WorkOS - if so, redirect to login.
+  const existingUsers = await fetchUsersFromWorkOSWithEmails([email]);
+  if (existingUsers.length > 0) {
     return res.status(200).json({
       success: true,
-      redirectUrl: `${regionUrl}/api/workos/login?loginHint=${encodedEmail}`,
+      redirectUrl: `/api/workos/login?loginHint=${encodedEmail}`,
     });
   }
 
