@@ -21,6 +21,7 @@ import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assis
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -318,23 +319,31 @@ export async function createOrUpgradeAgentConfiguration({
     }
   );
 
-  // Collect requestedSpaceIds from skills
-  const skillResources = await SkillResource.fetchByIds(
-    auth,
-    assistant.skills.map((s) => s.sId)
-  );
+  let allRequestedSpaceIds = requirements.requestedSpaceIds;
 
-  const skillRequestedSpaceIds = new Set<number>();
-  for (const skillResource of skillResources) {
-    for (const spaceId of skillResource.requestedSpaceIds) {
-      skillRequestedSpaceIds.add(spaceId);
+  // Collect requestedSpaceIds from skills (only when feature flag is enabled)
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("skills")) {
+    const skillResources = await SkillResource.fetchByIds(
+      auth,
+      assistant.skills.map((s) => s.sId)
+    );
+
+    const skillRequestedSpaceIds = new Set<number>();
+    for (const skillResource of skillResources) {
+      for (const spaceId of skillResource.requestedSpaceIds) {
+        skillRequestedSpaceIds.add(spaceId);
+      }
     }
-  }
 
-  // Merge action and skill requestedSpaceIds
-  const allRequestedSpaceIds = [
-    ...new Set([...requirements.requestedSpaceIds, ...skillRequestedSpaceIds]),
-  ];
+    // Merge action and skill requestedSpaceIds
+    allRequestedSpaceIds = [
+      ...new Set([
+        ...requirements.requestedSpaceIds,
+        ...skillRequestedSpaceIds,
+      ]),
+    ];
+  }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
