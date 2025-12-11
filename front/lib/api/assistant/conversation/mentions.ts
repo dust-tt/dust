@@ -14,10 +14,10 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   generateRandomModelSId,
   getResourceIdFromSId,
@@ -55,7 +55,6 @@ import {
 } from "@app/types";
 
 import { runAgentLoopWorkflow } from "./agent_loop";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 
 export const createUserMentions = async (
   auth: Authenticator,
