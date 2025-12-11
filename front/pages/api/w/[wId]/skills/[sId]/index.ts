@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder, isString } from "@app/types";
@@ -54,10 +54,7 @@ async function handler(
 
   const skillId = req.query.sId;
 
-  const skillConfiguration = await SkillConfigurationResource.fetchById(
-    auth,
-    skillId
-  );
+  const skillConfiguration = await SkillResource.fetchById(auth, skillId);
 
   if (!skillConfiguration) {
     return apiError(req, res, {

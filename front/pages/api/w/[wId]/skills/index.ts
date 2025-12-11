@@ -9,7 +9,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -87,7 +87,7 @@ async function handler(
       const { withRelations } = req.query;
 
       const skillConfigurations =
-        await SkillConfigurationResource.fetchAllAvailableSkills(auth);
+        await SkillResource.fetchAllAvailableSkills(auth);
 
       if (withRelations === "true") {
         // Fetch usage for each skill individually.
@@ -133,7 +133,7 @@ async function handler(
 
       const body: PostSkillConfigurationRequestBody = bodyValidation.right;
 
-      const existingSkill = await SkillConfigurationResource.fetchActiveByName(
+      const existingSkill = await SkillResource.fetchActiveByName(
         auth,
         body.name
       );
@@ -169,7 +169,7 @@ async function handler(
 
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillConfiguration = await withTransaction(async (transaction) => {
-        const skill = await SkillConfigurationResource.makeNew(
+        const skill = await SkillResource.makeNew(
           {
             workspaceId: owner.id,
             version: 0,

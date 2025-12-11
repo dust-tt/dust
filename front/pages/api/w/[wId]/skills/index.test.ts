@@ -7,7 +7,7 @@ import {
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -193,7 +193,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillConfigurationResource.modelIdToSId({
+    const skillSId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
@@ -266,7 +266,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillConfigurationResource.modelIdToSId({
+    const skillSId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
@@ -302,7 +302,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillConfigurationResource.modelIdToSId({
+    const skillSId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
@@ -350,7 +350,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillConfigurationResource.modelIdToSId({
+    const skillSId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
