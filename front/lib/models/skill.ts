@@ -1,4 +1,10 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type {
+  CreationOptional,
+  ForeignKey,
+  Model,
+  ModelAttributes,
+  NonAttribute,
+} from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -38,7 +44,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
     allowNull: false,
   },
-} as const;
+} as const satisfies ModelAttributes<Model>;
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -80,10 +86,6 @@ SkillVersionModel.init(
     skillConfigurationId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-      references: {
-        model: SkillConfigurationModel,
-        key: "id",
-      },
     },
     mcpServerConfigurationIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
@@ -95,13 +97,9 @@ SkillVersionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "skillConfigurationId"],
-        name: "idx_skill_versions_workspace_configuration",
-      },
-      {
         unique: true,
-        fields: ["skillConfigurationId", "version"],
-        name: "idx_skill_versions_configuration_id_version",
+        fields: ["workspaceId", "skillConfigurationId", "version"],
+        name: "idx_skill_versions_workspace_configuration_id_version",
       },
     ],
   }
@@ -195,7 +193,7 @@ SkillMCPServerConfigurationModel.belongsTo(MCPServerViewModel, {
 
 SkillConfigurationModel.hasMany(SkillVersionModel, {
   foreignKey: { name: "skillConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
   as: "versions",
 });
 SkillVersionModel.belongsTo(SkillConfigurationModel, {

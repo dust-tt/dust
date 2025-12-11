@@ -65,6 +65,13 @@ type SkillResourceConstructorOptions =
       mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
     };
 
+type SkillVersionCreationAttributes =
+  CreationAttributes<SkillConfigurationModel> & {
+    skillConfigurationId: number;
+    version: number;
+    mcpServerConfigurationIds: number[];
+  };
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -792,14 +799,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const versionNumber = existingVersionsCount + 1;
 
     // Create a new version entry with the current state
-    // Explicitly type the creation attributes to include extended fields
-    type SkillVersionCreationAttributes =
-      CreationAttributes<SkillConfigurationModel> & {
-        skillConfigurationId: number;
-        version: number;
-        mcpServerConfigurationIds: number[];
-      };
-
     const versionData: SkillVersionCreationAttributes = {
       workspaceId: this.workspaceId,
       skillConfigurationId: this.id,
