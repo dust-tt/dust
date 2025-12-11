@@ -2,6 +2,7 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -13,14 +14,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
-
-// Helper to filter out global skills (negative IDs) from response.
-// TODO(skills): Add tests for global skills once support is added in a follow-up PR.
-function getCustomSkills<T extends SkillConfigurationType>(
-  skillConfigurations: T[]
-): T[] {
-  return skillConfigurations.filter((sc) => sc.id > 0);
-}
 
 type SkillConfigurationWithRelations = SkillConfigurationType &
   SkillConfigurationRelations;
@@ -40,23 +33,7 @@ async function setupTest(
 }
 
 describe("GET /api/w/[wId]/skills", () => {
-  it("should return 200 with no custom skills when none exist", async () => {
-    const { req, res, workspace } = await setupTest();
-
-    req.query = { ...req.query, wId: workspace.sId };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data).toHaveProperty("skillConfigurations");
-    expect(data.skillConfigurations).toBeInstanceOf(Array);
-    // Filter out global skills to test custom skills behavior
-    const customSkills = getCustomSkills(data.skillConfigurations);
-    expect(customSkills).toHaveLength(0);
-  });
-
-  it("should return 200 with skills when skills exist", async () => {
+  it("should return 200 with skills", async () => {
     const { req, res, workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -79,13 +56,11 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    const customSkills = getCustomSkills(data.skillConfigurations);
-    expect(customSkills).toHaveLength(2);
-    expect(customSkills[0]).toHaveProperty("sId");
-    expect(customSkills[0]).toHaveProperty("name");
-    expect(customSkills[0]).toHaveProperty("description");
+    expect(data).toHaveProperty("skillConfigurations");
 
-    const skillNames = customSkills.map((s: SkillConfigurationType) => s.name);
+    const skillNames = data.skillConfigurations.map(
+      (s: SkillConfigurationType) => s.name
+    );
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -113,9 +88,12 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    const customSkills = getCustomSkills(data.skillConfigurations);
-    expect(customSkills).toHaveLength(1);
-    expect(customSkills[0].name).toBe("Active Skill");
+
+    const skillNames = data.skillConfigurations.map(
+      (s: SkillConfigurationType) => s.name
+    );
+    expect(skillNames).toContain("Active Skill");
+    expect(skillNames).not.toContain("Archived Skill");
   });
 
   it("should return 403 when user is not a builder", async () => {
@@ -126,9 +104,12 @@ describe("GET /api/w/[wId]/skills", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(403);
-    const data = res._getJSONData();
-    expect(data.error.type).toBe("app_auth_error");
-    expect(data.error.message).toBe("User is not a builder.");
+    expect(res._getJSONData()).toMatchObject({
+      error: {
+        type: "app_auth_error",
+        message: "User is not a builder.",
+      },
+    });
   });
 
   it("should return 403 when skills feature flag is not enabled", async () => {
@@ -136,18 +117,18 @@ describe("GET /api/w/[wId]/skills", () => {
       method: "GET",
       role: "builder",
     });
-    // Don't create the feature flag
 
     req.query = { ...req.query, wId: workspace.sId };
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(403);
-    const data = res._getJSONData();
-    expect(data.error.type).toBe("app_auth_error");
-    expect(data.error.message).toBe(
-      "Skills are not enabled for this workspace."
-    );
+    expect(res._getJSONData()).toMatchObject({
+      error: {
+        type: "app_auth_error",
+        message: "Skills are not enabled for this workspace.",
+      },
+    });
   });
 
   it("should work for builder and admin roles", async () => {
@@ -168,16 +149,16 @@ describe("GET /api/w/[wId]/skills", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      const data = res._getJSONData();
-      const customSkills = getCustomSkills(data.skillConfigurations);
-      expect(customSkills).toHaveLength(1);
-      expect(customSkills[0].name).toBe(`Skill for ${role}`);
+      const skillNames = res
+        ._getJSONData()
+        .skillConfigurations.map((s: SkillConfigurationType) => s.name);
+      expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
 });
 
 describe("GET /api/w/[wId]/skills?withRelations=true", () => {
-  it("should return skills with usage when withRelations=true", async () => {
+  it("should return skills with usage when linked to agents", async () => {
     const { req, res, workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -189,8 +170,10 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Skill With Usage",
     });
 
-    // Create an agent and link the skill to it
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
     await SkillConfigurationFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent.id,
@@ -201,17 +184,60 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    const customSkills = getCustomSkills<SkillConfigurationWithRelations>(
-      data.skillConfigurations
+
+    const skillSId = SkillConfigurationResource.modelIdToSId({
+      id: skill.id,
+      workspaceId: workspace.id,
+    });
+    const skillResult = res
+      ._getJSONData()
+      .skillConfigurations.find(
+        (s: SkillConfigurationWithRelations) => s.sId === skillSId
+      );
+
+    expect(skillResult).toMatchObject({
+      usage: {
+        count: 1,
+        agents: [{ sId: agent.sId }],
+      },
+    });
+  });
+
+  it("should return usage for skills linked via linkGlobalSkillToAgent", async () => {
+    const { req, res, workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
     );
-    expect(customSkills).toHaveLength(1);
-    expect(customSkills[0]).toHaveProperty("usage");
-    expect(customSkills[0].usage).toHaveProperty("count");
-    expect(customSkills[0].usage).toHaveProperty("agents");
-    expect(customSkills[0].usage.count).toBe(1);
-    expect(customSkills[0].usage.agents).toHaveLength(1);
-    expect(customSkills[0].usage.agents[0].sId).toBe(agent.sId);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent With Frames",
+    });
+
+    await SkillConfigurationFactory.linkGlobalSkillToAgent(auth, {
+      globalSkillId: "frames",
+      agentConfigurationId: agent.id,
+    });
+
+    req.query = { ...req.query, wId: workspace.sId, withRelations: "true" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const skillResult = res
+      ._getJSONData()
+      .skillConfigurations.find(
+        (s: SkillConfigurationWithRelations) => s.sId === "frames"
+      );
+
+    expect(skillResult).toMatchObject({
+      usage: {
+        count: 1,
+        agents: [{ sId: agent.sId }],
+      },
+    });
   });
 
   it("should return empty usage when skill has no agents", async () => {
@@ -222,7 +248,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillConfigurationFactory.create(auth, {
       name: "Skill Without Agents",
     });
 
@@ -231,13 +257,23 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    const customSkills = getCustomSkills<SkillConfigurationWithRelations>(
-      data.skillConfigurations
-    );
-    expect(customSkills).toHaveLength(1);
-    expect(customSkills[0].usage.count).toBe(0);
-    expect(customSkills[0].usage.agents).toHaveLength(0);
+
+    const skillSId = SkillConfigurationResource.modelIdToSId({
+      id: skill.id,
+      workspaceId: workspace.id,
+    });
+    const skillResult = res
+      ._getJSONData()
+      .skillConfigurations.find(
+        (s: SkillConfigurationWithRelations) => s.sId === skillSId
+      );
+
+    expect(skillResult).toMatchObject({
+      usage: {
+        count: 0,
+        agents: [],
+      },
+    });
   });
 
   it("should return skills without usage when withRelations is not set", async () => {
@@ -248,7 +284,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillConfigurationFactory.create(auth, {
       name: "Skill Without Relations",
     });
 
@@ -257,13 +293,22 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    const customSkills = getCustomSkills(data.skillConfigurations);
-    expect(customSkills).toHaveLength(1);
-    expect(customSkills[0]).not.toHaveProperty("usage");
+
+    const skillSId = SkillConfigurationResource.modelIdToSId({
+      id: skill.id,
+      workspaceId: workspace.id,
+    });
+    const skillResult = res
+      ._getJSONData()
+      .skillConfigurations.find(
+        (s: SkillConfigurationType) => s.sId === skillSId
+      );
+
+    expect(skillResult).toBeDefined();
+    expect(skillResult).not.toHaveProperty("usage");
   });
 
-  it("should return skills with multiple agents in usage", async () => {
+  it("should return usage with multiple agents sorted by name", async () => {
     const { req, res, workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -275,7 +320,6 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Popular Skill",
     });
 
-    // Create multiple agents and link them to the skill
     const agent1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Agent Alpha",
     });
@@ -297,19 +341,23 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    const customSkills = getCustomSkills<SkillConfigurationWithRelations>(
-      data.skillConfigurations
-    );
-    expect(customSkills).toHaveLength(1);
-    expect(customSkills[0].usage.count).toBe(2);
-    expect(customSkills[0].usage.agents).toHaveLength(2);
 
-    // Agents should be sorted by name
-    const agentNames = customSkills[0].usage.agents.map(
-      (a: { name: string }) => a.name
-    );
-    expect(agentNames).toEqual(["Agent Alpha", "Agent Beta"]);
+    const skillSId = SkillConfigurationResource.modelIdToSId({
+      id: skill.id,
+      workspaceId: workspace.id,
+    });
+    const skillResult = res
+      ._getJSONData()
+      .skillConfigurations.find(
+        (s: SkillConfigurationWithRelations) => s.sId === skillSId
+      );
+
+    expect(skillResult).toMatchObject({
+      usage: {
+        count: 2,
+        agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+      },
+    });
   });
 });
 
@@ -323,8 +371,7 @@ describe("Method Support /api/w/[wId]/skills", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(405);
-      const data = res._getJSONData();
-      expect(data).toEqual({
+      expect(res._getJSONData()).toMatchObject({
         error: {
           type: "method_not_supported_error",
           message: "The method passed is not supported, GET is expected.",
