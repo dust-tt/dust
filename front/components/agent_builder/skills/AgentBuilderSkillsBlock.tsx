@@ -16,7 +16,9 @@ import type {
   AgentBuilderSkillsType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { SkillsSheet } from "@app/components/agent_builder/skills/SkillsSheet";
+import { SkillsSheet } from "@app/components/agent_builder/skills/skillSheet/SkillsSheet";
+import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
+import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILL_ICON } from "@app/lib/skill";
 
 const BACKGROUND_IMAGE_PATH = "/static/SkillsBar.svg";
@@ -89,14 +91,14 @@ export function AgentBuilderSkillsBlock({
     name: "skills",
   });
 
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<SkillsSheetMode | null>(null);
 
   const handleOpenSheet = useCallback(() => {
-    setIsSheetOpen(true);
+    setSheetMode({ type: SKILLS_SHEET_PAGE_IDS.SELECTION });
   }, []);
 
   const handleCloseSheet = useCallback(() => {
-    setIsSheetOpen(false);
+    setSheetMode(null);
   }, []);
 
   const handleSaveSkills = useCallback(
@@ -140,12 +142,15 @@ export function AgentBuilderSkillsBlock({
         )}
       </div>
 
-      <SkillsSheet
-        open={isSheetOpen}
-        onClose={handleCloseSheet}
-        selectedSkills={currentSkills}
-        onSave={handleSaveSkills}
-      />
+      {sheetMode !== null && (
+        <SkillsSheet
+          mode={sheetMode}
+          onClose={handleCloseSheet}
+          selectedSkills={currentSkills}
+          onSave={handleSaveSkills}
+          onModeChange={setSheetMode}
+        />
+      )}
     </AgentBuilderSectionContainer>
   );
 }
