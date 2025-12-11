@@ -45,7 +45,9 @@ const localLogger = logger.child({ module: "mcp_slack_personal" });
 
 export type SlackSearchMatch = {
   author_id?: string;
+  author_name?: string;
   channel_id?: string;
+  channel_name?: string;
   message_ts?: string;
   content?: string;
   permalink?: string;
@@ -95,7 +97,9 @@ export const slackSearch = async (
       (msg: any) => ({
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         author_id: msg.author_id || msg.author_user_id,
+        author_name: msg.author_name,
         channel_id: msg.channel_id,
+        channel_name: msg.channel_name,
         message_ts: msg.message_ts,
         content: msg.content,
         permalink: msg.permalink,
@@ -135,7 +139,9 @@ export const slackSearch = async (
     // Transform to match expected format.
     const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
       author_id: match.user,
+      author_name: match.username,
       channel_id: match.channel?.id,
+      channel_name: match.channel?.name,
       message_ts: match.ts,
       content: match.text,
       permalink: match.permalink,
@@ -152,25 +158,28 @@ export const slackSearch = async (
 // Helper function to format a Slack message match for display in the UI.
 // Cleans up Slack-specific formatting and returns a human-readable string.
 function formatSlackMessageForDisplay(match: SlackSearchMatch): string {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const author = match.author_id || "Unknown";
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const channel = match.channel_id || "Unknown";
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  let content = match.content || "";
+  const author = match.author_name
+    ? `${match.author_name} (${match.author_id ?? ""})`
+    : (match.author_id ?? "");
+
+  const channel = match.channel_name
+    ? `${match.channel_name} (${match.channel_id ?? ""})`
+    : (match.channel_id ?? "");
+
+  let content = match.content ?? "";
 
   // assistant.search.context wraps search words in \uE000 and \uE001.
   // which display as squares in the UI, so we strip them out.
   // Ideally, there would be a way to disable this behavior in the Slack API.
   content = content.replace(/[\uE000\uE001]/g, "");
 
-  // Replace <@U050CALAKFD|someone> with just @someone.
+  // Replace mention <@U050CALAKFD|someone> with just @someone in content.
   content = content.replace(
     /<@([A-Z0-9]+)\|([^>]+)>/g,
     (_m, _id, username) => `@${username}`
   );
 
-  return `From ${author} in #${channel}: ${content}`;
+  return `From ${author} in #${channel}\n${content}`;
 }
 
 // Helper function to format date as YYYY-MM-DD with zero-padding.
