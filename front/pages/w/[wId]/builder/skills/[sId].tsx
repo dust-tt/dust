@@ -7,7 +7,7 @@ import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilder
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
@@ -39,11 +39,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const skillResource = await SkillConfigurationResource.fetchById(
-    auth,
-    context.params.sId
-  );
-
+  const skillResource = await SkillResource.fetchById(auth, context.params.sId);
   if (!skillResource) {
     return {
       notFound: true,

@@ -118,7 +118,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className="min-w-60 max-w-full"
+            className="mt-6 md:mt-10 min-w-60 max-w-full"
           >
             <UserMessage
               citations={citations}

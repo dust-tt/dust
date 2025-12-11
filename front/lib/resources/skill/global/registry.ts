@@ -47,6 +47,10 @@ const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
 // Type derived from the actual array.
 export type GlobalSkillId = (typeof GLOBAL_SKILLS_ARRAY)[number]["sId"];
 
+function matchesFilter<T>(value: T, filter: T | T[]): boolean {
+  return Array.isArray(filter) ? filter.includes(value) : value === filter;
+}
+
 export class GlobalSkillsRegistry {
   static listAll(): readonly GlobalSkillDefinition[] {
     return GLOBAL_SKILLS_ARRAY;
@@ -64,11 +68,11 @@ export class GlobalSkillsRegistry {
     }
 
     return GLOBAL_SKILLS_ARRAY.filter((skill) => {
-      if (where.sId && skill.sId !== where.sId) {
+      if (where.sId && !matchesFilter(skill.sId, where.sId)) {
         return false;
       }
 
-      if (where.name && skill.name !== where.name) {
+      if (where.name && !matchesFilter(skill.name, where.name)) {
         return false;
       }
 

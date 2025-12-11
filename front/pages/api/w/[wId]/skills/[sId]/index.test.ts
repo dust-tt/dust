@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -62,7 +62,7 @@ async function setupTest(
 
   // Create skill owned by skillOwner
   const skillModel = await SkillConfigurationFactory.create(skillOwnerAuth);
-  const skill = await SkillConfigurationResource.fetchByModelIdWithAuth(
+  const skill = await SkillResource.fetchByModelIdWithAuth(
     skillOwnerAuth,
     skillModel.id
   );
