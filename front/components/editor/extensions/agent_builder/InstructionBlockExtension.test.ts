@@ -202,4 +202,27 @@ code block
       "<instructions>:mention[agent-name]{sId=agent-123}</instructions>\n\n"
     );
   });
+
+  it("should serialize instruction block with _", () => {
+    editor.commands.setContent(`<instructions_toto></instructions_toto>`, {
+      contentType: "markdown",
+    });
+
+    const json = editor.getJSON();
+    expect(json.content).toEqual([
+      {
+        attrs: {
+          isCollapsed: false,
+          type: "instructions_toto",
+        },
+        type: "instructionBlock",
+      },
+      {
+        type: "paragraph",
+      },
+    ]);
+
+    const result = editor.getMarkdown();
+    expect(result).toBe("<instructions_toto></instructions_toto>\n\n");
+  });
 });
