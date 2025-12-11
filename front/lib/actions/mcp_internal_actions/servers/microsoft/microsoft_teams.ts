@@ -223,7 +223,7 @@ function createServer(
               id: channel.id,
               createdDateTime: channel.createdDateTime,
               displayName: channel.displayName,
-              description: channel.description || null,
+              description: channel.description ?? null,
               email: channel.email,
               tenantId: channel.tenantId,
               webUrl: channel.webUrl,
@@ -306,7 +306,7 @@ function createServer(
           // Map to TeamsChat type with only essential fields
           const chats: TeamsChat[] = response.value.map((chat: any) => ({
             id: chat.id,
-            topic: chat.topic || null,
+            topic: chat.topic ?? null,
             createdDateTime: chat.createdDateTime,
             lastUpdatedDateTime: chat.lastUpdatedDateTime,
             chatType: chat.chatType,
