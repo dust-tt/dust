@@ -1,4 +1,5 @@
-import type { Button, ConversationMessageAction } from "@dust-tt/sparkle";
+import type { ConversationMessageAction } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import {
   Avatar,
   CitationGrid,
@@ -7,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
   MoreIcon,
 } from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
@@ -303,10 +303,10 @@ const ConversationMessageTitle = React.forwardRef<
           {actions && actions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <IconButton
+                <Button
                   icon={MoreIcon}
                   size="xs"
-                  variant="highlight-secondary"
+                  variant="ghost-secondary"
                   aria-label="Message actions"
                 />
               </DropdownMenuTrigger>
