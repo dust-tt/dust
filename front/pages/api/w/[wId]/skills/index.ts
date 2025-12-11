@@ -164,6 +164,16 @@ async function handler(
         mcpServerViews.push(mcpServerView);
       }
 
+      // Compute requestedSpaceIds from the MCP server views' spaces
+      // Exclude the global space from requestedSpaceIds
+      const requestedSpaceIds = [
+        ...new Set(
+          mcpServerViews
+            .filter((view) => !view.space.isGlobal())
+            .map((view) => view.space.id)
+        ),
+      ];
+
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillConfiguration = await withTransaction(async (transaction) => {
         const skill = await SkillResource.makeNew(
@@ -175,8 +185,7 @@ async function handler(
             description: body.description,
             instructions: body.instructions,
             authorId: user.id,
-            // TODO(skills): add space restrictions.
-            requestedSpaceIds: [],
+            requestedSpaceIds,
           },
           { transaction }
         );
