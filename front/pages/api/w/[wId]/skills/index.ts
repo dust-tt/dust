@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -170,33 +171,29 @@ async function handler(
       }
 
       // Validate all MCP server views exist before creating anything
+      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
       const mcpServerViews: MCPServerViewResource[] = [];
-      for (const tool of body.tools) {
+      for (const mcpServerViewId of mcpServerViewIds) {
         const mcpServerView = await MCPServerViewResource.fetchById(
           auth,
-          tool.mcpServerViewId
+          mcpServerViewId
         );
         if (!mcpServerView) {
           return apiError(req, res, {
             status_code: 404,
             api_error: {
               type: "invalid_request_error",
-              message: `MCP server view not found ${tool.mcpServerViewId}`,
+              message: `MCP server view not found ${mcpServerViewId}`,
             },
           });
         }
         mcpServerViews.push(mcpServerView);
       }
 
-      // Compute requestedSpaceIds from the MCP server views' spaces
-      // Exclude the global space from requestedSpaceIds
-      const requestedSpaceIds = [
-        ...new Set(
-          mcpServerViews
-            .filter((view) => !view.space.isGlobal())
-            .map((view) => view.space.id)
-        ),
-      ];
+      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
+        auth,
+        mcpServerViewIds
+      );
 
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillResource = await SkillResource.makeNew(auth, {

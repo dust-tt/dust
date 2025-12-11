@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -191,15 +192,10 @@ async function handler(
         });
       }
 
-      // Compute requestedSpaceIds from the MCP server views' spaces
-      // Exclude the global space from requestedSpaceIds
-      const requestedSpaceIds = [
-        ...new Set(
-          mcpServerViews
-            .filter((view) => !view.space.isGlobal())
-            .map((view) => view.space.id)
-        ),
-      ];
+      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
+        auth,
+        mcpServerViewIds
+      );
 
       // Wrap everything in a transaction to avoid inconsistent state.
       const result = await withTransaction(async (transaction) => {

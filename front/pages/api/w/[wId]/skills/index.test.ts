@@ -521,8 +521,10 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Skill With Space Restrictions",
-      description: "A skill restricted to specific spaces",
+      agentFacingDescription: "A skill restricted to specific spaces",
+      userFacingDescription: "User description",
       instructions: "Instructions",
+      icon: null,
       tools: [{ mcpServerViewId: serverView.sId }],
     };
 

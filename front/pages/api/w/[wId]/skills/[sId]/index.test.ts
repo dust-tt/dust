@@ -150,8 +150,8 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
 describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
-      skillOwnerRole: "admin",
-      requestUserRole: "builder",
+      skillOwnerRole: "builder",
+      requestUserRole: "user",
       method: "PATCH",
     });
 
@@ -335,8 +335,8 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 describe("DELETE /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
-      skillOwnerRole: "admin",
-      requestUserRole: "builder",
+      skillOwnerRole: "builder",
+      requestUserRole: "user",
       method: "DELETE",
     });
 
