@@ -43,64 +43,29 @@ import {
 
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const SLACK_TOOL_LOG_NAME = "slack";
-
-// Unified format for Slack search results (using IDs)
-type SlackSearchResult = {
-  user_id?: string;
-  channel_id?: string;
-  ts?: string;
-  text?: string;
+export type SlackSearchMatch = {
+  author_name?: string;
+  channel_name?: string;
+  message_ts?: string;
+  content?: string;
   permalink?: string;
 };
 
-// Keyword search using standard Slack search.messages API
-// Returns unified format with IDs
-async function slackKeywordSearch(
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const SLACK_TOOL_LOG_NAME = "slack";
+
+export const slackSearch = async (
   query: string,
   accessToken: string
-): Promise<SlackSearchResult[]> {
-  const slackClient = await getSlackClient(accessToken);
-
-  const response = await slackClient.search.messages({
-    query,
-    sort: "score",
-    sort_dir: "desc",
-    count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to search messages");
-  }
-
-  const rawMatches = response.messages?.matches ?? [];
-
-  return rawMatches
-    .filter((match) => !!match.text)
-    .slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS)
-    .map((match) => ({
-      user_id: match.user,
-      channel_id: match.channel?.id,
-      ts: match.ts,
-      text: match.text,
-      permalink: match.permalink,
-    }));
-}
-
-// Semantic search using Slack AI assistant.search.context API
-// Falls back to keyword search if semantic search fails
-async function slackSemanticSearch(
-  query: string,
-  accessToken: string
-): Promise<SlackSearchResult[]> {
+): Promise<SlackSearchMatch[]> => {
+  // Try assistant.search.context first (requires special token and Slack AI enabled).
   try {
     const params = new URLSearchParams({
       query,
       sort: "score",
       sort_dir: "desc",
       limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
-      channel_types: "public_channel,private_channel,im,mpim",
+      channel_types: "public_channel,private_channel,mpim,im",
     });
 
     const resp = await fetch(
@@ -117,38 +82,31 @@ async function slackSemanticSearch(
       throw new Error(`HTTP ${resp.status}`);
     }
 
-    const data = (await resp.json()) as {
+    type SlackSearchResponse = {
       ok: boolean;
       error?: string;
       results: {
-        messages: Array<{
-          author_user_id?: string;
-          channel_id?: string;
-          message_ts?: string;
-          content?: string;
-          permalink?: string;
-        }>;
+        messages: SlackSearchMatch[];
       };
     };
 
+    const data: SlackSearchResponse =
+      (await resp.json()) as SlackSearchResponse;
     if (!data.ok) {
       // If invalid_action_token or other errors, throw to trigger fallback.
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       throw new Error(data.error || "unknown_error");
     }
 
-    const rawMatches = data.results.messages;
+    const rawMatches: SlackSearchMatch[] = data.results.messages;
 
-    return rawMatches
-      .filter((msg) => !!msg.content)
-      .slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS)
-      .map((msg) => ({
-        user_id: msg.author_user_id,
-        channel_id: msg.channel_id,
-        ts: msg.message_ts,
-        text: msg.content,
-        permalink: msg.permalink,
-      }));
+    // Filter out matches that don't have a text.
+    const matchesWithText = rawMatches.filter((match) => !!match.content);
+
+    // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+    const matches = matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+    return matches;
   } catch (error) {
     // Fallback to standard search.messages API if assistant.search.context fails.
     // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
@@ -157,55 +115,37 @@ async function slackSemanticSearch(
       "Failed to use assistant.search.context, falling back to search.messages"
     );
 
-    return slackKeywordSearch(query, accessToken);
+    const slackClient = await getSlackClient(accessToken);
+
+    const response = await slackClient.search.messages({
+      query,
+      sort: "score",
+      sort_dir: "desc",
+      count: SLACK_SEARCH_ACTION_NUM_RESULTS,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to search messages");
+    }
+
+    const rawMatches = response.messages?.matches ?? [];
+
+    // Transform to match expected format.
+    const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
+      author_name: match.username,
+      channel_name: match.channel?.name,
+      message_ts: match.ts,
+      content: match.text,
+      permalink: match.permalink,
+    }));
+
+    // Filter out matches that don't have text.
+    const matchesWithText = matches.filter((match) => !!match.content);
+
+    // Keep only the top results.
+    return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
   }
-}
-
-// Helper function to resolve user and channel IDs for search results
-async function resolveSearchResultIds(
-  matches: SlackSearchResult[],
-  accessToken: string
-): Promise<{
-  userIdToName: Map<string, string | null>;
-  channelIdToName: Map<string, string | null>;
-}> {
-  const uniqueUserIds = [
-    ...new Set(
-      matches.map((m) => m.user_id).filter((id): id is string => !!id)
-    ),
-  ];
-  const uniqueChannelIds = [
-    ...new Set(
-      matches.map((m) => m.channel_id).filter((id): id is string => !!id)
-    ),
-  ];
-
-  const [userNames, channelNames] = await Promise.all([
-    concurrentExecutor(
-      uniqueUserIds,
-      (userId) => resolveUserDisplayName(userId, accessToken),
-      { concurrency: 3 }
-    ),
-    concurrentExecutor(
-      uniqueChannelIds,
-      (channelId) => resolveChannelDisplayName(channelId, accessToken),
-      { concurrency: 3 }
-    ),
-  ]);
-
-  const userIdToName = new Map(
-    uniqueUserIds.map(
-      (id, idx) => [id, userNames[idx]] as [string, string | null]
-    )
-  );
-  const channelIdToName = new Map(
-    uniqueChannelIds.map(
-      (id, idx) => [id, channelNames[idx]] as [string, string | null]
-    )
-  );
-
-  return { userIdToName, channelIdToName };
-}
+};
 
 // Helper function to format date as YYYY-MM-DD with zero-padding.
 function formatDateForSlackQuery(date: Date): string {
@@ -414,7 +354,7 @@ async function createServer(
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
       "search_messages",
-      "Search messages across all channels and DMs for the current user",
+      "Search messages across public channels, private channels, DMs, and group DMs where the current user is a member",
       {
         keywords: z
           .string()
@@ -468,7 +408,7 @@ async function createServer(
             // Keyword search in slack only support AND queries which can easily return 0 hits.
             // To avoid this, we'll simulate an OR query by searching for each keyword separately.
             // Then we will aggregate the results.
-            const results: SlackSearchResult[][] = await concurrentExecutor(
+            const results: SlackSearchMatch[][] = await concurrentExecutor(
               keywords,
               async (keyword) => {
                 const query = buildSlackSearchQuery(keyword, {
@@ -479,7 +419,7 @@ async function createServer(
                   usersMentioned,
                 });
 
-                return slackKeywordSearch(query, accessToken);
+                return slackSearch(query, accessToken);
               },
               { concurrency: 3 }
             );
@@ -504,10 +444,6 @@ async function createServer(
                 },
               ]);
             } else {
-              // Resolve user IDs and channel IDs
-              const { userIdToName, channelIdToName } =
-                await resolveSearchResultIds(matches, accessToken);
-
               const { citationsOffset } =
                 agentLoopContext.runContext.stepContext;
 
@@ -516,23 +452,15 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const results = buildSearchResults<SlackSearchResult>(
+              const results = buildSearchResults<SlackSearchMatch>(
                 matches,
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) => {
-                    const username = match.user_id
-                      ? userIdToName.get(match.user_id)
-                      : undefined;
-
-                    const channelName = match.channel_id
-                      ? channelIdToName.get(match.channel_id)
-                      : undefined;
-                    return `From ${username ?? "Unknown"} (${match.user_id ?? "unknown"}) in ${channelName ?? "#Unknown"} (${match.channel_id ?? "unknown"}):\n${match.text ?? ""}`;
-                  },
-                  id: (match) => match.ts ?? "",
-                  content: (match) => match.text ?? "",
+                  text: (match) =>
+                    `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
+                  id: (match) => match.message_ts ?? "",
+                  content: (match) => match.content ?? "",
                 }
               );
 
@@ -558,7 +486,7 @@ async function createServer(
   if (slackAIStatus === "enabled") {
     server.tool(
       "semantic_search_messages",
-      "Use semantic search to find messages across all channels and DMs for the current user",
+      "Use semantic search to find messages across public channels, private channels, DMs, and group DMs where the current user is a member",
       {
         query: z
           .string()
@@ -606,17 +534,13 @@ async function createServer(
               usersMentioned,
             });
 
-            const matches = await slackSemanticSearch(searchQuery, accessToken);
+            const matches = await slackSearch(searchQuery, accessToken);
 
             if (matches.length === 0) {
               return new Ok([
                 { type: "text" as const, text: `No messages found.` },
               ]);
             } else {
-              // Resolve user IDs and channel IDs
-              const { userIdToName, channelIdToName } =
-                await resolveSearchResultIds(matches, accessToken);
-
               const { citationsOffset } =
                 agentLoopContext.runContext.stepContext;
 
@@ -625,37 +549,36 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const results = buildSearchResults<SlackSearchResult>(
+              const getTextFromMatch = (match: SlackSearchMatch) => {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                const author = match.author_name || "Unknown";
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                const channel = match.channel_name || "Unknown";
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                let content = match.content || "";
+
+                // assistant.search.context wraps search words in \uE000 and \uE001.
+                // which display as squares in the UI, so we strip them out.
+                // Ideally, there would be a way to disable this behavior in the Slack API.
+                content = content.replace(/[\uE000\uE001]/g, "");
+
+                // Replace <@U050CALAKFD|someone> with just @someone.
+                content = content.replace(
+                  /<@([A-Z0-9]+)\|([^>]+)>/g,
+                  (_m, _id, username) => `@${username}`
+                );
+
+                return `From ${author} in #${channel}: ${content}`;
+              };
+
+              const results = buildSearchResults<SlackSearchMatch>(
                 matches,
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) => {
-                    const username = match.user_id
-                      ? userIdToName.get(match.user_id)
-                      : undefined;
-
-                    const channelName = match.channel_id
-                      ? channelIdToName.get(match.channel_id)
-                      : undefined;
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                    let content = match.text || "";
-
-                    // assistant.search.context wraps search words in \uE000 and \uE001.
-                    // which display as squares in the UI, so we strip them out.
-                    // Ideally, there would be a way to disable this behavior in the Slack API.
-                    content = content.replace(/[\uE000\uE001]/g, "");
-
-                    // Replace <@U050CALAKFD|someone> with just @someone.
-                    content = content.replace(
-                      /<@([A-Z0-9]+)\|([^>]+)>/g,
-                      (_m, _id, username) => `@${username}`
-                    );
-
-                    return `From ${username ?? "Unknown"} (${match.user_id ?? "unknown"}) in ${channelName ?? "#Unknown"} (${match.channel_id ?? "unknown"}):\n${content}`;
-                  },
-                  id: (match) => match.ts ?? "",
-                  content: (match) => match.text ?? "",
+                  text: (match) => getTextFromMatch(match),
+                  id: (match) => match.message_ts ?? "",
+                  content: (match) => match.content ?? "",
                 }
               );
 
