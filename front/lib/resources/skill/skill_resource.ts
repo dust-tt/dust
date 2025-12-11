@@ -665,7 +665,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }),
     }));
 
-    const requestedSpaceSIds = this.requestedSpaceIds.map((spaceId) =>
+    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
       SpaceResource.modelIdToSId({
         id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
         workspaceId: this.workspaceId,
@@ -682,7 +682,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       description: this.description,
       instructions: this.instructions,
-      requestedSpaceIds: requestedSpaceSIds,
+      requestedSpaceIds: requestedSpaceIds,
       tools,
     };
   }
