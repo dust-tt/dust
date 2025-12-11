@@ -23,7 +23,7 @@ export function SkillCard({
       label={skill.name}
       description={skill.description}
       isSelected={isSelected}
-      canAdd={true}
+      canAdd
       onClick={onClick}
       cardContainerClassName="h-36"
       mountPortal

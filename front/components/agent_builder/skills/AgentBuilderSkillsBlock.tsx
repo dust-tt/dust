@@ -94,8 +94,11 @@ export function AgentBuilderSkillsBlock({
   const [sheetMode, setSheetMode] = useState<SkillsSheetMode | null>(null);
 
   const handleOpenSheet = useCallback(() => {
-    setSheetMode({ type: SKILLS_SHEET_PAGE_IDS.SELECTION });
-  }, []);
+    setSheetMode({
+      type: SKILLS_SHEET_PAGE_IDS.SELECTION,
+      selectedSkills: getValues("skills"),
+    });
+  }, [getValues]);
 
   const handleCloseSheet = useCallback(() => {
     setSheetMode(null);
@@ -107,8 +110,6 @@ export function AgentBuilderSkillsBlock({
     },
     [setValue]
   );
-
-  const currentSkills = getValues("skills");
 
   return (
     <AgentBuilderSectionContainer
@@ -146,7 +147,6 @@ export function AgentBuilderSkillsBlock({
         <SkillsSheet
           mode={sheetMode}
           onClose={handleCloseSheet}
-          selectedSkills={currentSkills}
           onSave={handleSaveSkills}
           onModeChange={setSheetMode}
         />

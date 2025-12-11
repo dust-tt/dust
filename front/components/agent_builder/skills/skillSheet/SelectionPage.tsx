@@ -1,27 +1,37 @@
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
+import { useLocalSelectedSkills } from "@app/components/agent_builder/skills/skillSheet/hooks";
 import { SkillCard } from "@app/components/agent_builder/skills/skillSheet/SkillCard";
 import type {
   PageContentProps,
-  SkillsSheetMode,
+  SelectionMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 
+type SelectionPageProps = PageContentProps & {
+  mode: SelectionMode;
+};
+
 export function SelectionPageContent({
-  searchQuery,
-  setSearchQuery,
-  isSkillConfigurationsLoading,
-  filteredSkills,
-  selectedSkillIds,
-  handleSkillToggle,
+  mode,
   onModeChange,
-}: PageContentProps & {
-  mode: Extract<
-    SkillsSheetMode,
-    { type: typeof SKILLS_SHEET_PAGE_IDS.SELECTION }
-  >;
-}) {
+  onSave,
+  onClose,
+}: SelectionPageProps) {
+  const {
+    handleSkillToggle,
+    filteredSkills,
+    isSkillConfigurationsLoading,
+    searchQuery,
+    selectedSkillIds,
+    setSearchQuery,
+  } = useLocalSelectedSkills({
+    mode,
+    onSave,
+    onClose,
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <SearchInput
@@ -62,7 +72,7 @@ export function SelectionPageContent({
                 onModeChange({
                   type: SKILLS_SHEET_PAGE_IDS.INFO,
                   skillConfiguration: skill,
-                  source: "addedTool",
+                  previousMode: mode,
                 });
               }}
             />
