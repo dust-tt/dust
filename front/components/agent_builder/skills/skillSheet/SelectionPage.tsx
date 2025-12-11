@@ -1,37 +1,34 @@
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useLocalSelectedSkills } from "@app/components/agent_builder/skills/skillSheet/hooks";
 import { SkillCard } from "@app/components/agent_builder/skills/skillSheet/SkillCard";
 import type {
   PageContentProps,
   SelectionMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 type SelectionPageProps = PageContentProps & {
   mode: SelectionMode;
+  handleSkillToggle: (skill: SkillConfigurationType) => void;
+  filteredSkills: SkillConfigurationType[];
+  isSkillConfigurationsLoading: boolean;
+  searchQuery: string;
+  selectedSkillIds: Set<string>;
+  setSearchQuery: (query: string) => void;
 };
 
 export function SelectionPageContent({
-  mode,
   onModeChange,
-  onSave,
-  onClose,
+  mode,
+  handleSkillToggle,
+  filteredSkills,
+  isSkillConfigurationsLoading,
+  searchQuery,
+  selectedSkillIds,
+  setSearchQuery,
 }: SelectionPageProps) {
-  const {
-    handleSkillToggle,
-    filteredSkills,
-    isSkillConfigurationsLoading,
-    searchQuery,
-    selectedSkillIds,
-    setSearchQuery,
-  } = useLocalSelectedSkills({
-    mode,
-    onSave,
-    onClose,
-  });
-
   return (
     <div className="flex flex-col gap-4">
       <SearchInput

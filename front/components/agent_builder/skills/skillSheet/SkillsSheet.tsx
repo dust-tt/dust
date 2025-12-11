@@ -6,18 +6,31 @@ import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skill
 import { getPageAndFooter } from "@app/components/agent_builder/skills/skillSheet/utils";
 
 interface SkillsSheetProps {
-  mode: SkillsSheetMode;
+  mode: SkillsSheetMode | null;
   onClose: () => void;
   onSave: (skills: AgentBuilderSkillsType[]) => void;
   onModeChange: (mode: SkillsSheetMode | null) => void;
 }
 
-export function SkillsSheet({
+export function SkillsSheet(props: SkillsSheetProps) {
+  const { mode, onClose } = props;
+
+  return (
+    <MultiPageSheet
+      open={mode !== null}
+      onOpenChange={(open) => !open && onClose()}
+    >
+      {mode && <SkillsSheetContent {...props} mode={mode} />}
+    </MultiPageSheet>
+  );
+}
+
+function SkillsSheetContent({
   mode,
   onClose,
   onSave,
   onModeChange,
-}: SkillsSheetProps) {
+}: SkillsSheetProps & { mode: SkillsSheetMode }) {
   const { page, leftButton, rightButton } = getPageAndFooter({
     mode,
     onModeChange,
@@ -26,18 +39,16 @@ export function SkillsSheet({
   });
 
   return (
-    <MultiPageSheet open onOpenChange={(open) => !open && onClose()}>
-      <MultiPageSheetContent
-        pages={[page]}
-        currentPageId={mode.type}
-        onPageChange={() => {}}
-        size="xl"
-        addFooterSeparator
-        showHeaderNavigation={false}
-        showNavigation={false}
-        leftButton={leftButton}
-        rightButton={rightButton}
-      />
-    </MultiPageSheet>
+    <MultiPageSheetContent
+      pages={[page]}
+      currentPageId={mode.type}
+      onPageChange={() => {}}
+      size="xl"
+      addFooterSeparator
+      showHeaderNavigation={false}
+      showNavigation={false}
+      leftButton={leftButton}
+      rightButton={rightButton}
+    />
   );
 }

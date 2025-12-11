@@ -16,7 +16,7 @@ export function getPageAndFooter(props: PageContentProps): {
   switch (mode.type) {
     case SKILLS_SHEET_PAGE_IDS.SELECTION:
       // eslint-disable-next-line react-hooks/rules-of-hooks
-      const { handleSave } = useLocalSelectedSkills({
+      const { handleSave, ...restOfUtils } = useLocalSelectedSkills({
         mode,
         onSave: props.onSave,
         onClose: props.onClose,
@@ -26,7 +26,9 @@ export function getPageAndFooter(props: PageContentProps): {
         page: {
           title: "Add skills",
           id: mode.type,
-          content: <SelectionPageContent {...props} mode={mode} />,
+          content: (
+            <SelectionPageContent {...props} {...restOfUtils} mode={mode} />
+          ),
         },
         leftButton: getCancelButton(props.onClose),
         rightButton: {

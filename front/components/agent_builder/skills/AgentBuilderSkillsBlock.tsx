@@ -142,15 +142,12 @@ export function AgentBuilderSkillsBlock({
           </CardGrid>
         )}
       </div>
-
-      {sheetMode !== null && (
-        <SkillsSheet
-          mode={sheetMode}
-          onClose={handleCloseSheet}
-          onSave={handleSaveSkills}
-          onModeChange={setSheetMode}
-        />
-      )}
+      <SkillsSheet
+        mode={sheetMode}
+        onClose={handleCloseSheet}
+        onSave={handleSaveSkills}
+        onModeChange={setSheetMode}
+      />
     </AgentBuilderSectionContainer>
   );
 }
