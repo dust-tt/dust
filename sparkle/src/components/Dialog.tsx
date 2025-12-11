@@ -68,6 +68,7 @@ const dialogVariants = cva(
     },
     defaultVariants: {
       size: "md",
+      height: "md",
     },
   }
 );
