@@ -471,16 +471,22 @@ export const InputBarAttachmentsPicker = ({
             )}
             {Object.keys(serversWithResults).length === 0 ? (
               // No tools results - show knowledge nodes as returned by the search
-              dataSourcesNodes.map((item) => (
-                <KnowledgeNodeCheckboxItem
-                  key={`knowledge-${item.internalId}`}
-                  item={item}
-                  owner={owner}
-                  attachedNodes={attachedNodes}
-                  onNodeSelect={onNodeSelect}
-                  onNodeUnselect={onNodeUnselect}
-                />
-              ))
+              dataSourcesNodes
+                .filter((item) =>
+                  selectedDataSourcesAndTools.includes(
+                    `ds-${item.dataSource.sId}`
+                  )
+                )
+                .map((item) => (
+                  <KnowledgeNodeCheckboxItem
+                    key={`knowledge-${item.internalId}`}
+                    item={item}
+                    owner={owner}
+                    attachedNodes={attachedNodes}
+                    onNodeSelect={onNodeSelect}
+                    onNodeUnselect={onNodeUnselect}
+                  />
+                ))
             ) : (
               // Show grouped results - first knowledge nodes, then tools
               <>
