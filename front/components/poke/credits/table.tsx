@@ -1,3 +1,5 @@
+import type Stripe from "stripe";
+
 import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
 import { PokeProgrammaticCostChart } from "@app/components/poke/credits/PokeProgrammaticCostChart";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
@@ -9,6 +11,7 @@ import type { SubscriptionType, WorkspaceType } from "@app/types";
 interface CreditsDataTableProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  stripeSubscription: Stripe.Subscription | null;
   loadOnInit?: boolean;
 }
 
@@ -34,12 +37,20 @@ function sortByExpirationDate(credits: PokeCreditType[]): PokeCreditType[] {
 export function CreditsDataTable({
   owner,
   subscription,
+  stripeSubscription,
   loadOnInit,
 }: CreditsDataTableProps) {
-  // Get the billing cycle start day from the subscription start date
-  const billingCycleStartDay = subscription.startDate
-    ? new Date(subscription.startDate).getDate()
-    : null;
+  // Get the billing cycle start day from Stripe subscription, fallback to Dust subscription
+  const getBillingCycleStartDay = (): number | null => {
+    if (stripeSubscription?.current_period_start) {
+      return new Date(stripeSubscription.current_period_start * 1000).getDate();
+    }
+    if (subscription.startDate) {
+      return new Date(subscription.startDate).getDate();
+    }
+    return null;
+  };
+  const billingCycleStartDay = getBillingCycleStartDay();
 
   return (
     <>

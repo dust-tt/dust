@@ -334,10 +334,17 @@ export default function CreditsUsagePage({
     workspaceId: owner.sId,
   });
 
-  // Get the billing cycle start day from the stripesubscription
-  const billingCycleStartDay = stripeSubscription?.current_period_start
-    ? new Date(stripeSubscription.current_period_start * 1000).getDate()
-    : null;
+  // Get the billing cycle start day from Stripe subscription, fallback to Dust subscription
+  const getBillingCycleStartDay = (): number | null => {
+    if (stripeSubscription?.current_period_start) {
+      return new Date(stripeSubscription.current_period_start * 1000).getDate();
+    }
+    if (subscription.startDate) {
+      return new Date(subscription.startDate).getDate();
+    }
+    return null;
+  };
+  const billingCycleStartDay = getBillingCycleStartDay();
 
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => isActive(c));
