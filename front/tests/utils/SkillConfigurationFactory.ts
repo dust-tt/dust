@@ -13,7 +13,6 @@ export class SkillConfigurationFactory {
       description: string;
       instructions: string;
       status: "active" | "archived";
-      version: number;
     }> = {}
   ): Promise<SkillResource> {
     const user = auth.user();
@@ -23,7 +22,6 @@ export class SkillConfigurationFactory {
     const description = overrides.description ?? "Test skill description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
-    const version = overrides.version ?? 1;
 
     return SkillResource.makeNew(auth, {
       authorId: user.id,
@@ -32,7 +30,6 @@ export class SkillConfigurationFactory {
       name,
       requestedSpaceIds: [],
       status,
-      version,
     });
   }
 
