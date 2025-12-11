@@ -159,13 +159,7 @@ function createServer(
 
           const response = await apiCall.get();
 
-          // Map to TeamsUser type with only essential fields
-          const users: TeamsUser[] = response.value.map((user: any) => ({
-            id: user.id,
-            displayName: user.displayName,
-            mail: user.mail,
-            userPrincipalName: user.userPrincipalName,
-          }));
+          const users: TeamsUser[] = (response.value as TeamsUser[]) ?? [];
 
           return new Ok([
             {
@@ -217,18 +211,8 @@ function createServer(
 
           const response = await apiCall.get();
 
-          // Map to TeamsChannel type with only essential fields
-          const channels: TeamsChannel[] = response.value.map(
-            (channel: any) => ({
-              id: channel.id,
-              createdDateTime: channel.createdDateTime,
-              displayName: channel.displayName,
-              description: channel.description ?? null,
-              email: channel.email,
-              tenantId: channel.tenantId,
-              webUrl: channel.webUrl,
-            })
-          );
+          const channels: TeamsChannel[] =
+            (response.value as TeamsChannel[]) ?? [];
 
           return new Ok([
             {
@@ -303,16 +287,7 @@ function createServer(
 
           const response = await apiCall.get();
 
-          // Map to TeamsChat type with only essential fields
-          const chats: TeamsChat[] = response.value.map((chat: any) => ({
-            id: chat.id,
-            topic: chat.topic ?? null,
-            createdDateTime: chat.createdDateTime,
-            lastUpdatedDateTime: chat.lastUpdatedDateTime,
-            chatType: chat.chatType,
-            webUrl: chat.webUrl,
-            tenantId: chat.tenantId,
-          }));
+          const chats: TeamsChat[] = (response.value as TeamsChat[]) ?? [];
 
           return new Ok([
             {
