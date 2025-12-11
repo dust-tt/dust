@@ -87,16 +87,13 @@ export const slackSearch = async (
     const data = (await resp.json()) as any;
     if (!data.ok) {
       // If invalid_action_token or other errors, throw to trigger fallback.
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      throw new Error(data.error || "unknown_error");
+      throw new Error(data.error ?? "unknown_error");
     }
 
     // Transform API response to match SlackSearchMatch format.
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const rawMatches: SlackSearchMatch[] = (data.results.messages || []).map(
+    const rawMatches: SlackSearchMatch[] = (data.results.messages ?? []).map(
       (msg: any) => ({
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        author_id: msg.author_id || msg.author_user_id,
+        author_id: msg.author_id ?? msg.author_user_id,
         author_name: msg.author_name,
         channel_id: msg.channel_id,
         channel_name: msg.channel_name,
@@ -353,8 +350,7 @@ async function getSlackAIEnablementStatus({
     const status = data.is_ai_search_enabled ? "enabled" : "disabled";
 
     return status;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (e) {
+  } catch {
     return "disconnected";
   }
 }
