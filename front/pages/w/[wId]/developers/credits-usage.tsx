@@ -8,6 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo, useState } from "react";
+import type Stripe from "stripe";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
@@ -44,6 +45,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   discountPercent: number;
   creditPricing: StripePricingData | null;
   creditPurchaseLimits: CreditPurchaseLimits | null;
+  stripeSubscription: Stripe.Subscription | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -56,8 +58,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   let currency = "usd";
   let creditPurchaseLimits: CreditPurchaseLimits | null = null;
 
+  let stripeSubscription: Stripe.Subscription | null = null;
   if (subscription.stripeSubscriptionId) {
-    const stripeSubscription = await getStripeSubscription(
+    stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
@@ -87,6 +90,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       discountPercent,
       creditPricing,
       creditPurchaseLimits,
+      stripeSubscription,
     },
   };
 });
@@ -320,6 +324,7 @@ export default function CreditsUsagePage({
   discountPercent,
   creditPricing,
   creditPurchaseLimits,
+  stripeSubscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { featureFlags } = useFeatureFlags({
@@ -329,9 +334,9 @@ export default function CreditsUsagePage({
     workspaceId: owner.sId,
   });
 
-  // Get the billing cycle start day from the subscription start date
-  const billingCycleStartDay = subscription.startDate
-    ? new Date(subscription.startDate).getDate()
+  // Get the billing cycle start day from the stripesubscription
+  const billingCycleStartDay = stripeSubscription?.current_period_start
+    ? new Date(stripeSubscription.current_period_start * 1000).getDate()
     : null;
 
   const creditsByType = useMemo(() => {
