@@ -11,7 +11,7 @@ import type { LightWorkspaceType } from "@app/types";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
-} from "@app/types/skill_configuration";
+} from "@app/types/assistant/skill_configuration";
 
 type RowData = {
   skillConfigurationWithRelations: SkillConfigurationType &

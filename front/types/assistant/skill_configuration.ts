@@ -1,5 +1,5 @@
-import type { AgentsUsageType } from "./data_source";
-import type { ModelId } from "./shared/model_id";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type SkillStatus = "active" | "archived";
 

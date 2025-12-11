@@ -313,6 +313,36 @@ function UpdateConnectionOAuthModal({
               title={`${connectorConfiguration.name} data & permissions`}
             />
           </div>
+
+          {isLegacySlackApp && (
+            <div className="mt-4">
+              <ContentMessage
+                size="md"
+                variant="warning"
+                title="Migration required"
+                icon={InformationCircleIcon}
+              >
+                You are using a legacy way to connect your Slack workspace to
+                Dust. Starting December 2025, all Slack connections require
+                customers to create their own Slack app. This change ensures
+                optimal performance and reliable real-time syncing.
+                <br />
+                <br />
+                Please follow the instructions of the section{" "}
+                <b>"Setting up the Connection"</b> in our{" "}
+                <Hoverable
+                  href="https://docs.dust.tt/docs/slack-connection#setting-up-the-connection"
+                  target="_blank"
+                  variant="highlight"
+                >
+                  official documentation
+                </Hoverable>{" "}
+                and enter your credentials below to{" "}
+                <b>complete the migration before March 3, 2026</b>.
+              </ContentMessage>
+            </div>
+          )}
+
           {isDataSourceOwner && (
             <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
               <div className="flex items-center gap-2 font-medium text-info-800">
@@ -389,9 +419,6 @@ function UpdateConnectionOAuthModal({
                   .
                 </div>
               )}
-              {
-                isLegacySlackApp && "" // TODO(slackstorm) fabien: add message about legacy slack app
-              }
             </ContentMessage>
           </div>
         )}
@@ -609,9 +636,18 @@ function DataSourceDeletionModal({
   );
 }
 
+type ModalType =
+  | "data_updated"
+  | "edition"
+  | "selection"
+  | "deletion"
+  | "private_integration"
+  | null;
+
 interface ConnectorPermissionsModalProps {
   connector: ConnectorType;
   dataSourceView: DataSourceViewType;
+  initialModalState?: ModalType;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -623,6 +659,7 @@ interface ConnectorPermissionsModalProps {
 export function ConnectorPermissionsModal({
   connector,
   dataSourceView,
+  initialModalState = "selection",
   isAdmin,
   isOpen,
   onClose,
@@ -705,19 +742,11 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedNodes(initialTreeSelectionModel);
     }
   }, [initialTreeSelectionModel, isOpen]);
 
-  const [modalToShow, setModalToShow] = useState<
-    | "data_updated"
-    | "edition"
-    | "selection"
-    | "deletion"
-    | "private_integration"
-    | null
-  >(null);
+  const [modalToShow, setModalToShow] = useState<ModalType>(null);
 
   const { activeSubscription } = useWorkspaceActiveSubscription({
     owner,
@@ -826,12 +855,11 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setModalToShow("selection");
+      setModalToShow(initialModalState);
     } else {
       setModalToShow(null);
     }
-  }, [connector.type, isOpen]);
+  }, [connector.type, initialModalState, isOpen]);
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connector.type];
   const connectorUIConfiguration = CONNECTOR_UI_CONFIGURATIONS[connector.type];

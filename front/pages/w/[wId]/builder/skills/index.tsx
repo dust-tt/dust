@@ -20,7 +20,7 @@ import { isBuilder } from "@app/types";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
-} from "@app/types/skill_configuration";
+} from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

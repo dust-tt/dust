@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder, isString } from "@app/types";
@@ -71,17 +71,7 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      const archiveResult = await skillConfiguration.archive(auth);
-
-      if (archiveResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Error archiving skill: ${archiveResult.error.message}`,
-          },
-        });
-      }
+      await skillConfiguration.archive(auth);
 
       return res.status(200).json({ success: true });
     }

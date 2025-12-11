@@ -94,7 +94,6 @@ export function MCPRunAgentActionDetails({
 
   useEffect(() => {
     if (queryResource) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery(queryResource.resource.text);
       setChildAgentId(queryResource.resource.childAgentId);
     }

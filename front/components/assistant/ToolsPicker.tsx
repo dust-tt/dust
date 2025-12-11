@@ -132,7 +132,6 @@ export function ToolsPicker({
           },
         });
         onSelect(newServerView);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPendingServerToAdd(null);
         setIsSettingUpServer(false);
       }

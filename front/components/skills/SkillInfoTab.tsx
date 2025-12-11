@@ -1,7 +1,7 @@
 import { Page, ReadOnlyTextArea } from "@dust-tt/sparkle";
 
 import { timeAgoFrom } from "@app/lib/utils";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export function SkillInfoTab({
   skillConfiguration,

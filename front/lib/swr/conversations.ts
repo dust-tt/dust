@@ -693,7 +693,6 @@ export const useConversationParticipationOption = ({
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOption(null);
       return;
     }

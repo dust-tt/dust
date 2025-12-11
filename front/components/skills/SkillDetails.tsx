@@ -17,7 +17,7 @@ import { useState } from "react";
 
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { SKILL_ICON } from "@app/lib/skill";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
   skillConfiguration: SkillConfigurationType;

@@ -3,14 +3,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
-} from "@app/types/skill_configuration";
+} from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
   skillConfigurations: SkillConfigurationType[];

@@ -7,9 +7,9 @@ import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilder
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   skillConfiguration: SkillConfigurationType;

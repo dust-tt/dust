@@ -7,13 +7,13 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import { Err, Ok } from "@app/types";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
   skillConfiguration: SkillConfigurationType;
@@ -162,68 +162,69 @@ async function handler(
         }
       }
 
-      // Wrap everything in a transaction to avoid inconsistent state
-      try {
-        const result = await frontSequelize.transaction(async (transaction) => {
-          const updateResult = await skillResource.updateSkill(
-            auth,
-            {
-              name: body.name,
-              description: body.description,
-              instructions: body.instructions,
-            },
-            { transaction }
-          );
-
-          if (updateResult.isErr()) {
-            throw new Error(updateResult.error.message);
-          }
-
-          const updatedSkill = updateResult.value;
-
-          // Update tools
-          const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
-          const mcpServerViews = await MCPServerViewResource.fetchByIds(
-            auth,
-            mcpServerViewIds
-          );
-
-          if (mcpServerViewIds.length !== mcpServerViews.length) {
-            throw new Error(
-              `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`
-            );
-          }
-
-          const toolsResult = await updatedSkill.updateTools(
-            auth,
-            {
-              mcpServerViews,
-            },
-            { transaction }
-          );
-
-          if (toolsResult.isErr()) {
-            throw new Error(toolsResult.error.message);
-          }
-
-          return { updatedSkill, createdTools: toolsResult.value };
-        });
-
-        return res.status(200).json({
-          skillConfiguration: {
-            ...result.updatedSkill.toJSON(),
-            tools: result.createdTools,
+      // Wrap everything in a transaction to avoid inconsistent state.
+      const result = await frontSequelize.transaction(async (transaction) => {
+        const updateResult = await skillResource.updateSkill(
+          auth,
+          {
+            name: body.name,
+            description: body.description,
+            instructions: body.instructions,
           },
+          { transaction }
+        );
+
+        if (updateResult.isErr()) {
+          return new Err(new Error(updateResult.error.message));
+        }
+
+        const updatedSkill = updateResult.value;
+
+        // Update tools
+        const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+        const mcpServerViews = await MCPServerViewResource.fetchByIds(
+          auth,
+          mcpServerViewIds
+        );
+
+        if (mcpServerViewIds.length !== mcpServerViews.length) {
+          return new Err(
+            new Error(
+              `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`
+            )
+          );
+        }
+
+        await updatedSkill.updateTools(
+          auth,
+          {
+            mcpServerViews,
+          },
+          { transaction }
+        );
+
+        return new Ok({
+          updatedSkill,
+          createdTools: mcpServerViews.map((t) => ({ mcpServerViewId: t.sId })),
         });
-      } catch (error) {
+      });
+
+      if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Error updating skill: ${normalizeError(error).message}`,
+            message: `Error updating skill: ${result.error.message}`,
           },
         });
       }
+
+      return res.status(200).json({
+        skillConfiguration: {
+          ...result.value.updatedSkill.toJSON(),
+          tools: result.value.createdTools,
+        },
+      });
     }
 
     case "DELETE": {
