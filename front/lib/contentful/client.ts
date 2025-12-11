@@ -1,7 +1,16 @@
 import type { Document } from "@contentful/rich-text-types";
 import { BLOCKS } from "@contentful/rich-text-types";
-import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
+import type {
+  Asset,
+  ContentfulClientApi,
+  Entry,
+  EntryCollection,
+  Tag,
+  TagCollection,
+} from "contentful";
 import { createClient } from "contentful";
+import * as fs from "fs";
+import * as path from "path";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
@@ -25,6 +34,69 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 
 // ISR revalidation time for all Contentful content (30 minutes)
 export const CONTENTFUL_REVALIDATE_SECONDS = 30 * 60;
+
+// ============================================================================
+// Contentful Cache Support
+// When CONTENTFUL_USE_CACHE=true, read from pre-fetched JSON files instead of
+// making API calls. This is used during builds to avoid hitting Contentful API.
+// ============================================================================
+
+const CACHE_DIR = path.join(process.cwd(), "contentful-cache");
+const BLOG_POSTS_CACHE = path.join(CACHE_DIR, "blog-posts.json");
+const CUSTOMER_STORIES_CACHE = path.join(CACHE_DIR, "customer-stories.json");
+const TAGS_CACHE = path.join(CACHE_DIR, "tags.json");
+
+function shouldUseCache(): boolean {
+  return (
+    process.env.CONTENTFUL_USE_CACHE === "true" && fs.existsSync(CACHE_DIR)
+  );
+}
+
+function getCachedBlogPosts(): EntryCollection<BlogPageSkeleton> | null {
+  if (!shouldUseCache() || !fs.existsSync(BLOG_POSTS_CACHE)) {
+    return null;
+  }
+  try {
+    const data = fs.readFileSync(BLOG_POSTS_CACHE, "utf-8");
+    logger.info("[Contentful] Using cached blog posts");
+    return JSON.parse(data) as EntryCollection<BlogPageSkeleton>;
+  } catch (error) {
+    logger.warn({ error }, "[Contentful] Failed to read blog posts cache");
+    return null;
+  }
+}
+
+function getCachedCustomerStories(): EntryCollection<CustomerStorySkeleton> | null {
+  if (!shouldUseCache() || !fs.existsSync(CUSTOMER_STORIES_CACHE)) {
+    return null;
+  }
+  try {
+    const data = fs.readFileSync(CUSTOMER_STORIES_CACHE, "utf-8");
+    logger.info("[Contentful] Using cached customer stories");
+    return JSON.parse(data) as EntryCollection<CustomerStorySkeleton>;
+  } catch (error) {
+    logger.warn(
+      { error },
+      "[Contentful] Failed to read customer stories cache"
+    );
+    return null;
+  }
+}
+
+function getCachedTags(): TagCollection | null {
+  if (!shouldUseCache() || !fs.existsSync(TAGS_CACHE)) {
+    return null;
+  }
+  try {
+    const data = fs.readFileSync(TAGS_CACHE, "utf-8");
+    return JSON.parse(data) as TagCollection;
+  } catch (error) {
+    logger.warn({ error }, "[Contentful] Failed to read tags cache");
+    return null;
+  }
+}
+
+// ============================================================================
 
 let client: ContentfulClientApi<undefined> | null = null;
 let previewClient: ContentfulClientApi<undefined> | null = null;
@@ -108,8 +180,16 @@ async function getTagNameMap(
   }
 
   try {
-    const contentfulClient = getContentfulClient(resolvedUrl);
-    const tags = await contentfulClient.getTags();
+    // Try to use cached tags first
+    const cachedTags = getCachedTags();
+    let tags: TagCollection;
+
+    if (cachedTags) {
+      tags = cachedTags;
+    } else {
+      const contentfulClient = getContentfulClient(resolvedUrl);
+      tags = await contentfulClient.getTags();
+    }
 
     tagNameCache = new Map();
     tags.items.forEach((tag: Tag) => {
@@ -339,13 +419,21 @@ export async function getAllBlogPosts(
   resolvedUrl: string = ""
 ): Promise<Result<BlogPostSummary[], Error>> {
   try {
-    const contentfulClient = getContentfulClient(resolvedUrl);
     const tagNameMap = await getTagNameMap(resolvedUrl);
 
-    const response = await contentfulClient.getEntries<BlogPageSkeleton>({
-      content_type: "blogPage",
-      limit: 1000,
-    });
+    // Try to use cached blog posts first
+    const cachedResponse = getCachedBlogPosts();
+    let response: EntryCollection<BlogPageSkeleton>;
+
+    if (cachedResponse) {
+      response = cachedResponse;
+    } else {
+      const contentfulClient = getContentfulClient(resolvedUrl);
+      response = await contentfulClient.getEntries<BlogPageSkeleton>({
+        content_type: "blogPage",
+        limit: 1000,
+      });
+    }
 
     const posts = response.items
       .map((entry) => contentfulEntryToBlogPost(entry, tagNameMap))
@@ -367,9 +455,22 @@ export async function getBlogPostBySlug(
   resolvedUrl: string
 ): Promise<Result<BlogPost | null, Error>> {
   try {
-    const contentfulClient = getContentfulClient(resolvedUrl);
     const tagNameMap = await getTagNameMap(resolvedUrl);
 
+    // Try to find in cached blog posts first
+    const cachedResponse = getCachedBlogPosts();
+    if (cachedResponse) {
+      const entry = cachedResponse.items.find((item) => {
+        const slugField = item.fields.slug;
+        return isString(slugField) && slugField === slug;
+      });
+      if (entry) {
+        return new Ok(contentfulEntryToBlogPost(entry, tagNameMap));
+      }
+      return new Ok(null);
+    }
+
+    const contentfulClient = getContentfulClient(resolvedUrl);
     const queryParams = {
       content_type: "blogPage",
       "fields.slug": slug,
@@ -401,7 +502,6 @@ export async function getRelatedPosts(
   }
 
   try {
-    const contentfulClient = getContentfulClient(resolvedUrl);
     const tagNameMap = await getTagNameMap(resolvedUrl);
 
     // Convert tag names to tag IDs for the query
@@ -416,14 +516,31 @@ export async function getRelatedPosts(
       return new Ok([]);
     }
 
-    const queryParams = {
-      content_type: "blogPage",
-      "metadata.tags.sys.id[in]": tagIds.join(","),
-      limit: limit + 1,
-    };
+    // Try to use cached blog posts first and filter by tags
+    const cachedResponse = getCachedBlogPosts();
+    let response: EntryCollection<BlogPageSkeleton>;
 
-    const response =
-      await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
+    if (cachedResponse) {
+      // Filter cached items by tags
+      const filteredItems = cachedResponse.items.filter((item) => {
+        const itemTags = item.metadata?.tags;
+        if (!itemTags || !Array.isArray(itemTags)) {
+          return false;
+        }
+        return itemTags.some(
+          (tagLink) => isTagLink(tagLink) && tagIds.includes(tagLink.sys.id)
+        );
+      });
+      response = { ...cachedResponse, items: filteredItems };
+    } else {
+      const contentfulClient = getContentfulClient(resolvedUrl);
+      const queryParams = {
+        content_type: "blogPage",
+        "metadata.tags.sys.id[in]": tagIds.join(","),
+        limit: limit + 1,
+      };
+      response = await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
+    }
 
     const posts = response.items
       .map((entry) => contentfulEntryToBlogPost(entry, tagNameMap))
@@ -615,11 +732,17 @@ export async function getAllCustomerStories(
   filters?: CustomerStoryFilters
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {
-    const contentfulClient = getContentfulClient(resolvedUrl);
-    const query = buildCustomerStoryQuery(filters);
+    // Try to use cached customer stories first
+    const cachedResponse = getCachedCustomerStories();
+    let response: EntryCollection<CustomerStorySkeleton>;
 
-    const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(query);
+    if (cachedResponse) {
+      response = cachedResponse;
+    } else {
+      const contentfulClient = getContentfulClient(resolvedUrl);
+      const query = buildCustomerStoryQuery(filters);
+      response = await contentfulClient.getEntries<CustomerStorySkeleton>(query);
+    }
 
     const stories = response.items
       .map(contentfulEntryToCustomerStory)
@@ -641,6 +764,19 @@ export async function getCustomerStoryBySlug(
   resolvedUrl: string
 ): Promise<Result<CustomerStory | null, Error>> {
   try {
+    // Try to find in cached customer stories first
+    const cachedResponse = getCachedCustomerStories();
+    if (cachedResponse) {
+      const entry = cachedResponse.items.find((item) => {
+        const slugField = item.fields.slug;
+        return isString(slugField) && slugField === slug;
+      });
+      if (entry) {
+        return new Ok(contentfulEntryToCustomerStory(entry));
+      }
+      return new Ok(null);
+    }
+
     const contentfulClient = getContentfulClient(resolvedUrl);
     const query = buildCustomerStoryQuery(undefined, { slug, limit: 1 });
 
@@ -665,9 +801,59 @@ export async function getRelatedCustomerStories(
   resolvedUrl: string
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {
-    const contentfulClient = getContentfulClient(resolvedUrl);
+    // Try to use cached customer stories first
+    const cachedResponse = getCachedCustomerStories();
 
     let stories: CustomerStorySummary[] = [];
+
+    if (cachedResponse) {
+      // Filter cached items by industries
+      if (industries.length > 0) {
+        const industriesFiltered = cachedResponse.items
+          .filter((item) => {
+            const itemIndustries = item.fields.industries;
+            if (!itemIndustries || !Array.isArray(itemIndustries)) {
+              return false;
+            }
+            return itemIndustries.some((ind) => industries.includes(ind));
+          })
+          .map(contentfulEntryToCustomerStory)
+          .filter(isNonNull)
+          .filter((story) => story.slug !== currentSlug)
+          .slice(0, limit)
+          .map(contentfulEntryToCustomerStorySummary);
+
+        stories = industriesFiltered;
+      }
+
+      // If we don't have enough stories, try by department
+      if (stories.length < limit && department.length > 0) {
+        const deptFiltered = cachedResponse.items
+          .filter((item) => {
+            const itemDept = item.fields.department;
+            if (!itemDept || !Array.isArray(itemDept)) {
+              return false;
+            }
+            return itemDept.some((d) => department.includes(d));
+          })
+          .map(contentfulEntryToCustomerStory)
+          .filter(isNonNull)
+          .filter(
+            (story) =>
+              story.slug !== currentSlug &&
+              !stories.some((s) => s.slug === story.slug)
+          )
+          .slice(0, limit - stories.length)
+          .map(contentfulEntryToCustomerStorySummary);
+
+        stories.push(...deptFiltered);
+      }
+
+      return new Ok(stories);
+    }
+
+    // Fall back to API calls
+    const contentfulClient = getContentfulClient(resolvedUrl);
 
     // First try to find stories in the same industries
     if (industries.length > 0) {

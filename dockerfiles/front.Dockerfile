@@ -45,6 +45,7 @@ ARG NEXT_PUBLIC_NOVU_API_URL
 ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ARG CONTENTFUL_SPACE_ID
 ARG CONTENTFUL_ACCESS_TOKEN
+ARG CONTENTFUL_USE_CACHE=false
 
 # Set environment variables for Next.js build
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
@@ -61,6 +62,11 @@ ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
 ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
+ENV CONTENTFUL_USE_CACHE=$CONTENTFUL_USE_CACHE
+
+# Copy Contentful cache if available (directory may not exist, that's OK)
+# The wildcard pattern ensures the COPY doesn't fail if the directory is missing
+COPY front/contentful-cache* ./contentful-cache/
 
 # Build Next.js application and sitemap (front-nextjs only)
 # fake database URIs are needed because Sequelize will throw if the `url` parameter

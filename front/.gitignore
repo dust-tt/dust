@@ -41,3 +41,6 @@ dist/
 # cache
 .cache/
 .eslintcache
+
+# contentful cache (generated during CI builds)
+contentful-cache/

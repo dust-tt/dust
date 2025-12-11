@@ -47,6 +47,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  actions: read
 
 concurrency:
   group: "deploy_${{ inputs.component }}"
@@ -118,11 +119,39 @@ jobs:
             echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
           fi
 
+  # Restore Contentful cache for front builds to avoid API calls during build
+  restore-contentful-cache:
+    if: ${{ inputs.component == 'front' || inputs.component == 'front-edge' }}
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.restore-cache.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Restore Contentful cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: front/contentful-cache
+          key: contentful-cache-latest
+          restore-keys: |
+            contentful-cache-
+
+      - name: Upload cache as artifact for build job
+        if: steps.restore-cache.outputs.cache-hit == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-cache
+          path: front/contentful-cache
+          retention-days: 1
+
   build:
     permissions:
       contents: read
       id-token: write
-    needs: [prepare, notify-start, create-matrix]
+    needs: [prepare, notify-start, create-matrix, restore-contentful-cache]
+    # Allow build to run even if restore-contentful-cache is skipped (non-front components)
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -133,6 +162,26 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
+
+      # Download Contentful cache artifact if available (for front/front-edge builds)
+      - name: Download Contentful cache
+        if: ${{ (inputs.component == 'front' || inputs.component == 'front-edge') && needs.restore-contentful-cache.outputs.cache-hit == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: contentful-cache
+          path: front/contentful-cache
+
+      - name: Check Contentful cache status
+        id: contentful-cache
+        run: |
+          if [ -d "front/contentful-cache" ] && [ -f "front/contentful-cache/cache-metadata.json" ]; then
+            echo "use_cache=true" >> $GITHUB_OUTPUT
+            echo "Contentful cache found, will skip API calls during build"
+            cat front/contentful-cache/cache-metadata.json
+          else
+            echo "use_cache=false" >> $GITHUB_OUTPUT
+            echo "No Contentful cache found, will fetch from API during build"
+          fi
 
       - name: Set project ID
         id: project
@@ -162,6 +211,7 @@ jobs:
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          use_contentful_cache: ${{ steps.contentful-cache.outputs.use_cache }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
       - name: Notify build success

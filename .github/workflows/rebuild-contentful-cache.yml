@@ -1,0 +1,77 @@
+name: Rebuild Contentful Cache
+
+on:
+  # Triggered by Contentful webhook via GitHub repository dispatch
+  repository_dispatch:
+    types: [contentful-publish]
+  # Manual trigger for debugging/testing
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual rebuild"
+        required: false
+        default: "Manual trigger"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  rebuild-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: front/package-lock.json
+
+      - name: Install dependencies
+        working-directory: front
+        run: npm ci
+
+      - name: Fetch Contentful data and generate cache
+        working-directory: front
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+        run: npx tsx scripts/fetch-contentful-cache.ts
+
+      - name: Delete previous cache
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache delete contentful-cache-latest || true
+
+      - name: Save cache to GitHub Actions cache
+        uses: actions/cache/save@v4
+        with:
+          path: front/contentful-cache
+          key: contentful-cache-latest
+
+      - name: Notify Slack on success
+        if: success()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "contentful_cache_rebuilt"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          component: "contentful-cache"
+          image_tag: "n/a"
+          region: "n/a"
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          component: "contentful-cache"
+          image_tag: "n/a"
+          region: "n/a"

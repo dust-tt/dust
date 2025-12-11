@@ -51,6 +51,10 @@ inputs:
   contentful_access_token:
     description: "Contentful access token"
     required: false
+  use_contentful_cache:
+    description: "Use cached Contentful data instead of fetching from API"
+    required: false
+    default: "false"
 
 outputs:
   current_version:
@@ -144,6 +148,10 @@ runs:
           fi
           if [[ -n "${{ inputs.contentful_access_token }}" ]]; then
             build_args+=("--build-arg CONTENTFUL_ACCESS_TOKEN=${{ inputs.contentful_access_token }}")
+          fi
+          # Enable Contentful cache if available
+          if [[ "${{ inputs.use_contentful_cache }}" == "true" ]]; then
+            build_args+=("--build-arg CONTENTFUL_USE_CACHE=true")
           fi
         fi
 
