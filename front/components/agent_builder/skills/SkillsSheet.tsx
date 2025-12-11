@@ -12,7 +12,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
 
 const SKILLS_SHEET_PAGE_IDS = {
   SELECTION: "skill-selection",

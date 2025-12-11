@@ -11,7 +11,7 @@ import {
   useSkillConfigurations,
 } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
 
 const DESCRIPTION_FIELD_NAME = "description";
 const DEBOUNCE_DELAY_MS = 250;

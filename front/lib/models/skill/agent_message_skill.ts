@@ -10,7 +10,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
+import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
 
 export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkillModel> {
   declare createdAt: CreationOptional<Date>;

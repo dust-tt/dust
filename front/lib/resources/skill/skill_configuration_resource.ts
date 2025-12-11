@@ -44,11 +44,11 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
+import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
 import type {
   SkillConfigurationType,
   SkillConfigurationWithAuthorType,
-} from "@app/types/skill_configuration";
+} from "@app/types/assistant/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

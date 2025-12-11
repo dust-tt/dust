@@ -15,7 +15,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isGlobalAgentId, isString } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export type PostSkillConfigurationResponseBody = {
   skillConfiguration: SkillConfigurationType;
