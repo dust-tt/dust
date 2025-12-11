@@ -83,14 +83,12 @@ AgentMessageSkillModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: [
-          "workspaceId",
-          "conversationId",
-          "agentConfigurationId",
-          "isActive",
-        ],
+        fields: ["workspaceId", "conversationId", "agentConfigurationId"],
         unique: true,
         name: "agent_message_skills_wid_cid_acid_active",
+        where: {
+          isActive: true,
+        },
       },
     ],
     validate: {
