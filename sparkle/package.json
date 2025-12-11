@@ -89,14 +89,14 @@
   "description": "Sparkle is Dust's Design System",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dust/dust-tt.git"
+    "url": "git+https://github.com/dust-tt/dust.git"
   },
   "author": "Dust (Permutation Labs SAS)",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/dust/dust-tt/issues"
+    "url": "https://github.com/dust-tt/dust/issues"
   },
-  "homepage": "https://github.com/dust/dust-tt#readme",
+  "homepage": "https://github.com/dust-tt/dust#readme",
   "dependencies": {
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
