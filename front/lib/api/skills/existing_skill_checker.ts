@@ -1,7 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
@@ -109,11 +109,10 @@ export async function getSimilarSkills(
   }
 
   // Retrieve existing skills
-  const skills: SkillConfigurationResource[] =
-    await SkillConfigurationResource.fetchAllAvailableSkills(
-      auth,
-      MAX_SKILLS_SENT_TO_LLM
-    );
+  const skills: SkillResource[] = await SkillResource.fetchAllAvailableSkills(
+    auth,
+    MAX_SKILLS_SENT_TO_LLM
+  );
   if (skills.length === MAX_SKILLS_SENT_TO_LLM) {
     logger.warn(
       { workspaceId: owner.sId },

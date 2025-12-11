@@ -19,7 +19,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -138,7 +138,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async makeNewSkillEditorsGroup(
     auth: Authenticator,
-    skill: SkillConfigurationResource,
+    skill: SkillResource,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const user = auth.getNonNullableUser();

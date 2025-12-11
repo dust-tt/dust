@@ -8,7 +8,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types";
 
 function createServer(
@@ -39,7 +39,7 @@ function createServer(
         const { conversation, agentConfiguration, agentMessage } =
           agentLoopContext.runContext;
 
-        const skill = await SkillConfigurationResource.fetchById(auth, skillId);
+        const skill = await SkillResource.fetchById(auth, skillId);
         if (!skill) {
           return new Err(
             new MCPError(`Skill "${skillId}" not found`, {

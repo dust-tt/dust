@@ -42,10 +42,10 @@ import type { SkillConfigurationType } from "@app/types/assistant/skill_configur
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillConfigurationResource
+export interface SkillResource
   extends ReadonlyAttributesType<SkillConfigurationModel> {}
 /**
- * SkillConfigurationResource handles both custom (database-backed) and global (code-defined)
+ * SkillResource handles both custom (database-backed) and global (code-defined)
  * skills in a single resource class.
  *
  * ## Architectural Trade-offs
@@ -88,7 +88,7 @@ export interface SkillConfigurationResource
  * @see GlobalSkillsRegistry for global skill definitions
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class SkillConfigurationResource extends BaseResource<SkillConfigurationModel> {
+export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly canEdit: boolean;
@@ -121,7 +121,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       return this.globalSId;
     }
 
-    return SkillConfigurationResource.modelIdToSId({
+    return SkillResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
     });
@@ -130,7 +130,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async makeNew(
     blob: CreationAttributes<SkillConfigurationModel>,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<SkillConfigurationResource> {
+  ): Promise<SkillResource> {
     const skillConfiguration = await this.model.create(blob, {
       transaction,
     });
@@ -141,7 +141,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
-  ): Promise<SkillConfigurationResource | null> {
+  ): Promise<SkillResource | null> {
     const resources = await this.baseFetch(auth, {
       where: {
         id,
@@ -160,7 +160,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async fetchById(
     auth: Authenticator,
     sId: string
-  ): Promise<SkillConfigurationResource | null> {
+  ): Promise<SkillResource | null> {
     // Try global first.
     const globalSkill = GlobalSkillsRegistry.getById(sId);
     if (globalSkill) {
@@ -183,7 +183,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async fetchActiveByName(
     auth: Authenticator,
     name: string
-  ): Promise<SkillConfigurationResource | null> {
+  ): Promise<SkillResource | null> {
     const resources = await this.baseFetch(auth, {
       where: {
         name,
@@ -202,7 +202,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async fetchByAgentConfigurationId(
     auth: Authenticator,
     agentConfigurationId: ModelId
-  ): Promise<SkillConfigurationResource[]> {
+  ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -240,7 +240,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   private static async baseFetch(
     auth: Authenticator,
     options: SkillConfigurationFindOptions = {}
-  ): Promise<SkillConfigurationResource[]> {
+  ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const { where, includes, onlyCustom, ...otherOptions } = options;
@@ -254,7 +254,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       include: includes,
     });
 
-    let customSkillConfigurationsRes: SkillConfigurationResource[] = [];
+    let customSkillConfigurationsRes: SkillResource[] = [];
 
     if (customSkillConfigurations.length > 0) {
       const mcpServerConfigurations =
@@ -346,7 +346,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       return customSkillConfigurationsRes;
     }
 
-    const globalSkillConfigurations: SkillConfigurationResource[] =
+    const globalSkillConfigurations: SkillResource[] =
       GlobalSkillsRegistry.findAll(where).map((def) =>
         this.fromGlobalSkill(auth, def)
       );
@@ -383,7 +383,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   static async fetchAllAvailableSkills(
     auth: Authenticator,
     limit?: number
-  ): Promise<SkillConfigurationResource[]> {
+  ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         status: "active",
@@ -469,7 +469,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       instructions: string;
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<SkillConfigurationResource, Error>> {
+  ): Promise<Result<SkillResource, Error>> {
     await this.update(
       {
         name,
@@ -481,10 +481,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     );
 
     // Fetch the updated resource
-    const updated = await SkillConfigurationResource.fetchByModelIdWithAuth(
-      auth,
-      this.id
-    );
+    const updated = await SkillResource.fetchByModelIdWithAuth(auth, this.id);
 
     if (!updated) {
       return new Err(new Error("Failed to fetch updated skill configuration"));
@@ -607,8 +604,8 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   private static fromGlobalSkill(
     auth: Authenticator,
     def: GlobalSkillDefinition
-  ): SkillConfigurationResource {
-    return new SkillConfigurationResource(
+  ): SkillResource {
+    return new SkillResource(
       this.model,
       {
         authorId: -1,

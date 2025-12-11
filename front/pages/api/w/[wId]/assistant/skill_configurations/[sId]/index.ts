@@ -7,7 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
@@ -86,7 +86,7 @@ async function handler(
   }
 
   const sId = req.query.sId;
-  const skillResource = await SkillConfigurationResource.fetchById(auth, sId);
+  const skillResource = await SkillResource.fetchById(auth, sId);
 
   if (!skillResource) {
     return apiError(req, res, {
@@ -134,7 +134,7 @@ async function handler(
       }
 
       // Check for existing active skill with the same name (excluding current skill)
-      const existingSkill = await SkillConfigurationResource.fetchActiveByName(
+      const existingSkill = await SkillResource.fetchActiveByName(
         auth,
         body.name
       );
