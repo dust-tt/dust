@@ -5,10 +5,6 @@ import { diffWords } from "diff";
 
 import { AdditionMark, DeletionMark } from "./AgentDiffMarks";
 
-export interface AgentInstructionDiffOptions {
-  onDiffApplied?: () => void;
-}
-
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     agentInstructionDiff: {
@@ -19,7 +15,7 @@ declare module "@tiptap/core" {
 
   interface Storage {
     agentInstructionDiff: {
-      originalContent: JSONContent | null;
+      originalContent: string | null;
       isDiffMode: boolean;
       diffStats: {
         addedWordCount: number;
@@ -30,107 +26,97 @@ declare module "@tiptap/core" {
   }
 }
 
-export const AgentInstructionDiffExtension =
-  Extension.create<AgentInstructionDiffOptions>({
-    name: "agentInstructionDiff",
+export const AgentInstructionDiffExtension = Extension.create<{}>({
+  name: "agentInstructionDiff",
 
-    addOptions() {
-      return {
-        onDiffApplied: undefined,
-      };
-    },
+  addStorage() {
+    return {
+      originalContent: null,
+      isDiffMode: false,
+      diffStats: {
+        addedWordCount: 0,
+        removedWordCount: 0,
+      },
+      diffParts: [],
+    };
+  },
 
-    addStorage() {
-      return {
-        originalContent: null,
-        isDiffMode: false,
-        diffStats: {
-          addedWordCount: 0,
-          removedWordCount: 0,
+  addExtensions() {
+    return [AdditionMark, DeletionMark];
+  },
+
+  addCommands() {
+    return {
+      applyDiff:
+        (oldContent: string, newContent: string) =>
+        ({ editor, commands }) => {
+          if (!this.storage.isDiffMode) {
+            this.storage.originalContent = oldContent;
+          }
+          this.storage.isDiffMode = true;
+
+          const diffParts = diffWords(newContent, oldContent);
+          this.storage.diffParts = diffParts;
+
+          let addedCount = 0;
+          let removedCount = 0;
+
+          diffParts.forEach((part) => {
+            const wordCount = part.value
+              .trim()
+              .split(/\s+/)
+              .filter(Boolean).length;
+            if (part.added) {
+              addedCount += wordCount;
+            }
+            if (part.removed) {
+              removedCount += wordCount;
+            }
+          });
+
+          this.storage.diffStats.addedWordCount = addedCount;
+          this.storage.diffStats.removedWordCount = removedCount;
+
+          const diffContent = buildWordDiffContent(diffParts);
+          const result = commands.setContent(diffContent);
+
+          // Make editor read-only
+          if (result) {
+            editor.setEditable(false);
+          }
+
+          return result;
         },
-        diffParts: [],
-      };
-    },
 
-    addExtensions() {
-      return [AdditionMark, DeletionMark];
-    },
+      exitDiff:
+        () =>
+        ({ editor, commands }) => {
+          if (!this.storage.isDiffMode) {
+            return false;
+          }
 
-    addCommands() {
-      return {
-        applyDiff:
-          (oldContent: string, newContent: string) =>
-          ({ editor, commands }) => {
-            if (!this.storage.isDiffMode) {
-              this.storage.originalContent = editor.getJSON();
-            }
-            this.storage.isDiffMode = true;
-
-            const diffParts = diffWords(oldContent, newContent);
-            this.storage.diffParts = diffParts;
-
-            let addedCount = 0;
-            let removedCount = 0;
-
-            diffParts.forEach((part) => {
-              const wordCount = part.value
-                .trim()
-                .split(/\s+/)
-                .filter(Boolean).length;
-              if (part.added) {
-                addedCount += wordCount;
-              }
-              if (part.removed) {
-                removedCount += wordCount;
-              }
+          // Restore original content from saved JSON
+          let result = false;
+          if (this.storage.originalContent) {
+            result = commands.setContent(this.storage.originalContent, {
+              contentType: "markdown",
             });
+          }
 
-            this.storage.diffStats.addedWordCount = addedCount;
-            this.storage.diffStats.removedWordCount = removedCount;
+          if (result) {
+            editor.setEditable(true);
+            this.storage.isDiffMode = false;
+            this.storage.originalContent = null;
+            this.storage.diffStats.addedWordCount = 0;
+            this.storage.diffStats.removedWordCount = 0;
+            this.storage.diffParts = [];
+          }
 
-            const diffContent = buildWordDiffContent(diffParts);
-
-            const result = commands.setContent(diffContent);
-
-            // Make editor read-only
-            if (result) {
-              editor.setEditable(false);
-
-              if (this.options.onDiffApplied) {
-                this.options.onDiffApplied();
-              }
-            }
-
-            return result;
-          },
-
-        exitDiff:
-          () =>
-          ({ editor, commands }) => {
-            if (!this.storage.isDiffMode) {
-              return false;
-            }
-
-            // Restore original content from saved JSON
-            let result = false;
-            if (this.storage.originalContent) {
-              result = commands.setContent(this.storage.originalContent);
-            }
-
-            if (result) {
-              editor.setEditable(true);
-              this.storage.isDiffMode = false;
-              this.storage.originalContent = null;
-              this.storage.diffStats.addedWordCount = 0;
-              this.storage.diffStats.removedWordCount = 0;
-              this.storage.diffParts = [];
-            }
-
-            return result;
-          },
-      };
-    },
-  });
+          return result;
+        },
+    };
+  },
+});
 
 // Helper function to build diff content
 function buildWordDiffContent(diffParts: any[]): JSONContent {

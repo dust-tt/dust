@@ -1,6 +1,11 @@
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/core";
-import { InputRule, mergeAttributes, Node } from "@tiptap/core";
+import type {
+  Editor,
+  MarkdownLexerConfiguration,
+  MarkdownToken,
+} from "@tiptap/core";
+import { InputRule } from "@tiptap/core";
+import { mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -15,7 +20,7 @@ import React, { useState } from "react";
 import {
   CLOSING_TAG_REGEX,
   OPENING_TAG_REGEX,
-} from "@app/lib/client/agent_builder/instructionBlockUtils";
+} from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -24,29 +29,9 @@ export interface InstructionBlockAttributes {
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     instructionBlock: {
-      setInstructionBlock: (
-        attributes: InstructionBlockAttributes
-      ) => ReturnType;
-      insertInstructionBlock: (type: string) => ReturnType;
+      insertInstructionBlock: () => ReturnType;
     };
   }
-}
-
-/**
- * Build the three-paragraph content for an instruction block
- */
-function buildInstructionBlockContent(tag: string) {
-  return [
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: `<${tag}>` }],
-    },
-    { type: "paragraph" },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: `</${tag}>` }],
-    },
-  ];
 }
 
 /**
@@ -137,6 +122,17 @@ const instructionBlockContentStyles = cn(
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:mb-3"
 );
 
+const InstructionBlockChip = ({ text }: { text: string }) => {
+  return (
+    <Chip
+      size="mini"
+      className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+    >
+      {text}
+    </Chip>
+  );
+};
+
 const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   node,
   editor,
@@ -145,24 +141,10 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   updateAttributes,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    node.attrs.isCollapsed || false
+    node.attrs.isCollapsed ?? false
   );
 
-  let displayType = "";
-  if (node.childCount > 0) {
-    const firstChild = node.child(0);
-    if (firstChild.type.name === "paragraph") {
-      const text = firstChild.textContent.trim();
-      const match = text.match(OPENING_TAG_REGEX);
-      if (match) {
-        displayType = match[0] || ""; // Full match including < and >
-      }
-    }
-  }
-
-  // No fallback - if tag is empty, keep display empty
-  // This gives users clear feedback that the tag is empty
+  const displayType = node.attrs.type ? node.attrs.type.toUpperCase() : " ";
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -214,19 +196,16 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               className="mt-[0.5px] cursor-pointer"
               onClick={handleToggle}
             >
-              <Chip
-                size="mini"
-                className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
-              >
-                {displayType ? displayType.toUpperCase() : " "}
-              </Chip>
+              <InstructionBlockChip text={`<${displayType}>`} />
             </div>
           ) : (
             <div className="mt-0.5 w-full">
+              <InstructionBlockChip text={`<${displayType}>`} />
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
               />
+              <InstructionBlockChip text={`</${displayType}>`} />
             </div>
           )}
         </div>
@@ -243,7 +222,7 @@ export const InstructionBlockExtension =
     // Allow only specific blocks inside the instruction block
     content: "(paragraph|heading|codeBlock)+",
     defining: true,
-    /** Prevents auto-merging two blocks when they're not separated by a paragraph */
+    // Prevents auto-merging two blocks when they're not separated by a paragraph
     isolating: true,
     selectable: true,
 
@@ -252,8 +231,7 @@ export const InstructionBlockExtension =
         type: {
           default: "instructions",
           parseHTML: (element) =>
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            element.getAttribute("data-instruction-type") || "instructions",
+            element.getAttribute("data-instruction-type") ?? "instructions",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
           }),
@@ -289,13 +267,8 @@ export const InstructionBlockExtension =
 
     addCommands() {
       return {
-        setInstructionBlock:
-          (attributes) =>
-          ({ commands }) =>
-            commands.setNode(this.name, attributes),
-
         insertInstructionBlock:
-          (type) =>
+          () =>
           ({ state, chain }) => {
             const { selection } = state;
             const { $from } = selection;
@@ -305,7 +278,11 @@ export const InstructionBlockExtension =
               $from.parent.type.name === "paragraph" &&
               $from.parent.content.size === 0;
 
-            const content = buildInstructionBlockContent(type);
+            const content = {
+              type: this.name,
+              attrs: { type: "instructions", isCollapsed: false },
+              content: [{ type: "paragraph" }],
+            };
 
             if (isEmptyParagraph) {
               // Replace empty paragraph with instruction block
@@ -314,14 +291,7 @@ export const InstructionBlockExtension =
 
               return chain()
                 .focus()
-                .insertContentAt(
-                  { from, to },
-                  {
-                    type: this.name,
-                    attrs: { type },
-                    content,
-                  }
-                )
+                .insertContentAt({ from, to }, content)
                 .command(({ editor }) => {
                   queueFocusInsideCurrentInstructionBlock(editor);
                   return true;
@@ -332,11 +302,7 @@ export const InstructionBlockExtension =
             // Non-empty: insert normally
             return chain()
               .focus()
-              .insertContent({
-                type: this.name,
-                attrs: { type },
-                content,
-              })
+              .insertContent(content)
               .command(({ editor }) => {
                 queueFocusInsideCurrentInstructionBlock(editor);
                 return true;
@@ -366,6 +332,11 @@ export const InstructionBlockExtension =
             const isEmptyParagraph =
               $from.parent.type.name === "paragraph" &&
               $from.parent.textContent === match[0];
+            const content = {
+              type: this.name,
+              attrs: { type: tagType, isCollapsed: false },
+              content: [{ type: "paragraph" }],
+            };
 
             if (isEmptyParagraph) {
               // Replace entire paragraph with instruction block
@@ -374,14 +345,7 @@ export const InstructionBlockExtension =
 
               chain()
                 .focus()
-                .insertContentAt(
-                  { from, to },
-                  {
-                    type: this.name,
-                    attrs: { type: tagType },
-                    content: buildInstructionBlockContent(tagType),
-                  }
-                )
+                .insertContentAt({ from, to }, content)
                 .command(({ editor }) => {
                   queueFocusInsideCurrentInstructionBlock(editor);
                   return true;
@@ -392,11 +356,7 @@ export const InstructionBlockExtension =
               chain()
                 .focus()
                 .deleteRange({ from: range.from, to: range.to })
-                .insertContent({
-                  type: this.name,
-                  attrs: { type: tagType },
-                  content: buildInstructionBlockContent(tagType),
-                })
+                .insertContent(content)
                 .command(({ editor }) => {
                   queueFocusInsideCurrentInstructionBlock(editor);
                   return true;
@@ -880,5 +840,56 @@ export const InstructionBlockExtension =
           },
         }),
       ];
+    },
+
+    markdownTokenizer: {
+      name: "instructionBlock",
+      level: "block",
+      start: (src) => {
+        const match = src.match(/^<([a-z][a-z0-9-]*)>/i);
+        return match?.index ?? -1;
+      },
+      tokenize: (
+        src: string,
+        _tokens: MarkdownToken[],
+        lexer: MarkdownLexerConfiguration
+      ) => {
+        // Match opening tag, content, and closing tag
+        const match = src.match(/^<([a-z][a-z0-9-]*)>([\s\S]*?)<\/\1>/i);
+        if (!match) {
+          return undefined;
+        }
+
+        const tagName = match[1] || "instructions";
+
+        return {
+          type: "instructionBlock",
+          raw: match[0],
+          attrs: {
+            type: tagName.toLowerCase(),
+          },
+          tokens: lexer.blockTokens(match[2]),
+        };
+      },
+    },
+
+    parseMarkdown: (token, helpers) => {
+      const tagType = token.attrs?.type ?? "instructions";
+
+      return {
+        type: "instructionBlock",
+        attrs: {
+          type: tagType,
+          isCollapsed: false,
+        },
+        // The content markdown will be parsed by the markdown parser
+        content: helpers.parseChildren(token.tokens ?? []),
+      };
+    },
+
+    renderMarkdown: (node, helpers) => {
+      const tagType = node.attrs?.type ?? "instructions";
+      const content = helpers.renderChildren(node.content ?? []);
+      return `<${tagType}>${content}</${tagType}>`;
     },
   });
