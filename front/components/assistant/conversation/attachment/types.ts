@@ -19,6 +19,7 @@ export type FileAttachment = {
   description?: string;
   sourceUrl?: string;
   iconName?: string;
+  provider?: string;
   // Server-side file resource sId for API calls (fetching content, downloading).
   // Null while the file is still uploading.
   fileId: string | null;
@@ -44,6 +45,7 @@ interface BaseAttachmentCitation {
   title: string;
   sourceUrl: string | null;
   visual: React.ReactNode;
+  provider?: string;
   onRemove?: () => void;
 }
 

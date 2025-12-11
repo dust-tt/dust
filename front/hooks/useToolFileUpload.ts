@@ -78,6 +78,7 @@ export function useToolFileUpload({
           size: file.fileSize,
           sourceUrl: toolFile.sourceUrl ?? undefined,
           iconName: toolFile.serverIcon,
+          provider: toolFile.serverName,
         });
       } catch (error) {
         sendNotification({

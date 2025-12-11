@@ -93,6 +93,7 @@ export function InputBarAttachments({
         isUploading: blob.isUploading,
         description: uploadDate,
         iconName: blob.iconName,
+        provider: blob.provider,
         fileId: blob.fileId,
         onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
       };
