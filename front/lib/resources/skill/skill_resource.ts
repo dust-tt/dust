@@ -15,6 +15,7 @@ import {
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
+import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -41,7 +42,7 @@ import type {
   UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
-import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
+import type { ConversationSkillSource } from "@app/types/assistant/conversation_skills";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -600,7 +601,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       agentMessage: AgentMessageType;
       conversation: ConversationType;
-      source: AgentMessageSkillSource;
+      source: ConversationSkillSource;
     }
   ): Promise<Result<void, Error>> {
     const workspace = auth.getNonNullableWorkspace();
@@ -617,10 +618,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await AgentMessageSkillModel.create({
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
-      isActive: true,
       customSkillId: this.id,
       globalSkillId: null,
       agentMessageId: agentMessage.agentMessageId,
+      conversationId: conversation.id,
+      source,
+      addedByUserId: user && source === "conversation" ? user.id : null,
+    });
+
+    await ConversationSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      customSkillId: this.id,
+      globalSkillId: null,
+      isActive: true,
       conversationId: conversation.id,
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
