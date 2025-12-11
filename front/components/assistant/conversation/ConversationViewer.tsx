@@ -30,7 +30,6 @@ import type {
 import {
   areSameRank,
   getMessageRank,
-  hasHumansInteracting,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -67,6 +66,7 @@ import type {
 } from "@app/types";
 import {
   isRichAgentMention,
+  isRichUserMention,
   isUserMessageTypeWithContentFragments,
   toMentionType,
 } from "@app/types";
@@ -501,13 +501,9 @@ export const ConversationViewer = ({
         }
       }
 
-      // Objective is to dermine if an agent is going to answer immediately to change the scroll behavior.
-      const isMentioningAgent =
-        //TODO(mentions v2) if dust agent is disabled at the workspace level, hasMoreThan2HumansInteracting might say false but we wouldn't have an auto mention of dust.
-        (mentions.length === 0 &&
-          !hasHumansInteracting(ref.current.data.get())) ||
-        // An agent is mentioned manually.
-        mentions.some(isRichAgentMention);
+      // An agent will answer immediately only if it is explicitely mentioned.
+      // In that case, we want to scroll to put the user message at the top.
+      const isMentioningAgent = mentions.some(isRichAgentMention);
 
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
