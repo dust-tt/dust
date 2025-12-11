@@ -8,8 +8,9 @@ export type AllSkillConfigurationFindOptions = Omit<
   "limit" | "offset" | "where"
 > & {
   where?: {
-    name?: string;
-    sId?: string;
+    name?: string | string[];
+    sId?: string | string[];
+    id?: number | number[];
     status?: SkillStatus;
   };
   onlyCustom?: false; // Default: include global skills.
