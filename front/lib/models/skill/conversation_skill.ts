@@ -79,7 +79,7 @@ ConversationSkillModel.init(
           "workspaceId",
           "conversationId",
           "agentConfigurationId",
-          "active",
+          "isActive",
         ],
         name: "conversation_skills_wid_cid_acid",
         unique: true,

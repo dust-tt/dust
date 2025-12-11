@@ -14,5 +14,5 @@ CREATE TABLE IF NOT EXISTS "conversation_skills" (
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "conversation_skills_wid_cid_acid" ON "conversation_skills" ("workspaceId", "conversationId", "agentConfigurationId", "active");
+CREATE UNIQUE INDEX "conversation_skills_wid_cid_acid" ON "conversation_skills" ("workspaceId", "conversationId", "agentConfigurationId", "isActive");
 CREATE INDEX "agent_message_skills_wid_cid_acid" ON "agent_message_skills" ("workspaceId", "conversationId", "agentConfigurationId");
