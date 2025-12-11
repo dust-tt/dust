@@ -139,7 +139,6 @@ export const AgentInputBar = ({
         (m) => m.conversationId === context.conversationId
       )
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsStopping(false);
     }
   }, [

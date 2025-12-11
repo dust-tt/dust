@@ -11,7 +11,7 @@ import {
   useSkillConfigurations,
 } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 const DESCRIPTION_FIELD_NAME = "description";
 const DEBOUNCE_DELAY_MS = 250;
@@ -24,13 +24,13 @@ export function SkillBuilderDescriptionSection() {
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skillConfigurations } = useSkillConfigurations({
-    workspaceId: owner.sId,
+    owner,
     disabled: !isSimilarSkillsEnabled,
   });
 
-  const [similarSkills, setSimilarSkills] = useState<
-    SkillConfigurationWithAuthorType[]
-  >([]);
+  const [similarSkills, setSimilarSkills] = useState<SkillConfigurationType[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSimilarSkills = useCallback(

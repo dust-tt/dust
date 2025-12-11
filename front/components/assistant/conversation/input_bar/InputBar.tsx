@@ -1,5 +1,5 @@
 import _ from "lodash";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
@@ -95,11 +95,15 @@ export const InputBar = React.memo(function InputBar({
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, setAnimate, selectedAgent } = useContext(InputBarContext);
+  const { animate, setAnimate, getAndClearSelectedAgent } =
+    useContext(InputBarContext);
   const { isOnboardingConversation } =
     useIsOnboardingConversation(conversationId);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const selectedAgent = useMemo(
+    () => getAndClearSelectedAgent(),
+    [getAndClearSelectedAgent]
+  );
   useEffect(() => {
     if (animate && !isAnimating) {
       setAnimate(false);

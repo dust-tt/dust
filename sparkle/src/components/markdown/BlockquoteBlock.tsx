@@ -4,14 +4,19 @@ import React from "react";
 import { ContentBlockWrapper } from "@sparkle/components";
 
 export const blockquoteVariants = cva(
-  ["s-w-full s-text-base s-italic s-rounded-2xl s-py-3 s-pl-5 s-pr-12"],
+  [
+    "s-w-full s-text-base s-italic s-py-3 s-pl-3 s-pr-12",
+    "s-relative",
+    "before:s-content-[''] before:s-absolute before:s-left-0 before:s-top-3 before:s-bottom-3",
+    "before:s-w-1 before:s-bg-border-night dark:before:s-bg-border",
+    "before:s-rounded-full",
+  ],
   {
     variants: {
       variant: {
         surface: [
           "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-muted-background dark:s-bg-muted-background-night",
-          "s-border border-border dark:border-border-night",
+          "s-bg-transparent",
         ],
       },
     },

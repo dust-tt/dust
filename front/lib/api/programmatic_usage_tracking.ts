@@ -11,9 +11,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
+  AgentMessageStatus,
   LightWorkspaceType,
   PublicAPILimitsType,
   UserMessageOrigin,
@@ -51,6 +54,11 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
 };
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
+
+export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  "succeeded",
+  "cancelled",
+];
 
 export const USER_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
@@ -117,6 +125,7 @@ export function getShouldTrackTokenUsageCostsESFilter(
     bool: {
       filter: [
         { term: { workspace_id: workspace.sId } },
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
         {
           bool: {
             should: shouldClauses,
@@ -182,8 +191,16 @@ async function decreaseProgrammaticCredits(
 // for tracking but do not take any other action.
 export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
-  { amountMicroUsd }: { amountMicroUsd: number }
+  {
+    amountMicroUsd,
+    userMessageOrigin,
+  }: {
+    amountMicroUsd: number;
+    userMessageOrigin: UserMessageOrigin;
+  },
+  parentLogger?: Logger
 ): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
+  const localLogger = parentLogger ?? logger;
   const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
 
@@ -205,14 +222,17 @@ export async function decreaseProgrammaticCreditsV2(
     const credit = sortedCredits.shift();
     if (!credit) {
       // A simple warn suffices; tokens have already been consumed.
-      logger.warn(
+      localLogger.warn(
         {
           initialAmountMicroUsd: amountMicroUsd,
           remainingAmountMicroUsd,
-          workspaceId: workspace.sId,
         },
-        "No more credits available for this message cost."
+        "[Programmatic Usage Tracking] No more credits available for this message cost."
       );
+      statsDClient.increment("credits.consumption.blocked", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
       break;
     }
     const amountToConsumeMicroUsd = Math.min(
@@ -224,10 +244,11 @@ export async function decreaseProgrammaticCreditsV2(
       amountInMicroUsd: amountToConsumeMicroUsd,
     });
     if (result.isErr()) {
-      logger.error(
+      localLogger.error(
         {
-          amountToConsumeInMicroUsd: amountToConsumeMicroUsd,
-          workspaceId: workspace.sId,
+          amountToConsumeMicroUsd,
+          consumedAmountMicroUsd,
+          remainingAmountMicroUsd,
           // For eng on-call: this error should be investigated since it likely
           // reveals an underlying issue in our billing / credit logic. The only
           // legitimate case this error could happen would be a race condition
@@ -237,15 +258,31 @@ export async function decreaseProgrammaticCreditsV2(
           panic: true,
           error: result.error,
         },
-        "Error consuming credit."
+        "[Programmatic Usage Tracking] Error consuming credit."
       );
+      statsDClient.increment("credits.consumption.error", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
       break;
     }
-
     consumedAmountMicroUsd += amountToConsumeMicroUsd;
     remainingAmountMicroUsd -= amountToConsumeMicroUsd;
+
+    localLogger.info(
+      {
+        amountToConsumeMicroUsd,
+        consumedAmountMicroUsd,
+        remainingAmountMicroUsd,
+      },
+      "[Programmatic Usage Tracking] Consumed credits"
+    );
   }
 
+  statsDClient.increment("credits.consumption.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    `origin:${userMessageOrigin}`,
+  ]);
   return {
     totalConsumedMicroUsd: totalConsumedBeforeMicroUsd + consumedAmountMicroUsd,
     totalInitialMicroUsd: totalInitialMicroUsd,
@@ -288,8 +325,14 @@ export async function trackProgrammaticCost(
   {
     dustRunIds,
     userMessageOrigin,
-  }: { dustRunIds: string[]; userMessageOrigin: UserMessageOrigin }
+  }: {
+    dustRunIds: string[];
+    userMessageOrigin: UserMessageOrigin;
+  },
+  parentLogger?: Logger
 ) {
+  const localLogger = parentLogger ?? logger;
+
   if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
     return;
   }
@@ -324,9 +367,14 @@ export async function trackProgrammaticCost(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
   const { totalConsumedMicroUsd, totalInitialMicroUsd } =
-    await decreaseProgrammaticCreditsV2(auth, {
-      amountMicroUsd: costWithMarkupMicroUsd,
-    });
+    await decreaseProgrammaticCreditsV2(
+      auth,
+      {
+        amountMicroUsd: costWithMarkupMicroUsd,
+        userMessageOrigin,
+      },
+      localLogger
+    );
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(
@@ -334,6 +382,10 @@ export async function trackProgrammaticCost(
     );
     if (totalConsumedMicroUsd >= thresholdMicroUsd) {
       const workspace = auth.getNonNullableWorkspace();
+      statsDClient.increment("credits.consumption.alert", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
       const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
       // For eng-oncall:
       // If you get this, you can defer to programmatic usage owners right away

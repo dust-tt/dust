@@ -16,6 +16,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -51,6 +52,11 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Invalid credit amount in invoice metadata"
     );
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:pro",
+    ]);
     return new Err(new Error("Invalid credit amount in invoice metadata"));
   }
 
@@ -67,6 +73,11 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Credit not found for invoice"
     );
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:pro",
+    ]);
     return new Err(new Error("Credit not found for invoice"));
   }
 
@@ -82,8 +93,18 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Error starting credit"
     );
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:pro",
+    ]);
     return new Err(startResult.error);
   }
+  statsDClient.increment("credits.top_up.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    "type:committed",
+    "customer:pro",
+  ]);
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -255,9 +276,19 @@ export async function createEnterpriseCreditPurchase({
       },
       "[Credit Purchase] Failed to start credit after creation"
     );
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
     return new Err(startResult.error);
   }
 
+  statsDClient.increment("credits.top_up.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    "type:committed",
+    "customer:enterprise",
+  ]);
   logger.info(
     {
       workspaceId: workspace.sId,

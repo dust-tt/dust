@@ -51,7 +51,6 @@ export function EditInvitationModal({
 
   useEffect(() => {
     if (invitation) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedRole(invitation.initialRole);
     }
   }, [invitation]);

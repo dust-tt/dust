@@ -68,7 +68,6 @@ export function EditorsSheet({
 
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalEditors([...(editors || [])]);
     }
   }, [editors, isOpen]);

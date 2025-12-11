@@ -215,7 +215,6 @@ export function SlackSettingsSheet({
   });
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -225,7 +224,6 @@ export function SlackSettingsSheet({
 
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalSlackChannels([...(slackChannels || [])]);
       const currentAutoRespondWithoutMention =
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

@@ -1,6 +1,7 @@
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
+  ChatBubbleBottomCenterPlusIcon,
   ChevronDownIcon,
   ChromeLogo,
   cn,
@@ -29,7 +30,11 @@ import { useMemo } from "react";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import { forceUserRole, showDebugTools } from "@app/lib/development";
+import {
+  forceUserRole,
+  sendOnboardingConversation,
+  showDebugTools,
+} from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
@@ -76,6 +81,31 @@ export function UserMenu({
       }
     },
     [owner, sendNotification, user, featureFlags]
+  );
+
+  const handleSendOnboarding = useMemo(
+    () => async () => {
+      const result = await sendOnboardingConversation(owner, featureFlags);
+      if (result.isOk) {
+        sendNotification({
+          title: "Success !",
+          description: "Onboarding conversation created (redirecting...)",
+          type: "success",
+        });
+        setTimeout(() => {
+          void router.push(
+            `/w/${owner.sId}/conversation/${result.conversationSId}`
+          );
+        }, 1000);
+      } else {
+        sendNotification({
+          title: "Error !",
+          description: result.error,
+          type: "error",
+        });
+      }
+    },
+    [owner, sendNotification, featureFlags, router]
   );
 
   // Check if user has multiple workspaces
@@ -220,6 +250,13 @@ export function UserMenu({
                     onClick={privacyMask.toggle}
                     icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                   />
+                  {owner.role === "admin" && (
+                    <DropdownMenuItem
+                      label="Send onboarding conversation"
+                      onClick={handleSendOnboarding}
+                      icon={ChatBubbleBottomCenterPlusIcon}
+                    />
+                  )}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>

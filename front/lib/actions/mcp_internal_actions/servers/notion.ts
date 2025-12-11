@@ -813,11 +813,9 @@ function createServer(
 
   server.tool(
     "delete_block",
-    "Archive (delete) a block, page, or database in Notion by setting it to archived: true. In the Notion UI, this moves the block to the 'trash,' where it can be restored if needed.",
+    "Archive (delete) block content in a page. In the Notion UI, this moves the block to the 'trash,' where it can be restored if needed.",
     {
-      blockId: z
-        .string()
-        .describe("The ID of the block, page, or database to delete."),
+      blockId: z.string().describe("The ID of the block"),
     },
     withToolLogging(
       auth,
@@ -829,6 +827,27 @@ function createServer(
         return withNotionClient(
           (notion) =>
             notion.blocks.update({ block_id: blockId, archived: true }),
+          authInfo
+        );
+      }
+    )
+  );
+
+  server.tool(
+    "delete_page",
+    "Archive (delete) a page or database row. In the Notion UI, this moves the block to the 'trash,' where it can be restored if needed.",
+    {
+      pageId: z.string().describe("The ID of the page"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ pageId }, { authInfo }) => {
+        return withNotionClient(
+          (notion) => notion.pages.update({ page_id: pageId, in_trash: true }),
           authInfo
         );
       }

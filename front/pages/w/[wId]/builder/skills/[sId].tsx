@@ -7,21 +7,12 @@ import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilder
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
-
-// Serialized version with Date objects converted to timestamps
-type SerializedSkillConfiguration = Omit<
-  SkillConfigurationType,
-  "createdAt" | "updatedAt"
-> & {
-  createdAt: number;
-  updatedAt: number;
-};
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skillConfiguration: SerializedSkillConfiguration;
+  skillConfiguration: SkillConfigurationType;
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
@@ -48,7 +39,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const skillResource = await SkillConfigurationResource.fetchBySId(
+  const skillResource = await SkillConfigurationResource.fetchById(
     auth,
     context.params.sId
   );
@@ -65,41 +56,24 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const user = auth.getNonNullableUser().toJSON();
-  const skillConfiguration = skillResource.toJSON();
-
-  // Serialize dates for Next.js
-  const serializedSkillConfiguration = {
-    ...skillConfiguration,
-    createdAt: skillConfiguration.createdAt.getTime(),
-    updatedAt: skillConfiguration.updatedAt.getTime(),
-  };
-
   return {
     props: {
-      skillConfiguration: serializedSkillConfiguration,
+      skillConfiguration: skillResource.toJSON(),
       owner,
       subscription,
-      user,
+      user: auth.getNonNullableUser().toJSON(),
     },
   };
 });
 
 export default function EditSkill({
-  skillConfiguration: serializedSkillConfiguration,
+  skillConfiguration,
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (serializedSkillConfiguration.status === "archived") {
+  if (skillConfiguration.status === "archived") {
     throw new Error("Cannot edit archived skill");
   }
-
-  // Convert timestamps back to Date objects for SkillBuilder
-  const skillConfiguration: SkillConfigurationType = {
-    ...serializedSkillConfiguration,
-    createdAt: new Date(serializedSkillConfiguration.createdAt),
-    updatedAt: new Date(serializedSkillConfiguration.updatedAt),
-  };
 
   return (
     <SkillBuilderProvider owner={owner} user={user}>

@@ -5,7 +5,7 @@ import { getAccessibleSourcesAndAppsForActions } from "@app/lib/agent_builder/se
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -60,7 +60,7 @@ async function handler(
     });
   }
 
-  const skillResource = await SkillConfigurationResource.fetchBySId(auth, sId);
+  const skillResource = await SkillConfigurationResource.fetchById(auth, sId);
 
   if (!skillResource) {
     return apiError(req, res, {

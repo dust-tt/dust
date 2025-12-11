@@ -90,7 +90,6 @@ export function DustAppSection() {
       );
       const nextSpace = spaces[currentIndex + 1];
       if (nextSpace) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedSpace(nextSpace);
       }
     }

@@ -1,7 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
@@ -33,22 +33,22 @@ const specifications: AgentActionSpecification[] = [
 ];
 
 const PROMPT = `# Role
-The user is creating a new skill to be added to thei agents.
-You must find if there is existing similar skills in the user's workspace to avoid duplicates.
+The user is creating a new skill to be added to their agents.
+You must find if there are existing similar skills in the user's workspace to avoid duplicates.
 
-# Instuctions
+# Instructions
 
 Given the natural description of the new skill, return a list of similar skill IDs already present in the user's workspace.
 Use the set_similar_skills function to return the similar skill IDs as an array of integers.
 
 Critically, only return skills that are truly similar to the new skill description.
-If there is n o similar skill, return an empty array, THIS IS TOTALLY OK.
+If there is no similar skill, return an empty array; THIS IS TOTALLY OK.
 
-Skills are consider similar if they do similar actions over the same platforms or services.
+Skills are considered similar if they do similar actions over the same platforms or services.
 
 # Example
 ## Example 1:
-Input: "This skills handle creation of support ticket on github"
+Input: "This skills handle creation of support ticket on GitHub"
 Existing skill:
 ---
 Skill ID abc12:
@@ -62,14 +62,14 @@ Skill ID 20aaa:
 ---
 Skill ID 25iju:
 "Manage customer support emails"
- 
-Output: 
+
+Output:
 set_similar_skills({
   "similar_skills_array": [abc12, 20aaa]
 })
 
 ## Example 2:
-Input: "This allow the creation of vizualition similar to power point slides which can be shared with team members"
+Input: "This allow the creation of visualization similar to PowerPoint slides which can be shared with team members"
 Skill ID abc12:
 "Open support cards on github.com"
 ---
@@ -82,7 +82,7 @@ Skill ID 20aaa:
 Skill ID 25iju:
 "Manage customer support emails"
 
-Output: 
+Output:
 set_similar_skills({
   "similar_skills_array": []
 })

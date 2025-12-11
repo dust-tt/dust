@@ -2,6 +2,7 @@ import {
   Avatar,
   BellIcon,
   Button,
+  Chip,
   ClockIcon,
   DataTable,
   PencilSquareIcon,
@@ -58,6 +59,11 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
               <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
                 {row.original.agentName}
               </div>
+              {!row.original.enabled && (
+                <Chip size="xs" color="primary">
+                  Disabled
+                </Chip>
+              )}
             </div>
           </DataTable.CellContent>
         ),

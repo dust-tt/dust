@@ -52,7 +52,11 @@ import {
 } from "@app/lib/mentions/markdown/plugin";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { UserMessageType, WorkspaceType } from "@app/types";
+import type {
+  UserMessageType,
+  UserMessageTypeWithContentFragments,
+  WorkspaceType,
+} from "@app/types";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -147,7 +151,7 @@ interface UserMessageProps {
   conversationId: string;
   currentUserId: string;
   isLastMessage: boolean;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
 }
 

@@ -27,6 +27,7 @@ export default defineConfig(
       "**/build/**",
       "**migrations/**",
       "**mailing/**",
+      ".yalc/**",
       // Specific problematic binary files
       "**/node_modules/**/character-reference-invalid/index.js",
     ],
@@ -93,6 +94,9 @@ export default defineConfig(
     },
   },
 
+  // react rules
+  reactHooks.configs.flat.recommended,
+
   // Main rules
   {
     files: ["**/*.{js,jsx,ts,tsx}"],
@@ -152,6 +156,8 @@ export default defineConfig(
       "@typescript-eslint/return-await": ["error", "in-try-catch"],
       // Disable rule that causes stack overflow on complex types
       "@typescript-eslint/no-redundant-type-constituents": "off",
+      // we don't think it's usefull
+      "react-hooks/set-state-in-effect": "off",
       // To activate
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
@@ -207,8 +213,6 @@ export default defineConfig(
       "dust/enforce-client-types-in-public-api": "error",
     },
   },
-  // react rules
-  reactHooks.configs.flat.recommended,
 
   // Public API endpoints - require Swagger docs
   {

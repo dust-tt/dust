@@ -17,6 +17,7 @@ import {
   download as notionDownload,
   search as notionSearch,
 } from "@app/lib/providers/notion/search";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -26,9 +27,8 @@ import type {
   ToolSearchRawResult,
   ToolSearchResult,
 } from "@app/lib/search/tools/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { FileType, Result } from "@app/types";
+import type { ConnectorProvider, FileType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const SEARCHABLE_TOOLS = {
@@ -37,6 +37,16 @@ const SEARCHABLE_TOOLS = {
   microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
 } as const satisfies Partial<Record<InternalMCPServerNameType, SearchableTool>>;
 type SearchableMCPServerNameType = keyof typeof SEARCHABLE_TOOLS;
+
+// Mapping from MCP tool name to connector provider
+// When a connector exists for a provider, we exclude the corresponding tool to avoid duplication
+const TOOL_TO_CONNECTOR_PROVIDER: Partial<
+  Record<SearchableMCPServerNameType, ConnectorProvider>
+> = {
+  google_drive: "google_drive",
+  notion: "notion",
+  microsoft_drive: "microsoft",
+};
 
 function _isSearchableTool(
   serverName: InternalMCPServerNameType
@@ -71,7 +81,47 @@ async function _getToolAndAccessTokenForView(
   };
 }
 
-export async function searchToolFiles({
+async function searchServerView(
+  auth: Authenticator,
+  serverView: MCPServerViewResource,
+  query: string,
+  pageSize: number
+): Promise<ToolSearchResult[]> {
+  const result = await _getToolAndAccessTokenForView(auth, serverView);
+  if (!result) {
+    return [];
+  }
+
+  let rawResults: ToolSearchRawResult[] = [];
+  try {
+    rawResults = await result.tool.search({
+      accessToken: result.accessToken,
+      query,
+      pageSize,
+    });
+  } catch (error) {
+    const r = getInternalMCPServerNameAndWorkspaceId(serverView.mcpServerId);
+    logger.error(
+      {
+        error,
+        serverName: r.isOk() ? r.value.name : "unknown",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Error searching for attachments"
+    );
+    return [];
+  }
+
+  const serverJson = serverView.toJSON();
+  return rawResults.map((rawResult) => ({
+    ...rawResult,
+    serverViewId: serverView.sId,
+    serverName: serverJson.server.name,
+    serverIcon: serverJson.server.icon,
+  }));
+}
+
+export async function* streamToolFiles({
   auth,
   query,
   pageSize,
@@ -79,61 +129,70 @@ export async function searchToolFiles({
   auth: Authenticator;
   query: string;
   pageSize: number;
-}): Promise<ToolSearchResult[]> {
+}): AsyncGenerator<ToolSearchResult[], void, undefined> {
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   const serverViews = await MCPServerViewResource.listBySpaces(auth, spaces);
 
+  // Build the set of connectors that the user has access to
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
+    auth,
+    spaces
+  );
+  const activeConnectorProviders = new Set(
+    dataSourceViews.map((dsv) => dsv.dataSource.connectorProvider)
+  );
+
   const searchableServerViews = serverViews.filter((view) => {
     const r = getInternalMCPServerNameAndWorkspaceId(view.mcpServerId);
-    return r.isOk() && _isSearchableTool(r.value.name);
+    if (!r.isOk() || !_isSearchableTool(r.value.name)) {
+      return false;
+    }
+
+    // Exclude the tool if a connector for the same provider is active
+    const connectorProvider = TOOL_TO_CONNECTOR_PROVIDER[r.value.name];
+    if (connectorProvider && activeConnectorProviders.has(connectorProvider)) {
+      return false;
+    }
+
+    return true;
   });
 
   if (searchableServerViews.length === 0) {
-    return [];
+    return;
   }
 
-  const results = await concurrentExecutor(
-    searchableServerViews,
-    async (serverView) => {
-      const result = await _getToolAndAccessTokenForView(auth, serverView);
-      if (!result) {
-        return [];
-      }
+  // Create promises for all searches with unique IDs to track them
+  interface PromiseWithId {
+    promise: Promise<ToolSearchResult[]>;
+    id: symbol;
+  }
 
-      let rawResults: ToolSearchRawResult[] = [];
-      try {
-        rawResults = await result.tool.search({
-          accessToken: result.accessToken,
-          query,
-          pageSize,
-        });
-      } catch (error) {
-        const r = getInternalMCPServerNameAndWorkspaceId(
-          serverView.mcpServerId
-        );
-        logger.error(
-          {
-            error,
-            serverName: r.isOk() ? r.value.name : "unknown",
-            workspaceId: auth.getNonNullableWorkspace().sId,
-          },
-          "Error searching for attachments"
-        );
-        return [];
-      }
+  const pending: PromiseWithId[] = searchableServerViews.map((serverView) => ({
+    promise: searchServerView(auth, serverView, query, pageSize),
+    id: Symbol(),
+  }));
 
-      const serverJson = serverView.toJSON();
-      return rawResults.map((rawResult) => ({
-        ...rawResult,
-        serverViewId: serverView.sId,
-        serverName: serverJson.server.name,
-        serverIcon: serverJson.server.icon,
-      }));
-    },
-    { concurrency: 4 }
-  );
+  // Yield results as each promise completes (not in order)
+  while (pending.length > 0) {
+    // Wrap each pending promise to include its ID when it resolves
+    const wrappedPromises = pending.map(({ promise, id }) =>
+      promise.then((results) => ({ results, id }))
+    );
 
-  return results.flat();
+    // Wait for the first one to complete
+    const completed = await Promise.race(wrappedPromises);
+
+    // Remove the completed promise from pending
+    const index = pending.findIndex((p) => p.id === completed.id);
+    if (index !== -1) {
+      pending.splice(index, 1);
+    }
+
+    // Yield results if not empty
+    if (completed.results.length > 0) {
+      yield completed.results;
+    }
+  }
 }
 
 export async function getToolAccessToken({

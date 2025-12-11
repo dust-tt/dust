@@ -91,6 +91,11 @@ const hasManagedModalQuery = (
 ): query is ParsedUrlQuery & { modal: string } =>
   isString(query.modal) && query.modal === "managed";
 
+const hasConfigureSlackConnectionQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { configureConnection: "slack" } =>
+  query.configureConnection === "slack";
+
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
   isManaged: boolean,
@@ -298,6 +303,8 @@ export const SpaceResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
   const [shouldOpenManagedModal, setShouldOpenManagedModal] = useState(false);
+  const [shouldOpenSlackEditionModal, setShouldOpenSlackEditionModal] =
+    useState(false);
 
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
@@ -443,6 +450,34 @@ export const SpaceResourcesList = ({
     isFolder,
     isDark,
   ]);
+
+  // Capture configureConnection=slack query param and store intent to open modal.
+  useEffect(() => {
+    if (!router.isReady || !isManagedCategory || !isSystemSpace) {
+      return;
+    }
+    const { query } = router;
+    if (!hasConfigureSlackConnectionQuery(query)) {
+      return;
+    }
+    setShouldOpenSlackEditionModal(true);
+    void removeParamFromRouter(router, "configureConnection");
+  }, [isManagedCategory, isSystemSpace, router]);
+
+  // Open Slack connector edition modal once data is loaded.
+  useEffect(() => {
+    if (!shouldOpenSlackEditionModal || !spaceDataSourceViews?.length) {
+      return;
+    }
+    const slackDataSourceView = spaceDataSourceViews.find(
+      (dsv) =>
+        dsv.dataSource.connectorProvider === "slack" && dsv.dataSource.connector
+    );
+    if (slackDataSourceView) {
+      setSelectedDataSourceView(slackDataSourceView);
+      setShowConnectorPermissionsModal(true);
+    }
+  }, [shouldOpenSlackEditionModal, spaceDataSourceViews]);
 
   // Disable the search if there are no rows.
   useEffect(() => {
@@ -622,8 +657,14 @@ export const SpaceResourcesList = ({
           owner={owner}
           connector={selectedDataSourceView.dataSource.connector}
           dataSourceView={selectedDataSourceView}
+          initialModalState={
+            shouldOpenSlackEditionModal ? "edition" : "selection"
+          }
           isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-          onClose={() => setShowConnectorPermissionsModal(false)}
+          onClose={() => {
+            setShowConnectorPermissionsModal(false);
+            setShouldOpenSlackEditionModal(false);
+          }}
           readOnly={false}
           isAdmin={isAdmin}
         />

@@ -476,7 +476,6 @@ const InputBarContainer = ({
         );
         const node = sortedNodes[0];
         onNodeSelect(node);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedNode(node);
         return;
       }
