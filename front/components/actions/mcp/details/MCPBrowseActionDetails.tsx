@@ -38,7 +38,7 @@ export function MCPBrowseActionDetails({
             {(viewType === "conversation" || browseResults.length === 0) && urls
               ? urls.map((url, idx) => (
                   <div
-                    className="group flex max-h-60 flex-row gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
+                    className="group flex max-h-60 flex-row items-center gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
                     key={idx}
                   >
                     <span className="grayscale transition-all duration-150 ease-in-out group-hover:grayscale-0">
