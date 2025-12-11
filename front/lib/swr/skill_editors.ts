@@ -7,7 +7,7 @@ import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillEditorsResponseBody,
   PatchSkillEditorsRequestBody,
-} from "@app/pages/api/w/[wId]/assistant/skill_configurations/[sId]/editors";
+} from "@app/pages/api/w/[wId]/skills/[sId]/editors";
 import type { LightWorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
 
@@ -24,7 +24,7 @@ export function useSkillEditors({
 
   const { data, error, mutate } = useSWRWithDefaults(
     skillConfigurationId
-      ? `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfigurationId}/editors`
+      ? `/api/w/${owner.sId}/skills/${skillConfigurationId}/editors`
       : null,
 
     editorsFetcher,
@@ -58,7 +58,7 @@ export function useUpdateSkillEditors({
   const updateSkillEditors = useCallback(
     async (body: PatchSkillEditorsRequestBody) => {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/skill_configurations/${skillConfigurationId}/editors`,
+        `/api/w/${owner.sId}/skills/${skillConfigurationId}/editors`,
         {
           method: "PATCH",
           headers: {
