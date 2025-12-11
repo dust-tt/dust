@@ -67,7 +67,7 @@ export default function WorkspaceSkills({
 
   const { skillConfigurationsWithRelations } =
     useSkillConfigurationsWithRelations({
-      workspaceId: owner.sId,
+      owner,
     });
 
   return (

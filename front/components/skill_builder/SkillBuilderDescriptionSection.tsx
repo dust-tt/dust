@@ -24,7 +24,7 @@ export function SkillBuilderDescriptionSection() {
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skillConfigurations } = useSkillConfigurations({
-    workspaceId: owner.sId,
+    owner,
     disabled: !isSimilarSkillsEnabled,
   });
 

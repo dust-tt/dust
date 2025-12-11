@@ -59,7 +59,7 @@ export function SkillsSheet({
 
   const { skillConfigurations, isSkillConfigurationsLoading } =
     useSkillConfigurations({
-      workspaceId: owner.sId,
+      owner,
       disabled: !open,
     });
 

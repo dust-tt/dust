@@ -19,17 +19,17 @@ import { Ok } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 export function useSkillConfigurations({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
     fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/skills`,
+    `/api/w/${owner.sId}/skills`,
     skillConfigurationsFetcher,
     { disabled }
   );
@@ -43,17 +43,17 @@ export function useSkillConfigurations({
 }
 
 export function useSkillConfigurationsWithRelations({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
     fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/skills?withRelations=true`,
+    `/api/w/${owner.sId}/skills?withRelations=true`,
     skillConfigurationsFetcher,
     { disabled }
   );
@@ -97,7 +97,7 @@ export function useArchiveSkillConfiguration({
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurations } = useSkillConfigurations({
-    workspaceId: owner.sId,
+    owner,
     disabled: true,
   });
 
