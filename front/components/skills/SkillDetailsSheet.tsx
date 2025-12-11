@@ -17,7 +17,6 @@ import { useState } from "react";
 
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { SKILL_ICON } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
@@ -79,9 +78,7 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const isGlobalSkill =
-    GlobalSkillsRegistry.getById(skillConfiguration.sId) !== undefined;
-  const showEditorsTabs = !isGlobalSkill;
+  const showEditorsTabs = !skillConfiguration.isGlobal;
 
   if (showEditorsTabs) {
     return (
