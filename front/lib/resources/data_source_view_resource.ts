@@ -44,7 +44,14 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import {
+  assertNever,
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import type { UserResource } from "./user_resource";
 
@@ -70,6 +77,14 @@ export type FetchDataSourceViewOptions = {
 };
 
 type AllowedSearchColumns = "vaultId" | "dataSourceId" | "kind" | "vaultKind";
+function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
+  return (
+    column === "vaultId" ||
+    column === "dataSourceId" ||
+    column === "kind" ||
+    column === "vaultKind"
+  );
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
@@ -496,6 +511,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
+      // Security in depth as this parameter could override workspace segmentation if abused.
+      assert(isAllowedSearchColumn(key), "Unexpected search column");
       if (value) {
         switch (key) {
           case "dataSourceId":
@@ -508,14 +525,15 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
               return [];
             }
             break;
-
           case "vaultKind":
             whereClause["$space.kind$"] = searchParams.vaultKind;
             break;
+          case "kind":
+            whereClause["kind"] = searchParams.kind;
+            break;
 
           default:
-            whereClause[key] = value;
-            break;
+            assertNever(key);
         }
       }
     }
