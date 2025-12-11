@@ -6,7 +6,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -17,7 +16,7 @@ import {
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -518,9 +517,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   async updateTools(
     auth: Authenticator,
     {
-      mcpServerViewIds,
+      mcpServerViews,
     }: {
-      mcpServerViewIds: ModelId[];
+      mcpServerViews: MCPServerViewResource[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
@@ -537,10 +536,10 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     // Create new tool associations.
     await SkillMCPServerConfigurationModel.bulkCreate(
-      mcpServerViewIds.map((mcpServerViewId) => ({
+      mcpServerViews.map((mcpServerView) => ({
         workspaceId: workspace.id,
         skillConfigurationId: this.id,
-        mcpServerViewId,
+        mcpServerViewId: mcpServerView.id,
       })),
       { transaction }
     );
