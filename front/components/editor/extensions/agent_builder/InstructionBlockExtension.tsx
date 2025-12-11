@@ -19,6 +19,8 @@ import React, { useState } from "react";
 
 import {
   CLOSING_TAG_REGEX,
+  INSTRUCTION_BLOCK_REGEX,
+  OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
 
@@ -846,7 +848,7 @@ export const InstructionBlockExtension =
       name: "instructionBlock",
       level: "block",
       start: (src) => {
-        const match = src.match(/^<([a-z][a-z0-9-]*)>/i);
+        const match = src.match(OPENING_TAG_BEGINNING_REGEX);
         return match?.index ?? -1;
       },
       tokenize: (
@@ -855,7 +857,7 @@ export const InstructionBlockExtension =
         lexer: MarkdownLexerConfiguration
       ) => {
         // Match opening tag, content, and closing tag
-        const match = src.match(/^<([a-z][a-z0-9-]*)>([\s\S]*?)<\/\1>/i);
+        const match = src.match(INSTRUCTION_BLOCK_REGEX);
         if (!match) {
           return undefined;
         }
