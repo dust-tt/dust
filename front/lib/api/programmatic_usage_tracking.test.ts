@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import logger from "@app/logger/logger";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -146,6 +147,15 @@ describe("decreaseProgrammaticCreditsV2", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
 
+  const testLogger = logger.child({
+    workspaceId: "test-workspace-id",
+    agentMessageId: "test-agent-message-id",
+    agentMessageVersion: 1,
+    conversationId: 123,
+    userMessageId: "test-user-message-id",
+    userMessageVersion: 1,
+  });
+
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -199,12 +209,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshed = await refreshCredit(credit);
@@ -220,12 +226,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 10_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshed = await refreshCredit(credit);
@@ -235,12 +237,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
     it("should not throw when no credits are available", async () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 10_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
       // Should complete without error
     });
@@ -254,12 +252,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 0,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshed = await refreshCredit(credit);
@@ -282,12 +276,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedFree = await refreshCredit(freeCredit);
@@ -311,12 +301,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedCommitted = await refreshCredit(committedCredit);
@@ -349,12 +335,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 3. paygCredit (100)
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 5_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedFree = await refreshCredit(freeCredit);
@@ -382,12 +364,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
@@ -411,12 +389,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 5_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
@@ -443,12 +417,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedPayg = await refreshCredit(paygCredit);
@@ -494,12 +464,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 4. paygEarlier (50)
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_500_000,
+        localLogger: testLogger,
         userMessageOrigin: "api",
-        agentMessageId: "test-agent-message-id",
-        agentMessageVersion: 1,
-        conversationId: 123,
-        userMessageId: "test-user-message-id",
-        userMessageVersion: 1,
       });
 
       const refreshedFreeEarlier = await refreshCredit(freeEarlier);

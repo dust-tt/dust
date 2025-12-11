@@ -10,6 +10,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function trackProgrammaticUsageActivity(
@@ -66,13 +67,18 @@ export async function trackProgrammaticUsageActivity(
       userMessageOrigin: userMessage.userContextOrigin,
     })
   ) {
-    await trackProgrammaticCost(auth, {
-      dustRunIds: agentMessage.runIds,
+    const localLogger = logger.child({
+      workspaceId: workspace.sId,
       agentMessageId,
       agentMessageVersion: agentMessageRow.version,
       conversationId: agentMessageRow.conversationId,
       userMessageId,
       userMessageVersion: userMessageRow.version,
+    });
+
+    await trackProgrammaticCost(auth, {
+      dustRunIds: agentMessage.runIds,
+      localLogger,
       userMessageOrigin: userMessage.userContextOrigin,
     });
   }

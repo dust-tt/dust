@@ -11,7 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
+import logger, { Logger } from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
@@ -192,20 +192,12 @@ export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
   {
     amountMicroUsd,
-    agentMessageId,
-    agentMessageVersion,
-    conversationId,
-    userMessageId,
-    userMessageVersion,
+    localLogger,
     userMessageOrigin,
   }: {
     amountMicroUsd: number;
+    localLogger: Logger;
     userMessageOrigin: UserMessageOrigin;
-    agentMessageId: string;
-    agentMessageVersion: number;
-    conversationId: number;
-    userMessageId: string;
-    userMessageVersion: number;
   }
 ): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
   const workspace = auth.getNonNullableWorkspace();
@@ -229,16 +221,10 @@ export async function decreaseProgrammaticCreditsV2(
     const credit = sortedCredits.shift();
     if (!credit) {
       // A simple warn suffices; tokens have already been consumed.
-      logger.warn(
+      localLogger.warn(
         {
           initialAmountMicroUsd: amountMicroUsd,
           remainingAmountMicroUsd,
-          workspaceId: workspace.sId,
-          agentMessageId,
-          agentMessageVersion,
-          conversationId,
-          userMessageId,
-          userMessageVersion,
         },
         "[Programmatic Usage Tracking] No more credits available for this message cost."
       );
@@ -257,17 +243,11 @@ export async function decreaseProgrammaticCreditsV2(
       amountInMicroUsd: amountToConsumeMicroUsd,
     });
     if (result.isErr()) {
-      logger.error(
+      localLogger.error(
         {
-          agentMessageId,
-          agentMessageVersion,
-          conversationId,
-          userMessageId,
-          userMessageVersion,
           amountToConsumeMicroUsd,
           consumedAmountMicroUsd,
           remainingAmountMicroUsd,
-          workspaceId: workspace.sId,
           // For eng on-call: this error should be investigated since it likely
           // reveals an underlying issue in our billing / credit logic. The only
           // legitimate case this error could happen would be a race condition
@@ -288,17 +268,11 @@ export async function decreaseProgrammaticCreditsV2(
     consumedAmountMicroUsd += amountToConsumeMicroUsd;
     remainingAmountMicroUsd -= amountToConsumeMicroUsd;
 
-    logger.info(
+    localLogger.info(
       {
         amountToConsumeMicroUsd,
         consumedAmountMicroUsd,
         remainingAmountMicroUsd,
-        agentMessageId,
-        agentMessageVersion,
-        conversationId,
-        userMessageId,
-        userMessageVersion,
-        workspaceId: workspace.sId,
       },
       "[Programmatic Usage Tracking] Consumed credits"
     );
@@ -349,19 +323,11 @@ export async function trackProgrammaticCost(
   auth: Authenticator,
   {
     dustRunIds,
-    agentMessageId,
-    agentMessageVersion,
-    conversationId,
-    userMessageId,
-    userMessageVersion,
+    localLogger,
     userMessageOrigin,
   }: {
     dustRunIds: string[];
-    agentMessageId: string;
-    agentMessageVersion: number;
-    conversationId: number;
-    userMessageId: string;
-    userMessageVersion: number;
+    localLogger: Logger;
     userMessageOrigin: UserMessageOrigin;
   }
 ) {
@@ -401,12 +367,8 @@ export async function trackProgrammaticCost(
   const { totalConsumedMicroUsd, totalInitialMicroUsd } =
     await decreaseProgrammaticCreditsV2(auth, {
       amountMicroUsd: costWithMarkupMicroUsd,
+      localLogger,
       userMessageOrigin,
-      agentMessageId,
-      agentMessageVersion,
-      conversationId,
-      userMessageId,
-      userMessageVersion,
     });
 
   if (totalInitialMicroUsd > 0) {
