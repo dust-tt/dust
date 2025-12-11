@@ -132,8 +132,8 @@ async function handler(
 
       const body: PatchSkillConfigurationRequestBody = bodyValidation.right;
 
-      // Check if user can edit
-      if (!skillResource.canEdit && !auth.isAdmin()) {
+      // Check if user can write.
+      if (!skillResource.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -238,8 +238,8 @@ async function handler(
     }
 
     case "DELETE": {
-      // Check if user can edit
-      if (!skillResource.canEdit && !auth.isAdmin()) {
+      // Check if user can write.
+      if (!skillResource.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
