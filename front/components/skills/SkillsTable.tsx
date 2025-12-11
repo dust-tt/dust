@@ -122,88 +122,74 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skillConfigurationsWithRelations: (SkillConfigurationType &
-    SkillConfigurationRelations)[];
+  skills: (SkillConfigurationType & SkillConfigurationRelations)[];
   owner: LightWorkspaceType;
-  setSkillConfigurationWithRelations: (
+  onSkillClick: (
     skill: SkillConfigurationType & SkillConfigurationRelations
   ) => void;
   onAgentClick: (agentId: string) => void;
 };
 
 export function SkillsTable({
-  skillConfigurationsWithRelations,
+  skills,
   owner,
-  setSkillConfigurationWithRelations,
+  onSkillClick,
   onAgentClick,
 }: SkillsTableProps) {
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
-  const [skillConfigurationToArchive, setSkillConfigurationToArchive] =
+  const [skillToArchive, setSkillToArchive] =
     useState<SkillConfigurationType | null>(null);
 
   const rows: RowData[] = useMemo(
     () =>
-      skillConfigurationsWithRelations.map(
-        (skillConfigurationWithRelations) => ({
-          name: skillConfigurationWithRelations.name,
-          description: skillConfigurationWithRelations.description,
-          editors: skillConfigurationWithRelations.editors,
-          usage: skillConfigurationWithRelations.usage,
-          updatedAt: skillConfigurationWithRelations.updatedAt,
-          onClick: () => {
-            setSkillConfigurationWithRelations(skillConfigurationWithRelations);
-          },
-          menuItems:
-            skillConfigurationWithRelations.status !== "archived"
-              ? [
-                  {
-                    label: "Edit",
-                    icon: PencilSquareIcon,
-                    onClick: (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      void router.push(
-                        getSkillBuilderRoute(
-                          owner.sId,
-                          skillConfigurationWithRelations.sId
-                        )
-                      );
-                    },
-                    kind: "item" as const,
+      skills.map((skill) => ({
+        name: skill.name,
+        description: skill.description,
+        editors: skill.editors,
+        usage: skill.usage,
+        updatedAt: skill.updatedAt,
+        onClick: () => {
+          onSkillClick(skill);
+        },
+        menuItems:
+          skill.status !== "archived"
+            ? [
+                {
+                  label: "Edit",
+                  icon: PencilSquareIcon,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    void router.push(
+                      getSkillBuilderRoute(owner.sId, skill.sId)
+                    );
                   },
-                  {
-                    label: "More info",
-                    icon: EyeIcon,
-                    onClick: (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      setSkillConfigurationWithRelations(
-                        skillConfigurationWithRelations
-                      );
-                    },
-                    kind: "item" as const,
+                  kind: "item" as const,
+                },
+                {
+                  label: "More info",
+                  icon: EyeIcon,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    onSkillClick(skill);
                   },
-                  {
-                    label: "Archive",
-                    icon: TrashIcon,
-                    variant: "warning" as const,
-                    onClick: (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      setSkillConfigurationToArchive(
-                        skillConfigurationWithRelations
-                      );
-                    },
-                    kind: "item" as const,
+                  kind: "item" as const,
+                },
+                {
+                  label: "Archive",
+                  icon: TrashIcon,
+                  variant: "warning" as const,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setSkillToArchive(skill);
                   },
-                ]
-              : [],
-        })
-      ),
+                  kind: "item" as const,
+                },
+              ]
+            : [],
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [
-      skillConfigurationsWithRelations,
-      setSkillConfigurationWithRelations,
-      owner.sId,
-    ]
+    [skills, onSkillClick, owner.sId]
   );
 
   if (rows.length === 0) {
@@ -212,13 +198,13 @@ export function SkillsTable({
 
   return (
     <>
-      {skillConfigurationToArchive && (
+      {skillToArchive && (
         <ArchiveSkillDialog
           owner={owner}
           isOpen={true}
-          skillConfiguration={skillConfigurationToArchive}
+          skillConfiguration={skillToArchive}
           onClose={() => {
-            setSkillConfigurationToArchive(null);
+            setSkillToArchive(null);
           }}
         />
       )}

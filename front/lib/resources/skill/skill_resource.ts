@@ -44,7 +44,10 @@ import type {
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationType,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration";
 
 type SkillResourceConstructorOptions =
   | {
@@ -427,14 +430,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return [...customSkillsRes, ...globalSkills];
   }
 
-  static async fetchAllAvailableSkills(
+  static async listSkills(
     auth: Authenticator,
-    limit?: number
+    { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
-      where: {
-        status: "active",
-      },
+      where: { status },
       ...(limit ? { limit } : {}),
     });
   }

@@ -30,6 +30,7 @@ export const useLocalSelectedSkills = ({
   } = useSkillConfigurationsWithRelations({
     owner,
     disabled: !open,
+    status: "active",
   });
 
   const selectedSkillIds = useMemo(
