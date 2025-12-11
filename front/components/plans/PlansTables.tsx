@@ -1,7 +1,6 @@
 import {
   Button,
   Hoverable,
-  LinkWrapper,
   PriceTable,
   RocketIcon,
   Tabs,
