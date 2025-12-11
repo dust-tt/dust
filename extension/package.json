@@ -60,7 +60,7 @@
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "^1.1.20",
-    "@dust-tt/sparkle": "^0.4.15",
+    "@dust-tt/sparkle": "^0.4.19",
     "@frontapp/plugin-sdk": "^1.8.1",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "@tailwindcss/forms": "^0.5.9",

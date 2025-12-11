@@ -207,12 +207,12 @@ export const buildEditorExtensions = ({
       // Markdown styles configuration.
       code: {
         HTMLAttributes: {
-          class: markdownStyles.code(),
+          class: markdownStyles.codeInline(),
         },
       },
       codeBlock: {
         HTMLAttributes: {
-          class: markdownStyles.code(),
+          class: markdownStyles.codeBlock(),
         },
       },
       bulletList: {
