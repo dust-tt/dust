@@ -67,7 +67,10 @@ export function AgentBuilderLeftPanel({
           {hasFeature("skills") && (
             <AgentBuilderSkillsBlock isSkillsLoading={isSkillsLoading} />
           )}
-          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
+          <AgentBuilderCapabilitiesBlock
+            isActionsLoading={isActionsLoading}
+            isSkillsEnabled={hasFeature("skills")}
+          />
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}

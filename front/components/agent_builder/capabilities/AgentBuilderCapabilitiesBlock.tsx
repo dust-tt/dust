@@ -29,10 +29,12 @@ import { pluralize } from "@app/types";
 
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
+  isSkillsEnabled: boolean;
 }
 
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
+  isSkillsEnabled,
 }: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
@@ -194,7 +196,7 @@ export function AgentBuilderCapabilitiesBlock({
           />
         ) : (
           <>
-            {nonGlobalSpacesUsedInActions.length > 0 && (
+            {nonGlobalSpacesUsedInActions.length > 0 && !isSkillsEnabled && (
               <div className="mb-4 w-full">
                 <ContentMessage variant="golden" size="lg">
                   Based on your selection, this agent can only be used by users
