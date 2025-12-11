@@ -142,6 +142,7 @@ function UserMessageContent({
       isLastMessage={isLastMessage}
       additionalMarkdownComponents={additionalMarkdownComponents}
       additionalMarkdownPlugins={additionalMarkdownPlugins}
+      compactSpacing
     />
   );
 }
@@ -402,6 +403,7 @@ export function UserMessage({
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
+              compactSpacing
             />
           )}
         </ConversationMessage>
