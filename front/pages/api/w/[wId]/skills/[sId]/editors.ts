@@ -78,7 +78,7 @@ async function handler(
   const { editorGroup } = skillRes;
   if (!editorGroup) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "The skill does not have an editors group.",

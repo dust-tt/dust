@@ -2,7 +2,7 @@ import assert from "assert";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ModelId } from "@app/types";
 
 export class SkillConfigurationFactory {
@@ -15,8 +15,7 @@ export class SkillConfigurationFactory {
       status: "active" | "archived";
       version: number;
     }> = {}
-  ): Promise<SkillConfigurationModel> {
-    const workspace = auth.getNonNullableWorkspace();
+  ): Promise<SkillResource> {
     const user = auth.user();
     assert(user, "User is required");
 
@@ -26,18 +25,15 @@ export class SkillConfigurationFactory {
     const status = overrides.status ?? "active";
     const version = overrides.version ?? 1;
 
-    const skill = await SkillConfigurationModel.create({
-      workspaceId: workspace.id,
+    return SkillResource.makeNew(auth, {
       authorId: user.id,
-      name,
       description,
       instructions,
+      name,
+      requestedSpaceIds: [],
       status,
       version,
-      requestedSpaceIds: [],
     });
-
-    return skill;
   }
 
   static async linkToAgent(
