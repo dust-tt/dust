@@ -32,33 +32,33 @@ async function handler(
     });
   }
 
+  const { aId } = req.query;
+  if (!isString(aId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid agent configuration ID.",
+      },
+    });
+  }
+
+  const agent = await getAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "light",
+  });
+  if (!agent) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The agent configuration was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
-      const { aId } = req.query;
-      if (!isString(aId)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid agent configuration ID.",
-          },
-        });
-      }
-
-      const agent = await getAgentConfiguration(auth, {
-        agentId: aId,
-        variant: "light",
-      });
-      if (!agent) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The agent configuration was not found.",
-          },
-        });
-      }
-
       if (isGlobalAgentId(agent.sId)) {
         // TODO(skills 2025-12-09): Implement fetching skills for global agents.
         return res.status(200).json({

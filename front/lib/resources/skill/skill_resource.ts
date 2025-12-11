@@ -1,3 +1,4 @@
+import omit from "lodash/omit";
 import type {
   Attributes,
   CreationAttributes,
@@ -210,18 +211,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentConfigurationId,
         workspaceId: workspace.id,
       },
-      include: [
-        {
-          model: SkillConfigurationModel,
-          as: "customSkill",
-          required: false,
-        },
-      ],
     });
 
-    // TODO(SKILLS 2025-12-09): Use `baseFetch` to fetch global skills as well.
-    const customSkills = removeNulls(agentSkills.map((as) => as.customSkill));
-    return customSkills.map((skill) => new this(this.model, skill.get()));
+    const customSkillIds = removeNulls(
+      agentSkills.map((as) => as.customSkillId)
+    );
+    const globalSkillIds = removeNulls(
+      agentSkills.map((as) => as.globalSkillId)
+    );
+
+    return this.baseFetch(auth, {
+      where: {
+        id: customSkillIds,
+        sId: globalSkillIds,
+      },
+    });
   }
 
   static modelIdToSId({
@@ -248,7 +252,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const customSkillConfigurations = await this.model.findAll({
       ...otherOptions,
       where: {
-        ...where,
+        ...omit(where, "sId"),
         workspaceId: workspace.id,
       },
       include: includes,

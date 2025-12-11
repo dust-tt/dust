@@ -1,3 +1,4 @@
+import isNil from "lodash/isNil";
 import type {
   BelongsToGetAssociationMixin,
   CreationOptional,
@@ -56,10 +57,13 @@ AgentSkillModel.init(
     sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
     validate: {
+      // A skill link must reference either a custom skill (workspace-specific, stored in DB)
+      // or a global skill (code-defined, referenced by string ID), but never both or neither.
       eitherGlobalOrCustomSkill() {
-        const hasCustomSkill = this.customSkillId !== null;
-        const hasGlobalSkill = this.globalSkillId !== null;
-        if (hasCustomSkill === hasGlobalSkill) {
+        const hasCustomSkill = !isNil(this.customSkillId);
+        const hasGlobalSkill = !isNil(this.globalSkillId);
+        const hasExactlyOne = hasCustomSkill !== hasGlobalSkill;
+        if (!hasExactlyOne) {
           throw new Error(
             "Exactly one of customSkillId or globalSkillId must be set"
           );
