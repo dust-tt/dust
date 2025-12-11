@@ -212,6 +212,7 @@ export async function fetchMCPServerActionConfigurations(
   return actionsByConfigurationId;
 }
 
+// TODO(skills): move to skill resource / include configuration
 /**
  * Build MCP server configurations from MCP server view IDs.
  * Does not include configuration details, only MCP server view info.
