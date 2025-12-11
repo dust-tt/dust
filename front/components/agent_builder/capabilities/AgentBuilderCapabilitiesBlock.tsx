@@ -11,6 +11,7 @@ import {
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
@@ -24,6 +25,7 @@ import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
 import { pluralize } from "@app/types";
 
@@ -49,6 +51,8 @@ export function AgentBuilderCapabilitiesBlock({
   } = useMCPServerViewsContext();
 
   const { spaces } = useSpacesContext();
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
@@ -194,19 +198,22 @@ export function AgentBuilderCapabilitiesBlock({
           />
         ) : (
           <>
-            {nonGlobalSpacesUsedInActions.length > 0 && (
-              <div className="mb-4 w-full">
-                <ContentMessage variant="golden" size="lg">
-                  Based on your selection, this agent can only be used by users
-                  with access to space
-                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
-                  <strong>
-                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
-                  </strong>
-                  .
-                </ContentMessage>
-              </div>
-            )}
+            {!hasFeature("skills") &&
+              nonGlobalSpacesUsedInActions.length > 0 && (
+                <div className="mb-4 w-full">
+                  <ContentMessage variant="golden" size="lg">
+                    Based on your selection, this agent can only be used by
+                    users with access to space
+                    {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+                    <strong>
+                      {nonGlobalSpacesUsedInActions
+                        .map((v) => v.name)
+                        .join(", ")}
+                    </strong>
+                    .
+                  </ContentMessage>
+                </div>
+              )}
             <CardGrid>
               {fields.map((field, index) => (
                 <ActionCard

@@ -149,6 +149,7 @@ export default function AgentBuilder({
       sId: skill.sId,
       name: skill.name,
       description: skill.userFacingDescription,
+      requestedSpaceIds: skill.requestedSpaceIds,
     }));
   }, [skills]);
 
