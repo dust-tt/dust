@@ -18,8 +18,6 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  console.log("BODY");
-  console.log(req.body);
 
   if (!isBuilder(owner)) {
     return apiError(req, res, {
