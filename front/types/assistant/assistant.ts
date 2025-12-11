@@ -109,6 +109,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST = "dust",
   DUST_EDGE = "dust-edge",
   DUST_QUICK = "dust-quick",
+  DUST_OAI = "dust-oai",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
@@ -184,7 +185,6 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 // Not exhaustive.
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
-  GLOBAL_AGENTS_SID.DUST_EDGE,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
   GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,
@@ -193,6 +193,9 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
   GLOBAL_AGENTS_SID.GPT5_MINI,
   GLOBAL_AGENTS_SID.GPT4,
+  GLOBAL_AGENTS_SID.DUST_EDGE,
+  GLOBAL_AGENTS_SID.DUST_QUICK,
+  GLOBAL_AGENTS_SID.DUST_OAI,
 ];
 const globalAgentIndexMap = new Map(
   GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])

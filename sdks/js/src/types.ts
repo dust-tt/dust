@@ -655,6 +655,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
+  | "dust_oai_global_agent"
   | "fireworks_new_model_feature"
   | "freshservice_tool"
   | "front_tool"
