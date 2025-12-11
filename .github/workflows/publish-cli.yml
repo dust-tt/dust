@@ -6,6 +6,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: publish_cli
@@ -26,6 +27,4 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - working-directory: cli
-        run: npm ci && npm run build:prod && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm ci && npm run build:prod && npm publish --provenance --access public
