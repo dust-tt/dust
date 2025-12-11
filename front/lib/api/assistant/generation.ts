@@ -25,6 +25,7 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 /**
  * Generation of the prompt for agents with multiple actions.
@@ -46,6 +47,8 @@ export function constructPromptMultiActions(
     agentsList,
     conversationId,
     serverToolsAndInstructions,
+    enabledSkills,
+    equippedSkills,
     featureFlags,
   }: {
     userMessage: UserMessageType;
@@ -57,6 +60,10 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    /** Skills that are enabled for this message - their instructions are injected */
+    enabledSkills?: SkillConfigurationType[];
+    /** Skills that are equipped to the agent but not yet enabled - shown for potential activation */
+    equippedSkills?: SkillConfigurationType[];
     featureFlags: WhitelistableFeature[];
   }
 ) {
@@ -149,6 +156,34 @@ export function constructPromptMultiActions(
 
   toolsSection += toolServersPrompt;
 
+  // Build skills section with enabled skills (full instructions) and equipped skills (for activation)
+  let skillsSection = "";
+
+  // Enabled skills - inject their full instructions
+  if (enabledSkills && enabledSkills.length > 0) {
+    skillsSection += "\n## SKILLS\n";
+    skillsSection += "\n### ENABLED SKILLS\n";
+    skillsSection +=
+      "The following skills are currently enabled and their instructions apply to this conversation:\n";
+    for (const { name, instructions } of enabledSkills) {
+      skillsSection += `<${name}>\n${instructions}\n</${name}>\n`;
+    }
+  }
+
+  // Equipped but not yet enabled skills - show name and description only
+  if (equippedSkills && equippedSkills.length > 0) {
+    skillsSection += "\n### AVAILABLE SKILLS\n";
+    skillsSection +=
+      "The following skills are available but not currently enabled:\nYou can enable them with the enable_skill tool.\n";
+    const skillList = equippedSkills
+      .map(
+        ({ name, sId, description }) =>
+          `- **${name}** (id: ${sId}): ${description}`
+      )
+      .join("\n");
+    skillsSection += skillList + "\n";
+  }
+
   const attachmentsSection =
     "# ATTACHMENTS\n" +
     "The conversation history may contain file attachments, indicated by <attachment> tags. " +
@@ -239,7 +274,7 @@ export function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${pastedContentSection}\n${guidelinesSection}\n${instructions}`;
+  const prompt = `${context}\n${toolsSection}\n${skillsSection}\n${attachmentsSection}\n${pastedContentSection}\n${guidelinesSection}\n${instructions}`;
 
   return prompt;
 }

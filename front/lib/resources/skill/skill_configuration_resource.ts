@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -16,7 +17,7 @@ import {
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -27,11 +28,14 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   AgentsUsageType,
   ConversationType,
+  ConversationWithoutContentType,
+  LightAgentConfigurationType,
   ModelId,
   Result,
 } from "@app/types";
@@ -155,6 +159,24 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     }
 
     return resources[0];
+  }
+
+  static async fetchByModelIdsWithAuth(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<SkillConfigurationResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+      onlyCustom: true,
+    });
   }
 
   static async fetchById(
@@ -626,6 +648,175 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       },
       { globalSId: def.sId }
     );
+  }
+
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentMessageSkills = await AgentMessageSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+        isActive: true,
+      },
+    });
+
+    const skillIds = removeNulls(
+      agentMessageSkills.map((ams) => ams.customSkillId)
+    );
+
+    if (skillIds.length === 0) {
+      return [];
+    }
+
+    const skillConfigurations =
+      await SkillConfigurationResource.fetchByModelIdsWithAuth(auth, skillIds);
+
+    return skillConfigurations;
+  }
+
+  /**
+   * Propagates enabled skills from previous agent messages to a newly created agent message.
+   * Finds active skills for this agent configuration in this conversation and
+   * creates new skill records for the new message, then deactivates the old ones.
+   */
+  static async propagateSkillsToNewAgentMessage(
+    auth: Authenticator,
+    {
+      conversation,
+      agentConfiguration,
+      newAgentMessageId,
+    }: {
+      conversation: ConversationWithoutContentType;
+      agentConfiguration: LightAgentConfigurationType;
+      newAgentMessageId: ModelId;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Find all currently active skills for this agent configuration in this conversation
+    const activeSkills = await AgentMessageSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+        isActive: true,
+      },
+      transaction,
+    });
+
+    if (activeSkills.length === 0) {
+      return;
+    }
+
+    // Create new skill records for the new agent message
+    await AgentMessageSkillModel.bulkCreate(
+      activeSkills.map((skill) => ({
+        workspaceId: workspace.id,
+        agentConfigurationId: agentConfiguration.id,
+        isActive: true,
+        customSkillId: skill.customSkillId,
+        globalSkillId: skill.globalSkillId,
+        agentMessageId: newAgentMessageId,
+        conversationId: conversation.id,
+        source: skill.source,
+        addedByUserId: skill.addedByUserId,
+      })),
+      { transaction }
+    );
+
+    // Deactivate the old skill records using instance-level updates
+    // to properly trigger Sequelize model validation
+    await concurrentExecutor(
+      activeSkills,
+      async (skill) => {
+        skill.isActive = false;
+        await skill.save({ transaction });
+      },
+      { concurrency: 10 }
+    );
+  }
+
+  /**
+   * Fetch MCP server configurations for a set of skills.
+   * Returns a map of skill sId to their MCP server configurations.
+   */
+  static async fetchMCPServerConfigurationsForSkills(
+    auth: Authenticator,
+    skills: SkillConfigurationResource[]
+  ): Promise<Map<string, MCPServerConfigurationType[]>> {
+    const result = new Map<string, MCPServerConfigurationType[]>();
+
+    // Collect all unique mcpServerViewIds from all skills
+    const allMcpServerViewIds = new Set<number>();
+    for (const skill of skills) {
+      for (const config of skill.mcpServerConfigurations) {
+        allMcpServerViewIds.add(config.mcpServerViewId);
+      }
+    }
+
+    if (allMcpServerViewIds.size === 0) {
+      return result;
+    }
+
+    // Batch fetch all MCP server views
+    const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+      auth,
+      Array.from(allMcpServerViewIds)
+    );
+    const mcpServerViewsById = new Map(mcpServerViews.map((v) => [v.id, v]));
+
+    // Build MCP server configurations for each skill
+    for (const skill of skills) {
+      const skillConfigs: MCPServerConfigurationType[] = [];
+
+      for (const config of skill.mcpServerConfigurations) {
+        const mcpServerView = mcpServerViewsById.get(config.mcpServerViewId);
+        if (!mcpServerView) {
+          continue;
+        }
+
+        const serverJson = mcpServerView.toJSON();
+        skillConfigs.push({
+          id: serverJson.id,
+          sId: serverJson.sId,
+          type: "mcp_server_configuration",
+          name: serverJson.server.name,
+          description: serverJson.server.description,
+          icon: serverJson.server.icon,
+          mcpServerViewId: mcpServerView.sId,
+          internalMCPServerId: mcpServerView.internalMCPServerId,
+          dataSources: null,
+          tables: null,
+          childAgentId: null,
+          reasoningModel: null,
+          timeFrame: null,
+          jsonSchema: null,
+          additionalConfiguration: {},
+          dustAppConfiguration: null,
+          secretName: null,
+        });
+      }
+
+      result.set(skill.sId, skillConfigs);
+    }
+
+    return result;
   }
 
   toJSON(): SkillConfigurationType {

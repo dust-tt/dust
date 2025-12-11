@@ -35,6 +35,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -194,6 +195,36 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
+  // Fetch enabled skills (skills activated for this conversation/message)
+  const enabledSkills =
+    await SkillConfigurationResource.listEnabledForConversation(auth, {
+      agentConfiguration,
+      conversation,
+    });
+
+  // Fetch all skills equipped to this agent (configured in the agent builder)
+  const allAgentSkills =
+    await SkillConfigurationResource.fetchByAgentConfigurationId(
+      auth,
+      agentConfiguration.id
+    );
+
+  // Equipped skills = agent skills that are not yet enabled
+  const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+  const equippedSkills = allAgentSkills.filter(
+    (s) => !enabledSkillIds.has(s.sId)
+  );
+
+  // Get MCP server configurations for enabled skills
+  const enabledSkillMCPConfigs =
+    await SkillConfigurationResource.fetchMCPServerConfigurationsForSkills(
+      auth,
+      enabledSkills
+    );
+
+  // Flatten all enabled skill MCP servers
+  const skillMCPServers = Array.from(enabledSkillMCPConfigs.values()).flat();
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
@@ -205,7 +236,8 @@ export async function runModelActivity(
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers
+    jitServers,
+    skillMCPServers
   );
 
   if (mcpToolsListingError) {
@@ -252,6 +284,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
+    enabledSkills: enabledSkills.map((s) => s.toJSON()),
+    equippedSkills: equippedSkills.map((s) => s.toJSON()),
     featureFlags,
   });
 

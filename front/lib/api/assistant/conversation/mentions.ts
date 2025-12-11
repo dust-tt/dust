@@ -17,6 +17,7 @@ import {
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import {
   generateRandomModelSId,
   getResourceIdFromSId,
@@ -638,6 +639,24 @@ export const createAgentMessages = async (
     conversation,
     t: transaction,
   });
+
+  // Propagate skills from previous agent messages for the same agent in this conversation.
+  // This ensures enabled skills persist across messages, for each mentioned agent.
+  await concurrentExecutor(
+    results,
+    async ({ agentMessageRow, configuration }) => {
+      await SkillConfigurationResource.propagateSkillsToNewAgentMessage(
+        auth,
+        {
+          conversation,
+          agentConfiguration: configuration,
+          newAgentMessageId: agentMessageRow.id,
+        },
+        { transaction }
+      );
+    },
+    { concurrency: 10 }
+  );
 
   if (metadata.type === "create") {
     if (agentMessages.length > 0) {
