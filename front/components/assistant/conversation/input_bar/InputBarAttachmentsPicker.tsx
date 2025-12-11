@@ -8,8 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
-  DropdownMenuTagItem,
-  DropdownMenuTagList,
   DropdownMenuTrigger,
   FolderIcon,
   Icon,
@@ -453,21 +451,21 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {availableSources.length > 1 && (
-              <DropdownMenuTagList>
+              <div className="flex flex-wrap gap-2">
                 {availableSources.map(({ key, icon, label }) => (
-                  <DropdownMenuTagItem
-                    key={key}
+                  <Button
+                    size="xs"
+                    variant={
+                      selectedDataSourcesAndTools.includes(key)
+                        ? "primary"
+                        : "outline"
+                    }
                     icon={icon}
                     label={label}
-                    color={
-                      selectedDataSourcesAndTools.includes(key)
-                        ? "highlight"
-                        : "primary"
-                    }
                     onClick={() => handleTagClick(key)}
                   />
                 ))}
-              </DropdownMenuTagList>
+              </div>
             )}
             {Object.keys(serversWithResults).length === 0 ? (
               // No tools results - show knowledge nodes as returned by the search
