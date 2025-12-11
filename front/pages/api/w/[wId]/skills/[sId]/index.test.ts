@@ -2,7 +2,6 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -69,9 +68,6 @@ async function setupTest(
   if (!skill) {
     throw new Error("Failed to create skill");
   }
-
-  // Create editor group for the skill
-  await GroupResource.makeNewSkillEditorsGroup(skillOwnerAuth, skill);
 
   // Regenerate auth to pick up the new group membership
   skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
