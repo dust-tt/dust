@@ -26,6 +26,7 @@ import {
 } from "@sparkle/components/markdown/TableBlock";
 import {
   preprocessDollarSigns,
+  preserveLineBreaks,
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
@@ -62,6 +63,7 @@ export function Markdown({
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
+  tightParagraphSpacing = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
@@ -69,12 +71,16 @@ export function Markdown({
   isStreaming?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
+  tightParagraphSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
   forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
   const processedContent = useMemo(() => {
-    const sanitized = sanitizeContent(content);
+    let sanitized = sanitizeContent(content);
+    if (tightParagraphSpacing) {
+      sanitized = preserveLineBreaks(sanitized);
+    }
     return preprocessDollarSigns(sanitized);
   }, [content]);
 
@@ -126,6 +132,7 @@ export function Markdown({
         <ParagraphBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          tightSpacing={tightParagraphSpacing}
         >
           {children}
         </ParagraphBlock>
@@ -214,7 +221,7 @@ export function Markdown({
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
-  }, [textColor, additionalMarkdownComponents]);
+  }, [textColor, tightParagraphSpacing, additionalMarkdownComponents]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
