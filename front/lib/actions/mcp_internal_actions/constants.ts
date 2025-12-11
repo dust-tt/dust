@@ -1678,7 +1678,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
   },
   databricks: {
-    id: 44,
+    id: 45,
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
