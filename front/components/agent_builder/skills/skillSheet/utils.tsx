@@ -49,6 +49,8 @@ export function getPageAndFooter(props: PageContentProps): {
           content: (
             <SkillDetailsSheetContent
               skillConfiguration={mode.skillConfiguration}
+              owner={props.owner}
+              user={props.user}
             />
           ),
         },

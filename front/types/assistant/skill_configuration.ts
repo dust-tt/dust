@@ -16,6 +16,7 @@ export type SkillConfigurationType = {
   instructions: string;
   requestedSpaceIds: ModelId[];
   tools: { mcpServerViewId: string }[];
+  isGlobal: boolean;
 };
 
 export type SkillConfigurationRelations = {

@@ -712,6 +712,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
+      isGlobal: this.isGlobal,
     };
   }
 }

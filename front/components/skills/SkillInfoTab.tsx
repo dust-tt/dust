@@ -8,21 +8,18 @@ export function SkillInfoTab({
 }: {
   skillConfiguration: SkillConfigurationType;
 }) {
-  // TODO(skills 2025-12-10): Check based on GLOBAL_SKILLS_SID enum
-  const isGlobalSkill = false;
-
   return (
     <div className="flex flex-col gap-4">
       <div className="text-sm text-foreground dark:text-foreground-night">
         {skillConfiguration.description}
       </div>
-      {!isGlobalSkill && (
+      {!skillConfiguration.isGlobal && (
         <SkillEdited skillConfiguration={skillConfiguration} />
       )}
 
       <Page.Separator />
 
-      {!isGlobalSkill &&
+      {!skillConfiguration.isGlobal &&
         (skillConfiguration.instructions ? (
           <div className="dd-privacy-mask flex flex-col gap-5">
             <div className="heading-lg text-foreground dark:text-foreground-night">
