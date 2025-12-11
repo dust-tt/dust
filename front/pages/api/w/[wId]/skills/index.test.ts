@@ -7,7 +7,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
 import type { MembershipRoleType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
 
