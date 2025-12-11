@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { SkillDetails } from "@app/components/skills/SkillDetails";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
@@ -73,7 +73,7 @@ export default function WorkspaceSkills({
   return (
     <>
       {!!skillConfigurationWithRelations && (
-        <SkillDetails
+        <SkillDetailsSheet
           skillConfiguration={skillConfigurationWithRelations}
           onClose={() => setSkillConfigurationWithRelations(null)}
         />

@@ -24,16 +24,10 @@ type SkillDetailsProps = {
   onClose: () => void;
 };
 
-export function SkillDetails({
+export function SkillDetailsSheet({
   skillConfiguration,
   onClose,
 }: SkillDetailsProps) {
-  const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
-
-  // TODO(skills 2025-12-10): Check based on GLOBAL_SKILLS_SID enum
-  const isGlobalSkill = false;
-  const showEditorsTabs = !isGlobalSkill;
-
   return (
     <Sheet
       open={!!skillConfiguration}
@@ -51,39 +45,57 @@ export function SkillDetails({
           <DescriptionSection skillConfiguration={skillConfiguration} />
         </SheetHeader>
         <SheetContainer className="pb-4">
-          {showEditorsTabs ? (
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                <TabsTrigger
-                  value="editors"
-                  label="Editors"
-                  icon={UserGroupIcon}
-                  onClick={() => setSelectedTab("editors")}
-                />
-              </TabsList>
-              <div className="mt-4">
-                <TabsContent value="info">
-                  <SkillInfoTab skillConfiguration={skillConfiguration} />
-                </TabsContent>
-                <TabsContent value="editors">
-                  {/* TODO(skills 2025-12-10): Editors list */}
-                  <></>
-                </TabsContent>
-              </div>
-            </Tabs>
-          ) : (
-            <SkillInfoTab skillConfiguration={skillConfiguration} />
-          )}
+          <SkillDetailsSheetContent skillConfiguration={skillConfiguration} />
         </SheetContainer>
       </SheetContent>
     </Sheet>
   );
+}
+
+type SkillDetailsSheetContentProps = {
+  skillConfiguration: SkillConfigurationType;
+};
+
+export function SkillDetailsSheetContent({
+  skillConfiguration,
+}: SkillDetailsSheetContentProps) {
+  const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
+
+  // TODO(skills 2025-12-10): Check based on GLOBAL_SKILLS_SID enum
+  const isGlobalSkill = false;
+  const showEditorsTabs = !isGlobalSkill;
+
+  if (showEditorsTabs) {
+    return (
+      <Tabs value={selectedTab}>
+        <TabsList border={false}>
+          <TabsTrigger
+            value="info"
+            label="Info"
+            icon={InformationCircleIcon}
+            onClick={() => setSelectedTab("info")}
+          />
+          <TabsTrigger
+            value="editors"
+            label="Editors"
+            icon={UserGroupIcon}
+            onClick={() => setSelectedTab("editors")}
+          />
+        </TabsList>
+        <div className="mt-4">
+          <TabsContent value="info">
+            <SkillInfoTab skillConfiguration={skillConfiguration} />
+          </TabsContent>
+          <TabsContent value="editors">
+            {/* TODO(skills 2025-12-10): Editors list */}
+            <></>
+          </TabsContent>
+        </div>
+      </Tabs>
+    );
+  }
+
+  return <SkillInfoTab skillConfiguration={skillConfiguration} />;
 }
 
 type DescriptionSectionProps = {

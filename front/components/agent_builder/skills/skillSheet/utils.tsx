@@ -5,6 +5,8 @@ import { useLocalSelectedSkills } from "@app/components/agent_builder/skills/ski
 import { SelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SelectionPage";
 import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
+import { SKILL_ICON } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
 export function getPageAndFooter(props: PageContentProps): {
@@ -40,9 +42,15 @@ export function getPageAndFooter(props: PageContentProps): {
     case SKILLS_SHEET_PAGE_IDS.INFO:
       return {
         page: {
-          title: "Skill info",
+          title: mode.skillConfiguration.name,
+          description: mode.skillConfiguration.description,
           id: props.mode.type,
-          content: <div />,
+          icon: SKILL_ICON,
+          content: (
+            <SkillDetailsSheetContent
+              skillConfiguration={mode.skillConfiguration}
+            />
+          ),
         },
         leftButton: {
           label: "Back",

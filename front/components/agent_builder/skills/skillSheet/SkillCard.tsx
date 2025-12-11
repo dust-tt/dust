@@ -28,7 +28,7 @@ export function SkillCard({
       cardContainerClassName="h-36"
       mountPortal
       footer={{
-        label: "More info",
+        label: "Skill details",
         onClick: onMoreInfoClick,
       }}
     />
