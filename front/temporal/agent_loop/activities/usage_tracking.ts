@@ -11,12 +11,13 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import logger from "@app/logger/logger";
+import type { UserMessageOrigin } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<void> {
+): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
   const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
@@ -60,12 +61,12 @@ export async function trackProgrammaticUsageActivity(
     throw new Error("Agent message or user message not found");
   }
 
+  const userMessageOrigin = userMessage.userContextOrigin;
+
   if (
     AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
     agentMessage.runIds &&
-    isProgrammaticUsage(auth, {
-      userMessageOrigin: userMessage.userContextOrigin,
-    })
+    isProgrammaticUsage(auth, { userMessageOrigin })
   ) {
     const localLogger = logger.child({
       workspaceId: workspace.sId,
@@ -74,12 +75,22 @@ export async function trackProgrammaticUsageActivity(
       conversationId: agentMessageRow.conversationId,
       userMessageId,
       userMessageVersion: userMessageRow.version,
+      userMessageOrigin,
     });
 
-    await trackProgrammaticCost(auth, {
-      dustRunIds: agentMessage.runIds,
-      localLogger,
-      userMessageOrigin: userMessage.userContextOrigin,
-    });
+    localLogger.info("[Programmatic Usage Tracking] Starting activity");
+
+    await trackProgrammaticCost(
+      auth,
+      {
+        dustRunIds: agentMessage.runIds,
+        userMessageOrigin,
+      },
+      localLogger
+    );
+
+    return { tracked: true, origin: userMessageOrigin };
   }
+
+  return { tracked: false, origin: userMessageOrigin };
 }

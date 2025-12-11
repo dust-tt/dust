@@ -11,7 +11,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger, { Logger } from "@app/logger/logger";
+import type { Logger } from "@app/logger/logger";
+import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
@@ -192,14 +193,14 @@ export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
   {
     amountMicroUsd,
-    localLogger,
     userMessageOrigin,
   }: {
     amountMicroUsd: number;
-    localLogger: Logger;
     userMessageOrigin: UserMessageOrigin;
-  }
+  },
+  parentLogger?: Logger
 ): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
+  const localLogger = parentLogger ?? logger;
   const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
 
@@ -323,14 +324,15 @@ export async function trackProgrammaticCost(
   auth: Authenticator,
   {
     dustRunIds,
-    localLogger,
     userMessageOrigin,
   }: {
     dustRunIds: string[];
-    localLogger: Logger;
     userMessageOrigin: UserMessageOrigin;
-  }
+  },
+  parentLogger?: Logger
 ) {
+  const localLogger = parentLogger ?? logger;
+
   if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
     return;
   }
@@ -365,11 +367,14 @@ export async function trackProgrammaticCost(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
   const { totalConsumedMicroUsd, totalInitialMicroUsd } =
-    await decreaseProgrammaticCreditsV2(auth, {
-      amountMicroUsd: costWithMarkupMicroUsd,
-      localLogger,
-      userMessageOrigin,
-    });
+    await decreaseProgrammaticCreditsV2(
+      auth,
+      {
+        amountMicroUsd: costWithMarkupMicroUsd,
+        userMessageOrigin,
+      },
+      localLogger
+    );
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(
