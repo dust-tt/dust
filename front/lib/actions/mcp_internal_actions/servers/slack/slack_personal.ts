@@ -44,8 +44,8 @@ import {
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
 export type SlackSearchMatch = {
-  author_name?: string;
-  channel_name?: string;
+  author_id?: string;
+  channel_id?: string;
   message_ts?: string;
   content?: string;
   permalink?: string;
@@ -82,23 +82,25 @@ export const slackSearch = async (
       throw new Error(`HTTP ${resp.status}`);
     }
 
-    type SlackSearchResponse = {
-      ok: boolean;
-      error?: string;
-      results: {
-        messages: SlackSearchMatch[];
-      };
-    };
-
-    const data: SlackSearchResponse =
-      (await resp.json()) as SlackSearchResponse;
+    const data = (await resp.json()) as any;
     if (!data.ok) {
       // If invalid_action_token or other errors, throw to trigger fallback.
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       throw new Error(data.error || "unknown_error");
     }
 
-    const rawMatches: SlackSearchMatch[] = data.results.messages;
+    // Transform API response to match SlackSearchMatch format.
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const rawMatches: SlackSearchMatch[] = (data.results.messages || []).map(
+      (msg: any) => ({
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        author_id: msg.author_id || msg.author_user_id,
+        channel_id: msg.channel_id,
+        message_ts: msg.message_ts,
+        content: msg.content,
+        permalink: msg.permalink,
+      })
+    );
 
     // Filter out matches that don't have a text.
     const matchesWithText = rawMatches.filter((match) => !!match.content);
@@ -132,8 +134,8 @@ export const slackSearch = async (
 
     // Transform to match expected format.
     const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
-      author_name: match.username,
-      channel_name: match.channel?.name,
+      author_id: match.user,
+      channel_id: match.channel?.id,
       message_ts: match.ts,
       content: match.text,
       permalink: match.permalink,
@@ -151,9 +153,9 @@ export const slackSearch = async (
 // Cleans up Slack-specific formatting and returns a human-readable string.
 function formatSlackMessageForDisplay(match: SlackSearchMatch): string {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const author = match.author_name || "Unknown";
+  const author = match.author_id || "Unknown";
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const channel = match.channel_name || "Unknown";
+  const channel = match.channel_id || "Unknown";
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   let content = match.content || "";
 
