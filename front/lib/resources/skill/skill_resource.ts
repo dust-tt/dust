@@ -693,67 +693,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Propagates enabled skills from previous agent messages to a newly created agent message.
-   * Finds active skills for this agent configuration in this conversation and
-   * creates new skill records for the new message, then deactivates the old ones.
-   */
-  static async propagateSkillsToNewAgentMessage(
-    auth: Authenticator,
-    {
-      conversation,
-      agentConfiguration,
-      newAgentMessageId,
-    }: {
-      conversation: ConversationWithoutContentType;
-      agentConfiguration: LightAgentConfigurationType;
-      newAgentMessageId: ModelId;
-    },
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Find all currently active skills for this agent configuration in this conversation
-    const activeSkills = await AgentMessageSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.id,
-        isActive: true,
-      },
-      transaction,
-    });
-
-    if (activeSkills.length === 0) {
-      return;
-    }
-
-    // Create new skill records for the new agent message
-    await AgentMessageSkillModel.bulkCreate(
-      activeSkills.map((skill) => ({
-        workspaceId: workspace.id,
-        agentConfigurationId: agentConfiguration.id,
-        isActive: true,
-        customSkillId: skill.customSkillId,
-        globalSkillId: skill.globalSkillId,
-        agentMessageId: newAgentMessageId,
-        conversationId: conversation.id,
-        source: skill.source,
-        addedByUserId: skill.addedByUserId,
-      })),
-      { transaction }
-    );
-
-    await concurrentExecutor(
-      activeSkills,
-      async (skill) => {
-        skill.isActive = false;
-        await skill.save({ transaction });
-      },
-      { concurrency: 10 }
-    );
-  }
-
-  /**
    * Fetch MCP server configurations for a set of skills.
    * Returns a map of skill sId to their MCP server configurations.
    */
