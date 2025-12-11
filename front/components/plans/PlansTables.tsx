@@ -1,6 +1,7 @@
 import {
   Button,
   Hoverable,
+  LinkWrapper,
   PriceTable,
   RocketIcon,
   Tabs,
@@ -172,6 +173,22 @@ export function ProPriceTable({
           >
             Fair use limits apply*
           </Hoverable>
+          )
+        </>
+      ),
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: (
+        <>
+          Free credits for programmatic usage (API, GSheet, Zapier) (
+          <LinkWrapper
+            href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2b728599d941808b8f8dfa8dbe7e466f"
+            target="_blank"
+          >
+            Learn more
+          </LinkWrapper>
           )
         </>
       ),
