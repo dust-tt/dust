@@ -14,6 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import type { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
@@ -262,74 +263,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Associated group is not an agent_editors group."
-        )
-      );
-    }
-
-    return new Ok(group);
-  }
-
-  /**
-   * Finds the specific editor group associated with a skill configuration.
-   */
-  static async findEditorGroupForSkill(
-    auth: Authenticator,
-    skillModelId: ModelId
-  ): Promise<
-    Result<
-      GroupResource,
-      DustError<
-        "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
-      >
-    >
-  > {
-    const owner = auth.getNonNullableWorkspace();
-
-    const groupSkills = await GroupSkillModel.findAll({
-      where: {
-        skillConfigurationId: skillModelId,
-        workspaceId: owner.id,
-      },
-      attributes: ["groupId"],
-    });
-
-    if (groupSkills.length === 0) {
-      return new Err(
-        new DustError(
-          "group_not_found",
-          "Editor group association not found for skill."
-        )
-      );
-    }
-
-    if (groupSkills.length > 1) {
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Multiple editor group associations found for skill."
-        )
-      );
-    }
-
-    const [groupSkill] = groupSkills;
-    const groups = await this.baseFetch(auth, {
-      where: {
-        id: groupSkill.groupId,
-      },
-    });
-
-    const [group] = groups.filter((g) => g.canRead(auth));
-    if (!group) {
-      return new Err(
-        new DustError("group_not_found", "Editor group not found for skill.")
-      );
-    }
-
-    if (group.kind !== "agent_editors") {
       return new Err(
         new DustError(
           "internal_error",

@@ -436,18 +436,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [GLOBAL_DUST_AUTHOR];
     }
 
-    const editorGroupRes = await GroupResource.findEditorGroupForSkill(
-      auth,
-      this.id
-    );
+    const members = await this.editorGroup?.getActiveMembers(auth);
 
-    if (editorGroupRes.isErr()) {
-      return [];
-    }
-
-    const members = await editorGroupRes.value.getActiveMembers(auth);
-
-    return members.map((m) => m.toJSON());
+    return (members ?? []).map((m) => m.toJSON());
   }
 
   async archive(
