@@ -307,7 +307,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      await softDeleteDataSourceAndLaunchScrubWorkflow(auth, dataSource);
+      await softDeleteDataSourceAndLaunchScrubWorkflow(auth, { dataSource });
 
       console.log(`Data Source deleted: ${args.dsId}`);
 
