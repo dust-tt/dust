@@ -1,13 +1,12 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import isString from "lodash/isString";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { getIdsFromSId } from "@app/lib/resources/string_ids";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
@@ -53,10 +52,9 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-  const skillSId = req.query.sId;
+  const skillId = req.query.sId;
 
-  if (typeof skillSId !== "string") {
+  if (!isString(skillId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -66,93 +64,30 @@ async function handler(
     });
   }
 
-  const skillIdRes = getIdsFromSId(skillSId);
-  if (skillIdRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill id.",
-      },
-    });
-  }
-
-  const { resourceModelId: skillId } = skillIdRes.value;
-
-  const skill = await SkillConfigurationModel.findOne({
-    where: {
-      id: skillId,
-      workspaceId: owner.id,
-    },
-  });
-
-  if (!skill) {
+  const skillRes = await SkillResource.fetchById(auth, skillId);
+  if (!skillRes) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
-        message: "The skill configuration was not found.",
+        message: "The skill was not found.",
       },
     });
   }
 
-  const editorGroupRes = await GroupResource.findEditorGroupForSkill(
-    auth,
-    skill.id
-  );
-  if (editorGroupRes.isErr()) {
-    switch (editorGroupRes.error.code) {
-      case "unauthorized":
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "You are not authorized to update the skill editors.",
-          },
-        });
-      case "invalid_id":
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Some of the passed ids are invalid.",
-          },
-        });
-      case "group_not_found":
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "group_not_found",
-            message: "Unable to find the editor group for the skill.",
-          },
-        });
-      case "internal_error":
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: editorGroupRes.error.message,
-          },
-        });
-      default:
-        assertNever(editorGroupRes.error.code);
-    }
+  const { editorGroup } = skillRes;
+  if (!editorGroup) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The skill does not have an editors group.",
+      },
+    });
   }
-
-  const editorGroup = editorGroupRes.value;
 
   switch (req.method) {
     case "GET": {
-      if (!editorGroup.canRead(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "User is not authorized to read the skill editors.",
-          },
-        });
-      }
-
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
@@ -160,13 +95,12 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!editorGroup.canWrite(auth)) {
+      if (!skillRes.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only editors of the skill or workspace admins can modify editors.",
+            message: "User is not authorized to edit the skill editors list.",
           },
         });
       }
