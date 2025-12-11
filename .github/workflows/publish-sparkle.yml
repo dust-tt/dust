@@ -23,27 +23,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: ./sparkle/package-lock.json
-
-      - name: Build and test
-        working-directory: sparkle
-        run: npm ci && npm run build
-
   publish-release:
-    needs: build
-    if: github.event.inputs.release_type != 'rc'
+    if: github.event.inputs.release_type != 'rc' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -95,7 +76,6 @@ jobs:
         run: npm ci && npm run build && npm publish --provenance --access public
 
   publish-rc:
-    needs: build
     if: github.event.inputs.release_type == 'rc'
     runs-on: ubuntu-latest
     permissions:
