@@ -10,7 +10,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
+import type { ConversationSkillSource } from "@app/types/assistant/conversation_skills";
 
 export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkillModel> {
   declare createdAt: CreationOptional<Date>;
@@ -19,8 +19,6 @@ export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkil
   declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
 
-  declare isActive: boolean;
-
   declare customSkill: NonAttribute<SkillConfigurationModel> | null;
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
@@ -28,7 +26,7 @@ export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkil
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 
-  declare source: AgentMessageSkillSource;
+  declare source: ConversationSkillSource;
   declare addedByUserId: ForeignKey<UserModel["id"]> | null;
 }
 
@@ -47,11 +45,6 @@ AgentMessageSkillModel.init(
     agentConfigurationId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
     },
     customSkillId: {
       type: DataTypes.BIGINT,
@@ -84,11 +77,7 @@ AgentMessageSkillModel.init(
     indexes: [
       {
         fields: ["workspaceId", "conversationId", "agentConfigurationId"],
-        name: "agent_message_skills_wid_cid_acid_active",
-        where: {
-          isActive: true,
-        },
-        unique: true,
+        name: "agent_message_skills_wid_cid_acid",
       },
     ],
     validate: {
