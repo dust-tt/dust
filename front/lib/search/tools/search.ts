@@ -17,6 +17,7 @@ import {
   download as notionDownload,
   search as notionSearch,
 } from "@app/lib/providers/notion/search";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -26,9 +27,8 @@ import type {
   ToolSearchRawResult,
   ToolSearchResult,
 } from "@app/lib/search/tools/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { FileType, Result } from "@app/types";
+import type { ConnectorProvider, FileType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const SEARCHABLE_TOOLS = {
@@ -37,6 +37,16 @@ const SEARCHABLE_TOOLS = {
   microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
 } as const satisfies Partial<Record<InternalMCPServerNameType, SearchableTool>>;
 type SearchableMCPServerNameType = keyof typeof SEARCHABLE_TOOLS;
+
+// Mapping from MCP tool name to connector provider
+// When a connector exists for a provider, we exclude the corresponding tool to avoid duplication
+const TOOL_TO_CONNECTOR_PROVIDER: Partial<
+  Record<SearchableMCPServerNameType, ConnectorProvider>
+> = {
+  google_drive: "google_drive",
+  notion: "notion",
+  microsoft_drive: "microsoft",
+};
 
 function _isSearchableTool(
   serverName: InternalMCPServerNameType
@@ -123,9 +133,28 @@ export async function* streamToolFiles({
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   const serverViews = await MCPServerViewResource.listBySpaces(auth, spaces);
 
+  // Build the set of connectors that the user has access to
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
+    auth,
+    spaces
+  );
+  const activeConnectorProviders = new Set(
+    dataSourceViews.map((dsv) => dsv.dataSource.connectorProvider)
+  );
+
   const searchableServerViews = serverViews.filter((view) => {
     const r = getInternalMCPServerNameAndWorkspaceId(view.mcpServerId);
-    return r.isOk() && _isSearchableTool(r.value.name);
+    if (!r.isOk() || !_isSearchableTool(r.value.name)) {
+      return false;
+    }
+
+    // Exclude the tool if a connector for the same provider is active
+    const connectorProvider = TOOL_TO_CONNECTOR_PROVIDER[r.value.name];
+    if (connectorProvider && activeConnectorProviders.has(connectorProvider)) {
+      return false;
+    }
+
+    return true;
   });
 
   if (searchableServerViews.length === 0) {
@@ -164,36 +193,6 @@ export async function* streamToolFiles({
       yield completed.results;
     }
   }
-}
-
-export async function searchToolFiles({
-  auth,
-  query,
-  pageSize,
-}: {
-  auth: Authenticator;
-  query: string;
-  pageSize: number;
-}): Promise<ToolSearchResult[]> {
-  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const serverViews = await MCPServerViewResource.listBySpaces(auth, spaces);
-
-  const searchableServerViews = serverViews.filter((view) => {
-    const r = getInternalMCPServerNameAndWorkspaceId(view.mcpServerId);
-    return r.isOk() && _isSearchableTool(r.value.name);
-  });
-
-  if (searchableServerViews.length === 0) {
-    return [];
-  }
-
-  const results = await concurrentExecutor(
-    searchableServerViews,
-    async (serverView) => searchServerView(auth, serverView, query, pageSize),
-    { concurrency: 4 }
-  );
-
-  return results.flat();
 }
 
 export async function getToolAccessToken({
