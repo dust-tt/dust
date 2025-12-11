@@ -518,9 +518,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   async updateTools(
     auth: Authenticator,
     {
-      mcpServerViews,
+      mcpServerViewIds,
     }: {
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViewIds: ModelId[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
@@ -537,10 +537,10 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
 
     // Create new tool associations.
     await SkillMCPServerConfigurationModel.bulkCreate(
-      mcpServerViews.map((mcpServerView) => ({
+      mcpServerViewIds.map((mcpServerViewId) => ({
         workspaceId: workspace.id,
         skillConfigurationId: this.id,
-        mcpServerViewId: mcpServerView.id,
+        mcpServerViewId,
       })),
       { transaction }
     );
@@ -740,8 +740,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       { transaction }
     );
 
-    // Deactivate the old skill records using instance-level updates
-    // to properly trigger Sequelize model validation
     await concurrentExecutor(
       activeSkills,
       async (skill) => {
@@ -756,12 +754,9 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
    * Fetch MCP server configurations for a set of skills.
    * Returns a map of skill sId to their MCP server configurations.
    */
-  static async fetchMCPServerConfigurationsForSkills(
-    auth: Authenticator,
+  static async fetchMCPServerConfigurationsIdsForSkills(
     skills: SkillConfigurationResource[]
-  ): Promise<Map<string, MCPServerConfigurationType[]>> {
-    const result = new Map<string, MCPServerConfigurationType[]>();
-
+  ): Promise<Set<number>> {
     // Collect all unique mcpServerViewIds from all skills
     const allMcpServerViewIds = new Set<number>();
     for (const skill of skills) {
@@ -769,54 +764,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         allMcpServerViewIds.add(config.mcpServerViewId);
       }
     }
-
-    if (allMcpServerViewIds.size === 0) {
-      return result;
-    }
-
-    // Batch fetch all MCP server views
-    const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
-      auth,
-      Array.from(allMcpServerViewIds)
-    );
-    const mcpServerViewsById = new Map(mcpServerViews.map((v) => [v.id, v]));
-
-    // Build MCP server configurations for each skill
-    for (const skill of skills) {
-      const skillConfigs: MCPServerConfigurationType[] = [];
-
-      for (const config of skill.mcpServerConfigurations) {
-        const mcpServerView = mcpServerViewsById.get(config.mcpServerViewId);
-        if (!mcpServerView) {
-          continue;
-        }
-
-        const serverJson = mcpServerView.toJSON();
-        skillConfigs.push({
-          id: serverJson.id,
-          sId: serverJson.sId,
-          type: "mcp_server_configuration",
-          name: serverJson.server.name,
-          description: serverJson.server.description,
-          icon: serverJson.server.icon,
-          mcpServerViewId: mcpServerView.sId,
-          internalMCPServerId: mcpServerView.internalMCPServerId,
-          dataSources: null,
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          jsonSchema: null,
-          additionalConfiguration: {},
-          dustAppConfiguration: null,
-          secretName: null,
-        });
-      }
-
-      result.set(skill.sId, skillConfigs);
-    }
-
-    return result;
+    return allMcpServerViewIds;
   }
 
   toJSON(): SkillConfigurationType {

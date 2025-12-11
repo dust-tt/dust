@@ -198,7 +198,7 @@ async function handler(
         await updatedSkill.updateTools(
           auth,
           {
-            mcpServerViews,
+            mcpServerViewIds: mcpServerViews.map((v) => v.id),
           },
           { transaction }
         );

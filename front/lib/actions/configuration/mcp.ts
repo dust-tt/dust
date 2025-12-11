@@ -211,3 +211,51 @@ export async function fetchMCPServerActionConfigurations(
 
   return actionsByConfigurationId;
 }
+
+/**
+ * Fetch MCP server configurations for skills.
+ * Skills reference MCP server views directly without additional configurations
+ * like data sources or tables - those are defined on the server view itself.
+ */
+export async function fetchSkillMCPServerConfigurations(
+  auth: Authenticator,
+  mcpServerViewIds: ModelId[]
+): Promise<MCPServerConfigurationType[]> {
+  if (mcpServerViewIds.length === 0) {
+    return [];
+  }
+
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    mcpServerViewIds
+  );
+
+  const configurations: MCPServerConfigurationType[] = [];
+
+  for (const mcpServerView of mcpServerViews) {
+    const serverJson = mcpServerView.toJSON();
+
+    // No configs, yet. Just render the MCP server view info.
+    configurations.push({
+      id: mcpServerView.id,
+      sId: serverJson.sId,
+      type: "mcp_server_configuration",
+      name: serverJson.server.name,
+      description: serverJson.server.description,
+      icon: serverJson.server.icon,
+      mcpServerViewId: mcpServerView.sId,
+      internalMCPServerId: mcpServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      secretName: null,
+    });
+  }
+
+  return configurations;
+}

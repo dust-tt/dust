@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
@@ -36,7 +37,7 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId, makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -216,14 +217,15 @@ export async function runModelActivity(
   );
 
   // Get MCP server configurations for enabled skills
-  const enabledSkillMCPConfigs =
-    await SkillConfigurationResource.fetchMCPServerConfigurationsForSkills(
-      auth,
+  const enabledSkillMCPConfigIds =
+    await SkillConfigurationResource.fetchMCPServerConfigurationsIdsForSkills(
       enabledSkills
     );
 
-  // Flatten all enabled skill MCP servers
-  const skillMCPServers = Array.from(enabledSkillMCPConfigs.values()).flat();
+  const skillMCPServers = await fetchSkillMCPServerConfigurations(
+    auth,
+    Array.from(enabledSkillMCPConfigIds)
+  );
 
   const {
     serverToolsAndInstructions: mcpActions,
