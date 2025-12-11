@@ -9,7 +9,7 @@ export const paragraphBlockVariants = cva(
   ],
   {
     variants: {
-      tightSpacing: {
+      compactSpacing: {
         true: ["s-py-0"],
         false: ["s-py-1 @md:s-py-2 @md:s-leading-7"],
       },
@@ -21,19 +21,19 @@ interface ParagraphBlockProps {
   children: React.ReactNode;
   textColor: string;
   textSize: string;
-  tightSpacing?: boolean;
+  compactSpacing?: boolean;
 }
 
 export function ParagraphBlock({
   children,
   textColor,
   textSize,
-  tightSpacing = false,
+  compactSpacing = false,
 }: ParagraphBlockProps) {
   return (
     <div
       className={cn(
-        paragraphBlockVariants({ tightSpacing }),
+        paragraphBlockVariants({ compactSpacing }),
         textSize,
         textColor
       )}
