@@ -6,15 +6,19 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
+  FolderIcon,
   Icon,
   Input,
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
@@ -28,7 +32,15 @@ import {
   getVisualForContentNodeType,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isFolder,
+  isWebsite,
+} from "@app/lib/data_sources";
+import type {
+  ToolSearchResult,
+  ToolSearchServerResult,
+} from "@app/lib/search/tools/types";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSearchToolFiles } from "@app/lib/swr/search";
 import {
@@ -36,7 +48,11 @@ import {
   useSpacesSearchWithInfiniteScroll,
 } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
+import type {
+  DataSourceType,
+  DataSourceViewContentNode,
+  LightWorkspaceType,
+} from "@app/types";
 import { asDisplayToolName, MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 interface InputBarAttachmentsPickerProps {
@@ -67,7 +83,8 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-
+  const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
+    useState<string[]>([]);
   const {
     inputValue: search,
     debouncedValue: searchQuery,
@@ -105,8 +122,17 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
-  const pickedSpaceNodes: DataSourceViewContentNode[] = useMemo(() => {
-    return searchResultNodes.map((node) => {
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDataSourcesAndTools([]);
+    }
+  }, [isOpen, searchQuery]);
+
+  const dataSourcesWithResults: Record<
+    string,
+    { dataSource: DataSourceType; results: DataSourceViewContentNode[] }
+  > = useMemo(() => {
+    const nodes = searchResultNodes.map((node) => {
       const { dataSourceViews, ...rest } = node;
       const dataSourceView = dataSourceViews
         .map((view) => ({
@@ -124,7 +150,28 @@ export const InputBarAttachmentsPicker = ({
         dataSourceView,
       };
     });
+
+    return nodes.reduce<
+      Record<
+        string,
+        { dataSource: DataSourceType; results: DataSourceViewContentNode[] }
+      >
+    >((acc, item) => {
+      acc[`ds-${item.dataSource.sId}`] = acc[`ds-${item.dataSource.sId}`] ?? {
+        dataSource: item.dataSource,
+        results: [],
+      };
+      acc[`ds-${item.dataSource.sId}`].results.push(item);
+      return acc;
+    }, {});
   }, [searchResultNodes, spacesMap]);
+
+  useEffect(() => {
+    const dataSources = Object.keys(dataSourcesWithResults);
+    if (dataSources.length > 0) {
+      setSelectedDataSourcesAndTools((prev) => [...prev, ...dataSources]);
+    }
+  }, [dataSourcesWithResults]);
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -141,6 +188,57 @@ export const InputBarAttachmentsPicker = ({
     pageSize: PAGE_SIZE,
     disabled: !hasUniversalSearch || isSpacesLoading || !searchQuery || !isOpen,
   });
+
+  const serversWithResults = useMemo(
+    () =>
+      toolFileResults.reduce<
+        Record<
+          string,
+          { server: ToolSearchServerResult; results: ToolSearchResult[] }
+        >
+      >((acc, item) => {
+        acc[`tools-${item.serverName}`] = acc[`tools-${item.serverName}`] ?? {
+          server: {
+            serverIcon: item.serverIcon,
+            serverName: item.serverName,
+            serverViewId: item.serverViewId,
+          },
+          results: [],
+        };
+        acc[`tools-${item.serverName}`].results.push(item);
+        return acc;
+      }, {}),
+    [toolFileResults]
+  );
+
+  useEffect(() => {
+    const tools = Object.keys(serversWithResults);
+    if (tools.length > 0) {
+      // Tool results comes one by one, just add the last one to the list as the others are already added
+      setSelectedDataSourcesAndTools((prev) => [
+        ...prev,
+        tools[tools.length - 1],
+      ]);
+    }
+  }, [serversWithResults]);
+
+  const handleTagClick = (key: string) => {
+    const allKeys = [
+      ...Object.keys(dataSourcesWithResults),
+      ...Object.keys(serversWithResults),
+    ];
+    if (selectedDataSourcesAndTools.length === allKeys.length) {
+      setSelectedDataSourcesAndTools(() => [key]);
+    } else if (!selectedDataSourcesAndTools.includes(key)) {
+      setSelectedDataSourcesAndTools((prev) => [...prev, key]);
+    } else if (selectedDataSourcesAndTools.length === 1) {
+      setSelectedDataSourcesAndTools(() => allKeys);
+    } else {
+      setSelectedDataSourcesAndTools((prev) =>
+        prev.filter((item) => item !== key)
+      );
+    }
+  };
 
   const {
     getToolFileKey,
@@ -231,85 +329,157 @@ export const InputBarAttachmentsPicker = ({
       >
         {searchQuery ? (
           <div ref={itemsContainerRef}>
-            {pickedSpaceNodes.map((item, index) => (
-              <NodePathTooltip
-                key={`knowledge-${index}`}
-                node={item}
-                owner={owner}
-              >
-                <DropdownMenuCheckboxItem
-                  label={item.title}
+            <DropdownMenuTagList>
+              {Object.entries(dataSourcesWithResults).map(([key, r]) => (
+                <DropdownMenuTagItem
+                  key={r.dataSource.sId}
                   icon={
-                    isWebsite(item.dataSourceView.dataSource) ||
-                    isFolder(item.dataSourceView.dataSource) ? (
-                      <Icon
-                        visual={getVisualForDataSourceViewContentNode(item)}
-                        size="md"
-                      />
-                    ) : (
-                      <DoubleIcon
-                        size="md"
-                        mainIcon={getVisualForDataSourceViewContentNode(item)}
-                        secondaryIcon={getConnectorProviderLogoWithFallback({
-                          provider:
-                            item.dataSourceView.dataSource.connectorProvider,
-                        })}
-                      />
-                    )
+                    r.dataSource.connectorProvider
+                      ? getConnectorProviderLogoWithFallback({
+                          provider: r.dataSource.connectorProvider,
+                          fallback: FolderIcon,
+                        })
+                      : FolderIcon
                   }
-                  description={getLocationForDataSourceViewContentNode(item)}
-                  checked={attachedNodes.some(
-                    (attachedNode) =>
-                      attachedNode.internalId === item.internalId &&
-                      attachedNode.dataSourceView.dataSource.sId ===
-                        item.dataSourceView.dataSource.sId
-                  )}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onNodeSelect(item);
-                    } else {
-                      onNodeUnselect(item);
-                    }
-                  }}
-                  truncateText
+                  label={getDisplayNameForDataSource(r.dataSource)}
+                  color={
+                    selectedDataSourcesAndTools.includes(key)
+                      ? "highlight"
+                      : "primary"
+                  }
+                  onClick={() => handleTagClick(key)}
                 />
-              </NodePathTooltip>
-            ))}
-            {toolFileResults.map((item, index) => {
-              const isAttached = isToolFileAttached(item);
-              const isUploading = isToolFileUploading(item);
+              ))}
+              {Object.entries(serversWithResults).map(([key, s]) => (
+                <DropdownMenuTagItem
+                  key={s.server.serverName}
+                  icon={getIcon(s.server.serverIcon)}
+                  label={asDisplayToolName(s.server.serverName)}
+                  color={
+                    selectedDataSourcesAndTools.includes(key)
+                      ? "highlight"
+                      : "primary"
+                  }
+                  onClick={() => handleTagClick(key)}
+                />
+              ))}
+            </DropdownMenuTagList>
 
-              return (
-                <DropdownMenuCheckboxItem
-                  key={`tool-${getToolFileKey(item)}-${index}`}
-                  label={item.title}
-                  icon={
-                    isUploading ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      <DoubleIcon
-                        size="md"
-                        mainIcon={getVisualForContentNodeType(item.type)}
-                        secondaryIcon={getIcon(item.serverIcon)}
+            {Object.entries(dataSourcesWithResults).map(([key, r]) => {
+              const isSelected = selectedDataSourcesAndTools.includes(key);
+              return isSelected ? (
+                <>
+                  <DropdownMenuLabel
+                    icon={getConnectorProviderLogoWithFallback({
+                      provider: r.dataSource.connectorProvider,
+                      fallback: FolderIcon,
+                    })}
+                    label={getDisplayNameForDataSource(r.dataSource)}
+                  />
+                  {r.results.map((item, index) => (
+                    <NodePathTooltip
+                      key={`knowledge-${index}`}
+                      node={item}
+                      owner={owner}
+                    >
+                      <DropdownMenuCheckboxItem
+                        label={item.title}
+                        icon={
+                          isWebsite(item.dataSourceView.dataSource) ||
+                          isFolder(item.dataSourceView.dataSource) ? (
+                            <Icon
+                              visual={getVisualForDataSourceViewContentNode(
+                                item
+                              )}
+                              size="md"
+                            />
+                          ) : (
+                            <DoubleIcon
+                              size="md"
+                              mainIcon={getVisualForDataSourceViewContentNode(
+                                item
+                              )}
+                              secondaryIcon={getConnectorProviderLogoWithFallback(
+                                {
+                                  provider:
+                                    item.dataSourceView.dataSource
+                                      .connectorProvider,
+                                }
+                              )}
+                            />
+                          )
+                        }
+                        description={getLocationForDataSourceViewContentNode(
+                          item
+                        )}
+                        checked={attachedNodes.some(
+                          (attachedNode) =>
+                            attachedNode.internalId === item.internalId &&
+                            attachedNode.dataSourceView.dataSource.sId ===
+                              item.dataSourceView.dataSource.sId
+                        )}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            onNodeSelect(item);
+                          } else {
+                            onNodeUnselect(item);
+                          }
+                        }}
+                        truncateText
                       />
-                    )
-                  }
-                  description={asDisplayToolName(item.serverName)}
-                  checked={isAttached}
-                  disabled={isLoading || isUploading}
-                  onCheckedChange={(checked) => {
-                    if (checked && !isAttached && !isUploading) {
-                      void uploadToolFile(item);
-                    } else if (!checked && isAttached) {
-                      removeToolFile(item);
-                    }
-                  }}
-                  truncateText
-                />
-              );
+                    </NodePathTooltip>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null;
             })}
-            {pickedSpaceNodes.length === 0 &&
-              toolFileResults.length === 0 &&
+            {Object.entries(serversWithResults).map(([key, r]) => {
+              const isSelected = selectedDataSourcesAndTools.includes(key);
+              return isSelected ? (
+                <>
+                  <DropdownMenuLabel
+                    icon={getIcon(r.server.serverIcon)}
+                    label={asDisplayToolName(r.server.serverName)}
+                  />
+                  {r.results.map((item, index) => {
+                    const isAttached = isToolFileAttached(item);
+                    const isUploading = isToolFileUploading(item);
+
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={`tool-${getToolFileKey(item)}-${index}`}
+                        label={item.title}
+                        icon={
+                          isUploading ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            <DoubleIcon
+                              size="md"
+                              mainIcon={getVisualForContentNodeType(item.type)}
+                              secondaryIcon={getIcon(item.serverIcon)}
+                            />
+                          )
+                        }
+                        description={asDisplayToolName(item.serverName)}
+                        checked={isAttached}
+                        disabled={isLoading || isUploading}
+                        onCheckedChange={(checked) => {
+                          if (checked && !isAttached && !isUploading) {
+                            void uploadToolFile(item);
+                          } else if (!checked && isAttached) {
+                            removeToolFile(item);
+                          }
+                        }}
+                        truncateText
+                      />
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null;
+            })}
+            {Object.keys(dataSourcesWithResults).length === 0 &&
+              Object.keys(serversWithResults).length === 0 &&
               !showLoader && (
                 <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   No results found
