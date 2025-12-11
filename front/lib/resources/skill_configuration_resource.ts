@@ -177,7 +177,7 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  protected static async baseFetch(
+  private static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<SkillConfigurationModel> = {}
   ): Promise<SkillConfigurationResource[]> {
