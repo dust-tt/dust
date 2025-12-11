@@ -9,7 +9,7 @@ import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFa
 import type { MembershipRoleType } from "@app/types";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
-import handler from "./index";
+import handler from "./skills";
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -25,7 +25,7 @@ async function setupTest(
   return mockRequest;
 }
 
-describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
+describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
   it("should return 200 with empty array when agent has no skills", async () => {
     const { req, res, workspace, user } = await setupTest();
 
@@ -125,6 +125,7 @@ describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
     expect(res._getStatusCode()).toBe(400);
     const data = res._getJSONData();
     expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe("Invalid agent configuration ID.");
   });
 
   it("should return empty array for global agents", async () => {
@@ -203,23 +204,9 @@ describe("GET /api/w/[wId]/assistant/skill_configurations", () => {
       expect(data.skills[0].name).toBe(`Skill for ${role}`);
     }
   });
-
-  it("should return 400 when aId query param is missing", async () => {
-    const { req, res, workspace } = await setupTest("GET");
-
-    req.query = { ...req.query, wId: workspace.sId };
-    // aId is intentionally not set
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    const data = res._getJSONData();
-    expect(data.error.type).toBe("invalid_request_error");
-    expect(data.error.message).toBe("Invalid agent configuration ID.");
-  });
 });
 
-describe("Method Support /api/w/[wId]/assistant/skill_configurations", () => {
+describe("Method Support /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
   it("should return 405 for unsupported methods", async () => {
     for (const method of ["PUT", "PATCH", "DELETE", "POST"] as const) {
       const { req, res, workspace, user } = await setupTest(method);
