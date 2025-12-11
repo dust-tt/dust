@@ -100,6 +100,7 @@ export function SkillsSheet({
             sId: skill.sId,
             name: skill.name,
             description: skill.description,
+            requestedSpaceIds: skill.requestedSpaceIds,
           },
         ];
       }
