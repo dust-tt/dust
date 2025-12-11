@@ -200,6 +200,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshed = await refreshCredit(credit);
@@ -216,6 +221,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 10_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshed = await refreshCredit(credit);
@@ -226,6 +236,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 10_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
       // Should complete without error
     });
@@ -240,6 +255,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 0,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshed = await refreshCredit(credit);
@@ -263,6 +283,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedFree = await refreshCredit(freeCredit);
@@ -287,6 +312,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedCommitted = await refreshCredit(committedCredit);
@@ -320,6 +350,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 5_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedFree = await refreshCredit(freeCredit);
@@ -348,6 +383,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
@@ -372,6 +412,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 5_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
@@ -399,6 +444,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_000_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedPayg = await refreshCredit(paygCredit);
@@ -445,6 +495,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, {
         amountMicroUsd: 3_500_000,
         userMessageOrigin: "api",
+        agentMessageId: "test-agent-message-id",
+        agentMessageVersion: 1,
+        conversationId: 123,
+        userMessageId: "test-user-message-id",
+        userMessageVersion: 1,
       });
 
       const refreshedFreeEarlier = await refreshCredit(freeEarlier);

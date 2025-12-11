@@ -21,7 +21,7 @@ export async function trackProgrammaticUsageActivity(
 
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
-  // Query the Message/AgentMessage/Conversation rows.
+  // Query the Message/AgentMessage rows.
   const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
@@ -55,7 +55,7 @@ export async function trackProgrammaticUsageActivity(
 
   const userMessage = userMessageRow?.userMessage;
 
-  if (!agentMessage || !userMessage) {
+  if (!agentMessage || !userMessage || !agentMessageRow || !userMessageRow) {
     throw new Error("Agent message or user message not found");
   }
 
@@ -68,6 +68,11 @@ export async function trackProgrammaticUsageActivity(
   ) {
     await trackProgrammaticCost(auth, {
       dustRunIds: agentMessage.runIds,
+      agentMessageId,
+      agentMessageVersion: agentMessageRow.version,
+      conversationId: agentMessageRow.conversationId,
+      userMessageId,
+      userMessageVersion: userMessageRow.version,
       userMessageOrigin: userMessage.userContextOrigin,
     });
   }

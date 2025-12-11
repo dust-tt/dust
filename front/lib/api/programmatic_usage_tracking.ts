@@ -192,8 +192,21 @@ export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
   {
     amountMicroUsd,
+    agentMessageId,
+    agentMessageVersion,
+    conversationId,
+    userMessageId,
+    userMessageVersion,
     userMessageOrigin,
-  }: { amountMicroUsd: number; userMessageOrigin: UserMessageOrigin }
+  }: {
+    amountMicroUsd: number;
+    userMessageOrigin: UserMessageOrigin;
+    agentMessageId: string;
+    agentMessageVersion: number;
+    conversationId: number;
+    userMessageId: string;
+    userMessageVersion: number;
+  }
 ): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
   const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
@@ -221,8 +234,13 @@ export async function decreaseProgrammaticCreditsV2(
           initialAmountMicroUsd: amountMicroUsd,
           remainingAmountMicroUsd,
           workspaceId: workspace.sId,
+          agentMessageId,
+          agentMessageVersion,
+          conversationId,
+          userMessageId,
+          userMessageVersion,
         },
-        "No more credits available for this message cost."
+        "[Programmatic Usage Tracking] No more credits available for this message cost."
       );
       statsDClient.increment("credits.consumption.blocked", 1, [
         `workspace_id:${workspace.sId}`,
@@ -241,7 +259,14 @@ export async function decreaseProgrammaticCreditsV2(
     if (result.isErr()) {
       logger.error(
         {
-          amountToConsumeInMicroUsd: amountToConsumeMicroUsd,
+          agentMessageId,
+          agentMessageVersion,
+          conversationId,
+          userMessageId,
+          userMessageVersion,
+          amountToConsumeMicroUsd,
+          consumedAmountMicroUsd,
+          remainingAmountMicroUsd,
           workspaceId: workspace.sId,
           // For eng on-call: this error should be investigated since it likely
           // reveals an underlying issue in our billing / credit logic. The only
@@ -252,7 +277,7 @@ export async function decreaseProgrammaticCreditsV2(
           panic: true,
           error: result.error,
         },
-        "Error consuming credit."
+        "[Programmatic Usage Tracking] Error consuming credit."
       );
       statsDClient.increment("credits.consumption.error", 1, [
         `workspace_id:${workspace.sId}`,
@@ -260,9 +285,23 @@ export async function decreaseProgrammaticCreditsV2(
       ]);
       break;
     }
-
     consumedAmountMicroUsd += amountToConsumeMicroUsd;
     remainingAmountMicroUsd -= amountToConsumeMicroUsd;
+
+    logger.info(
+      {
+        amountToConsumeMicroUsd,
+        consumedAmountMicroUsd,
+        remainingAmountMicroUsd,
+        agentMessageId,
+        agentMessageVersion,
+        conversationId,
+        userMessageId,
+        userMessageVersion,
+        workspaceId: workspace.sId,
+      },
+      "[Programmatic Usage Tracking] Consumed credits"
+    );
   }
 
   statsDClient.increment("credits.consumption.success", 1, [
@@ -310,8 +349,21 @@ export async function trackProgrammaticCost(
   auth: Authenticator,
   {
     dustRunIds,
+    agentMessageId,
+    agentMessageVersion,
+    conversationId,
+    userMessageId,
+    userMessageVersion,
     userMessageOrigin,
-  }: { dustRunIds: string[]; userMessageOrigin: UserMessageOrigin }
+  }: {
+    dustRunIds: string[];
+    agentMessageId: string;
+    agentMessageVersion: number;
+    conversationId: number;
+    userMessageId: string;
+    userMessageVersion: number;
+    userMessageOrigin: UserMessageOrigin;
+  }
 ) {
   if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
     return;
@@ -350,6 +402,11 @@ export async function trackProgrammaticCost(
     await decreaseProgrammaticCreditsV2(auth, {
       amountMicroUsd: costWithMarkupMicroUsd,
       userMessageOrigin,
+      agentMessageId,
+      agentMessageVersion,
+      conversationId,
+      userMessageId,
+      userMessageVersion,
     });
 
   if (totalInitialMicroUsd > 0) {
