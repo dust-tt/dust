@@ -55,6 +55,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare name: string;
   declare description: string;
   declare instructions: string;
+  declare icon: string | null;
 
   declare authorId: ForeignKey<UserModel["id"]>;
 

@@ -40,6 +40,7 @@ const PatchSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
   description: t.string,
   instructions: t.string,
+  icon: t.union([t.string, t.null]),
   tools: t.array(
     t.type({
       mcpServerViewId: t.string,
@@ -180,6 +181,7 @@ async function handler(
             name: body.name,
             description: body.description,
             instructions: body.instructions,
+            icon: body.icon,
           },
           { transaction }
         );

@@ -38,6 +38,7 @@ export async function submitSkillBuilderForm({
         name: formData.name,
         description: formData.description,
         instructions: formData.instructions,
+        icon: formData.icon,
         tools: formData.tools.map((tool) => ({
           mcpServerViewId: tool.configuration.mcpServerViewId,
         })),

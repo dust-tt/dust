@@ -1,6 +1,7 @@
 import { Input } from "@dust-tt/sparkle";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
 
 export function SkillBuilderSettingsSection() {
@@ -13,15 +14,24 @@ export function SkillBuilderSettingsSection() {
         triggerValidationOnChange={false}
       >
         {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
-          <Input
-            ref={registerRef}
-            label="Skill name"
-            placeholder="Enter skill name"
-            onChange={onChange}
-            message={errorMessage}
-            messageStatus={hasError ? "error" : "default"}
-            {...registerProps}
-          />
+          <div className="space-y-3">
+            <div className="flex space-x-2">
+              <div className="flex-grow">
+                <Input
+                  ref={registerRef}
+                  label="Skill name"
+                  placeholder="Enter skill name"
+                  onChange={onChange}
+                  message={errorMessage}
+                  messageStatus={hasError ? "error" : "default"}
+                  {...registerProps}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <SkillBuilderIconSection />
+              </div>
+            </div>
+          </div>
         )}
       </BaseFormFieldSection>
       <div className="flex flex-col gap-2">

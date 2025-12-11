@@ -186,112 +186,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return skillResource;
   }
 
-  private static async baseFetch(
-    auth: Authenticator,
-    options: SkillConfigurationFindOptions = {}
-  ): Promise<SkillResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const { where, includes, onlyCustom, ...otherOptions } = options;
-
-    const customSkills = await this.model.findAll({
-      ...otherOptions,
-      where: {
-        ...omit(where, "sId"),
-        workspaceId: workspace.id,
-      },
-      include: includes,
-    });
-
-    let customSkillsRes: SkillResource[] = [];
-    if (customSkills.length > 0) {
-      const mcpServerConfigurations =
-        await SkillMCPServerConfigurationModel.findAll({
-          where: {
-            workspaceId: workspace.id,
-            skillConfigurationId: {
-              [Op.in]: customSkills.map((c) => c.id),
-            },
-          },
-        });
-
-      const mcpServerConfigsBySkillId = new Map<
-        number,
-        Attributes<SkillMCPServerConfigurationModel>[]
-      >();
-      for (const config of mcpServerConfigurations) {
-        const existing = mcpServerConfigsBySkillId.get(
-          config.skillConfigurationId
-        );
-        if (existing) {
-          existing.push(config.get());
-        } else {
-          mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
-            config.get(),
-          ]);
-        }
-      }
-
-      // Fetch editor groups for all skills.
-      const skillEditorGroupsMap = new Map<number, GroupResource>();
-
-      // Batch fetch all editor groups for all skills.
-      const editorGroupSkills = await GroupSkillModel.findAll({
-        where: {
-          skillConfigurationId: {
-            [Op.in]: customSkills.map((s) => s.id),
-          },
-          workspaceId: workspace.id,
-        },
-        attributes: ["groupId", "skillConfigurationId"],
-      });
-
-      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
-
-      if (editorGroupSkills.length > 0) {
-        const uniqueGroupIds = Array.from(
-          new Set(editorGroupSkills.map((eg) => eg.groupId))
-        );
-        const editorGroups = await GroupResource.fetchByModelIds(
-          auth,
-          uniqueGroupIds
-        );
-
-        // Build map from skill ID to editor group.
-        for (const editorGroupSkill of editorGroupSkills) {
-          const group = editorGroups.find(
-            (g) => g.id === editorGroupSkill.groupId
-          );
-          if (group) {
-            skillEditorGroupsMap.set(
-              editorGroupSkill.skillConfigurationId,
-              group
-            );
-          }
-        }
-      }
-
-      customSkillsRes = customSkills.map(
-        (c) =>
-          new this(this.model, c.get(), {
-            mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
-            editorGroup: skillEditorGroupsMap.get(c.id),
-          })
-      );
-    }
-
-    // Only include global skills if onlyCustom is not true.
-    if (onlyCustom === true) {
-      return customSkillsRes;
-    }
-
-    const globalSkills: SkillResource[] = GlobalSkillsRegistry.findAll(
-      where
-    ).map((def) => this.fromGlobalSkill(auth, def));
-
-    return [...customSkillsRes, ...globalSkills];
-  }
-
   static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
@@ -455,6 +349,160 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+    });
+
+    const customSkillIds = removeNulls(
+      conversationSkills.map((cs) =>
+        cs.customSkillId
+          ? SkillResource.modelIdToSId({
+              id: cs.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null
+      )
+    );
+
+    const globalSkillIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
+    );
+
+    const allSkillIds = [...customSkillIds, ...globalSkillIds];
+
+    if (allSkillIds.length === 0) {
+      return [];
+    }
+
+    return SkillResource.fetchByIds(auth, allSkillIds);
+  }
+
+  private static async baseFetch(
+    auth: Authenticator,
+    options: SkillConfigurationFindOptions = {}
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const { where, includes, onlyCustom, ...otherOptions } = options;
+
+    const customSkills = await this.model.findAll({
+      ...otherOptions,
+      where: {
+        ...omit(where, "sId"),
+        workspaceId: workspace.id,
+      },
+      include: includes,
+    });
+
+    let customSkillsRes: SkillResource[] = [];
+    if (customSkills.length > 0) {
+      const mcpServerConfigurations =
+        await SkillMCPServerConfigurationModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: customSkills.map((c) => c.id),
+            },
+          },
+        });
+
+      const mcpServerConfigsBySkillId = new Map<
+        number,
+        Attributes<SkillMCPServerConfigurationModel>[]
+      >();
+      for (const config of mcpServerConfigurations) {
+        const existing = mcpServerConfigsBySkillId.get(
+          config.skillConfigurationId
+        );
+        if (existing) {
+          existing.push(config.get());
+        } else {
+          mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
+            config.get(),
+          ]);
+        }
+      }
+
+      // Fetch editor groups for all skills.
+      const skillEditorGroupsMap = new Map<number, GroupResource>();
+
+      // Batch fetch all editor groups for all skills.
+      const editorGroupSkills = await GroupSkillModel.findAll({
+        where: {
+          skillConfigurationId: {
+            [Op.in]: customSkills.map((s) => s.id),
+          },
+          workspaceId: workspace.id,
+        },
+        attributes: ["groupId", "skillConfigurationId"],
+      });
+
+      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
+
+      if (editorGroupSkills.length > 0) {
+        const uniqueGroupIds = Array.from(
+          new Set(editorGroupSkills.map((eg) => eg.groupId))
+        );
+        const editorGroups = await GroupResource.fetchByModelIds(
+          auth,
+          uniqueGroupIds
+        );
+
+        // Build map from skill ID to editor group.
+        for (const editorGroupSkill of editorGroupSkills) {
+          const group = editorGroups.find(
+            (g) => g.id === editorGroupSkill.groupId
+          );
+          if (group) {
+            skillEditorGroupsMap.set(
+              editorGroupSkill.skillConfigurationId,
+              group
+            );
+          }
+        }
+      }
+
+      customSkillsRes = customSkills.map(
+        (c) =>
+          new this(this.model, c.get(), {
+            mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
+            editorGroup: skillEditorGroupsMap.get(c.id),
+          })
+      );
+    }
+
+    // Only include global skills if onlyCustom is not true.
+    if (onlyCustom === true) {
+      return customSkillsRes;
+    }
+
+    const globalSkills: SkillResource[] = GlobalSkillsRegistry.findAll(
+      where
+    ).map((def) => this.fromGlobalSkill(auth, def));
+
+    return [...customSkillsRes, ...globalSkills];
+  }
+
   private static fromGlobalSkill(
     auth: Authenticator,
     def: GlobalSkillDefinition
@@ -473,6 +521,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
+        icon: null,
       },
       { globalSId: def.sId }
     );
@@ -561,10 +610,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name,
       description,
       instructions,
+      icon,
     }: {
       name: string;
       description: string;
       instructions: string;
+      icon: string | null;
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
@@ -576,6 +627,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name,
         description,
         instructions,
+        icon,
       },
       transaction
     );
@@ -709,54 +761,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  /**
-   * List enabled skills for a given conversation and agent configuration.
-   * Returns only active skills.
-   */
-  static async listEnabledForConversation(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      conversation,
-    }: {
-      agentConfiguration: AgentConfigurationType;
-      conversation: ConversationType;
-    }
-  ) {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversationSkills = await ConversationSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.id,
-      },
-    });
-
-    const customSkillIds = removeNulls(
-      conversationSkills.map((cs) =>
-        cs.customSkillId
-          ? SkillResource.modelIdToSId({
-              id: cs.customSkillId,
-              workspaceId: workspace.id,
-            })
-          : null
-      )
-    );
-
-    const globalSkillIds = removeNulls(
-      conversationSkills.map((cs) => cs.globalSkillId)
-    );
-
-    const allSkillIds = [...customSkillIds, ...globalSkillIds];
-
-    if (allSkillIds.length === 0) {
-      return [];
-    }
-
-    return SkillResource.fetchByIds(auth, allSkillIds);
-  }
-
   toJSON(auth: Authenticator): SkillConfigurationType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
@@ -775,6 +779,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       description: this.description,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
+      icon: this.icon,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
       canWrite: this.canWrite(auth),
