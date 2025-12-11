@@ -33,6 +33,24 @@ export const COST_PALETTE = {
   totalCredits: "text-orange-400 dark:text-orange-400-night",
 } as const;
 
+export const COST_TOTAL_PALETTE = {
+  total: "text-blue-400 dark:text-blue-400-night",
+} as const;
+
+export const COST_TOTAL_LEGEND = [
+  { key: "total", label: "Daily total" },
+] as const;
+
+export const COST_PER_MESSAGE_PALETTE = {
+  average: "text-violet-300 dark:text-violet-300-night",
+  p95: "text-rose-300 dark:text-rose-300-night",
+} as const;
+
+export const COST_PER_MESSAGE_LEGEND = [
+  { key: "average", label: "Average cost" },
+  { key: "p95", label: "p95 cost" },
+] as const;
+
 export const CHART_HEIGHT = 260;
 
 export const INDEXED_COLORS = [

@@ -10,6 +10,7 @@ import {
   ValueCard,
 } from "@dust-tt/sparkle";
 
+import { CostChart } from "@app/components/agent_builder/observability/charts/CostChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { SourceChart } from "@app/components/agent_builder/observability/charts/SourceChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
@@ -181,6 +182,11 @@ export function AgentObservability({
 
       <TabContentChildSectionLayout title="Details">
         <UsageMetricsChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+        />
+        <Separator />
+        <CostChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
         />
