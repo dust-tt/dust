@@ -7,9 +7,23 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
 import type { MembershipRoleType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
+
+// Helper to filter out global skills (negative IDs) from response.
+// TODO(skills): Add tests for global skills once support is added in a follow-up PR.
+function getCustomSkills<T extends SkillConfigurationType>(
+  skillConfigurations: T[]
+): T[] {
+  return skillConfigurations.filter((sc) => sc.id > 0);
+}
+
+type SkillConfigurationWithRelations = SkillConfigurationType &
+  SkillConfigurationRelations;
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -26,7 +40,7 @@ async function setupTest(
 }
 
 describe("GET /api/w/[wId]/skills", () => {
-  it("should return 200 with empty array when no skills exist", async () => {
+  it("should return 200 with no custom skills when none exist", async () => {
     const { req, res, workspace } = await setupTest();
 
     req.query = { ...req.query, wId: workspace.sId };
@@ -37,7 +51,9 @@ describe("GET /api/w/[wId]/skills", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skillConfigurations");
     expect(data.skillConfigurations).toBeInstanceOf(Array);
-    expect(data.skillConfigurations).toHaveLength(0);
+    // Filter out global skills to test custom skills behavior
+    const customSkills = getCustomSkills(data.skillConfigurations);
+    expect(customSkills).toHaveLength(0);
   });
 
   it("should return 200 with skills when skills exist", async () => {
@@ -63,14 +79,13 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.skillConfigurations).toHaveLength(2);
-    expect(data.skillConfigurations[0]).toHaveProperty("sId");
-    expect(data.skillConfigurations[0]).toHaveProperty("name");
-    expect(data.skillConfigurations[0]).toHaveProperty("description");
+    const customSkills = getCustomSkills(data.skillConfigurations);
+    expect(customSkills).toHaveLength(2);
+    expect(customSkills[0]).toHaveProperty("sId");
+    expect(customSkills[0]).toHaveProperty("name");
+    expect(customSkills[0]).toHaveProperty("description");
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = customSkills.map((s: SkillConfigurationType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -98,8 +113,9 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.skillConfigurations).toHaveLength(1);
-    expect(data.skillConfigurations[0].name).toBe("Active Skill");
+    const customSkills = getCustomSkills(data.skillConfigurations);
+    expect(customSkills).toHaveLength(1);
+    expect(customSkills[0].name).toBe("Active Skill");
   });
 
   it("should return 403 when user is not a builder", async () => {
@@ -153,8 +169,9 @@ describe("GET /api/w/[wId]/skills", () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
-      expect(data.skillConfigurations).toHaveLength(1);
-      expect(data.skillConfigurations[0].name).toBe(`Skill for ${role}`);
+      const customSkills = getCustomSkills(data.skillConfigurations);
+      expect(customSkills).toHaveLength(1);
+      expect(customSkills[0].name).toBe(`Skill for ${role}`);
     }
   });
 });
@@ -185,13 +202,16 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.skillConfigurations).toHaveLength(1);
-    expect(data.skillConfigurations[0]).toHaveProperty("usage");
-    expect(data.skillConfigurations[0].usage).toHaveProperty("count");
-    expect(data.skillConfigurations[0].usage).toHaveProperty("agents");
-    expect(data.skillConfigurations[0].usage.count).toBe(1);
-    expect(data.skillConfigurations[0].usage.agents).toHaveLength(1);
-    expect(data.skillConfigurations[0].usage.agents[0].sId).toBe(agent.sId);
+    const customSkills = getCustomSkills<SkillConfigurationWithRelations>(
+      data.skillConfigurations
+    );
+    expect(customSkills).toHaveLength(1);
+    expect(customSkills[0]).toHaveProperty("usage");
+    expect(customSkills[0].usage).toHaveProperty("count");
+    expect(customSkills[0].usage).toHaveProperty("agents");
+    expect(customSkills[0].usage.count).toBe(1);
+    expect(customSkills[0].usage.agents).toHaveLength(1);
+    expect(customSkills[0].usage.agents[0].sId).toBe(agent.sId);
   });
 
   it("should return empty usage when skill has no agents", async () => {
@@ -212,9 +232,12 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.skillConfigurations).toHaveLength(1);
-    expect(data.skillConfigurations[0].usage.count).toBe(0);
-    expect(data.skillConfigurations[0].usage.agents).toHaveLength(0);
+    const customSkills = getCustomSkills<SkillConfigurationWithRelations>(
+      data.skillConfigurations
+    );
+    expect(customSkills).toHaveLength(1);
+    expect(customSkills[0].usage.count).toBe(0);
+    expect(customSkills[0].usage.agents).toHaveLength(0);
   });
 
   it("should return skills without usage when withRelations is not set", async () => {
@@ -235,8 +258,9 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.skillConfigurations).toHaveLength(1);
-    expect(data.skillConfigurations[0]).not.toHaveProperty("usage");
+    const customSkills = getCustomSkills(data.skillConfigurations);
+    expect(customSkills).toHaveLength(1);
+    expect(customSkills[0]).not.toHaveProperty("usage");
   });
 
   it("should return skills with multiple agents in usage", async () => {
@@ -274,12 +298,15 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.skillConfigurations).toHaveLength(1);
-    expect(data.skillConfigurations[0].usage.count).toBe(2);
-    expect(data.skillConfigurations[0].usage.agents).toHaveLength(2);
+    const customSkills = getCustomSkills<SkillConfigurationWithRelations>(
+      data.skillConfigurations
+    );
+    expect(customSkills).toHaveLength(1);
+    expect(customSkills[0].usage.count).toBe(2);
+    expect(customSkills[0].usage.agents).toHaveLength(2);
 
     // Agents should be sorted by name
-    const agentNames = data.skillConfigurations[0].usage.agents.map(
+    const agentNames = customSkills[0].usage.agents.map(
       (a: { name: string }) => a.name
     );
     expect(agentNames).toEqual(["Agent Alpha", "Agent Beta"]);

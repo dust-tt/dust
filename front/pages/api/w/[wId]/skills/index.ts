@@ -65,16 +65,16 @@ async function handler(
         // Each skill is used by N agents and each agent uses on average n skills
         // with N >> n, so the performance gain from batching is minimal.
         // Starting simple with per-skill queries.
-        const usages = await Promise.all(
-          skillConfigurations.map((sc) => sc.fetchUsage(auth))
+        const skillConfigurationsWithRelations = await Promise.all(
+          skillConfigurations.map(async (sc) => ({
+            ...sc.toJSON(),
+            usage: await sc.fetchUsage(auth),
+          }))
         );
 
-        return res.status(200).json({
-          skillConfigurations: skillConfigurations.map((sc, index) => ({
-            ...sc.toJSON(),
-            usage: usages[index],
-          })),
-        });
+        return res
+          .status(200)
+          .json({ skillConfigurations: skillConfigurationsWithRelations });
       }
 
       return res.status(200).json({
