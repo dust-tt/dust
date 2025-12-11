@@ -393,30 +393,17 @@ export function BaseProgrammaticCostChart({
     });
   }
 
-  // Transform points into chart data using labels from availableGroups.
-  // Track the last known cumulative cost for use in future points.
-  let lastKnownCumulativeCost = 0;
   const chartData = points.map((point) => {
     const dataPoint: ChartDataPoint = {
       timestamp: point.timestamp,
     };
 
-    // Compute total credits as cumulative cost + remaining credits.
+    // Compute total credits as present cumulative cost + remaining credits at that timestamp.
     // This avoids showing a total credits line below cumulative cost when credits expire
     // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
-    // usage is still in cumulative cost).
-    // For future points (where cumulatedCostMicroUsd is undefined), use the last known
-    // cumulative cost so the total credits line stays level.
-    const cumulativeCost = point.groups.reduce(
-      (acc, g) => acc + (g.cumulatedCostMicroUsd ?? 0),
-      0
-    );
-    if (cumulativeCost > 0) {
-      lastKnownCumulativeCost = cumulativeCost;
-    }
+    // usage is still in cumulative cost)--and vice versa in the past when credits are created.
     dataPoint.totalCreditsMicroUsd =
-      (cumulativeCost > 0 ? cumulativeCost : lastKnownCumulativeCost) +
-      point.totalRemainingCreditsMicroUsd;
+      (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
 
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
