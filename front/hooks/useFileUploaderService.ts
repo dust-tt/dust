@@ -36,6 +36,7 @@ export interface FileBlob {
   size: number;
   publicUrl?: string;
   iconName?: string;
+  provider?: string;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
@@ -379,6 +380,7 @@ export function useFileUploaderService({
     id?: string;
     sourceUrl?: string;
     iconName?: string;
+    provider?: string;
   }) => {
     const blob: FileBlob = {
       contentType: fileData.contentType,
@@ -390,6 +392,7 @@ export function useFileUploaderService({
       size: fileData.size,
       sourceUrl: fileData.sourceUrl,
       iconName: fileData.iconName,
+      provider: fileData.provider,
     };
 
     setFileBlobs((prevFiles) => [...prevFiles, blob]);
