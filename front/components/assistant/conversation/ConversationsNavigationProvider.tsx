@@ -1,10 +1,7 @@
 import { useRouter } from "next/router";
-import type { RefObject } from "react";
-import { createContext, useCallback, useContext, useMemo, useRef } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 interface ConversationsNavigationContextType {
-  conversationsNavigationRef: RefObject<HTMLDivElement>;
-  scrollConversationsToTop: () => void;
   activeConversationId: string | null;
 }
 
@@ -19,22 +16,6 @@ export function ConversationsNavigationProvider({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const conversationsNavigationRef = useRef<HTMLDivElement>(null);
-
-  const scrollConversationsToTop = useCallback(() => {
-    if (conversationsNavigationRef.current) {
-      // Find the ScrollArea viewport
-      const viewport = conversationsNavigationRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (viewport) {
-        viewport.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-      }
-    }
-  }, []);
 
   const activeConversationId = useMemo(() => {
     const conversationId = router.query.cId ?? "";
@@ -49,8 +30,6 @@ export function ConversationsNavigationProvider({
   return (
     <ConversationsNavigationContext.Provider
       value={{
-        conversationsNavigationRef,
-        scrollConversationsToTop,
         activeConversationId,
       }}
     >
