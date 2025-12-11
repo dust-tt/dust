@@ -62,6 +62,7 @@ async function handler(
 
       switch (req.query.pId) {
         case "openai":
+          // eslint-disable-next-line no-restricted-globals
           const modelsRes = await fetch("https://api.openai.com/v1/models", {
             method: "GET",
             headers: {
@@ -119,6 +120,7 @@ async function handler(
           return;
 
         case "azure_openai":
+          // eslint-disable-next-line no-restricted-globals
           const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
@@ -215,6 +217,7 @@ async function handler(
             res.status(200).json({ models: [] });
             return;
           }
+          // eslint-disable-next-line no-restricted-globals
           const mistralModelRes = await fetch(
             "https://api.mistral.ai/v1/models",
             {

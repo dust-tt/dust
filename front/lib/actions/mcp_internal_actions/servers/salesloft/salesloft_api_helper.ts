@@ -159,6 +159,7 @@ async function makeSalesloftRequest<T>(
     });
   }
 
+  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -186,6 +187,7 @@ async function makeSalesloftSingleItemRequest<T>(
 ): Promise<SalesloftSingleItemResponse<T>> {
   const url = new URL(`${SALESLOFT_API_BASE_URL}${endpoint}`);
 
+  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${accessToken}`,

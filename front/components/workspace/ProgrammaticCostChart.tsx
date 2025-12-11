@@ -184,6 +184,7 @@ export function BaseProgrammaticCostChart({
     Partial<Record<GroupByType, Record<string, string>>>
   >({});
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const now = new Date();
   // selectedPeriod is "YYYY-MM", so we parse it and create a UTC date.
   // To get the correct billing cycle, we need a date within that cycle, so we set
@@ -306,6 +307,7 @@ export function BaseProgrammaticCostChart({
 
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const points = programmaticCostData?.points ?? [];
   points.forEach((point) => {
     point.groups.forEach((g) => {

@@ -101,6 +101,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`https://${workosConfig.authenticateUri}`, {
       method: "POST",
       headers: {

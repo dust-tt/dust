@@ -188,7 +188,7 @@ export default defineConfig(
       "jsx-a11y/alt-text": "off",
       "no-unused-expressions": "error",
       "no-restricted-globals": [
-        "warn",
+        "error",
         {
           name: "fetch",
           message:

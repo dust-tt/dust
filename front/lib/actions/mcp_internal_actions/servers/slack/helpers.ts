@@ -481,6 +481,7 @@ export async function executePostMessage(
     }
 
     const signedUrl = await file.getSignedUrlForDownload(auth, "original");
+    // eslint-disable-next-line no-restricted-globals
     const fileResp = await fetch(signedUrl);
     if (!fileResp.ok) {
       return new Err(

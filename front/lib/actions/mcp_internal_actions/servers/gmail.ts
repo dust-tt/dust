@@ -705,6 +705,7 @@ const fetchFromGmail = async (
   accessToken: string,
   options?: RequestInit
 ): Promise<Response> => {
+  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://gmail.googleapis.com${endpoint}`, {
     ...options,
     headers: {
