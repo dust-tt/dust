@@ -13,6 +13,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
+  SkillVersionModel,
 } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
@@ -26,6 +27,7 @@ import {
   GlobalSkillsRegistry,
 } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -67,6 +69,7 @@ type SkillResourceConstructorOptions =
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SkillResource
   extends ReadonlyAttributesType<SkillConfigurationModel> {}
+
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
  * skills in a single resource class.
@@ -141,6 +144,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
+  private get isGlobal(): boolean {
+    return this.globalSId !== undefined;
   }
 
   static async makeNew(
@@ -301,16 +309,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  // Permissions.
-
-  canWrite(auth: Authenticator): boolean {
-    if (!this.editorGroup) {
-      return false;
-    }
-
-    return this.editorGroup.canWrite(auth);
-  }
-
   static modelIdToSId({
     id,
     workspaceId,
@@ -321,6 +319,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return makeSId("skill", {
       id,
       workspaceId,
+    });
+  }
+
+  static async fetchAllAvailableSkills(
+    auth: Authenticator,
+    limit?: number
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status: "active",
+      },
+      ...(limit ? { limit } : {}),
+    });
+  }
+
+  static async listSkills(
+    auth: Authenticator,
+    { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: { status },
+      ...(limit ? { limit } : {}),
     });
   }
 
@@ -430,14 +450,62 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return [...customSkillsRes, ...globalSkills];
   }
 
-  static async listSkills(
+  private static computeCanEdit({
+    skill,
+    user,
+    editorGroups,
+    groupMemberships,
+  }: {
+    skill: Attributes<SkillConfigurationModel>;
+    user: Attributes<UserModel>;
+    editorGroups: Record<ModelId, GroupResource>;
+    groupMemberships: Record<ModelId, ModelId[]>;
+  }): boolean {
+    // Author can always edit
+    if (skill.authorId === user.id) {
+      return true;
+    }
+
+    // Check if user is in the editors group
+    const editorGroup = editorGroups[skill.id];
+    if (!editorGroup) {
+      return false;
+    }
+
+    const memberIds = groupMemberships[editorGroup.id] || [];
+    return memberIds.includes(user.id);
+  }
+
+  private static fromGlobalSkill(
     auth: Authenticator,
-    { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: { status },
-      ...(limit ? { limit } : {}),
-    });
+    def: GlobalSkillDefinition
+  ): SkillResource {
+    return new SkillResource(
+      this.model,
+      {
+        authorId: -1,
+        createdAt: new Date(),
+        description: def.description,
+        // We fake the id here. We should rely exclusively on sId for global skills.
+        id: -1,
+        instructions: def.instructions,
+        name: def.name,
+        requestedSpaceIds: [],
+        status: "active",
+        updatedAt: new Date(),
+        version: def.version,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      { globalSId: def.sId }
+    );
+  }
+
+  canWrite(auth: Authenticator): boolean {
+    if (!this.editorGroup) {
+      return false;
+    }
+
+    return this.editorGroup.canWrite(auth);
   }
 
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
@@ -529,6 +597,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
+    // Save the current version before updating
+    await this.saveVersion(auth, { transaction });
+
     await this.update(
       {
         name,
@@ -578,11 +649,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       { transaction }
     );
-  }
-
-  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
-  private get isGlobal(): boolean {
-    return this.globalSId !== undefined;
   }
 
   async update(
@@ -670,30 +736,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  private static fromGlobalSkill(
-    auth: Authenticator,
-    def: GlobalSkillDefinition
-  ): SkillResource {
-    return new SkillResource(
-      this.model,
-      {
-        authorId: -1,
-        createdAt: new Date(),
-        description: def.description,
-        // We fake the id here. We should rely exclusively on sId for global skills.
-        id: -1,
-        instructions: def.instructions,
-        name: def.name,
-        requestedSpaceIds: [],
-        status: "active",
-        updatedAt: new Date(),
-        version: def.version,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      { globalSId: def.sId }
-    );
-  }
-
   toJSON(auth: Authenticator): SkillConfigurationType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
@@ -716,5 +758,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       tools,
       canWrite: this.canWrite(auth),
     };
+  }
+
+  private async saveVersion(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch current MCP server configuration IDs for this skill
+    const mcpServerConfigurations =
+      await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: this.id,
+        },
+        transaction,
+      });
+
+    const mcpServerConfigurationIds = mcpServerConfigurations.map(
+      (config) => config.mcpServerViewId
+    );
+
+    // Create a new version entry with the current state
+    await SkillVersionModel.create(
+      {
+        workspaceId: this.workspaceId,
+        skillConfigurationId: this.id,
+        version: this.version,
+        status: this.status,
+        name: this.name,
+        description: this.description,
+        instructions: this.instructions,
+        requestedSpaceIds: this.requestedSpaceIds,
+        authorId: this.authorId,
+        mcpServerConfigurationIds,
+        createdAt: this.createdAt,
+        updatedAt: this.updatedAt,
+      } as CreationAttributes<SkillVersionModel>,
+      { transaction }
+    );
   }
 }
