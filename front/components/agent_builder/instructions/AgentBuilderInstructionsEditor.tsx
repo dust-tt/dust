@@ -107,7 +107,7 @@ export function AgentBuilderInstructionsEditor({
         },
         code: {
           HTMLAttributes: {
-            class: markdownStyles.code(),
+            class: markdownStyles.codeBlock(),
           },
         },
         codeBlock: {
