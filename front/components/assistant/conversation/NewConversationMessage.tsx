@@ -1,4 +1,4 @@
-import type { Button, ConversationMessageAction } from "@dust-tt/sparkle";
+import { Button, ConversationMessageAction } from "@dust-tt/sparkle";
 import {
   Avatar,
   CitationGrid,
@@ -303,10 +303,10 @@ const ConversationMessageTitle = React.forwardRef<
           {actions && actions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <IconButton
+                <Button
                   icon={MoreIcon}
                   size="xs"
-                  variant="highlight-secondary"
+                  variant="ghost-secondary"
                   aria-label="Message actions"
                 />
               </DropdownMenuTrigger>
