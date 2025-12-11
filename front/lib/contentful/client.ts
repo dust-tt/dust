@@ -526,6 +526,7 @@ const CustomerStoryFieldsSchema = z.object({
   companySize: z.string().nullable().optional(),
   region: z.array(z.string()).default([]),
   featured: z.boolean().default(false),
+  utmCampaign: z.string().nullable().optional(),
 });
 
 function contentfulEntryToCustomerStory(
@@ -585,6 +586,7 @@ function contentfulEntryToCustomerStory(
     featured: parsed.featured,
     createdAt: parsed.publishedAt ?? sys.createdAt,
     updatedAt: sys.updatedAt,
+    utmCampaign: parsed.utmCampaign ?? null,
   };
 }
 
