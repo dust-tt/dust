@@ -83,10 +83,9 @@ makeScript(
       }
 
       if (execute) {
-        const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-          auth,
-          dataSource
-        );
+        const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+          dataSource,
+        });
         if (delRes.isErr()) {
           logger.error(
             { error: delRes.error, connectorId },

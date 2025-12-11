@@ -251,7 +251,9 @@ async function deleteDatasources(auth: Authenticator) {
 
   for (const ds of dataSources) {
     // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
-    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, ds);
+    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+      dataSource: ds,
+    });
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }
