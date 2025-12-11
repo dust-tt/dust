@@ -18,10 +18,6 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
-  version: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
   status: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -47,8 +43,6 @@ const SKILL_MODEL_ATTRIBUTES = {
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
-  declare version: number;
 
   declare status: SkillStatus;
 

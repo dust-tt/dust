@@ -4,6 +4,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -493,7 +494,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         requestedSpaceIds: [],
         status: "active",
         updatedAt: new Date(),
-        version: def.version,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       { globalSId: def.sId }
@@ -605,7 +605,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name,
         description,
         instructions,
-        version: this.version + 1,
       },
       transaction
     );
@@ -749,7 +748,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      version: this.version,
       status: this.status,
       name: this.name,
       description: this.description,
@@ -780,23 +778,43 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
+    // Calculate the next version number by counting existing versions
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: this.workspaceId,
+      skillConfigurationId: this.id,
+    };
+
+    const existingVersionsCount = await SkillVersionModel.count({
+      where,
+      transaction,
+    });
+
+    const versionNumber = existingVersionsCount + 1;
+
     // Create a new version entry with the current state
-    await SkillVersionModel.create(
-      {
-        workspaceId: this.workspaceId,
-        skillConfigurationId: this.id,
-        version: this.version,
-        status: this.status,
-        name: this.name,
-        description: this.description,
-        instructions: this.instructions,
-        requestedSpaceIds: this.requestedSpaceIds,
-        authorId: this.authorId,
-        mcpServerConfigurationIds,
-        createdAt: this.createdAt,
-        updatedAt: this.updatedAt,
-      } as CreationAttributes<SkillVersionModel>,
-      { transaction }
-    );
+    // Explicitly type the creation attributes to include extended fields
+    type SkillVersionCreationAttributes =
+      CreationAttributes<SkillConfigurationModel> & {
+        skillConfigurationId: number;
+        version: number;
+        mcpServerConfigurationIds: number[];
+      };
+
+    const versionData: SkillVersionCreationAttributes = {
+      workspaceId: this.workspaceId,
+      skillConfigurationId: this.id,
+      version: versionNumber,
+      status: this.status,
+      name: this.name,
+      description: this.description,
+      instructions: this.instructions,
+      requestedSpaceIds: this.requestedSpaceIds,
+      authorId: this.authorId,
+      mcpServerConfigurationIds,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+
+    await SkillVersionModel.create(versionData, { transaction });
   }
 }
