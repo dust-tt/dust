@@ -675,6 +675,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
+    // TODO(skills): add global skills support here
     const skillIds = removeNulls(
       agentMessageSkills.map((ams) => ams.customSkillId)
     );

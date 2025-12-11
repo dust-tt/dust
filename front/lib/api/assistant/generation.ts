@@ -60,9 +60,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    /** Skills that are enabled for this message - their instructions are injected */
     enabledSkills?: SkillConfigurationType[];
-    /** Skills that are equipped to the agent but not yet enabled - shown for potential activation */
     equippedSkills?: SkillConfigurationType[];
     featureFlags: WhitelistableFeature[];
   }
