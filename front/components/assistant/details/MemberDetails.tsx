@@ -1,7 +1,7 @@
 import {
   Avatar,
+  Chip,
   ContentMessage,
-  InformationCircleIcon,
   LockIcon,
   Sheet,
   SheetContainer,
@@ -29,37 +29,6 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
       userId: userId,
     });
 
-  const DescriptionSection = () => (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Avatar
-          name="User avatar"
-          visual={userDetails?.image ?? undefined}
-          size="lg"
-          isRounded
-        />
-        <div className="flex grow flex-col gap-1">
-          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${userDetails?.fullName ?? ""}`}</div>
-        </div>
-      </div>
-      {userDetails?.revoked && (
-        <>
-          <ContentMessage
-            title="This user has been revoked."
-            variant="warning"
-            icon={InformationCircleIcon}
-            size="sm"
-          >
-            This user is no longer active in this workspace.
-            <br />
-          </ContentMessage>
-
-          <div className="flex justify-center"></div>
-        </>
-      )}
-    </div>
-  );
-
   return (
     <Sheet open={!!userId} onOpenChange={onClose}>
       <SheetContent size="lg">
@@ -73,10 +42,35 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
         ) : (
           <>
             <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-              {/* eslint-disable-next-line react-hooks/static-components */}
-              <DescriptionSection />
+              <SheetTitle>Profile</SheetTitle>
             </SheetHeader>
             <SheetContainer className="pb-4">
+              <div className="flex w-full items-center">
+                {userDetails && (
+                  <div className="flex w-full flex-col items-center gap-4">
+                    <div className="relative flex flex-col items-center pb-5 sm:pb-3">
+                      <Avatar
+                        name={userDetails.fullName ?? "User avatar"}
+                        visual={userDetails.image ?? undefined}
+                        size="xl"
+                        isRounded
+                      />
+                      <Chip
+                        size="mini"
+                        color={userDetails.revoked ? "rose" : "success"}
+                        label={userDetails.revoked ? "Revoked" : "Active"}
+                        className="absolute -bottom-0 shadow-sm"
+                      />
+                    </div>
+                    <div className="flex grow flex-col gap-1 text-center sm:text-left">
+                      <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
+                        {userDetails.fullName}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {}
               {isUserDetailsError ? (
                 <ContentMessage title="Not Available" icon={LockIcon} size="md">
                   This user is not available.

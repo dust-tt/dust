@@ -48,7 +48,7 @@ const InfoField = ({ label, value, className }: InfoFieldProps) => (
     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
       {label}
     </div>
-    <div className="mt-1 text-sm text-foreground dark:text-foreground-night">
+    <div className="mt-1 text-sm italic text-foreground dark:text-foreground-night">
       {value ?? (
         <span className="text-muted-foreground dark:text-muted-foreground-night">
           —
@@ -92,14 +92,14 @@ export function UserInfoTab({ userDetails, owner: _owner }: UserInfoTabProps) {
   return (
     <div className="flex flex-col gap-5">
       <Page.SectionHeader
-        title="User information"
+        title="Information"
         description="Details about this workspace member."
       />
 
       <div className="flex flex-col gap-4">
         <SectionCard
           title="Profile"
-          description="Identity and contact details that are visible to the workspace."
+          description="Identity and contact details."
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <InfoField
