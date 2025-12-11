@@ -77,7 +77,7 @@ async function handler(
     variant: "light",
   });
 
-  if (!agentConfiguration || !agentConfiguration.canRead) {
+  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
