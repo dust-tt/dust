@@ -171,7 +171,7 @@ export function ProPriceTable({
             className="cursor-pointer text-gray-400 underline hover:text-gray-500"
             onClick={() => setIsFairUseModalOpened(true)}
           >
-            Fair use limits apply*
+            Fair use limits apply
           </Hoverable>
           )
         </>
@@ -182,13 +182,14 @@ export function ProPriceTable({
     {
       label: (
         <>
-          Free credits for programmatic usage (API, GSheet, Zapier) (
-          <LinkWrapper
+          Free credits for programmatic usage (API, GSheet, Zapier,...) (
+          <Hoverable
+            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
             href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2b728599d941808b8f8dfa8dbe7e466f"
             target="_blank"
           >
             Learn more
-          </LinkWrapper>
+          </Hoverable>
           )
         </>
       ),
@@ -196,7 +197,7 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Fixed price on programmatic usage (API, GSheet, Zapier)",
+      label: "Fixed price on additional programmatic usage",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
