@@ -14,7 +14,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
-import type { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
@@ -279,7 +278,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async findEditorGroupForSkill(
     auth: Authenticator,
-    skill: SkillConfigurationModel
+    skillModelId: ModelId
   ): Promise<
     Result<
       GroupResource,
@@ -292,7 +291,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const groupSkills = await GroupSkillModel.findAll({
       where: {
-        skillConfigurationId: skill.id,
+        skillConfigurationId: skillModelId,
         workspaceId: owner.id,
       },
       attributes: ["groupId"],

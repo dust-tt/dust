@@ -90,15 +90,12 @@ async function handler(
         await SkillResource.fetchAllAvailableSkills(auth);
 
       if (withRelations === "true") {
-        // Fetch usage for each skill individually.
-        // Each skill is used by N agents and each agent uses on average n skills
-        // with N >> n, so the performance gain from batching is minimal.
-        // Starting simple with per-skill queries.
         const skillConfigurationsWithRelations = await concurrentExecutor(
           skillConfigurations,
           async (sc) => ({
             ...sc.toJSON(),
             usage: await sc.fetchUsage(auth),
+            editors: await sc.listEditors(auth),
           }),
           { concurrency: 10 }
         );

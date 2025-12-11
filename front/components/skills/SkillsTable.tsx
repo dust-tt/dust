@@ -7,7 +7,7 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, UserType } from "@app/types";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
@@ -24,6 +24,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   /**
    * Columns order:
    * - Name (always)
+   * - Editors (hidden on mobile)
    * - Used by (hidden on mobile)
    * - Last Edited (hidden on mobile)
    * - Actions (always)
@@ -47,6 +48,29 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
       ),
       meta: {
         className: "w-40 @lg:w-full",
+      },
+    },
+    {
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, UserType[]>) => {
+        return (
+          <DataTable.CellContent
+            avatarStack={{
+              items:
+                info.row.original.skillConfigurationWithRelations.editors.map(
+                  (editor) => ({
+                    name: editor.fullName,
+                    visual: editor.image,
+                  })
+                ),
+              nbVisibleItems: 4,
+            }}
+          />
+        );
+      },
+      meta: {
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
