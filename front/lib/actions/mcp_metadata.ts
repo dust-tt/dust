@@ -342,19 +342,39 @@ export const connectToMCPServer = async (
                 scope: c.connection.metadata.scope,
               };
             } else {
-              if (
-                params.oAuthUseCase === "personal_actions" &&
-                connectionType === "personal"
-              ) {
+              if (connectionType === "personal") {
+                // Check if admin connection exists for the server.
+                const adminConnection = await getConnectionForMCPServer(auth, {
+                  mcpServerId: params.mcpServerId,
+                  connectionType: "workspace",
+                });
+                // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                if (!adminConnection) {
+                  return new Err(
+                    new MCPServerRequiresAdminAuthenticationError(
+                      params.mcpServerId,
+                      remoteMCPServer.authorization.provider,
+                      remoteMCPServer.authorization.scope
+                    )
+                  );
+                }
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
                     remoteMCPServer.authorization.provider
                   )
                 );
+              } else if (connectionType === "workspace") {
+                // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                return new Err(
+                  new MCPServerRequiresAdminAuthenticationError(
+                    params.mcpServerId,
+                    remoteMCPServer.authorization.provider,
+                    remoteMCPServer.authorization.scope
+                  )
+                );
               } else {
-                // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
-                // For now, keeping iso.
+                assertNever(connectionType);
               }
             }
           }
@@ -362,12 +382,8 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
-                // Include stored custom headers (excluding Authorization; handled by authProvider)
-                headers: Object.fromEntries(
-                  Object.entries(remoteMCPServer.customHeaders ?? {}).filter(
-                    ([k]) => k.toLowerCase() !== "authorization"
-                  )
-                ),
+                // Include stored custom headers
+                headers: remoteMCPServer.customHeaders ?? {},
                 dispatcher: createMCPDispatcher(auth),
               },
               authProvider: new MCPOAuthProvider(auth, token),
