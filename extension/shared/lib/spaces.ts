@@ -1,5 +1,5 @@
 import type { SpaceType } from "@dust-tt/client";
-import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
+import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle"; 
 
 export function getSpaceIcon(
   space: SpaceType
