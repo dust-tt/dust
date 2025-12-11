@@ -791,7 +791,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }),
     }));
 
-    const requestedSpaceSIds = this.requestedSpaceIds.map((spaceId) =>
+    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
       SpaceResource.modelIdToSId({
         id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
         workspaceId: this.workspaceId,
@@ -809,7 +809,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: this.userFacingDescription,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
-      requestedSpaceIds: requestedSpaceSIds,
+      requestedSpaceIds: requestedSpaceIds,
       icon: this.icon ?? null,
       tools,
       canWrite: this.canWrite(auth),

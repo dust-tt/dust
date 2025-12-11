@@ -20,8 +20,9 @@ export function SkillBuilderRequestedSpace() {
   }, [tools, mcpServerViews]);
 
   const nonGlobalSpacesUsedInActions = useMemo(() => {
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
-    return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
+    return spaces.filter(
+      (s) => s.kind !== "global" && spaceIdToActions[s.sId]?.length > 0
+    );
   }, [spaceIdToActions, spaces]);
 
   if (nonGlobalSpacesUsedInActions.length === 0) {
