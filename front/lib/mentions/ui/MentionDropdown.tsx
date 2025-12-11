@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React from "react";
@@ -77,31 +76,19 @@ export const MentionDropdown = React.forwardRef<
     );
   }
 
-  // User mention actions.
-  if (isRichUserMention(mention)) {
-    const handleUserSeeDetails = () => {
-      onOpenChangeUserModal(true);
-      setQueryParam(router, "userDetails", mention.id);
-    };
+  const handleUserSeeDetails = () => {
+    onOpenChangeUserModal(true);
+    setQueryParam(router, "userDetails", mention.id);
+  };
 
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <div ref={ref}>{children}</div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="bottom" align="start">
-          <DropdownMenuItem
-            onClick={handleUserSeeDetails}
-            icon={UserIcon}
-            label={`Profile of @${mention.label}: ${mention.description}`}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  // Unsupported mention type, render children without dropdown.
-  return <div ref={ref}>{children}</div>;
+  return (
+    <div
+      onClick={isRichUserMention(mention) ? handleUserSeeDetails : undefined}
+      ref={ref}
+    >
+      {children}
+    </div>
+  );
 });
 
 MentionDropdown.displayName = "MentionDropdown";
