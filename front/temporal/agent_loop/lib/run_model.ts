@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
+import { buildMCPServerConfigurationTypeFromIds } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
@@ -218,7 +218,7 @@ export async function runModelActivity(
   const enabledSkillMCPConfigIds =
     await SkillResource.fetchMCPServerConfigurationsIdsForSkills(enabledSkills);
 
-  const skillMCPServers = await fetchSkillMCPServerConfigurations(
+  const skillMCPServers = await buildMCPServerConfigurationTypeFromIds(
     auth,
     Array.from(enabledSkillMCPConfigIds)
   );

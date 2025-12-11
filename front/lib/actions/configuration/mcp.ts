@@ -213,11 +213,10 @@ export async function fetchMCPServerActionConfigurations(
 }
 
 /**
- * Fetch MCP server configurations for skills.
- * Skills reference MCP server views directly without additional configurations
- * like data sources or tables - those are defined on the server view itself.
+ * Build MCP server configurations from MCP server view IDs.
+ * Does not include configuration details, only MCP server view info.
  */
-export async function fetchSkillMCPServerConfigurations(
+export async function buildMCPServerConfigurationTypeFromIds(
   auth: Authenticator,
   mcpServerViewIds: ModelId[]
 ): Promise<MCPServerConfigurationType[]> {
