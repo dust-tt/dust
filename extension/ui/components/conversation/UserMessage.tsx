@@ -77,6 +77,7 @@ export function UserMessage({
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
+                compactSpacing
               />
             </div>
             {message.mentions.length === 0 && isLastMessage && (
