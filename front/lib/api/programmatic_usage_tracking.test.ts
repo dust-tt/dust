@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import logger from "@app/logger/logger";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -146,6 +147,15 @@ describe("decreaseProgrammaticCreditsV2", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
 
+  const testLogger = logger.child({
+    workspaceId: "test-workspace-id",
+    agentMessageId: "test-agent-message-id",
+    agentMessageVersion: 1,
+    conversationId: 123,
+    userMessageId: "test-user-message-id",
+    userMessageVersion: 1,
+  });
+
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -197,7 +207,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshed = await refreshCredit(credit);
       expect(refreshed.consumedAmountMicroUsd).toBe(3_000_000);
@@ -210,14 +227,28 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 10_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 10_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshed = await refreshCredit(credit);
       expect(refreshed.consumedAmountMicroUsd).toBe(5_000_000);
     });
 
     it("should not throw when no credits are available", async () => {
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 10_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 10_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
       // Should complete without error
     });
 
@@ -228,7 +259,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 0 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 0,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshed = await refreshCredit(credit);
       expect(refreshed.consumedAmountMicroUsd).toBe(0);
@@ -248,7 +286,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedFree = await refreshCredit(freeCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
@@ -269,7 +314,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedCommitted = await refreshCredit(committedCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
@@ -299,7 +351,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 1. freeCredit (200)
       // 2. committedCredit (200)
       // 3. paygCredit (100)
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 5_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 5_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedFree = await refreshCredit(freeCredit);
       const refreshedCommitted = await refreshCredit(committedCredit);
@@ -324,7 +383,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + TWO_MONTHS)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
       const refreshedLater = await refreshCredit(laterCredit);
@@ -345,7 +411,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + TWO_MONTHS)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 5_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 5_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
       const refreshedLater = await refreshCredit(laterCredit);
@@ -369,7 +442,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + 6 * ONE_MONTH)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedPayg = await refreshCredit(paygCredit);
       const refreshedFree = await refreshCredit(freeCredit);
@@ -412,7 +492,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 2. freeLater (100)
       // 3. committedEarlier (100)
       // 4. paygEarlier (50)
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_500_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_500_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedFreeEarlier = await refreshCredit(freeEarlier);
       const refreshedFreeLater = await refreshCredit(freeLater);

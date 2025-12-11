@@ -11,6 +11,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 
@@ -264,9 +265,19 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
       },
       "[Free Credits] Error starting credit"
     );
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspaceSId}`,
+      "type:free",
+      `customer:${isEnterprise ? "enterprise" : "pro"}`,
+    ]);
     return new Err(startResult.error);
   }
 
+  statsDClient.increment("credits.top_up.success", 1, [
+    `workspace_id:${workspaceSId}`,
+    "type:free",
+    `customer:${isEnterprise ? "enterprise" : "pro"}`,
+  ]);
   logger.info(
     {
       workspaceId: workspaceSId,

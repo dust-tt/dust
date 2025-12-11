@@ -10,18 +10,20 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import logger from "@app/logger/logger";
+import type { UserMessageOrigin } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<void> {
+): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
   const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
-  // Query the Message/AgentMessage/Conversation rows.
+  // Query the Message/AgentMessage rows.
   const agentMessageRow = await MessageModel.findOne({
     where: {
       sId: agentMessageId,
@@ -55,20 +57,40 @@ export async function trackProgrammaticUsageActivity(
 
   const userMessage = userMessageRow?.userMessage;
 
-  if (!agentMessage || !userMessage) {
+  if (!agentMessage || !userMessage || !agentMessageRow || !userMessageRow) {
     throw new Error("Agent message or user message not found");
   }
+
+  const userMessageOrigin = userMessage.userContextOrigin;
 
   if (
     AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
     agentMessage.runIds &&
-    isProgrammaticUsage(auth, {
-      userMessageOrigin: userMessage.userContextOrigin,
-    })
+    isProgrammaticUsage(auth, { userMessageOrigin })
   ) {
-    await trackProgrammaticCost(auth, {
-      dustRunIds: agentMessage.runIds,
-      userMessageOrigin: userMessage.userContextOrigin,
+    const localLogger = logger.child({
+      workspaceId: workspace.sId,
+      agentMessageId,
+      agentMessageVersion: agentMessageRow.version,
+      conversationId: agentMessageRow.conversationId,
+      userMessageId,
+      userMessageVersion: userMessageRow.version,
+      userMessageOrigin,
     });
+
+    localLogger.info("[Programmatic Usage Tracking] Starting activity");
+
+    await trackProgrammaticCost(
+      auth,
+      {
+        dustRunIds: agentMessage.runIds,
+        userMessageOrigin,
+      },
+      localLogger
+    );
+
+    return { tracked: true, origin: userMessageOrigin };
   }
+
+  return { tracked: false, origin: userMessageOrigin };
 }
