@@ -42,12 +42,8 @@ import type {
   ToolSearchServerResult,
 } from "@app/lib/search/tools/types";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
-import { useSearchToolFiles } from "@app/lib/swr/search";
-import {
-  useSpaces,
-  useSpacesSearchWithInfiniteScroll,
-} from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useUnifiedSearch } from "@app/lib/swr/search";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceType,
   DataSourceViewContentNode,
@@ -83,8 +79,10 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
-    useState<string[]>([]);
+  // Record where key = datasource/tool id, value = true (selected) or false (filtered out)
+  const [dataSourcesAndToolsState, setDataSourcesAndToolsState] = useState<
+    Record<string, boolean>
+  >({});
   const {
     inputValue: search,
     debouncedValue: searchQuery,
@@ -100,21 +98,26 @@ export const InputBarAttachmentsPicker = ({
     disabled: !isOpen,
   });
 
+  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
+
   const {
-    searchResultNodes,
+    knowledgeResults: searchResultNodes,
+    toolResults: toolFileResults,
     isSearchLoading,
+    isLoadingNextPage,
     isSearchValidating,
     hasMore,
     nextPage,
-  } = useSpacesSearchWithInfiniteScroll({
-    includeDataSources: true,
+  } = useUnifiedSearch({
     owner,
-    search: searchQuery,
-    viewType: "all",
+    query: searchQuery,
     pageSize: PAGE_SIZE,
     disabled: isSpacesLoading || !searchQuery,
-    spaceIds: spaces.map((s) => s.sId),
+    spaceIds,
+    viewType: "all",
+    includeDataSources: true,
     searchSourceUrls: true,
+    includeTools: true,
   });
 
   const spacesMap = useMemo(
@@ -124,7 +127,7 @@ export const InputBarAttachmentsPicker = ({
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedDataSourcesAndTools([]);
+      setDataSourcesAndToolsState({});
     }
   }, [isOpen, searchQuery]);
 
@@ -135,11 +138,14 @@ export const InputBarAttachmentsPicker = ({
     const nodes = searchResultNodes.map((node) => {
       const { dataSourceViews, ...rest } = node;
       const dataSourceView = dataSourceViews
-        .map((view) => ({
-          ...view,
-          spaceName: spacesMap[view.spaceId]?.name,
-          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-        }))
+        .map((view) => {
+          const space = spacesMap[view.spaceId];
+          return {
+            ...view,
+            spaceName: space?.name ?? "",
+            spacePriority: space ? getSpaceAccessPriority(space) : 0,
+          };
+        })
         .sort(
           (a, b) =>
             b.spacePriority - a.spacePriority ||
@@ -169,25 +175,18 @@ export const InputBarAttachmentsPicker = ({
   useEffect(() => {
     const dataSources = Object.keys(dataSourcesWithResults);
     if (dataSources.length > 0) {
-      setSelectedDataSourcesAndTools((prev) => [...prev, ...dataSources]);
+      setDataSourcesAndToolsState((prev) => {
+        const updated = { ...prev };
+        // Only add datasources that haven't been seen yet (not in the record)
+        dataSources.forEach((ds) => {
+          if (!(ds in updated)) {
+            updated[ds] = true; // Auto-select new datasources
+          }
+        });
+        return updated;
+      });
     }
   }, [dataSourcesWithResults]);
-
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasUniversalSearch = hasFeature("universal_search");
-
-  const {
-    searchResults: toolFileResults,
-    isSearchLoading: isToolSearchLoading,
-    isSearchValidating: isToolSearchValidating,
-  } = useSearchToolFiles({
-    owner,
-    query: searchQuery,
-    pageSize: PAGE_SIZE,
-    disabled: !hasUniversalSearch || isSpacesLoading || !searchQuery || !isOpen,
-  });
 
   const serversWithResults = useMemo(
     () =>
@@ -214,29 +213,58 @@ export const InputBarAttachmentsPicker = ({
   useEffect(() => {
     const tools = Object.keys(serversWithResults);
     if (tools.length > 0) {
-      // Tool results comes one by one, just add the last one to the list as the others are already added
-      setSelectedDataSourcesAndTools((prev) => [
-        ...prev,
-        tools[tools.length - 1],
-      ]);
+      setDataSourcesAndToolsState((prev) => {
+        const lastTool = tools[tools.length - 1];
+        // Only add if we haven't seen it before
+        if (lastTool in prev) {
+          return prev;
+        }
+        return { ...prev, [lastTool]: true }; // Auto-select new tools
+      });
     }
   }, [serversWithResults]);
+
+  // Derive selected datasources/tools from state (where value is true)
+  const selectedDataSourcesAndTools = useMemo(
+    () =>
+      Object.entries(dataSourcesAndToolsState)
+        .filter(([, isSelected]) => isSelected)
+        .map(([key]) => key),
+    [dataSourcesAndToolsState]
+  );
 
   const handleTagClick = (key: string) => {
     const allKeys = [
       ...Object.keys(dataSourcesWithResults),
       ...Object.keys(serversWithResults),
     ];
-    if (selectedDataSourcesAndTools.length === allKeys.length) {
-      setSelectedDataSourcesAndTools(() => [key]);
-    } else if (!selectedDataSourcesAndTools.includes(key)) {
-      setSelectedDataSourcesAndTools((prev) => [...prev, key]);
-    } else if (selectedDataSourcesAndTools.length === 1) {
-      setSelectedDataSourcesAndTools(() => allKeys);
+    const selectedCount = selectedDataSourcesAndTools.length;
+    const isSelected = dataSourcesAndToolsState[key];
+
+    if (selectedCount === allKeys.length) {
+      // All selected: clicking one shows only that one
+      setDataSourcesAndToolsState(() => {
+        const updated: Record<string, boolean> = {};
+        allKeys.forEach((k) => {
+          updated[k] = k === key;
+        });
+        return updated;
+      });
+    } else if (!isSelected) {
+      // Not selected: select it
+      setDataSourcesAndToolsState((prev) => ({ ...prev, [key]: true }));
+    } else if (selectedCount === 1) {
+      // Only one selected: clicking it selects all
+      setDataSourcesAndToolsState((prev) => {
+        const updated = { ...prev };
+        allKeys.forEach((k) => {
+          updated[k] = true;
+        });
+        return updated;
+      });
     } else {
-      setSelectedDataSourcesAndTools((prev) =>
-        prev.filter((item) => item !== key)
-      );
+      // Multiple selected: clicking one deselects it
+      setDataSourcesAndToolsState((prev) => ({ ...prev, [key]: false }));
     }
   };
 
@@ -253,11 +281,7 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const showLoader =
-    isSearchLoading ||
-    isSearchValidating ||
-    isToolSearchLoading ||
-    isToolSearchValidating ||
-    isDebouncing;
+    isSearchLoading || isLoadingNextPage || isSearchValidating || isDebouncing;
 
   return (
     <DropdownMenu
