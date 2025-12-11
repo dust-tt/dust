@@ -52,7 +52,11 @@ import {
 } from "@app/lib/mentions/markdown/plugin";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { UserMessageType, WorkspaceType } from "@app/types";
+import type {
+  UserMessageType,
+  UserMessageTypeWithContentFragments,
+  WorkspaceType,
+} from "@app/types";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -147,7 +151,7 @@ interface UserMessageProps {
   conversationId: string;
   currentUserId: string;
   isLastMessage: boolean;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
 }
 
@@ -302,6 +306,8 @@ export function UserMessage({
     : [];
 
   if (userMentionsEnabled) {
+    const displayChip =
+      message.version > 0 || isTriggeredOrigin(message.context.origin);
     return (
       <div className="flex flex-grow flex-col">
         <div
@@ -327,18 +333,20 @@ export function UserMessage({
               renderName={renderName}
               timestamp={formatTimestring(message.created)}
               infoChip={
-                <>
-                  {isTriggeredOrigin(message.context.origin) && (
-                    <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                      <TriggerChip message={message} />
-                    </span>
-                  )}
-                  {message.version > 0 && (
-                    <span className="text-xs text-faint dark:text-muted-foreground-night">
-                      (edited)
-                    </span>
-                  )}
-                </>
+                displayChip ? (
+                  <>
+                    {isTriggeredOrigin(message.context.origin) && (
+                      <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                        <TriggerChip message={message} />
+                      </span>
+                    )}
+                    {message.version > 0 && (
+                      <span className="text-xs text-faint dark:text-muted-foreground-night">
+                        (edited)
+                      </span>
+                    )}
+                  </>
+                ) : undefined
               }
               type="user"
               isCurrentUser={isCurrentUser}
@@ -370,8 +378,7 @@ export function UserMessage({
     <div className="flex flex-grow flex-col">
       <div className="min-w-60 max-w-full self-end">
         <ConversationMessage
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          pictureUrl={message.context.profilePictureUrl || message.user?.image}
+          pictureUrl={message.context.profilePictureUrl ?? message.user?.image}
           name={message.context.fullName ?? undefined}
           renderName={renderName}
           timestamp={formatTimestring(message.created)}

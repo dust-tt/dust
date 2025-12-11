@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 
+import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { UserType, WorkspaceType } from "@app/types";
 
 export type SkillBuilderContextType = {
@@ -24,7 +26,11 @@ export function SkillBuilderProvider({
 }: SkillBuilderProviderProps) {
   return (
     <SkillBuilderContext.Provider value={{ owner, user }}>
-      {children}
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          {children}
+        </MCPServerViewsProvider>
+      </SpacesProvider>
     </SkillBuilderContext.Provider>
   );
 }

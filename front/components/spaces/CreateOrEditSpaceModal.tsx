@@ -100,7 +100,6 @@ export function CreateOrEditSpaceModal({
 
   useEffect(() => {
     if (!planAllowsSCIM) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setManagementType("manual");
     }
   }, [planAllowsSCIM]);
@@ -129,7 +128,6 @@ export function CreateOrEditSpaceModal({
 
       // Initialize management type from space data (if editing) or default to manual for new spaces
       if (spaceInfo?.managementMode !== undefined) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setManagementType(spaceInfo.managementMode);
       } else {
         setManagementType("manual");

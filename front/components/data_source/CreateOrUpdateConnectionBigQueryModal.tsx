@@ -128,7 +128,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
   useEffect(() => {
     if (locations && Object.keys(locations).length === 1) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedLocation(Object.keys(locations)[0]);
     }
     if (
@@ -145,7 +144,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
   useEffect(() => {
     const errorMessage =
       credentialsState.errorMessage ?? locationsError?.message;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(errorMessage);
   }, [credentialsState.errorMessage, locationsError]);
 

@@ -1,7 +1,4 @@
-import type {
-  DirectoryGroup,
-  DirectoryGroup as WorkOSGroup,
-} from "@workos-inc/node";
+import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
   Attributes,
@@ -22,7 +19,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import type { SkillConfigurationResource } from "@app/lib/resources/skill/skill_configuration_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -411,6 +408,59 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(r);
   }
 
+  /**
+   * Finds the specific editor groups associated with a set of skill configurations.
+   */
+  static async findEditorGroupsForSkills(
+    auth: Authenticator,
+    skillIds: ModelId[]
+  ): Promise<Result<Record<ModelId, GroupResource>, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (skillIds.length === 0) {
+      return new Ok({});
+    }
+
+    const groupSkills = await GroupSkillModel.findAll({
+      where: {
+        skillConfigurationId: {
+          [Op.in]: skillIds,
+        },
+        workspaceId: owner.id,
+      },
+      attributes: ["groupId", "skillConfigurationId"],
+    });
+
+    if (groupSkills.length === 0) {
+      return new Ok({});
+    }
+
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: groupSkills.map((gs) => gs.groupId),
+        },
+      },
+    });
+
+    const accessibleGroups = groups.filter((group) => group.canRead(auth));
+    const groupMap: Record<ModelId, GroupResource> = {};
+
+    for (const group of accessibleGroups) {
+      groupMap[group.id] = group;
+    }
+
+    const result: Record<ModelId, GroupResource> = {};
+    for (const gs of groupSkills) {
+      const group = groupMap[gs.groupId];
+      if (group && group.kind === "agent_editors") {
+        result[gs.skillConfigurationId] = group;
+      }
+    }
+
+    return new Ok(result);
+  }
+
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
     const existingGroups = (
       await GroupModel.findAll({
@@ -440,36 +490,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       globalGroup,
     };
   }
-
-  static async makeNewProvisionedGroup(
-    auth: Authenticator,
-    {
-      workspace,
-      workOSGroup,
-    }: {
-      workspace: LightWorkspaceType;
-      workOSGroup: WorkOSGroup;
-    }
-  ): Promise<{ success: boolean }> {
-    const groupsWithSameName = await this.baseFetch(auth, {
-      where: {
-        name: workOSGroup.name, // Relying on the index (workspaceId, name).
-      },
-    });
-    if (groupsWithSameName.length > 0) {
-      return { success: false };
-    }
-
-    await this.makeNew({
-      kind: "provisioned",
-      name: workOSGroup.name,
-      workOSGroupId: workOSGroup.id,
-      workspaceId: workspace.id,
-    });
-
-    return { success: true };
-  }
-
   // sId
 
   get sId(): string {

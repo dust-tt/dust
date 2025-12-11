@@ -190,6 +190,44 @@ async function checkRawSqlRegistry(filePaths: string[]) {
 }
 
 /**
+ * Check if added lines contain new WorkspaceAwareModel definitions
+ */
+async function checkWorkspaceAwareModels(filePaths: string[]) {
+  const workspaceAwarePatterns = [
+    /extends\s+WorkspaceAwareModel/,
+    /extends\s+SoftDeletableWorkspaceAwareModel/,
+  ];
+
+  const filesWithNewModels: string[] = [];
+
+  await Promise.all(
+    filePaths.map(async (file) => {
+      try {
+        const content = await danger.git.diffForFile(file);
+
+        if (
+          content !== null &&
+          workspaceAwarePatterns.some((pattern) => pattern.test(content.added))
+        ) {
+          filesWithNewModels.push(file);
+        }
+      } catch (error) {
+        console.error(`Error checking file ${file}:`, error);
+      }
+    })
+  );
+
+  if (filesWithNewModels.length > 0) {
+    for (const file of filesWithNewModels) {
+      warn(
+        `File "${file}" introduces a new WorkspaceAwareModel or SoftDeletableWorkspaceAwareModel. ` +
+          `Please ensure it is included in workspace/space deletion workflow to avoid crashing temporal.`
+      );
+    }
+  }
+}
+
+/**
  * Triggers related checks based on modified files
  */
 async function warnTriggersWorkflowChanges() {
@@ -218,6 +256,7 @@ async function checkDiffFiles() {
   if (modifiedModelFiles.length > 0) {
     checkMigrationLabel();
     checkDeployPlanSection();
+    await checkWorkspaceAwareModels(modifiedModelFiles);
   }
 
   // Public API files

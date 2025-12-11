@@ -270,9 +270,7 @@ async function handleRemotePatch(
   } else if ("sharedSecret" in body || "customHeaders" in body) {
     const sanitizedRecord =
       body.customHeaders !== undefined
-        ? headersArrayToRecord(body.customHeaders, {
-            stripAuthorization: true,
-          })
+        ? headersArrayToRecord(body.customHeaders)
         : undefined;
     const update = await server.updateMetadata(auth, {
       sharedSecret: body.sharedSecret,
@@ -326,9 +324,7 @@ async function handleInternalPatch(
   if ("sharedSecret" in body || "customHeaders" in body) {
     const sanitizedRecord =
       body.customHeaders !== undefined
-        ? headersArrayToRecord(body.customHeaders, {
-            stripAuthorization: true,
-          })
+        ? headersArrayToRecord(body.customHeaders)
         : undefined;
     const recordOrNull =
       sanitizedRecord !== undefined

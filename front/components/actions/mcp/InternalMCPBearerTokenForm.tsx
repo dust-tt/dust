@@ -34,7 +34,9 @@ export function InternalMCPBearerTokenForm() {
         }
       />
       <CollapsibleComponent
-        triggerChildren={<div className="heading-lg">Headers</div>}
+        triggerChildren={
+          <div className="heading-lg">Headers ({fields.length})</div>
+        }
         contentChildren={
           <div className="space-y-2">
             <McpServerHeaders

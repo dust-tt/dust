@@ -1,4 +1,3 @@
-import assert from "assert";
 import { parseExpression } from "cron-parser";
 import _ from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
@@ -178,85 +177,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   }
 
   // Update.
-
-  async updateConfig(
-    auth: Authenticator,
-    blob: Partial<CreationAttributes<TrackerConfigurationModel>>,
-    maintainedDataSources: TrackerDataSourceConfigurationType[],
-    watchedDataSources: TrackerDataSourceConfigurationType[]
-  ): Promise<Result<TrackerConfigurationResource, Error>> {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
-
-    return withTransaction(async (transaction) => {
-      await this.update(blob);
-
-      await TrackerDataSourceConfigurationModel.destroy({
-        where: {
-          trackerConfigurationId: this.id,
-        },
-        hardDelete: true,
-        transaction,
-      });
-
-      for (const m of maintainedDataSources) {
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          m.dataSourceViewId
-        );
-        if (!dataSourceView) {
-          return new Err(
-            new Error(`Data source view not found: ${m.dataSourceViewId}`)
-          );
-        }
-        await TrackerDataSourceConfigurationModel.create(
-          {
-            scope: "maintained",
-            parentsIn: m.filter.parents?.in ?? null,
-            parentsNotIn: m.filter.parents?.not ?? null,
-            trackerConfigurationId: this.id,
-            dataSourceViewId: dataSourceView.id,
-            dataSourceId: dataSourceView.dataSourceId,
-            workspaceId: this.workspaceId,
-          },
-          { transaction }
-        );
-      }
-
-      for (const w of watchedDataSources) {
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          w.dataSourceViewId
-        );
-        if (!dataSourceView) {
-          return new Err(
-            new Error(`Data source view not found: ${w.dataSourceViewId}`)
-          );
-        }
-        await TrackerDataSourceConfigurationModel.create(
-          {
-            scope: "watched",
-            parentsIn: w.filter.parents?.in ?? null,
-            parentsNotIn: w.filter.parents?.not ?? null,
-            trackerConfigurationId: this.id,
-            dataSourceViewId: dataSourceView.id,
-            dataSourceId: dataSourceView.dataSourceId,
-            workspaceId: this.workspaceId,
-          },
-          { transaction }
-        );
-      }
-
-      const updatedTracker = await TrackerConfigurationResource.fetchById(
-        auth,
-        this.sId
-      );
-      if (updatedTracker) {
-        return new Ok(updatedTracker);
-      }
-      return new Err(new Error("Failed to update tracker."));
-    });
-  }
-
   async addGeneration({
     generation,
     thinking,

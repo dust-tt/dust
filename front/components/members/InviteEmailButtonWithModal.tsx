@@ -185,7 +185,6 @@ export function InviteEmailButtonWithModal({
 
   useEffect(() => {
     if (open && prefillText && isEmailValid(prefillText)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInviteEmails((prev) => {
         if (prev.includes(prefillText)) {
           return prev;

@@ -1,27 +1,32 @@
-import { DataTable } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
+import { DataTable, TrashIcon } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { UserType } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import type { LightWorkspaceType } from "@app/types";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 type RowData = {
-  sId: string;
-  name: string;
-  description: string;
-  author: SkillConfigurationWithAuthorType["author"];
-  updatedAt: Date;
-  onClick?: () => void;
+  skillConfigurationWithRelations: SkillConfigurationType &
+    SkillConfigurationRelations;
+  onClick: () => void;
+  menuItems?: MenuItem[];
 };
 
-const getTableColumns = () => {
+const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   /**
    * Columns order:
    * - Name (always)
-   * - Author (hidden on mobile)
+   * - Used by (hidden on mobile)
    * - Last Edited (hidden on mobile)
+   * - Actions (always)
    */
 
   return [
@@ -32,10 +37,10 @@ const getTableColumns = () => {
         <DataTable.CellContent>
           <div className="flex min-w-0 grow flex-col py-3">
             <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-              {info.row.original.name}
+              {info.row.original.skillConfigurationWithRelations.name}
             </div>
             <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.description}
+              {info.row.original.skillConfigurationWithRelations.description}
             </div>
           </div>
         </DataTable.CellContent>
@@ -45,26 +50,19 @@ const getTableColumns = () => {
       },
     },
     {
-      header: "Author",
-      accessorKey: "author",
-      cell: (info: CellContext<RowData, UserType>) => {
-        const author = info.getValue();
-
-        return (
-          <DataTable.CellContent
-            avatarStack={{
-              items: [
-                {
-                  name: author.fullName,
-                  visual: author.image,
-                },
-              ],
-            }}
+      header: "Used by",
+      accessorFn: (row: RowData) =>
+        row.skillConfigurationWithRelations.usage.count,
+      cell: (info: CellContext<RowData, number>) => (
+        <DataTable.CellContent>
+          <UsedByButton
+            usage={info.row.original.skillConfigurationWithRelations.usage}
+            onItemClick={onAgentClick}
           />
-        );
-      },
+        </DataTable.CellContent>
+      ),
       meta: {
-        className: "hidden @sm:w-32 @sm:table-cell",
+        className: "hidden @sm:w-24 @sm:table-cell",
       },
     },
     {
@@ -82,31 +80,62 @@ const getTableColumns = () => {
       ),
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
+    {
+      header: "",
+      accessorKey: "actions",
+      cell: (info: CellContext<RowData, number>) => {
+        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
+      },
+      meta: {
+        className: "w-14",
+      },
+    },
   ];
 };
 
 type SkillsTableProps = {
-  skillConfigurations: SkillConfigurationWithAuthorType[];
-  setSkillConfiguration: (skill: SkillConfigurationWithAuthorType) => void;
+  skillConfigurationsWithRelations: (SkillConfigurationType &
+    SkillConfigurationRelations)[];
+  owner: LightWorkspaceType;
+  setSkillConfigurationWithRelations: (
+    skill: SkillConfigurationType & SkillConfigurationRelations
+  ) => void;
+  onAgentClick: (agentId: string) => void;
 };
 
 export function SkillsTable({
-  skillConfigurations,
-  setSkillConfiguration,
+  skillConfigurationsWithRelations,
+  owner,
+  setSkillConfigurationWithRelations,
+  onAgentClick,
 }: SkillsTableProps) {
   const { pagination, setPagination } = usePaginationFromUrl({});
+  const [skillConfigurationToArchive, setSkillConfigurationToArchive] =
+    useState<SkillConfigurationType | null>(null);
 
   const rows: RowData[] = useMemo(
     () =>
-      skillConfigurations.map((skillConfiguration) => {
-        return {
-          ...skillConfiguration,
+      skillConfigurationsWithRelations.map(
+        (skillConfigurationWithRelations) => ({
+          skillConfigurationWithRelations,
           onClick: () => {
-            setSkillConfiguration(skillConfiguration);
+            setSkillConfigurationWithRelations(skillConfigurationWithRelations);
           },
-        };
-      }),
-    [skillConfigurations, setSkillConfiguration]
+          menuItems: [
+            {
+              label: "Archive",
+              icon: TrashIcon,
+              variant: "warning" as const,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                setSkillConfigurationToArchive(skillConfigurationWithRelations);
+              },
+              kind: "item" as const,
+            },
+          ],
+        })
+      ),
+    [skillConfigurationsWithRelations, setSkillConfigurationWithRelations]
   );
 
   if (rows.length === 0) {
@@ -114,12 +143,24 @@ export function SkillsTable({
   }
 
   return (
-    <DataTable
-      className="relative"
-      data={rows}
-      columns={getTableColumns()}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
+    <>
+      {skillConfigurationToArchive && (
+        <ArchiveSkillDialog
+          owner={owner}
+          isOpen={true}
+          skillConfiguration={skillConfigurationToArchive}
+          onClose={() => {
+            setSkillConfigurationToArchive(null);
+          }}
+        />
+      )}
+      <DataTable
+        className="relative"
+        data={rows}
+        columns={getTableColumns(onAgentClick)}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+    </>
   );
 }

@@ -99,32 +99,6 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     });
   }
 
-  static async fetchByServerIdAndToolName(
-    auth: Authenticator,
-    {
-      serverId,
-      toolName,
-    }: {
-      serverId: number;
-      toolName: string;
-    },
-    options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
-  ): Promise<RemoteMCPServerToolMetadataResource | null> {
-    const toolMetadata = await this.baseFetch(auth, {
-      ...options,
-      where: {
-        remoteMCPServerId: serverId,
-        toolName,
-      },
-    });
-
-    if (toolMetadata.length === 0) {
-      return null;
-    }
-
-    return toolMetadata[0];
-  }
-
   // Update
 
   static async updateOrCreateSettings(

@@ -501,7 +501,6 @@ const SpaceDataSourceViewItem = ({
   // Unfold the folder if it's an ancestor of the current page.
   useEffect(() => {
     if (isAncestorToCurrentPage) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsExpanded(isAncestorToCurrentPage);
     }
   }, [isAncestorToCurrentPage]);

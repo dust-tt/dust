@@ -14,6 +14,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
+  AgentMessageStatus,
   LightWorkspaceType,
   PublicAPILimitsType,
   UserMessageOrigin,
@@ -51,6 +52,11 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
 };
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
+
+export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  "succeeded",
+  "cancelled",
+];
 
 export const USER_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
@@ -103,7 +109,12 @@ export function getShouldTrackTokenUsageCostsESFilter(
   // Track for API keys, listed programmatic origins or unspecified user message origins.
   // This must be in sync with the shouldTrackTokenUsageCosts function.
   const shouldClauses: estypes.QueryDslQueryContainer[] = [
-    { term: { auth_method: "api_key" } },
+    {
+      bool: {
+        must: [{ term: { auth_method: "api_key" } }],
+        must_not: [{ term: { context_origin: "zendesk" } }],
+      },
+    },
     { bool: { must_not: { exists: { field: "context_origin" } } } },
     { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
   ];
@@ -112,6 +123,7 @@ export function getShouldTrackTokenUsageCostsESFilter(
     bool: {
       filter: [
         { term: { workspace_id: workspace.sId } },
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
         {
           bool: {
             should: shouldClauses,

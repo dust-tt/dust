@@ -81,7 +81,6 @@ export function BlockedActionsProvider({
 
   useEffect(() => {
     if (conversationId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBlockedActionsQueue(
         blockedActions.flatMap((action): BlockedActionQueueItem[] => {
           if (action.status === "blocked_child_action_input_required") {

@@ -8,10 +8,9 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -23,27 +22,72 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
+import {
+  getDefaultSkillFormData,
+  transformSkillConfigurationToFormData,
+} from "@app/components/skill_builder/transformSkillConfiguration";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useSkillConfigurationTools } from "@app/lib/swr/actions";
+import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
-export default function SkillBuilder() {
+interface SkillBuilderProps {
+  skillConfiguration?: SkillConfigurationType;
+}
+
+export default function SkillBuilder({
+  skillConfiguration,
+}: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
+  const { actions, isActionsLoading } = useSkillConfigurationTools(
+    owner,
+    skillConfiguration?.sId ?? null
+  );
+
+  const { editors } = useSkillEditors({
+    owner,
+    skillConfigurationId: skillConfiguration?.sId ?? null,
+  });
+
+  const defaultValues = useMemo(() => {
+    if (skillConfiguration) {
+      return transformSkillConfigurationToFormData(skillConfiguration);
+    }
+
+    return getDefaultSkillFormData({ user });
+  }, [skillConfiguration, user]);
+
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      instructions: "",
-      scope: "private",
-      editors: [user],
-      tools: [],
+    defaultValues,
+    resetOptions: {
+      keepDirtyValues: true,
+      keepErrors: true,
     },
   });
+
+  // Populate editors and tools reactively
+  useEffect(() => {
+    const currentValues = form.getValues();
+
+    form.reset({
+      ...currentValues,
+      tools: actions,
+      editors: skillConfiguration || editors.length > 0 ? editors : [user],
+    });
+  }, [isActionsLoading, actions, editors, form, user, skillConfiguration]);
+
+  const isCreatingNew = !skillConfiguration;
+  const { isDirty } = form.formState;
+
+  useNavigationLock(isDirty && !isSaving);
 
   const handleSubmit = async (data: SkillBuilderFormData) => {
     setIsSaving(true);
@@ -51,12 +95,15 @@ export default function SkillBuilder() {
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      user,
+      skillConfigurationId: !isCreatingNew
+        ? skillConfiguration?.sId
+        : undefined,
+      currentEditors: editors,
     });
 
     if (result.isErr()) {
       sendNotification({
-        title: "Error creating skill",
+        title: isCreatingNew ? "Error creating skill" : "Error updating skill",
         description: result.error.message,
         type: "error",
       });
@@ -65,12 +112,21 @@ export default function SkillBuilder() {
     }
 
     sendNotification({
-      title: "Skill created",
-      description: "Your skill has been successfully created.",
+      title: isCreatingNew ? "Skill created" : "Skill updated",
+      description: isCreatingNew
+        ? "Your skill has been successfully created."
+        : "Your skill has been successfully updated.",
       type: "success",
     });
 
-    await appLayoutBack(owner, router);
+    if (isCreatingNew && result.value.sId) {
+      const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;
+      await router.replace(newUrl, undefined, { shallow: true });
+    } else {
+      form.reset(form.getValues(), { keepValues: true });
+    }
+
+    setIsSaving(false);
   };
 
   const handleCancel = async () => {
@@ -95,7 +151,11 @@ export default function SkillBuilder() {
             <BarHeader
               variant="default"
               className="mx-4"
-              title="Skill"
+              title={
+                skillConfiguration
+                  ? `Edit skill ${skillConfiguration.name}`
+                  : "Create new skill"
+              }
               rightActions={
                 <Button
                   icon={XMarkIcon}
@@ -118,9 +178,7 @@ export default function SkillBuilder() {
                 </div>
                 <SkillBuilderDescriptionSection />
                 <SkillBuilderInstructionsSection />
-                <MCPServerViewsProvider owner={owner}>
-                  <SkillBuilderToolsSection />
-                </MCPServerViewsProvider>
+                <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />
               </div>
             </ScrollArea>

@@ -44,25 +44,18 @@ export function MCPServerDetailsInfo({
       )}
       <Separator />
       <MCPServerViewForm mcpServerView={mcpServerView} />
+      <Separator />
       {mcpServerView.server.authorization && (
-        <>
-          <Separator />
-          <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
-        </>
+        <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
       )}
       {isRemoteMCPServerType(mcpServerView.server) ? (
         <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
       ) : requiresBearerToken ? (
-        <>
-          <Separator />
-          <InternalMCPBearerTokenForm />
-        </>
+        <InternalMCPBearerTokenForm />
       ) : null}
-
-      <Separator className="mb-4 mt-4" />
-      <div className="heading-lg">Available Tools</div>
-
-      <ToolsList owner={owner} mcpServerView={mcpServerView} />
+      <div className="mt-2">
+        <ToolsList owner={owner} mcpServerView={mcpServerView} />
+      </div>
     </div>
   );
 }

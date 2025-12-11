@@ -14,6 +14,7 @@ import {
   getCustomerStoryBySlug,
   getRelatedCustomerStories,
 } from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { CustomerStoryPageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
@@ -210,7 +211,18 @@ export default function CustomerStoryPage({
               <span>&larr;</span> All Customer Stories
             </Link>
 
-            <div className="mb-4 flex flex-wrap gap-2">
+            <H1 mono>{story.title}</H1>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {story.companyLogo && (
+                <Image
+                  src={story.companyLogo.url}
+                  alt={story.companyLogo.alt}
+                  width={120}
+                  height={40}
+                  className="mr-2 h-8 w-auto object-contain"
+                />
+              )}
               {story.industries.map((ind) => (
                 <span
                   key={ind}
@@ -229,8 +241,6 @@ export default function CustomerStoryPage({
               ))}
             </div>
 
-            <H1 mono>{story.title}</H1>
-
             {story.headlineMetric && (
               <div className="mt-6">
                 <span className="inline-block rounded-lg bg-emerald-50 px-4 py-2 text-xl font-bold text-emerald-600">
@@ -240,20 +250,7 @@ export default function CustomerStoryPage({
             )}
           </header>
 
-          {story.heroImage && (
-            <div className={classNames(WIDE_CLASSES, "mt-8")}>
-              <Image
-                src={story.heroImage.url}
-                alt={story.heroImage.alt}
-                width={story.heroImage.width}
-                height={story.heroImage.height}
-                className="rounded-2xl"
-                priority
-              />
-            </div>
-          )}
-
-          <div className={classNames(CONTENT_CLASSES, "mt-12")}>
+          <div className={classNames(CONTENT_CLASSES, "mt-6")}>
             {story.keyHighlight && (
               <div className="mb-8 rounded-2xl border border-highlight/20 bg-highlight/5 p-6">
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-highlight">
@@ -291,19 +288,33 @@ export default function CustomerStoryPage({
           <aside className={classNames(SIDEBAR_CLASSES, "mt-12 lg:mt-12")}>
             <div className="sticky top-24 space-y-6">
               <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="flex items-center justify-center border-b border-gray-100 bg-white px-6 py-8">
-                  {story.companyLogo ? (
+                <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
+                  {story.heroImage ? (
                     <Image
-                      src={story.companyLogo.url}
-                      alt={story.companyLogo.alt}
-                      width={200}
-                      height={100}
-                      className="h-16 w-auto object-contain"
+                      src={story.heroImage.url}
+                      alt={story.heroImage.alt}
+                      width={640}
+                      height={360}
+                      loader={contentfulImageLoader}
+                      sizes="(max-width: 1024px) 100vw, 400px"
+                      className="h-full w-full object-cover"
                     />
+                  ) : story.companyLogo ? (
+                    <div className="flex h-full w-full items-center justify-center bg-white p-8">
+                      <Image
+                        src={story.companyLogo.url}
+                        alt={story.companyLogo.alt}
+                        width={160}
+                        height={80}
+                        className="max-h-16 w-auto object-contain"
+                      />
+                    </div>
                   ) : (
-                    <span className="text-xl font-bold text-foreground">
-                      {story.companyName}
-                    </span>
+                    <div className="flex h-full w-full items-center justify-center bg-primary-100">
+                      <span className="text-2xl font-bold text-primary-400">
+                        {story.companyName.charAt(0)}
+                      </span>
+                    </div>
                   )}
                 </div>
 

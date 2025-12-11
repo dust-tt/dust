@@ -417,7 +417,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     };
   }
 
-  toPokeJSON(): PokeCreditType {
+  toJSONForAdmin(): PokeCreditType {
     return {
       id: this.id,
       createdAt: this.createdAt.toISOString(),

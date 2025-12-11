@@ -295,10 +295,10 @@ const ConversationMessageTitle = React.forwardRef<
             {timestamp}
           </span>
           {infoChip && (
-            <div className="inline-flex items-center gap-2">{infoChip}</div>
+            <div className="inline-flex items-center">{infoChip}</div>
           )}
         </div>
-        <div className="inline-flex items-center gap-2">
+        <div className="ml-1 inline-flex items-center">
           {completionStatus ?? null}
           {actions && actions.length > 0 && (
             <DropdownMenu>

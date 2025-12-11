@@ -9,6 +9,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
@@ -27,6 +28,8 @@ import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conve
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -148,6 +151,59 @@ export async function getJITServers(
     };
 
     jitServers.push(commonUtilitiesServer);
+  }
+
+  // Add skill_management MCP server if the agent has any skills configured
+  const owner = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(owner);
+  if (featureFlags.includes("skills")) {
+    // TODO(resources): Add a countSkills method to the future AgentConfigurationResource
+    // and use that instead of querying the model directly.
+    const skillCount = await AgentSkillModel.count({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+      },
+    });
+
+    if (skillCount > 0) {
+      const skillManagementView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          SKILL_MANAGEMENT_SERVER_NAME
+        );
+
+      if (!skillManagementView) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+          },
+          "MCP server view not found for skill_management. Ensure auto tools are created."
+        );
+      } else if (!agentMcpServerViewIds.includes(skillManagementView.sId)) {
+        const skillManagementServer: ServerSideMCPServerConfigurationType = {
+          id: -1,
+          sId: generateRandomModelSId(),
+          type: "mcp_server_configuration",
+          name: SKILL_MANAGEMENT_SERVER_NAME,
+          description: "Enable skills for the conversation.",
+          dataSources: null,
+          tables: null,
+          childAgentId: null,
+          reasoningModel: null,
+          timeFrame: null,
+          jsonSchema: null,
+          secretName: null,
+          additionalConfiguration: {},
+          mcpServerViewId: skillManagementView.sId,
+          dustAppConfiguration: null,
+          internalMCPServerId: skillManagementView.mcpServerId,
+        };
+
+        jitServers.push(skillManagementServer);
+      }
+    }
   }
 
   if (attachments.length === 0) {

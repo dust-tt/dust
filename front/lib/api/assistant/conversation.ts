@@ -13,6 +13,7 @@ import {
   createUserMessage,
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/mentions";
+import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -600,17 +601,24 @@ export async function postUserMessage(
     agentMessages,
   });
 
-  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
-  // conversation state synchronization in multiplex mode. This is a temporary solution -
-  // we should move this to a dedicated real-time sync mechanism.
-  await publishMessageEventsOnMessagePostOrEdit(
-    conversation,
-    {
-      ...userMessage,
-      contentFragments: getRelatedContentFragments(conversation, userMessage),
-    },
-    agentMessages
-  );
+  await Promise.all([
+    publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...userMessage,
+        contentFragments: getRelatedContentFragments(conversation, userMessage),
+      },
+      agentMessages
+    ),
+    // If the conversation did not have any agent messages yet, we might not have a title, this ensure we generate one.
+    // Doing after 3 messages to avoid generating a title too early.
+    userMessage.rank >= 3
+      ? ensureConversationTitle(auth, {
+          conversation,
+          userMessage,
+        })
+      : Promise.resolve(undefined),
+  ]);
 
   return new Ok({
     userMessage,

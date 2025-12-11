@@ -87,7 +87,6 @@ export default function RunsView({
     [] as { name: string; runType: RunRunType; ownerOwnly: boolean }[]
   );
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTabs(
       TABS.filter((tab) => {
         return !(tab.ownerOwnly && readOnly);

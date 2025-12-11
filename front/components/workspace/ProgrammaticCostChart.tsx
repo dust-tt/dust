@@ -393,7 +393,9 @@ export function BaseProgrammaticCostChart({
     });
   }
 
-  // Transform points into chart data using labels from availableGroups
+  // Transform points into chart data using labels from availableGroups.
+  // Track the last known cumulative cost for use in future points.
+  let lastKnownCumulativeCost = 0;
   const chartData = points.map((point) => {
     const dataPoint: ChartDataPoint = {
       timestamp: point.timestamp,
@@ -403,12 +405,18 @@ export function BaseProgrammaticCostChart({
     // This avoids showing a total credits line below cumulative cost when credits expire
     // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
     // usage is still in cumulative cost).
+    // For future points (where cumulatedCostMicroUsd is undefined), use the last known
+    // cumulative cost so the total credits line stays level.
     const cumulativeCost = point.groups.reduce(
       (acc, g) => acc + (g.cumulatedCostMicroUsd ?? 0),
       0
     );
+    if (cumulativeCost > 0) {
+      lastKnownCumulativeCost = cumulativeCost;
+    }
     dataPoint.totalCreditsMicroUsd =
-      cumulativeCost + point.totalRemainingCreditsMicroUsd;
+      (cumulativeCost > 0 ? cumulativeCost : lastKnownCumulativeCost) +
+      point.totalRemainingCreditsMicroUsd;
 
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
@@ -483,7 +491,7 @@ export function BaseProgrammaticCostChart({
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Usage Graph</span>
+          <span>Usage cost graph</span>
           <Button
             icon={ChevronLeftIcon}
             size="xs"
@@ -506,7 +514,7 @@ export function BaseProgrammaticCostChart({
           )}
         </div>
       }
-      description="Total cost accumulated. Filter by clicking on legend items."
+      description={groupBy ? "Filter by clicking on legend items." : undefined}
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError
