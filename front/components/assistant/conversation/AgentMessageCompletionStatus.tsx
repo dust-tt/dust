@@ -52,7 +52,7 @@ export const AgentMessageCompletionStatus = ({
   return (
     <div
       className={cn(
-        "flex cursor-pointer items-center gap-1 text-xs",
+        "flex cursor-pointer items-center gap-1 text-xs font-normal",
         "text-muted-foreground dark:text-muted-foreground-night",
         "hover:text-foreground dark:hover:text-foreground-night",
         isOpened && "text-foreground dark:text-foreground-night"

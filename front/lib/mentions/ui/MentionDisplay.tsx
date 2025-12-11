@@ -49,10 +49,10 @@ function MentionTrigger({
         "inline-block cursor-pointer font-light",
         !userMentionsEnabled || mention.type === "agent"
           ? "text-highlight-500"
-          : "text-green-700",
+          : "text-green-800",
         userMentionsEnabled &&
           isCurrentUserMentioned &&
-          "bg-green-200 text-green-700"
+          "bg-green-200 text-green-800"
       )}
     >
       @{mention.label}
