@@ -68,6 +68,7 @@ const makeGraphQLRequest = async (
   variables?: Record<string, any>
 ): Promise<any> => {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch("https://api.monday.com/v2", {
       method: "POST",
       headers: {
@@ -1001,6 +1002,7 @@ export const uploadFileToColumn = async (
   formData.append("0", file);
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch("https://api.monday.com/v2/file", {
       method: "POST",
       headers: {

@@ -70,6 +70,7 @@ async function makeGraphQLRequest<T>(
   variables?: Record<string, any>
 ): Promise<T> {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(SLAB_GRAPHQL_URL, {
       method: "POST",
       headers: {

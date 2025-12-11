@@ -2365,6 +2365,7 @@ export class CoreAPI {
           Authorization: `Bearer ${this._apiKey}`,
         };
       }
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {

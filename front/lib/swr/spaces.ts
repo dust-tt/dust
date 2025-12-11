@@ -508,6 +508,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     if (newName) {
       const spaceUrl = `/api/w/${owner.sId}/spaces/${space.sId}`;
       updatePromises.push(
+        // eslint-disable-next-line no-restricted-globals
         fetch(spaceUrl, {
           method: "PATCH",
           headers: {
@@ -526,6 +527,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       // Restricted space: send full membership payload
       if (managementMode === "manual") {
         updatePromises.push(
+          // eslint-disable-next-line no-restricted-globals
           fetch(spaceMembersUrl, {
             method: "PATCH",
             headers: {
@@ -540,6 +542,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
         );
       } else if (managementMode === "group") {
         updatePromises.push(
+          // eslint-disable-next-line no-restricted-globals
           fetch(spaceMembersUrl, {
             method: "PATCH",
             headers: {
@@ -557,6 +560,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       // Unrestricted space: only send isRestricted flag, no
       // members/groups needed.
       updatePromises.push(
+        // eslint-disable-next-line no-restricted-globals
         fetch(spaceMembersUrl, {
           method: "PATCH",
           headers: {

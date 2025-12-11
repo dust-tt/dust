@@ -21,6 +21,7 @@ export async function sendUserOperationMessage({
   }
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const res = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {

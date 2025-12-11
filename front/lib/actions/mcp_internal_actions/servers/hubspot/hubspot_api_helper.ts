@@ -1051,6 +1051,7 @@ const getAssociationTypeId = async (
   fromObjectType: string,
   toObjectType: string
 ): Promise<number> => {
+  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(
     `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
     {
@@ -1685,6 +1686,7 @@ export const updateDeal = async ({
 
 export const getUserDetails = async (accessToken: string) => {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.hubapi.com/oauth/v1/access-tokens/${accessToken}`,
       {

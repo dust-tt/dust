@@ -43,6 +43,7 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 ): Promise<Result<z.infer<T>, ConfluenceErrorResult>> {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
       method: options.method ?? "GET",
       headers: {

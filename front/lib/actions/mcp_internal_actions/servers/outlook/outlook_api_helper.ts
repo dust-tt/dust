@@ -164,6 +164,7 @@ const fetchFromOutlook = async (
     headers["Prefer"] = `outlook.timezone="${userTimezone}"`;
   }
 
+  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
     headers,

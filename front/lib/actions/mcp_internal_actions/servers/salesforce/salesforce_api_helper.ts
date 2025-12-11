@@ -137,6 +137,7 @@ async function downloadSalesforceAttachment(
   try {
     const url = `${conn.instanceUrl}/services/data/v${SF_API_VERSION}/sobjects/Attachment/${attachmentId}/Body`;
 
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -164,6 +165,7 @@ async function downloadSalesforceFile(
   try {
     const url = `${conn.instanceUrl}/services/data/v${SF_API_VERSION}/sobjects/ContentVersion/${contentVersionId}/VersionData`;
 
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(url, {
       method: "GET",
       headers: {
