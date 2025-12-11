@@ -7,16 +7,26 @@ import { SkillConfigurationResource } from "@app/lib/resources/skill/skill_confi
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillConfigurationWithAuthorType[];
+  skillConfigurations: SkillConfigurationType[];
+};
+
+export type GetSkillConfigurationsWithRelationsResponseBody = {
+  skillConfigurations: (SkillConfigurationType & SkillConfigurationRelations)[];
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetSkillConfigurationsResponseBody>
+    WithAPIErrorResponse<
+      | GetSkillConfigurationsResponseBody
+      | GetSkillConfigurationsWithRelationsResponseBody
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -45,8 +55,27 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const { withRelations } = req.query;
+
       const skillConfigurations =
-        await SkillConfigurationResource.fetchWithAuthor(auth);
+        await SkillConfigurationResource.fetchAllAvailableSkills(auth);
+
+      if (withRelations === "true") {
+        // Fetch usage for each skill individually.
+        // Each skill is used by N agents and each agent uses on average n skills
+        // with N >> n, so the performance gain from batching is minimal.
+        // Starting simple with per-skill queries.
+        const skillConfigurationsWithRelations = await Promise.all(
+          skillConfigurations.map(async (sc) => ({
+            ...sc.toJSON(),
+            usage: await sc.fetchUsage(auth),
+          }))
+        );
+
+        return res
+          .status(200)
+          .json({ skillConfigurations: skillConfigurationsWithRelations });
+      }
 
       return res.status(200).json({
         skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),

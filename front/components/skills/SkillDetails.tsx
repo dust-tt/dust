@@ -17,10 +17,10 @@ import { useState } from "react";
 
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { SKILL_ICON } from "@app/lib/skill";
-import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillConfigurationWithAuthorType;
+  skillConfiguration: SkillConfigurationType;
   onClose: () => void;
 };
 
@@ -87,7 +87,7 @@ export function SkillDetails({
 }
 
 type DescriptionSectionProps = {
-  skillConfiguration: SkillConfigurationWithAuthorType;
+  skillConfiguration: SkillConfigurationType;
 };
 
 const DescriptionSection = ({

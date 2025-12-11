@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetails } from "@app/components/skills/SkillDetails";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -12,11 +13,14 @@ import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SKILL_ICON } from "@app/lib/skill";
-import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
+import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -53,23 +57,34 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceSkills({
   owner,
   subscription,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [skillConfiguration, setSkillConfiguration] =
-    useState<SkillConfigurationWithAuthorType | null>(null);
+  const [skillConfigurationWithRelations, setSkillConfigurationWithRelations] =
+    useState<(SkillConfigurationType & SkillConfigurationRelations) | null>(
+      null
+    );
+  const [agentId, setAgentId] = useState<string | null>(null);
 
-  const { skillConfigurations } = useSkillConfigurations({
-    workspaceId: owner.sId,
-  });
+  const { skillConfigurationsWithRelations } =
+    useSkillConfigurationsWithRelations({
+      owner,
+    });
 
   return (
     <>
-      {!!skillConfiguration && (
+      {!!skillConfigurationWithRelations && (
         <SkillDetails
-          skillConfiguration={skillConfiguration}
-          onClose={() => setSkillConfiguration(null)}
+          skillConfiguration={skillConfigurationWithRelations}
+          onClose={() => setSkillConfigurationWithRelations(null)}
         />
       )}
       <ConversationsNavigationProvider>
+        <AgentDetails
+          owner={owner}
+          user={user}
+          agentId={agentId}
+          onClose={() => setAgentId(null)}
+        />
         <AppWideModeLayout
           subscription={subscription}
           owner={owner}
@@ -92,8 +107,13 @@ export default function WorkspaceSkills({
               <div className="flex flex-col pt-3">
                 <SkillsTable
                   owner={owner}
-                  skillConfigurations={skillConfigurations}
-                  setSkillConfiguration={setSkillConfiguration}
+                  skillConfigurationsWithRelations={
+                    skillConfigurationsWithRelations
+                  }
+                  setSkillConfigurationWithRelations={
+                    setSkillConfigurationWithRelations
+                  }
+                  onAgentClick={setAgentId}
                 />
               </div>
             </Page.Vertical>

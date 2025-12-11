@@ -1,13 +1,13 @@
 import type {
   Attributes,
   CreationAttributes,
-  Model,
   ModelStatic,
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
@@ -18,12 +18,9 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import {
-  GLOBAL_DUST_AUTHOR,
-  GlobalSkillsRegistry,
-} from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -33,34 +30,20 @@ import {
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  AgentsUsageType,
   ConversationType,
   ModelId,
   Result,
 } from "@app/types";
-import {
-  Err,
-  formatUserFullName,
-  normalizeError,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
-import type {
-  SkillConfigurationType,
-  SkillConfigurationWithAuthorType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SkillConfigurationResource
   extends ReadonlyAttributesType<SkillConfigurationModel> {}
-
-export type SkillConfigurationResourceWithAuthor =
-  SkillConfigurationResource & {
-    author: Attributes<UserModel>;
-  };
-
 /**
  * SkillConfigurationResource handles both custom (database-backed) and global (code-defined)
  * skills in a single resource class.
@@ -108,7 +91,6 @@ export type SkillConfigurationResourceWithAuthor =
 export class SkillConfigurationResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
-  readonly author?: Attributes<UserModel>;
   readonly canEdit: boolean;
   readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
 
@@ -118,12 +100,10 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
-      author,
       canEdit = true,
       globalSId,
       mcpServerConfigurations,
     }: {
-      author?: Attributes<UserModel>;
       canEdit?: boolean;
       globalSId?: string;
       mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
@@ -131,7 +111,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
   ) {
     super(SkillConfigurationModel, blob);
 
-    this.author = author;
     this.canEdit = canEdit;
     this.globalSId = globalSId;
     this.mcpServerConfigurations = mcpServerConfigurations ?? [];
@@ -157,14 +136,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
 
     return new this(this.model, skillConfiguration.get());
-  }
-
-  static async fetchWithAuthor(
-    auth: Authenticator
-  ): Promise<SkillConfigurationResourceWithAuthor[]> {
-    return this.baseFetch(auth, {
-      includes: [{ model: UserModel, as: "author", required: true }],
-    });
   }
 
   static async fetchByModelIdWithAuth(
@@ -266,18 +237,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  private static async baseFetch<T extends Model, S extends string>(
-    auth: Authenticator,
-    options: SkillConfigurationFindOptions & {
-      includes: [{ model: ModelStatic<T>; as: S; required: true }];
-    }
-  ): Promise<(SkillConfigurationResource & { [K in S]: Attributes<T> })[]>;
-
-  private static async baseFetch(
-    auth: Authenticator,
-    options?: SkillConfigurationFindOptions
-  ): Promise<SkillConfigurationResource[]>;
-
   private static async baseFetch(
     auth: Authenticator,
     options: SkillConfigurationFindOptions = {}
@@ -376,7 +335,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       customSkillConfigurationsRes = customSkillConfigurations.map(
         (c) =>
           new this(this.model, c.get(), {
-            author: c.author?.get(),
             canEdit: canEditMap.get(c.id) ?? false,
             mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
           })
@@ -432,6 +390,43 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       },
       ...(limit ? { limit } : {}),
     });
+  }
+
+  // TODO(skills 2025-12-10): Add support for global skills
+  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch agent-skill links for this skill
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        customSkillId: this.id,
+      },
+    });
+
+    if (agentSkills.length === 0) {
+      return { count: 0, agents: [] };
+    }
+
+    const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
+
+    // Fetch related active agent configurations
+    const agents = await AgentConfigurationModel.findAll({
+      where: {
+        id: { [Op.in]: agentConfigIds },
+        workspaceId: workspace.id,
+        status: "active",
+      },
+    });
+
+    const sortedAgents = agents
+      .map((agent) => ({ sId: agent.sId, name: agent.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      count: sortedAgents.length,
+      agents: sortedAgents,
+    };
   }
 
   async archive(
@@ -626,47 +621,17 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
         version: def.version,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      { author: GLOBAL_DUST_AUTHOR, globalSId: def.sId }
+      { globalSId: def.sId }
     );
   }
 
-  toJSON(
-    this: SkillConfigurationResourceWithAuthor
-  ): SkillConfigurationWithAuthorType;
-  toJSON(this: SkillConfigurationResource): SkillConfigurationType;
-  toJSON(): SkillConfigurationType | SkillConfigurationWithAuthorType {
+  toJSON(): SkillConfigurationType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
         id: config.mcpServerViewId,
         workspaceId: this.workspaceId,
       }),
     }));
-    if (this.author) {
-      return {
-        id: this.id,
-        sId: this.sId,
-        createdAt: this.createdAt.getTime(),
-        updatedAt: this.updatedAt.getTime(),
-        version: this.version,
-        status: this.status,
-        name: this.name,
-        description: this.description,
-        instructions: this.instructions,
-        requestedSpaceIds: this.requestedSpaceIds,
-        tools,
-        author: {
-          id: this.author.id,
-          sId: this.author.sId,
-          createdAt: this.author.createdAt.getTime(),
-          username: this.author.username,
-          fullName: formatUserFullName(this.author),
-          email: this.author.email,
-          firstName: this.author.firstName,
-          lastName: this.author.lastName,
-          image: this.author.imageUrl,
-        },
-      };
-    }
 
     return {
       id: this.id,
