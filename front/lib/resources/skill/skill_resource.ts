@@ -145,9 +145,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource> {
     // Use a transaction to ensure all creates succeed or all are rolled back.
     const skillResource = await withTransaction(async (transaction) => {
-      const skill = await this.model.create(blob, {
-        transaction,
-      });
+      const skill = await this.model.create(
+        {
+          ...blob,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        {
+          transaction,
+        }
+      );
 
       const editorGroup = await GroupResource.makeNewSkillEditorsGroup(
         auth,
