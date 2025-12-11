@@ -35,10 +35,7 @@ import type {
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMessageSkillSource } from "@app/types/agent_message_skills";
-import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
-} from "@app/types/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -320,27 +317,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
     });
   }
 
-  // Static method for fetching with relations (usage, etc.)
-  static async fetchWithRelations(
-    auth: Authenticator
-  ): Promise<SkillConfigurationResourceWithRelations[]> {
-    const resources = await this.baseFetch(auth, {});
-
-    if (resources.length === 0) {
-      return [];
-    }
-
-    // Fetch usage for each skill individually
-    const resourcesWithRelations = await Promise.all(
-      resources.map(async (resource) => {
-        const usage = await resource.fetchUsage(auth);
-        return new SkillConfigurationResourceWithRelations(resource, usage);
-      })
-    );
-
-    return resourcesWithRelations;
-  }
-
   // Fetch usage data for this skill
   // TODO(skills 2025-12-10): Add support for global skills
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
@@ -581,27 +557,6 @@ export class SkillConfigurationResource extends BaseResource<SkillConfigurationM
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
-    };
-  }
-}
-
-// Resource with relations - extends base and includes relations data that we don't want to include in the base resource
-// Not intended for direct instantiation
-class SkillConfigurationResourceWithRelations extends SkillConfigurationResource {
-  readonly usage: AgentsUsageType;
-
-  constructor(resource: SkillConfigurationResource, usage: AgentsUsageType) {
-    super(SkillConfigurationResourceWithRelations.model, resource, {
-      mcpServerConfigurations: resource.mcpServerConfigurations,
-      canEdit: resource.canEdit,
-    });
-    this.usage = usage;
-  }
-
-  override toJSON(): SkillConfigurationType & SkillConfigurationRelations {
-    return {
-      ...super.toJSON(),
-      usage: this.usage,
     };
   }
 }

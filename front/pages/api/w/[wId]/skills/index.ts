@@ -57,17 +57,25 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      if (withRelations === "true") {
-        const skillConfigurations =
-          await SkillConfigurationResource.fetchWithRelations(auth);
-
-        return res.status(200).json({
-          skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),
-        });
-      }
-
       const skillConfigurations =
         await SkillConfigurationResource.fetchAllAvailableSkills(auth);
+
+      if (withRelations === "true") {
+        // Fetch usage for each skill individually.
+        // Each skill is used by N agents and each agent uses on average n skills
+        // with N >> n, so the performance gain from batching is minimal.
+        // Starting simple with per-skill queries.
+        const usages = await Promise.all(
+          skillConfigurations.map((sc) => sc.fetchUsage(auth))
+        );
+
+        return res.status(200).json({
+          skillConfigurations: skillConfigurations.map((sc, index) => ({
+            ...sc.toJSON(),
+            usage: usages[index],
+          })),
+        });
+      }
 
       return res.status(200).json({
         skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),
