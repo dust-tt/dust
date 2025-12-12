@@ -22,6 +22,7 @@ export function contentNodeMentionDirective() {
         data.hProperties = {
           title: node.children[0].value,
           url: node.attributes.url,
+          nodeId: node.attributes.nodeId,
         };
       }
     });

@@ -55,6 +55,7 @@ export const DataSourceLinkExtension = Node.create({
         attrs: {
           title: match[1],
           url: match[2] && match[3] ? match[3] : "",
+          nodeId: match[4] && match[5] ? match[5] : "",
         },
       };
     },
@@ -66,11 +67,12 @@ export const DataSourceLinkExtension = Node.create({
       attrs: {
         title: token.attrs.title,
         url: token.attrs.url,
+        nodeId: token.attrs.nodeId,
       },
     };
   },
 
   renderMarkdown: (node) => {
-    return `:content_node_mention[${node.attrs?.title ?? ""}]`;
+    return `:content_node_mention[${node.attrs?.title ?? ""}]{nodeId=${node.attrs?.nodeId ?? ""}}`;
   },
 });
