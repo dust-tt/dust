@@ -2,9 +2,10 @@ import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 
 export const framesSkill = {
-  sId: "frames",
-  name: "Frames",
   description: "Create dashboards, presentations, or any interactive content.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
+  internalMCPServerName: "interactive_content",
+  name: "Frames",
+  sId: "frames",
   version: 1,
 } as const satisfies GlobalSkillDefinition;
