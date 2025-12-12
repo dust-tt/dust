@@ -1,5 +1,5 @@
-export const ConversationSkillSources = [
+export const ConversationSkillOrigins = [
   "agent_enabled",
   "conversation",
 ] as const;
-export type ConversationSkillSource = (typeof ConversationSkillSources)[number];
+export type ConversationSkillOrigin = (typeof ConversationSkillOrigins)[number];

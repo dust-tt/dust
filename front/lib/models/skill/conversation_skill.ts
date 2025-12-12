@@ -7,7 +7,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { ConversationSkillSource } from "@app/types/assistant/conversation_skills";
+import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 
 export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkillModel> {
   declare createdAt: CreationOptional<Date>;
@@ -24,7 +24,7 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 
-  declare source: ConversationSkillSource;
+  declare source: ConversationSkillOrigin;
   declare addedByUserId: ForeignKey<UserModel["id"]> | null;
 }
 

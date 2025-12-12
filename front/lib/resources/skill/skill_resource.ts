@@ -42,7 +42,7 @@ import type {
   UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
-import type { ConversationSkillSource } from "@app/types/assistant/conversation_skills";
+import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -601,7 +601,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       agentMessage: AgentMessageType;
       conversation: ConversationType;
-      source: ConversationSkillSource;
+      source: ConversationSkillOrigin;
     }
   ): Promise<Result<void, Error>> {
     const workspace = auth.getNonNullableWorkspace();
@@ -618,8 +618,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await AgentMessageSkillModel.create({
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
-      customSkillId: this.id,
-      globalSkillId: null,
+      customSkillId: this.isGlobal ? null : this.id,
+      globalSkillId: this.isGlobal ? this.globalSId : null,
       agentMessageId: agentMessage.agentMessageId,
       conversationId: conversation.id,
       source,
@@ -629,8 +629,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await ConversationSkillModel.create({
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
-      customSkillId: this.id,
-      globalSkillId: null,
+      customSkillId: this.isGlobal ? null : this.id,
+      globalSkillId: this.isGlobal ? this.globalSId : null,
       isActive: true,
       conversationId: conversation.id,
       source,
