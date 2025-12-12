@@ -13,7 +13,14 @@ export function SkillInfoTab({
       <div className="text-sm text-foreground dark:text-foreground-night">
         {skillConfiguration.description}
       </div>
-      <SkillEdited skillConfiguration={skillConfiguration} />
+      {skillConfiguration.updatedAt && (
+        <SkillEdited
+          skillConfiguration={{
+            ...skillConfiguration,
+            updatedAt: skillConfiguration.updatedAt,
+          }}
+        />
+      )}
 
       <Page.Separator />
 
@@ -30,7 +37,7 @@ export function SkillInfoTab({
 }
 
 interface SkillEditedProps {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillConfigurationType & { updatedAt: number };
 }
 
 export function SkillEdited({ skillConfiguration }: SkillEditedProps) {
