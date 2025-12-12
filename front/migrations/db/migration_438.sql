@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS "conversation_skills" (
     "createdAt" timestamp WITH time zone NOT NULL,
     "updatedAt" timestamp WITH time zone NOT NULL,
     "agentConfigurationId" bigint NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    "isActive" boolean NOT NULL DEFAULT TRUE,
     "customSkillId" bigint REFERENCES "skill_configurations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "globalSkillId" varchar(255),
     "conversationId" bigint NOT NULL REFERENCES "conversations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -14,5 +13,5 @@ CREATE TABLE IF NOT EXISTS "conversation_skills" (
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "conversation_skills_wid_cid_acid" ON "conversation_skills" ("workspaceId", "conversationId", "agentConfigurationId", "isActive");
+CREATE UNIQUE INDEX "conversation_skills_wid_cid_acid" ON "conversation_skills" ("workspaceId", "conversationId", "agentConfigurationId");
 CREATE INDEX "agent_message_skills_wid_cid_acid" ON "agent_message_skills" ("workspaceId", "conversationId", "agentConfigurationId");

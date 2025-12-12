@@ -16,8 +16,6 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
   declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
 
-  declare isActive: boolean;
-
   declare customSkill: NonAttribute<SkillConfigurationModel> | null;
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
@@ -43,11 +41,6 @@ ConversationSkillModel.init(
     agentConfigurationId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
     },
     customSkillId: {
       type: DataTypes.BIGINT,
@@ -75,12 +68,7 @@ ConversationSkillModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: [
-          "workspaceId",
-          "conversationId",
-          "agentConfigurationId",
-          "isActive",
-        ],
+        fields: ["workspaceId", "conversationId", "agentConfigurationId"],
         name: "conversation_skills_wid_cid_acid",
         unique: true,
       },
