@@ -21,7 +21,7 @@ import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -32,6 +32,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
@@ -49,17 +50,22 @@ import type {
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
 
+type SkillMCPServerAttributes = Omit<
+  Attributes<SkillMCPServerConfigurationModel>,
+  "id" | "skillConfigurationId"
+>;
+
 type SkillResourceConstructorOptions =
   | {
       // For global skills, there is no editor group.
       editorGroup?: undefined;
       globalSId: string;
-      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+      mcpServerConfigurations?: SkillMCPServerAttributes[];
     }
   | {
       editorGroup?: GroupResource;
       globalSId?: undefined;
-      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+      mcpServerConfigurations?: SkillMCPServerAttributes[];
     };
 
 type SkillVersionCreationAttributes =
@@ -123,7 +129,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly editorGroup: GroupResource | null = null;
-  readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
+  readonly mcpServerConfigurations: SkillMCPServerAttributes[];
 
   private readonly globalSId?: string;
 
@@ -285,9 +291,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return customSkillsRes;
     }
 
-    const globalSkills: SkillResource[] = GlobalSkillsRegistry.findAll(
-      where
-    ).map((def) => this.fromGlobalSkill(auth, def));
+    const globalSkillDefinitions = GlobalSkillsRegistry.findAll(where);
+    const globalSkills: SkillResource[] = [];
+
+    // Fetch global skills with their MCP server configurations.
+    await concurrentExecutor(
+      globalSkillDefinitions,
+      async (def) => {
+        const skill = await this.fromGlobalSkill(auth, def);
+        globalSkills.push(skill);
+      },
+      { concurrency: 5 }
+    );
 
     return [...customSkillsRes, ...globalSkills];
   }
@@ -315,23 +330,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     sId: string
   ): Promise<SkillResource | null> {
-    // Try global first.
-    const globalSkill = GlobalSkillsRegistry.getById(sId);
-    if (globalSkill) {
-      return this.fromGlobalSkill(auth, globalSkill);
-    }
+    const [skill] = await this.fetchByIds(auth, [sId]);
 
-    // Try as custom skill sId.
-    if (!isResourceSId("skill", sId)) {
-      return null;
-    }
-
-    const resourceId = getResourceIdFromSId(sId);
-    if (resourceId === null) {
-      return null;
-    }
-
-    return this.fetchByModelIdWithAuth(auth, resourceId);
+    return skill;
   }
 
   static async fetchByIds(
@@ -342,35 +343,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [];
     }
 
-    // Extract valid custom skill model IDs from sIds.
-    const customSkillIds = removeNulls(
-      sIds
-        .filter((sId) => isResourceSId("skill", sId))
-        .map((sId) => getResourceIdFromSId(sId))
+    // Separate custom skill IDs from global skill IDs.
+    const { customSkillIds, globalSkillIds } = sIds.reduce<{
+      customSkillIds: ModelId[];
+      globalSkillIds: string[];
+    }>(
+      (acc, sId) => {
+        if (isResourceSId("skill", sId)) {
+          const modelId = getResourceIdFromSId(sId);
+          if (modelId !== null) {
+            acc.customSkillIds.push(modelId);
+          }
+        } else {
+          acc.globalSkillIds.push(sId);
+        }
+        return acc;
+      },
+      { customSkillIds: [], globalSkillIds: [] }
     );
 
-    // Fetch custom skills in batch.
-    const customSkills =
-      customSkillIds.length > 0
-        ? await this.baseFetch(auth, {
-            where: {
-              id: customSkillIds,
-            },
-            onlyCustom: true,
-          })
-        : [];
-
-    // Find which sIds were not found as custom skills and fetch them from global skills.
-    const foundCustomSIds = new Set(customSkills.map((s) => s.sId));
-    const missingSIds = sIds.filter((sId) => !foundCustomSIds.has(sId));
-    const globalSkills = removeNulls(
-      missingSIds.map((sId) => {
-        const globalSkill = GlobalSkillsRegistry.getById(sId);
-        return globalSkill ? this.fromGlobalSkill(auth, globalSkill) : null;
-      })
-    );
-
-    return [...customSkills, ...globalSkills];
+    return this.baseFetch(auth, {
+      where: {
+        id: customSkillIds,
+        sId: globalSkillIds,
+      },
+    });
   }
 
   static async fetchActiveByName(
@@ -455,10 +452,41 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static fromGlobalSkill(
+  private static async fromGlobalSkill(
     auth: Authenticator,
     def: GlobalSkillDefinition
-  ): SkillResource {
+  ): Promise<SkillResource> {
+    // Fetch MCP server configurations if the global skill has an internal MCP server.
+    let mcpServerConfigurations: SkillMCPServerAttributes[] = [];
+
+    // TODO(SKILLS 2025-12-12): Consider doing on single call with all ids.
+    if (def.internalMCPServerNames) {
+      const mscs = await concurrentExecutor(
+        def.internalMCPServerNames,
+        async (name) => {
+          const mcpServerView =
+            await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+              auth,
+              name
+            );
+
+          if (mcpServerView) {
+            return {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              mcpServerViewId: mcpServerView.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          }
+
+          return null;
+        },
+        { concurrency: 5 }
+      );
+
+      mcpServerConfigurations = removeNulls(mscs);
+    }
+
     return new SkillResource(
       this.model,
       {
@@ -474,7 +502,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      { globalSId: def.sId }
+      { globalSId: def.sId, mcpServerConfigurations }
     );
   }
 

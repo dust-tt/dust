@@ -12,7 +12,7 @@
  * @returns Promise resolving to array of results in the same order as input items.
  */
 export async function concurrentExecutor<T, V>(
-  items: T[],
+  items: T[] | readonly T[],
   iterator: (item: T, idx: number) => Promise<V>,
   { concurrency = 8 }: { concurrency: number }
 ) {
