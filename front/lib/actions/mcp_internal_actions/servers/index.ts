@@ -56,6 +56,7 @@ import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/se
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
+import { default as triggerManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/trigger_management";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -217,6 +218,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
+    case "trigger_management":
+      return triggerManagementServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

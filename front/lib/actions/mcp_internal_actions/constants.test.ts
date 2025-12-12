@@ -60,6 +60,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "toolsets", id: 1013 },
       { name: "common_utilities", id: 1017 },
       { name: "skill_management", id: 1019 },
+      { name: "trigger_management", id: 1020 },
     ];
     expect(
       autoInternalTools,
