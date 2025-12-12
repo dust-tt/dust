@@ -146,11 +146,8 @@ export async function githubExtractToGcsActivity({
         );
 
         // Extract content-length from headers if available.
-        const headers = response.headers as Record<string, string | undefined>;
-        const contentLengthHeader = headers["content-length"];
-        const contentLength = contentLengthHeader
-          ? parseInt(contentLengthHeader, 10)
-          : null;
+        const headers = response.headers;
+        const contentLength = headers["content-length"] ?? null;
 
         logger.info(
           { contentLength },
@@ -159,10 +156,7 @@ export async function githubExtractToGcsActivity({
 
         return new Ok({
           stream: response.data as Readable,
-          contentLength:
-            contentLength !== null && !isNaN(contentLength)
-              ? contentLength
-              : null,
+          contentLength,
         });
       } catch (error) {
         if (isGithubRequestErrorNotFound(error)) {
