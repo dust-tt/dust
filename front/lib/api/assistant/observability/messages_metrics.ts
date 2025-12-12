@@ -84,6 +84,10 @@ export function buildMetricAggregates<K extends readonly MetricName[]>(
     aggregates.active_users = { cardinality: { field: "user_id" } };
   }
 
+  if (metrics.includes("costMicroUsd")) {
+    aggregates.cost_micro_usd = { sum: { field: "tokens.cost_micro_usd" } };
+  }
+
   if (metrics.includes("avgLatencyMs")) {
     aggregates.avg_latency_ms = { avg: { field: "latency_ms" } };
   }
@@ -128,6 +132,12 @@ export function parseMetricsFromBucket<K extends readonly MetricName[]>(
   if (metrics.includes("activeUsers")) {
     point.activeUsers = Math.round(
       bucket.active_users?.value ?? DEFAULT_METRIC_VALUE
+    );
+  }
+
+  if (metrics.includes("costMicroUsd")) {
+    point.costMicroUsd = Math.round(
+      bucket.cost_micro_usd?.value ?? DEFAULT_METRIC_VALUE
     );
   }
 
