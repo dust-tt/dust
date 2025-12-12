@@ -84,7 +84,25 @@ export const slackSearch = async (
       throw new Error(`HTTP ${resp.status}`);
     }
 
-    const data = (await resp.json()) as any;
+    type SlackSearchResponse = {
+      ok: boolean;
+      error?: string;
+      results: {
+        messages: Array<{
+          author_id?: string;
+          author_user_id?: string;
+          author_name?: string;
+          channel_id?: string;
+          channel_name?: string;
+          message_ts?: string;
+          content?: string;
+          permalink?: string;
+        }>;
+      };
+    };
+
+    const data: SlackSearchResponse =
+      (await resp.json()) as SlackSearchResponse;
     if (!data.ok) {
       // If invalid_action_token or other errors, throw to trigger fallback.
       throw new Error(data.error ?? "unknown_error");
@@ -92,7 +110,7 @@ export const slackSearch = async (
 
     // Transform API response to match SlackSearchMatch format.
     const rawMatches: SlackSearchMatch[] = (data.results.messages ?? []).map(
-      (msg: any) => ({
+      (msg) => ({
         author_id: msg.author_id ?? msg.author_user_id,
         author_name: msg.author_name,
         channel_id: msg.channel_id,
