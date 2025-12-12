@@ -484,7 +484,7 @@ export const InputBarAttachmentsPicker = ({
                 )
                 .map((item) => (
                   <KnowledgeNodeCheckboxItem
-                    key={`knowledge-${item.internalId}`}
+                    key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                     item={item}
                     owner={owner}
                     attachedNodes={attachedNodes}
@@ -501,7 +501,7 @@ export const InputBarAttachmentsPicker = ({
                   return isSelected
                     ? r.results.map((item) => (
                         <KnowledgeNodeCheckboxItem
-                          key={`knowledge-${item.internalId}`}
+                          key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                           item={item}
                           owner={owner}
                           attachedNodes={attachedNodes}
