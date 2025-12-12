@@ -2,9 +2,9 @@ import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  DEEP_DIVE_AVATAR_URL,
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
+  DUST_AVATAR_URL,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   getCompanyDataAction,
@@ -442,7 +442,7 @@ export function _getDeepDiveGlobalAgent(
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
-  const pictureUrl = DEEP_DIVE_AVATAR_URL;
+  const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
 
   const deepAgent: Omit<

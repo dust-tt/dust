@@ -9,6 +9,7 @@ import {
   makeUrlForEmojiAndBackground,
 } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { DUST_AVATAR_URL } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -49,7 +50,7 @@ function getAgentPictureUrl(
       backgroundColor
     );
   } else {
-    return "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+    return DUST_AVATAR_URL;
   }
 }
 

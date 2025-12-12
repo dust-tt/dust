@@ -9,7 +9,10 @@ import {
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
-import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  DEEP_DIVE_NAME,
+  DUST_AVATAR_URL,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   getCompanyDataAction,
   getCompanyDataWarehousesAction,
@@ -351,7 +354,7 @@ function _getDustLikeGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const description = "An agent with context on your company data.";
-  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+  const pictureUrl = DUST_AVATAR_URL;
 
   let isPreferredModel = false;
 

@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { DUST_AVATAR_URL } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
@@ -75,8 +76,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
             [
               {
                 name: "Dust",
-                visual:
-                  "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+                visual: DUST_AVATAR_URL,
               },
             ];
         return (
