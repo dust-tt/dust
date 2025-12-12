@@ -124,13 +124,15 @@ function CostMetricsTooltip(
   );
 }
 
+interface CostChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+}
+
 export function CostChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+}: CostChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const [view, setView] = useState<CostChartView>("total");
 
