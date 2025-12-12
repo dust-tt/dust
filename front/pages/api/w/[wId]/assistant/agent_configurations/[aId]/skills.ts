@@ -66,10 +66,7 @@ async function handler(
         });
       }
 
-      const skills = await SkillResource.listByAgentConfiguration(
-        auth,
-        agent
-      );
+      const skills = await SkillResource.listByAgentConfiguration(auth, agent);
 
       return res.status(200).json({
         skills: skills.map((s) => s.toJSON(auth)),
