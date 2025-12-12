@@ -23,47 +23,27 @@ import type {
   ModelConfigurationType,
   UserMessageType,
   WhitelistableFeature,
+  WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
-/**
- * Generation of the prompt for agents with multiple actions.
- *
- * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
- * the instructions, it can be replaced appropriately. The Extract action
- * doesn't need that replacement, and needs to avoid a dependency on
- * getAgentConfigurations here, so it passes null.
- */
-export function constructPromptMultiActions(
-  auth: Authenticator,
-  {
-    userMessage,
-    agentConfiguration,
-    fallbackPrompt,
-    model,
-    hasAvailableActions,
-    errorContext,
-    agentsList,
-    conversationId,
-    serverToolsAndInstructions,
-    featureFlags,
-  }: {
-    userMessage: UserMessageType;
-    agentConfiguration: AgentConfigurationType;
-    fallbackPrompt?: string;
-    model: ModelConfigurationType;
-    hasAvailableActions: boolean;
-    errorContext?: string;
-    agentsList: LightAgentConfigurationType[] | null;
-    conversationId?: string;
-    serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    featureFlags: WhitelistableFeature[];
-  }
-) {
+function constructContextSection({
+  userMessage,
+  agentConfiguration,
+  model,
+  conversationId,
+  owner,
+  errorContext,
+}: {
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+  model: ModelConfigurationType;
+  conversationId?: string;
+  owner: WorkspaceType | null;
+  errorContext?: string;
+}): string {
   const d = moment(new Date()).tz(userMessage.context.timezone);
-  const owner = auth.workspace();
 
-  // CONTEXT section
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
@@ -92,7 +72,20 @@ export function constructPromptMultiActions(
       "\n";
   }
 
-  // TOOLS section
+  return context;
+}
+
+function constructToolsSection({
+  hasAvailableActions,
+  model,
+  agentConfiguration,
+  serverToolsAndInstructions,
+}: {
+  hasAvailableActions: boolean;
+  model: ModelConfigurationType;
+  agentConfiguration: AgentConfigurationType;
+  serverToolsAndInstructions?: ServerToolsAndInstructions[];
+}): string {
   let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
@@ -149,7 +142,11 @@ export function constructPromptMultiActions(
 
   toolsSection += toolServersPrompt;
 
-  const attachmentsSection =
+  return toolsSection;
+}
+
+function constructAttachmentsSection(): string {
+  return (
     "# ATTACHMENTS\n" +
     "The conversation history may contain file attachments, indicated by <attachment> tags. " +
     "Attachments may originate from the user directly or from tool outputs. " +
@@ -158,15 +155,27 @@ export function constructPromptMultiActions(
     `// includable: content can be retrieved using \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`\n` +
     `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
     `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
-    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n";
+    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n"
+  );
+}
 
-  const pastedContentSection =
+function constructPastedContentSection(): string {
+  return (
     "# PASTED CONTENT\n" +
     "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
-    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n";
+    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n"
+  );
+}
 
-  // GUIDELINES section
+function constructGuidelinesSection({
+  agentConfiguration,
+  featureFlags,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  featureFlags: WhitelistableFeature[];
+}): string {
   let guidelinesSection = "# GUIDELINES\n";
+
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
       isMCPConfigurationWithDataSource(action) ||
@@ -208,7 +217,20 @@ export function constructPromptMultiActions(
       "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
   }
 
-  // INSTRUCTIONS section
+  return guidelinesSection;
+}
+
+function constructInstructionsSection({
+  agentConfiguration,
+  fallbackPrompt,
+  userMessage,
+  agentsList,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  fallbackPrompt?: string;
+  userMessage: UserMessageType;
+  agentsList: LightAgentConfigurationType[] | null;
+}): string {
   let instructions = "# INSTRUCTIONS\n\n";
 
   if (agentConfiguration.instructions) {
@@ -239,7 +261,72 @@ export function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${pastedContentSection}\n${guidelinesSection}\n${instructions}`;
+  return instructions;
+}
 
-  return prompt;
+/**
+ * Generation of the prompt for agents with multiple actions.
+ *
+ * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
+ * the instructions, it can be replaced appropriately. The Extract action
+ * doesn't need that replacement, and needs to avoid a dependency on
+ * getAgentConfigurations here, so it passes null.
+ */
+export function constructPromptMultiActions(
+  auth: Authenticator,
+  {
+    userMessage,
+    agentConfiguration,
+    fallbackPrompt,
+    model,
+    hasAvailableActions,
+    errorContext,
+    agentsList,
+    conversationId,
+    serverToolsAndInstructions,
+    featureFlags,
+  }: {
+    userMessage: UserMessageType;
+    agentConfiguration: AgentConfigurationType;
+    fallbackPrompt?: string;
+    model: ModelConfigurationType;
+    hasAvailableActions: boolean;
+    errorContext?: string;
+    agentsList: LightAgentConfigurationType[] | null;
+    conversationId?: string;
+    serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    featureFlags: WhitelistableFeature[];
+  }
+) {
+  const owner = auth.workspace();
+
+  // Construct each section of the prompt individually, then concatenate them.
+  return [
+    constructContextSection({
+      userMessage,
+      agentConfiguration,
+      model,
+      conversationId,
+      owner,
+      errorContext,
+    }),
+    constructToolsSection({
+      hasAvailableActions,
+      model,
+      agentConfiguration,
+      serverToolsAndInstructions,
+    }),
+    constructAttachmentsSection(),
+    constructPastedContentSection(),
+    constructGuidelinesSection({
+      agentConfiguration,
+      featureFlags,
+    }),
+    constructInstructionsSection({
+      agentConfiguration,
+      fallbackPrompt,
+      userMessage,
+      agentsList,
+    }),
+  ].join("\n");
 }
