@@ -188,6 +188,112 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return skillResource;
   }
 
+  private static async baseFetch(
+    auth: Authenticator,
+    options: SkillConfigurationFindOptions = {}
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const { where, includes, onlyCustom, ...otherOptions } = options;
+
+    const customSkills = await this.model.findAll({
+      ...otherOptions,
+      where: {
+        ...omit(where, "sId"),
+        workspaceId: workspace.id,
+      },
+      include: includes,
+    });
+
+    let customSkillsRes: SkillResource[] = [];
+    if (customSkills.length > 0) {
+      const mcpServerConfigurations =
+        await SkillMCPServerConfigurationModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: customSkills.map((c) => c.id),
+            },
+          },
+        });
+
+      const mcpServerConfigsBySkillId = new Map<
+        number,
+        Attributes<SkillMCPServerConfigurationModel>[]
+      >();
+      for (const config of mcpServerConfigurations) {
+        const existing = mcpServerConfigsBySkillId.get(
+          config.skillConfigurationId
+        );
+        if (existing) {
+          existing.push(config.get());
+        } else {
+          mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
+            config.get(),
+          ]);
+        }
+      }
+
+      // Fetch editor groups for all skills.
+      const skillEditorGroupsMap = new Map<number, GroupResource>();
+
+      // Batch fetch all editor groups for all skills.
+      const editorGroupSkills = await GroupSkillModel.findAll({
+        where: {
+          skillConfigurationId: {
+            [Op.in]: customSkills.map((s) => s.id),
+          },
+          workspaceId: workspace.id,
+        },
+        attributes: ["groupId", "skillConfigurationId"],
+      });
+
+      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
+
+      if (editorGroupSkills.length > 0) {
+        const uniqueGroupIds = Array.from(
+          new Set(editorGroupSkills.map((eg) => eg.groupId))
+        );
+        const editorGroups = await GroupResource.fetchByModelIds(
+          auth,
+          uniqueGroupIds
+        );
+
+        // Build map from skill ID to editor group.
+        for (const editorGroupSkill of editorGroupSkills) {
+          const group = editorGroups.find(
+            (g) => g.id === editorGroupSkill.groupId
+          );
+          if (group) {
+            skillEditorGroupsMap.set(
+              editorGroupSkill.skillConfigurationId,
+              group
+            );
+          }
+        }
+      }
+
+      customSkillsRes = customSkills.map(
+        (c) =>
+          new this(this.model, c.get(), {
+            mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
+            editorGroup: skillEditorGroupsMap.get(c.id),
+          })
+      );
+    }
+
+    // Only include global skills if onlyCustom is not true.
+    if (onlyCustom === true) {
+      return customSkillsRes;
+    }
+
+    const globalSkills: SkillResource[] = GlobalSkillsRegistry.findAll(
+      where
+    ).map((def) => this.fromGlobalSkill(auth, def));
+
+    return [...customSkillsRes, ...globalSkills];
+  }
+
   static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
@@ -351,112 +457,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static async baseFetch(
-    auth: Authenticator,
-    options: SkillConfigurationFindOptions = {}
-  ): Promise<SkillResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const { where, includes, onlyCustom, ...otherOptions } = options;
-
-    const customSkills = await this.model.findAll({
-      ...otherOptions,
-      where: {
-        ...omit(where, "sId"),
-        workspaceId: workspace.id,
-      },
-      include: includes,
-    });
-
-    let customSkillsRes: SkillResource[] = [];
-    if (customSkills.length > 0) {
-      const mcpServerConfigurations =
-        await SkillMCPServerConfigurationModel.findAll({
-          where: {
-            workspaceId: workspace.id,
-            skillConfigurationId: {
-              [Op.in]: customSkills.map((c) => c.id),
-            },
-          },
-        });
-
-      const mcpServerConfigsBySkillId = new Map<
-        number,
-        Attributes<SkillMCPServerConfigurationModel>[]
-      >();
-      for (const config of mcpServerConfigurations) {
-        const existing = mcpServerConfigsBySkillId.get(
-          config.skillConfigurationId
-        );
-        if (existing) {
-          existing.push(config.get());
-        } else {
-          mcpServerConfigsBySkillId.set(config.skillConfigurationId, [
-            config.get(),
-          ]);
-        }
-      }
-
-      // Fetch editor groups for all skills.
-      const skillEditorGroupsMap = new Map<number, GroupResource>();
-
-      // Batch fetch all editor groups for all skills.
-      const editorGroupSkills = await GroupSkillModel.findAll({
-        where: {
-          skillConfigurationId: {
-            [Op.in]: customSkills.map((s) => s.id),
-          },
-          workspaceId: workspace.id,
-        },
-        attributes: ["groupId", "skillConfigurationId"],
-      });
-
-      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
-
-      if (editorGroupSkills.length > 0) {
-        const uniqueGroupIds = Array.from(
-          new Set(editorGroupSkills.map((eg) => eg.groupId))
-        );
-        const editorGroups = await GroupResource.fetchByModelIds(
-          auth,
-          uniqueGroupIds
-        );
-
-        // Build map from skill ID to editor group.
-        for (const editorGroupSkill of editorGroupSkills) {
-          const group = editorGroups.find(
-            (g) => g.id === editorGroupSkill.groupId
-          );
-          if (group) {
-            skillEditorGroupsMap.set(
-              editorGroupSkill.skillConfigurationId,
-              group
-            );
-          }
-        }
-      }
-
-      customSkillsRes = customSkills.map(
-        (c) =>
-          new this(this.model, c.get(), {
-            mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
-            editorGroup: skillEditorGroupsMap.get(c.id),
-          })
-      );
-    }
-
-    // Only include global skills if onlyCustom is not true.
-    if (onlyCustom === true) {
-      return customSkillsRes;
-    }
-
-    const globalSkills: SkillResource[] = GlobalSkillsRegistry.findAll(
-      where
-    ).map((def) => this.fromGlobalSkill(auth, def));
-
-    return [...customSkillsRes, ...globalSkills];
-  }
-
   private static fromGlobalSkill(
     auth: Authenticator,
     def: GlobalSkillDefinition
@@ -529,8 +529,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async listEditors(auth: Authenticator): Promise<UserType[]> {
-    // Global skills are authored by Dust
-    if (this.isGlobal) {
+    // If we don't have an editor group, we must be a global skill with no editors.
+    if (!this.editorGroup) {
       return [GLOBAL_DUST_AUTHOR];
     }
 
@@ -577,7 +577,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
-    // Save the current version before updating
+    // Save the current version before updating.
     await this.saveVersion(auth, { transaction });
 
     await this.update(
@@ -634,7 +634,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Partial<Attributes<SkillConfigurationModel>>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    if (this.isGlobal) {
+    // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
+    if (!this.globalSId) {
       throw new Error("Cannot update a global skill configuration.");
     }
 
@@ -645,8 +646,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined | number, Error>> {
-    if (this.isGlobal) {
-      return new Err(new Error("Cannot delete a global skill configuration."));
+    if (!this.canWrite(auth)) {
+      return new Err(
+        new Error("User does not have permission to delete this skill.")
+      );
     }
 
     try {
