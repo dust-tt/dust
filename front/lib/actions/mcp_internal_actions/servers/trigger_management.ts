@@ -431,16 +431,18 @@ function createServer(
           };
         }
 
-        const updateResult = await TriggerResource.updateFields(
-          auth,
-          triggerId,
-          {
-            name,
-            enabled,
-            schedule: scheduleUpdate,
-            customPrompt: prompt,
-          }
-        );
+        const updateResult = await TriggerResource.update(auth, triggerId, {
+          name,
+          enabled,
+          customPrompt: prompt,
+          ...(scheduleUpdate && {
+            configuration: {
+              cron: scheduleUpdate.cron,
+              timezone: scheduleUpdate.timezone,
+            },
+            naturalLanguageDescription: scheduleUpdate.naturalLanguage,
+          }),
+        });
 
         if (updateResult.isErr()) {
           return new Err(
