@@ -190,7 +190,7 @@ export function CostChart({
   return (
     <ChartContainer
       title="Cost"
-      description="Daily spend across all messages."
+      description="Daily spend across all messages, plus average and p95 cost per message."
       isLoading={isCostMetricsLoading}
       errorMessage={
         isCostMetricsError ? "Failed to load cost data." : undefined
