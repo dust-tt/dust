@@ -25,6 +25,7 @@ import {
   O1_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 type AgentMetadata = {
   sId: string;
@@ -262,7 +263,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         name: "dust-edge",
         description:
           "Same as dust but on another model to experiment internally.",
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_QUICK:
       return {
@@ -270,28 +271,28 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         name: "dust-quick",
         description:
           "Same as dust but running Gemini 3 with minimal reasoning for faster responses.",
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_OAI:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_OAI,
         name: "dust-oai",
         description: "Same as dust but running OpenAI models.",
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST:
       return {
         sId: GLOBAL_AGENTS_SID.DUST,
         name: "dust",
         description: "An agent with context on your company data.",
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       return {
         sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
         name: DEEP_DIVE_NAME,
         description: DEEP_DIVE_DESC,
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_TASK:
       return {

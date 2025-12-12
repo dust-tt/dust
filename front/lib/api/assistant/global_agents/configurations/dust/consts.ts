@@ -4,9 +4,6 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 export const DEEP_DIVE_NAME = "deep-dive";
 export const DEEP_DIVE_DESC =
   "Conducts comprehensive, in-depth analysis across all company data, databases, and web sources—thorough investigation that may take several minutes.";
-export const DEEP_DIVE_AVATAR_URL =
-  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-
 export const DEEP_DIVE_SERVER_INSTRUCTIONS = `\
 ## HANDOFF TO THE ${DEEP_DIVE_NAME} AGENT
 
