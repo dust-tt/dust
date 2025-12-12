@@ -670,6 +670,56 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+    });
+
+    // Extract custom skill IDs and convert to sIds.
+    const customSkillSIds = removeNulls(
+      conversationSkills.map((cs) =>
+        cs.customSkillId
+          ? SkillResource.modelIdToSId({
+              id: cs.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null
+      )
+    );
+
+    // Extract global skill IDs (already strings).
+    const globalSkillSIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
+    );
+
+    const allSkillSIds = [...customSkillSIds, ...globalSkillSIds];
+
+    if (allSkillSIds.length === 0) {
+      return [];
+    }
+
+    return SkillResource.fetchByIds(auth, allSkillSIds);
+  }
+
   private static fromGlobalSkill(
     auth: Authenticator,
     def: GlobalSkillDefinition

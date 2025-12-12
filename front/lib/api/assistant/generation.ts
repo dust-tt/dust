@@ -26,6 +26,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 function constructContextSection({
   userMessage,
@@ -143,6 +144,43 @@ function constructToolsSection({
   toolsSection += toolServersPrompt;
 
   return toolsSection;
+}
+
+function constructSkillsSection({
+  enabledSkills,
+  equippedSkills,
+}: {
+  enabledSkills?: SkillConfigurationType[];
+  equippedSkills?: SkillConfigurationType[];
+}): string {
+  let skillsSection = "";
+
+  // Enabled skills - inject their full instructions
+  if (enabledSkills && enabledSkills.length > 0) {
+    skillsSection += "\n## SKILLS\n";
+    skillsSection += "\n### ENABLED SKILLS\n";
+    skillsSection +=
+      "The following skills are currently enabled and their instructions apply to this conversation:\n";
+    for (const { name, instructions } of enabledSkills) {
+      skillsSection += `<${name}>\n${instructions}\n</${name}>\n`;
+    }
+  }
+
+  // Equipped but not yet enabled skills - show name, sId and description only
+  if (equippedSkills && equippedSkills.length > 0) {
+    skillsSection += "\n### AVAILABLE SKILLS\n";
+    skillsSection +=
+      "The following skills are available but not currently enabled:\nYou can enable them with the enable_skill tool.\n";
+    const skillList = equippedSkills
+      .map(
+        ({ name, sId, description }) =>
+          `- **${name}** (id: ${sId}): ${description}`
+      )
+      .join("\n");
+    skillsSection += skillList + "\n";
+  }
+
+  return skillsSection;
 }
 
 function constructAttachmentsSection(): string {
@@ -284,6 +322,8 @@ export function constructPromptMultiActions(
     agentsList,
     conversationId,
     serverToolsAndInstructions,
+    enabledSkills,
+    equippedSkills,
     featureFlags,
   }: {
     userMessage: UserMessageType;
@@ -295,6 +335,8 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    enabledSkills?: SkillConfigurationType[];
+    equippedSkills?: SkillConfigurationType[];
     featureFlags: WhitelistableFeature[];
   }
 ) {
@@ -315,6 +357,10 @@ export function constructPromptMultiActions(
       model,
       agentConfiguration,
       serverToolsAndInstructions,
+    }),
+    constructSkillsSection({
+      enabledSkills,
+      equippedSkills,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),

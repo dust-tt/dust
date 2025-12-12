@@ -44,6 +44,7 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
 const MAX_AUTO_RETRY = 3;
 
@@ -194,6 +195,24 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
+  // Fetch enabled skills (skills activated for this conversation/message)
+  const enabledSkills = await SkillResource.listEnabledForConversation(auth, {
+    agentConfiguration,
+    conversation,
+  });
+
+  // Fetch all skills equipped to this agent (configured in the agent builder)
+  const allAgentSkills = await SkillResource.fetchByAgentConfigurationId(
+    auth,
+    agentConfiguration.id
+  );
+
+  // Equipped skills = agent skills that are not yet enabled
+  const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+  const equippedSkills = allAgentSkills.filter(
+    (s) => !enabledSkillIds.has(s.sId)
+  );
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
@@ -252,6 +271,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
+    enabledSkills: enabledSkills.map((s) => s.toJSON()),
+    equippedSkills: equippedSkills.map((s) => s.toJSON()),
     featureFlags,
   });
 
