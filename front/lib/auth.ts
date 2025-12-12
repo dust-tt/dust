@@ -68,7 +68,7 @@ export const isOAuthToken = (token: string): boolean => {
 };
 
 export interface AuthenticatorType {
-  authMethod?: AuthMethodType;
+  authMethod: AuthMethodType;
   workspaceId: string;
   userId: string | null;
   role: RoleType;
@@ -91,7 +91,7 @@ export class Authenticator {
   _user: UserResource | null;
   _groups: GroupResource[];
   _workspace: WorkspaceResource | null;
-  _authMethod?: AuthMethodType;
+  _authMethod: AuthMethodType;
 
   // Should only be called from the static methods below.
   constructor({
@@ -107,7 +107,7 @@ export class Authenticator {
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
-    authMethod?: AuthMethodType;
+    authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
   }) {
@@ -697,7 +697,7 @@ export class Authenticator {
     return !!this._key;
   }
 
-  authMethod(): AuthMethodType | undefined {
+  authMethod(): AuthMethodType {
     return this._authMethod;
   }
 

@@ -67,6 +67,7 @@ import type {
   ModelId,
   Result,
   UserMessageContext,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types";
 import {
@@ -83,6 +84,28 @@ import {
   removeNulls,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+
+const ALLOWED_API_KEY_ORIGINS: UserMessageOrigin[] = [
+  "api",
+  "excel",
+  "github-copilot-chat", // TODO: find out how it's used
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "zapier",
+  "zendesk",
+];
+
+const ALLOWED_OAUTH_ORIGINS: UserMessageOrigin[] = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "extension",
+  "github-copilot-chat", // TODO: find out how it's used
+  "raycast",
+  "teams",
+];
 
 /**
  * Conversation Creation, update and deletion
@@ -373,6 +396,45 @@ export function getRelatedContentFragments(
   return relatedContentFragments;
 }
 
+export function validateUserMessageContext(
+  auth: Authenticator,
+  context: UserMessageContext
+): Result<void, APIErrorWithStatusCode> {
+  const authMethod = auth.authMethod();
+  switch (authMethod) {
+    case "api_key":
+      if (!ALLOWED_API_KEY_ORIGINS.includes(context.origin)) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The origin is not allowed for API key usage.",
+          },
+        });
+      }
+      break;
+    case "oauth":
+      if (!ALLOWED_OAUTH_ORIGINS.includes(context.origin)) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The origin is not allowed for OAuth usage.",
+          },
+        });
+      }
+      break;
+    case "session":
+    case "internal":
+    case "system_api_key":
+      break;
+    default:
+      assertNever(authMethod);
+  }
+
+  return new Ok(undefined);
+}
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -402,6 +464,14 @@ export async function postUserMessage(
     APIErrorWithStatusCode
   >
 > {
+  const validateUserMessageContextRes = validateUserMessageContext(
+    auth,
+    context
+  );
+  if (validateUserMessageContextRes.isErr()) {
+    return validateUserMessageContextRes;
+  }
+
   const user = auth.user();
   const owner = auth.workspace();
   const subscription = auth.subscription();

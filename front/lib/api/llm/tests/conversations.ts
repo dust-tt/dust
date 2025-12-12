@@ -33,6 +33,7 @@ function createMockAuthenticator(): Authenticator {
     role: "none",
     groups: [],
     subscription: null,
+    authMethod: "internal",
   });
 }
 
