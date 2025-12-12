@@ -125,7 +125,7 @@ export const suggestionsOfMentions = async (
       const { users } = res.value;
 
       userSuggestions = users
-        .filter((u) => u.sId !== currentUserSId)
+        // .filter((u) => u.sId !== currentUserSId)
         .map((u) => toRichUserMentionType(u.toJSON()));
     }
   }
