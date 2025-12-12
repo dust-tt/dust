@@ -23,6 +23,7 @@ import type {
 } from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
+  PostSpaceRequestBodyType,
   PostSpacesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces";
 import type {
@@ -32,6 +33,7 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
 import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
@@ -380,27 +382,6 @@ export function useDeleteFolderOrWebsite({
   return doDelete;
 }
 
-type DoCreateOrUpdateAllowedParams =
-  | {
-      name: string | null;
-      isRestricted: boolean;
-      managementMode?: never;
-    }
-  | {
-      name: string | null;
-      memberIds: string[];
-      groupIds?: never;
-      isRestricted: true;
-      managementMode: "manual";
-    }
-  | {
-      name: string | null;
-      memberIds?: never;
-      groupIds: string[];
-      isRestricted: true;
-      managementMode: "group";
-    };
-
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
@@ -412,8 +393,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
+  const doCreate = async (params: PostSpaceRequestBodyType) => {
     const { name, managementMode, isRestricted } = params;
+
     if (!name) {
       return null;
     }
@@ -421,14 +403,11 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     const url = `/api/w/${owner.sId}/spaces`;
     let res;
 
-    if (managementMode) {
-      const { memberIds, groupIds } = params;
+    if (managementMode === "manual") {
+      const { memberIds } = params;
 
-      // Must have either memberIds or groupIds for restricted spaces
-      if (
-        (!memberIds || memberIds.length < 1) &&
-        (!groupIds || groupIds.length < 1)
-      ) {
+      // Must have memberIds for manual management mode
+      if (isRestricted && (!memberIds || memberIds.length < 1)) {
         return null;
       }
 
@@ -440,12 +419,18 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           name,
           memberIds,
-          groupIds,
           managementMode,
           isRestricted,
         }),
       });
-    } else {
+    } else if (managementMode === "group") {
+      const { groupIds } = params;
+
+      // Must have groupIds for group management mode
+      if (isRestricted && (!groupIds || groupIds.length < 1)) {
+        return null;
+      }
+
       res = await clientFetch(url, {
         method: "POST",
         headers: {
@@ -454,8 +439,12 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           name,
           isRestricted,
+          groupIds,
+          managementMode,
         }),
       });
+    } else {
+      return null;
     }
 
     if (!res.ok) {
@@ -498,7 +487,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     space: SpaceType,
-    params: DoCreateOrUpdateAllowedParams
+    params: PatchSpaceMembersRequestBodyType
   ) => {
     const { name: newName, managementMode, isRestricted } = params;
 
@@ -508,8 +497,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     if (newName) {
       const spaceUrl = `/api/w/${owner.sId}/spaces/${space.sId}`;
       updatePromises.push(
-        // eslint-disable-next-line no-restricted-globals
-        fetch(spaceUrl, {
+        clientFetch(spaceUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -523,51 +511,33 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
 
-    if (isRestricted) {
-      // Restricted space: send full membership payload
-      if (managementMode === "manual") {
-        updatePromises.push(
-          // eslint-disable-next-line no-restricted-globals
-          fetch(spaceMembersUrl, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              isRestricted: true,
-              managementMode,
-              memberIds: params.memberIds,
-            }),
-          })
-        );
-      } else if (managementMode === "group") {
-        updatePromises.push(
-          // eslint-disable-next-line no-restricted-globals
-          fetch(spaceMembersUrl, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              isRestricted: true,
-              managementMode,
-              groupIds: params.groupIds,
-            }),
-          })
-        );
-      }
-    } else {
-      // Unrestricted space: only send isRestricted flag, no
-      // members/groups needed.
+    if (managementMode === "manual") {
       updatePromises.push(
-        // eslint-disable-next-line no-restricted-globals
-        fetch(spaceMembersUrl, {
+        clientFetch(spaceMembersUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            isRestricted: false,
+            name: newName,
+            isRestricted,
+            managementMode,
+            memberIds: params.memberIds,
+          }),
+        })
+      );
+    } else if (managementMode === "group") {
+      updatePromises.push(
+        clientFetch(spaceMembersUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: newName,
+            isRestricted,
+            managementMode,
+            groupIds: params.groupIds,
           }),
         })
       );
