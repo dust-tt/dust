@@ -30,6 +30,13 @@ export type PostSkillConfigurationResponseBody = {
   skillConfiguration: SkillConfigurationType;
 };
 
+// Schema for GET status query parameter
+const SkillStatusSchema = t.union([
+  t.literal("active"),
+  t.literal("archived"),
+  t.undefined,
+]);
+
 // Request body schema for POST
 const PostSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
@@ -82,10 +89,23 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations } = req.query;
+      const { withRelations, status } = req.query;
 
-      const skillConfigurations =
-        await SkillResource.fetchAllAvailableSkills(auth);
+      const statusValidation = SkillStatusSchema.decode(status);
+      if (isLeft(statusValidation)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid status: ${status}. Expected "active" or "archived".`,
+          },
+        });
+      }
+      const skillStatus = statusValidation.right;
+
+      const skillConfigurations = await SkillResource.listSkills(auth, {
+        status: skillStatus,
+      });
 
       if (withRelations === "true") {
         const skillConfigurationsWithRelations = await concurrentExecutor(

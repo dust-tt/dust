@@ -16,7 +16,10 @@ import type {
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationType,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration";
 
 export function useSkillConfigurations({
   owner,
@@ -45,15 +48,17 @@ export function useSkillConfigurations({
 export function useSkillConfigurationsWithRelations({
   owner,
   disabled,
+  status,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
+  status: SkillStatus;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
     fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills?withRelations=true`,
+    `/api/w/${owner.sId}/skills?withRelations=true&status=${status}`,
     skillConfigurationsFetcher,
     { disabled }
   );

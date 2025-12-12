@@ -1,5 +1,6 @@
 import {
   Avatar,
+  ContentMessage,
   InformationCircleIcon,
   Sheet,
   SheetContainer,
@@ -125,12 +126,23 @@ const DescriptionSection = ({
 }: DescriptionSectionProps) => (
   <div className="flex flex-col gap-5">
     <div className="flex flex-col gap-3 sm:flex-row">
-      <Avatar name="Agent avatar" visual={<SKILL_ICON />} size="lg" />
+      <Avatar name="Skill avatar" visual={<SKILL_ICON />} size="lg" />
       <div className="flex grow flex-col gap-1">
         <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
           {skillConfiguration.name}
         </div>
       </div>
     </div>
+
+    {skillConfiguration.status === "archived" && (
+      <ContentMessage
+        title="This skill has been archived."
+        variant="warning"
+        icon={InformationCircleIcon}
+        size="sm"
+      >
+        It is no longer active and cannot be used.
+      </ContentMessage>
+    )}
   </div>
 );

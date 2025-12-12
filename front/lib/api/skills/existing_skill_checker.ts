@@ -109,10 +109,9 @@ export async function getSimilarSkills(
   }
 
   // Retrieve existing skills
-  const skills: SkillResource[] = await SkillResource.fetchAllAvailableSkills(
-    auth,
-    MAX_SKILLS_SENT_TO_LLM
-  );
+  const skills: SkillResource[] = await SkillResource.listSkills(auth, {
+    limit: MAX_SKILLS_SENT_TO_LLM,
+  });
   if (skills.length === MAX_SKILLS_SENT_TO_LLM) {
     logger.warn(
       { workspaceId: owner.sId },
