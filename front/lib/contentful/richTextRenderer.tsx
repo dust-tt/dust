@@ -9,8 +9,10 @@ import type {
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { isString } from "@app/types";
 
 function getYouTubeVideoId(text: string): string | null {
@@ -58,6 +60,106 @@ function getParagraphText(node: Block | Inline): string {
     }
   }
   return text;
+}
+
+interface ContentfulLightboxImageProps {
+  src: string;
+  alt: string;
+  title?: string | null;
+  width: number;
+  height: number;
+}
+
+function ContentfulLightboxImage({
+  src,
+  alt,
+  title,
+  width,
+  height,
+}: ContentfulLightboxImageProps) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  return (
+    <>
+      <figure className="my-8">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="block w-full max-w-3xl cursor-zoom-in"
+        >
+          <Image
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            loader={contentfulImageLoader}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+            className="h-auto w-full rounded-lg"
+            loading="lazy"
+          />
+        </button>
+        {title ? (
+          <figcaption className="mt-2 max-w-3xl text-sm text-muted-foreground">
+            {title}
+          </figcaption>
+        ) : null}
+      </figure>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setOpen(false)}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            aria-label="Close lightbox"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${src}?w=1920&fm=webp&q=85`}
+            alt={alt}
+            className="max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain animate-in zoom-in-95 duration-200"
+            onClick={() => setOpen(false)}
+          />
+        </div>
+      )}
+    </>
+  );
 }
 
 // Use our styling for the rich text renderer.
@@ -144,17 +246,16 @@ const renderOptions: Options = {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const { width, height } = details?.image || { width: 800, height: 400 };
 
+      const alt = title ?? description ?? "Image";
+
       return (
-        <figure className="my-8">
-          <Image
-            src={`https:${url}`}
-            alt={title ?? description ?? "Blog image"}
-            width={width}
-            height={height}
-            className="rounded-lg"
-            loading="lazy"
-          />
-        </figure>
+        <ContentfulLightboxImage
+          src={`https:${url}`}
+          alt={alt}
+          title={title ?? null}
+          width={width}
+          height={height}
+        />
       );
     },
     [INLINES.HYPERLINK]: (node, children) => {
