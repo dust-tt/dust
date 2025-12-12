@@ -230,6 +230,7 @@ export const AgentInputBar = ({
       )}
       <InputBar
         owner={context.owner}
+        user={context.user}
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
         conversationId={context.conversationId}

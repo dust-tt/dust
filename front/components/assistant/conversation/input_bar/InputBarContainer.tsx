@@ -20,6 +20,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
@@ -44,6 +45,7 @@ import type {
   LightAgentConfigurationType,
   RichAgentMention,
   RichMention,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -68,6 +70,7 @@ export interface InputBarContainerProps {
   allAgents: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
+  user: UserType | null;
   conversationId: string | null;
   selectedAgent: RichAgentMention | null;
   stickyMentions?: RichMention[];
@@ -88,6 +91,7 @@ const InputBarContainer = ({
   allAgents,
   onEnterKeyDown,
   owner,
+  user,
   conversationId,
   selectedAgent,
   stickyMentions,
@@ -106,6 +110,13 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
+
+  // Draft management for per-conversation input persistence.
+  const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
+    workspaceId: owner.sId,
+    userId: user?.sId ?? null,
+    conversationId,
+  });
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -269,8 +280,26 @@ const InputBarContainer = ({
     [editorRef, fileUploaderService, sendNotification]
   );
 
+  // Wrap onEnterKeyDown to clear draft when editor is cleared.
+  const wrappedOnEnterKeyDown: CustomEditorProps["onEnterKeyDown"] =
+    useCallback(
+      (isEmpty, markdownAndMentions, clearEditor, setLoading) => {
+        const wrappedClearEditor = () => {
+          clearEditor();
+          clearDraft();
+        };
+        onEnterKeyDown(
+          isEmpty,
+          markdownAndMentions,
+          wrappedClearEditor,
+          setLoading
+        );
+      },
+      [onEnterKeyDown, clearDraft]
+    );
+
   const { editor, editorService } = useCustomEditor({
-    onEnterKeyDown,
+    onEnterKeyDown: wrappedOnEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     owner,
@@ -376,6 +405,10 @@ const InputBarContainer = ({
   useEffect(() => {
     const handleUpdate = () => {
       setIsEmpty(editorService.isEmpty());
+
+      // Auto-save draft when content changes.
+      const { markdown } = editorService.getMarkdownAndMentions();
+      saveDraft(markdown);
     };
 
     if (editorRef.current) {
@@ -392,7 +425,7 @@ const InputBarContainer = ({
         editor.off("update", handleUpdate);
       }
     };
-  }, [editor, editorService]);
+  }, [editor, editorService, saveDraft]);
 
   const disableTextInput = isSubmitting || disableInput;
 
@@ -507,6 +540,22 @@ const InputBarContainer = ({
       queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
+
+  // Restore draft when switching conversations (including new conversations).
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const draft = getDraft();
+    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
+    if (draft && editorService.isEmpty()) {
+      // Schedule to avoid synchronous editor updates during React render/effects.
+      queueMicrotask(() => {
+        editorService.setContent(draft.text);
+      });
+    }
+  }, [conversationId, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,
@@ -719,6 +768,7 @@ const InputBarContainer = ({
                         editorService.setLoading(false);
                       }
                     }
+                    clearDraft();
                     onEnterKeyDown(
                       editorService.isEmpty(),
                       editorService.getMarkdownAndMentions(),
