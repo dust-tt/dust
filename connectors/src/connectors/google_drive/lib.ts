@@ -19,6 +19,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
+  deleteDataSourceTable,
   updateDataSourceDocumentParents,
   updateDataSourceTableParents,
   upsertDataSourceFolder,
@@ -28,6 +29,7 @@ import {
   GoogleDriveFoldersModel,
   GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
+import { getLoggerArgs } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ContentNodesViewType } from "@connectors/types";
@@ -129,6 +131,11 @@ export async function internalDeleteFile(
   connector: ConnectorResource,
   googleDriveFile: GoogleDriveFilesModel
 ) {
+  const loggerArgs = {
+    ...getLoggerArgs(connector),
+    fileId: googleDriveFile.driveFileId,
+  };
+
   if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
     await deleteSpreadsheet(connector, googleDriveFile);
   } else if (isGoogleDriveFolder(googleDriveFile)) {
@@ -136,12 +143,28 @@ export async function internalDeleteFile(
     await deleteDataSourceFolder({
       dataSourceConfig,
       folderId: googleDriveFile.dustFileId,
+      loggerArgs: {
+        ...loggerArgs,
+        folderId: getInternalId(googleDriveFile.dustFileId),
+      },
+    });
+  } else if (googleDriveFile.mimeType === "text/csv") {
+    // CSV files are upserted as tables, so we need to delete them as tables
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteDataSourceTable({
+      dataSourceConfig,
+      tableId: googleDriveFile.dustFileId,
+      loggerArgs: {
+        ...loggerArgs,
+        tableId: getInternalId(googleDriveFile.dustFileId),
+      },
     });
   } else {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceDocument(
       dataSourceConfig,
-      googleDriveFile.dustFileId
+      googleDriveFile.dustFileId,
+      { ...loggerArgs, documentId: getInternalId(googleDriveFile.dustFileId) }
     );
   }
 

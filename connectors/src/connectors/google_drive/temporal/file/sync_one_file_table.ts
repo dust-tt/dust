@@ -31,7 +31,8 @@ export async function syncOneFileTable(
       oauth2client,
       connectorId,
       file,
-      startSyncTs
+      startSyncTs,
+      localLogger
     );
     if (!res.isSupported) {
       return false;
