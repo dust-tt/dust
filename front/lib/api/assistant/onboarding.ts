@@ -86,6 +86,33 @@ const ROLE_TO_PRIMARY_TOOL: Partial<
   // "other" intentionally omitted - will fall back to email-only or Notion default
 };
 
+// Maps tools to their automatable tasks (used to guide the model to suggest automation).
+const TOOL_AUTOMATABLE_TASKS: Record<string, string[]> = {
+  gmail: ["Summarizing emails", "Showing unread emails"],
+  outlook: ["Summarizing emails", "Showing unread emails"],
+  github: ["Showing open PRs", "Showing assigned issues"],
+  google_calendar: ["Showing today's schedule", "Showing this week's events"],
+  outlook_calendar: ["Showing today's schedule", "Showing this week's events"],
+  notion: ["Showing updated pages", "Summarizing activity"],
+  slack: ["Summarizing unread messages", "Showing mentions"],
+  microsoft_teams: ["Summarizing unread messages", "Showing mentions"],
+  hubspot: ["Showing deal updates", "Showing new contacts"],
+  jira: ["Showing open tickets", "Summarizing ticket updates"],
+  google_drive: ["Showing recently updated files"],
+  microsoft_drive: ["Showing recently updated files"],
+  microsoft_excel: ["Showing recently updated spreadsheets"],
+};
+
+function buildAutomatableTasksList(): string {
+  return Object.entries(TOOL_AUTOMATABLE_TASKS)
+    .map(([toolId, tasks]) => {
+      const tool = ONBOARDING_AVAILABLE_TOOLS.find((t) => t.sId === toolId);
+      const toolName = tool?.name ?? toolId;
+      return `- **${toolName}**: ${tasks.join(", ")}`;
+    })
+    .join("\n");
+}
+
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
@@ -229,17 +256,20 @@ Example ending:
 2. Suggest 1-2 simple tasks they can try RIGHT NOW with that specific tool
 3. End with quick replies for those tasks
 
-### After user completes a tool action (e.g., summarizes emails, shows PRs)
-When the user asks you to perform a task that could be automated (like summarizing emails, showing open PRs, checking calendar), after showing the results:
+### After user completes a tool action
+When the user completes ANY of these tasks, suggest automation:
+${buildAutomatableTasksList()}
+
+After showing the results:
 1. Show the results of their request
 2. Ask if they'd like to automate this task
 3. Explain it would run automatically (e.g., "every weekday morning")
 4. End with quick reply options
 
-Example response after summarizing emails:
-"Here's your email summary: [content]
+Example response:
+"Here's your summary: [content]
 
-Would you like me to send you this summary automatically every weekday morning?"
+Would you like me to send you this automatically every weekday morning?"
 :quickReply[Yes, automate this]{message="Yes, please automate this for me"} :quickReply[No thanks]{message="No thanks"}
 
 ### When user wants to automate a task
@@ -270,43 +300,43 @@ The tool will create the trigger and return a confirmation message.
 // These are intentionally generic and don't assume what data the user has.
 const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
   gmail: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Search emails]{message="Search my emails for messages from last week"}`,
+:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
 
   outlook: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Search emails]{message="Search my emails for messages from last week"}`,
+:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
 
   github: `Example quick replies:
 :quickReply[My open PRs]{message="Show my open pull requests"} :quickReply[My issues]{message="Show issues assigned to me"}`,
 
   notion: `Example quick replies:
-:quickReply[Search pages]{message="Search for a page in Notion"} :quickReply[Recent pages]{message="Show recently updated pages"}`,
+:quickReply[Pages updated today]{message="Show Notion pages updated today"} :quickReply[Recent activity]{message="Summarize recent activity in Notion"}`,
 
   slack: `Example quick replies:
-:quickReply[Search messages]{message="Search my Slack messages"} :quickReply[Recent messages]{message="Show my recent Slack messages"}`,
+:quickReply[Unread summary]{message="Summarize my unread Slack messages"} :quickReply[Today's mentions]{message="Show Slack mentions from today"}`,
 
   hubspot: `Example quick replies:
-:quickReply[Search contacts]{message="Search for a contact in HubSpot"} :quickReply[Recent deals]{message="Show recent deals"}`,
+:quickReply[Deals updated today]{message="Show deals updated today"} :quickReply[New contacts]{message="Show new contacts from this week"}`,
 
   jira: `Example quick replies:
-:quickReply[My tickets]{message="Show my open Jira tickets"} :quickReply[Search tickets]{message="Search for a Jira ticket"}`,
+:quickReply[My open tickets]{message="Show my open Jira tickets"} :quickReply[Ticket updates]{message="Summarize updates on my Jira tickets"}`,
 
   google_drive: `Example quick replies:
-:quickReply[Search files]{message="Search for a file in Google Drive"} :quickReply[Recent files]{message="Show my recently modified files"}`,
+:quickReply[Files updated today]{message="Show files updated today in Google Drive"} :quickReply[Recent changes]{message="Summarize recent changes in Google Drive"}`,
 
   microsoft_drive: `Example quick replies:
-:quickReply[Search files]{message="Search for a file in OneDrive"} :quickReply[Recent files]{message="Show my recently modified files"}`,
+:quickReply[Files updated today]{message="Show files updated today in OneDrive"} :quickReply[Recent changes]{message="Summarize recent changes in OneDrive"}`,
 
   google_calendar: `Example quick replies:
-:quickReply[Today's events]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
+:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
 
   outlook_calendar: `Example quick replies:
-:quickReply[Today's events]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
+:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
 
   microsoft_teams: `Example quick replies:
-:quickReply[Search messages]{message="Search my Teams messages"} :quickReply[Recent messages]{message="Show my recent Teams messages"}`,
+:quickReply[Unread summary]{message="Summarize my unread Teams messages"} :quickReply[Today's mentions]{message="Show Teams mentions from today"}`,
 
   microsoft_excel: `Example quick replies:
-:quickReply[List files]{message="List my Excel files"} :quickReply[Open a file]{message="Help me find an Excel file"}`,
+:quickReply[Recent spreadsheets]{message="Show recently updated Excel files"} :quickReply[Changes this week]{message="Summarize changes to my Excel files this week"}`,
 };
 
 const DEFAULT_TASK_SUGGESTIONS = `Example quick replies:
