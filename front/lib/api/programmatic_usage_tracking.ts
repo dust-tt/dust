@@ -324,7 +324,16 @@ async function initializeCredits(
   await redis.expire(key, secondsUntilEnd);
 }
 
-export function computeCreditAlertThresholdId(
+/**
+ * Returns a key used to construct a workflowId for credit alerts
+ * We use temporal's strong guarantees on idempotency - only one succeed workflow per workflow id
+ * How do we construct this key ?
+ * We "fingerprint" your pool of available credits by taking the ids of the most recent committed and free by credit started date
+ * Which means that when a new credit is started, the key will change, which means a new email will be triggered if consumption crosses 80% threshold.
+ * Otherwise, the key will be invariant.
+ *
+ **/
+export function computeCreditAlertThresholdKey(
   activeCredits: CreditResource[],
   thresholdPercent: number
 ): string {
@@ -411,7 +420,7 @@ export async function trackProgrammaticCost(
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
-      const creditAlertThresholdKey = computeCreditAlertThresholdId(
+      const creditAlertThresholdKey = computeCreditAlertThresholdKey(
         activeCredits,
         CREDIT_ALERT_THRESHOLD_PERCENT
       );
