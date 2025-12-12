@@ -41,8 +41,13 @@ export const usePaginationFromUrl = ({
     };
 
     return { pagination, setPagination };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, pageSize, urlPrefix]);
+  }, [
+    defaultHistory,
+    pageIndex,
+    pageSize,
+    setPageIndexParam,
+    setPageSizeParam,
+  ]);
 
   return res;
 };

@@ -276,8 +276,7 @@ export default function WorkspaceAssistants({
     if (searchBarRef.current) {
       searchBarRef.current.focus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchBarRef.current]);
+  }, []);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
