@@ -772,7 +772,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return {
       id: this.id,
       sId: this.sId,
-      createdAt: this.createdAt.getTime(),
+      createdAt: this.globalSId ? null : this.createdAt.getTime(),
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
       status: this.status,
       name: this.name,
