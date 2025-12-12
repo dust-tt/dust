@@ -1,13 +1,5 @@
 import {
   Button,
-  Chip,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,13 +7,19 @@ import {
   Input,
   Label,
   PlusIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
+import { prettifyGroupName } from "@app/components/workspace/api-keys/utils";
 import type { GroupType } from "@app/types";
 import { GLOBAL_SPACE_NAME } from "@app/types";
-
-import { prettifyGroupName } from "./utils";
 
 type NewAPIKeyDialogProps = {
   groups: GroupType[];
@@ -48,22 +46,33 @@ export const NewAPIKeyDialog = ({
     [groups]
   );
 
+  const handleClose = () => {
+    setNewApiKeyName("");
+    setNewApiKeyRestrictedGroup(null);
+  };
+
   return (
-    <Dialog modal={false}>
-      <DialogTrigger asChild>
+    <Sheet
+      onOpenChange={(open) => {
+        if (!open) {
+          handleClose();
+        }
+      }}
+    >
+      <SheetTrigger asChild>
         <Button
           label="Create API Key"
           icon={PlusIcon}
           disabled={isGenerating || isRevoking}
         />
-      </DialogTrigger>
-      <DialogContent size="md">
-        <DialogHeader>
-          <DialogTitle>New API Key</DialogTitle>
-        </DialogHeader>
-        <DialogContainer>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>New API Key</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
           <div className="space-y-4">
-            <div>
+            <div className="flex flex-col gap-2">
               <Label>API Key Name</Label>
               <Input
                 name="API Key"
@@ -72,7 +81,7 @@ export const NewAPIKeyDialog = ({
                 onChange={(e) => setNewApiKeyName(e.target.value)}
               />
             </div>
-            <div>
+            <div className="flex flex-col gap-2">
               <Label>Default Space</Label>
               <div>
                 <Button
@@ -84,54 +93,47 @@ export const NewAPIKeyDialog = ({
                 />
               </div>
             </div>
-            <div>
+            <div className="flex flex-col gap-2">
               <Label>Add optional additional Space</Label>
               <div>
-                {newApiKeyRestrictedGroup ? (
-                  <Chip
-                    label={prettifyGroupName(newApiKeyRestrictedGroup)}
-                    onRemove={() => setNewApiKeyRestrictedGroup(null)}
-                    size="sm"
-                  />
-                ) : (
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        label={
-                          newApiKeyRestrictedGroup
-                            ? prettifyGroupName(newApiKeyRestrictedGroup)
-                            : "Add a space"
-                        }
-                        size="sm"
-                        variant="outline"
-                        isSelect={newApiKeyRestrictedGroup === null}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {nonGlobalGroups
-                        .sort((a, b) =>
-                          prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase())
-                        )
-                        .map((group: GroupType) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
-                            onClick={() => setNewApiKeyRestrictedGroup(group)}
-                          />
-                        ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      label={
+                        newApiKeyRestrictedGroup
+                          ? prettifyGroupName(newApiKeyRestrictedGroup)
+                          : "Add a space"
+                      }
+                      size="sm"
+                      variant="outline"
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {nonGlobalGroups
+                      .sort((a, b) =>
+                        prettifyGroupName(a)
+                          .toLowerCase()
+                          .localeCompare(prettifyGroupName(b).toLowerCase())
+                      )
+                      .map((group: GroupType) => (
+                        <DropdownMenuItem
+                          key={group.id}
+                          label={prettifyGroupName(group)}
+                          onClick={() => setNewApiKeyRestrictedGroup(group)}
+                        />
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
-        </DialogContainer>
-        <DialogFooter
+        </SheetContainer>
+        <SheetFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
+            onClick: handleClose,
           }}
           rightButtonProps={{
             label: "Create",
@@ -141,12 +143,11 @@ export const NewAPIKeyDialog = ({
                 name: newApiKeyName,
                 group: newApiKeyRestrictedGroup,
               });
-              setNewApiKeyName("");
-              setNewApiKeyRestrictedGroup(null);
+              handleClose();
             },
           }}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };
