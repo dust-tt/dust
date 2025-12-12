@@ -16,6 +16,8 @@ import { assertNever, ConversationError } from "@app/types";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
+const CONVERSATION_CACHE_TTL_MS = 5000;
+
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
@@ -39,9 +41,15 @@ export async function runToolActivity(
   const auth = authResult.value;
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
+  // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
+  // during the same step. Each tool would otherwise fetch the same conversation independently.
   const runAgentDataRes = await getAgentLoopData(authType, {
     ...runAgentArgs,
-    step,
+    caching: {
+      useCachedGetConversation: true,
+      unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
+      ttlMs: CONVERSATION_CACHE_TTL_MS,
+    },
   });
   if (runAgentDataRes.isErr()) {
     // If the conversation is not found, we cannot run the tool and should stop execution here.
