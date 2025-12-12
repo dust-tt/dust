@@ -38,12 +38,8 @@ import type {
   ToolSearchServerResult,
 } from "@app/lib/search/tools/types";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
-import { useSearchToolFiles } from "@app/lib/swr/search";
-import {
-  useSpaces,
-  useSpacesSearchWithInfiniteScroll,
-} from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useUnifiedSearch } from "@app/lib/swr/search";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceType,
   DataSourceViewContentNode,
@@ -211,21 +207,26 @@ export const InputBarAttachmentsPicker = ({
     disabled: !isOpen,
   });
 
+  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
+
   const {
-    searchResultNodes,
+    knowledgeResults: searchResultNodes,
+    toolResults: toolFileResults,
     isSearchLoading,
+    isLoadingNextPage,
     isSearchValidating,
     hasMore,
     nextPage,
-  } = useSpacesSearchWithInfiniteScroll({
-    includeDataSources: true,
+  } = useUnifiedSearch({
     owner,
-    search: searchQuery,
-    viewType: "all",
+    query: searchQuery,
     pageSize: PAGE_SIZE,
     disabled: isSpacesLoading || !searchQuery,
-    spaceIds: spaces.map((s) => s.sId),
+    spaceIds,
+    viewType: "all",
+    includeDataSources: true,
     searchSourceUrls: true,
+    includeTools: true,
   });
 
   const spacesMap = useMemo(
@@ -282,37 +283,6 @@ export const InputBarAttachmentsPicker = ({
     }, {});
   }, [dataSourcesNodes]);
 
-  useEffect(() => {
-    const dataSources = Object.keys(dataSourcesWithResults);
-    if (dataSources.length > 0) {
-      setSelectedDataSourcesAndTools((prev) =>
-        dataSources.reduce<Record<string, boolean>>(
-          (acc, item) => ({
-            [item]: false,
-            ...acc,
-          }),
-          prev
-        )
-      );
-    }
-  }, [dataSourcesWithResults]);
-
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasUniversalSearch = hasFeature("universal_search");
-
-  const {
-    searchResults: toolFileResults,
-    isSearchLoading: isToolSearchLoading,
-    isSearchValidating: isToolSearchValidating,
-  } = useSearchToolFiles({
-    owner,
-    query: searchQuery,
-    pageSize: PAGE_SIZE,
-    disabled: !hasUniversalSearch || isSpacesLoading || !searchQuery || !isOpen,
-  });
-
   const serversWithResults = useMemo(
     () =>
       toolFileResults.reduce<
@@ -335,16 +305,28 @@ export const InputBarAttachmentsPicker = ({
     [toolFileResults]
   );
 
+  // Auto-select new datasources/tools as they appear
   useEffect(() => {
-    const tools = Object.keys(serversWithResults);
-    if (tools.length > 0) {
-      // Tool results comes one by one, just add the last one to the list as the others are already added
-      setSelectedDataSourcesAndTools((prev) => ({
-        [tools[tools.length - 1]]: false,
-        ...prev,
-      }));
+    const allKeys = [
+      ...Object.keys(dataSourcesWithResults),
+      ...Object.keys(serversWithResults),
+    ];
+    if (allKeys.length > 0) {
+      setSelectedDataSourcesAndTools((prev) => {
+        const updated = { ...prev };
+        let hasChanges = false;
+
+        allKeys.forEach((key) => {
+          if (!(key in updated)) {
+            updated[key] = false; // Auto-add as unselected (false = shown when allUnselected)
+            hasChanges = true;
+          }
+        });
+
+        return hasChanges ? updated : prev;
+      });
     }
-  }, [serversWithResults]);
+  }, [dataSourcesWithResults, serversWithResults]);
 
   const handleTagClick = (key: string) => {
     setSelectedDataSourcesAndTools((prev) => ({
@@ -366,11 +348,7 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const showLoader =
-    isSearchLoading ||
-    isSearchValidating ||
-    isToolSearchLoading ||
-    isToolSearchValidating ||
-    isDebouncing;
+    isSearchLoading ?? isLoadingNextPage ?? isSearchValidating ?? isDebouncing;
 
   const availableSources = [
     ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
