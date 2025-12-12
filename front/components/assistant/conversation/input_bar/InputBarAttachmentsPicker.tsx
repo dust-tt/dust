@@ -9,7 +9,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  FolderIcon,
   Icon,
   Input,
   MagnifyingGlassIcon,
@@ -373,17 +372,10 @@ export const InputBarAttachmentsPicker = ({
   const availableSources = [
     ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
       key,
-      icon: r.dataSource.connectorProvider
-        ? getConnectorProviderLogoWithFallback({
-            provider: r.dataSource.connectorProvider,
-            fallback: FolderIcon,
-          })
-        : FolderIcon,
       label: getDisplayNameForDataSource(r.dataSource, true),
     })),
     ...Object.entries(serversWithResults).map(([key, s]) => ({
       key,
-      icon: getIcon(s.server.serverIcon),
       label: asDisplayToolName(s.server.serverName),
     })),
   ];
@@ -463,7 +455,7 @@ export const InputBarAttachmentsPicker = ({
           <div ref={itemsContainerRef}>
             {availableSources.length > 1 && (
               <div className="flex flex-wrap gap-2 p-2">
-                {availableSources.map(({ key, icon, label }) => (
+                {availableSources.map(({ key, label }) => (
                   <Button
                     size="xs"
                     variant={
@@ -474,7 +466,6 @@ export const InputBarAttachmentsPicker = ({
                         ? "text-blue-500 hover:text-blue-500"
                         : ""
                     }
-                    icon={icon}
                     label={label}
                     onClick={() => handleTagClick(key)}
                   />
