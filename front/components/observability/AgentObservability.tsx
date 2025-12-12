@@ -9,6 +9,7 @@ import {
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import { CostChart } from "@app/components/agent_builder/observability/charts/CostChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
@@ -18,11 +19,20 @@ import { UsageMetricsChart } from "@app/components/agent_builder/observability/c
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import {
   useAgentAnalytics,
+  useAgentCostMetrics,
   useAgentObservabilitySummary,
+  useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+
+const USD_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 4,
+});
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -58,6 +68,60 @@ export function AgentObservability({
       days: period,
       disabled: !isTimeRangeMode,
     });
+
+  const { costMetrics, isCostMetricsLoading, isCostMetricsError } =
+    useAgentCostMetrics({
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      disabled: !workspaceId || !agentConfigurationId,
+    });
+
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  const filteredCostMetrics = useMemo(
+    () =>
+      filterTimeSeriesByVersionWindow(
+        costMetrics,
+        mode,
+        selectedVersion,
+        versionMarkers
+      ),
+    [costMetrics, mode, selectedVersion, versionMarkers]
+  );
+
+  const averageMessageCostUsd = useMemo(() => {
+    if (!filteredCostMetrics.length) {
+      return null;
+    }
+
+    const totals = filteredCostMetrics.reduce(
+      (acc, point) => {
+        acc.cost += point.costMicroUsd ?? 0;
+        acc.messages += point.count ?? 0;
+        return acc;
+      },
+      { cost: 0, messages: 0 }
+    );
+
+    if (totals.messages === 0) {
+      return null;
+    }
+
+    return totals.cost / totals.messages / 1_000_000;
+  }, [filteredCostMetrics]);
+
+  const averageMessageCostDisplay =
+    !isCostMetricsLoading &&
+    !isCostMetricsError &&
+    averageMessageCostUsd !== null
+      ? USD_FORMATTER.format(averageMessageCostUsd)
+      : "–";
 
   return (
     <TabContentLayout
@@ -155,6 +219,15 @@ export function AgentObservability({
               }
             />
             <ValueCard
+              title="Avg message cost"
+              className="h-24"
+              content={
+                <div className="flex flex-row gap-2 text-2xl">
+                  {averageMessageCostDisplay}
+                </div>
+              }
+            />
+            <ValueCard
               title="Reactions"
               className="h-24"
               content={
@@ -186,11 +259,6 @@ export function AgentObservability({
           agentConfigurationId={agentConfigurationId}
         />
         <Separator />
-        <CostChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-        />
-        <Separator />
         <SourceChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
@@ -202,6 +270,11 @@ export function AgentObservability({
         />
         <Separator />
         <LatencyChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+        />
+        <Separator />
+        <CostChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
         />

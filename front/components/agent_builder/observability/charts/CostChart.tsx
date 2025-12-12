@@ -58,22 +58,6 @@ function zeroFactory(timestamp: number): CostChartPoint {
   };
 }
 
-function formatUsd(value: number): string {
-  if (!Number.isFinite(value) || value === 0) {
-    return "$0";
-  }
-  if (Math.abs(value) >= 100) {
-    return `$${value.toFixed(0)}`;
-  }
-  if (Math.abs(value) >= 1) {
-    return `$${value.toFixed(2)}`;
-  }
-  if (Math.abs(value) >= 0.01) {
-    return `$${value.toFixed(2)}`;
-  }
-  return `$${value.toFixed(4)}`;
-}
-
 function isCostChartPoint(data: unknown): data is CostChartPoint {
   if (typeof data !== "object" || data === null) {
     return false;
@@ -85,6 +69,12 @@ function isCostChartPoint(data: unknown): data is CostChartPoint {
     "timestamp" in data
   );
 }
+
+const USD_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 4,
+});
 
 function CostMetricsTooltip(
   props: TooltipContentProps<number, string> & {
@@ -109,19 +99,19 @@ function CostMetricsTooltip(
       ? [
           {
             label: "Daily total",
-            value: formatUsd(row.totalCostUsd),
+            value: USD_FORMATTER.format(row.totalCostUsd),
             colorClassName: COST_TOTAL_PALETTE.total,
           },
         ]
       : [
           {
-            label: "Average cost",
-            value: formatUsd(row.avgCostUsd),
+            label: "Average",
+            value: USD_FORMATTER.format(row.avgCostUsd),
             colorClassName: COST_PER_MESSAGE_PALETTE.average,
           },
           {
-            label: "p95 cost",
-            value: formatUsd(row.p95CostUsd),
+            label: "Percentile 95",
+            value: USD_FORMATTER.format(row.p95CostUsd),
             colorClassName: COST_PER_MESSAGE_PALETTE.p95,
           },
         ];
@@ -260,7 +250,7 @@ export function CostChart({
           tickMargin={8}
           type="number"
           domain={[0, "auto"]}
-          tickFormatter={formatUsd}
+          tickFormatter={(value) => USD_FORMATTER.format(value ?? 0)}
           allowDecimals={true}
         />
         <Tooltip
