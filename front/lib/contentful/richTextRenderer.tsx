@@ -122,7 +122,7 @@ function ContentfulLightboxImage({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm duration-200 animate-in fade-in"
           role="dialog"
           aria-modal="true"
           onClick={() => setOpen(false)}
@@ -149,11 +149,10 @@ function ContentfulLightboxImage({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`${src}?w=1920&fm=webp&q=85`}
             alt={alt}
-            className="max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain animate-in zoom-in-95 duration-200"
+            className="max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain duration-200 animate-in zoom-in-95"
             onClick={() => setOpen(false)}
           />
         </div>
