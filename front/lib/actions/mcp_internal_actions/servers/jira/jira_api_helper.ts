@@ -85,6 +85,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 ): Promise<Result<z.infer<T>, JiraErrorResult>> {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       method: options.method || "GET",
@@ -1122,6 +1123,7 @@ export async function uploadAttachmentsToJira(
 
     const body = Buffer.concat(parts);
 
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `${baseUrl}/rest/api/2/issue/${issueKey}/attachments`,
       {
@@ -1213,6 +1215,7 @@ async function downloadAttachmentContent({
   try {
     const url = `${baseUrl}/rest/api/3/attachment/content/${attachmentId}`;
 
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(url, {
       method: "GET",
       headers: {

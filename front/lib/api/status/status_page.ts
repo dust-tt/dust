@@ -26,6 +26,7 @@ export async function getUnresolvedIncidents({
   pageId: string;
 }): Promise<StatusPageReponseType> {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const res = await fetch(
       `https://api.statuspage.io/v1/pages/${pageId}/incidents/unresolved`,
       {

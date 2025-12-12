@@ -47,6 +47,7 @@ export class LinearClient {
     variables?: Record<string, any>
   ): Promise<Result<Record<string, any> | null, Error>> {
     try {
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(this.apiUrl, {
         method: "POST",
         headers: {

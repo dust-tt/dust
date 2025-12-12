@@ -67,6 +67,7 @@ export const slackSearch = async (
       limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
     });
 
+    // eslint-disable-next-line no-restricted-globals
     const resp = await fetch(
       `https://slack.com/api/assistant.search.context?${params.toString()}`,
       {
@@ -292,6 +293,7 @@ async function getSlackAIEnablementStatus({
   try {
     // Use assistant.search.info to detect if Slack AI is enabled at workspace level
     // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean
+    // eslint-disable-next-line no-restricted-globals
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {

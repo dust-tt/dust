@@ -7,13 +7,18 @@ import type {
   SelectionMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 type SelectionPageProps = PageContentProps & {
   mode: SelectionMode;
-  handleSkillToggle: (skill: SkillConfigurationType) => void;
-  filteredSkills: SkillConfigurationType[];
-  isSkillConfigurationsLoading: boolean;
+  handleSkillToggle: (
+    skill: SkillConfigurationType & SkillConfigurationRelations
+  ) => void;
+  filteredSkills: (SkillConfigurationType & SkillConfigurationRelations)[];
+  isSkillsLoading: boolean;
   searchQuery: string;
   selectedSkillIds: Set<string>;
   setSearchQuery: (query: string) => void;
@@ -24,7 +29,7 @@ export function SelectionPageContent({
   mode,
   handleSkillToggle,
   filteredSkills,
-  isSkillConfigurationsLoading,
+  isSkillsLoading,
   searchQuery,
   selectedSkillIds,
   setSearchQuery,
@@ -38,7 +43,7 @@ export function SelectionPageContent({
         name="skill-search"
       />
 
-      {isSkillConfigurationsLoading ? (
+      {isSkillsLoading ? (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>

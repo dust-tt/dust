@@ -46,7 +46,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (!skillResource.canEdit && !auth.isAdmin()) {
+  if (!skillResource.canWrite(auth)) {
     return {
       notFound: true,
     };

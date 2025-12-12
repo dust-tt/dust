@@ -2,32 +2,38 @@ import { Button, PlusIcon } from "@dust-tt/sparkle";
 
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
-import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
+import {
+  useSkillEditors,
+  useUpdateSkillEditors,
+} from "@app/lib/swr/skill_editors";
 import type {
-  AgentConfigurationType,
   UserType,
   UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
   user: UserType;
-  agentConfiguration: AgentConfigurationType;
+  skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
 };
 
-export function AgentEditorsTab({
+export function SkillEditorsTab({
   owner,
   user,
-  agentConfiguration,
+  skillConfiguration,
 }: AgentEditorsTabProps) {
-  const updateEditors = useUpdateEditors({
+  const updateEditors = useUpdateSkillEditors({
     owner,
-    agentConfigurationId: agentConfiguration.sId,
+    skillConfigurationId: skillConfiguration.sId,
   });
-  const { editors, isEditorsLoading } = useEditors({
+  const { editors, isEditorsLoading } = useSkillEditors({
     owner,
-    agentConfigurationId: agentConfiguration.sId,
+    skillConfigurationId: skillConfiguration.sId,
   });
 
   const isCurrentUserEditor =

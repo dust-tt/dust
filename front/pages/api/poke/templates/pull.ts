@@ -46,6 +46,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const mainRegionUrl = config.getDustRegionSyncMasterUrl();
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(`${mainRegionUrl}/api/templates`, {
         method: "GET",
       });
@@ -65,6 +66,7 @@ async function handler(
       let count = 0;
 
       for (const templateFromList of templatesResponse.templates) {
+        // eslint-disable-next-line no-restricted-globals
         const templateResponse = await fetch(
           `${mainRegionUrl}/api/templates/${templateFromList.sId}`,
           {

@@ -92,6 +92,7 @@ async function lookupInOtherRegion(
   };
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const otherRegionResponse = await fetch(`${url}/api/lookup/user`, {
       method: "POST",
       headers: {

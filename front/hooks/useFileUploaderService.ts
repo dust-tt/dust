@@ -332,6 +332,7 @@ export function useFileUploaderService({
 
       // Delete from server if file has been uploaded
       if (fileBlob.fileId) {
+        // eslint-disable-next-line no-restricted-globals
         void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
           method: "DELETE",
           headers: {

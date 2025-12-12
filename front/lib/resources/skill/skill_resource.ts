@@ -16,6 +16,7 @@ import {
 } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
+import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -25,13 +26,13 @@ import {
   GlobalSkillsRegistry,
 } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -44,6 +45,19 @@ import type {
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+
+type SkillResourceConstructorOptions =
+  | {
+      // For global skills, there is no editor group.
+      editorGroup?: undefined;
+      globalSId: string;
+      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+    }
+  | {
+      editorGroup?: GroupResource;
+      globalSId?: undefined;
+      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
+    };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -97,7 +111,7 @@ export interface SkillResource
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
-  readonly canEdit: boolean;
+  readonly editorGroup: GroupResource | null = null;
   readonly mcpServerConfigurations: Attributes<SkillMCPServerConfigurationModel>[];
 
   private readonly globalSId?: string;
@@ -105,19 +119,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
-    {
-      canEdit = true,
-      globalSId,
-      mcpServerConfigurations,
-    }: {
-      canEdit?: boolean;
-      globalSId?: string;
-      mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
-    } = {}
+    options: SkillResourceConstructorOptions = {}
   ) {
+    const { globalSId, mcpServerConfigurations, editorGroup } = options;
     super(SkillConfigurationModel, blob);
 
-    this.canEdit = canEdit;
+    this.editorGroup = editorGroup ?? null;
     this.globalSId = globalSId;
     this.mcpServerConfigurations = mcpServerConfigurations ?? [];
   }
@@ -134,14 +141,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   static async makeNew(
-    blob: CreationAttributes<SkillConfigurationModel>,
-    { transaction }: { transaction?: Transaction } = {}
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">
   ): Promise<SkillResource> {
-    const skillConfiguration = await this.model.create(blob, {
-      transaction,
+    // Use a transaction to ensure all creates succeed or all are rolled back.
+    const skillResource = await withTransaction(async (transaction) => {
+      const skill = await this.model.create(
+        {
+          ...blob,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        {
+          transaction,
+        }
+      );
+
+      const editorGroup = await GroupResource.makeNewSkillEditorsGroup(
+        auth,
+        skill,
+        {
+          transaction,
+        }
+      );
+
+      return new this(this.model, skill.get(), { editorGroup });
     });
 
-    return new this(this.model, skillConfiguration.get());
+    return skillResource;
   }
 
   static async fetchByModelIdWithAuth(
@@ -184,6 +210,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return this.fetchByModelIdWithAuth(auth, resourceId);
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    sIds: string[]
+  ): Promise<SkillResource[]> {
+    if (sIds.length === 0) {
+      return [];
+    }
+
+    // Extract valid custom skill model IDs from sIds.
+    const customSkillIds = removeNulls(
+      sIds
+        .filter((sId) => isResourceSId("skill", sId))
+        .map((sId) => getResourceIdFromSId(sId))
+    );
+
+    // Fetch custom skills in batch.
+    const customSkills =
+      customSkillIds.length > 0
+        ? await this.baseFetch(auth, {
+            where: {
+              id: customSkillIds,
+            },
+            onlyCustom: true,
+          })
+        : [];
+
+    // Find which sIds were not found as custom skills and fetch them from global skills.
+    const foundCustomSIds = new Set(customSkills.map((s) => s.sId));
+    const missingSIds = sIds.filter((sId) => !foundCustomSIds.has(sId));
+    const globalSkills = removeNulls(
+      missingSIds.map((sId) => {
+        const globalSkill = GlobalSkillsRegistry.getById(sId);
+        return globalSkill ? this.fromGlobalSkill(auth, globalSkill) : null;
+      })
+    );
+
+    return [...customSkills, ...globalSkills];
   }
 
   static async fetchActiveByName(
@@ -233,6 +298,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  // Permissions.
+
+  canWrite(auth: Authenticator): boolean {
+    if (!this.editorGroup) {
+      return false;
+    }
+
+    return this.editorGroup.canWrite(auth);
+  }
+
   static modelIdToSId({
     id,
     workspaceId,
@@ -254,7 +329,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const { where, includes, onlyCustom, ...otherOptions } = options;
 
-    const customSkillConfigurations = await this.model.findAll({
+    const customSkills = await this.model.findAll({
       ...otherOptions,
       where: {
         ...omit(where, "sId"),
@@ -263,15 +338,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       include: includes,
     });
 
-    let customSkillConfigurationsRes: SkillResource[] = [];
-
-    if (customSkillConfigurations.length > 0) {
+    let customSkillsRes: SkillResource[] = [];
+    if (customSkills.length > 0) {
       const mcpServerConfigurations =
         await SkillMCPServerConfigurationModel.findAll({
           where: {
             workspaceId: workspace.id,
             skillConfigurationId: {
-              [Op.in]: customSkillConfigurations.map((c) => c.id),
+              [Op.in]: customSkills.map((c) => c.id),
             },
           },
         });
@@ -293,100 +367,64 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      // Compute canEdit for each skill
-      const user = auth.user();
-      const canEditMap = new Map<number, boolean>();
+      // Fetch editor groups for all skills.
+      const skillEditorGroupsMap = new Map<number, GroupResource>();
 
-      if (user) {
-        // Batch fetch all editor groups for all skills
-        const editorGroupsRes = await GroupResource.findEditorGroupsForSkills(
+      // Batch fetch all editor groups for all skills.
+      const editorGroupSkills = await GroupSkillModel.findAll({
+        where: {
+          skillConfigurationId: {
+            [Op.in]: customSkills.map((s) => s.id),
+          },
+          workspaceId: workspace.id,
+        },
+        attributes: ["groupId", "skillConfigurationId"],
+      });
+
+      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
+
+      if (editorGroupSkills.length > 0) {
+        const uniqueGroupIds = Array.from(
+          new Set(editorGroupSkills.map((eg) => eg.groupId))
+        );
+        const editorGroups = await GroupResource.fetchByModelIds(
           auth,
-          customSkillConfigurations.map((s) => s.id)
+          uniqueGroupIds
         );
 
-        if (editorGroupsRes.isOk()) {
-          const editorGroups = editorGroupsRes.value;
-          const uniqueGroups = Array.from(
-            new Set(Object.values(editorGroups).map((g) => g.id))
-          ).map((id) => Object.values(editorGroups).find((g) => g.id === id)!);
-
-          // Batch fetch active members for all editor groups
-          const groupMemberships =
-            await GroupResource.getActiveMembershipsForGroups(
-              auth,
-              uniqueGroups
+        // Build map from skill ID to editor group.
+        for (const editorGroupSkill of editorGroupSkills) {
+          const group = editorGroups.find(
+            (g) => g.id === editorGroupSkill.groupId
+          );
+          if (group) {
+            skillEditorGroupsMap.set(
+              editorGroupSkill.skillConfigurationId,
+              group
             );
-
-          // Build canEdit map
-          for (const skill of customSkillConfigurations) {
-            const canEdit = this.computeCanEdit({
-              skill,
-              user,
-              editorGroups,
-              groupMemberships,
-            });
-            canEditMap.set(skill.id, canEdit);
           }
-        } else {
-          // If we can't fetch editor groups, fall back to no edit permissions
-          for (const skill of customSkillConfigurations) {
-            const canEdit = user && skill.authorId === user.id;
-            canEditMap.set(skill.id, canEdit);
-          }
-        }
-      } else {
-        // No user, no edit permissions
-        for (const skill of customSkillConfigurations) {
-          canEditMap.set(skill.id, false);
         }
       }
 
-      customSkillConfigurationsRes = customSkillConfigurations.map(
+      customSkillsRes = customSkills.map(
         (c) =>
           new this(this.model, c.get(), {
-            canEdit: canEditMap.get(c.id) ?? false,
             mcpServerConfigurations: mcpServerConfigsBySkillId.get(c.id) ?? [],
+            editorGroup: skillEditorGroupsMap.get(c.id),
           })
       );
     }
 
     // Only include global skills if onlyCustom is not true.
     if (onlyCustom === true) {
-      return customSkillConfigurationsRes;
+      return customSkillsRes;
     }
 
-    const globalSkillConfigurations: SkillResource[] =
-      GlobalSkillsRegistry.findAll(where).map((def) =>
-        this.fromGlobalSkill(auth, def)
-      );
+    const globalSkills: SkillResource[] = GlobalSkillsRegistry.findAll(
+      where
+    ).map((def) => this.fromGlobalSkill(auth, def));
 
-    return [...customSkillConfigurationsRes, ...globalSkillConfigurations];
-  }
-
-  private static computeCanEdit({
-    skill,
-    user,
-    editorGroups,
-    groupMemberships,
-  }: {
-    skill: Attributes<SkillConfigurationModel>;
-    user: Attributes<UserModel>;
-    editorGroups: Record<ModelId, GroupResource>;
-    groupMemberships: Record<ModelId, ModelId[]>;
-  }): boolean {
-    // Author can always edit
-    if (skill.authorId === user.id) {
-      return true;
-    }
-
-    // Check if user is in the editors group
-    const editorGroup = editorGroups[skill.id];
-    if (!editorGroup) {
-      return false;
-    }
-
-    const memberIds = groupMemberships[editorGroup.id] || [];
-    return memberIds.includes(user.id);
+    return [...customSkillsRes, ...globalSkills];
   }
 
   static async fetchAllAvailableSkills(
@@ -447,18 +485,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [GLOBAL_DUST_AUTHOR];
     }
 
-    const editorGroupRes = await GroupResource.findEditorGroupForSkill(
-      auth,
-      this.id
-    );
+    const members = await this.editorGroup?.getActiveMembers(auth);
 
-    if (editorGroupRes.isErr()) {
-      return [];
-    }
-
-    const members = await editorGroupRes.value.getActiveMembers(auth);
-
-    return members.map((m) => m.toJSON());
+    return (members ?? []).map((m) => m.toJSON());
   }
 
   async archive(
@@ -550,6 +579,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
   private get isGlobal(): boolean {
     return this.globalSId !== undefined;
   }
@@ -631,7 +661,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfigurationId: agentConfiguration.id,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
-      isActive: true,
       conversationId: conversation.id,
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
@@ -684,6 +713,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
+      isGlobal: this.isGlobal,
     };
   }
 }

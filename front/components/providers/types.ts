@@ -26,6 +26,7 @@ import {
   GEMINI_3_PRO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_5_1_MODEL_CONFIG,
+  GPT_5_2_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
@@ -91,6 +92,7 @@ export const getModelProviderLogo = (
   return isDark && logos.dark ? logos.dark : logos.light;
 };
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
+  GPT_5_2_MODEL_CONFIG,
   GPT_5_1_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,

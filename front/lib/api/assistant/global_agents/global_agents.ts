@@ -18,6 +18,7 @@ import {
 import {
   _getDustEdgeGlobalAgent,
   _getDustGlobalAgent,
+  _getDustOaiGlobalAgent,
   _getDustQuickGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
@@ -380,6 +381,22 @@ function getGlobalAgent({
         availableToolsets,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_OAI:
+      agentConfiguration = _getDustOaiGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        toolsetsMCPServerView,
+        deepDiveMCPServerView,
+        interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
+        agentMemoryMCPServerView,
+        memories,
+        availableToolsets,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       agentConfiguration = _getDeepDiveGlobalAgent(auth, {
         settings,
@@ -605,6 +622,11 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.DUST_QUICK
     );
   }
+  if (!flags.includes("dust_oai_global_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_OAI
+    );
+  }
 
   let memories: AgentMemoryResource[] = [];
   if (
@@ -613,7 +635,8 @@ export async function getGlobalAgents(
     auth.user() &&
     (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK))
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI))
   ) {
     memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
       auth,
@@ -629,7 +652,8 @@ export async function getGlobalAgents(
     toolsetsMCPServerView &&
     (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
-      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK))
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_OAI))
   ) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     availableToolsets = await MCPServerViewResource.listBySpace(

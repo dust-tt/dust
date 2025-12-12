@@ -1,5 +1,9 @@
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { UserType, WorkspaceType } from "@app/types";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 export const SKILLS_SHEET_PAGE_IDS = {
   SELECTION: "add",
@@ -13,7 +17,7 @@ export type SkillsSheetMode =
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.INFO;
-      skillConfiguration: SkillConfigurationType;
+      skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
       previousMode: SelectionMode;
     };
 
@@ -27,4 +31,6 @@ export type PageContentProps = {
   onModeChange: (mode: SkillsSheetMode | null) => void;
   onClose: () => void;
   onSave: (skills: AgentBuilderSkillsType[]) => void;
+  owner: WorkspaceType;
+  user: UserType;
 };

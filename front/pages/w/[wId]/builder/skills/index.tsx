@@ -76,6 +76,8 @@ export default function WorkspaceSkills({
         <SkillDetailsSheet
           skillConfiguration={skillConfigurationWithRelations}
           onClose={() => setSkillConfigurationWithRelations(null)}
+          user={user}
+          owner={owner}
         />
       )}
       <ConversationsNavigationProvider>

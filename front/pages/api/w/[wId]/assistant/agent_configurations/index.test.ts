@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   LightAgentConfigurationType,
@@ -190,5 +195,64 @@ describe("Method Support /api/w/[wId]/assistant/agent_configurations", () => {
         },
       });
     }
+  });
+});
+
+describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restricted spaces", () => {
+  it("should include skill's requestedSpaceIds when creating agent with skill", async () => {
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        role: "admin",
+        method: "POST",
+      });
+
+    // Enable skills feature flag
+    await FeatureFlagFactory.basic("skills", workspace);
+
+    await SpaceFactory.defaults(authenticator);
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const skill = await SkillConfigurationFactory.create(authenticator, {
+      name: "Skill with restricted space",
+    });
+    await SkillConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { id: skill.id } }
+    );
+
+    const skillResource = await SkillResource.fetchByModelIdWithAuth(
+      authenticator,
+      skill.id
+    );
+    expect(skillResource).not.toBeNull();
+
+    req.body = {
+      assistant: {
+        name: "Test Agent with Skill",
+        description: "Test Agent Description",
+        instructions: "Test instructions",
+        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+        status: "active",
+        scope: "visible",
+        model: {
+          providerId: "openai",
+          modelId: "gpt-4-turbo",
+          temperature: 0.7,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [{ sId: skillResource!.sId }],
+      },
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("agentConfiguration");
+    expect(data.agentConfiguration.requestedSpaceIds).toContain(
+      restrictedSpace.sId
+    );
   });
 });

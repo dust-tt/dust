@@ -13,6 +13,7 @@ export async function handleMembersRoleChange({
     return;
   }
   const promises = members.map((member) =>
+    // eslint-disable-next-line no-restricted-globals
     fetch(`/api/w/${member.workspace.sId}/members/${member.sId}`, {
       method: "POST",
       headers: {

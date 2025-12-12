@@ -73,6 +73,7 @@ export function useUserApprovals(owner: LightWorkspaceType) {
 
 export function useDeleteMetadata() {
   const deleteMetadata = async (prefix: string) => {
+    // eslint-disable-next-line no-restricted-globals
     return fetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
       method: "DELETE",
     });

@@ -36,7 +36,7 @@ export function AgentBuilderLeftPanel({
   isSkillsLoading,
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
@@ -64,7 +64,11 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           {hasFeature("skills") && (
-            <AgentBuilderSkillsBlock isSkillsLoading={isSkillsLoading} />
+            <AgentBuilderSkillsBlock
+              isSkillsLoading={isSkillsLoading}
+              owner={owner}
+              user={user}
+            />
           )}
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <AgentBuilderTriggersBlock

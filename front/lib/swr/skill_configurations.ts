@@ -52,7 +52,7 @@ export function useSkillConfigurationsWithRelations({
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
     fetcher;
 
-  const { data } = useSWRWithDefaults(
+  const { data, isLoading } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills?withRelations=true`,
     skillConfigurationsFetcher,
     { disabled }
@@ -60,6 +60,7 @@ export function useSkillConfigurationsWithRelations({
 
   return {
     skillConfigurationsWithRelations: data?.skillConfigurations ?? emptyArray(),
+    isSkillConfigurationsWithRelationsLoading: isLoading,
   };
 }
 

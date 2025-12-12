@@ -61,7 +61,6 @@ async function handler(
   }
 
   const skillResource = await SkillResource.fetchById(auth, sId);
-
   if (!skillResource) {
     return apiError(req, res, {
       status_code: 404,
@@ -72,7 +71,7 @@ async function handler(
     });
   }
 
-  if (!skillResource.canEdit && !auth.isAdmin()) {
+  if (!skillResource.canWrite(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

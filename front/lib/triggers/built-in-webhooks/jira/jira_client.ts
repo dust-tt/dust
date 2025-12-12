@@ -19,6 +19,7 @@ export class JiraClient {
   constructor(private readonly accessToken: string) {}
 
   async getAccessibleResources(): Promise<Result<JiraResourceType[], Error>> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       "https://api.atlassian.com/oauth/token/accessible-resources",
       {
@@ -49,6 +50,7 @@ export class JiraClient {
   async getProjects(
     cloudId: string
   ): Promise<Result<JiraProjectType[], Error>> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`,
       {
@@ -85,6 +87,7 @@ export class JiraClient {
     events: string[];
     projectKey: string;
   }): Promise<Result<{ id: string }, Error>> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`,
       {
@@ -140,6 +143,7 @@ export class JiraClient {
       url.searchParams.append("startAt", String(startAt));
       url.searchParams.append("maxResults", String(maxResults));
 
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
@@ -177,6 +181,7 @@ export class JiraClient {
     cloudId: string;
     webhookIds: number[];
   }): Promise<Result<void, Error>> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`,
       {

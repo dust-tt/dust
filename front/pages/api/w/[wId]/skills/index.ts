@@ -7,11 +7,9 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -165,45 +163,30 @@ async function handler(
       }
 
       // Use a transaction to ensure all creates succeed or all are rolled back
-      const skillConfiguration = await withTransaction(async (transaction) => {
-        const skill = await SkillResource.makeNew(
-          {
-            workspaceId: owner.id,
-            version: 0,
-            status: "active",
-            name: body.name,
-            description: body.description,
-            instructions: body.instructions,
-            authorId: user.id,
-            // TODO(skills): add space restrictions.
-            requestedSpaceIds: [],
-          },
-          { transaction }
-        );
-
-        await GroupResource.makeNewSkillEditorsGroup(auth, skill, {
-          transaction,
-        });
-
-        // Create MCP server configurations (tools) for this skill
-        for (const mcpServerView of mcpServerViews) {
-          // TODO(skills 2025-12-09): move this to the makeNew.
-          await SkillMCPServerConfigurationModel.create(
-            {
-              workspaceId: owner.id,
-              skillConfigurationId: skill.id,
-              mcpServerViewId: mcpServerView.id,
-            },
-            { transaction }
-          );
-        }
-
-        return skill;
+      const skillResource = await SkillResource.makeNew(auth, {
+        version: 0,
+        status: "active",
+        name: body.name,
+        description: body.description,
+        instructions: body.instructions,
+        authorId: user.id,
+        // TODO(skills): add space restrictions.
+        requestedSpaceIds: [],
       });
+
+      // Create MCP server configurations (tools) for this skill
+      for (const mcpServerView of mcpServerViews) {
+        // TODO(skills 2025-12-09): move this to the makeNew.
+        await SkillMCPServerConfigurationModel.create({
+          workspaceId: owner.id,
+          skillConfigurationId: skillResource.id,
+          mcpServerViewId: mcpServerView.id,
+        });
+      }
 
       return res.status(200).json({
         skillConfiguration: {
-          ...skillConfiguration.toJSON(),
+          ...skillResource.toJSON(),
           tools: body.tools,
         },
       });

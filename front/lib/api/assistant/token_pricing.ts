@@ -24,6 +24,11 @@ export const MAX_DISCOUNT_PERCENT = Math.floor(
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
+  "gpt-5.2": {
+    input: 1.75,
+    output: 14.0,
+    cache_read_input_tokens: 0.175,
+  },
   "gpt-5.1": {
     input: 1.25,
     output: 10.0,

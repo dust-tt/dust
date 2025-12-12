@@ -321,6 +321,7 @@ export async function retrieveModjoTranscripts(
           await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
+        // eslint-disable-next-line no-restricted-globals
         const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
           method: "POST",
           headers: {
@@ -600,6 +601,7 @@ export async function retrieveModjoTranscriptContent(
     return user;
   };
 
+  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
     method: "POST",
     headers: {
@@ -898,6 +900,7 @@ export async function scanModjoTranscriptsInDateRange(
 
   while (hasMorePages) {
     try {
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
         method: "POST",
         headers: {

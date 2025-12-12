@@ -34,6 +34,7 @@ export async function sendInitDbMessage({
   const message = `papertrail: \`initdb\` has been initiated. Service: \`${service}\`. CommitId: \`${commitId}\``;
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const res = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {

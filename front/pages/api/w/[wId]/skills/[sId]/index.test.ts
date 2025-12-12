@@ -2,7 +2,6 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -70,9 +69,6 @@ async function setupTest(
     throw new Error("Failed to create skill");
   }
 
-  // Create editor group for the skill
-  await GroupResource.makeNewSkillEditorsGroup(skillOwnerAuth, skill);
-
   // Regenerate auth to pick up the new group membership
   skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     skillOwner.sId,
@@ -99,7 +95,7 @@ async function setupTest(
   };
 }
 
-describe("GET /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("GET /api/w/[wId]/skills/[sId]", () => {
   it("should return 200 and the skill configuration for admin", async () => {
     const { req, res, skill } = await setupTest({
       requestUserRole: "admin",
@@ -128,7 +124,7 @@ describe("GET /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
   });
 });
 
-describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
       skillOwnerRole: "builder",
@@ -164,7 +160,7 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
       name: "Other Skill",
     });
 
-    // Try to update to the name of the other skill
+    // Try to update the skill name to the duplicate name
     req.body = {
       name: "Other Skill",
       description: "Description",
@@ -218,7 +214,7 @@ describe("PATCH /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
   });
 });
 
-describe("DELETE /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("DELETE /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
       skillOwnerRole: "builder",
@@ -251,7 +247,7 @@ describe("DELETE /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
   });
 });
 
-describe("Method Support /api/w/[wId]/assistant/skill_configurations/[sId]", () => {
+describe("Method Support /api/w/[wId]/skills/[sId]", () => {
   it("only supports GET, PATCH, and DELETE methods", async () => {
     for (const method of ["POST", "PUT"] as const) {
       const { req, res } = await setupTest({ method });
