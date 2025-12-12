@@ -9,10 +9,6 @@ import {
 } from "@app/components/assistant/conversation/ConversationError";
 import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  ConversationsNavigationProvider,
-  useConversationsNavigation,
-} from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -24,6 +20,7 @@ import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -56,18 +53,14 @@ export function ConversationLayout({
   const { owner, subscription, user, isAdmin } = pageProps;
 
   return (
-    <ConversationsNavigationProvider
-      initialConversationId={pageProps.conversationId}
+    <ConversationLayoutContent
+      owner={owner}
+      subscription={subscription}
+      user={user}
+      isAdmin={isAdmin}
     >
-      <ConversationLayoutContent
-        owner={owner}
-        subscription={subscription}
-        user={user}
-        isAdmin={isAdmin}
-      >
-        {children}
-      </ConversationLayoutContent>
-    </ConversationsNavigationProvider>
+      {children}
+    </ConversationLayoutContent>
   );
 }
 
@@ -89,7 +82,7 @@ const ConversationLayoutContent = ({
   const router = useRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
-  const { activeConversationId } = useConversationsNavigation();
+  const activeConversationId = useActiveConversationId();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
