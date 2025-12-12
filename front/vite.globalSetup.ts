@@ -34,6 +34,7 @@ export default async function setup() {
     DUST_APPS_HELPER_DATASOURCE_VIEW_ID: "dsv_xx",
     DUST_APPS_WORKSPACE_ID: "xx",
     VIZ_JWT_SECRET: "viz-secret-for-tests",
+    REGION: "us-central1",
   };
 
   // Execute the db migration script
