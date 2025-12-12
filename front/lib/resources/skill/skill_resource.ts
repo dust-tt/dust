@@ -23,10 +23,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import {
-  GLOBAL_DUST_AUTHOR,
-  GlobalSkillsRegistry,
-} from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -34,6 +31,7 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
@@ -43,7 +41,6 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   Result,
-  UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
@@ -529,15 +526,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  async listEditors(auth: Authenticator): Promise<UserType[]> {
-    // If we don't have an editor group, we must be a global skill with no editors.
-    if (!this.editorGroup) {
-      return [GLOBAL_DUST_AUTHOR];
-    }
-
-    const members = await this.editorGroup?.getActiveMembers(auth);
-
-    return (members ?? []).map((m) => m.toJSON());
+  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
+    return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
   async archive(
@@ -783,7 +773,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status: this.status,
       name: this.name,
       description: this.description,
-      instructions: this.instructions,
+      // We don't want to leak global skills instructions to frontend
+      instructions: this.globalSId ? null : this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
       canWrite: this.canWrite(auth),

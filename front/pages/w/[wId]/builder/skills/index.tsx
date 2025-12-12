@@ -38,6 +38,16 @@ export const SKILL_MANAGER_TABS = [
     description: "All active skills.",
   },
   {
+    id: "editable_by_me",
+    label: "Editable by me",
+    description: "Skills you can edit.",
+  },
+  {
+    id: "default",
+    label: "Default",
+    description: "Default skills provided by Dust.",
+  },
+  {
     id: "archived",
     label: "Archived",
     description: "Archived skills.",
@@ -100,12 +110,33 @@ export default function WorkspaceSkills({
   }, [selectedTab]);
 
   const {
-    skillConfigurationsWithRelations,
-    isSkillConfigurationsWithRelationsLoading,
+    skillConfigurationsWithRelations: activeSkills,
+    isSkillConfigurationsWithRelationsLoading: isActiveLoading,
   } = useSkillConfigurationsWithRelations({
     owner,
-    status: activeTab,
+    status: "active",
   });
+
+  const {
+    skillConfigurationsWithRelations: archivedSkills,
+    isSkillConfigurationsWithRelationsLoading: isArchivedLoading,
+  } = useSkillConfigurationsWithRelations({
+    owner,
+    status: "archived",
+    disabled: activeTab !== "archived",
+  });
+
+  const skillsByTab = useMemo(
+    () => ({
+      active: activeSkills,
+      editable_by_me: activeSkills.filter((s) => s.canWrite),
+      default: activeSkills.filter((s) => !s.editors),
+      archived: archivedSkills,
+    }),
+    [activeSkills, archivedSkills]
+  );
+
+  const isLoading = isActiveLoading || isArchivedLoading;
 
   return (
     <>
@@ -154,23 +185,19 @@ export default function WorkspaceSkills({
                         onClick={() => setSelectedTab(tab.id)}
                         tooltip={tab.description}
                         isCounter={tab.id !== "archived"}
-                        counterValue={
-                          tab.id === activeTab
-                            ? `${skillConfigurationsWithRelations.length}`
-                            : undefined
-                        }
+                        counterValue={`${skillsByTab[tab.id].length}`}
                       />
                     ))}
                   </TabsList>
                 </Tabs>
-                {isSkillConfigurationsWithRelationsLoading ? (
+                {isLoading ? (
                   <div className="mt-8 flex justify-center">
                     <Spinner size="lg" />
                   </div>
                 ) : (
                   <SkillsTable
                     owner={owner}
-                    skills={skillConfigurationsWithRelations}
+                    skills={skillsByTab[activeTab]}
                     onSkillClick={setSelectedSkill}
                     onAgentClick={setAgentId}
                   />
