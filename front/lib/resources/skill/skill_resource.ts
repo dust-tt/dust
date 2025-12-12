@@ -28,7 +28,6 @@ import {
   GlobalSkillsRegistry,
 } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -456,32 +455,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ).map((def) => this.fromGlobalSkill(auth, def));
 
     return [...customSkillsRes, ...globalSkills];
-  }
-
-  private static computeCanEdit({
-    skill,
-    user,
-    editorGroups,
-    groupMemberships,
-  }: {
-    skill: Attributes<SkillConfigurationModel>;
-    user: Attributes<UserModel>;
-    editorGroups: Record<ModelId, GroupResource>;
-    groupMemberships: Record<ModelId, ModelId[]>;
-  }): boolean {
-    // Author can always edit
-    if (skill.authorId === user.id) {
-      return true;
-    }
-
-    // Check if user is in the editors group
-    const editorGroup = editorGroups[skill.id];
-    if (!editorGroup) {
-      return false;
-    }
-
-    const memberIds = groupMemberships[editorGroup.id] || [];
-    return memberIds.includes(user.id);
   }
 
   private static fromGlobalSkill(
