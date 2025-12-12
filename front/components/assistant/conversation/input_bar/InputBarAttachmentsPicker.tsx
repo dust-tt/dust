@@ -388,7 +388,6 @@ export const InputBarAttachmentsPicker = ({
     })),
   ];
 
-  console.log(availableSources);
   const allUnselected = Object.values(selectedDataSourcesAndTools).every(
     (value) => !value
   );
