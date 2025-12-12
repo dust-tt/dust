@@ -110,11 +110,15 @@ async function handler(
       if (withRelations === "true") {
         const skillConfigurationsWithRelations = await concurrentExecutor(
           skillConfigurations,
-          async (sc) => ({
-            ...sc.toJSON(auth),
-            usage: await sc.fetchUsage(auth),
-            editors: await sc.listEditors(auth),
-          }),
+          async (sc) => {
+            const usage = await sc.fetchUsage(auth);
+            const editors = await sc.listEditors(auth);
+            return {
+              ...sc.toJSON(auth),
+              usage,
+              editors: editors ? editors.map((e) => e.toJSON()) : null,
+            } satisfies SkillConfigurationType & SkillConfigurationRelations;
+          },
           { concurrency: 10 }
         );
 

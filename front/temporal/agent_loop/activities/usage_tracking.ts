@@ -18,7 +18,13 @@ export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
-  const auth = await Authenticator.fromJSON(authType);
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
   const workspace = auth.getNonNullableWorkspace();
 
   const { agentMessageId, userMessageId } = agentLoopArgs;

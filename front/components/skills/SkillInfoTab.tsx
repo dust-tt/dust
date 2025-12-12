@@ -13,25 +13,18 @@ export function SkillInfoTab({
       <div className="text-sm text-foreground dark:text-foreground-night">
         {skillConfiguration.description}
       </div>
-      {skillConfiguration.canWrite && (
-        <SkillEdited skillConfiguration={skillConfiguration} />
-      )}
+      <SkillEdited skillConfiguration={skillConfiguration} />
 
       <Page.Separator />
 
-      {skillConfiguration.canWrite &&
-        (skillConfiguration.instructions ? (
-          <div className="dd-privacy-mask flex flex-col gap-5">
-            <div className="heading-lg text-foreground dark:text-foreground-night">
-              Instructions
-            </div>
-            <ReadOnlyTextArea content={skillConfiguration.instructions} />
+      {skillConfiguration.instructions && (
+        <div className="dd-privacy-mask flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Instructions
           </div>
-        ) : (
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            This agent has no instructions.
-          </div>
-        ))}
+          <ReadOnlyTextArea content={skillConfiguration.instructions} />
+        </div>
+      )}
     </div>
   );
 }

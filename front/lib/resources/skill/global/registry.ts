@@ -1,7 +1,6 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-import type { UserType } from "@app/types";
 
 export interface GlobalSkillDefinition {
   readonly description: string;
@@ -84,17 +83,3 @@ export class GlobalSkillsRegistry {
     });
   }
 }
-
-export const GLOBAL_DUST_AUTHOR: UserType = {
-  sId: "dust",
-  id: -1,
-  createdAt: 0,
-  provider: "github",
-  username: "dust",
-  email: "",
-  firstName: "Dust",
-  lastName: null,
-  fullName: "Dust",
-  image: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
-  lastLoginAt: null,
-};

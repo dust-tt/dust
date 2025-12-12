@@ -12,7 +12,7 @@ export type SkillConfigurationType = {
   status: SkillStatus;
   name: string;
   description: string;
-  instructions: string;
+  instructions: string | null;
   requestedSpaceIds: ModelId[];
   tools: { mcpServerViewId: string }[];
   canWrite: boolean;
@@ -20,5 +20,5 @@ export type SkillConfigurationType = {
 
 export type SkillConfigurationRelations = {
   usage: AgentsUsageType;
-  editors: UserType[];
+  editors: UserType[] | null;
 };

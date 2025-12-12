@@ -177,15 +177,12 @@ function constructSkillsSection({
     }
   }
 
-  // Equipped but not yet enabled skills - show name, sId and description only
+  // Equipped but not yet enabled skills - show name and description only
   if (equippedSkills && equippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${DEFAULT_ENABLE_SKILL_TOOL_NAME} tool.\n`;
     const skillList = equippedSkills
-      .map(
-        ({ name, sId, description }) =>
-          `- **${name}** (id: ${sId}): ${description}`
-      )
+      .map(({ name, description }) => `- **${name}**: ${description}`)
       .join("\n");
     skillsSection += skillList + "\n";
   }

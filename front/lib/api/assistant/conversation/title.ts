@@ -45,7 +45,13 @@ export async function ensureConversationTitleFromAgentLoop(
 
   const { conversation, userMessage } = runAgentDataRes.value;
 
-  const auth = await Authenticator.fromJSON(authType);
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
 
   return ensureConversationTitle(auth, { conversation, userMessage });
 }

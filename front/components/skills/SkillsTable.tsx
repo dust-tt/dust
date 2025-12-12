@@ -24,7 +24,7 @@ import type { AgentsUsageType } from "@app/types/data_source";
 type RowData = {
   name: string;
   description: string;
-  editors: UserType[];
+  editors: UserType[] | null;
   usage: AgentsUsageType;
   updatedAt: number;
   onClick: () => void;
@@ -65,16 +65,22 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
       header: "Editors",
       accessorKey: "editors",
       cell: (info: CellContext<RowData, UserType[]>) => {
+        const editors = info.getValue();
+        const items = editors
+          ? editors.map((editor) => ({
+              name: editor.fullName,
+              visual: editor.image,
+            }))
+          : // Only dust managed skills should have no editors
+            [
+              {
+                name: "Dust",
+                visual:
+                  "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+              },
+            ];
         return (
-          <DataTable.CellContent
-            avatarStack={{
-              items: info.getValue().map((editor) => ({
-                name: editor.fullName,
-                visual: editor.image,
-              })),
-              nbVisibleItems: 4,
-            }}
-          />
+          <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
         );
       },
       meta: {
