@@ -6,8 +6,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { streamToolFiles } from "@app/lib/search/tools/search";
+import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
