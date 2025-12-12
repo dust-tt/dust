@@ -83,7 +83,7 @@ interface ContentBlockWrapperProps {
   getContentToDownload?: GetContentToDownloadFunction;
   actions?: React.ReactNode[] | React.ReactNode;
   displayActions?: "hover" | "always";
-  buttonDisplay?: "inside" | "outside";
+  buttonDisplay?: "inside" | "outside" | null;
 }
 
 export function ContentBlockWrapper({
@@ -152,32 +152,34 @@ export function ContentBlockWrapper({
       id="BlockWrapper"
       className={cn(wrapperVariants({ buttonDisplay }), className)}
     >
-      <div className={stickyContainerVariants({ buttonDisplay })}>
-        <div
-          id="BlockActions"
-          className={actionsVariants({ buttonDisplay, displayActions })}
-        >
-          {actions && actions}
-          {getContentToDownload && (
-            <Button
-              variant={"outline"}
-              size="xs"
-              icon={ArrowDownOnSquareIcon}
-              onClick={handleDownload}
-              tooltip="Download"
-            />
-          )}
-          {content && (
-            <Button
-              variant={"outline"}
-              size="xs"
-              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-              onClick={handleCopyToClipboard}
-              tooltip="Copy"
-            />
-          )}
+      {buttonDisplay !== null && (
+        <div className={stickyContainerVariants({ buttonDisplay })}>
+          <div
+            id="BlockActions"
+            className={actionsVariants({ buttonDisplay, displayActions })}
+          >
+            {actions && actions}
+            {getContentToDownload && (
+              <Button
+                variant={"outline"}
+                size="xs"
+                icon={ArrowDownOnSquareIcon}
+                onClick={handleDownload}
+                tooltip="Download"
+              />
+            )}
+            {content && (
+              <Button
+                variant={"outline"}
+                size="xs"
+                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                onClick={handleCopyToClipboard}
+                tooltip="Copy"
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
       <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
     </div>
   );
