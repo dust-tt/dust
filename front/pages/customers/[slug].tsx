@@ -448,6 +448,8 @@ export default function CustomerStoryPage({
                         src={relatedStory.heroImage.url}
                         alt={relatedStory.heroImage.alt}
                         fill
+                        loader={contentfulImageLoader}
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                       />
                     ) : relatedStory.companyLogo ? (

@@ -262,7 +262,8 @@ export default function BlogPost({
                 alt={post.image.alt}
                 width={post.image.width}
                 height={post.image.height}
-                className="rounded-2xl"
+                sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
+                className="w-full rounded-2xl"
                 priority
               />
             </div>
