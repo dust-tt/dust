@@ -15,6 +15,7 @@ import {
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
+import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -42,7 +43,7 @@ import type {
   UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
-import type { AgentMessageSkillSource } from "@app/types/assistant/agent_message_skills";
+import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 type SkillResourceConstructorOptions =
@@ -630,7 +631,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       agentMessage: AgentMessageType;
       conversation: ConversationType;
-      source: AgentMessageSkillSource;
+      source: ConversationSkillOrigin;
     }
   ): Promise<Result<void, Error>> {
     const workspace = auth.getNonNullableWorkspace();
@@ -647,10 +648,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await AgentMessageSkillModel.create({
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
-      isActive: true,
-      customSkillId: this.id,
-      globalSkillId: null,
+      customSkillId: this.isGlobal ? null : this.id,
+      globalSkillId: this.isGlobal ? this.globalSId : null,
       agentMessageId: agentMessage.agentMessageId,
+      conversationId: conversation.id,
+      source,
+      addedByUserId: user && source === "conversation" ? user.id : null,
+    });
+
+    await ConversationSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      customSkillId: this.isGlobal ? null : this.id,
+      globalSkillId: this.isGlobal ? this.globalSId : null,
       conversationId: conversation.id,
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
