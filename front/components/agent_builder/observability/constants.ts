@@ -47,8 +47,8 @@ export const COST_PER_MESSAGE_PALETTE = {
 } as const;
 
 export const COST_PER_MESSAGE_LEGEND = [
-  { key: "average", label: "Average cost" },
-  { key: "p95", label: "p95 cost" },
+  { key: "average", label: "Average" },
+  { key: "p95", label: "Percentile 95" },
 ] as const;
 
 export const CHART_HEIGHT = 260;

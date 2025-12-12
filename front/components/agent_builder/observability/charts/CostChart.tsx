@@ -284,7 +284,7 @@ export function CostChart({
         <Line
           type="monotone"
           dataKey="avgCostUsd"
-          name="Average cost"
+          name="Average"
           className={COST_PER_MESSAGE_PALETTE.average}
           stroke="currentColor"
           strokeWidth={2}
@@ -294,7 +294,7 @@ export function CostChart({
         <Line
           type="monotone"
           dataKey="p95CostUsd"
-          name="p95 cost"
+          name="Percentile 95"
           className={COST_PER_MESSAGE_PALETTE.p95}
           stroke="currentColor"
           strokeWidth={2}
