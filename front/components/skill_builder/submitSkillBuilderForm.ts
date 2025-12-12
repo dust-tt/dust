@@ -63,48 +63,52 @@ export async function submitSkillBuilderForm({
 
     const skillConfiguration = result.skillConfiguration;
 
-    const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
-    const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
+    // Only sync editors for existing skills (updates), not for newly created skills
+    // When creating a skill, the backend automatically adds the creator to the editors group
+    if (skillConfigurationId) {
+      const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
+      const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
 
-    const addEditorIds: string[] = [];
-    const removeEditorIds: string[] = [];
+      const addEditorIds: string[] = [];
+      const removeEditorIds: string[] = [];
 
-    // Add editors who are in desired but not in current
-    for (const editor of formData.editors) {
-      if (!currentEditorIds.has(editor.sId)) {
-        addEditorIds.push(editor.sId);
-      }
-    }
-
-    // Remove editors who are in current but not in desired
-    for (const editor of currentEditors) {
-      if (!desiredEditorIds.has(editor.sId)) {
-        removeEditorIds.push(editor.sId);
-      }
-    }
-
-    if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
-      const editorsResponse = await clientFetch(
-        `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/editors`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            addEditorIds,
-            removeEditorIds,
-          }),
+      // Add editors who are in desired but not in current
+      for (const editor of formData.editors) {
+        if (!currentEditorIds.has(editor.sId)) {
+          addEditorIds.push(editor.sId);
         }
-      );
+      }
 
-      if (!editorsResponse.ok) {
-        const errorData = await editorsResponse.json();
-        return new Err(
-          new Error(
-            errorData.error?.message ?? "Failed to update skill editors"
-          )
+      // Remove editors who are in current but not in desired
+      for (const editor of currentEditors) {
+        if (!desiredEditorIds.has(editor.sId)) {
+          removeEditorIds.push(editor.sId);
+        }
+      }
+
+      if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
+        const editorsResponse = await clientFetch(
+          `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/editors`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              addEditorIds,
+              removeEditorIds,
+            }),
+          }
         );
+
+        if (!editorsResponse.ok) {
+          const errorData = await editorsResponse.json();
+          return new Err(
+            new Error(
+              errorData.error?.message ?? "Failed to update skill editors"
+            )
+          );
+        }
       }
     }
 
