@@ -324,7 +324,7 @@ async function initializeCredits(
   await redis.expire(key, secondsUntilEnd);
 }
 
-function computeCreditAlertThresholdId(
+export function computeCreditAlertThresholdId(
   activeCredits: CreditResource[],
   thresholdPercent: number
 ): string {
@@ -339,8 +339,8 @@ function computeCreditAlertThresholdId(
     .filter((c) => c.type === "committed")
     .sort(sortByStartDateDesc)[0];
 
-  const freeId = firstFreeCredit?.id.toString() ?? "";
-  const committedId = firstCommittedCredit?.id.toString() ?? "";
+  const freeId = firstFreeCredit?.sId;
+  const committedId = firstCommittedCredit?.sId;
 
   return `${freeId}-${committedId}-${thresholdPercent}`;
 }
@@ -411,13 +411,13 @@ export async function trackProgrammaticCost(
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
-      const creditAlertThresholdId = computeCreditAlertThresholdId(
+      const creditAlertThresholdKey = computeCreditAlertThresholdId(
         activeCredits,
         CREDIT_ALERT_THRESHOLD_PERCENT
       );
       await launchCreditAlertWorkflow({
         workspaceId: workspace.sId,
-        creditAlertThresholdId,
+        creditAlertThresholdKey,
         totalInitialMicroUsd,
         totalConsumedMicroUsd,
       });
