@@ -5,7 +5,7 @@ import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/
 export interface GlobalSkillDefinition {
   readonly description: string;
   readonly instructions: string;
-  readonly internalMCPServerName?: AutoInternalMCPServerNameType;
+  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly name: string;
   readonly sId: string;
   readonly version: number;

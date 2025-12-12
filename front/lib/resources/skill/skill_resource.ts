@@ -460,23 +460,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     let mcpServerConfigurations: SkillMCPServerAttributes[] = [];
 
     // TODO(SKILLS 2025-12-12): Consider doing on single call with all ids.
-    if (def.internalMCPServerName) {
-      const mcpServerView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          def.internalMCPServerName
-        );
+    if (def.internalMCPServerNames) {
+      const mscs = await concurrentExecutor(
+        def.internalMCPServerNames,
+        async (name) => {
+          const mcpServerView =
+            await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+              auth,
+              name
+            );
 
-      if (mcpServerView) {
-        mcpServerConfigurations = [
-          {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            mcpServerViewId: mcpServerView.id,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ];
-      }
+          if (mcpServerView) {
+            return {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              mcpServerViewId: mcpServerView.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          }
+
+          return null;
+        },
+        { concurrency: 5 }
+      );
+
+      mcpServerConfigurations = removeNulls(mscs);
     }
 
     return new SkillResource(
