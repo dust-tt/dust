@@ -40,6 +40,7 @@ import type {
   AgentMessageType,
   AgentsUsageType,
   ConversationType,
+  LightAgentConfigurationType,
   ModelId,
   Result,
   UserType,
@@ -288,15 +289,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
-  static async fetchByAgentConfigurationId(
+  static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfigurationId: ModelId
+    agentConfiguration: LightAgentConfigurationType
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId,
+        agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
     });

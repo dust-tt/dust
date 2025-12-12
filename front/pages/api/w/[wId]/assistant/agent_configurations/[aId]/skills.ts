@@ -66,9 +66,9 @@ async function handler(
         });
       }
 
-      const skills = await SkillResource.fetchByAgentConfigurationId(
+      const skills = await SkillResource.listByAgentConfiguration(
         auth,
-        agent.id
+        agent
       );
 
       return res.status(200).json({

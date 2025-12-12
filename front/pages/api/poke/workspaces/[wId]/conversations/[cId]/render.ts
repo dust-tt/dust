@@ -215,9 +215,9 @@ async function handler(
           conversation,
         }
       );
-      const allAgentSkills = await SkillResource.fetchByAgentConfigurationId(
+      const allAgentSkills = await SkillResource.listByAgentConfiguration(
         auth,
-        agentConfiguration.id
+        agentConfiguration
       );
 
       const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
