@@ -14,6 +14,8 @@ import { useController } from "react-hook-form";
 
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 
+const DEFAULT_ICON = ActionBookOpenIcon;
+
 export function SkillBuilderIconSection() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { field: iconField } = useController<SkillBuilderFormData, "icon">({
@@ -25,7 +27,7 @@ export function SkillBuilderIconSection() {
 
   const defaultKey = Object.keys(ActionIcons)[0] as keyof typeof ActionIcons;
   const selectedIconName = toActionIconKey(iconField.value) ?? defaultKey;
-  const IconComponent = ActionIcons[selectedIconName] || ActionBookOpenIcon;
+  const IconComponent = ActionIcons[selectedIconName] || DEFAULT_ICON;
 
   const closePopover = () => {
     setIsPopoverOpen(false);

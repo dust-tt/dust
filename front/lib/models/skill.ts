@@ -44,6 +44,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
     allowNull: false,
   },
+  icon: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 } as const satisfies ModelAttributes<Model>;
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
@@ -94,6 +98,7 @@ SkillVersionModel.init(
     },
     version: {
       type: DataTypes.INTEGER,
+      allowNull: false,
     },
   },
   {

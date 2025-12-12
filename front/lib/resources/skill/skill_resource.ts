@@ -779,8 +779,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       description: this.description,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
-      icon: this.icon ?? null,
       requestedSpaceIds: this.requestedSpaceIds,
+      icon: this.icon ?? null,
       tools,
       canWrite: this.canWrite(auth),
     };
