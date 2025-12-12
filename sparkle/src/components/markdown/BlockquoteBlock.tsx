@@ -21,6 +21,7 @@ export const blockquoteVariants = cva(
       },
       buttonDisplay: {
         inside: ["s-pr-12"],
+        outside: [],
       },
     },
   }
