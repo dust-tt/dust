@@ -66,6 +66,7 @@ export function Markdown({
   compactSpacing = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  canCopyQuotes = true,
 }: {
   content: string;
   isStreaming?: boolean;
@@ -75,6 +76,7 @@ export function Markdown({
   forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  canCopyQuotes?: boolean;
 }) {
   const processedContent = useMemo(() => {
     let sanitized = sanitizeContent(content);
@@ -214,7 +216,11 @@ export function Markdown({
         </strong>
       ),
       input: Input,
-      blockquote: BlockquoteBlock,
+      blockquote: ({ children }) => (
+        <BlockquoteBlock buttonDisplay={canCopyQuotes ? "inside" : null}>
+          {children}
+        </BlockquoteBlock>
+      ),
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),

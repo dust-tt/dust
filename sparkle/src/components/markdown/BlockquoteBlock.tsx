@@ -5,10 +5,10 @@ import { ContentBlockWrapper } from "@sparkle/components";
 
 export const blockquoteVariants = cva(
   [
-    "s-w-full s-text-base s-italic s-py-3 s-pl-3 s-pr-12",
+    "s-w-full s-text-base s-italic s-p-3",
     "s-relative",
     "before:s-content-[''] before:s-absolute before:s-left-0 before:s-top-3 before:s-bottom-3",
-    "before:s-w-1 before:s-bg-border-night dark:before:s-bg-border",
+    "before:s-w-1 before:s-bg-faint dark:before:s-bg-faint-night",
     "before:s-rounded-full",
   ],
   {
@@ -19,6 +19,10 @@ export const blockquoteVariants = cva(
           "s-bg-transparent",
         ],
       },
+      buttonDisplay: {
+        inside: ["s-pr-12"],
+        outside: [],
+      },
     },
   }
 );
@@ -26,11 +30,13 @@ export const blockquoteVariants = cva(
 interface BlockquoteBlockProps {
   children: React.ReactNode;
   variant?: "surface";
+  buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
 }
 
 export function BlockquoteBlock({
   children,
   variant = "surface",
+  buttonDisplay = "inside",
 }: BlockquoteBlockProps) {
   const elementAt1 = React.Children.toArray(children)[1];
   const childrenContent =
@@ -52,9 +58,9 @@ export function BlockquoteBlock({
     <ContentBlockWrapper
       content={clipboardContent}
       className="s-my-2"
-      buttonDisplay="inside"
+      buttonDisplay={buttonDisplay}
     >
-      <blockquote className={blockquoteVariants({ variant })}>
+      <blockquote className={blockquoteVariants({ variant, buttonDisplay })}>
         {children}
       </blockquote>
     </ContentBlockWrapper>
