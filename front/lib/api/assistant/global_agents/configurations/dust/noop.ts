@@ -1,3 +1,4 @@
+import { DUST_AVATAR_URL } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type { AgentConfigurationType } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
@@ -15,7 +16,7 @@ export function _getNoopAgent(): AgentConfigurationType | null {
     name: "noop",
     description: NOOP_MODEL_CONFIG.description,
     instructions: "",
-    pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+    pictureUrl: DUST_AVATAR_URL,
     status: "active",
     scope: "global",
     userFavorite: false,
