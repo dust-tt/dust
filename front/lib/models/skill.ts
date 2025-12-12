@@ -92,6 +92,9 @@ SkillVersionModel.init(
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
     },
+    version: {
+      type: DataTypes.INTEGER,
+    },
   },
   {
     modelName: "skill_version",
