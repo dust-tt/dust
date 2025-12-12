@@ -5,9 +5,9 @@ import { useContext, useEffect, useState } from "react";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -116,7 +116,7 @@ export default function AgentConversation({
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const router = useRouter();
 
-  const { activeConversationId } = useConversationsNavigation();
+  const activeConversationId = useActiveConversationId();
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
