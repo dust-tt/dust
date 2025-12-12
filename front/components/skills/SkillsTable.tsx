@@ -26,7 +26,7 @@ type RowData = {
   description: string;
   editors: UserType[] | null;
   usage: AgentsUsageType;
-  updatedAt: number;
+  updatedAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
 };
@@ -102,16 +102,15 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
     {
       header: "Last Edited",
       accessorKey: "updatedAt",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.BasicCellContent
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
-          label={
-            info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, number | null>) => {
+        const value = info.getValue();
+        return (
+          <DataTable.BasicCellContent
+            tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
+            label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
+          />
+        );
+      },
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {

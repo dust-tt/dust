@@ -8,7 +8,7 @@ export type SkillConfigurationType = {
   id: number;
   sId: string;
   createdAt: number;
-  updatedAt: number;
+  updatedAt: number | null;
   status: SkillStatus;
   name: string;
   description: string;
