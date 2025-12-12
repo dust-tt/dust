@@ -50,8 +50,10 @@ export const HEADERS_ALLOWED_LIST = [
       .filter((preset) => preset.eventCheck?.type === "headers")
       .map((preset) => preset.eventCheck?.field.toLowerCase())
   ),
-  // Header used by Fathom.
+  // Headers used by Fathom.
+  "webhook-id",
   "webhook-signature",
+  "webhook-timestamp",
 ];
 
 export function checkSignature({
