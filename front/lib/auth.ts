@@ -924,7 +924,9 @@ export class Authenticator {
     };
   }
 
-  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
+  static async fromJSON(
+    authType: AuthenticatorType
+  ): Promise<Result<Authenticator, { code: "subscription_mismatch" }>> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
         ? WorkspaceResource.fetchById(authType.workspaceId)
@@ -941,12 +943,13 @@ export class Authenticator {
         ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
         : null;
 
-    assert(
-      !authType.subscriptionId ||
-        !subscription ||
-        subscription.sId === authType.subscriptionId,
-      `Subscription mismatch: expected ${authType.subscriptionId} but got ${subscription?.sId}`
-    );
+    if (
+      authType.subscriptionId &&
+      subscription &&
+      subscription.sId !== authType.subscriptionId
+    ) {
+      return new Err({ code: "subscription_mismatch" });
+    }
 
     let groups: GroupResource[] = [];
     if (authType.groupIds.length > 0 && workspace) {
@@ -985,15 +988,17 @@ export class Authenticator {
       }
     }
 
-    return new Authenticator({
-      authMethod: authType.authMethod,
-      workspace,
-      user,
-      role: authType.role,
-      groups,
-      subscription,
-      key: authType.key,
-    });
+    return new Ok(
+      new Authenticator({
+        authMethod: authType.authMethod,
+        workspace,
+        user,
+        role: authType.role,
+        groups,
+        subscription,
+        key: authType.key,
+      })
+    );
   }
 }
 
