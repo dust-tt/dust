@@ -694,8 +694,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    // Extract custom skill IDs and convert to sIds.
-    const customSkillSIds = removeNulls(
+    const customSkillIds = removeNulls(
       conversationSkills.map((cs) =>
         cs.customSkillId
           ? SkillResource.modelIdToSId({
@@ -706,18 +705,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       )
     );
 
-    // Extract global skill IDs (already strings).
-    const globalSkillSIds = removeNulls(
+    const globalSkillIds = removeNulls(
       conversationSkills.map((cs) => cs.globalSkillId)
     );
 
-    const allSkillSIds = [...customSkillSIds, ...globalSkillSIds];
+    const allSkillIds = [...customSkillIds, ...globalSkillIds];
 
-    if (allSkillSIds.length === 0) {
+    if (allSkillIds.length === 0) {
       return [];
     }
 
-    return SkillResource.fetchByIds(auth, allSkillSIds);
+    return SkillResource.fetchByIds(auth, allSkillIds);
   }
 
   private static fromGlobalSkill(

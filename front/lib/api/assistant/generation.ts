@@ -4,6 +4,7 @@ import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_ENABLE_SKILL_TOOL_NAME,
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -26,7 +28,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 function constructContextSection({
   userMessage,
@@ -151,8 +152,8 @@ function constructSkillsSection({
   equippedSkills,
   featureFlags,
 }: {
-  enabledSkills?: SkillConfigurationType[];
-  equippedSkills?: SkillConfigurationType[];
+  enabledSkills: SkillResource[];
+  equippedSkills: SkillResource[];
   featureFlags: WhitelistableFeature[];
 }): string {
   if (!featureFlags.includes("skills")) {
@@ -165,8 +166,7 @@ function constructSkillsSection({
   if (enabledSkills && enabledSkills.length > 0) {
     skillsSection += "\n## SKILLS\n";
     skillsSection += "\n### ENABLED SKILLS\n";
-    skillsSection +=
-      "The following skills are currently enabled and their instructions apply to this conversation:\n";
+    skillsSection += "The following skills are currently enabled:\n";
     for (const { name, instructions } of enabledSkills) {
       skillsSection += `<${name}>\n${instructions}\n</${name}>\n`;
     }
@@ -175,8 +175,7 @@ function constructSkillsSection({
   // Equipped but not yet enabled skills - show name, sId and description only
   if (equippedSkills && equippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
-    skillsSection +=
-      "The following skills are available but not currently enabled:\nYou can enable them with the enable_skill tool.\n";
+    skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${DEFAULT_ENABLE_SKILL_TOOL_NAME} tool.\n`;
     const skillList = equippedSkills
       .map(
         ({ name, sId, description }) =>
@@ -341,8 +340,8 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    enabledSkills?: SkillConfigurationType[];
-    equippedSkills?: SkillConfigurationType[];
+    enabledSkills: SkillResource[];
+    equippedSkills: SkillResource[];
     featureFlags: WhitelistableFeature[];
   }
 ) {

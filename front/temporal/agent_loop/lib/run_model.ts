@@ -195,19 +195,15 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
-  // Fetch enabled skills (skills activated for this conversation/message)
   const enabledSkills = await SkillResource.listEnabledForConversation(auth, {
     agentConfiguration,
     conversation,
   });
-
-  // Fetch all skills equipped to this agent (configured in the agent builder)
   const allAgentSkills = await SkillResource.fetchByAgentConfigurationId(
     auth,
     agentConfiguration.id
   );
 
-  // Equipped skills = agent skills that are not yet enabled
   const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
   const equippedSkills = allAgentSkills.filter(
     (s) => !enabledSkillIds.has(s.sId)
@@ -271,8 +267,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
-    enabledSkills: enabledSkills.map((s) => s.toJSON()),
-    equippedSkills: equippedSkills.map((s) => s.toJSON()),
+    enabledSkills: enabledSkills,
+    equippedSkills: equippedSkills,
     featureFlags,
   });
 
