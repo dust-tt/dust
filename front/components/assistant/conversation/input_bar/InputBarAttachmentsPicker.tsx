@@ -51,6 +51,16 @@ import type {
 } from "@app/types";
 import { asDisplayToolName, MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
+const getKeyForDataSource = (dataSource: DataSourceType) => {
+  if (dataSource.connectorProvider === "webcrawler") {
+    return `ds-webcrawler`;
+  } else if (!dataSource.connectorProvider) {
+    return `ds-folder`;
+  } else {
+    return `ds-${dataSource.sId}`;
+  }
+};
+
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
@@ -183,7 +193,7 @@ export const InputBarAttachmentsPicker = ({
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
-    useState<string[]>([]);
+    useState<Record<string, boolean>>({});
   const {
     inputValue: search,
     debouncedValue: searchQuery,
@@ -223,7 +233,7 @@ export const InputBarAttachmentsPicker = ({
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedDataSourcesAndTools([]);
+      setSelectedDataSourcesAndTools({});
     }
   }, [isOpen, searchQuery]);
 
@@ -260,11 +270,12 @@ export const InputBarAttachmentsPicker = ({
         { dataSource: DataSourceType; results: DataSourceViewContentNode[] }
       >
     >((acc, item) => {
-      acc[`ds-${item.dataSource.sId}`] = acc[`ds-${item.dataSource.sId}`] ?? {
+      const key = getKeyForDataSource(item.dataSource);
+      acc[key] = acc[key] ?? {
         dataSource: item.dataSource,
         results: [],
       };
-      acc[`ds-${item.dataSource.sId}`].results.push(item);
+      acc[key].results.push(item);
       return acc;
     }, {});
   }, [dataSourcesNodes]);
@@ -272,7 +283,15 @@ export const InputBarAttachmentsPicker = ({
   useEffect(() => {
     const dataSources = Object.keys(dataSourcesWithResults);
     if (dataSources.length > 0) {
-      setSelectedDataSourcesAndTools((prev) => [...prev, ...dataSources]);
+      setSelectedDataSourcesAndTools((prev) =>
+        dataSources.reduce<Record<string, boolean>>(
+          (acc, item) => ({
+            ...acc,
+            [item]: false,
+          }),
+          prev
+        )
+      );
     }
   }, [dataSourcesWithResults]);
 
@@ -318,29 +337,18 @@ export const InputBarAttachmentsPicker = ({
     const tools = Object.keys(serversWithResults);
     if (tools.length > 0) {
       // Tool results comes one by one, just add the last one to the list as the others are already added
-      setSelectedDataSourcesAndTools((prev) => [
+      setSelectedDataSourcesAndTools((prev) => ({
         ...prev,
-        tools[tools.length - 1],
-      ]);
+        [tools[tools.length - 1]]: false,
+      }));
     }
   }, [serversWithResults]);
 
   const handleTagClick = (key: string) => {
-    const allKeys = [
-      ...Object.keys(dataSourcesWithResults),
-      ...Object.keys(serversWithResults),
-    ];
-    if (selectedDataSourcesAndTools.length === allKeys.length) {
-      setSelectedDataSourcesAndTools(() => [key]);
-    } else if (!selectedDataSourcesAndTools.includes(key)) {
-      setSelectedDataSourcesAndTools((prev) => [...prev, key]);
-    } else if (selectedDataSourcesAndTools.length === 1) {
-      setSelectedDataSourcesAndTools(() => allKeys);
-    } else {
-      setSelectedDataSourcesAndTools((prev) =>
-        prev.filter((item) => item !== key)
-      );
-    }
+    setSelectedDataSourcesAndTools((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   const {
@@ -371,7 +379,7 @@ export const InputBarAttachmentsPicker = ({
             fallback: FolderIcon,
           })
         : FolderIcon,
-      label: getDisplayNameForDataSource(r.dataSource),
+      label: getDisplayNameForDataSource(r.dataSource, true),
     })),
     ...Object.entries(serversWithResults).map(([key, s]) => ({
       key,
@@ -380,6 +388,10 @@ export const InputBarAttachmentsPicker = ({
     })),
   ];
 
+  console.log(availableSources);
+  const allUnselected = Object.values(selectedDataSourcesAndTools).every(
+    (value) => !value
+  );
   return (
     <DropdownMenu
       open={isOpen}
@@ -451,14 +463,17 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {availableSources.length > 1 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 p-2">
                 {availableSources.map(({ key, icon, label }) => (
                   <Button
                     size="xs"
                     variant={
-                      selectedDataSourcesAndTools.includes(key)
-                        ? "primary"
-                        : "outline"
+                      selectedDataSourcesAndTools[key] ? "outline" : "ghost"
+                    }
+                    className={
+                      selectedDataSourcesAndTools[key]
+                        ? "text-blue-500 hover:text-blue-500"
+                        : ""
                     }
                     icon={icon}
                     label={label}
@@ -470,10 +485,12 @@ export const InputBarAttachmentsPicker = ({
             {Object.keys(serversWithResults).length === 0 ? (
               // No tools results - show knowledge nodes as returned by the search
               dataSourcesNodes
-                .filter((item) =>
-                  selectedDataSourcesAndTools.includes(
-                    `ds-${item.dataSource.sId}`
-                  )
+                .filter(
+                  (item) =>
+                    allUnselected ||
+                    selectedDataSourcesAndTools[
+                      getKeyForDataSource(item.dataSource)
+                    ]
                 )
                 .map((item) => (
                   <KnowledgeNodeCheckboxItem
@@ -489,7 +506,8 @@ export const InputBarAttachmentsPicker = ({
               // Show grouped results - first knowledge nodes, then tools
               <>
                 {Object.entries(dataSourcesWithResults).map(([key, r]) => {
-                  const isSelected = selectedDataSourcesAndTools.includes(key);
+                  const isSelected =
+                    allUnselected || selectedDataSourcesAndTools[key];
                   return isSelected
                     ? r.results.map((item) => (
                         <KnowledgeNodeCheckboxItem
@@ -504,7 +522,8 @@ export const InputBarAttachmentsPicker = ({
                     : null;
                 })}
                 {Object.entries(serversWithResults).map(([key, r]) => {
-                  const isSelected = selectedDataSourcesAndTools.includes(key);
+                  const isSelected =
+                    allUnselected || selectedDataSourcesAndTools[key];
                   return isSelected
                     ? r.results.map((item) => (
                         <ToolFileCheckboxItem
