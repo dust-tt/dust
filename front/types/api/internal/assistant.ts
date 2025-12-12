@@ -193,6 +193,7 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.literal("deleted"),
     t.literal("test"),
   ]),
+  spaceId: t.union([t.string, t.null]),
   message: t.union([MessageBaseSchema, t.null]),
   contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
 });

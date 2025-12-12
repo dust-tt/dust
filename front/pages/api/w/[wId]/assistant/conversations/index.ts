@@ -14,6 +14,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -52,9 +53,11 @@ async function handler(
     case "GET":
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
-      res
-        .status(200)
-        .json({ conversations: conversations.map((c) => c.toJSON()) });
+      res.status(200).json({
+        conversations: conversations
+          .filter((c) => !c.spaceId)
+          .map((c) => c.toJSON()),
+      });
       return;
 
     case "POST":
@@ -74,7 +77,7 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragments } =
+      const { title, visibility, spaceId, message, contentFragments } =
         bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
@@ -99,10 +102,26 @@ async function handler(
         }
       }
 
+      // Validate spaceId if provided and convert to model ID
+      let spaceModelId: number | null = null;
+      if (spaceId) {
+        const space = await SpaceResource.fetchById(auth, spaceId);
+        if (!space || !space.canReadOrAdministrate(auth)) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: "Space not found or access denied",
+            },
+          });
+        }
+        spaceModelId = space.id;
+      }
+
       let conversation = await createConversation(auth, {
         title,
         visibility,
-        spaceId: null,
+        spaceId: spaceModelId,
       });
 
       const newContentFragments: ContentFragmentType[] = [];
