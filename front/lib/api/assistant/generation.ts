@@ -160,11 +160,16 @@ function constructSkillsSection({
     return "";
   }
 
-  let skillsSection = "";
+  let skillsSection = "\n## SKILLS\n";
+
+  if (!enabledSkills.length && !equippedSkills.length) {
+    skillsSection +=
+      "No skills are currently equipped or enabled for this agent.\n";
+    return skillsSection;
+  }
 
   // Enabled skills - inject their full instructions
   if (enabledSkills && enabledSkills.length > 0) {
-    skillsSection += "\n## SKILLS\n";
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
     for (const { name, instructions } of enabledSkills) {
