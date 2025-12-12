@@ -18,7 +18,7 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
-  GPT_5_2_MODEL_CONFIG,
+  GPT_5_1_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -187,8 +187,8 @@ export function _getGPT5GlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_2_MODEL_CONFIG.providerId,
-      modelId: GPT_5_2_MODEL_CONFIG.modelId,
+      providerId: GPT_5_1_MODEL_CONFIG.providerId,
+      modelId: GPT_5_1_MODEL_CONFIG.modelId,
       temperature: 0.7,
       /**
        * WARNING: Because the default in ChatGPT is no reasoning, we do the same
@@ -259,10 +259,10 @@ export function _getGPT5ThinkingGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_2_MODEL_CONFIG.providerId,
-      modelId: GPT_5_2_MODEL_CONFIG.modelId,
+      providerId: GPT_5_1_MODEL_CONFIG.providerId,
+      modelId: GPT_5_1_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort: GPT_5_2_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: GPT_5_1_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
