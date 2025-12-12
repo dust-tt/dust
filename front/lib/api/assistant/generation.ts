@@ -26,7 +26,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
-import { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 function constructContextSection({
   userMessage,
@@ -149,10 +149,16 @@ function constructToolsSection({
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
+  featureFlags,
 }: {
   enabledSkills?: SkillConfigurationType[];
   equippedSkills?: SkillConfigurationType[];
+  featureFlags: WhitelistableFeature[];
 }): string {
+  if (!featureFlags.includes("skills")) {
+    return "";
+  }
+
   let skillsSection = "";
 
   // Enabled skills - inject their full instructions
@@ -361,6 +367,7 @@ export function constructPromptMultiActions(
     constructSkillsSection({
       enabledSkills,
       equippedSkills,
+      featureFlags,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),

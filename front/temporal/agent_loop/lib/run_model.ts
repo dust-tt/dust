@@ -35,6 +35,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -44,7 +45,6 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
 const MAX_AUTO_RETRY = 3;
 
