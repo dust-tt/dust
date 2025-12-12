@@ -251,6 +251,59 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(trigger);
   }
 
+  static async fetchByIdAndValidateOwnership(
+    auth: Authenticator,
+    triggerId: string,
+    agentConfigurationSId: string,
+    userId: number
+  ): Promise<Result<TriggerResource, Error>> {
+    const trigger = await this.fetchById(auth, triggerId);
+    if (!trigger) {
+      return new Err(new Error("Trigger not found"));
+    }
+    if (trigger.agentConfigurationId !== agentConfigurationSId) {
+      return new Err(new Error("This trigger does not belong to this agent"));
+    }
+    if (trigger.editor !== userId) {
+      return new Err(new Error("You can only modify triggers you created"));
+    }
+    return new Ok(trigger);
+  }
+
+  static async updateFields(
+    auth: Authenticator,
+    triggerId: string,
+    updates: {
+      name?: string;
+      enabled?: boolean;
+      schedule?: { cron: string; timezone: string; naturalLanguage: string };
+      customPrompt?: string;
+    }
+  ): Promise<Result<TriggerResource, Error>> {
+    const updateBlob: Partial<
+      InferAttributes<TriggerModel, { omit: "workspaceId" }>
+    > = {};
+
+    if (updates.name !== undefined) {
+      updateBlob.name = updates.name;
+    }
+    if (updates.enabled !== undefined) {
+      updateBlob.enabled = updates.enabled;
+    }
+    if (updates.customPrompt !== undefined) {
+      updateBlob.customPrompt = updates.customPrompt;
+    }
+    if (updates.schedule) {
+      updateBlob.configuration = {
+        cron: updates.schedule.cron,
+        timezone: updates.schedule.timezone,
+      };
+      updateBlob.naturalLanguageDescription = updates.schedule.naturalLanguage;
+    }
+
+    return this.update(auth, triggerId, updateBlob);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
