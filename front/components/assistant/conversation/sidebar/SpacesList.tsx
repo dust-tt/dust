@@ -5,7 +5,8 @@ import { memo, useContext } from "react";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/by-spaces-summary";
+import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { SpaceType, WorkspaceType } from "@app/types";
 interface SpacesListProps {
   owner: WorkspaceType;
@@ -25,7 +26,7 @@ const SpaceListItem = memo(
     const router = useRouter();
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
-    const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
+    const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
     const spaceLabel = `${space.name}${unreadCount > 0 ? ` (${unreadCount})` : ""}`;
 
     return (
@@ -66,7 +67,7 @@ export function SpacesList({ owner, summary }: SpacesListProps) {
   }
 
   return (
-    <>
+    <div className="mx-3 flex flex-col gap-0.5">
       {summary.map(({ space, unreadConversations }) => (
         <SpaceListItem
           key={space.sId}
@@ -75,6 +76,6 @@ export function SpacesList({ owner, summary }: SpacesListProps) {
           owner={owner}
         />
       ))}
-    </>
+    </div>
   );
 }
