@@ -46,7 +46,7 @@ export type AgentMessageStateEvent =
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
-  { type: "tool_approve_execution" }
+  { type: "tool_approve_execution" } | { type: "tool_personal_auth_required" }
 >;
 
 function updateMessageWithAction(
@@ -57,6 +57,14 @@ function updateMessageWithAction(
     ...m,
     actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
+}
+
+// Reset "failed" status to "created" when agent resumes after required auth error.
+function resetFailedStatus(m: AgentMessagePublicType): AgentMessagePublicType {
+  if (m.status === "failed") {
+    return { ...m, status: "created", error: null };
+  }
+  return m;
 }
 
 function updateProgress(
@@ -89,17 +97,19 @@ export function messageReducer(
   event: AgentMessageStateEventWithoutToolApproveExecution
 ): MessageTemporaryState {
   switch (event.type) {
-    case "agent_action_success":
+    case "agent_action_success": {
       return {
         ...state,
-        message: updateMessageWithAction(state.message, event.action),
-        // Clean up progress for this specific action.
+        message: resetFailedStatus(
+          updateMessageWithAction(state.message, event.action)
+        ),
         actionProgress: new Map(
           Array.from(state.actionProgress.entries()).filter(
             ([id]) => id !== event.action.id
           )
         ),
       };
+    }
 
     case "tool_notification": {
       return updateProgress(state, event);
@@ -135,32 +145,39 @@ export function messageReducer(
       };
 
     case "generation_tokens": {
-      const newState = { ...state };
+      let message = resetFailedStatus(state.message);
+      let agentState = state.agentState;
       switch (event.classification) {
         case "closing_delimiter":
         case "opening_delimiter":
           break;
         case "tokens":
-          newState.message.content =
-            (newState.message.content || "") + event.text;
-          newState.agentState = "writing";
-
+          message = {
+            ...message,
+            content: (message.content || "") + event.text,
+          };
+          agentState = "writing";
           break;
         case "chain_of_thought":
-          newState.message.chainOfThought =
-            (newState.message.chainOfThought || "") + event.text;
-          newState.agentState = "thinking";
-
+          message = {
+            ...message,
+            chainOfThought: (message.chainOfThought || "") + event.text,
+          };
+          agentState = "thinking";
           break;
       }
-      return newState;
+      return { ...state, message, agentState };
     }
-    case "tool_params":
+
+    case "tool_params": {
       return {
         ...state,
-        message: updateMessageWithAction(state.message, event.action),
+        message: resetFailedStatus(
+          updateMessageWithAction(state.message, event.action)
+        ),
         agentState: "acting",
       };
+    }
 
     default:
       assertNever(event);

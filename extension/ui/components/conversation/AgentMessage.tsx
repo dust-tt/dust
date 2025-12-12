@@ -12,6 +12,7 @@ import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessag
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
+import { MCPServerAuthRequired } from "@app/ui/components/conversation/MCPServerAuthRequired";
 import {
   AgentMentionBlock,
   agentMentionDirective,
@@ -252,16 +253,32 @@ export function AgentMessage({
 
   const { showValidationDialog } = useContext(ActionValidationContext);
 
-  const shouldStream = (() => {
-    if (message.status !== "created") {
-      return false;
-    }
+  const [blockedAuthAction, setBlockedAuthAction] = useState<{
+    mcpServerDisplayName: string;
+  } | null>(null);
 
+  // Ref to track blocked state for use in callbacks (avoids stale closure issues).
+  const blockedAuthActionRef = useRef(blockedAuthAction);
+  useEffect(() => {
+    blockedAuthActionRef.current = blockedAuthAction;
+  }, [blockedAuthAction]);
+
+  useEffect(() => {
+    if (
+      blockedAuthAction &&
+      (message.status === "succeeded" || message.status === "cancelled")
+    ) {
+      setBlockedAuthAction(null);
+    }
+  }, [message.status, blockedAuthAction]);
+
+  const shouldStream = (() => {
     switch (messageStreamState.message.status) {
       case "succeeded":
-      case "failed":
       case "cancelled":
         return false;
+      case "failed":
+        return !!blockedAuthActionRef.current;
       case "created":
         return true;
       default:
@@ -294,7 +311,6 @@ export function AgentMessage({
       } = JSON.parse(eventStr);
       const eventType = eventPayload.data.type;
 
-      // Handle validation dialog separately.
       if (eventType === "tool_approve_execution") {
         showValidationDialog({
           actionId: eventPayload.data.actionId,
@@ -308,15 +324,30 @@ export function AgentMessage({
 
         return;
       }
+      if (eventType === "tool_personal_auth_required") {
+        setBlockedAuthAction({
+          mcpServerDisplayName: eventPayload.data.metadata.mcpServerDisplayName,
+        });
+        return;
+      }
 
-      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
-      // end of the stream to the client. The message reducer does not, and should not, handle this
-      // event, so we just return.
       if (eventType === "end-of-stream") {
         return;
       }
 
       dispatch(eventPayload.data);
+
+      // Clear blocked auth action when agent progresses past the auth block.
+      // Done after dispatch so the reducer updates status before we clear the block,
+      // avoiding a flash where blockedAuthAction is null but status is still "failed".
+      if (
+        blockedAuthActionRef.current &&
+        (eventType === "tool_params" ||
+          eventType === "generation_tokens" ||
+          eventType === "agent_action_success")
+      ) {
+        setBlockedAuthAction(null);
+      }
     },
     [showValidationDialog, owner.sId, message.sId, conversationId]
   );
@@ -329,20 +360,13 @@ export function AgentMessage({
   );
 
   const agentMessageToRender = ((): AgentMessagePublicType => {
-    switch (message.status) {
-      case "succeeded":
-      case "failed":
-        return message;
-      case "cancelled":
-        if (messageStreamState.message.status === "created") {
-          return { ...messageStreamState.message, status: "cancelled" };
-        }
-        return message;
-      case "created":
-        return messageStreamState.message;
-      default:
-        assertNever(message.status);
+    if (shouldStream || blockedAuthAction) {
+      if (message.status === "cancelled") {
+        return { ...messageStreamState.message, status: "cancelled" };
+      }
+      return messageStreamState.message;
     }
+    return message;
   })();
 
   // Autoscroll is performed when a message is generating and the page is
@@ -700,6 +724,18 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
+    // Show auth required UI if blocked on authentication.
+    if (blockedAuthAction) {
+      return (
+        <MCPServerAuthRequired
+          dustDomain={user.dustDomain}
+          workspaceId={owner.sId}
+          conversationId={conversationId}
+          mcpServerDisplayName={blockedAuthAction.mcpServerDisplayName}
+        />
+      );
+    }
+
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
