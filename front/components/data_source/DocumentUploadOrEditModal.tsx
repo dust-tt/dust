@@ -177,7 +177,7 @@ export const DocumentUploadOrEditModal = ({
       // When editing (initialId is set), keep the original ID.
       const documentId = initialId ?? slugify(document.title);
       const body = {
-        title: initialId ?? document.title,
+        title: document.title,
         document_id: documentId,
         mime_type: document.mimeType ?? "text/plain",
         timestamp: null,
