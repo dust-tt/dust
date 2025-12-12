@@ -16,20 +16,6 @@ export interface LaunchCreditAlertWorkflowArgs {
   totalConsumedMicroUsd: number;
 }
 
-/**
- * Launches a Temporal workflow to send credit alert emails when usage reaches threshold.
- *
- * Uses `WorkflowIdReusePolicy.ALLOW_DUPLICATE_FAILED_ONLY` to achieve idempotency:
- * - The workflow ID is deterministic: `credit-alert-${workspaceId}-${creditAlertThresholdKey}`
- * - If a workflow with this ID already completed successfully, a new one cannot start,
- *   preventing duplicate alert emails for the same threshold breach.
- * - If a previous workflow failed (e.g., email service down), a retry is allowed.
- * - When multiple concurrent calls detect the threshold breach, only one workflow runs;
- *   others receive `WorkflowExecutionAlreadyStartedError` (expected, handled silently).
- *
- * The `creditAlertThresholdKey` encodes the current credit configuration (free + committed
- * credit IDs + threshold %), so alerts reset when credits are renewed or changed.
- */
 export async function launchCreditAlertWorkflow({
   workspaceId,
   creditAlertThresholdKey,

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   compareCreditsForConsumption,
-  computeCreditAlertThresholdId,
+  computeCreditAlertThresholdKey,
   decreaseProgrammaticCreditsV2,
 } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
@@ -517,7 +517,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
   });
 });
 
-describe("computeCreditAlertThresholdId", () => {
+describe("computeCreditAlertThresholdKey", () => {
   function makeMockCreditForThreshold(
     overrides: Partial<CreditResource> & { sId: string; type: string }
   ): CreditResource {
@@ -541,7 +541,7 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    const result = computeCreditAlertThresholdId(credits, 80);
+    const result = computeCreditAlertThresholdKey(credits, 80);
 
     expect(result).toBe("free-1-committed-1-80");
   });
@@ -570,7 +570,7 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    const result = computeCreditAlertThresholdId(credits, 80);
+    const result = computeCreditAlertThresholdKey(credits, 80);
 
     expect(result).toBe("free-new-committed-new-80");
   });
@@ -584,7 +584,7 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    const result = computeCreditAlertThresholdId(credits, 80);
+    const result = computeCreditAlertThresholdKey(credits, 80);
 
     expect(result).toBe("undefined-committed-1-80");
   });
@@ -598,13 +598,13 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    const result = computeCreditAlertThresholdId(credits, 80);
+    const result = computeCreditAlertThresholdKey(credits, 80);
 
     expect(result).toBe("free-1-undefined-80");
   });
 
   it("returns undefined-undefined when no credits", () => {
-    const result = computeCreditAlertThresholdId([], 80);
+    const result = computeCreditAlertThresholdKey([], 80);
 
     expect(result).toBe("undefined-undefined-80");
   });
@@ -623,7 +623,7 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    const result = computeCreditAlertThresholdId(credits, 80);
+    const result = computeCreditAlertThresholdKey(credits, 80);
 
     expect(result).toBe("free-dated-undefined-80");
   });
@@ -642,10 +642,10 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    expect(computeCreditAlertThresholdId(credits, 50)).toBe(
+    expect(computeCreditAlertThresholdKey(credits, 50)).toBe(
       "free-1-committed-1-50"
     );
-    expect(computeCreditAlertThresholdId(credits, 90)).toBe(
+    expect(computeCreditAlertThresholdKey(credits, 90)).toBe(
       "free-1-committed-1-90"
     );
   });
@@ -669,7 +669,7 @@ describe("computeCreditAlertThresholdId", () => {
       }),
     ];
 
-    const result = computeCreditAlertThresholdId(credits, 80);
+    const result = computeCreditAlertThresholdKey(credits, 80);
 
     expect(result).toBe("free-1-committed-1-80");
   });
