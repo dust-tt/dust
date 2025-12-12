@@ -28,6 +28,8 @@ export type GetMemberResponseBody = {
     image: string | null;
     revoked: boolean;
     role: RoleType;
+    startAt: string | null;
+    endAt: string | null;
   };
 };
 
@@ -95,6 +97,8 @@ async function handler(
           image: user.imageUrl,
           revoked: membership.isRevoked(),
           role: membership.isRevoked() ? "none" : membership.role,
+          startAt: membership.startAt?.toISOString() ?? null,
+          endAt: membership.endAt?.toISOString() ?? null,
         },
       };
 

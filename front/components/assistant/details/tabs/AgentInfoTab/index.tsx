@@ -2,7 +2,6 @@ import { Chip, Page } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
-import { AssistantEditedSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantToolsSection";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
@@ -15,7 +14,7 @@ export function AgentInfoTab({
   owner: WorkspaceType;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {agentConfiguration.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {agentConfiguration.tags.map((tag) => (
@@ -24,39 +23,41 @@ export function AgentInfoTab({
         </div>
       )}
 
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        {agentConfiguration.description}
-      </div>
-      {agentConfiguration && (
-        <AssistantEditedSection agentConfiguration={agentConfiguration} />
+      {agentConfiguration.description && (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          {agentConfiguration.description}
+        </div>
       )}
-      {/* No per-agent configuration button for global Dust agent anymore. */}
-      <Page.Separator />
 
       {agentConfiguration.scope !== "global" && (
         <>
+          <Page.Separator />
+
           <AssistantKnowledgeSection
             agentConfiguration={agentConfiguration}
             owner={owner}
           />
 
-          {agentConfiguration?.instructions ? (
-            <div className="dd-privacy-mask flex flex-col gap-5">
-              <div className="heading-lg text-foreground dark:text-foreground-night">
-                Instructions
-              </div>
+          <div className="dd-privacy-mask flex flex-col gap-3">
+            <div className="text-base font-semibold text-foreground dark:text-foreground-night">
+              Instructions
+            </div>
+            {agentConfiguration?.instructions ? (
               <div className="border-structure-200 bg-structure-50 rounded-lg border p-4">
                 <AgentMessageMarkdown
                   content={agentConfiguration.instructions}
                   owner={owner}
-                ></AgentMessageMarkdown>
+                />
               </div>
-            </div>
-          ) : (
-            "This agent has no instructions."
-          )}
+            ) : (
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Instructions
+              </div>
+            )}
+          </div>
         </>
       )}
+
       <AssistantToolsSection
         agentConfiguration={agentConfiguration}
         owner={owner}
