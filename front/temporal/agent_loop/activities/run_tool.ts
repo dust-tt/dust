@@ -39,7 +39,10 @@ export async function runToolActivity(
   const auth = authResult.value;
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, {
+    ...runAgentArgs,
+    step,
+  });
   if (runAgentDataRes.isErr()) {
     // If the conversation is not found, we cannot run the tool and should stop execution here.
     if (
