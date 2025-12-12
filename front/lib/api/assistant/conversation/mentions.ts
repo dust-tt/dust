@@ -14,6 +14,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -413,6 +414,67 @@ export async function createUserMessage(
   return createdUserMessage;
 }
 
+/**
+ * Propagates enabled skills from previous agent messages to a newly created agent message.
+ * Finds active skills for this agent configuration in this conversation and
+ * creates new skill records for the new message, then deactivates the old ones.
+ */
+async function propagateSkillsToNewAgentMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    agentConfiguration,
+    agentMessageId,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentConfiguration: LightAgentConfigurationType;
+    agentMessageId: ModelId;
+  },
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  // Find all currently active skills for this agent configuration in this conversation
+  const activeSkills = await AgentMessageSkillModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      conversationId: conversation.id,
+      agentConfigurationId: agentConfiguration.id,
+      isActive: true,
+    },
+    transaction,
+  });
+
+  if (activeSkills.length === 0) {
+    return;
+  }
+
+  // Create new skill records for the new agent message
+  await AgentMessageSkillModel.bulkCreate(
+    activeSkills.map((skill) => ({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      isActive: true,
+      customSkillId: skill.customSkillId,
+      globalSkillId: skill.globalSkillId,
+      agentMessageId,
+      conversationId: conversation.id,
+      source: skill.source,
+      addedByUserId: skill.addedByUserId,
+    })),
+    { transaction }
+  );
+
+  await concurrentExecutor(
+    activeSkills,
+    async (skill) => {
+      skill.isActive = false;
+      await skill.save({ transaction });
+    },
+    { concurrency: 10 }
+  );
+}
+
 export const createAgentMessages = async (
   auth: Authenticator,
   {
@@ -568,6 +630,24 @@ export const createAgentMessages = async (
                 workspaceId: owner.id,
               },
               { transaction }
+            );
+
+            // Propagate skills from previous agent messages for the same agent in this conversation.
+            // This ensures enabled skills persist across messages, for each mentioned agent.
+            await concurrentExecutor(
+              results,
+              async ({ agentMessageRow, configuration }) => {
+                await propagateSkillsToNewAgentMessage(
+                  auth,
+                  {
+                    conversation,
+                    agentConfiguration: configuration,
+                    agentMessageId: agentMessageRow.id,
+                  },
+                  { transaction }
+                );
+              },
+              { concurrency: 10 }
             );
 
             // This will tweak the UI a bit.

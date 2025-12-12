@@ -188,6 +188,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async fetchByModelIdsWithAuth(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<SkillResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+      onlyCustom: true,
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string
@@ -681,6 +699,65 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
       { globalSId: def.sId }
     );
+  }
+
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentMessageSkills = await AgentMessageSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+        isActive: true,
+      },
+    });
+
+    // TODO(skills): add global skills support here
+    const skillIds = removeNulls(
+      agentMessageSkills.map((ams) => ams.customSkillId)
+    );
+
+    if (skillIds.length === 0) {
+      return [];
+    }
+
+    const skillConfigurations = await SkillResource.fetchByModelIdsWithAuth(
+      auth,
+      skillIds
+    );
+
+    return skillConfigurations;
+  }
+
+  /**
+   * Fetch MCP server configurations for a set of skills.
+   * Returns a map of skill sId to their MCP server configurations.
+   */
+  static async fetchMCPServerConfigurationsIdsForSkills(
+    skills: SkillResource[]
+  ): Promise<Set<number>> {
+    // Collect all unique mcpServerViewIds from all skills
+    const allMcpServerViewIds = new Set<number>();
+    for (const skill of skills) {
+      for (const config of skill.mcpServerConfigurations) {
+        allMcpServerViewIds.add(config.mcpServerViewId);
+      }
+    }
+    return allMcpServerViewIds;
   }
 
   toJSON(): SkillConfigurationType {
