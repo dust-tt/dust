@@ -136,6 +136,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       name: "Unauthorized Update",
       description: "Description",
       instructions: "Instructions",
+      icon: null,
       tools: [],
     };
 
@@ -165,6 +166,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       name: "Other Skill",
       description: "Description",
       instructions: "Instructions",
+      icon: null,
       tools: [],
     };
 
@@ -188,6 +190,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       name: "Updated Skill",
       description: "Description",
       instructions: "Instructions",
+      icon: null,
       tools: [{ mcpServerViewId: "invalid_id" }],
     };
 
