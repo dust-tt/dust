@@ -1,9 +1,9 @@
+import type { GroupType } from "@app/types";
 import {
   AGENT_GROUP_PREFIX,
   GLOBAL_SPACE_NAME,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
-import type { GroupType } from "@app/types";
 
 export const prettifyGroupName = (group: GroupType) => {
   if (group.kind === "global") {

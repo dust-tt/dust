@@ -1,4 +1,3 @@
-import _ from "lodash";
 import {
   BookOpenIcon,
   Button,
@@ -6,16 +5,17 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
-import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
-import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
+import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
+import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";

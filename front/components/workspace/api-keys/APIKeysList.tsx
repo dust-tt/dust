@@ -68,7 +68,7 @@ export const APIKeysList = ({
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
                       >
-                        Name: <strong>{key.name ? key.name : "Unnamed"}</strong>
+                        Name: <strong>{key.name ?? "Unnamed"}</strong>
                       </p>
                       <p
                         className={classNames(
