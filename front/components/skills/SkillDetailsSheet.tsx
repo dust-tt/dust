@@ -1,5 +1,7 @@
 import {
+  ArrowPathIcon,
   Avatar,
+  Button,
   ContentMessage,
   InformationCircleIcon,
   Sheet,
@@ -16,6 +18,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
+import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -52,7 +55,11 @@ export function SkillDetailsSheet({
           <SheetTitle />
         </VisuallyHidden>
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          <DescriptionSection skillConfiguration={skillConfiguration} />
+          <DescriptionSection
+            skillConfiguration={skillConfiguration}
+            owner={owner}
+            onClose={onClose}
+          />
         </SheetHeader>
         <SheetContainer className="pb-4">
           <SkillDetailsSheetContent
@@ -119,30 +126,62 @@ export function SkillDetailsSheetContent({
 
 type DescriptionSectionProps = {
   skillConfiguration: SkillConfigurationType;
+  owner: WorkspaceType;
+  onClose: () => void;
 };
 
 const DescriptionSection = ({
   skillConfiguration,
-}: DescriptionSectionProps) => (
-  <div className="flex flex-col gap-5">
-    <div className="flex flex-col gap-3 sm:flex-row">
-      <Avatar name="Skill avatar" visual={<SKILL_ICON />} size="lg" />
-      <div className="flex grow flex-col gap-1">
-        <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-          {skillConfiguration.name}
+  owner,
+  onClose,
+}: DescriptionSectionProps) => {
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Avatar name="Skill avatar" visual={<SKILL_ICON />} size="lg" />
+        <div className="flex grow flex-col gap-1">
+          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
+            {skillConfiguration.name}
+          </div>
         </div>
       </div>
-    </div>
 
-    {skillConfiguration.status === "archived" && (
-      <ContentMessage
-        title="This skill has been archived."
-        variant="warning"
-        icon={InformationCircleIcon}
-        size="sm"
-      >
-        It is no longer active and cannot be used.
-      </ContentMessage>
-    )}
-  </div>
-);
+      {skillConfiguration.status === "archived" && (
+        <>
+          <ContentMessage
+            title="This skill has been archived."
+            variant="warning"
+            icon={InformationCircleIcon}
+            size="sm"
+          >
+            It is no longer active and cannot be used.
+            {skillConfiguration.canWrite && (
+              <div className="mt-2">
+                <Button
+                  variant="outline"
+                  label="Restore"
+                  onClick={() => {
+                    setShowRestoreModal(true);
+                  }}
+                  icon={ArrowPathIcon}
+                />
+              </div>
+            )}
+          </ContentMessage>
+
+          <RestoreSkillDialog
+            owner={owner}
+            isOpen={showRestoreModal}
+            skillConfiguration={skillConfiguration}
+            onClose={() => {
+              setShowRestoreModal(false);
+              onClose();
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+};
