@@ -143,6 +143,7 @@ function UserMessageContent({
       additionalMarkdownComponents={additionalMarkdownComponents}
       additionalMarkdownPlugins={additionalMarkdownPlugins}
       compactSpacing
+      canCopyQuotes={false}
     />
   );
 }
@@ -404,6 +405,7 @@ export function UserMessage({
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
               compactSpacing
+              canCopyQuotes={false}
             />
           )}
         </ConversationMessage>

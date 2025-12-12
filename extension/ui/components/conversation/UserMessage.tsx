@@ -78,6 +78,7 @@ export function UserMessage({
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
                 compactSpacing
+                canCopyQuotes={false}
               />
             </div>
             {message.mentions.length === 0 && isLastMessage && (
