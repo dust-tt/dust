@@ -29,6 +29,8 @@ export type ConversationCaching =
   | { useCachedGetConversation: false }
   | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
 
+// Throws on error because cacheWithRedis expects functions that throw (not Result types).
+// Errors are caught and converted back to Result in getAgentLoopData.
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
