@@ -1,6 +1,7 @@
 import { Button, Chip } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
+
+import type { WorkspaceType } from "@app/types";
 
 import type { PendingMentionType } from "@app/pages/api/v1/w/[wId]/assistant/conversations/[cId]/mentions/pending";
 
@@ -63,7 +64,7 @@ export function PendingMentionPrompt({
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <Chip color="amber" size="xs">
+            <Chip color="warning" size="xs">
               Pending Invitation
             </Chip>
           </div>

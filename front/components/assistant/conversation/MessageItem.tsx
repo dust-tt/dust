@@ -18,6 +18,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { PendingMentionPrompt } from "@app/components/assistant/conversation/PendingMentionPrompt";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -133,6 +134,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
+    // Find pending mentions for this message
+    // Note: pendingMention.messageId is the numeric database ID as a string
+    const messagePendingMentions = context.pendingMentions.filter((pm) => {
+      if (isUserMessage(data)) {
+        return pm.messageId === data.id.toString();
+      }
+      return false;
+    });
+
     return (
       <>
         {!areSameDate && <MessageDateIndicator message={data} />}
@@ -146,14 +156,27 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           )}
         >
           {isUserMessage(data) && (
-            <UserMessage
-              citations={citations}
-              conversationId={context.conversationId}
-              currentUserId={context.user.sId}
-              isLastMessage={!nextData}
-              message={data}
-              owner={context.owner}
-            />
+            <>
+              <UserMessage
+                citations={citations}
+                conversationId={context.conversationId}
+                currentUserId={context.user.sId}
+                isLastMessage={!nextData}
+                message={data}
+                owner={context.owner}
+              />
+              {userMentionsEnabled &&
+                messagePendingMentions.map((pendingMention) => (
+                  <PendingMentionPrompt
+                    key={pendingMention.id}
+                    conversationId={context.conversationId}
+                    currentUserSId={context.user.sId}
+                    owner={context.owner}
+                    pendingMention={pendingMention}
+                    onResolved={context.mutatePendingMentions}
+                  />
+                ))}
+            </>
           )}
           {isMessageTemporayState(data) && (
             <AgentMessage

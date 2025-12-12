@@ -50,6 +50,7 @@ import {
   useConversationParticipants,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { usePendingMentions } from "@app/lib/swr/conversations/pending_mentions";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
@@ -171,6 +172,11 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     options: { disabled: true }, // We don't need the participants, only the mutator.
+  });
+
+  const { pendingMentions, mutatePendingMentions } = usePendingMentions({
+    conversationId,
+    workspaceId: owner.sId,
   });
 
   const [initialListData, setInitialListData] = useState<
@@ -657,6 +663,8 @@ export const ConversationViewer = ({
       conversationId,
       agentBuilderContext,
       feedbacksByMessageId,
+      pendingMentions,
+      mutatePendingMentions,
     };
   }, [
     user,
@@ -665,6 +673,8 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    pendingMentions,
+    mutatePendingMentions,
   ]);
 
   return (

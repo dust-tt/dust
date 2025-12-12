@@ -75,13 +75,13 @@ async function handler(
   });
 
   // Fetch user details for all mentions
-  const pendingMentionTypes: PendingMentionType[] = await Promise.all(
+  const pendingMentionTypes: (PendingMentionType | null)[] = await Promise.all(
     pendingMentions.map(async (pm) => {
       const mentionedUser = await getUserForWorkspace(auth, {
-        userId: pm.mentionedUserId,
+        userId: pm.mentionedUserId.toString(),
       });
       const mentionerUser = await getUserForWorkspace(auth, {
-        userId: pm.mentionerUserId,
+        userId: pm.mentionerUserId.toString(),
       });
 
       if (!mentionedUser || !mentionerUser) {
@@ -92,12 +92,18 @@ async function handler(
         id: pm.id,
         mentionedUser: {
           sId: mentionedUser.sId,
-          fullName: mentionedUser.fullName || mentionedUser.username,
+          fullName:
+            typeof mentionedUser.fullName === "function"
+              ? mentionedUser.fullName()
+              : mentionedUser.fullName || mentionedUser.username,
           username: mentionedUser.username,
         },
         mentionerUser: {
           sId: mentionerUser.sId,
-          fullName: mentionerUser.fullName || mentionerUser.username,
+          fullName:
+            typeof mentionerUser.fullName === "function"
+              ? mentionerUser.fullName()
+              : mentionerUser.fullName || mentionerUser.username,
           username: mentionerUser.username,
         },
         messageId: pm.messageId.toString(),

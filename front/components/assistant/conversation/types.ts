@@ -19,6 +19,7 @@ import type {
   UserMessageTypeWithContentFragments,
   UserType,
 } from "@app/types";
+import type { PendingMentionType } from "@app/pages/api/v1/w/[wId]/assistant/conversations/[cId]/mentions/pending";
 import { isLightAgentMessageWithActionsType } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
@@ -75,6 +76,8 @@ export type VirtuosoMessageListContext = {
     resetConversation: () => void;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+  pendingMentions: PendingMentionType[];
+  mutatePendingMentions: () => void;
 };
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {

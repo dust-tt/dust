@@ -114,7 +114,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "pending_mention_not_found",
+        type: "message_not_found",
         message:
           "Pending mention not found or you don't have permission to modify it.",
       },
@@ -135,7 +135,7 @@ async function handler(
 
   // Fetch the mentioned user
   const mentionedUser = await getUserForWorkspace(auth, {
-    userId: pendingMention.mentionedUserId,
+    userId: pendingMention.mentionedUserId.toString(),
   });
   if (!mentionedUser) {
     return apiError(req, res, {
