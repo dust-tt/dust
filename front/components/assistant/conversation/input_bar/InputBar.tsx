@@ -28,6 +28,7 @@ import type {
   DataSourceViewContentNode,
   Result,
   RichMention,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
@@ -36,6 +37,7 @@ const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 interface InputBarProps {
   owner: WorkspaceType;
+  user: UserType | null;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -54,6 +56,7 @@ interface InputBarProps {
 
 export const InputBar = React.memo(function InputBar({
   owner,
+  user,
   onSubmit,
   conversationId,
   stickyMentions,
@@ -323,6 +326,7 @@ export const InputBar = React.memo(function InputBar({
             disableAutoFocus={disableAutoFocus}
             allAgents={activeAgents}
             owner={owner}
+            user={user}
             conversationId={conversationId}
             selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}

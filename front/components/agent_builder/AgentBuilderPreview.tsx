@@ -114,6 +114,7 @@ function PreviewContent({
             <InputBar
               isSubmitting={isSavingDraftAgent}
               owner={owner}
+              user={user}
               onSubmit={createConversation}
               stickyMentions={
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
