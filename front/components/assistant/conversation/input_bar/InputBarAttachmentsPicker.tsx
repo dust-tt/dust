@@ -285,8 +285,8 @@ export const InputBarAttachmentsPicker = ({
       setSelectedDataSourcesAndTools((prev) =>
         dataSources.reduce<Record<string, boolean>>(
           (acc, item) => ({
-            ...acc,
             [item]: false,
+            ...acc,
           }),
           prev
         )
@@ -337,8 +337,8 @@ export const InputBarAttachmentsPicker = ({
     if (tools.length > 0) {
       // Tool results comes one by one, just add the last one to the list as the others are already added
       setSelectedDataSourcesAndTools((prev) => ({
-        ...prev,
         [tools[tools.length - 1]]: false,
+        ...prev,
       }));
     }
   }, [serversWithResults]);
