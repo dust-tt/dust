@@ -462,6 +462,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Fetch MCP server configurations if the global skill has an internal MCP server.
     let mcpServerConfigurations: SkillMCPServerAttributes[] = [];
 
+    // TODO(SKILLS 2025-12-12): Consider doing on single call with all ids.
     if (def.internalMCPServerName) {
       const mcpServerView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
