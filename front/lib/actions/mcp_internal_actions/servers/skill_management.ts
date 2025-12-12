@@ -21,9 +21,9 @@ function createServer(
     DEFAULT_ENABLE_SKILL_TOOL_NAME,
     "Enable a skill for the current conversation. The skill will be available for subsequent messages in this conversation.",
     {
-      skillId: z
+      skillName: z
         .string()
-        .describe("The id of the skill to enable for the conversation"),
+        .describe("The name of the skill to enable for the conversation"),
     },
     withToolLogging(
       auth,
@@ -31,7 +31,7 @@ function createServer(
         toolNameForMonitoring: DEFAULT_ENABLE_SKILL_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ skillId }) => {
+      async ({ skillName }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
         }
@@ -39,10 +39,10 @@ function createServer(
         const { conversation, agentConfiguration, agentMessage } =
           agentLoopContext.runContext;
 
-        const skill = await SkillResource.fetchById(auth, skillId);
+        const skill = await SkillResource.fetchActiveByName(auth, skillName);
         if (!skill) {
           return new Err(
-            new MCPError(`Skill "${skillId}" not found`, {
+            new MCPError(`Skill "${skillName}" not found`, {
               tracked: false,
             })
           );
