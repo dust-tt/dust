@@ -9,6 +9,7 @@ import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isGlobalAgentId, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -56,7 +57,32 @@ export async function getAgentLoopData(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<Result<AgentLoopExecutionData & { auth: Authenticator }, Error>> {
-  const auth = await Authenticator.fromJSON(authType);
+  let authResult = await Authenticator.fromJSON(authType);
+
+  // If subscription changed while the message was running, get a fresh auth with the current
+  // subscription and continue gracefully.
+  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
+    logger.info(
+      {
+        workspaceId: authType.workspaceId,
+        originalSubscriptionId: authType.subscriptionId,
+      },
+      "Subscription changed while message was running, using fresh auth"
+    );
+
+    // Retry without the subscriptionId constraint to get the current subscription.
+    authResult = await Authenticator.fromJSON({
+      ...authType,
+      subscriptionId: null,
+    });
+  }
+
+  if (authResult.isErr()) {
+    return new Err(
+      new Error(`Failed to deserialize authenticator: ${authResult.error.code}`)
+    );
+  }
+  const auth = authResult.value;
 
   const {
     agentMessageId,
