@@ -181,7 +181,9 @@ export async function extractGitHubTarballToGCS(
 ): Promise<
   Result<
     TarExtractionResult,
-    ExternalOAuthTokenError | RepositoryAccessBlockedError | TarballNotFoundError
+    | ExternalOAuthTokenError
+    | RepositoryAccessBlockedError
+    | TarballNotFoundError
   >
 > {
   // Initialize GCS manager.
