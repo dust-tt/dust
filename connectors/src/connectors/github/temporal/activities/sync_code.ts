@@ -1,4 +1,4 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { Err, INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
 import assert from "assert";
 import type { Readable } from "stream";
 
@@ -6,7 +6,11 @@ import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/dire
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
+import type { TarballStreamProvider } from "@connectors/connectors/github/lib/code/tar_extraction";
+import {
+  extractGitHubTarballToGCS,
+  TarballNotFoundError,
+} from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   isGithubRequestErrorNotFound,
   RepositoryAccessBlockedError,
@@ -119,50 +123,68 @@ export async function githubExtractToGcsActivity({
     return null;
   }
 
-  octokit.request.defaults({
-    request: {
-      parseSuccessResponseBody: false,
-    },
-  });
+  logger.info("Setting up tarball stream provider for extraction");
 
-  logger.info("Fetching GitHub repository tarball");
+  // Create a stream provider that can fetch a fresh tarball stream on each attempt.
+  // This is necessary because streams can only be consumed once, so retries need fresh streams.
+  const tarballStreamProvider: TarballStreamProvider = {
+    getStream: async () => {
+      logger.info("Fetching GitHub repository tarball");
 
-  // Get tarball stream from GitHub.
-  let tarballResponse;
-  try {
-    tarballResponse = await octokit.request(
-      "GET /repos/{owner}/{repo}/tarball/{ref}",
-      {
-        owner: repoLogin,
-        repo: repoName,
-        ref: repoInfo.default_branch,
-        request: {
-          parseSuccessResponseBody: false,
-          timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
-        },
+      try {
+        const response = await octokit.request(
+          "GET /repos/{owner}/{repo}/tarball/{ref}",
+          {
+            owner: repoLogin,
+            repo: repoName,
+            ref: repoInfo.default_branch,
+            request: {
+              parseSuccessResponseBody: false,
+              timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
+            },
+          }
+        );
+
+        // Extract content-length from headers if available.
+        const headers = response.headers as Record<string, string | undefined>;
+        const contentLengthHeader = headers["content-length"];
+        const contentLength = contentLengthHeader
+          ? parseInt(contentLengthHeader, 10)
+          : null;
+
+        logger.info(
+          { contentLength },
+          "Tarball stream obtained from GitHub API"
+        );
+
+        return new Ok({
+          stream: response.data as Readable,
+          contentLength:
+            contentLength !== null && !isNaN(contentLength)
+              ? contentLength
+              : null,
+        });
+      } catch (error) {
+        if (isGithubRequestErrorNotFound(error)) {
+          logger.info(
+            { err: error, repoLogin, repoName, repoId },
+            "Repository tarball not found (404): Garbage collecting repo."
+          );
+
+          await cleanupMissingRepository("garbageCollectRepoNotFound");
+
+          return new Err(new TarballNotFoundError());
+        }
+
+        throw error;
       }
-    );
-  } catch (error) {
-    if (isGithubRequestErrorNotFound(error)) {
-      logger.info(
-        { err: error, repoLogin, repoName, repoId },
-        "Repository tarball not found (404): Garbage collecting repo."
-      );
-
-      await cleanupMissingRepository("garbageCollectRepoNotFound");
-
-      return null;
-    }
-
-    throw error;
-  }
-
-  const tarballStream = (tarballResponse as { data: Readable }).data;
+    },
+  };
 
   logger.info("Extracting GitHub repository tarball to GCS");
 
   const extractResult = await extractGitHubTarballToGCS(
-    tarballStream,
+    tarballStreamProvider,
     {
       repoId,
       connectorId,
@@ -171,6 +193,10 @@ export async function githubExtractToGcsActivity({
   );
 
   if (extractResult.isErr()) {
+    if (extractResult.error instanceof TarballNotFoundError) {
+      return null;
+    }
+
     if (
       extractResult.error instanceof ExternalOAuthTokenError ||
       extractResult.error instanceof RepositoryAccessBlockedError
