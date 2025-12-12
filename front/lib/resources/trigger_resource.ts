@@ -251,40 +251,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(trigger);
   }
 
-  static async updateFields(
-    auth: Authenticator,
-    triggerId: string,
-    updates: {
-      name?: string;
-      enabled?: boolean;
-      schedule?: { cron: string; timezone: string; naturalLanguage: string };
-      customPrompt?: string;
-    }
-  ): Promise<Result<TriggerResource, Error>> {
-    const updateBlob: Partial<
-      InferAttributes<TriggerModel, { omit: "workspaceId" }>
-    > = {};
-
-    if (updates.name !== undefined) {
-      updateBlob.name = updates.name;
-    }
-    if (updates.enabled !== undefined) {
-      updateBlob.enabled = updates.enabled;
-    }
-    if (updates.customPrompt !== undefined) {
-      updateBlob.customPrompt = updates.customPrompt;
-    }
-    if (updates.schedule) {
-      updateBlob.configuration = {
-        cron: updates.schedule.cron,
-        timezone: updates.schedule.timezone,
-      };
-      updateBlob.naturalLanguageDescription = updates.schedule.naturalLanguage;
-    }
-
-    return this.update(auth, triggerId, updateBlob);
-  }
-
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
