@@ -11,7 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
@@ -78,61 +77,55 @@ export default function ProfilePage({
   const { user, isUserLoading } = useUser();
 
   return (
-    <ConversationsNavigationProvider>
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        pageTitle="Dust - Profile"
-        navChildren={<AgentSidebarMenu owner={owner} />}
-      >
-        <Page>
-          <Page.Header title="Profile Settings" icon={UserIcon} />
-          <Page.Layout direction="vertical">
-            <Page.SectionHeader title="Account Settings" />
-            <AccountSettings
-              user={user}
-              isUserLoading={isUserLoading}
-              owner={owner}
-            />
+    <AppCenteredLayout
+      subscription={subscription}
+      owner={owner}
+      pageTitle="Dust - Profile"
+      navChildren={<AgentSidebarMenu owner={owner} />}
+    >
+      <Page>
+        <Page.Header title="Profile Settings" icon={UserIcon} />
+        <Page.Layout direction="vertical">
+          <Page.SectionHeader title="Account Settings" />
+          <AccountSettings
+            user={user}
+            isUserLoading={isUserLoading}
+            owner={owner}
+          />
 
-            {pendingInvitations.length > 0 && (
-              <>
-                <Separator />
-                <Page.SectionHeader title="Pending Invitations" />
-                <PendingInvitationsTable invitations={pendingInvitations} />
-              </>
-            )}
-            {user?.subscriberHash && (
-              <>
-                <Separator />
-                <Page.SectionHeader title="Notifications" />
-                <NotificationPreferences />
-              </>
-            )}
+          {pendingInvitations.length > 0 && (
+            <>
+              <Separator />
+              <Page.SectionHeader title="Pending Invitations" />
+              <PendingInvitationsTable invitations={pendingInvitations} />
+            </>
+          )}
+          {user?.subscriberHash && (
+            <>
+              <Separator />
+              <Page.SectionHeader title="Notifications" />
+              <NotificationPreferences />
+            </>
+          )}
 
-            <Separator />
+          <Separator />
 
-            <Page.SectionHeader title="Tools & Triggers" />
-            <Tabs defaultValue="tools" className="w-full">
-              <TabsList>
-                <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
-                <TabsTrigger
-                  value="triggers"
-                  label="Triggers"
-                  icon={BellIcon}
-                />
-              </TabsList>
-              <TabsContent value="tools" className="mt-4">
-                <UserToolsTable owner={owner} />
-              </TabsContent>
-              <TabsContent value="triggers" className="mt-4">
-                <ProfileTriggersTab owner={owner} />
-              </TabsContent>
-            </Tabs>
-          </Page.Layout>
-        </Page>
-      </AppCenteredLayout>
-    </ConversationsNavigationProvider>
+          <Page.SectionHeader title="Tools & Triggers" />
+          <Tabs defaultValue="tools" className="w-full">
+            <TabsList>
+              <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
+              <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
+            </TabsList>
+            <TabsContent value="tools" className="mt-4">
+              <UserToolsTable owner={owner} />
+            </TabsContent>
+            <TabsContent value="triggers" className="mt-4">
+              <ProfileTriggersTab owner={owner} />
+            </TabsContent>
+          </Tabs>
+        </Page.Layout>
+      </Page>
+    </AppCenteredLayout>
   );
 }
 

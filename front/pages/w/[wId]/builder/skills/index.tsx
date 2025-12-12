@@ -11,7 +11,6 @@ import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { useMemo, useState } from "react";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -117,69 +116,68 @@ export default function WorkspaceSkills({
           owner={owner}
         />
       )}
-      <ConversationsNavigationProvider>
-        <AgentDetails
-          owner={owner}
-          user={user}
-          agentId={agentId}
-          onClose={() => setAgentId(null)}
-        />
-        <AppWideModeLayout
-          subscription={subscription}
-          owner={owner}
-          navChildren={<AgentSidebarMenu owner={owner} />}
-        >
-          <Head>
-            <title>Dust - Manage Skills</title>
-          </Head>
-          <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-            <Page.Header title="Manage Skills" icon={SKILL_ICON} />
-            <Page.Vertical gap="md" align="stretch">
-              <div className="flex justify-end">
-                <Button
-                  label="Create skill"
-                  href={getSkillBuilderRoute(owner.sId, "new")}
-                  icon={PlusIcon}
-                  tooltip="Create a new skill"
+
+      <AgentDetails
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <AppWideModeLayout
+        subscription={subscription}
+        owner={owner}
+        navChildren={<AgentSidebarMenu owner={owner} />}
+      >
+        <Head>
+          <title>Dust - Manage Skills</title>
+        </Head>
+        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
+          <Page.Header title="Manage Skills" icon={SKILL_ICON} />
+          <Page.Vertical gap="md" align="stretch">
+            <div className="flex justify-end">
+              <Button
+                label="Create skill"
+                href={getSkillBuilderRoute(owner.sId, "new")}
+                icon={PlusIcon}
+                tooltip="Create a new skill"
+              />
+            </div>
+            <div className="flex flex-col pt-3">
+              <Tabs value={activeTab}>
+                <TabsList>
+                  {SKILL_MANAGER_TABS.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      label={tab.label}
+                      onClick={() => setSelectedTab(tab.id)}
+                      tooltip={tab.description}
+                      isCounter={tab.id !== "archived"}
+                      counterValue={
+                        tab.id === activeTab
+                          ? `${skillConfigurationsWithRelations.length}`
+                          : undefined
+                      }
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
+              {isSkillConfigurationsWithRelationsLoading ? (
+                <div className="mt-8 flex justify-center">
+                  <Spinner size="lg" />
+                </div>
+              ) : (
+                <SkillsTable
+                  owner={owner}
+                  skills={skillConfigurationsWithRelations}
+                  onSkillClick={setSelectedSkill}
+                  onAgentClick={setAgentId}
                 />
-              </div>
-              <div className="flex flex-col pt-3">
-                <Tabs value={activeTab}>
-                  <TabsList>
-                    {SKILL_MANAGER_TABS.map((tab) => (
-                      <TabsTrigger
-                        key={tab.id}
-                        value={tab.id}
-                        label={tab.label}
-                        onClick={() => setSelectedTab(tab.id)}
-                        tooltip={tab.description}
-                        isCounter={tab.id !== "archived"}
-                        counterValue={
-                          tab.id === activeTab
-                            ? `${skillConfigurationsWithRelations.length}`
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </TabsList>
-                </Tabs>
-                {isSkillConfigurationsWithRelationsLoading ? (
-                  <div className="mt-8 flex justify-center">
-                    <Spinner size="lg" />
-                  </div>
-                ) : (
-                  <SkillsTable
-                    owner={owner}
-                    skills={skillConfigurationsWithRelations}
-                    onSkillClick={setSelectedSkill}
-                    onAgentClick={setAgentId}
-                  />
-                )}
-              </div>
-            </Page.Vertical>
-          </div>
-        </AppWideModeLayout>
-      </ConversationsNavigationProvider>
+              )}
+            </div>
+          </Page.Vertical>
+        </div>
+      </AppWideModeLayout>
     </>
   );
 }
