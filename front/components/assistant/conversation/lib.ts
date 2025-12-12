@@ -346,6 +346,7 @@ export async function createConversationWithMessage({
   messageData,
   visibility = "unlisted",
   title,
+  spaceId,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -358,6 +359,7 @@ export async function createConversationWithMessage({
   };
   visibility?: ConversationVisibility;
   title?: string;
+  spaceId?: string | null;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
   const {
     input,
@@ -370,6 +372,7 @@ export async function createConversationWithMessage({
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
     visibility,
+    spaceId: spaceId ?? null,
     message: {
       content: input,
       context: {

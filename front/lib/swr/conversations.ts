@@ -31,6 +31,7 @@ import type {
   ConversationError,
   ConversationWithoutContentType,
   LightWorkspaceType,
+  SpaceType,
 } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
@@ -112,6 +113,34 @@ export function useSpaceConversationsSummary({
     isLoading: !error && !data && !options?.disabled,
     isError: !!error,
     mutate,
+  };
+}
+
+export function useSpaceConversations({
+  workspaceId,
+  space,
+  options,
+}: {
+  workspaceId: string;
+  space: SpaceType;
+  options?: { disabled: boolean };
+}) {
+  const spaceConversationsFetcher: Fetcher<GetConversationsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    space
+      ? `/api/w/${workspaceId}/assistant/conversations/by-space/${space.sId}`
+      : null,
+    spaceConversationsFetcher,
+    options
+  );
+
+  return {
+    conversations: data?.conversations ?? emptyArray(),
+    isConversationsLoading: !error && !data,
+    isConversationsError: error,
+    mutateConversations: mutate,
   };
 }
 

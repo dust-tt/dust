@@ -25,7 +25,7 @@ const SpaceListItem = memo(
     const router = useRouter();
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
-    const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
+    const spacePath = `/w/${owner.sId}/spaces/${space.sId}/conversations`;
     const spaceLabel = `${space.name}${unreadCount > 0 ? ` (${unreadCount})` : ""}`;
 
     return (
