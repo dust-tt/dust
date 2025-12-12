@@ -5,7 +5,7 @@ import { distributedLock, distributedUnlock } from "@app/lib/lock";
 type JsonPrimitive = string | number | boolean | null;
 
 // Recursive type to check if a type is JSON-serializable.
-type RecursiveJsonSerializable<T> = T extends JsonPrimitive
+type RecursiveJsonSerializable<T> = T extends JsonPrimitive | []
   ? T
   : T extends Array<infer U>
     ? RecursiveJsonSerializable<U>[]
