@@ -694,7 +694,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  toJSON(): SkillConfigurationType {
+  toJSON(auth: Authenticator): SkillConfigurationType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
         id: config.mcpServerViewId,
@@ -714,7 +714,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       tools,
-      isGlobal: this.isGlobal,
+      canWrite: this.canWrite(auth),
     };
   }
 }

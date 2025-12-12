@@ -110,7 +110,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const skillConfiguration = skillResource.toJSON();
+      const skillConfiguration = skillResource.toJSON(auth);
       return res.status(200).json({ skillConfiguration });
     }
 
@@ -231,7 +231,7 @@ async function handler(
 
       return res.status(200).json({
         skillConfiguration: {
-          ...result.value.updatedSkill.toJSON(),
+          ...result.value.updatedSkill.toJSON(auth),
           tools: result.value.createdTools,
         },
       });

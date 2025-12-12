@@ -79,7 +79,7 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = !skillConfiguration.isGlobal;
+  const showEditorsTabs = skillConfiguration.canWrite;
 
   if (showEditorsTabs) {
     return (
