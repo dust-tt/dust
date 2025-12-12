@@ -64,6 +64,7 @@ async function handler(
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
+      auth,
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
@@ -168,6 +169,7 @@ async function handler(
 
       const updatedTranscriptsConfiguration =
         await LabsTranscriptsConfigurationResource.fetchById(
+          auth,
           transcriptsConfiguration.sId
         );
 

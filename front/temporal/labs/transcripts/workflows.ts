@@ -38,11 +38,12 @@ export async function retrieveNewTranscriptsWorkflow({
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  const result = await retrieveNewTranscriptsActivity(
-    transcriptsConfigurationId,
+  const result = await retrieveNewTranscriptsActivity({
     modjoCursor,
-    modjoIsFirstSync
-  );
+    modjoIsFirstSync,
+    transcriptsConfigurationId,
+    workspaceId,
+  });
 
   const filesToProcess = result.fileIds;
   const nextCursor = result.nextCursor;
@@ -75,6 +76,7 @@ export async function retrieveNewTranscriptsWorkflow({
         {
           fileId,
           transcriptsConfigurationId,
+          workspaceId,
         },
       ],
       memo,
@@ -94,9 +96,15 @@ export async function retrieveNewTranscriptsWorkflow({
 export async function processTranscriptWorkflow({
   fileId,
   transcriptsConfigurationId,
+  workspaceId,
 }: {
   fileId: string;
   transcriptsConfigurationId: string;
+  workspaceId: string;
 }): Promise<void> {
-  await processTranscriptActivity(transcriptsConfigurationId, fileId);
+  await processTranscriptActivity({
+    fileId,
+    transcriptsConfigurationId,
+    workspaceId,
+  });
 }
