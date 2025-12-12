@@ -389,7 +389,6 @@ describe("POST /api/w/[wId]/skills", () => {
       description: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
-      version: 0,
       tools: [],
     });
 
@@ -451,7 +450,6 @@ describe("POST /api/w/[wId]/skills", () => {
       description: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
-      version: 0,
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
