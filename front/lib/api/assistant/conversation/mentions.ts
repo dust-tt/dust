@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { postInvitationPromptContentFragment } from "@app/lib/api/assistant/conversation/invitation_prompts";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,6 +13,7 @@ import {
   AgentMessageModel,
   MentionModel,
   MessageModel,
+  PendingMentionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
@@ -69,17 +71,80 @@ export const createUserMentions = async (
     transaction?: Transaction;
   }
 ) => {
-  // Store user mentions in the database
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(workspace);
+  const useMentionsV2 = featureFlags.includes("mentions_v2");
+  const mentionerUserResource = auth.user();
+
+  if (!mentionerUserResource) {
+    // If no user context, fall back to old behavior
+    return;
+  }
+
+  const mentionerUser = mentionerUserResource.toJSON();
+
+  // Process user mentions
   await Promise.all(
     mentions.filter(isUserMention).map(async (mention) => {
-      // check if the user exists in the workspace before creating the mention
-      const user = await getUserForWorkspace(auth, { userId: mention.userId });
-      if (user) {
+      // Check if the user exists in the workspace before creating the mention
+      const mentionedUser = await getUserForWorkspace(auth, {
+        userId: mention.userId,
+      });
+      if (!mentionedUser) {
+        return;
+      }
+
+      if (useMentionsV2) {
+        // New flow: Check if user is already a participant
+        const existingParticipant =
+          await ConversationResource.getParticipantForUser(auth, {
+            conversationId: conversation.sId,
+            userId: mentionedUser.sId,
+          });
+
+        if (existingParticipant) {
+          // User is already a participant - just create mention record
+          await MentionModel.create(
+            {
+              messageId: message.id,
+              userId: mentionedUser.id,
+              workspaceId: workspace.id,
+            },
+            { transaction }
+          );
+        } else {
+          // User is NOT a participant - create pending mention
+          const pendingMention = await PendingMentionModel.create(
+            {
+              workspaceId: workspace.id,
+              conversationId: conversation.id,
+              messageId: message.id,
+              mentionedUserId: mentionedUser.id,
+              mentionerUserId: mentionerUserResource.id,
+              status: "pending",
+            },
+            { transaction }
+          );
+
+          // Create invitation prompt content fragment
+          await postInvitationPromptContentFragment(auth, {
+            conversation,
+            message,
+            mentionedUser: mentionedUser.toJSON(),
+            mentionerUser,
+            pendingMentionId: pendingMention.id,
+            transaction,
+          });
+
+          // NOTE: No participant added yet, no notification sent yet
+        }
+      } else {
+        // Old flow: Immediately add as participant and send notification
         await MentionModel.create(
           {
             messageId: message.id,
-            userId: user.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
+            userId: mentionedUser.id,
+            workspaceId: workspace.id,
           },
           { transaction }
         );
@@ -87,17 +152,13 @@ export const createUserMentions = async (
         const status = await ConversationResource.upsertParticipation(auth, {
           conversation,
           action: "subscribed",
-          user: user.toJSON(),
+          user: mentionedUser.toJSON(),
         });
-
-        const featureFlags = await getFeatureFlags(
-          auth.getNonNullableWorkspace()
-        );
 
         if (status === "added" && featureFlags.includes("notifications")) {
           await triggerConversationAddedAsParticipantNotification(auth, {
             conversation,
-            addedUserId: user.sId,
+            addedUserId: mentionedUser.sId,
           });
         }
       }

@@ -842,6 +842,34 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  static async getParticipantForUser(
+    auth: Authenticator,
+    {
+      conversationId,
+      userId,
+    }: {
+      conversationId: string;
+      userId: string;
+    }
+  ): Promise<ConversationParticipantModel | null> {
+    const conversationModelId = getResourceIdFromSId(conversationId);
+    const userResource = await UserResource.fetchById(userId);
+
+    if (!conversationModelId || !userResource) {
+      return null;
+    }
+
+    const participant = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversationModelId,
+        userId: userResource.id,
+      },
+    });
+
+    return participant;
+  }
+
   static async upsertParticipation(
     auth: Authenticator,
     {

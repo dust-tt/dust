@@ -774,6 +774,93 @@ MessageReactionModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
+export class PendingMentionModel extends WorkspaceAwareModel<PendingMentionModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
+  declare messageId: ForeignKey<MessageModel["id"]>;
+  declare mentionedUserId: ForeignKey<UserModel["id"]>;
+  declare mentionerUserId: ForeignKey<UserModel["id"]>;
+  declare status: "pending" | "accepted" | "declined";
+
+  declare conversation?: NonAttribute<ConversationModel>;
+  declare message?: NonAttribute<MessageModel>;
+  declare mentionedUser?: NonAttribute<UserModel>;
+  declare mentionerUser?: NonAttribute<UserModel>;
+}
+
+PendingMentionModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending",
+    },
+  },
+  {
+    modelName: "pending_mention",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "conversationId", "status"],
+      },
+      {
+        fields: ["workspaceId", "messageId", "mentionedUserId"],
+      },
+      {
+        fields: ["mentionerUserId", "status"],
+      },
+    ],
+  }
+);
+
+ConversationModel.hasMany(PendingMentionModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+PendingMentionModel.belongsTo(ConversationModel, {
+  as: "conversation",
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+
+MessageModel.hasMany(PendingMentionModel, {
+  foreignKey: { name: "messageId", allowNull: false },
+  onDelete: "CASCADE",
+});
+PendingMentionModel.belongsTo(MessageModel, {
+  as: "message",
+  foreignKey: { name: "messageId", allowNull: false },
+});
+
+UserModel.hasMany(PendingMentionModel, {
+  as: "pendingMentionsAsMentioned",
+  foreignKey: { name: "mentionedUserId", allowNull: false },
+});
+PendingMentionModel.belongsTo(UserModel, {
+  as: "mentionedUser",
+  foreignKey: { name: "mentionedUserId", allowNull: false },
+});
+
+UserModel.hasMany(PendingMentionModel, {
+  as: "pendingMentionsAsMentioner",
+  foreignKey: { name: "mentionerUserId", allowNull: false },
+});
+PendingMentionModel.belongsTo(UserModel, {
+  as: "mentionerUser",
+  foreignKey: { name: "mentionerUserId", allowNull: false },
+});
+
 export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
