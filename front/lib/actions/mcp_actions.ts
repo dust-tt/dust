@@ -599,11 +599,19 @@ async function getMCPClientConnectionParams(
   });
 }
 
+/**
+ * Generates a prefixed tool name for deduplication across MCP servers.
+ *
+ * Format: `{space_name}__{server_name}__{tool_name}` when space name is available,
+ * otherwise `{server_name}__{tool_name}`.
+ *
+ * This is important for skills where the same MCP server (same ID) can be
+ * configured in different spaces, resulting in different MCP server views.
+ */
 export function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): Result<string, Error> {
-  const slugifiedConfigName = slugify(config.name);
   const slugifiedOriginalName = slugify(originalName).replaceAll(
     // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
     /[^a-zA-Z0-9_.-]/g,
@@ -621,7 +629,13 @@ export function getPrefixedToolName(
     );
   }
 
-  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
+  // Build the prefix: space_name__server_name or just server_name
+  const slugifiedConfigName = slugify(config.name);
+  const slugifiedSpaceName = config.spaceName
+    ? slugify(config.spaceName).replaceAll(/[^a-zA-Z0-9_.-]/g, "")
+    : null;
+
+  // Calculate available space for the prefix
   const minPrefixLength = 3 + separator.length;
   const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
 
@@ -630,10 +644,21 @@ export function getPrefixedToolName(
     return new Ok(slugifiedOriginalName);
   }
 
-  // Calculate the maximum allowed length for the config name portion
-  const maxConfigNameLength = availableSpace - separator.length;
-  const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
-  const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
+  // Build the full prefix (with space name if available)
+  let fullPrefix: string;
+  if (slugifiedSpaceName) {
+    // Format: space_name__server_name
+    const combinedPrefix = `${slugifiedSpaceName}${separator}${slugifiedConfigName}`;
+    // Calculate the maximum allowed length for the combined prefix
+    const maxPrefixLength = availableSpace - separator.length;
+    fullPrefix = combinedPrefix.slice(0, maxPrefixLength);
+  } else {
+    // Format: server_name only
+    const maxConfigNameLength = availableSpace - separator.length;
+    fullPrefix = slugifiedConfigName.slice(0, maxConfigNameLength);
+  }
+
+  const prefixedName = `${fullPrefix}${separator}${slugifiedOriginalName}`;
 
   return new Ok(prefixedName);
 }
@@ -650,19 +675,38 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 export async function tryListMCPTools(
   auth: Authenticator,
   agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
-  jitServers?: MCPServerConfigurationType[]
+  jitServers?: MCPServerConfigurationType[],
+  skillServers?: MCPServerConfigurationType[]
 ): Promise<{
   serverToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Filter for MCP server configurations.
-  const mcpServerActions = [
+  // Combine all MCP server configurations.
+  const allMcpServerActions = [
     ...agentLoopListToolsContext.agentConfiguration.actions,
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
     ...(jitServers ?? []),
+    ...(skillServers ?? []),
   ];
+
+  // Dedupe by mcpServerViewId for server-side configs, or clientSideMcpServerId for client-side.
+  // This prevents duplicate tools when the same MCP server is configured both on the agent
+  // and via an enabled skill.
+  const seenServerIds = new Set<string>();
+  const mcpServerActions = allMcpServerActions.filter((action) => {
+    const serverId =
+      "mcpServerViewId" in action
+        ? action.mcpServerViewId
+        : action.clientSideMcpServerId;
+
+    if (seenServerIds.has(serverId)) {
+      return false;
+    }
+    seenServerIds.add(serverId);
+    return true;
+  });
 
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(

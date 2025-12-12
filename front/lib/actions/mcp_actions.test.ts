@@ -206,6 +206,34 @@ describe("getPrefixedToolName", () => {
     expect(result.value).toBe(`test_server${TOOL_NAME_SEPARATOR}my_tool`);
   });
 
+  it("should include space name prefix when spaceName is provided", () => {
+    const configWithSpace: ServerSideMCPServerConfigurationType = {
+      ...mockConfig,
+      spaceName: "My Space",
+    };
+    const result = getPrefixedToolName(configWithSpace, "tool");
+    expect(result.isOk()).toBe(true);
+    assert(result.isOk());
+    // Format: space_name__server_name__tool_name
+    expect(result.value).toBe(
+      `my_space${TOOL_NAME_SEPARATOR}test_server${TOOL_NAME_SEPARATOR}tool`
+    );
+  });
+
+  it("should truncate combined space and server prefix when needed", () => {
+    const configWithLongSpace: ServerSideMCPServerConfigurationType = {
+      ...mockConfig,
+      name: "a".repeat(30),
+      spaceName: "b".repeat(30),
+    };
+    const result = getPrefixedToolName(configWithLongSpace, "tool");
+    expect(result.isOk()).toBe(true);
+    assert(result.isOk());
+    // Total length should be 64 max
+    expect(result.value.length).toBeLessThanOrEqual(64);
+    expect(result.value.endsWith(`${TOOL_NAME_SEPARATOR}tool`)).toBe(true);
+  });
+
   it("should correctly prefix and slugify tool names with special characters", () => {
     const result = getPrefixedToolName(mockConfig, "My Tool (123) $");
     expect(result.isOk()).toBe(true);

@@ -147,6 +147,25 @@ function formatAsDisplayName(name: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// Tool name separator used in prefixed tool names (e.g., "space__server__tool").
+const TOOL_NAME_SEPARATOR = "__";
+
+/**
+ * Strips the space name prefix from a tool name if present.
+ * Tool names can be in format:
+ * - "space_name__server_name__tool_name" (3 segments) -> returns "server_name__tool_name"
+ * - "server_name__tool_name" (2 segments) -> returns unchanged
+ * - "tool_name" (1 segment) -> returns unchanged
+ */
+function stripSpaceNamePrefix(name: string): string {
+  const segments = name.split(TOOL_NAME_SEPARATOR);
+  // If there are 3+ segments, the first is the space name - strip it.
+  if (segments.length >= 3) {
+    return segments.slice(1).join(TOOL_NAME_SEPARATOR);
+  }
+  return name;
+}
+
 export function asDisplayToolName(name?: string | null) {
   if (!name) {
     return "";
@@ -172,7 +191,9 @@ export function asDisplayToolName(name?: string | null) {
     return "Go deep";
   }
 
-  return formatAsDisplayName(name);
+  // Strip space name prefix before formatting for display.
+  const nameWithoutSpacePrefix = stripSpaceNamePrefix(name);
+  return formatAsDisplayName(nameWithoutSpacePrefix);
 }
 
 export function asDisplayName(name?: string | null) {

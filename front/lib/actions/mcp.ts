@@ -54,6 +54,10 @@ export type BaseMCPServerConfigurationType = {
 
   description: string | null;
   icon?: CustomResourceIconType | InternalAllowedIconType;
+
+  // Space name is used for tool name prefixing to dedupe servers when the same
+  // MCP server is configured in different spaces (e.g., via skills).
+  spaceName?: string;
 };
 
 // Server-side MCP server = Remote MCP Server OR our own MCP server.
