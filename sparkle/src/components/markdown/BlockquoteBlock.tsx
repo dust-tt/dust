@@ -30,7 +30,7 @@ export const blockquoteVariants = cva(
 interface BlockquoteBlockProps {
   children: React.ReactNode;
   variant?: "surface";
-  buttonDisplay?: "inside" | "outside" | null;
+  buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
 }
 
 export function BlockquoteBlock({

@@ -83,7 +83,7 @@ interface ContentBlockWrapperProps {
   getContentToDownload?: GetContentToDownloadFunction;
   actions?: React.ReactNode[] | React.ReactNode;
   displayActions?: "hover" | "always";
-  buttonDisplay?: "inside" | "outside" | null;
+  buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
 }
 
 export function ContentBlockWrapper({
