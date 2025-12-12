@@ -41,7 +41,7 @@ export function getDisplayNameForDataSource(
 ) {
   if (ds.connectorProvider) {
     if (ds.connectorProvider === "webcrawler") {
-      return aggregateFolder ? "Web Crawler" : ds.name;
+      return aggregateFolder ? "Websites" : ds.name;
     }
     // Not very satisfying to retro-engineer getDefaultDataSourceName but we don't store the suffix by itself.
     // This is a technical debt to have this function.
