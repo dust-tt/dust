@@ -27,17 +27,19 @@ async function handler(
     case "GET":
       const workspace = auth.getNonNullableWorkspace();
 
-      // Get user's groups of type "regular"
+      // Filter out non-regular groups as we only want to allow conversations in regular spaces (that are linked to regular groups)
       const allGroups = auth
         .groups()
         .filter((g) => g.kind === "regular" && g.workspaceId === workspace.id);
 
-      // Get spaces for those groups
       const spaces = await SpaceResource.listForGroups(auth, allGroups);
 
       // Fetch all unread conversations for the user in one query
       const unreadConversations =
-        await ConversationResource.listUnreadConversationsForUser(auth);
+        await ConversationResource.listConversationsForUser(auth, {
+          onlyUnread: true,
+          kind: "space",
+        });
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
