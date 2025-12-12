@@ -21,6 +21,8 @@ type Metrics = {
   conversations: number;
   activeUsers: number;
   costMicroUsd: number;
+  avgCostMicroUsd: number;
+  p95CostMicroUsd: number;
   avgLatencyMs: number;
   percentilesLatencyMs: number;
   failedMessages: number;
@@ -48,6 +50,8 @@ export type MetricsBucket = {
   unique_conversations?: estypes.AggregationsCardinalityAggregate;
   active_users?: estypes.AggregationsCardinalityAggregate;
   cost_micro_usd?: estypes.AggregationsSumAggregate;
+  avg_cost_micro_usd?: estypes.AggregationsAvgAggregate;
+  percentiles_cost_micro_usd?: KeyedTDigestPercentiles;
   avg_latency_ms?: estypes.AggregationsCardinalityAggregate;
   percentiles_latency_ms?: KeyedTDigestPercentiles;
   failed_messages?: estypes.AggregationsFilterAggregate;
@@ -82,6 +86,22 @@ export function buildMetricAggregates<K extends readonly MetricName[]>(
 
   if (metrics.includes("costMicroUsd")) {
     aggregates.cost_micro_usd = { sum: { field: "tokens.cost_micro_usd" } };
+  }
+
+  if (metrics.includes("avgCostMicroUsd")) {
+    aggregates.avg_cost_micro_usd = {
+      avg: { field: "tokens.cost_micro_usd" },
+    };
+  }
+
+  if (metrics.includes("p95CostMicroUsd")) {
+    aggregates.percentiles_cost_micro_usd = {
+      percentiles: {
+        field: "tokens.cost_micro_usd",
+        percents: [95],
+        keyed: true,
+      },
+    };
   }
 
   if (metrics.includes("avgLatencyMs")) {
@@ -134,6 +154,19 @@ export function parseMetricsFromBucket<K extends readonly MetricName[]>(
   if (metrics.includes("costMicroUsd")) {
     point.costMicroUsd = Math.round(
       bucket.cost_micro_usd?.value ?? DEFAULT_METRIC_VALUE
+    );
+  }
+
+  if (metrics.includes("avgCostMicroUsd")) {
+    point.avgCostMicroUsd = Math.round(
+      bucket.avg_cost_micro_usd?.value ?? DEFAULT_METRIC_VALUE
+    );
+  }
+
+  if (metrics.includes("p95CostMicroUsd")) {
+    point.p95CostMicroUsd = Math.round(
+      bucket.percentiles_cost_micro_usd?.values?.["95.0"] ??
+        DEFAULT_METRIC_VALUE
     );
   }
 
