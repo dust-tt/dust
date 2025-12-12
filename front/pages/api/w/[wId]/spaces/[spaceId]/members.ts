@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -8,13 +9,34 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, PatchSpaceMembersRequestBodySchema } from "@app/types";
+import { assertNever } from "@app/types";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
 }
 
-async function handler(
+const PatchSpaceMembersRequestBodySchema = t.intersection([
+  t.type({
+    isRestricted: t.boolean,
+    name: t.string,
+  }),
+  t.union([
+    t.type({
+      memberIds: t.array(t.string),
+      managementMode: t.literal("manual"),
+    }),
+    t.type({
+      groupIds: t.array(t.string),
+      managementMode: t.literal("group"),
+    }),
+  ]),
+]);
+
+export type PatchSpaceMembersRequestBodyType = t.TypeOf<
+  typeof PatchSpaceMembersRequestBodySchema
+>;
+
+export async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchSpaceMembersResponseBody>>,
   auth: Authenticator,

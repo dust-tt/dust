@@ -13,13 +13,13 @@ export function SkillInfoTab({
       <div className="text-sm text-foreground dark:text-foreground-night">
         {skillConfiguration.description}
       </div>
-      {!skillConfiguration.isGlobal && (
+      {skillConfiguration.canWrite && (
         <SkillEdited skillConfiguration={skillConfiguration} />
       )}
 
       <Page.Separator />
 
-      {!skillConfiguration.isGlobal &&
+      {skillConfiguration.canWrite &&
         (skillConfiguration.instructions ? (
           <div className="dd-privacy-mask flex flex-col gap-5">
             <div className="heading-lg text-foreground dark:text-foreground-night">

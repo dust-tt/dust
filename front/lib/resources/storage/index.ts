@@ -43,6 +43,7 @@ export const frontSequelize = new SequelizeWithComments(
       // Default is 5.
       // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
       max: 25,
+      acquire: 30000,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {

@@ -111,7 +111,7 @@ async function handler(
         const skillConfigurationsWithRelations = await concurrentExecutor(
           skillConfigurations,
           async (sc) => ({
-            ...sc.toJSON(),
+            ...sc.toJSON(auth),
             usage: await sc.fetchUsage(auth),
             editors: await sc.listEditors(auth),
           }),
@@ -124,7 +124,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        skillConfigurations: skillConfigurations.map((sc) => sc.toJSON()),
+        skillConfigurations: skillConfigurations.map((sc) => sc.toJSON(auth)),
       });
     }
 
@@ -184,7 +184,6 @@ async function handler(
 
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillResource = await SkillResource.makeNew(auth, {
-        version: 0,
         status: "active",
         name: body.name,
         description: body.description,
@@ -206,7 +205,7 @@ async function handler(
 
       return res.status(200).json({
         skillConfiguration: {
-          ...skillResource.toJSON(),
+          ...skillResource.toJSON(auth),
           tools: body.tools,
         },
       });

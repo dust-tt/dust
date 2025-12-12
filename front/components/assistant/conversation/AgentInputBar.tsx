@@ -21,6 +21,7 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  isHandoverUserMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -65,9 +66,10 @@ export const AgentInputBar = ({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const lastUserMessage = methods.data
     .get()
+    .filter(isUserMessage)
     .findLast(
       (m) =>
-        isUserMessage(m) &&
+        !isHandoverUserMessage(m) &&
         m.user?.id === context.user.id &&
         m.visibility !== "deleted"
     );
@@ -80,11 +82,7 @@ export const AgentInputBar = ({
     if (draftAgent) {
       return [toRichAgentMentionType(draftAgent)];
     }
-    if (
-      !lastUserMessage ||
-      !isUserMessage(lastUserMessage) ||
-      lastUserMessage.richMentions.length > 1
-    ) {
+    if (!lastUserMessage || lastUserMessage.richMentions.length > 1) {
       return emptyArray<RichMention>();
     }
 

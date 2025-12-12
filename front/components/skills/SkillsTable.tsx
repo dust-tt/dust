@@ -158,6 +158,7 @@ export function SkillsTable({
                 {
                   label: "Edit",
                   icon: PencilSquareIcon,
+                  disabled: !skill.canWrite,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     void router.push(
@@ -178,6 +179,7 @@ export function SkillsTable({
                 {
                   label: "Archive",
                   icon: TrashIcon,
+                  disabled: !skill.canWrite,
                   variant: "warning" as const,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -185,7 +187,7 @@ export function SkillsTable({
                   },
                   kind: "item" as const,
                 },
-              ]
+              ].filter((item) => !item.disabled)
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
