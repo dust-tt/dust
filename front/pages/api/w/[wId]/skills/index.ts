@@ -184,7 +184,6 @@ async function handler(
 
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillResource = await SkillResource.makeNew(auth, {
-        version: 0,
         status: "active",
         name: body.name,
         description: body.description,

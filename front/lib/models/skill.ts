@@ -1,4 +1,10 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type {
+  CreationOptional,
+  ForeignKey,
+  Model,
+  ModelAttributes,
+  NonAttribute,
+} from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -7,11 +13,42 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 
+const SKILL_MODEL_ATTRIBUTES = {
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  name: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  instructions: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  requestedSpaceIds: {
+    type: DataTypes.ARRAY(DataTypes.BIGINT),
+    allowNull: false,
+  },
+} as const satisfies ModelAttributes<Model>;
+
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
-  declare version: number;
 
   declare status: SkillStatus;
 
@@ -29,48 +66,41 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   >;
 }
 
-SkillConfigurationModel.init(
+SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
+  modelName: "skill_configuration",
+  sequelize: frontSequelize,
+  indexes: [
+    // TODO(skills): add indexes.
+  ],
+});
+
+export class SkillVersionModel extends SkillConfigurationModel {
+  declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
+  declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
+  declare mcpServerConfigurationIds: number[];
+}
+
+SkillVersionModel.init(
   {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    version: {
-      type: DataTypes.INTEGER,
+    ...SKILL_MODEL_ATTRIBUTES,
+    skillConfigurationId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    name: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    instructions: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    requestedSpaceIds: {
+    mcpServerConfigurationIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
     },
   },
   {
-    modelName: "skill_configuration",
+    modelName: "skill_version",
     sequelize: frontSequelize,
     indexes: [
-      // TODO(skills): add indexes.
+      {
+        unique: true,
+        fields: ["workspaceId", "skillConfigurationId", "version"],
+        name: "idx_skill_versions_workspace_configuration_id_version",
+      },
     ],
   }
 );
@@ -81,6 +111,16 @@ UserModel.hasMany(SkillConfigurationModel, {
   onDelete: "RESTRICT",
 });
 SkillConfigurationModel.belongsTo(UserModel, {
+  foreignKey: { name: "authorId", allowNull: false },
+  as: "author",
+});
+
+// Skill version <> Author
+UserModel.hasMany(SkillVersionModel, {
+  foreignKey: { name: "authorId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+SkillVersionModel.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
   as: "author",
 });
@@ -149,4 +189,14 @@ MCPServerViewModel.hasMany(SkillMCPServerConfigurationModel, {
 SkillMCPServerConfigurationModel.belongsTo(MCPServerViewModel, {
   foreignKey: { name: "mcpServerViewId", allowNull: false },
   as: "mcpServerView",
+});
+
+SkillConfigurationModel.hasMany(SkillVersionModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "versions",
+});
+SkillVersionModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: { name: "skillConfigurationId", allowNull: false },
+  as: "skillConfiguration",
 });
