@@ -251,25 +251,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(trigger);
   }
 
-  static async fetchByIdAndValidateOwnership(
-    auth: Authenticator,
-    triggerId: string,
-    agentConfigurationSId: string,
-    userId: number
-  ): Promise<Result<TriggerResource, Error>> {
-    const trigger = await this.fetchById(auth, triggerId);
-    if (!trigger) {
-      return new Err(new Error("Trigger not found"));
-    }
-    if (trigger.agentConfigurationId !== agentConfigurationSId) {
-      return new Err(new Error("This trigger does not belong to this agent"));
-    }
-    if (trigger.editor !== userId) {
-      return new Err(new Error("You can only modify triggers you created"));
-    }
-    return new Ok(trigger);
-  }
-
   static async updateFields(
     auth: Authenticator,
     triggerId: string,

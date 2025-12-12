@@ -74,6 +74,25 @@ function getUserTimezone(
   return userMessage?.context.timezone ?? null;
 }
 
+async function fetchTriggerWithOwnershipCheck(
+  auth: Authenticator,
+  triggerId: string,
+  agentConfigurationSId: string,
+  userId: number
+): Promise<Result<TriggerResource, MCPError>> {
+  const trigger = await TriggerResource.fetchById(auth, triggerId);
+  if (!trigger) {
+    return new Err(new MCPError("Trigger not found"));
+  }
+  if (trigger.agentConfigurationId !== agentConfigurationSId) {
+    return new Err(new MCPError("This trigger does not belong to this agent"));
+  }
+  if (trigger.editor !== userId) {
+    return new Err(new MCPError("You can only modify triggers you created"));
+  }
+  return new Ok(trigger);
+}
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -304,15 +323,14 @@ function createServer(
         }
         const { userId, agentConfiguration } = contextResult.value;
 
-        const triggerResult =
-          await TriggerResource.fetchByIdAndValidateOwnership(
-            auth,
-            triggerId,
-            agentConfiguration.sId,
-            userId
-          );
+        const triggerResult = await fetchTriggerWithOwnershipCheck(
+          auth,
+          triggerId,
+          agentConfiguration.sId,
+          userId
+        );
         if (triggerResult.isErr()) {
-          return new Err(new MCPError(triggerResult.error.message));
+          return triggerResult;
         }
 
         return new Ok([
@@ -372,15 +390,14 @@ function createServer(
         const { userId, workspaceSId, agentConfiguration } =
           contextResult.value;
 
-        const triggerResult =
-          await TriggerResource.fetchByIdAndValidateOwnership(
-            auth,
-            triggerId,
-            agentConfiguration.sId,
-            userId
-          );
+        const triggerResult = await fetchTriggerWithOwnershipCheck(
+          auth,
+          triggerId,
+          agentConfiguration.sId,
+          userId
+        );
         if (triggerResult.isErr()) {
-          return new Err(new MCPError(triggerResult.error.message));
+          return triggerResult;
         }
 
         let scheduleUpdate:
@@ -479,15 +496,14 @@ function createServer(
         const { userId, workspaceSId, agentConfiguration } =
           contextResult.value;
 
-        const triggerResult =
-          await TriggerResource.fetchByIdAndValidateOwnership(
-            auth,
-            triggerId,
-            agentConfiguration.sId,
-            userId
-          );
+        const triggerResult = await fetchTriggerWithOwnershipCheck(
+          auth,
+          triggerId,
+          agentConfiguration.sId,
+          userId
+        );
         if (triggerResult.isErr()) {
-          return new Err(new MCPError(triggerResult.error.message));
+          return triggerResult;
         }
         const trigger = triggerResult.value;
 
