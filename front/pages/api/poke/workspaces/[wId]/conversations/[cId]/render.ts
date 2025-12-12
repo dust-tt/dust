@@ -14,6 +14,7 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { apiError } from "@app/logger/withlogging";
@@ -207,6 +208,23 @@ async function handler(
           jitServers
         );
 
+      const enabledSkills = await SkillResource.listEnabledForConversation(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+        }
+      );
+      const allAgentSkills = await SkillResource.listByAgentConfiguration(
+        auth,
+        agentConfiguration
+      );
+
+      const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+      const equippedSkills = allAgentSkills.filter(
+        (s) => !enabledSkillIds.has(s.sId)
+      );
+
       const availableActions = serverToolsAndInstructions.flatMap(
         (s) => s.tools
       );
@@ -242,6 +260,8 @@ async function handler(
         agentsList,
         conversationId: conversation.sId,
         serverToolsAndInstructions,
+        enabledSkills,
+        equippedSkills,
         featureFlags,
       });
 

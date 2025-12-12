@@ -40,6 +40,7 @@ import type {
   AgentMessageType,
   AgentsUsageType,
   ConversationType,
+  LightAgentConfigurationType,
   ModelId,
   Result,
   UserType,
@@ -394,15 +395,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
-  static async fetchByAgentConfigurationId(
+  static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfigurationId: ModelId
+    agentConfiguration: LightAgentConfigurationType
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId,
+        agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
     });
@@ -716,6 +717,54 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+    });
+
+    const customSkillIds = removeNulls(
+      conversationSkills.map((cs) =>
+        cs.customSkillId
+          ? SkillResource.modelIdToSId({
+              id: cs.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null
+      )
+    );
+
+    const globalSkillIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
+    );
+
+    const allSkillIds = [...customSkillIds, ...globalSkillIds];
+
+    if (allSkillIds.length === 0) {
+      return [];
+    }
+
+    return SkillResource.fetchByIds(auth, allSkillIds);
   }
 
   toJSON(auth: Authenticator): SkillConfigurationType {
