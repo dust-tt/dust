@@ -9,9 +9,10 @@ import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isGlobalAgentId, Ok } from "@app/types";
+import { ConversationError, Err, isGlobalAgentId, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -24,6 +25,38 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 
+export type ConversationCaching =
+  | { useCachedGetConversation: false }
+  | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
+
+// Throws on error because cacheWithRedis expects functions that throw (not Result types).
+// Errors are caught and converted back to Result in getAgentLoopData.
+async function getConversationForAgentLoop(
+  auth: Authenticator,
+  conversationId: string,
+  // These params are only used for cache key uniqueness.
+  _workspaceId: string,
+  _unicitySuffix: string
+): Promise<ConversationType> {
+  const res = await getConversation(auth, conversationId);
+  if (res.isErr()) {
+    throw res.error;
+  }
+  return res.value;
+}
+
+function getCachedGetConversation(ttlMs: number) {
+  return cacheWithRedis(
+    getConversationForAgentLoop,
+    (_auth, conversationId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${unicitySuffix}`,
+    {
+      ttlMs,
+      useDistributedLock: true,
+    }
+  );
+}
+
 export type AgentLoopArgs = {
   agentMessageId: string;
   agentMessageVersion: number;
@@ -34,6 +67,8 @@ export type AgentLoopArgs = {
   userMessageId: string;
   userMessageVersion: number;
   userMessageOrigin?: UserMessageOrigin | null;
+
+  caching?: ConversationCaching;
 };
 
 export type AgentMessageRef = {
@@ -87,16 +122,35 @@ export async function getAgentLoopData(
   const {
     agentMessageId,
     agentMessageVersion,
+    caching,
     conversationId,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return conversationRes;
-  }
 
-  const conversation = conversationRes.value;
+  let conversation: ConversationType;
+  if (caching?.useCachedGetConversation) {
+    try {
+      const cachedGetConversation = getCachedGetConversation(caching.ttlMs);
+      conversation = await cachedGetConversation(
+        auth,
+        conversationId,
+        auth.getNonNullableWorkspace().sId,
+        caching.unicitySuffix
+      );
+    } catch (error) {
+      if (error instanceof ConversationError) {
+        return new Err(error);
+      }
+      throw error;
+    }
+  } else {
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+    conversation = conversationRes.value;
+  }
 
   // Find the agent message by searching all groups in reverse order. Retried messages do not have
   // the same sId as the original message, so we need to search all groups.
