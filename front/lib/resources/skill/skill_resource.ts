@@ -678,7 +678,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
     // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
-    if (!this.globalSId) {
+    if (this.globalSId) {
       throw new Error("Cannot update a global skill configuration.");
     }
 
