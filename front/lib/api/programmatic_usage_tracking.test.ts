@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   compareCreditsForConsumption,
+  computeCreditAlertThresholdId,
   decreaseProgrammaticCreditsV2,
 } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
@@ -513,5 +514,163 @@ describe("decreaseProgrammaticCreditsV2", () => {
       expect(refreshedPaygEarlier.consumedAmountMicroUsd).toBe(500_000);
       expect(refreshedPaygLater.consumedAmountMicroUsd).toBe(0);
     });
+  });
+});
+
+describe("computeCreditAlertThresholdId", () => {
+  function makeMockCreditForThreshold(
+    overrides: Partial<CreditResource> & { sId: string; type: string }
+  ): CreditResource {
+    return {
+      startDate: null,
+      ...overrides,
+    } as CreditResource;
+  }
+
+  it("returns threshold ID with both free and committed credits", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdId(credits, 80);
+
+    expect(result).toBe("free-1-committed-1-80");
+  });
+
+  it("selects most recent free and committed credits by startDate", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-old",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "free-new",
+        type: "free",
+        startDate: new Date("2024-06-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-old",
+        type: "committed",
+        startDate: new Date("2024-02-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-new",
+        type: "committed",
+        startDate: new Date("2024-07-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdId(credits, 80);
+
+    expect(result).toBe("free-new-committed-new-80");
+  });
+
+  it("returns undefined for missing free credit", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdId(credits, 80);
+
+    expect(result).toBe("undefined-committed-1-80");
+  });
+
+  it("returns undefined for missing committed credit", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdId(credits, 80);
+
+    expect(result).toBe("free-1-undefined-80");
+  });
+
+  it("returns undefined-undefined when no credits", () => {
+    const result = computeCreditAlertThresholdId([], 80);
+
+    expect(result).toBe("undefined-undefined-80");
+  });
+
+  it("handles null startDate (sorts to end)", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-null",
+        type: "free",
+        startDate: null,
+      }),
+      makeMockCreditForThreshold({
+        sId: "free-dated",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdId(credits, 80);
+
+    expect(result).toBe("free-dated-undefined-80");
+  });
+
+  it("uses different threshold percentages", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    expect(computeCreditAlertThresholdId(credits, 50)).toBe(
+      "free-1-committed-1-50"
+    );
+    expect(computeCreditAlertThresholdId(credits, 90)).toBe(
+      "free-1-committed-1-90"
+    );
+  });
+
+  it("ignores payg credits", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "payg-1",
+        type: "payg",
+        startDate: new Date("2024-06-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdId(credits, 80);
+
+    expect(result).toBe("free-1-committed-1-80");
   });
 });

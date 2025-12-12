@@ -8,18 +8,18 @@ const { sendCreditAlertEmailActivity } = proxyActivities<typeof activities>({
 
 export interface CreditAlertWorkflowArgs {
   workspaceId: string;
-  totalInitialCents: number;
-  totalConsumedCents: number;
+  totalInitialMicroUsd: number;
+  totalConsumedMicroUsd: number;
 }
 
 export async function creditAlertWorkflow({
   workspaceId,
-  totalInitialCents,
-  totalConsumedCents,
+  totalInitialMicroUsd,
+  totalConsumedMicroUsd,
 }: CreditAlertWorkflowArgs): Promise<void> {
   await sendCreditAlertEmailActivity({
     workspaceId,
-    totalInitialMicroUsd: totalInitialCents,
-    totalConsumedMicroUsd: totalConsumedCents,
+    totalInitialMicroUsd,
+    totalConsumedMicroUsd,
   });
 }
