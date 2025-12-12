@@ -334,10 +334,13 @@ async function initializeCredits(
  *
  **/
 export function computeCreditAlertThresholdKey(
-  activeCredits: CreditResource[],
+  activeCredits: Pick<CreditResource, "type" | "startDate" | "sId">[],
   thresholdPercent: number
 ): string {
-  const sortByStartDateDesc = (a: CreditResource, b: CreditResource) =>
+  const sortByStartDateDesc = (
+    a: Pick<CreditResource, "startDate">,
+    b: Pick<CreditResource, "startDate">
+  ) =>
     (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0);
 
   const firstFreeCredit = activeCredits
@@ -469,8 +472,8 @@ export async function getRemainingCredits(
 }
 // First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).
 export function compareCreditsForConsumption(
-  a: CreditResource,
-  b: CreditResource
+  a: Pick<CreditResource, "type" | "expirationDate">,
+  b: Pick<CreditResource, "type" | "expirationDate">
 ): number {
   if (a.type === "free" && b.type !== "free") {
     return -1;

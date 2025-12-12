@@ -14,6 +14,8 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types";
 
+type MockCreditForConsumption = Pick<CreditResource, "type" | "expirationDate">;
+
 describe("compareCreditsForConsumption", () => {
   const NOW = new Date();
   const ONE_DAY = 24 * 60 * 60 * 1000;
@@ -21,8 +23,8 @@ describe("compareCreditsForConsumption", () => {
   function makeMockCredit(
     type: "free" | "payg" | "committed",
     expirationDate: Date
-  ): CreditResource {
-    return { type, expirationDate } as CreditResource;
+  ): MockCreditForConsumption {
+    return { type, expirationDate };
   }
 
   describe("type ordering", () => {
@@ -517,14 +519,19 @@ describe("decreaseProgrammaticCreditsV2", () => {
   });
 });
 
+type MockCreditForThreshold = Pick<CreditResource, "sId" | "type" | "startDate">;
+
 describe("computeCreditAlertThresholdKey", () => {
-  function makeMockCreditForThreshold(
-    overrides: Partial<CreditResource> & { sId: string; type: string }
-  ): CreditResource {
+  function makeMockCreditForThreshold(overrides: {
+    sId: string;
+    type: CreditResource["type"];
+    startDate?: Date | null;
+  }): MockCreditForThreshold {
     return {
-      startDate: null,
-      ...overrides,
-    } as CreditResource;
+      startDate: overrides.startDate ?? null,
+      sId: overrides.sId,
+      type: overrides.type,
+    };
   }
 
   it("returns threshold ID with both free and committed credits", () => {
