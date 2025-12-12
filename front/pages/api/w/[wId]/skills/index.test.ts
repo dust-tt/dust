@@ -377,6 +377,7 @@ describe("POST /api/w/[wId]/skills", () => {
       name: "Simple Skill",
       description: "A simple skill without tools",
       instructions: "Simple instructions",
+      icon: null,
       tools: [],
     };
 
@@ -435,6 +436,7 @@ describe("POST /api/w/[wId]/skills", () => {
       name: "Test Skill",
       description: "A test skill description",
       instructions: "Test instructions for the skill",
+      icon: null,
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },

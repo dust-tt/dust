@@ -13,6 +13,7 @@ export type SkillConfigurationType = {
   name: string;
   description: string;
   instructions: string | null;
+  icon: string | null;
   requestedSpaceIds: ModelId[];
   tools: { mcpServerViewId: string }[];
   canWrite: boolean;

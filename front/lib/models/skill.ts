@@ -44,6 +44,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
     allowNull: false,
   },
+  icon: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 } as const satisfies ModelAttributes<Model>;
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
@@ -55,6 +59,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare name: string;
   declare description: string;
   declare instructions: string;
+  declare icon: string | null;
 
   declare authorId: ForeignKey<UserModel["id"]>;
 
@@ -89,6 +94,10 @@ SkillVersionModel.init(
     },
     mcpServerConfigurationIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },

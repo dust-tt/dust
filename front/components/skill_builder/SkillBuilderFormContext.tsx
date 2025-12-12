@@ -14,6 +14,7 @@ export const skillBuilderFormSchema = z.object({
   instructions: z.string().min(1, "Skill instructions are required"),
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
+  icon: z.string().nullable(),
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;

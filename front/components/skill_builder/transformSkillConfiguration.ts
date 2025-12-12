@@ -16,6 +16,7 @@ export function transformSkillConfigurationToFormData(
     instructions: skillConfiguration.instructions ?? "",
     editors: [], // Will be populated reactively from useEditors hook
     tools: [], // Will be populated reactively from MCP server views context
+    icon: skillConfiguration.icon ?? null,
   };
 }
 
@@ -33,5 +34,6 @@ export function getDefaultSkillFormData({
     instructions: "",
     editors: [user],
     tools: [],
+    icon: null,
   };
 }

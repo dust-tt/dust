@@ -42,6 +42,7 @@ const PostSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
   description: t.string,
   instructions: t.string,
+  icon: t.union([t.string, t.null]),
   tools: t.array(
     t.type({
       mcpServerViewId: t.string,
