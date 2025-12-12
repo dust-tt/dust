@@ -25,16 +25,16 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 
-const CONVERSATION_CACHE_TTL_MS = 5000;
+export type ConversationCaching =
+  | { useCachedGetConversation: false }
+  | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
 
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
-  _agentMessageId: string,
-  _agentMessageVersion: number,
-  _step: number
+  _unicitySuffix: string
 ): Promise<ConversationType> {
   const res = await getConversation(auth, conversationId);
   if (res.isErr()) {
@@ -43,22 +43,17 @@ async function getConversationForAgentLoop(
   return res.value;
 }
 
-const getConversationForAgentLoopCached = cacheWithRedis(
-  getConversationForAgentLoop,
-  (
-    _auth,
-    conversationId,
-    workspaceId,
-    agentMessageId,
-    agentMessageVersion,
-    step
-  ) =>
-    `${workspaceId}:${conversationId}:${agentMessageId}:${agentMessageVersion}:${step}`,
-  {
-    ttlMs: CONVERSATION_CACHE_TTL_MS,
-    useDistributedLock: true,
-  }
-);
+function getCachedGetConversation(ttlMs: number) {
+  return cacheWithRedis(
+    getConversationForAgentLoop,
+    (_auth, conversationId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${unicitySuffix}`,
+    {
+      ttlMs,
+      useDistributedLock: true,
+    }
+  );
+}
 
 export type AgentLoopArgs = {
   agentMessageId: string;
@@ -71,8 +66,7 @@ export type AgentLoopArgs = {
   userMessageVersion: number;
   userMessageOrigin?: UserMessageOrigin | null;
 
-  // Optional step number for cache key uniqueness when fetching conversation.
-  step?: number;
+  caching?: ConversationCaching;
 };
 
 export type AgentMessageRef = {
@@ -126,22 +120,21 @@ export async function getAgentLoopData(
   const {
     agentMessageId,
     agentMessageVersion,
+    caching,
     conversationId,
-    step,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
 
   let conversation: ConversationType;
-  if (step !== undefined) {
+  if (caching?.useCachedGetConversation) {
     try {
-      conversation = await getConversationForAgentLoopCached(
+      const cachedGetConversation = getCachedGetConversation(caching.ttlMs);
+      conversation = await cachedGetConversation(
         auth,
         conversationId,
         auth.getNonNullableWorkspace().sId,
-        agentMessageId,
-        agentMessageVersion,
-        step
+        caching.unicitySuffix
       );
     } catch (error) {
       if (error instanceof ConversationError) {
