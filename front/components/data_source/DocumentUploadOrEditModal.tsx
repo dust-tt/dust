@@ -337,7 +337,7 @@ export const DocumentUploadOrEditModal = ({
     } else if (document && isCoreAPIDocumentType(document)) {
       setDocumentState((prev) => ({
         ...prev,
-        title: initialId,
+        title: document.title ?? initialId,
         text: document.text ?? "",
         tags: document.tags,
         sourceUrl: document.source_url ?? "",
