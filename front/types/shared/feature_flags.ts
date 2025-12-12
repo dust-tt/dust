@@ -234,6 +234,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Display similar skills when creating a new skill to avoid duplicates",
     stage: "dust_only",
   },
+  triggers_management: {
+    description:
+      "Access to trigger management tools for creating scheduled automations",
+    stage: "dust_only",
+  },
   universal_search: {
     description:
       "WIP - Search from Input bar search in Knowledge and MCP tools. ",
