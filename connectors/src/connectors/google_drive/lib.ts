@@ -29,6 +29,7 @@ import {
   GoogleDriveFoldersModel,
   GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
+import { getLoggerArgs } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ContentNodesViewType } from "@connectors/types";
@@ -42,7 +43,6 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
-import { getActivityLogger, getLoggerArgs } from "@connectors/logger/logger";
 
 export async function isDriveObjectExpandable({
   objectId,

@@ -3,8 +3,8 @@ import { makeScript } from "scripts/helpers";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 makeScript(
   {
