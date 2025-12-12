@@ -529,8 +529,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async listEditors(auth: Authenticator): Promise<UserType[]> {
-    // Global skills are authored by Dust
-    if (this.isGlobal) {
+    // If we don't have an editor group, we must be a global skill with no editors.
+    if (!this.editorGroup) {
       return [GLOBAL_DUST_AUTHOR];
     }
 
@@ -577,7 +577,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
-    // Save the current version before updating
+    // Save the current version before updating.
     await this.saveVersion(auth, { transaction });
 
     await this.update(
@@ -634,7 +634,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Partial<Attributes<SkillConfigurationModel>>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    if (this.isGlobal) {
+    // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
+    if (!this.globalSId) {
       throw new Error("Cannot update a global skill configuration.");
     }
 
@@ -645,8 +646,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined | number, Error>> {
-    if (this.isGlobal) {
-      return new Err(new Error("Cannot delete a global skill configuration."));
+    if (!this.canWrite(auth)) {
+      return new Err(
+        new Error("User does not have permission to delete this skill.")
+      );
     }
 
     try {
