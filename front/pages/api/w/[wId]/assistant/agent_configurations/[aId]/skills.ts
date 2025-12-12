@@ -72,7 +72,7 @@ async function handler(
       );
 
       return res.status(200).json({
-        skills: skills.map((s) => s.toJSON()),
+        skills: skills.map((s) => s.toJSON(auth)),
       });
     }
 

@@ -54,7 +54,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      skillConfiguration: skillResource.toJSON(),
+      skillConfiguration: skillResource.toJSON(auth),
       owner,
       subscription,
       user: auth.getNonNullableUser().toJSON(),
