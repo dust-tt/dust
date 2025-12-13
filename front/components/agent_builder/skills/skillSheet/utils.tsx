@@ -43,7 +43,7 @@ export function getPageAndFooter(props: PageContentProps): {
       return {
         page: {
           title: mode.skillConfiguration.name,
-          description: mode.skillConfiguration.description,
+          description: mode.skillConfiguration.agentFacingDescription,
           id: props.mode.type,
           icon: SKILL_ICON,
           content: (

@@ -57,7 +57,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare status: SkillStatus;
 
   declare name: string;
-  declare description: string;
+  declare agentFacingDescription: string;
   declare instructions: string;
   declare icon: string | null;
 

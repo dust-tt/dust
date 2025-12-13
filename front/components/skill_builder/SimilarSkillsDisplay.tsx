@@ -49,9 +49,9 @@ export function SimilarSkillsDisplay({
               <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                 {skill.name}
               </span>
-              {skill.description && (
+              {skill.agentFacingDescription && (
                 <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {skill.description}
+                  {skill.agentFacingDescription}
                 </span>
               )}
             </div>

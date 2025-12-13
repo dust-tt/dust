@@ -21,7 +21,7 @@ export function SkillCard({
     <ActionCard
       icon={SKILL_ICON}
       label={skill.name}
-      description={skill.description}
+      description={skill.agentFacingDescription}
       isSelected={isSelected}
       canAdd
       onClick={onClick}

@@ -4,7 +4,8 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 export const framesSkill = {
   sId: "frames",
   name: "Frames",
-  description: "Create dashboards, presentations, or any interactive content.",
+  agentFacingDescription:
+    "Create dashboards, presentations, or any interactive content.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
   version: 1,
 } as const satisfies GlobalSkillDefinition;

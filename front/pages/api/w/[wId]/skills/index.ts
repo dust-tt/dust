@@ -191,7 +191,7 @@ async function handler(
       const skillResource = await SkillResource.makeNew(auth, {
         status: "active",
         name: body.name,
-        description: body.description,
+        agentFacingDescription: body.description,
         instructions: body.instructions,
         authorId: user.id,
         // TODO(skills): add space restrictions.

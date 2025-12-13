@@ -466,7 +466,9 @@ describe("POST /api/w/[wId]/skills", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.description).toBe("A test skill description");
+    expect(skillConfiguration!.agentFacingDescription).toBe(
+      "A test skill description"
+    );
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );

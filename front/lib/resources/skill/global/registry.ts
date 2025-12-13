@@ -2,7 +2,7 @@ import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
 export interface GlobalSkillDefinition {
-  readonly description: string;
+  readonly agentFacingDescription: string;
   readonly instructions: string;
   readonly name: string;
   readonly sId: string;
