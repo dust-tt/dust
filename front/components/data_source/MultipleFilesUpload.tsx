@@ -30,6 +30,7 @@ import type {
 import {
   getSupportedNonImageFileExtensions,
   isSupportedDelimitedTextContentType,
+  slugify,
 } from "@app/types";
 
 // Helper to check if a file should be treated as a table based on its MIME type
@@ -169,7 +170,7 @@ export const MultipleFilesUpload = ({
                 fileId: blob.fileId,
                 upsertArgs: {
                   title: blob.filename,
-                  document_id: blob.filename,
+                  document_id: slugify(blob.filename),
                 },
               });
 

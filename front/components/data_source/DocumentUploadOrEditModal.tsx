@@ -38,6 +38,7 @@ import {
   Err,
   getSupportedNonImageFileExtensions,
   normalizeError,
+  slugify,
 } from "@app/types";
 
 const MAX_NAME_CHARS = 32;
@@ -172,12 +173,16 @@ export const DocumentUploadOrEditModal = ({
   const handleDocumentUpload = useCallback(
     async (document: Document) => {
       setIsUpsertingDocument(true);
+      // Use slugified title as document_id for LLM-friendly node IDs.
+      // When editing (initialId is set), keep the original ID.
+      const documentId = initialId ?? slugify(document.title);
       const body = {
-        title: initialId ?? document.title,
+        title: document.title,
+        document_id: documentId,
         mime_type: document.mimeType ?? "text/plain",
         timestamp: null,
         parent_id: null,
-        parents: [initialId ?? document.title],
+        parents: [documentId],
         section: { prefix: null, content: document.text, sections: [] },
         text: null,
         source_url: document.sourceUrl || undefined,
@@ -332,7 +337,7 @@ export const DocumentUploadOrEditModal = ({
     } else if (document && isCoreAPIDocumentType(document)) {
       setDocumentState((prev) => ({
         ...prev,
-        title: initialId,
+        title: document.title ?? initialId,
         text: document.text ?? "",
         tags: document.tags,
         sourceUrl: document.source_url ?? "",

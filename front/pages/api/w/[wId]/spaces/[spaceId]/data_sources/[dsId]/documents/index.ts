@@ -108,13 +108,13 @@ async function handler(
         light_document_output,
         mime_type,
         title,
+        document_id,
       } = bodyValidation.right;
 
       const upsertResult = await upsertDocument({
-        // For folders documents created from the app (this endpoint) we use the document title as
-        // ID. This is inherited behavior that is perfectly valid but we might want to move to
-        // generating IDs in the future.
-        document_id: title,
+        // Use document_id if provided (e.g., slugified for LLM-friendly node IDs),
+        // otherwise fall back to title for backwards compatibility.
+        document_id: document_id ?? title,
         source_url,
         text,
         section,
