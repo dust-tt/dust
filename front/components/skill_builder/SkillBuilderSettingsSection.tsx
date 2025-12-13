@@ -34,6 +34,20 @@ export function SkillBuilderSettingsSection() {
           </div>
         )}
       </BaseFormFieldSection>
+      <BaseFormFieldSection
+        fieldName="userFacingDescription"
+        triggerValidationOnChange={false}
+      >
+        {({ registerRef, registerProps, onChange }) => (
+          <Input
+            ref={registerRef}
+            label="Description"
+            placeholder="Enter skill description"
+            onChange={onChange}
+            {...registerProps}
+          />
+        )}
+      </BaseFormFieldSection>
       <div className="flex flex-col gap-2">
         <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
           Editors

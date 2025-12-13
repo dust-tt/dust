@@ -3,6 +3,7 @@ import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/
 
 export interface GlobalSkillDefinition {
   readonly agentFacingDescription: string;
+  readonly userFacingDescription: string;
   readonly instructions: string;
   readonly name: string;
   readonly sId: string;

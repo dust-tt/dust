@@ -513,6 +513,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         authorId: -1,
         createdAt: new Date(),
         agentFacingDescription: def.agentFacingDescription,
+        userFacingDescription: def.userFacingDescription,
         // We fake the id here. We should rely exclusively on sId for global skills.
         id: -1,
         instructions: def.instructions,
@@ -608,12 +609,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       name,
-      description,
+      agentFacingDescription,
+      userFacingDescription,
       instructions,
       icon,
     }: {
       name: string;
-      description: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
       instructions: string;
       icon: string | null;
     },
@@ -625,7 +628,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update(
       {
         name,
-        agentFacingDescription: description,
+        agentFacingDescription,
+        userFacingDescription,
         instructions,
         icon,
       },
@@ -777,6 +781,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
+      userFacingDescription: this.userFacingDescription,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
@@ -827,6 +832,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
+      userFacingDescription: this.userFacingDescription,
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       authorId: this.authorId,
