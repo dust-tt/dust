@@ -53,6 +53,23 @@ export type SlackSearchMatch = {
   permalink?: string;
 };
 
+type SlackSearchResponse = {
+  ok: boolean;
+  error?: string;
+  results: {
+    messages: Array<{
+      author_id?: string;
+      author_user_id?: string;
+      author_name?: string;
+      channel_id?: string;
+      channel_name?: string;
+      message_ts?: string;
+      content?: string;
+      permalink?: string;
+    }>;
+  };
+};
+
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SLACK_TOOL_LOG_NAME = "slack";
 
@@ -83,23 +100,6 @@ export const slackSearch = async (
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`);
     }
-
-    type SlackSearchResponse = {
-      ok: boolean;
-      error?: string;
-      results: {
-        messages: Array<{
-          author_id?: string;
-          author_user_id?: string;
-          author_name?: string;
-          channel_id?: string;
-          channel_name?: string;
-          message_ts?: string;
-          content?: string;
-          permalink?: string;
-        }>;
-      };
-    };
 
     const data: SlackSearchResponse =
       (await resp.json()) as SlackSearchResponse;
@@ -174,11 +174,15 @@ export const slackSearch = async (
 // Cleans up Slack-specific formatting and returns a human-readable string.
 function formatSlackMessageForDisplay(match: SlackSearchMatch): string {
   const author = match.author_name
-    ? `${match.author_name} (${match.author_id ?? ""})`
+    ? match.author_id
+      ? `${match.author_name} (${match.author_id})`
+      : match.author_name
     : (match.author_id ?? "");
 
   const channel = match.channel_name
-    ? `${match.channel_name} (${match.channel_id ?? ""})`
+    ? match.channel_id
+      ? `${match.channel_name} (${match.channel_id})`
+      : match.channel_name
     : (match.channel_id ?? "");
 
   let content = match.content ?? "";
