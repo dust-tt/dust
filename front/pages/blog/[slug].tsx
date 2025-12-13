@@ -15,6 +15,7 @@ import {
   getBlogPostBySlug,
   getRelatedPosts,
 } from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -220,12 +221,14 @@ export default function BlogPost({
                           alt={author.name}
                           width={40}
                           height={40}
-                          className="rounded-full ring-2 ring-white"
+                          loader={contentfulImageLoader}
+                          sizes="40px"
+                          className="rounded-full"
                         />
                       ) : (
                         <div
                           key={author.name}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600 ring-2 ring-white"
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600"
                         >
                           {author.name.charAt(0).toUpperCase()}
                         </div>
