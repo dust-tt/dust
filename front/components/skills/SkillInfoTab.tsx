@@ -11,8 +11,9 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {skillConfiguration.agentFacingDescription}
+        {skillConfiguration.userFacingDescription}
       </div>
+      {/* TODO(skills 2025-12-12): display agent facing description here */}
       {skillConfiguration.updatedAt && (
         <SkillEdited
           skillConfiguration={{
