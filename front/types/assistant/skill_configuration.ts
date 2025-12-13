@@ -7,8 +7,8 @@ export type SkillStatus = "active" | "archived";
 export type SkillConfigurationType = {
   id: number;
   sId: string;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: number | null;
+  updatedAt: number | null;
   status: SkillStatus;
   name: string;
   agentFacingDescription: string;
