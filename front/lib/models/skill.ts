@@ -32,7 +32,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: false,
   },
-  description: {
+  agentFacingDescription: {
     type: DataTypes.TEXT,
     allowNull: false,
   },
