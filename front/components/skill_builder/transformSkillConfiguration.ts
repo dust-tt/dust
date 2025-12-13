@@ -12,7 +12,7 @@ export function transformSkillConfigurationToFormData(
 ): SkillBuilderFormData {
   return {
     name: skillConfiguration.name,
-    description: skillConfiguration.description,
+    description: skillConfiguration.agentFacingDescription,
     instructions: skillConfiguration.instructions ?? "",
     editors: [], // Will be populated reactively from useEditors hook
     tools: [], // Will be populated reactively from MCP server views context

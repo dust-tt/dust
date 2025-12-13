@@ -32,7 +32,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: false,
   },
-  description: {
+  agentFacingDescription: {
     type: DataTypes.TEXT,
     allowNull: false,
   },
@@ -57,7 +57,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare status: SkillStatus;
 
   declare name: string;
-  declare description: string;
+  declare agentFacingDescription: string;
   declare instructions: string;
   declare icon: string | null;
 

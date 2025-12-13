@@ -11,7 +11,7 @@ export type SkillConfigurationType = {
   updatedAt: number;
   status: SkillStatus;
   name: string;
-  description: string;
+  agentFacingDescription: string;
   instructions: string | null;
   icon: string | null;
   requestedSpaceIds: ModelId[];

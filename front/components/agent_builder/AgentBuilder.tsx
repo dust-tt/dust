@@ -148,7 +148,7 @@ export default function AgentBuilder({
     return skills.map((skill) => ({
       sId: skill.sId,
       name: skill.name,
-      description: skill.description,
+      description: skill.agentFacingDescription,
     }));
   }, [skills]);
 

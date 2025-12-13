@@ -11,7 +11,7 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {skillConfiguration.description}
+        {skillConfiguration.agentFacingDescription}
       </div>
       <SkillEdited skillConfiguration={skillConfiguration} />
 

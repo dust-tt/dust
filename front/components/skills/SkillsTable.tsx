@@ -151,7 +151,7 @@ export function SkillsTable({
     () =>
       skills.map((skill) => ({
         name: skill.name,
-        description: skill.description,
+        description: skill.agentFacingDescription,
         editors: skill.editors,
         usage: skill.usage,
         updatedAt: skill.updatedAt,
