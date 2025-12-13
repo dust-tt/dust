@@ -436,7 +436,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Test Skill",
-      agentFacingDescription: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       icon: null,
@@ -452,7 +452,7 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Test Skill",
-      agentFacingDescription: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
@@ -471,7 +471,7 @@ describe("POST /api/w/[wId]/skills", () => {
     });
     expect(skillConfiguration).not.toBeNull();
     expect(skillConfiguration!.agentFacingDescription).toBe(
-      "A test skill description"
+      "Use this skill all the time"
     );
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
