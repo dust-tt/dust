@@ -26,7 +26,7 @@ export class SkillConfigurationFactory {
 
     return SkillResource.makeNew(auth, {
       authorId: user.id,
-      agentFacingagentFacingDescription: agentFacingDescription,
+      agentFacingDescription,
       instructions,
       name,
       requestedSpaceIds: [],
