@@ -1,6 +1,6 @@
 import {
-  ActionBookOpenIcon,
   ActionIcons,
+  ActionPlusIcon,
   Avatar,
   Button,
   IconPicker,
@@ -14,7 +14,7 @@ import { useController } from "react-hook-form";
 
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 
-const DEFAULT_ICON = ActionBookOpenIcon;
+const DEFAULT_ICON = ActionPlusIcon;
 
 export function SkillBuilderIconSection() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -25,8 +25,9 @@ export function SkillBuilderIconSection() {
   const toActionIconKey = (v?: string | null) =>
     v && v in ActionIcons ? (v as keyof typeof ActionIcons) : undefined;
 
-  const defaultKey = Object.keys(ActionIcons)[0] as keyof typeof ActionIcons;
-  const selectedIconName = toActionIconKey(iconField.value) ?? defaultKey;
+  const selectedIconName =
+    toActionIconKey(iconField.value) ??
+    (DEFAULT_ICON.name as keyof typeof ActionIcons);
   const IconComponent = ActionIcons[selectedIconName] || DEFAULT_ICON;
 
   const closePopover = () => {
@@ -37,7 +38,10 @@ export function SkillBuilderIconSection() {
     <PopoverRoot open={isPopoverOpen}>
       <PopoverTrigger asChild>
         <div className="group relative">
-          <Avatar size="lg" visual={<IconComponent />} />
+          <Avatar
+            size="lg"
+            visual={<IconComponent className="h-8 w-8 text-muted-foreground" />}
+          />
           <Button
             variant="outline"
             size="sm"
