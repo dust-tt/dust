@@ -375,7 +375,8 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       icon: null,
       tools: [],
@@ -387,7 +388,8 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Simple Skill",
-      agentFacingDescription: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
       tools: [],
@@ -434,7 +436,8 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Test Skill",
-      description: "A test skill agent facing description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       icon: null,
       tools: [
@@ -449,7 +452,8 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Test Skill",
-      agentFacingDescription: "A test skill agent facing description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
       tools: [
@@ -467,7 +471,7 @@ describe("POST /api/w/[wId]/skills", () => {
     });
     expect(skillConfiguration).not.toBeNull();
     expect(skillConfiguration!.agentFacingDescription).toBe(
-      "A test skill agent facing description"
+      "Use this skill all the time"
     );
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"

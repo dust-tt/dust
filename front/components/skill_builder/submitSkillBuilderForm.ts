@@ -36,7 +36,8 @@ export async function submitSkillBuilderForm({
       },
       body: JSON.stringify({
         name: formData.name,
-        description: formData.description,
+        agentFacingDescription: formData.agentFacingDescription,
+        userFacingDescription: formData.userFacingDescription,
         instructions: formData.instructions,
         icon: formData.icon,
         tools: formData.tools.map((tool) => ({

@@ -11,6 +11,7 @@ export class SkillConfigurationFactory {
     overrides: Partial<{
       name: string;
       agentFacingDescription: string;
+      userFacingDescription: string;
       instructions: string;
       status: "active" | "archived";
     }> = {}
@@ -20,13 +21,16 @@ export class SkillConfigurationFactory {
 
     const name = overrides.name ?? "Test Skill";
     const agentFacingDescription =
-      overrides.agentFacingDescription ?? "Test skill agentFacingDescription";
+      overrides.agentFacingDescription ?? "Test skill agent facing description";
+    const userFacingDescription =
+      overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
 
     return SkillResource.makeNew(auth, {
       authorId: user.id,
       agentFacingDescription,
+      userFacingDescription,
       instructions,
       name,
       requestedSpaceIds: [],

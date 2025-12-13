@@ -40,7 +40,8 @@ const SkillStatusSchema = t.union([
 // Request body schema for POST
 const PostSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
-  description: t.string,
+  agentFacingDescription: t.string,
+  userFacingDescription: t.union([t.string, t.null]),
   instructions: t.string,
   icon: t.union([t.string, t.null]),
   tools: t.array(
@@ -191,7 +192,9 @@ async function handler(
       const skillResource = await SkillResource.makeNew(auth, {
         status: "active",
         name: body.name,
-        agentFacingDescription: body.description,
+        agentFacingDescription: body.agentFacingDescription,
+        // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
+        userFacingDescription: body.userFacingDescription ?? "",
         instructions: body.instructions,
         authorId: user.id,
         // TODO(skills): add space restrictions.

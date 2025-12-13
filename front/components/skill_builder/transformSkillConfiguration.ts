@@ -12,7 +12,8 @@ export function transformSkillConfigurationToFormData(
 ): SkillBuilderFormData {
   return {
     name: skillConfiguration.name,
-    description: skillConfiguration.agentFacingDescription,
+    agentFacingDescription: skillConfiguration.agentFacingDescription,
+    userFacingDescription: skillConfiguration.userFacingDescription,
     instructions: skillConfiguration.instructions ?? "",
     editors: [], // Will be populated reactively from useEditors hook
     tools: [], // Will be populated reactively from MCP server views context
@@ -30,7 +31,8 @@ export function getDefaultSkillFormData({
 }): SkillBuilderFormData {
   return {
     name: "",
-    description: "",
+    agentFacingDescription: "",
+    userFacingDescription: null,
     instructions: "",
     editors: [user],
     tools: [],

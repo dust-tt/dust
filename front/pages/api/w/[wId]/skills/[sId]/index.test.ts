@@ -134,7 +134,8 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     req.body = {
       name: "Unauthorized Update",
-      description: "Description",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
       instructions: "Instructions",
       icon: null,
       tools: [],
@@ -164,7 +165,8 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     // Try to update the skill name to the duplicate name
     req.body = {
       name: "Other Skill",
-      description: "Description",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
       instructions: "Instructions",
       icon: null,
       tools: [],
@@ -188,7 +190,8 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     req.body = {
       name: "Updated Skill",
-      description: "Description",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
       instructions: "Instructions",
       icon: null,
       tools: [{ mcpServerViewId: "invalid_id" }],
