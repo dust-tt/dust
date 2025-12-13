@@ -351,19 +351,21 @@ export default function WorkspaceAssistants({
               </div>
             )}
           </div>
-          <div className="flex flex-row gap-2">
-            {selectedTags.map((tag) => (
-              <Chip
-                key={tag.sId}
-                label={tag.name}
-                size="xs"
-                color="golden"
-                onRemove={() =>
-                  setSelectedTags(selectedTags.filter((t) => t !== tag))
-                }
-              />
-            ))}
-          </div>
+          {selectedTags.length > 0 && (
+              <div className="flex flex-row gap-2">
+                {selectedTags.map((tag) => (
+                  <Chip
+                    key={tag.sId}
+                    label={tag.name}
+                    size="xs"
+                    color="golden"
+                    onRemove={() =>
+                      setSelectedTags(selectedTags.filter((t) => t !== tag))
+                    }
+                  />
+                ))}
+              </div>
+            )}
           <div className="flex flex-col pt-3">
             {isBatchEdit ? (
               <AgentEditBar
