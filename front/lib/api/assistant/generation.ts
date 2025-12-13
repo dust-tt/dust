@@ -1,5 +1,4 @@
 import moment from "moment-timezone";
-import { errors } from "rehype-parse/lib/errors";
 
 import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
@@ -29,7 +28,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
-import description = errors.abandonedHeadElementChild.description;
 
 function constructContextSection({
   userMessage,
