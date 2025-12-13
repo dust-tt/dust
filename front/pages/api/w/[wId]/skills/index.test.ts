@@ -375,7 +375,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Simple Skill",
-      agentFacingDescription: "A simple skill without tools",
+      description: "A simple skill without tools",
       instructions: "Simple instructions",
       icon: null,
       tools: [],
@@ -434,7 +434,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Test Skill",
-      agentFacingDescription: "A test skill agent facing description",
+      description: "A test skill agent facing description",
       instructions: "Test instructions for the skill",
       icon: null,
       tools: [
