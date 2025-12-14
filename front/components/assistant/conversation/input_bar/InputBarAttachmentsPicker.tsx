@@ -242,24 +242,32 @@ export const InputBarAttachmentsPicker = ({
 
   const dataSourcesNodes = useMemo(
     () =>
-      searchResultNodes.map((node) => {
-        const { dataSourceViews, ...rest } = node;
-        const dataSourceView = dataSourceViews
-          .map((view) => ({
-            ...view,
-            spaceName: spacesMap[view.spaceId]?.name,
-            spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-          }))
-          .sort(
-            (a, b) =>
-              b.spacePriority - a.spacePriority ||
-              a.spaceName.localeCompare(b.spaceName)
-          )[0];
-        return {
-          ...rest,
-          dataSourceView,
-        };
-      }),
+      searchResultNodes
+        .map((node) => {
+          const { dataSourceViews, ...rest } = node;
+          const dataSourceView = dataSourceViews
+            .filter((view) => spacesMap[view.spaceId])
+            .map((view) => ({
+              ...view,
+              spaceName: spacesMap[view.spaceId].name,
+              spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+            }))
+            .sort(
+              (a, b) =>
+                b.spacePriority - a.spacePriority ||
+                a.spaceName.localeCompare(b.spaceName)
+            )[0];
+
+          if (!dataSourceView) {
+            return null;
+          }
+
+          return {
+            ...rest,
+            dataSourceView,
+          };
+        })
+        .filter((node) => node !== null),
     [searchResultNodes, spacesMap]
   );
 
@@ -434,9 +442,14 @@ export const InputBarAttachmentsPicker = ({
       >
         {searchQuery ? (
           <div ref={itemsContainerRef}>
-            {availableSources.length > 1 && (
-              <div className="flex flex-wrap gap-0.5 p-2">
-                {availableSources.map(({ key, label }) => (
+            <div className="flex flex-wrap items-center gap-0.5 p-2">
+              {showLoader && (
+                <div className="flex h-7 items-center justify-center last:grow">
+                  <Spinner variant="dark" size="xs" />
+                </div>
+              )}
+              {availableSources.length > 1 &&
+                availableSources.map(({ key, label }) => (
                   <Button
                     size="xs"
                     variant={
@@ -451,8 +464,7 @@ export const InputBarAttachmentsPicker = ({
                     onClick={() => handleTagClick(key)}
                   />
                 ))}
-              </div>
-            )}
+            </div>
             {Object.keys(serversWithResults).length === 0 ? (
               // No tools results - show knowledge nodes as returned by the search
               dataSourcesNodes
@@ -521,11 +533,7 @@ export const InputBarAttachmentsPicker = ({
               nextPage={nextPage}
               hasMore={hasMore}
               showLoader={showLoader}
-              loader={
-                <div className="flex justify-center py-4">
-                  <Spinner variant="dark" size="sm" />
-                </div>
-              }
+              loader={<div />}
             />
           </div>
         ) : (
