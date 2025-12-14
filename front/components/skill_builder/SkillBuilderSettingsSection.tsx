@@ -5,9 +5,9 @@ import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsShe
 export function SkillBuilderSettingsSection() {
   return (
     <div className="space-y-5">
-      <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+      <h2 className="heading-lg text-foreground dark:text-foreground-night">
         Skill settings
-      </h3>
+      </h2>
       <SkillBuilderNameSection />
       <SkillBuilderUserFacingDescriptionSection />
       <div className="space-y-3">
