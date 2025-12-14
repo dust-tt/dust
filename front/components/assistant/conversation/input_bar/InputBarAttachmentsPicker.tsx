@@ -45,7 +45,11 @@ import type {
   DataSourceViewContentNode,
   LightWorkspaceType,
 } from "@app/types";
-import { asDisplayToolName, MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import {
+  asDisplayToolName,
+  MIN_SEARCH_QUERY_SIZE,
+  removeNulls,
+} from "@app/types";
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   if (dataSource.connectorProvider === "webcrawler") {
@@ -242,8 +246,8 @@ export const InputBarAttachmentsPicker = ({
 
   const dataSourcesNodes = useMemo(
     () =>
-      searchResultNodes
-        .map((node) => {
+      removeNulls(
+        searchResultNodes.map((node) => {
           const { dataSourceViews, ...rest } = node;
           const dataSourceView = dataSourceViews
             .filter((view) => spacesMap[view.spaceId])
@@ -267,7 +271,7 @@ export const InputBarAttachmentsPicker = ({
             dataSourceView,
           };
         })
-        .filter((node) => node !== null),
+      ),
     [searchResultNodes, spacesMap]
   );
 
