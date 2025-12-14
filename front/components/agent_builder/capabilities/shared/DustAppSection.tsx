@@ -18,8 +18,8 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { ConfigurationSectionContainer } from "@app/components/shared/ConfigurationSectionContainer";
 import { useApps } from "@app/lib/swr/apps";
 import type {
   AppType,

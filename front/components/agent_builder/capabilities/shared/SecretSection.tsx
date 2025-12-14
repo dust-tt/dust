@@ -7,7 +7,7 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { ConfigurationSectionContainer } from "@app/components/shared/ConfigurationSectionContainer";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types";
 

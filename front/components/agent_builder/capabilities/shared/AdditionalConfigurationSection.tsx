@@ -17,7 +17,7 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { ConfigurationSectionContainer } from "@app/components/shared/ConfigurationSectionContainer";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { asDisplayName } from "@app/types";

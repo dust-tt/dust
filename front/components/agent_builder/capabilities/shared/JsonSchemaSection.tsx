@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { ConfigurationSectionContainer } from "@app/components/shared/ConfigurationSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { clientFetch } from "@app/lib/egress/client";
