@@ -3,6 +3,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { DataSourceContentNode } from "@app/lib/api/search";
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -10,18 +11,7 @@ import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  SearchWarningCode,
-  WithAPIErrorResponse,
-} from "@app/types";
-
-export type DataSourceContentNode = ContentNodeWithParent & {
-  dataSource: DataSourceType;
-  dataSourceViews: DataSourceViewType[];
-};
+import type { SearchWarningCode, WithAPIErrorResponse } from "@app/types";
 
 export type PostWorkspaceSearchResponseBody = {
   nodes: DataSourceContentNode[];

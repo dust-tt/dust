@@ -8,6 +8,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -78,7 +79,10 @@ export function useUnifiedSearch({
       params.append("includeDataSources", includeDataSources.toString());
       params.append("searchSourceUrls", searchSourceUrls.toString());
       // Only include tools on first page
-      params.append("includeTools", (!appendResults && includeTools).toString());
+      params.append(
+        "includeTools",
+        (!appendResults && includeTools).toString()
+      );
 
       if (spaceIds && spaceIds.length > 0) {
         params.append("spaceIds", spaceIds.join(","));
@@ -122,9 +126,7 @@ export function useUnifiedSearch({
 
           setIsSearchValidating(false);
         } catch (error) {
-          setIsSearchError(
-            error instanceof Error ? error : new Error("Failed to parse stream")
-          );
+          setIsSearchError(normalizeError(error));
           setIsSearchLoading(false);
           setIsLoadingNextPage(false);
           setIsSearchValidating(false);
@@ -139,21 +141,6 @@ export function useUnifiedSearch({
         setIsSearchValidating(false);
         eventSource.close();
       };
-
-      // When streaming completes
-      const checkCompletion = () => {
-        setIsSearchLoading(false);
-        setIsLoadingNextPage(false);
-        setIsSearchValidating(false);
-        eventSource.close();
-      };
-
-      // Set a timeout to close the connection after receiving initial results
-      setTimeout(() => {
-        if (eventSource.readyState === EventSource.OPEN) {
-          checkCompletion();
-        }
-      }, 5000);
     },
     [
       disabled,
