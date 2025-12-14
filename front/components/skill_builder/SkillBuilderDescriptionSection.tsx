@@ -92,7 +92,7 @@ export function SkillBuilderDescriptionSection() {
         <div className="space-y-3">
           <TextArea
             ref={registerRef}
-            placeholder="When should this skill be used? What is this skill good for?"
+            placeholder="When should this skill be used? What will this skill be good for?"
             className="min-h-24"
             onChange={(e) => handleDescriptionChange(e, onChange)}
             error={hasError ? errorMessage : undefined}

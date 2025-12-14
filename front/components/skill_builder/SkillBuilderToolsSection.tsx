@@ -83,7 +83,7 @@ export function SkillBuilderToolsSection() {
                 variant="outline"
               />
             }
-            className="py-6"
+            className="pb-5"
           />
         ) : (
           <CardGrid>
