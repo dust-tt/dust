@@ -11,8 +11,8 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   SkillBuilderFormContext,
@@ -176,7 +176,7 @@ export default function SkillBuilder({
                     Create custom capabilities for specific tasks
                   </p>
                 </div>
-                <SkillBuilderAgentFacingDescriptionSection />
+                <SkillBuilderDescriptionSection />
                 <SkillBuilderInstructionsSection />
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />

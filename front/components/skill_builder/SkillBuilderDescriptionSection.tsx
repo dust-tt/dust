@@ -17,7 +17,7 @@ const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 
-export function SkillBuilderAgentFacingDescriptionSection() {
+export function SkillBuilderDescriptionSection() {
   const { owner } = useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
