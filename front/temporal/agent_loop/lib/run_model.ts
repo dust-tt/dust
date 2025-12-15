@@ -219,16 +219,19 @@ export async function runModelActivity(
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
-  } = await tryListMCPTools(auth, {
-    agentLoopListToolsContext: {
+  } = await tryListMCPTools(
+    auth,
+    {
       agentConfiguration,
       conversation,
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers,
-    skillServers,
-  });
+    {
+      jitServers,
+      skillServers,
+    }
+  );
 
   if (mcpToolsListingError) {
     localLogger.error(

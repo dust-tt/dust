@@ -222,16 +222,19 @@ async function handler(
       };
 
       const { serverToolsAndInstructions, error: mcpToolsListingError } =
-        await tryListMCPTools(auth, {
-          agentLoopListToolsContext: {
+        await tryListMCPTools(
+          auth,
+          {
             agentConfiguration,
             conversation,
             agentMessage: placeholderAgentMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
-          jitServers,
-          skillServers,
-        });
+          {
+            jitServers,
+            skillServers,
+          }
+        );
 
       const availableActions = serverToolsAndInstructions.flatMap(
         (s) => s.tools
