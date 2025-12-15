@@ -76,7 +76,7 @@ function isExpired(credit: CreditDisplayData): boolean {
   return credit.expirationDate !== null && credit.expirationDate <= now;
 }
 
-function getTableRows(credits: CreditDisplayData[]): RowData[] {
+export function getTableRows(credits: CreditDisplayData[]): RowData[] {
   return credits.map((credit) => ({
     sId: credit.sId,
     type: credit.type,
@@ -113,7 +113,7 @@ const Cell = (info: Info, children: React.ReactNode) => (
   </DataTable.CellContent>
 );
 
-const creditColumns: ColumnDef<RowData, string>[] = [
+export const creditColumns: ColumnDef<RowData, string>[] = [
   {
     id: "type" as const,
     header: "Type",
@@ -156,7 +156,7 @@ const creditColumns: ColumnDef<RowData, string>[] = [
   },
   {
     id: "by" as const,
-    header: "Bought By",
+    header: "Buyer",
     cell: (info: Info) => {
       const boughtByUser = info.row.original.boughtByUser;
       return (
@@ -169,7 +169,7 @@ const creditColumns: ColumnDef<RowData, string>[] = [
       );
     },
     meta: {
-      className: "w-10",
+      className: "w-16",
     },
   },
 ];
