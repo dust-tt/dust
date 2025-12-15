@@ -1,10 +1,11 @@
+import type { WhereOptions } from "sequelize";
+
 import type { Authenticator } from "@app/lib/auth";
 import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
-import type { WhereOptions } from "sequelize";
 
 /**
  * Get all versions of a single skill, including the current version.
