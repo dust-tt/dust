@@ -1,10 +1,16 @@
 import type {
   RichAgentMention,
   RichAgentMentionInConversation,
+  RichUserMentionInConversation,
 } from "@app/types";
-import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
+import {
+  compareAgentsForSort,
+  GLOBAL_AGENTS_SID,
+  toRichUserMentionType,
+} from "@app/types";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 /**
  * Maximum number of suggestions to display in the autocomplete dropdown.
@@ -86,4 +92,23 @@ export function filterAndSortEditorSuggestionAgents(
         ) || compareAgentSuggestionsForSort(a, b)
       );
     });
+}
+
+export function sortEditorSuggestionUsers(
+  suggestions: RichUserMentionInConversation[]
+) {
+  return suggestions.sort((a, b) => {
+    // If within the conversation participants, we move it to the top.
+    if (a.isParticipant && !b.isParticipant) {
+      return -1;
+    }
+    if (b.isParticipant && !a.isParticipant) {
+      return 1;
+    }
+    // If both are participants, we sort by last activity.
+    if (a.isParticipant && b.isParticipant) {
+      return (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0);
+    }
+    return 0;
+  });
 }

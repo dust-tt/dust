@@ -4,6 +4,7 @@ import { fetchConversationParticipants } from "@app/lib/api/assistant/participan
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
+  sortEditorSuggestionUsers,
   SUGGESTION_DISPLAY_LIMIT,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -189,27 +190,16 @@ export const suggestionsOfMentions = async (
     if (res.isOk()) {
       const { users } = res.value;
 
-      userSuggestions = users
+      const filteredUsers: RichUserMentionInConversation[] = users
         .filter((u) => u.sId !== currentUserSId)
         .map((u) => ({
           ...toRichUserMentionType(u.toJSON()),
           isParticipant: participantUsers.some((pu) => pu.id === u.sId),
           lastActivityAt:
             participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
-        }))
-        .sort((a, b) => {
-          // If within the conversation participants, we move it to the top.
-          if (a.isParticipant && !b.isParticipant) {
-            return -1;
-          }
-          if (b.isParticipant && !a.isParticipant) {
-            return 1;
-          }
-          if (a.isParticipant && b.isParticipant) {
-            return (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0);
-          }
-          return 0;
-        });
+        }));
+      const sortedUsers = sortEditorSuggestionUsers(filteredUsers);
+      userSuggestions.push(...sortedUsers);
     }
   }
 
