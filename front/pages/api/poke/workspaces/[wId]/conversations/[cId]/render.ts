@@ -164,7 +164,7 @@ async function handler(
       });
 
       const { enabledSkills, equippedSkills } =
-        await SkillResource.listSkillsForConversation(auth, {
+        await SkillResource.listForConversation(auth, {
           agentConfiguration,
           conversation,
         });

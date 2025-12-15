@@ -197,7 +197,7 @@ export async function runModelActivity(
     );
 
   const { enabledSkills, equippedSkills } =
-    await SkillResource.listSkillsForConversation(auth, {
+    await SkillResource.listForConversation(auth, {
       agentConfiguration,
       conversation,
     });
