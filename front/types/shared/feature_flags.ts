@@ -239,11 +239,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to schedule management tools for creating scheduled automations",
     stage: "dust_only",
   },
-  universal_search: {
-    description:
-      "WIP - Search from Input bar search in Knowledge and MCP tools. ",
-    stage: "dust_only",
-  },
   conversations_groups: {
     description: "Enable conversations groups in Spaces",
     stage: "dust_only",
