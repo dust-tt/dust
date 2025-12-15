@@ -142,7 +142,7 @@ const _webhookNotionAPIHandler = async (
           connectorId: notionConnectorState.connectorId,
           notionWorkspaceId,
         },
-        "Failed to process Notion webhook event, continuing with next connector"
+        "Failed to process Notion webhook event"
       );
     }
   }
