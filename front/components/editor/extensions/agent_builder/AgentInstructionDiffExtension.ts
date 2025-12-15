@@ -51,7 +51,7 @@ export const AgentInstructionDiffExtension = Extension.create<{}>({
         (oldContent: string, newContent: string) =>
         ({ editor, commands }) => {
           if (!this.storage.isDiffMode) {
-            this.storage.originalContent = oldContent;
+            this.storage.originalContent = newContent;
           }
           this.storage.isDiffMode = true;
 
