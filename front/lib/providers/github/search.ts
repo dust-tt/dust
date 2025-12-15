@@ -16,31 +16,23 @@ export async function search({
   pageSize,
 }: ToolSearchParams): Promise<ToolSearchRawResult[]> {
   const github = getGitHubClient(accessToken);
-  console.log(query)
+
   try {
-    // Use GitHub's REST API to search both issues and pull requests
-    // The /search/issues endpoint searches both issues and PRs
-    // Search in title, body, and comments for comprehensive results
-    // No explicit sort - uses GitHub's "best match" which balances relevance and recency
+    // Use GitHub's REST API for search
+    // The /search/issues endpoint queries both issues and PRs
+    // Uses GitHub's "best match" default search which balances relevance and recency
     const { data } = await github.request("GET /search/issues", {
       q: query,
       per_page: Math.min(pageSize, 100),
     });
-    console.log(data)
 
     return data.items.map((item: any) => {
       // Determine if it's an issue or PR based on pull_request field
       const isPullRequest = !!item.pull_request;
 
-      // Store owner/repo/number for easier download later
-      // Extract from html_url: https://github.com/{owner}/{repo}/issues/{number}
-      const urlParts = item.html_url.split("/");
-      const number = urlParts[urlParts.length - 1];
-      const repo = urlParts[urlParts.length - 3];
-      const owner = urlParts[urlParts.length - 4];
-
       return {
-        externalId: `${owner}/${repo}/${isPullRequest ? "pull" : "issues"}/${number}`,
+        // Use node_id as the external ID for direct GraphQL node lookup
+        externalId: item.node_id,
         mimeType: isPullRequest
           ? "application/vnd.github.pull-request"
           : "application/vnd.github.issue",
@@ -67,73 +59,112 @@ export async function download({
 }: ToolDownloadParams): Promise<ToolDownloadResult> {
   const github = getGitHubClient(accessToken);
 
-  // Parse externalId format: {owner}/{repo}/{type}/{number}
-  // Example: "octocat/Hello-World/issues/1" or "octocat/Hello-World/pull/42"
-  const parts = externalId.split("/");
-  if (parts.length !== 4) {
-    throw new Error(`Invalid externalId format: ${externalId}`);
-  }
-
-  const [owner, repo, type, numberStr] = parts;
-  const number = parseInt(numberStr, 10);
-
-  if (!owner || !repo || !number) {
-    throw new Error(`Invalid externalId format: ${externalId}`);
-  }
-
-  const isPullRequest = type === "pull";
-
+  // externalId is the node_id from GitHub (e.g., "MDU6SXNzdWUzNTgwMg==")
   let content = "";
   let fileName = "";
+  let typeName = "issue/pull request"; // Default for error messages
 
   try {
-    if (isPullRequest) {
-      // Fetch pull request body, comments, and reviews
-      const query = `
-        query($owner: String!, $repo: String!, $pullNumber: Int!) {
-          repository(owner: $owner, name: $repo) {
-            pullRequest(number: $pullNumber) {
-              title
-              body
-              state
-              url
-              author {
+    // Use the node query with inline fragments to handle both issues and PRs
+    const query = `
+      query($nodeId: ID!) {
+        node(id: $nodeId) {
+          ... on Issue {
+            __typename
+            number
+            title
+            body
+            state
+            url
+            repository {
+              owner {
                 login
               }
-              comments(first: 100) {
-                nodes {
-                  author {
-                    login
-                  }
-                  body
-                  createdAt
+              name
+            }
+            author {
+              login
+            }
+            comments(first: 100) {
+              nodes {
+                author {
+                  login
                 }
-              }
-              reviews(first: 100) {
-                nodes {
-                  author {
-                    login
-                  }
-                  body
-                  state
-                  createdAt
-                }
+                body
+                createdAt
               }
             }
           }
-        }`;
+          ... on PullRequest {
+            __typename
+            number
+            title
+            body
+            state
+            url
+            repository {
+              owner {
+                login
+              }
+              name
+            }
+            author {
+              login
+            }
+            comments(first: 100) {
+              nodes {
+                author {
+                  login
+                }
+                body
+                createdAt
+              }
+            }
+            reviews(first: 100) {
+              nodes {
+                author {
+                  login
+                }
+                body
+                state
+                createdAt
+              }
+            }
+          }
+        }
+      }`;
 
-      const result = (await github.graphql(query, {
-        owner,
-        repo,
-        pullNumber: number,
-      })) as {
-        repository: {
-          pullRequest: {
+    const result = (await github.graphql(query, {
+      nodeId: externalId,
+    })) as {
+      node:
+        | {
+            __typename: "Issue";
+            number: number;
             title: string;
             body: string;
             state: string;
             url: string;
+            repository: {
+              owner: { login: string };
+              name: string;
+            };
+            author: { login: string };
+            comments: {
+              nodes: { author: { login: string }; body: string; createdAt: string }[];
+            };
+          }
+        | {
+            __typename: "PullRequest";
+            number: number;
+            title: string;
+            body: string;
+            state: string;
+            url: string;
+            repository: {
+              owner: { login: string };
+              name: string;
+            };
             author: { login: string };
             comments: {
               nodes: { author: { login: string }; body: string; createdAt: string }[];
@@ -147,33 +178,38 @@ export async function download({
               }[];
             };
           };
-        };
-      };
+    };
 
-      const pr = result.repository.pullRequest;
-      fileName = `PR-${number}-${pr.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)}`;
+    const node = result.node;
+    const owner = node.repository.owner.login;
+    const repo = node.repository.name;
+    const number = node.number;
+    typeName = node.__typename === "PullRequest" ? "pull request" : "issue";
 
-      content = `# Pull Request #${number}: ${pr.title}\n\n`;
+    if (node.__typename === "PullRequest") {
+      fileName = `PR-${number}-${node.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)}`;
+
+      content = `# Pull Request #${number}: ${node.title}\n\n`;
       content += `**Repository:** ${owner}/${repo}\n`;
-      content += `**Author:** @${pr.author.login}\n`;
-      content += `**State:** ${pr.state}\n`;
-      content += `**URL:** ${pr.url}\n\n`;
+      content += `**Author:** @${node.author.login}\n`;
+      content += `**State:** ${node.state}\n`;
+      content += `**URL:** ${node.url}\n\n`;
 
-      if (pr.body) {
-        content += `## Description\n\n${pr.body}\n\n`;
+      if (node.body) {
+        content += `## Description\n\n${node.body}\n\n`;
       }
 
-      if (pr.comments.nodes.length > 0) {
-        content += `## Comments (${pr.comments.nodes.length})\n\n`;
-        for (const comment of pr.comments.nodes) {
+      if (node.comments.nodes.length > 0) {
+        content += `## Comments (${node.comments.nodes.length})\n\n`;
+        for (const comment of node.comments.nodes) {
           content += `### @${comment.author.login} (${comment.createdAt})\n\n`;
           content += `${comment.body}\n\n`;
         }
       }
 
-      if (pr.reviews.nodes.length > 0) {
-        content += `## Reviews (${pr.reviews.nodes.length})\n\n`;
-        for (const review of pr.reviews.nodes) {
+      if (node.reviews.nodes.length > 0) {
+        content += `## Reviews (${node.reviews.nodes.length})\n\n`;
+        for (const review of node.reviews.nodes) {
           content += `### @${review.author.login} - ${review.state} (${review.createdAt})\n\n`;
           if (review.body) {
             content += `${review.body}\n\n`;
@@ -181,66 +217,22 @@ export async function download({
         }
       }
     } else {
-      // Fetch issue body and comments
-      const query = `
-        query($owner: String!, $repo: String!, $issueNumber: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issueNumber) {
-              title
-              body
-              state
-              url
-              author {
-                login
-              }
-              comments(first: 100) {
-                nodes {
-                  author {
-                    login
-                  }
-                  body
-                  createdAt
-                }
-              }
-            }
-          }
-        }`;
+      // Issue
+      fileName = `Issue-${number}-${node.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)}`;
 
-      const result = (await github.graphql(query, {
-        owner,
-        repo,
-        issueNumber: number,
-      })) as {
-        repository: {
-          issue: {
-            title: string;
-            body: string;
-            state: string;
-            url: string;
-            author: { login: string };
-            comments: {
-              nodes: { author: { login: string }; body: string; createdAt: string }[];
-            };
-          };
-        };
-      };
-
-      const issue = result.repository.issue;
-      fileName = `Issue-${number}-${issue.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)}`;
-
-      content = `# Issue #${number}: ${issue.title}\n\n`;
+      content = `# Issue #${number}: ${node.title}\n\n`;
       content += `**Repository:** ${owner}/${repo}\n`;
-      content += `**Author:** @${issue.author.login}\n`;
-      content += `**State:** ${issue.state}\n`;
-      content += `**URL:** ${issue.url}\n\n`;
+      content += `**Author:** @${node.author.login}\n`;
+      content += `**State:** ${node.state}\n`;
+      content += `**URL:** ${node.url}\n\n`;
 
-      if (issue.body) {
-        content += `## Description\n\n${issue.body}\n\n`;
+      if (node.body) {
+        content += `## Description\n\n${node.body}\n\n`;
       }
 
-      if (issue.comments.nodes.length > 0) {
-        content += `## Comments (${issue.comments.nodes.length})\n\n`;
-        for (const comment of issue.comments.nodes) {
+      if (node.comments.nodes.length > 0) {
+        content += `## Comments (${node.comments.nodes.length})\n\n`;
+        for (const comment of node.comments.nodes) {
           content += `### @${comment.author.login} (${comment.createdAt})\n\n`;
           content += `${comment.body}\n\n`;
         }
@@ -262,7 +254,7 @@ export async function download({
     };
   } catch (error) {
     throw new Error(
-      `Failed to download GitHub ${isPullRequest ? "pull request" : "issue"}: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to download GitHub ${typeName}: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
