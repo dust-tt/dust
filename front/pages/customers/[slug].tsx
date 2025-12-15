@@ -261,8 +261,15 @@ export default function CustomerStoryPage({
                     <dt className="text-sm font-medium text-muted-foreground">
                       {story.industries.length > 1 ? "Industries" : "Industry"}
                     </dt>
-                    <dd className="mt-1 text-sm font-semibold text-foreground">
-                      {story.industries.join(", ")}
+                    <dd className="mt-2 flex flex-wrap gap-1">
+                      {story.industries.map((industry) => (
+                        <Link
+                          key={industry}
+                          href={`/customers?industry=${encodeURIComponent(industry)}`}
+                        >
+                          <Chip label={industry} size="xs" color="primary" />
+                        </Link>
+                      ))}
                     </dd>
                   </div>
                 )}
@@ -279,10 +286,19 @@ export default function CustomerStoryPage({
                 {story.department.length > 0 && (
                   <div>
                     <dt className="text-sm font-medium text-muted-foreground">
-                      Departments
+                      {story.department.length > 1
+                        ? "Departments"
+                        : "Department"}
                     </dt>
-                    <dd className="mt-1 text-sm font-semibold text-foreground">
-                      {story.department.join(", ")}
+                    <dd className="mt-2 flex flex-wrap gap-1">
+                      {story.department.map((dept) => (
+                        <Link
+                          key={dept}
+                          href={`/customers?department=${encodeURIComponent(dept)}`}
+                        >
+                          <Chip label={dept} size="xs" color="primary" />
+                        </Link>
+                      ))}
                     </dd>
                   </div>
                 )}

@@ -197,7 +197,9 @@ export default function BlogPost({
             {post.tags.length > 0 && (
               <div className="mb-4 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
-                  <Chip key={tag} label={tag} size="xs" color="primary" />
+                  <Link key={tag} href={`/blog?tag=${encodeURIComponent(tag)}`}>
+                    <Chip label={tag} size="xs" color="primary" />
+                  </Link>
                 ))}
               </div>
             )}
