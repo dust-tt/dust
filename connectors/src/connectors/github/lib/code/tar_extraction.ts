@@ -27,6 +27,19 @@ const MAX_CONCURRENT_GCS_UPLOADS = 200;
 const MAX_TARBALL_EXTRACTION_RETRIES = 3;
 const TARBALL_RETRY_BASE_DELAY_MS = 1000;
 
+const ZLIB_ERROR_CODES = ["Z_BUF_ERROR", "Z_DATA_ERROR"] as const;
+type ZlibErrorCode = (typeof ZLIB_ERROR_CODES)[number];
+
+function isIncompleteGzipStreamError(
+  error: Error
+): error is Error & { code: ZlibErrorCode } {
+  return (
+    "code" in error &&
+    typeof error.code === "string" &&
+    ZLIB_ERROR_CODES.includes(error.code as ZlibErrorCode)
+  );
+}
+
 /**
  * Checks if an error is a retryable stream error (zlib decompression failures,
  * incomplete downloads, connection resets).
@@ -36,9 +49,7 @@ function isRetryableStreamError(error: unknown): boolean {
     return false;
   }
 
-  // Zlib errors (Z_BUF_ERROR, Z_DATA_ERROR) - incomplete or corrupted gzip stream.
-  const zlibErrorCodes = ["Z_BUF_ERROR", "Z_DATA_ERROR"];
-  if ("code" in error && zlibErrorCodes.includes(error.code as string)) {
+  if (isIncompleteGzipStreamError(error)) {
     return true;
   }
 
@@ -342,8 +353,11 @@ export async function extractGitHubTarballToGCS(
       const { stream: tarballStream, contentLength } = streamResult.value;
 
       // Track bytes received for content-length validation.
-      tarballStream.on("data", (chunk: Buffer) => {
-        bytesReceived += chunk.length;
+      // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
+      tarballStream.on("data", (chunk: Buffer | string) => {
+        bytesReceived += Buffer.isBuffer(chunk)
+          ? chunk.length
+          : Buffer.byteLength(chunk, "utf8");
       });
 
       // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
