@@ -14,7 +14,8 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
-import { CreditsList } from "@app/components/workspace/CreditsList";
+import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
+import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import {
   getBillingCycle,
@@ -398,6 +399,20 @@ export default function CreditsUsagePage({
     return percentUsed >= 80;
   }, [totalConsumed, totalCredits]);
 
+  const [activeCredits, expiredCredits] = useMemo(() => {
+    return credits.reduce<[CreditDisplayData[], CreditDisplayData[]]>(
+      ([active, expired], current) => {
+        if (!isExpired(current)) {
+          active.push(current);
+        } else {
+          expired.push(current);
+        }
+        return [active, expired];
+      },
+      [[], []]
+    );
+  }, [credits]);
+
   return (
     <AppCenteredLayout
       owner={owner}
@@ -499,16 +514,24 @@ export default function CreditsUsagePage({
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
-        {/* History Section */}
-        <Page.Vertical>
-          <Page.Vertical gap="sm">
-            <Page.H variant="h5">Credit history</Page.H>
-            <Page.P variant="secondary">
-              Credit history for programmatic usage. Credits invoices are sent
-              by email at time of purchase.
-            </Page.P>
-          </Page.Vertical>
-          <CreditsList credits={credits} isLoading={isCreditsLoading} />
+        {/* Current Credits Section */}
+        <Page.Vertical sizing="grow">
+          <div className="flex w-full items-start justify-between">
+            <Page.Vertical gap="sm" sizing="grow">
+              <div className="flex w-full items-center justify-between">
+                <Page.H variant="h5">Current credits</Page.H>
+                <CreditHistorySheet
+                  credits={expiredCredits}
+                  isLoading={isCreditsLoading}
+                />
+              </div>
+              <Page.P variant="secondary">
+                Active credits for programmatic usage. Credits invoices are sent
+                by email at time of purchase.
+              </Page.P>
+            </Page.Vertical>
+          </div>
+          <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
         {/* Usage Graph */}
