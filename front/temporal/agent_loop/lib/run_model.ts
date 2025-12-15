@@ -277,8 +277,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
-    enabledSkills: enabledSkills,
-    equippedSkills: equippedSkills,
+    enabledSkills,
+    equippedSkills,
     featureFlags,
   });
 
