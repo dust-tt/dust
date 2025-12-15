@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
@@ -149,19 +148,9 @@ async function handleStreamingSearch(
     // @ts-expect-error - We need it for streaming but it does not exist in the types.
     res.flush();
 
-    // Check feature flag for universal search (tool search)
-    const owner = auth.getNonNullableWorkspace();
-    const featureFlags = await getFeatureFlags(owner);
-    const hasUniversalSearch = featureFlags.includes("universal_search");
-
     // Stream tool results if enabled and not paginating
     // Tool results are only included on the first page (no cursor)
-    if (
-      includeTools === "true" &&
-      hasUniversalSearch &&
-      !cursor &&
-      !signal.aborted
-    ) {
+    if (includeTools === "true" && !cursor && !signal.aborted) {
       for await (const results of streamToolFiles({
         auth,
         query,
