@@ -5,6 +5,7 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -27,12 +28,13 @@ async function handler(
   switch (req.method) {
     case "GET":
       const featureFlags = await getFeatureFlags(owner);
+      const region = regionConfig.getCurrentRegion();
       const models: ModelConfigurationType[] = USED_MODEL_CONFIGS.filter((m) =>
-        canUseModel(m, featureFlags, plan, owner)
+        canUseModel(m, featureFlags, plan, owner, region)
       );
       const reasoningModels: ModelConfigurationType[] =
         REASONING_MODEL_CONFIGS.filter((m) =>
-          canUseModel(m, featureFlags, plan, owner)
+          canUseModel(m, featureFlags, plan, owner, region)
         );
 
       return res.status(200).json({ models, reasoningModels });

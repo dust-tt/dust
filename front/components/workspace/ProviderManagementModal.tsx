@@ -27,6 +27,7 @@ import {
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { RegionType } from "@app/lib/api/regions/config";
 import { canUseModel } from "@app/lib/assistant";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
@@ -50,11 +51,13 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
 interface ProviderManagementModalProps {
   owner: WorkspaceType;
   plan: PlanType;
+  region: RegionType;
 }
 
 export function ProviderManagementModal({
   owner,
   plan,
+  region,
 }: ProviderManagementModalProps) {
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
@@ -81,7 +84,8 @@ export function ProviderManagementModal({
     [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
     (m) => m.modelId
   ).filter(
-    (model) => !model.isLegacy && canUseModel(model, featureFlags, plan, owner)
+    (model) =>
+      !model.isLegacy && canUseModel(model, featureFlags, plan, owner, region)
   );
 
   const modelProviders = filteredModels.reduce(
