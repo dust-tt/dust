@@ -148,6 +148,21 @@ export async function getAgentConfigurationRequirementsFromActions(
   };
 }
 
+export async function getRequestedSpaceIdsFromMCPServerViewIds(
+  auth: Authenticator,
+  mcpServerViewIds: string[]
+): Promise<ModelId[]> {
+  const actions = mcpServerViewIds.map((mcpServerViewId) => ({
+    type: "mcp_server_configuration" as const,
+    mcpServerViewId,
+    name: "",
+    description: "",
+  }));
+  const { requestedSpaceIds } =
+    await getAgentConfigurationRequirementsFromActions(auth, { actions });
+  return requestedSpaceIds;
+}
+
 export async function getContentFragmentGroupIds(
   auth: Authenticator,
   contentFragment: ContentFragmentInputWithContentNode

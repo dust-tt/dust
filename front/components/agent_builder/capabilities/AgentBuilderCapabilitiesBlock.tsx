@@ -17,9 +17,9 @@ import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capab
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
-import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
