@@ -340,7 +340,7 @@ export const InputBarAttachmentsPicker = ({
     }
   }, [dataSourcesWithResults, serversWithResults]);
 
-  const handleTagClick = (key: string) => {
+  const handleFilterClick = (key: string) => {
     setSelectedDataSourcesAndTools((prev) => ({
       ...prev,
       [key]: !prev[key],
@@ -465,7 +465,7 @@ export const InputBarAttachmentsPicker = ({
                         : ""
                     }
                     label={label}
-                    onClick={() => handleTagClick(key)}
+                    onClick={() => handleFilterClick(key)}
                   />
                 ))}
             </div>
