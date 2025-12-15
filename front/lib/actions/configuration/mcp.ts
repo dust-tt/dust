@@ -24,7 +24,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
