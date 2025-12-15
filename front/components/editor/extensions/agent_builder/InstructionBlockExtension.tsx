@@ -139,8 +139,7 @@ export const InstructionBlockExtension =
     name: "instructionBlock",
     group: "block",
     priority: 1000,
-    // Allow only specific blocks inside the instruction block
-    content: "(paragraph|heading|codeBlock)+",
+    content: "block+",
     defining: true,
     // Prevents auto-merging two blocks when they're not separated by a paragraph
     isolating: true,
