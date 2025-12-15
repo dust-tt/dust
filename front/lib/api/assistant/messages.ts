@@ -490,6 +490,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         if (reasoningContents.length > 0) {
           return {
             content:
+              // For mutliple steps outputing text content, we want to display only the last one as the final answer.
               textFragments.length > 0
                 ? textFragments[textFragments.length - 1]
                 : "",
