@@ -770,7 +770,7 @@ async function createServer(
   );
 
   server.tool(
-    "list_users_and_groups",
+    "list_users",
     "List all users in the workspace, and optionally user groups",
     {
       nameFilter: z
@@ -797,11 +797,11 @@ async function createServer(
         }
 
         try {
-          return await executeListUsers(
+          return await executeListUsers({
             nameFilter,
             accessToken,
-            includeUserGroups
-          );
+            includeUserGroups,
+          });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {

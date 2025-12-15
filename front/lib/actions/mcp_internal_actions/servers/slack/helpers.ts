@@ -349,6 +349,20 @@ export async function resolveChannelDisplayName(
   return `#${channelId}`;
 }
 
+// Format users as Markdown.
+function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
+  return users
+    .map(
+      (user) =>
+        `- **ID: ${user.id}**` +
+        `\n  - Name: ${user.name}` +
+        `\n  - Real name: ${user.real_name}` +
+        `\n  - Display name: ${user.display_name}` +
+        (user.email ? `\n  - Email: ${user.email}` : "")
+    )
+    .join("\n");
+}
+
 // Helper function to build filtered list responses.
 function buildFilteredListResponse<T, U = T>(
   items: T[],
@@ -359,16 +373,21 @@ function buildFilteredListResponse<T, U = T>(
     hasFilter: boolean,
     filterText?: string
   ) => string,
-  transformFn?: (item: T) => U
+  transformFn?: (item: T) => U,
+  formatFn?: (items: U[]) => string
 ): Ok<Array<{ type: "text"; text: string }>> {
   const transform = transformFn ?? ((item: T) => item as unknown as U);
 
   if (!nameFilter) {
+    const transformedItems = items.map(transform);
+    const formattedText = formatFn
+      ? formatFn(transformedItems)
+      : JSON.stringify(transformedItems, null, 2);
     return new Ok([
       { type: "text" as const, text: contextMessage(items.length, false) },
       {
         type: "text" as const,
-        text: JSON.stringify(items.map(transform), null, 2),
+        text: formattedText,
       },
     ]);
   }
@@ -379,6 +398,10 @@ function buildFilteredListResponse<T, U = T>(
   );
 
   if (filteredItems.length > 0) {
+    const transformedItems = filteredItems.map(transform);
+    const formattedText = formatFn
+      ? formatFn(transformedItems)
+      : JSON.stringify(transformedItems, null, 2);
     return new Ok([
       {
         type: "text" as const,
@@ -386,11 +409,15 @@ function buildFilteredListResponse<T, U = T>(
       },
       {
         type: "text" as const,
-        text: JSON.stringify(filteredItems.map(transform), null, 2),
+        text: formattedText,
       },
     ]);
   }
 
+  const transformedItems = items.map(transform);
+  const formattedText = formatFn
+    ? formatFn(transformedItems)
+    : JSON.stringify(transformedItems, null, 2);
   return new Ok([
     {
       type: "text" as const,
@@ -399,7 +426,7 @@ function buildFilteredListResponse<T, U = T>(
     },
     {
       type: "text" as const,
-      text: JSON.stringify(items.map(transform), null, 2),
+      text: formattedText,
     },
   ]);
 }
@@ -673,14 +700,19 @@ export async function executeListUserGroups(accessToken: string) {
     const usergroups = response.usergroups ?? [];
     const cleanedUserGroups = usergroups.map(cleanUserGroupPayload);
 
+    const formattedUserGroups = cleanedUserGroups
+      .map(
+        (group) =>
+          `- **@${group.handle}**` +
+          `\n  - Name: ${group.name}` +
+          `\n  - ID: \`${group.id}\``
+      )
+      .join("\n");
+
     return new Ok([
       {
         type: "text" as const,
-        text: `The workspace has ${cleanedUserGroups.length} user groups`,
-      },
-      {
-        type: "text" as const,
-        text: JSON.stringify(cleanedUserGroups, null, 2),
+        text: `The workspace has ${cleanedUserGroups.length} user groups:\n\n${formattedUserGroups}`,
       },
     ]);
   } catch (error) {
@@ -692,11 +724,15 @@ export async function executeListUserGroups(accessToken: string) {
   }
 }
 
-export async function executeListUsers(
-  nameFilter: string | undefined,
-  accessToken: string,
-  includeUserGroups?: boolean
-) {
+export async function executeListUsers({
+  nameFilter,
+  accessToken,
+  includeUserGroups,
+}: {
+  nameFilter?: string;
+  accessToken: string;
+  includeUserGroups?: boolean;
+}) {
   const slackClient = await getSlackClient(accessToken);
 
   // Load user groups first if requested.
@@ -751,9 +787,10 @@ export async function executeListUsers(
             ),
           (count, hasFilter, filterText) =>
             hasFilter
-              ? `The workspace has ${count} users containing "${filterText}"`
-              : `The workspace has ${count} users`,
-          cleanUserPayload
+              ? `The workspace has ${count} users containing "${filterText}":\n\n`
+              : `The workspace has ${count} users:\n\n`,
+          cleanUserPayload,
+          formatUsersAsMarkdown
         );
 
         return new Ok([...userGroupsContent, ...usersResponse.value]);
@@ -774,9 +811,10 @@ export async function executeListUsers(
       ),
     (count, hasFilter, filterText) =>
       hasFilter
-        ? `The workspace has ${count} users containing "${filterText}"`
-        : `The workspace has ${count} users`,
-    cleanUserPayload
+        ? `The workspace has ${count} users containing "${filterText}":\n\n`
+        : `The workspace has ${count} users:\n\n`,
+    cleanUserPayload,
+    formatUsersAsMarkdown
   );
 
   return new Ok([...userGroupsContent, ...usersResponse.value]);
