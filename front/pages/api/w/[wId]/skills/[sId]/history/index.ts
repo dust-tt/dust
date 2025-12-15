@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import { GetSkillConfigurationsHistoryQuerySchema } from "@app/types/api/internal/skill";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
@@ -22,8 +23,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { sId } = req.query;
-  if (typeof sId !== "string") {
+  if (!isString(req.query.sId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -32,6 +32,8 @@ async function handler(
       },
     });
   }
+
+  const { sId } = req.query;
 
   // Check that user has access to this skill
   const skill = await SkillResource.fetchById(auth, sId);
