@@ -8,14 +8,14 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
-import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import {
   creditColumns,
   getTableRows,
 } from "@app/components/workspace/CreditsList";
-import Link from "next/link";
+import type { CreditDisplayData, CreditType } from "@app/types/credits";
 
 // Sorting priority for credit types: free -> committed -> payg
 const TYPE_SORT_ORDER: Record<CreditType, number> = {
