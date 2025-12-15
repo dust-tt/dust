@@ -120,7 +120,8 @@
  *           example: "https://example.com/profiles/johndoe123.jpg"
  *         origin:
  *           type: string
- *           description: Origin of the context (contact us to add more at support@dust.tt)
+ *           description: Origin of the context (contact us to add more at support@dust.tt). Some values are protected - if you get a invalid_request_error, consider using "api" instead.
+ *           default: "api"
  *           enum:
  *             - api
  *             - cli
