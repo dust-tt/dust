@@ -489,7 +489,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
         if (reasoningContents.length > 0) {
           return {
-            content: textFragments.join(""),
+            content:
+              // For mutliple steps outputing text content, we want to display only the last one as the final answer.
+              textFragments.length > 0
+                ? textFragments[textFragments.length - 1]
+                : "",
             chainOfThought: reasoningContents
               .map((sc) => sc.content.value.reasoning)
               .filter((r) => !!r)
