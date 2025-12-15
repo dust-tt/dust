@@ -1,4 +1,4 @@
-import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base/build/src/export/InMemorySpanExporter";
+import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import type { Context } from "@temporalio/activity";
 import {
   makeWorkflowExporter,
@@ -42,7 +42,7 @@ export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   // Initialize LLMs instrumentation for the worker.
-  initializeOpenTelemetryInstrumentation();
+  initializeOpenTelemetryInstrumentation({ serviceName: "dust-agent-loop" });
 
   const spanExporter = new InMemorySpanExporter();
 
@@ -88,7 +88,8 @@ export async function runAgentLoopWorker() {
       ],
     },
     sinks: spanExporter && {
-      exporter: makeWorkflowExporter(spanExporter, resource!),
+      // @ts-expect-error InMemorySpanExporter type mismatch.
+      exporter: makeWorkflowExporter(spanExporter, resource),
     },
     bundlerOptions: {
       // Update the webpack config to use aliases from our tsconfig.json. This let us import code
