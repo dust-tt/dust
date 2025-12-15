@@ -519,7 +519,10 @@ describe("decreaseProgrammaticCreditsV2", () => {
   });
 });
 
-type MockCreditForThreshold = Pick<CreditResource, "sId" | "type" | "startDate">;
+type MockCreditForThreshold = Pick<
+  CreditResource,
+  "sId" | "type" | "startDate"
+>;
 
 describe("computeCreditAlertThresholdKey", () => {
   function makeMockCreditForThreshold(overrides: {

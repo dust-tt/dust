@@ -340,8 +340,7 @@ export function computeCreditAlertThresholdKey(
   const sortByStartDateDesc = (
     a: Pick<CreditResource, "startDate">,
     b: Pick<CreditResource, "startDate">
-  ) =>
-    (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0);
+  ) => (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0);
 
   const firstFreeCredit = activeCredits
     .filter((c) => c.type === "free")
