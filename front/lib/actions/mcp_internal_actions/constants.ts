@@ -124,7 +124,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
-  "trigger_management",
+  "schedules_management",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1703,35 +1703,34 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  trigger_management: {
+  schedules_management: {
     id: 1020,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("triggers_management");
+      return !featureFlags.includes("schedules_management");
     },
     tools_stakes: {
-      create_schedule_trigger: "low",
-      list_triggers: "never_ask",
-      get_trigger: "never_ask",
-      update_trigger: "low",
-      delete_trigger: "high",
+      create_schedule: "high",
+      list_schedules: "never_ask",
+      get_schedule: "never_ask",
+      update_schedule: "high",
+      delete_schedule: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "trigger_management",
+      name: "schedules_management",
       version: "1.0.0",
-      description: "Create scheduled triggers to automate recurring tasks.",
+      description: "Create schedules to automate recurring tasks.",
       icon: "ActionTimeIcon",
       authorization: null,
       documentationUrl: null,
       instructions:
-        "WHEN TO USE: Proactively suggest creating a trigger when the user receives actionable information that benefits from a regular trigger" +
-        "(e.g., 'I can check on this task daily if you'd like', " +
-        "WHEN NOT TO USE: Do not create triggers for one-time requests, general questions, or unless the user explicitly wants recurring automation. " +
-        "Always ask before creating a trigger - never create one without user confirmation.",
+        "Schedules are user-specific: each user can only view and manage their own schedules. " +
+        "When a schedule triggers, it runs this agent with the specified prompt. " +
+        "Limit: 20 schedule creations per user per day.",
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.

@@ -46,6 +46,7 @@ import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
+import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
@@ -56,7 +57,6 @@ import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/se
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
-import { default as triggerManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/trigger_management";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -218,8 +218,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
-    case "trigger_management":
-      return triggerManagementServer(auth, agentLoopContext);
+    case "schedules_management":
+      return schedulesManagementServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

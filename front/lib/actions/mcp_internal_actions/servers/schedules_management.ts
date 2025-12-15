@@ -16,20 +16,20 @@ import { Err, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 
-function renderTrigger(trigger: TriggerResource): string {
-  const config = trigger.configuration;
+function renderSchedule(schedule: TriggerResource): string {
+  const config = schedule.configuration;
   const scheduleInfo =
-    trigger.kind === "schedule" && "cron" in config
-      ? `${trigger.naturalLanguageDescription ?? config.cron} (${config.timezone})`
-      : trigger.kind;
+    "cron" in config
+      ? `${schedule.naturalLanguageDescription ?? config.cron} (${config.timezone})`
+      : "";
   const lines = [
-    `- **${trigger.name}** (ID: ${trigger.sId()})`,
+    `- **${schedule.name}** (ID: ${schedule.sId()})`,
     `  Schedule: ${scheduleInfo}`,
   ];
-  if (trigger.customPrompt) {
-    lines.push(`  Prompt: ${trigger.customPrompt}`);
+  if (schedule.customPrompt) {
+    lines.push(`  Prompt: ${schedule.customPrompt}`);
   }
-  lines.push(`  Enabled: ${trigger.enabled ? "Yes" : "No"}`);
+  lines.push(`  Enabled: ${schedule.enabled ? "Yes" : "No"}`);
   return lines.join("\n");
 }
 
@@ -74,40 +74,21 @@ function getUserTimezone(
   return userMessage?.context.timezone ?? null;
 }
 
-async function fetchTriggerWithOwnershipCheck(
-  auth: Authenticator,
-  triggerId: string,
-  agentConfigurationSId: string,
-  userId: number
-): Promise<Result<TriggerResource, MCPError>> {
-  const trigger = await TriggerResource.fetchById(auth, triggerId);
-  if (!trigger) {
-    return new Err(new MCPError("Trigger not found"));
-  }
-  if (trigger.agentConfigurationId !== agentConfigurationSId) {
-    return new Err(new MCPError("This trigger does not belong to this agent"));
-  }
-  if (trigger.editor !== userId) {
-    return new Err(new MCPError("You can only modify triggers you created"));
-  }
-  return new Ok(trigger);
-}
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("trigger_management");
+  const server = makeInternalMCPServer("schedules_management");
 
   server.tool(
-    "create_schedule_trigger",
-    "Create a scheduled trigger that runs this agent at specified times. Use when user says 'remind me every day', 'run this weekly', 'automate this task', 'schedule this to run at 9am', 'set up a recurring task'.",
+    "create_schedule",
+    "Create a schedule that runs this agent at specified times.",
     {
       name: z
         .string()
         .max(255)
         .describe(
-          "A short, descriptive name for the trigger (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'"
+          "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'"
         ),
       schedule: z
         .string()
@@ -117,7 +98,7 @@ function createServer(
       prompt: z
         .string()
         .describe(
-          "What you should do when triggered. Examples: 'Summarize my emails from yesterday', 'Show PRs that need my review', 'Generate a weekly status report'"
+          "What the agent should do when the schedule runs. Examples: 'Summarize my emails from yesterday', 'Show PRs that need my review', 'Generate a weekly status report'"
         ),
       timezone: z
         .string()
@@ -129,7 +110,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "trigger_management_create_schedule",
+        toolNameForMonitoring: "schedules_management_create",
         agentLoopContext,
       },
       async ({ name, schedule, prompt, timezone }) => {
@@ -151,7 +132,7 @@ function createServer(
         const { agentConfiguration } = agentLoopContext.runContext;
 
         const remaining = await rateLimiter({
-          key: `trigger_create:${owner.sId}:${user.sId}`,
+          key: `schedule_create:${owner.sId}:${user.sId}`,
           maxPerTimeframe: 20,
           timeframeSeconds: 86400,
           logger,
@@ -159,13 +140,13 @@ function createServer(
 
         if (remaining === 0) {
           getStatsDClient().increment(
-            "tools.trigger_management.rate_limit_hit",
+            "tools.schedules_management.rate_limit_hit",
             1,
             [`workspace_id:${owner.sId}`, `agent_id:${agentConfiguration.sId}`]
           );
           return new Err(
             new MCPError(
-              "Rate limit exceeded: You can create up to 20 triggers per day."
+              "Rate limit exceeded: You can create up to 20 schedules per day."
             )
           );
         }
@@ -220,11 +201,11 @@ function createServer(
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to create trigger: ${result.error.message}`)
+            new MCPError(`Failed to create schedule: ${result.error.message}`)
           );
         }
 
-        getStatsDClient().increment("tools.trigger_management.created", 1, [
+        getStatsDClient().increment("tools.schedules_management.created", 1, [
           `workspace_id:${owner.sId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
@@ -233,11 +214,11 @@ function createServer(
           {
             type: "text" as const,
             text:
-              `Created trigger "${name}"!\n\n` +
+              `Created schedule "${name}"!\n\n` +
               `Schedule: ${schedule}\n` +
               `Cron: ${cron} (${resultTimezone})\n\n` +
-              `I'll run "${prompt}" according to this schedule.\n\n` +
-              renderTrigger(result.value),
+              `The agent will execute "${prompt}" according to this schedule.\n\n` +
+              renderSchedule(result.value),
           },
         ]);
       }
@@ -245,13 +226,13 @@ function createServer(
   );
 
   server.tool(
-    "list_triggers",
-    "List all scheduled triggers you have created for this agent. Use when user asks 'what triggers do I have?', 'show my scheduled tasks', 'what's automated?', 'list my triggers'.",
+    "list_schedules",
+    "List all schedules created for this agent.",
     {},
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "trigger_management_list",
+        toolNameForMonitoring: "schedules_management_list",
         agentLoopContext,
       },
       async () => {
@@ -262,40 +243,40 @@ function createServer(
         const { userId, workspaceSId, agentConfiguration } =
           contextResult.value;
 
-        const triggersResult =
-          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+        const schedulesResult =
+          await TriggerResource.listSchedulesByAgentAndEditor(auth, {
             agentConfigurationId: agentConfiguration.sId,
             editorIds: [userId],
           });
 
-        if (triggersResult.isErr()) {
+        if (schedulesResult.isErr()) {
           return new Err(
-            new MCPError("Error while fetching triggers for this agent")
+            new MCPError("Error while fetching schedules for this agent")
           );
         }
 
-        getStatsDClient().increment("tools.trigger_management.listed", 1, [
+        getStatsDClient().increment("tools.schedules_management.listed", 1, [
           `workspace_id:${workspaceSId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
 
-        if (triggersResult.value.length === 0) {
+        if (schedulesResult.value.length === 0) {
           return new Ok([
             {
               type: "text" as const,
-              text: "You have no triggers configured for this agent.",
+              text: "No schedules configured for this agent.",
             },
           ]);
         }
 
-        const triggerList = triggersResult.value
-          .map((trigger) => renderTrigger(trigger))
+        const scheduleList = schedulesResult.value
+          .map((schedule) => renderSchedule(schedule))
           .join("\n\n");
 
         return new Ok([
           {
             type: "text" as const,
-            text: `Your triggers for this agent:\n\n${triggerList}`,
+            text: `Schedules for this agent:\n\n${scheduleList}`,
           },
         ]);
       }
@@ -303,40 +284,42 @@ function createServer(
   );
 
   server.tool(
-    "get_trigger",
-    "Get details of a specific trigger by ID. Use this to check the current state of a trigger or verify changes after updates.",
+    "get_schedule",
+    "Get details of a specific schedule by ID. Returns name, timing, prompt, and enabled state.",
     {
-      triggerId: z
+      scheduleId: z
         .string()
-        .describe("The trigger ID (get this from list_triggers)"),
+        .describe("The schedule ID (get this from list_schedules)"),
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "trigger_management_get",
+        toolNameForMonitoring: "schedules_management_get",
         agentLoopContext,
       },
-      async ({ triggerId }) => {
+      async ({ scheduleId }) => {
         const contextResult = getToolContext(auth, agentLoopContext);
         if (contextResult.isErr()) {
           return contextResult;
         }
         const { userId, agentConfiguration } = contextResult.value;
 
-        const triggerResult = await fetchTriggerWithOwnershipCheck(
+        const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
           auth,
-          triggerId,
-          agentConfiguration.sId,
-          userId
+          scheduleId,
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            editorId: userId,
+          }
         );
-        if (triggerResult.isErr()) {
-          return triggerResult;
+        if (scheduleResult.isErr()) {
+          return new Err(new MCPError(scheduleResult.error.message));
         }
 
         return new Ok([
           {
             type: "text" as const,
-            text: renderTrigger(triggerResult.value),
+            text: renderSchedule(scheduleResult.value),
           },
         ]);
       }
@@ -344,18 +327,18 @@ function createServer(
   );
 
   server.tool(
-    "update_trigger",
-    "Update an existing trigger. Can change name, schedule, prompt, or enabled state. Use 'enabled: false' to pause a trigger, 'enabled: true' to reactivate it. Use when user says 'change trigger settings', 'pause this trigger', 'turn on this trigger', 'update the schedule'.",
+    "update_schedule",
+    "Update an existing schedule. Can change name, schedule, prompt, or enabled state. Setting enabled to false pauses the schedule, true reactivates it.",
     {
-      triggerId: z
+      scheduleId: z
         .string()
-        .describe("The trigger ID (get this from list_triggers)"),
+        .describe("The schedule ID (get this from list_schedules)"),
       name: z
         .string()
         .max(255)
         .optional()
         .describe(
-          "New name for the trigger (e.g., 'Daily email summary', 'Weekly PR review')"
+          "New name for the schedule (e.g., 'Daily email summary', 'Weekly PR review')"
         ),
       schedule: z
         .string()
@@ -367,22 +350,22 @@ function createServer(
         .string()
         .optional()
         .describe(
-          "New prompt - what the agent should do when triggered (e.g., 'Summarize my emails from yesterday')"
+          "New prompt - what the agent should do when the schedule runs (e.g., 'Summarize my emails from yesterday')"
         ),
       enabled: z
         .boolean()
         .optional()
         .describe(
-          "Set to true to enable the trigger, false to disable/pause it"
+          "Set to true to enable the schedule, false to disable/pause it"
         ),
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "trigger_management_update",
+        toolNameForMonitoring: "schedules_management_update",
         agentLoopContext,
       },
-      async ({ triggerId, name, schedule, prompt, enabled }) => {
+      async ({ scheduleId, name, schedule, prompt, enabled }) => {
         const contextResult = getToolContext(auth, agentLoopContext);
         if (contextResult.isErr()) {
           return contextResult;
@@ -390,14 +373,16 @@ function createServer(
         const { userId, workspaceSId, agentConfiguration } =
           contextResult.value;
 
-        const triggerResult = await fetchTriggerWithOwnershipCheck(
+        const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
           auth,
-          triggerId,
-          agentConfiguration.sId,
-          userId
+          scheduleId,
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            editorId: userId,
+          }
         );
-        if (triggerResult.isErr()) {
-          return triggerResult;
+        if (scheduleResult.isErr()) {
+          return new Err(new MCPError(scheduleResult.error.message));
         }
 
         let scheduleUpdate:
@@ -431,7 +416,7 @@ function createServer(
           };
         }
 
-        const updateResult = await TriggerResource.update(auth, triggerId, {
+        const updateResult = await TriggerResource.update(auth, scheduleId, {
           name,
           enabled,
           customPrompt: prompt,
@@ -447,12 +432,12 @@ function createServer(
         if (updateResult.isErr()) {
           return new Err(
             new MCPError(
-              `Failed to update trigger: ${updateResult.error.message}`
+              `Failed to update schedule: ${updateResult.error.message}`
             )
           );
         }
 
-        getStatsDClient().increment("tools.trigger_management.updated", 1, [
+        getStatsDClient().increment("tools.schedules_management.updated", 1, [
           `workspace_id:${workspaceSId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
@@ -469,7 +454,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Updated trigger (changed: ${changedFields}).\n\n${renderTrigger(updateResult.value)}`,
+            text: `Updated schedule (changed: ${changedFields}).\n\n${renderSchedule(updateResult.value)}`,
           },
         ]);
       }
@@ -477,20 +462,20 @@ function createServer(
   );
 
   server.tool(
-    "delete_trigger",
-    "Permanently delete a trigger. Use when user says 'remove this trigger', 'stop this automation', 'delete the scheduled task'. This action cannot be undone.",
+    "delete_schedule",
+    "Permanently delete a schedule.",
     {
-      triggerId: z
+      scheduleId: z
         .string()
-        .describe("The trigger ID (get this from list_triggers)"),
+        .describe("The schedule ID (get this from list_schedules)"),
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "trigger_management_delete",
+        toolNameForMonitoring: "schedules_management_delete",
         agentLoopContext,
       },
-      async ({ triggerId }) => {
+      async ({ scheduleId }) => {
         const contextResult = getToolContext(auth, agentLoopContext);
         if (contextResult.isErr()) {
           return contextResult;
@@ -498,27 +483,29 @@ function createServer(
         const { userId, workspaceSId, agentConfiguration } =
           contextResult.value;
 
-        const triggerResult = await fetchTriggerWithOwnershipCheck(
+        const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
           auth,
-          triggerId,
-          agentConfiguration.sId,
-          userId
+          scheduleId,
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            editorId: userId,
+          }
         );
-        if (triggerResult.isErr()) {
-          return triggerResult;
+        if (scheduleResult.isErr()) {
+          return new Err(new MCPError(scheduleResult.error.message));
         }
-        const trigger = triggerResult.value;
+        const schedule = scheduleResult.value;
 
-        const triggerName = trigger.name;
-        const result = await trigger.delete(auth);
+        const scheduleName = schedule.name;
+        const result = await schedule.delete(auth);
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to delete trigger: ${result.error.message}`)
+            new MCPError(`Failed to delete schedule: ${result.error.message}`)
           );
         }
 
-        getStatsDClient().increment("tools.trigger_management.deleted", 1, [
+        getStatsDClient().increment("tools.schedules_management.deleted", 1, [
           `workspace_id:${workspaceSId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
@@ -526,7 +513,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Deleted trigger "${triggerName}".`,
+            text: `Deleted schedule "${scheduleName}".`,
           },
         ]);
       }
