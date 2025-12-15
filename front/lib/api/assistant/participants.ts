@@ -8,6 +8,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   AgentParticipantType,
@@ -72,13 +73,18 @@ export async function fetchConversationParticipants(
     return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
-  // We fetch agent participants from the messages table
-  const agentMessages = await MessageModel.findAll({
+  // We fetch agent participants and their last activity from the messages table
+  const agentLastActivityResults = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
     },
-    attributes: ["createdAt"],
+    attributes: [
+      [
+        frontSequelize.fn("MAX", frontSequelize.col("message.createdAt")),
+        "lastActivityAt",
+      ],
+    ],
     include: [
       {
         model: AgentMessageModel,
@@ -87,41 +93,35 @@ export async function fetchConversationParticipants(
         attributes: ["agentConfigurationId"],
       },
     ],
+    group: ["agentMessage.agentConfigurationId"],
+    raw: true,
   });
 
-  const { agentConfigurationIds, agentLastActivityMap } = agentMessages.reduce<{
-    agentConfigurationIds: Set<string>;
-    agentLastActivityMap: Map<string, number>;
-  }>(
-    (acc, m) => {
-      const { agentMessage } = m;
-
-      if (agentMessage) {
-        acc.agentConfigurationIds.add(agentMessage.agentConfigurationId);
-        const timestamp = m.createdAt.getTime();
-        const currentLast = acc.agentLastActivityMap.get(
-          agentMessage.agentConfigurationId
-        );
-        if (!currentLast || timestamp > currentLast) {
-          acc.agentLastActivityMap.set(
-            agentMessage.agentConfigurationId,
-            timestamp
-          );
-        }
-      }
-
-      return acc;
-    },
-    { agentConfigurationIds: new Set(), agentLastActivityMap: new Map() }
+  const agentConfigurationIds = new Set<string>(
+    agentLastActivityResults.map(
+      (result: any) => result["agentMessage.agentConfigurationId"] as string
+    )
   );
 
-  // Fetch user last activity timestamps
-  const userMessages = await MessageModel.findAll({
+  const agentLastActivityMap = new Map<string, number>(
+    agentLastActivityResults.map((result: any) => [
+      result["agentMessage.agentConfigurationId"] as string,
+      new Date(result.lastActivityAt as string).getTime(),
+    ])
+  );
+
+  // Fetch user last activity timestamps using aggregation
+  const userLastActivityResults = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
     },
-    attributes: ["createdAt"],
+    attributes: [
+      [
+        frontSequelize.fn("MAX", frontSequelize.col("message.createdAt")),
+        "lastActivityAt",
+      ],
+    ],
     include: [
       {
         model: UserMessageModel,
@@ -130,21 +130,15 @@ export async function fetchConversationParticipants(
         attributes: ["userId"],
       },
     ],
+    group: ["userMessage.userId"],
+    raw: true,
   });
 
-  const userLastActivityMap = userMessages.reduce<Map<ModelId, number>>(
-    (acc, m) => {
-      const { userMessage } = m;
-      if (userMessage && userMessage.userId !== null) {
-        const timestamp = m.createdAt.getTime();
-        const currentLast = acc.get(userMessage.userId);
-        if (!currentLast || timestamp > currentLast) {
-          acc.set(userMessage.userId, timestamp);
-        }
-      }
-      return acc;
-    },
-    new Map()
+  const userLastActivityMap = new Map<ModelId, number>(
+    userLastActivityResults.map((result: any) => [
+      result["userMessage.userId"] as ModelId,
+      new Date(result.lastActivityAt as string).getTime(),
+    ])
   );
 
   // We fetch users participants from the conversation participants table
