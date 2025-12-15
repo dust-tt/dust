@@ -10,6 +10,7 @@ import {
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -20,6 +21,7 @@ import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
@@ -210,4 +212,76 @@ export async function fetchMCPServerActionConfigurations(
   }
 
   return actionsByConfigurationId;
+}
+
+export async function fetchSkillMCPServerConfigurations(
+  auth: Authenticator,
+  enabledSkills: SkillResource[]
+): Promise<ServerSideMCPServerConfigurationType[]> {
+  if (enabledSkills.length === 0) {
+    return [];
+  }
+
+  const mcpServerViewIds = new Set(
+    enabledSkills.flatMap((skill) =>
+      skill.mcpServerConfigurations.map((config) => config.mcpServerViewId)
+    )
+  );
+
+  if (mcpServerViewIds.size === 0) {
+    return [];
+  }
+
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    Array.from(mcpServerViewIds)
+  );
+
+  // Map mcpServerViewId to the first skill that references it.
+  const mcpServerViewIdToSkill = new Map<ModelId, SkillResource>();
+  for (const skill of enabledSkills) {
+    for (const config of skill.mcpServerConfigurations) {
+      if (!mcpServerViewIdToSkill.has(config.mcpServerViewId)) {
+        mcpServerViewIdToSkill.set(config.mcpServerViewId, skill);
+      }
+    }
+  }
+
+  const configurations: ServerSideMCPServerConfigurationType[] = [];
+
+  for (const mcpServerView of mcpServerViews) {
+    const { server } = mcpServerView.toJSON();
+    const skill = mcpServerViewIdToSkill.get(mcpServerView.id);
+
+    if (!skill) {
+      logger.warn(
+        `No skill found for MCPServerView with id ${mcpServerView.id}, this should not happen.`
+      );
+      continue;
+    }
+
+    configurations.push({
+      id: -1,
+      sId: `skill_${skill.sId}_mcp_s${server.sId}`,
+      type: "mcp_server_configuration",
+      name: mcpServerView.name ?? server.name,
+      description: mcpServerView.description ?? server.description,
+      icon: server.icon,
+      mcpServerViewId: mcpServerView.sId,
+      internalMCPServerId: mcpServerView.internalMCPServerId ?? null,
+      // Skills don't have configurations, yet.
+      // TODO(skills): support configuring skills.
+      dataSources: null,
+      tables: null,
+      dustAppConfiguration: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      secretName: null,
+    });
+  }
+
+  return configurations;
 }

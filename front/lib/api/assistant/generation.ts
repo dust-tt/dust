@@ -147,6 +147,7 @@ function constructToolsSection({
   return toolsSection;
 }
 
+// TODO(skills): add detailed tools per skill
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,

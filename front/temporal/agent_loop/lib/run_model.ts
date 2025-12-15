@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
@@ -209,19 +210,25 @@ export async function runModelActivity(
     (s) => !enabledSkillIds.has(s.sId)
   );
 
+  // Fetch MCP server configurations from enabled skills.
+  const skillServers = await fetchSkillMCPServerConfigurations(
+    auth,
+    enabledSkills
+  );
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
-  } = await tryListMCPTools(
-    auth,
-    {
+  } = await tryListMCPTools(auth, {
+    agentLoopListToolsContext: {
       agentConfiguration,
       conversation,
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers
-  );
+    jitServers,
+    skillServers,
+  });
 
   if (mcpToolsListingError) {
     localLogger.error(
