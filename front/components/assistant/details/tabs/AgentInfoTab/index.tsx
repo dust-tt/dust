@@ -1,4 +1,4 @@
-import { Chip, Page } from "@dust-tt/sparkle";
+import { Chip, cn, Page } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
@@ -41,7 +41,7 @@ export function AgentInfoTab({
           />
 
           {agentConfiguration?.instructions ? (
-            <div className="dd-privacy-mask flex flex-col gap-5">
+            <div className="dd-privacy-mask flex flex-col gap-4">
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>
