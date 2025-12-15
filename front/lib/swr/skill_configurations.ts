@@ -207,12 +207,12 @@ export function useRestoreSkillConfiguration({
 
 export function useSkillConfigurationHistory({
   owner,
-  skillConfiguration,
+  skillConfigurationId,
   limit,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration?: SkillConfigurationType;
+  skillConfigurationId: string | null;
   limit?: number;
   disabled?: boolean;
 }) {
@@ -221,8 +221,8 @@ export function useSkillConfigurationHistory({
 
   const queryParams = limit ? `?limit=${limit}` : "";
   const { data, error, mutate } = useSWRWithDefaults(
-    skillConfiguration
-      ? `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/history${queryParams}`
+    skillConfigurationId
+      ? `/api/w/${owner.sId}/skills/${skillConfigurationId}/history${queryParams}`
       : null,
     skillConfigurationHistoryFetcher,
     { disabled }
@@ -230,7 +230,7 @@ export function useSkillConfigurationHistory({
 
   return {
     skillConfigurationHistory: data?.history,
-    isSkillConfigurationHistoryLoading: !error && !data && !disabled,
+    isSkillConfigurationHistoryLoading: !error && !data,
     isSkillConfigurationHistoryError: error,
     mutateSkillConfigurationHistory: mutate,
   };
