@@ -1,10 +1,11 @@
+import { Chip } from "@dust-tt/sparkle";
 import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
-import { BlogBlock } from "@app/components/home/ContentBlocks";
+import { TableOfContents } from "@app/components/blog/TableOfContents";
 import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -99,11 +101,6 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async (
   };
 };
 
-const CONTENT_CLASSES = classNames(
-  "col-span-12",
-  "lg:col-span-8 lg:col-start-3"
-);
-
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 export default function BlogPost({
@@ -113,6 +110,7 @@ export default function BlogPost({
 }: BlogPostPageProps) {
   const ogImageUrl = post.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
+  const tocItems = extractTableOfContents(post.body);
 
   return (
     <>
@@ -186,94 +184,73 @@ export default function BlogPost({
 
       <article>
         <Grid>
-          <header className={classNames(CONTENT_CLASSES, "pt-16")}>
-            <Link
-              href="/blog"
-              className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <span>&larr;</span> Back to Blog
-            </Link>
-
+          <header className={classNames(WIDE_CLASSES, "pt-12")}>
             {post.tags.length > 0 && (
               <div className="mb-4 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-highlight/10 px-3 py-1 text-sm font-medium text-highlight"
-                  >
-                    {tag}
-                  </span>
+                  <Chip key={tag} label={tag} size="xs" color="primary" />
                 ))}
               </div>
             )}
 
-            <H1 mono>{post.title}</H1>
+            <H1 className="text-4xl md:text-5xl">{post.title}</H1>
 
-            <div className="mt-6 flex items-center gap-4">
-              {post.authors.length > 0 ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              {post.authors.length > 0 && (
                 <>
-                  <div className="flex -space-x-2">
+                  <div className="flex items-center gap-2">
                     {post.authors.map((author) =>
                       author.image ? (
                         <Image
                           key={author.name}
                           src={author.image.url}
                           alt={author.name}
-                          width={40}
-                          height={40}
-                          loader={contentfulImageLoader}
-                          sizes="40px"
+                          width={24}
+                          height={24}
                           className="rounded-full"
                         />
-                      ) : (
-                        <div
-                          key={author.name}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600"
-                        >
-                          {author.name.charAt(0).toUpperCase()}
-                        </div>
-                      )
+                      ) : null
                     )}
+                    <span>{post.authors.map((a) => a.name).join(", ")}</span>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
-                      {post.authors.map((a) => a.name).join(", ")}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatTimestampToFriendlyDate(
-                        new Date(post.createdAt).getTime(),
-                        "short"
-                      )}
-                    </span>
-                  </div>
+                  <span>-</span>
                 </>
-              ) : (
-                <span className="text-muted-foreground">
-                  {formatTimestampToFriendlyDate(
-                    new Date(post.createdAt).getTime(),
-                    "short"
-                  )}
-                </span>
               )}
+              <span>
+                {formatTimestampToFriendlyDate(
+                  new Date(post.createdAt).getTime(),
+                  "short"
+                )}
+              </span>
             </div>
           </header>
 
           {post.image && (
-            <div className={classNames(WIDE_CLASSES, "mt-8")}>
-              <Image
-                src={post.image.url}
-                alt={post.image.alt}
-                width={post.image.width}
-                height={post.image.height}
-                sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
-                className="w-full rounded-2xl"
-                priority
-              />
+            <div className={classNames(WIDE_CLASSES, "mt-2")}>
+              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                <Image
+                  src={post.image.url}
+                  alt={post.image.alt}
+                  width={post.image.width}
+                  height={post.image.height}
+                  className="h-full w-full object-cover"
+                  priority
+                />
+              </div>
             </div>
           )}
 
-          <div className={classNames(CONTENT_CLASSES, "mt-12")}>
-            {renderRichTextFromContentful(post.body)}
+          <div className={classNames(WIDE_CLASSES, "mt-4")}>
+            <div className="grid gap-8 lg:grid-cols-12">
+              <div className="lg:col-span-9">
+                {renderRichTextFromContentful(post.body)}
+              </div>
+              {tocItems.length > 0 && (
+                <div className="hidden lg:col-span-3 lg:block">
+                  <TableOfContents items={tocItems} />
+                </div>
+              )}
+            </div>
           </div>
         </Grid>
       </article>
@@ -281,7 +258,7 @@ export default function BlogPost({
       {relatedPosts.length > 0 && (
         <section className="mt-20">
           <Grid>
-            <div className={CONTENT_CLASSES}>
+            <div className={WIDE_CLASSES}>
               <H2 className="mb-8">Related Posts</H2>
             </div>
             <div
@@ -291,22 +268,44 @@ export default function BlogPost({
               )}
             >
               {relatedPosts.map((relatedPost) => (
-                <BlogBlock
+                <Link
                   key={relatedPost.id}
-                  title={relatedPost.title}
-                  content={relatedPost.description ?? ""}
                   href={`/blog/${relatedPost.slug}`}
+                  className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white"
                 >
                   {relatedPost.image && (
                     <Image
                       src={relatedPost.image.url}
                       alt={relatedPost.image.alt}
-                      width={400}
-                      height={225}
+                      width={640}
+                      height={360}
+                      loader={contentfulImageLoader}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="aspect-video w-full object-cover"
                     />
                   )}
-                </BlogBlock>
+                  <div className="flex h-full flex-col gap-3 px-6 py-6">
+                    <span className="text-sm text-muted-foreground">
+                      {formatTimestampToFriendlyDate(
+                        new Date(relatedPost.createdAt).getTime(),
+                        "short"
+                      )}
+                    </span>
+                    <h3 className="text-xl font-semibold text-foreground">
+                      {relatedPost.title}
+                    </h3>
+                    {relatedPost.description && (
+                      <p className="text-base text-muted-foreground">
+                        {relatedPost.description}
+                      </p>
+                    )}
+                    <div className="mt-auto flex flex-wrap gap-2">
+                      {relatedPost.tags.map((tag) => (
+                        <Chip key={tag} label={tag} size="xs" color="primary" />
+                      ))}
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </Grid>

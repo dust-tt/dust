@@ -9,10 +9,8 @@ import type {
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
-import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { isString } from "@app/types";
 
 function getYouTubeVideoId(text: string): string | null {
@@ -62,103 +60,26 @@ function getParagraphText(node: Block | Inline): string {
   return text;
 }
 
-interface ContentfulLightboxImageProps {
-  src: string;
-  alt: string;
-  title?: string | null;
-  width: number;
-  height: number;
+function extractTextFromChildren(children: ReactNode): string {
+  if (typeof children === "string") {
+    return children;
+  }
+  if (Array.isArray(children)) {
+    return children.map(extractTextFromChildren).join("");
+  }
+  if (children && typeof children === "object" && "props" in children) {
+    return extractTextFromChildren(children.props.children);
+  }
+  return "";
 }
 
-function ContentfulLightboxImage({
-  src,
-  alt,
-  title,
-  width,
-  height,
-}: ContentfulLightboxImageProps) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
-  return (
-    <>
-      <figure className="my-8">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="block w-full max-w-3xl cursor-zoom-in"
-        >
-          <Image
-            src={src}
-            alt={alt}
-            width={width}
-            height={height}
-            loader={contentfulImageLoader}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
-            className="h-auto w-full rounded-lg"
-            loading="lazy"
-          />
-        </button>
-        {title ? (
-          <figcaption className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            {title}
-          </figcaption>
-        ) : null}
-      </figure>
-
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm duration-200 animate-in fade-in"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setOpen(false)}
-        >
-          {/* Close button */}
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
-            aria-label="Close lightbox"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-          <img
-            src={`${src}?w=1920&fm=webp&q=85`}
-            alt={alt}
-            className="max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain duration-200 animate-in zoom-in-95"
-            onClick={() => setOpen(false)}
-          />
-        </div>
-      )}
-    </>
-  );
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 // Use our styling for the rich text renderer.
@@ -188,24 +109,66 @@ const renderOptions: Options = {
     },
   },
   renderNode: {
-    [BLOCKS.HEADING_1]: (_node, children) => (
-      <H2 className="mb-6 mt-10">{children}</H2>
-    ),
-    [BLOCKS.HEADING_2]: (_node, children) => (
-      <H3 className="mb-4 mt-8">{children}</H3>
-    ),
-    [BLOCKS.HEADING_3]: (_node, children) => (
-      <H4 className="mb-3 mt-6">{children}</H4>
-    ),
-    [BLOCKS.HEADING_4]: (_node, children) => (
-      <H5 className="mb-2 mt-5">{children}</H5>
-    ),
-    [BLOCKS.HEADING_5]: (_node, children) => (
-      <h6 className="mb-2 mt-4 text-base font-semibold">{children}</h6>
-    ),
-    [BLOCKS.HEADING_6]: (_node, children) => (
-      <h6 className="mb-2 mt-4 text-sm font-semibold">{children}</h6>
-    ),
+    [BLOCKS.HEADING_1]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H2 id={id} className="mb-6 mt-10 scroll-mt-20 text-foreground">
+          {children}
+        </H2>
+      );
+    },
+    [BLOCKS.HEADING_2]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H3 id={id} className="mb-4 mt-8 scroll-mt-20 text-foreground">
+          {children}
+        </H3>
+      );
+    },
+    [BLOCKS.HEADING_3]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H4 id={id} className="mb-3 mt-6 scroll-mt-20 text-foreground">
+          {children}
+        </H4>
+      );
+    },
+    [BLOCKS.HEADING_4]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H5 id={id} className="mb-2 mt-5 scroll-mt-20 text-foreground">
+          {children}
+        </H5>
+      );
+    },
+    [BLOCKS.HEADING_5]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <h6
+          id={id}
+          className="mb-2 mt-4 scroll-mt-20 text-base font-semibold text-foreground"
+        >
+          {children}
+        </h6>
+      );
+    },
+    [BLOCKS.HEADING_6]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <h6
+          id={id}
+          className="mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
+        >
+          {children}
+        </h6>
+      );
+    },
     [BLOCKS.PARAGRAPH]: (node, children) => {
       // Check if paragraph contains only a YouTube URL
       const text = getParagraphText(node);
@@ -215,7 +178,7 @@ const renderOptions: Options = {
       }
 
       return (
-        <div className="copy-lg mb-4 whitespace-pre-line font-sans text-muted-foreground">
+        <div className="copy-lg mb-4 whitespace-pre-line font-sans text-foreground">
           {children}
         </div>
       );
@@ -245,16 +208,17 @@ const renderOptions: Options = {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const { width, height } = details?.image || { width: 800, height: 400 };
 
-      const alt = title ?? description ?? "Image";
-
       return (
-        <ContentfulLightboxImage
-          src={`https:${url}`}
-          alt={alt}
-          title={title ?? null}
-          width={width}
-          height={height}
-        />
+        <figure className="my-8">
+          <Image
+            src={`https:${url}`}
+            alt={title ?? description ?? "Blog image"}
+            width={width}
+            height={height}
+            className="rounded-lg"
+            loading="lazy"
+          />
+        </figure>
       );
     },
     [INLINES.HYPERLINK]: (node, children) => {
