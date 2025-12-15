@@ -58,11 +58,11 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     // Create skills and link them to the agent
     const skill1 = await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 1",
-      description: "First test skill",
+      agentFacingDescription: "First test skill",
     });
     const skill2 = await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 2",
-      description: "Second test skill",
+      agentFacingDescription: "Second test skill",
     });
 
     await SkillConfigurationFactory.linkToAgent(auth, {
@@ -83,7 +83,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     expect(data.skills).toHaveLength(2);
     expect(data.skills[0]).toHaveProperty("sId");
     expect(data.skills[0]).toHaveProperty("name");
-    expect(data.skills[0]).toHaveProperty("description");
+    expect(data.skills[0]).toHaveProperty("agentFacingDescription");
 
     const skillNames = data.skills.map((s: SkillConfigurationType) => s.name);
     expect(skillNames).toContain("Test Skill 1");

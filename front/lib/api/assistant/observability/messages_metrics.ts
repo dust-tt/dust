@@ -88,22 +88,6 @@ export function buildMetricAggregates<K extends readonly MetricName[]>(
     aggregates.cost_micro_usd = { sum: { field: "tokens.cost_micro_usd" } };
   }
 
-  if (metrics.includes("avgCostMicroUsd")) {
-    aggregates.avg_cost_micro_usd = {
-      avg: { field: "tokens.cost_micro_usd" },
-    };
-  }
-
-  if (metrics.includes("p95CostMicroUsd")) {
-    aggregates.percentiles_cost_micro_usd = {
-      percentiles: {
-        field: "tokens.cost_micro_usd",
-        percents: [95],
-        keyed: true,
-      },
-    };
-  }
-
   if (metrics.includes("avgLatencyMs")) {
     aggregates.avg_latency_ms = { avg: { field: "latency_ms" } };
   }
@@ -154,19 +138,6 @@ export function parseMetricsFromBucket<K extends readonly MetricName[]>(
   if (metrics.includes("costMicroUsd")) {
     point.costMicroUsd = Math.round(
       bucket.cost_micro_usd?.value ?? DEFAULT_METRIC_VALUE
-    );
-  }
-
-  if (metrics.includes("avgCostMicroUsd")) {
-    point.avgCostMicroUsd = Math.round(
-      bucket.avg_cost_micro_usd?.value ?? DEFAULT_METRIC_VALUE
-    );
-  }
-
-  if (metrics.includes("p95CostMicroUsd")) {
-    point.p95CostMicroUsd = Math.round(
-      bucket.percentiles_cost_micro_usd?.values?.["95.0"] ??
-        DEFAULT_METRIC_VALUE
     );
   }
 

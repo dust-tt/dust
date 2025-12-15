@@ -80,8 +80,10 @@ const _webhookSlackAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations =
-      await SlackConfigurationResource.listForTeamId(teamId);
+    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+      teamId,
+      "slack"
+    );
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {

@@ -13,7 +13,7 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
-const DESCRIPTION_FIELD_NAME = "description";
+const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -85,7 +85,7 @@ export function SkillBuilderDescriptionSection() {
   return (
     <BaseFormFieldSection
       title="What will this skill be used for?"
-      fieldName={DESCRIPTION_FIELD_NAME}
+      fieldName={AGENT_FACING_DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={false}
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (

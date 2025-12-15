@@ -35,6 +35,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -194,6 +195,20 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
+  const enabledSkills = await SkillResource.listEnabledForConversation(auth, {
+    agentConfiguration,
+    conversation,
+  });
+  const allAgentSkills = await SkillResource.listByAgentConfiguration(
+    auth,
+    agentConfiguration
+  );
+
+  const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+  const equippedSkills = allAgentSkills.filter(
+    (s) => !enabledSkillIds.has(s.sId)
+  );
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
@@ -252,6 +267,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
+    enabledSkills: enabledSkills,
+    equippedSkills: equippedSkills,
     featureFlags,
   });
 

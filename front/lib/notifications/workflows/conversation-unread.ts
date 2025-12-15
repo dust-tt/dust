@@ -37,7 +37,6 @@ export const shouldSendNotificationForAgentAnswer = (
 ): boolean => {
   switch (userMessageOrigin) {
     case "web":
-    case "agent_handover":
     case "extension":
       return true;
     case "onboarding_conversation":
@@ -54,7 +53,6 @@ export const shouldSendNotificationForAgentAnswer = (
     case "n8n":
     case "powerpoint":
     case "raycast":
-    case "run_agent":
     case "slack":
     case "slack_workflow":
     case "teams":

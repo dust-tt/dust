@@ -16,7 +16,6 @@ import type {
   Result,
   RichMention,
   UserMessageOrigin,
-  UserMessageType,
   UserMessageTypeWithContentFragments,
   UserType,
 } from "@app/types";
@@ -84,10 +83,14 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   );
 };
 
-// Central helper to control which user message origins should be hidden in the UI.
+// Central helper to control which user message should be hidden in the UI.
 // Extend this list as we introduce more bootstrap/system user messages.
-export const isHiddenMessage = (message: UserMessageType): boolean => {
-  return message.context.origin === "onboarding_conversation";
+export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
+  return (
+    (isUserMessage(message) &&
+      message.context.origin === "onboarding_conversation") ||
+    isHandoverUserMessage(message)
+  );
 };
 
 export const isUserMessage = (

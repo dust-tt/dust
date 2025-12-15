@@ -11,33 +11,34 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {skillConfiguration.description}
+        {skillConfiguration.userFacingDescription}
       </div>
-      {skillConfiguration.canWrite && (
-        <SkillEdited skillConfiguration={skillConfiguration} />
+      {/* TODO(skills 2025-12-12): display agent facing description here */}
+      {skillConfiguration.updatedAt && (
+        <SkillEdited
+          skillConfiguration={{
+            ...skillConfiguration,
+            updatedAt: skillConfiguration.updatedAt,
+          }}
+        />
       )}
 
       <Page.Separator />
 
-      {skillConfiguration.canWrite &&
-        (skillConfiguration.instructions ? (
-          <div className="dd-privacy-mask flex flex-col gap-5">
-            <div className="heading-lg text-foreground dark:text-foreground-night">
-              Instructions
-            </div>
-            <ReadOnlyTextArea content={skillConfiguration.instructions} />
+      {skillConfiguration.instructions && (
+        <div className="dd-privacy-mask flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Instructions
           </div>
-        ) : (
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            This agent has no instructions.
-          </div>
-        ))}
+          <ReadOnlyTextArea content={skillConfiguration.instructions} />
+        </div>
+      )}
     </div>
   );
 }
 
 interface SkillEditedProps {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillConfigurationType & { updatedAt: number };
 }
 
 export function SkillEdited({ skillConfiguration }: SkillEditedProps) {

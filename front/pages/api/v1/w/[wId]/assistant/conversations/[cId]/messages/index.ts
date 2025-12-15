@@ -190,26 +190,11 @@ async function handler(
         });
       }
 
-      if (
-        context.origin === "agent_handover" ||
-        context.origin === "run_agent" ||
-        context.originMessageId
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "use agenticMessageData instead of origin.",
-          },
-        });
-      }
-
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
         origin,
-        originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,
         username: context.username,

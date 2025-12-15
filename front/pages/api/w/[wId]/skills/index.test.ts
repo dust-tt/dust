@@ -51,11 +51,11 @@ describe("GET /api/w/[wId]/skills", () => {
 
     await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 1",
-      description: "First test skill",
+      agentFacingDescription: "First test skill",
     });
     await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 2",
-      description: "Second test skill",
+      agentFacingDescription: "Second test skill",
     });
 
     req.query = { ...req.query, wId: workspace.sId };
@@ -372,11 +372,14 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 describe("POST /api/w/[wId]/skills", () => {
   it("creates a simple skill configuration", async () => {
     const { req, res, workspace } = await setupTest("POST", "admin");
+    await SpaceFactory.system(workspace);
 
     req.body = {
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
+      icon: null,
       tools: [],
     };
 
@@ -386,10 +389,10 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
-      version: 0,
       tools: [],
     });
 
@@ -434,8 +437,10 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Test Skill",
-      description: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
+      icon: null,
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
@@ -448,10 +453,10 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Test Skill",
-      description: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
-      version: 0,
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
@@ -466,7 +471,9 @@ describe("POST /api/w/[wId]/skills", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.description).toBe("A test skill description");
+    expect(skillConfiguration!.agentFacingDescription).toBe(
+      "Use this skill all the time"
+    );
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );
@@ -492,6 +499,55 @@ describe("POST /api/w/[wId]/skills", () => {
     );
     expect(serverViewIds).toContain(view1!.id);
     expect(serverViewIds).toContain(view2!.id);
+  });
+
+  it("creates a skill configuration with requestedSpaceIds derived from tool's space", async () => {
+    const { req, res, workspace } = await setupTest("POST", "admin");
+
+    // Create system space (required for MCP servers)
+    await SpaceFactory.system(workspace);
+
+    // Create a regular space where the tool will be placed
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    // Create a remote MCP server and view in the regular space
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Server in Regular Space",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      regularSpace
+    );
+
+    req.body = {
+      name: "Skill With Space Restrictions",
+      agentFacingDescription: "A skill restricted to specific spaces",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [{ mcpServerViewId: serverView.sId }],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData.skillConfiguration).toMatchObject({
+      name: "Skill With Space Restrictions",
+      requestedSpaceIds: [regularSpace.sId],
+    });
+
+    const skillConfiguration = await SkillConfigurationModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        name: "Skill With Space Restrictions",
+      },
+    });
+    expect(skillConfiguration).not.toBeNull();
+    expect(skillConfiguration!.requestedSpaceIds).toEqual([
+      String(regularSpace.id), // BigInt array returned as string
+    ]);
   });
 });
 

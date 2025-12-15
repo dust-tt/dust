@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -40,8 +41,10 @@ const SkillStatusSchema = t.union([
 // Request body schema for POST
 const PostSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
-  description: t.string,
+  agentFacingDescription: t.string,
+  userFacingDescription: t.union([t.string, t.null]),
   instructions: t.string,
+  icon: t.union([t.string, t.null]),
   tools: t.array(
     t.type({
       mcpServerViewId: t.string,
@@ -110,11 +113,15 @@ async function handler(
       if (withRelations === "true") {
         const skillConfigurationsWithRelations = await concurrentExecutor(
           skillConfigurations,
-          async (sc) => ({
-            ...sc.toJSON(auth),
-            usage: await sc.fetchUsage(auth),
-            editors: await sc.listEditors(auth),
-          }),
+          async (sc) => {
+            const usage = await sc.fetchUsage(auth);
+            const editors = await sc.listEditors(auth);
+            return {
+              ...sc.toJSON(auth),
+              usage,
+              editors: editors ? editors.map((e) => e.toJSON()) : null,
+            } satisfies SkillConfigurationType & SkillConfigurationRelations;
+          },
           { concurrency: 10 }
         );
 
@@ -164,34 +171,40 @@ async function handler(
       }
 
       // Validate all MCP server views exist before creating anything
+      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
       const mcpServerViews: MCPServerViewResource[] = [];
-      for (const tool of body.tools) {
+      for (const mcpServerViewId of mcpServerViewIds) {
         const mcpServerView = await MCPServerViewResource.fetchById(
           auth,
-          tool.mcpServerViewId
+          mcpServerViewId
         );
         if (!mcpServerView) {
           return apiError(req, res, {
             status_code: 404,
             api_error: {
               type: "invalid_request_error",
-              message: `MCP server view not found ${tool.mcpServerViewId}`,
+              message: `MCP server view not found ${mcpServerViewId}`,
             },
           });
         }
         mcpServerViews.push(mcpServerView);
       }
 
+      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
+        auth,
+        mcpServerViewIds
+      );
+
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillResource = await SkillResource.makeNew(auth, {
-        version: 0,
         status: "active",
         name: body.name,
-        description: body.description,
+        agentFacingDescription: body.agentFacingDescription,
+        // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
+        userFacingDescription: body.userFacingDescription ?? "",
         instructions: body.instructions,
         authorId: user.id,
-        // TODO(skills): add space restrictions.
-        requestedSpaceIds: [],
+        requestedSpaceIds,
       });
 
       // Create MCP server configurations (tools) for this skill

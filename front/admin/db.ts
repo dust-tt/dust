@@ -52,6 +52,7 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
+  SkillVersionModel,
 } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
@@ -201,6 +202,7 @@ async function main() {
   await OnboardingTaskModel.sync({ alter: true });
 
   await SkillConfigurationModel.sync({ alter: true });
+  await SkillVersionModel.sync({ alter: true });
   await GroupSkillModel.sync({ alter: true });
   await AgentSkillModel.sync({ alter: true });
   await ConversationSkillModel.sync({ alter: true });

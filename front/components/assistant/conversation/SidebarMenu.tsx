@@ -51,7 +51,6 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -69,6 +68,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
+  useSpaceConversationsSummary,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -100,7 +100,6 @@ const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useRouter();
-  const { conversationsNavigationRef } = useConversationsNavigation();
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
@@ -151,17 +150,23 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
-  const hasSkills = featureFlags.includes("skills");
+  const hasSkills = hasFeature("skills");
 
   const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+    hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
   const isMentionsV2Enabled = hasFeature("mentions_v2");
+
+  const hasSpaceConversations = hasFeature("conversations_groups");
+
+  useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !hasSpaceConversations },
+  });
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -275,8 +280,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 
   const { ref, inView, entry } = useInView({
-    // eslint-disable-next-line react-hooks/refs
-    root: conversationsNavigationRef.current,
     threshold: 0,
   });
 
@@ -524,7 +527,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 conversations={conversations}
                 conversationsPage={conversationsPage}
                 titleFilter={titleFilter}
-                conversationsNavigationRef={conversationsNavigationRef}
                 isMultiSelect={isMultiSelect}
                 selectedConversations={selectedConversations}
                 toggleConversationSelection={toggleConversationSelection}
@@ -532,10 +534,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 owner={owner}
               />
             ) : (
-              <NavigationList
-                className="dd-privacy-mask h-full w-full"
-                viewportRef={conversationsNavigationRef}
-              >
+              <NavigationList className="dd-privacy-mask h-full w-full">
                 {conversations.length > 0 && (
                   <>
                     {Object.keys(conversationsByDate).map((dateLabel) => (
@@ -554,16 +553,13 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         owner={owner}
                       />
                     ))}
-                    {/* eslint-disable-next-line react-hooks/refs */}
-                    {conversationsNavigationRef.current && (
-                      <div
-                        // Change the key each page to force a re-render and get a new entry
-                        key={`infinite-scroll-conversation-${conversationsPage}`}
-                        id="infinite-scroll-conversations"
-                        ref={ref}
-                        style={{ height: "2px" }}
-                      />
-                    )}
+                    <div
+                      // Change the key each page to force a re-render and get a new entry
+                      key={`infinite-scroll-conversation-${conversationsPage}`}
+                      id="infinite-scroll-conversations"
+                      ref={ref}
+                      style={{ height: "2px" }}
+                    />
                   </>
                 )}
               </NavigationList>
@@ -794,7 +790,6 @@ interface NavigationListWithInboxProps {
   conversations: ConversationWithoutContentType[];
   conversationsPage: number;
   titleFilter: string;
-  conversationsNavigationRef: React.RefObject<HTMLDivElement>;
   isMultiSelect: boolean;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (
@@ -813,7 +808,6 @@ const NavigationListWithInbox = forwardRef<
       conversations,
       conversationsPage,
       titleFilter,
-      conversationsNavigationRef,
       isMultiSelect,
       selectedConversations,
       toggleConversationSelection,
@@ -849,10 +843,7 @@ const NavigationListWithInbox = forwardRef<
       : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
     return (
-      <NavigationList
-        className="dd-privacy-mask h-full w-full"
-        viewportRef={conversationsNavigationRef}
-      >
+      <NavigationList className="dd-privacy-mask h-full w-full">
         {shouldDisplayInbox && (
           <div className="bg-background pb-3 dark:bg-background-night">
             <InboxConversationList
@@ -883,16 +874,13 @@ const NavigationListWithInbox = forwardRef<
                 owner={owner}
               />
             ))}
-            {/* eslint-disable-next-line react-hooks/refs */}
-            {conversationsNavigationRef.current && (
-              <div
-                // Change the key each page to force a re-render and get a new entry
-                key={`infinite-scroll-conversation-${conversationsPage}`}
-                id="infinite-scroll-conversations"
-                ref={ref}
-                style={{ height: "2px" }}
-              />
-            )}
+            <div
+              // Change the key each page to force a re-render and get a new entry
+              key={`infinite-scroll-conversation-${conversationsPage}`}
+              id="infinite-scroll-conversations"
+              ref={ref}
+              style={{ height: "2px" }}
+            />
           </>
         )}
       </NavigationList>

@@ -1,13 +1,14 @@
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-import type { UserType } from "@app/types";
 
 export interface GlobalSkillDefinition {
-  readonly description: string;
+  readonly agentFacingDescription: string;
+  readonly userFacingDescription: string;
   readonly instructions: string;
   readonly name: string;
   readonly sId: string;
   readonly version: number;
+  readonly icon?: string;
 }
 
 // Helper function that enforces unique sIds.
@@ -82,17 +83,3 @@ export class GlobalSkillsRegistry {
     });
   }
 }
-
-export const GLOBAL_DUST_AUTHOR: UserType = {
-  sId: "dust",
-  id: -1,
-  createdAt: 0,
-  provider: "github",
-  username: "dust",
-  email: "",
-  firstName: "Dust",
-  lastName: null,
-  fullName: "Dust",
-  image: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
-  lastLoginAt: null,
-};

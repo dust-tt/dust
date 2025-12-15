@@ -15,6 +15,7 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
@@ -24,9 +25,9 @@ import type { AgentsUsageType } from "@app/types/data_source";
 type RowData = {
   name: string;
   description: string;
-  editors: UserType[];
+  editors: UserType[] | null;
   usage: AgentsUsageType;
-  updatedAt: number;
+  updatedAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
 };
@@ -65,16 +66,21 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
       header: "Editors",
       accessorKey: "editors",
       cell: (info: CellContext<RowData, UserType[]>) => {
+        const editors = info.getValue();
+        const items = editors
+          ? editors.map((editor) => ({
+              name: editor.fullName,
+              visual: editor.image,
+            }))
+          : // Only dust managed skills should have no editors
+            [
+              {
+                name: "Dust",
+                visual: DUST_AVATAR_URL,
+              },
+            ];
         return (
-          <DataTable.CellContent
-            avatarStack={{
-              items: info.getValue().map((editor) => ({
-                name: editor.fullName,
-                visual: editor.image,
-              })),
-              nbVisibleItems: 4,
-            }}
-          />
+          <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
         );
       },
       meta: {
@@ -96,16 +102,15 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
     {
       header: "Last Edited",
       accessorKey: "updatedAt",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.BasicCellContent
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
-          label={
-            info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, number | null>) => {
+        const value = info.getValue();
+        return (
+          <DataTable.BasicCellContent
+            tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
+            label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
+          />
+        );
+      },
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
@@ -145,7 +150,7 @@ export function SkillsTable({
     () =>
       skills.map((skill) => ({
         name: skill.name,
-        description: skill.description,
+        description: skill.userFacingDescription,
         editors: skill.editors,
         usage: skill.usage,
         updatedAt: skill.updatedAt,

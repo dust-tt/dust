@@ -4,6 +4,7 @@ import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_ENABLE_SKILL_TOOL_NAME,
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -143,6 +145,52 @@ function constructToolsSection({
   toolsSection += toolServersPrompt;
 
   return toolsSection;
+}
+
+function constructSkillsSection({
+  enabledSkills,
+  equippedSkills,
+  featureFlags,
+}: {
+  enabledSkills: SkillResource[];
+  equippedSkills: SkillResource[];
+  featureFlags: WhitelistableFeature[];
+}): string {
+  if (!featureFlags.includes("skills")) {
+    return "";
+  }
+
+  let skillsSection = "\n## SKILLS\n";
+
+  if (!enabledSkills.length && !equippedSkills.length) {
+    skillsSection +=
+      "No skills are currently equipped or enabled for this agent.\n";
+    return skillsSection;
+  }
+
+  // Enabled skills - inject their full instructions
+  if (enabledSkills && enabledSkills.length > 0) {
+    skillsSection += "\n### ENABLED SKILLS\n";
+    skillsSection += "The following skills are currently enabled:\n";
+    for (const { name, instructions } of enabledSkills) {
+      skillsSection += `<${name}>\n${instructions}\n</${name}>\n`;
+    }
+  }
+
+  // Equipped but not yet enabled skills - show name and description only
+  if (equippedSkills && equippedSkills.length > 0) {
+    skillsSection += "\n### AVAILABLE SKILLS\n";
+    skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${DEFAULT_ENABLE_SKILL_TOOL_NAME} tool.\n`;
+    const skillList = equippedSkills
+      .map(
+        ({ name, agentFacingDescription }) =>
+          `- **${name}**: ${agentFacingDescription}`
+      )
+      .join("\n");
+    skillsSection += skillList + "\n";
+  }
+
+  return skillsSection;
 }
 
 function constructAttachmentsSection(): string {
@@ -284,6 +332,8 @@ export function constructPromptMultiActions(
     agentsList,
     conversationId,
     serverToolsAndInstructions,
+    enabledSkills,
+    equippedSkills,
     featureFlags,
   }: {
     userMessage: UserMessageType;
@@ -295,6 +345,8 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    enabledSkills: SkillResource[];
+    equippedSkills: SkillResource[];
     featureFlags: WhitelistableFeature[];
   }
 ) {
@@ -315,6 +367,11 @@ export function constructPromptMultiActions(
       model,
       agentConfiguration,
       serverToolsAndInstructions,
+    }),
+    constructSkillsSection({
+      enabledSkills,
+      equippedSkills,
+      featureFlags,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),

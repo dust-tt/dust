@@ -219,7 +219,13 @@ export async function notifyWorkflowError(
     error: Error;
   }
 ): Promise<void> {
-  const auth = await AuthenticatorClass.fromJSON(authType);
+  const authResult = await AuthenticatorClass.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
 
   // Use lighter fetchConversationWithoutContent
   const conversationRes =

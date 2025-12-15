@@ -298,7 +298,6 @@ export function isSupportedAudioContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
-  | "agent_handover"
   | "api"
   | "cli"
   | "cli_programmatic"
@@ -311,7 +310,6 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "powerpoint"
   | "raycast"
-  | "run_agent"
   | "slack"
   | "slack_workflow"
   | "teams"
@@ -646,6 +644,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
+  | "conversations_groups"
   | "databricks_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
@@ -683,8 +682,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesloft_tool"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "skills"
   | "skills_similar_display"
+  | "skills"
   | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
@@ -978,7 +977,6 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
   lastTriggerRunAt: z.number().optional().nullable(),

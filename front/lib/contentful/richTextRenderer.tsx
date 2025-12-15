@@ -9,8 +9,10 @@ import type {
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import { isString } from "@app/types";
 
 function getYouTubeVideoId(text: string): string | null {
@@ -208,17 +210,16 @@ const renderOptions: Options = {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const { width, height } = details?.image || { width: 800, height: 400 };
 
+      const alt = title ?? description ?? "Image";
+
       return (
-        <figure className="my-8">
-          <Image
-            src={`https:${url}`}
-            alt={title ?? description ?? "Blog image"}
-            width={width}
-            height={height}
-            className="rounded-lg"
-            loading="lazy"
-          />
-        </figure>
+        <ContentfulLightboxImage
+          src={`https:${url}`}
+          alt={alt}
+          title={title ?? null}
+          width={width}
+          height={height}
+        />
       );
     },
     [INLINES.HYPERLINK]: (node, children) => {

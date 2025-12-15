@@ -4,6 +4,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -13,6 +14,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
+  SkillVersionModel,
 } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
 import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
@@ -21,26 +23,25 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import {
-  GLOBAL_DUST_AUTHOR,
-  GlobalSkillsRegistry,
-} from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   AgentsUsageType,
   ConversationType,
+  LightAgentConfigurationType,
   ModelId,
   Result,
-  UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
@@ -62,11 +63,19 @@ type SkillResourceConstructorOptions =
       mcpServerConfigurations?: Attributes<SkillMCPServerConfigurationModel>[];
     };
 
+type SkillVersionCreationAttributes =
+  CreationAttributes<SkillConfigurationModel> & {
+    skillConfigurationId: number;
+    version: number;
+    mcpServerConfigurationIds: number[];
+  };
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SkillResource
   extends ReadonlyAttributesType<SkillConfigurationModel> {}
+
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
  * skills in a single resource class.
@@ -141,6 +150,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
+  private get isGlobal(): boolean {
+    return this.globalSId !== undefined;
   }
 
   static async makeNew(
@@ -273,15 +287,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
-  static async fetchByAgentConfigurationId(
+  static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfigurationId: ModelId
+    agentConfiguration: LightAgentConfigurationType
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId,
+        agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
     });
@@ -301,16 +315,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  // Permissions.
-
-  canWrite(auth: Authenticator): boolean {
-    if (!this.editorGroup) {
-      return false;
-    }
-
-    return this.editorGroup.canWrite(auth);
-  }
-
   static modelIdToSId({
     id,
     workspaceId,
@@ -322,6 +326,76 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       id,
       workspaceId,
     });
+  }
+
+  static async fetchAllAvailableSkills(
+    auth: Authenticator,
+    limit?: number
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status: "active",
+      },
+      ...(limit ? { limit } : {}),
+    });
+  }
+
+  static async listSkills(
+    auth: Authenticator,
+    { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: { status },
+      ...(limit ? { limit } : {}),
+    });
+  }
+
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+    });
+
+    const customSkillIds = removeNulls(
+      conversationSkills.map((cs) =>
+        cs.customSkillId
+          ? SkillResource.modelIdToSId({
+              id: cs.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null
+      )
+    );
+
+    const globalSkillIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
+    );
+
+    const allSkillIds = [...customSkillIds, ...globalSkillIds];
+
+    if (allSkillIds.length === 0) {
+      return [];
+    }
+
+    return SkillResource.fetchByIds(auth, allSkillIds);
   }
 
   private static async baseFetch(
@@ -430,14 +504,37 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return [...customSkillsRes, ...globalSkills];
   }
 
-  static async listSkills(
+  private static fromGlobalSkill(
     auth: Authenticator,
-    { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: { status },
-      ...(limit ? { limit } : {}),
-    });
+    def: GlobalSkillDefinition
+  ): SkillResource {
+    return new SkillResource(
+      this.model,
+      {
+        authorId: -1,
+        createdAt: new Date(),
+        agentFacingDescription: def.agentFacingDescription,
+        userFacingDescription: def.userFacingDescription,
+        // We fake the id here. We should rely exclusively on sId for global skills.
+        id: -1,
+        instructions: def.instructions,
+        name: def.name,
+        requestedSpaceIds: [],
+        status: "active",
+        updatedAt: new Date(),
+        workspaceId: auth.getNonNullableWorkspace().id,
+        icon: null,
+      },
+      { globalSId: def.sId }
+    );
+  }
+
+  canWrite(auth: Authenticator): boolean {
+    if (!this.editorGroup) {
+      return false;
+    }
+
+    return this.editorGroup.canWrite(auth);
   }
 
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
@@ -480,15 +577,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  async listEditors(auth: Authenticator): Promise<UserType[]> {
-    // Global skills are authored by Dust
-    if (this.isGlobal) {
-      return [GLOBAL_DUST_AUTHOR];
-    }
-
-    const members = await this.editorGroup?.getActiveMembers(auth);
-
-    return (members ?? []).map((m) => m.toJSON());
+  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
+    return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
   async archive(
@@ -516,25 +606,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { affectedCount };
   }
 
+  async restore(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{ affectedCount: number }> {
+    const [affectedCount] = await this.update(
+      {
+        status: "active",
+      },
+      transaction
+    );
+
+    return { affectedCount };
+  }
+
   async updateSkill(
     auth: Authenticator,
     {
       name,
-      description,
+      agentFacingDescription,
+      userFacingDescription,
       instructions,
+      icon,
+      requestedSpaceIds,
     }: {
       name: string;
-      description: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
       instructions: string;
+      icon: string | null;
+      requestedSpaceIds: ModelId[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
+    // Save the current version before updating.
+    await this.saveVersion(auth, { transaction });
+
     await this.update(
       {
         name,
-        description,
+        agentFacingDescription,
+        userFacingDescription,
         instructions,
-        version: this.version + 1,
+        icon,
+        requestedSpaceIds,
       },
       transaction
     );
@@ -580,16 +695,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
-  private get isGlobal(): boolean {
-    return this.globalSId !== undefined;
-  }
-
   async update(
     blob: Partial<Attributes<SkillConfigurationModel>>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    if (this.isGlobal) {
+    // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
+    if (this.globalSId) {
       throw new Error("Cannot update a global skill configuration.");
     }
 
@@ -600,8 +711,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined | number, Error>> {
-    if (this.isGlobal) {
-      return new Err(new Error("Cannot delete a global skill configuration."));
+    if (!this.canWrite(auth)) {
+      return new Err(
+        new Error("User does not have permission to delete this skill.")
+      );
     }
 
     try {
@@ -670,30 +783,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  private static fromGlobalSkill(
-    auth: Authenticator,
-    def: GlobalSkillDefinition
-  ): SkillResource {
-    return new SkillResource(
-      this.model,
-      {
-        authorId: -1,
-        createdAt: new Date(),
-        description: def.description,
-        // We fake the id here. We should rely exclusively on sId for global skills.
-        id: -1,
-        instructions: def.instructions,
-        name: def.name,
-        requestedSpaceIds: [],
-        status: "active",
-        updatedAt: new Date(),
-        version: def.version,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      { globalSId: def.sId }
-    );
-  }
-
   toJSON(auth: Authenticator): SkillConfigurationType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
@@ -702,19 +791,81 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }),
     }));
 
+    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
+      SpaceResource.modelIdToSId({
+        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        workspaceId: this.workspaceId,
+      })
+    );
+
     return {
       id: this.id,
       sId: this.sId,
-      createdAt: this.createdAt.getTime(),
-      updatedAt: this.updatedAt.getTime(),
-      version: this.version,
+      createdAt: this.globalSId ? null : this.createdAt.getTime(),
+      updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
       status: this.status,
       name: this.name,
-      description: this.description,
-      instructions: this.instructions,
-      requestedSpaceIds: this.requestedSpaceIds,
+      agentFacingDescription: this.agentFacingDescription,
+      userFacingDescription: this.userFacingDescription,
+      // We don't want to leak global skills instructions to frontend
+      instructions: this.globalSId ? null : this.instructions,
+      requestedSpaceIds: requestedSpaceIds,
+      icon: this.icon ?? null,
       tools,
       canWrite: this.canWrite(auth),
     };
+  }
+
+  private async saveVersion(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch current MCP server configuration IDs for this skill
+    const mcpServerConfigurations =
+      await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          skillConfigurationId: this.id,
+        },
+        transaction,
+      });
+
+    const mcpServerConfigurationIds = mcpServerConfigurations.map(
+      (config) => config.mcpServerViewId
+    );
+
+    // Calculate the next version number by counting existing versions
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: this.workspaceId,
+      skillConfigurationId: this.id,
+    };
+
+    const existingVersionsCount = await SkillVersionModel.count({
+      where,
+      transaction,
+    });
+
+    const versionNumber = existingVersionsCount + 1;
+
+    // Create a new version entry with the current state
+    const versionData: SkillVersionCreationAttributes = {
+      workspaceId: this.workspaceId,
+      skillConfigurationId: this.id,
+      version: versionNumber,
+      status: this.status,
+      name: this.name,
+      agentFacingDescription: this.agentFacingDescription,
+      userFacingDescription: this.userFacingDescription,
+      instructions: this.instructions,
+      requestedSpaceIds: this.requestedSpaceIds,
+      authorId: this.authorId,
+      mcpServerConfigurationIds,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+
+    await SkillVersionModel.create(versionData, { transaction });
   }
 }
