@@ -1,5 +1,8 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
-import type { ChildWorkflowHandle } from "@temporalio/workflow";
+import type {
+  ChildWorkflowHandle,
+  WorkflowInterceptorsFactory,
+} from "@temporalio/workflow";
 import {
   CancellationScope,
   proxyActivities,
@@ -34,6 +37,20 @@ import type {
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
 export const NOTIFICATION_DELAY_MS = 30000;
+
+// Add these new imports
+import {
+  OpenTelemetryInboundInterceptor,
+  OpenTelemetryInternalsInterceptor,
+  OpenTelemetryOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/workflow";
+
+// Add this export right after your imports, before the proxyActivities
+export const interceptors: WorkflowInterceptorsFactory = () => ({
+  inbound: [new OpenTelemetryInboundInterceptor()],
+  outbound: [new OpenTelemetryOutboundInterceptor()],
+  internals: [new OpenTelemetryInternalsInterceptor()],
+});
 
 const { runModelAndCreateActionsActivity } = proxyActivities<
   typeof runModelAndCreateWrapperActivities

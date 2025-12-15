@@ -1,8 +1,17 @@
+import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base/build/src/export/InMemorySpanExporter";
 import type { Context } from "@temporalio/activity";
+import {
+  makeWorkflowExporter,
+  OpenTelemetryActivityInboundInterceptor,
+  OpenTelemetryActivityOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/worker";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/init";
+import {
+  initializeLangfuseInstrumentation,
+  resource,
+} from "@app/lib/api/instrumentation/init";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -32,6 +41,11 @@ const SHUTDOWN_GRACE_TIME = "2 minutes";
 export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
+  // Initialize LLMs instrumentation for the worker.
+  initializeLangfuseInstrumentation();
+
+  const spanExporter = new InMemorySpanExporter();
+
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "agent_loop",
@@ -60,13 +74,21 @@ export async function runAgentLoopWorker() {
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
+      workflowModules: [require.resolve("./workflows")],
       activity: [
         (ctx: Context) => {
           return {
             inbound: new ActivityInboundLogInterceptor(ctx, logger),
           };
         },
+        (ctx) => ({
+          inbound: new OpenTelemetryActivityInboundInterceptor(ctx),
+          outbound: new OpenTelemetryActivityOutboundInterceptor(ctx),
+        }),
       ],
+    },
+    sinks: spanExporter && {
+      exporter: makeWorkflowExporter(spanExporter, resource!),
     },
     bundlerOptions: {
       // Update the webpack config to use aliases from our tsconfig.json. This let us import code
@@ -84,9 +106,6 @@ export async function runAgentLoopWorker() {
 
   // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
   process.on("SIGTERM", () => worker.shutdown());
-
-  // Initialize LLMs instrumentation for the worker.
-  initializeLangfuseInstrumentation();
 
   try {
     await worker.run(); // this resolves after shutdown completes

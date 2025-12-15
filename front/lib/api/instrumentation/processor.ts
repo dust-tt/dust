@@ -13,11 +13,23 @@ import type { ReadableSpan, Span } from "@opentelemetry/sdk-trace-base";
  */
 export class FilteredLangfuseSpanProcessor extends LangfuseSpanProcessor {
   private allowedScopes = new Set([
-    "langfuse-sdk", // Expected scope name from @langfuse/tracing
+    "langfuse-sdk", // Expected scope name from @langfuse/tracing,
+    "@temporalio/interceptor-activity",
+    "@temporalio/interceptor-client",
   ]);
 
   private shouldProcessSpan(span: ReadableSpan): boolean {
     const scopeName = span.instrumentationScope?.name;
+
+    console.log("🔍 Checking span:", {
+      name: span.name,
+      scopeName,
+      traceId: span.spanContext().traceId, // ← Add this
+      parentSpanId: span.parentSpanContext?.spanId, // ← Add this
+      isAllowed: scopeName ? this.allowedScopes.has(scopeName) : false,
+    });
+    // TODO: Check name StartWorkflow:agentLoopWorkflow'
+
     return scopeName ? this.allowedScopes.has(scopeName) : false;
   }
 
