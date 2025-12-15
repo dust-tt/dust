@@ -39,7 +39,7 @@ function getToolContext(
 ): Result<
   {
     userId: number;
-    workspaceSId: string;
+    workspaceId: string;
     agentConfiguration: AgentConfigurationType;
   },
   MCPError
@@ -57,7 +57,7 @@ function getToolContext(
   }
   return new Ok({
     userId: user.id,
-    workspaceSId: workspace.sId,
+    workspaceId: workspace.sId,
     agentConfiguration: agentLoopContext.runContext.agentConfiguration,
   });
 }
@@ -196,7 +196,7 @@ function createServer(
           editor: user.id,
           webhookSourceViewId: null,
           executionPerDayLimitOverride: null,
-          executionMode: null,
+          executionMode: "fair_use",
         });
 
         if (result.isErr()) {
@@ -240,8 +240,7 @@ function createServer(
         if (contextResult.isErr()) {
           return contextResult;
         }
-        const { userId, workspaceSId, agentConfiguration } =
-          contextResult.value;
+        const { userId, workspaceId, agentConfiguration } = contextResult.value;
 
         const schedulesResult =
           await TriggerResource.listSchedulesByAgentAndEditor(auth, {
@@ -256,7 +255,7 @@ function createServer(
         }
 
         getStatsDClient().increment("tools.schedules_management.listed", 1, [
-          `workspace_id:${workspaceSId}`,
+          `workspace_id:${workspaceId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
 
@@ -370,8 +369,7 @@ function createServer(
         if (contextResult.isErr()) {
           return contextResult;
         }
-        const { userId, workspaceSId, agentConfiguration } =
-          contextResult.value;
+        const { userId, workspaceId, agentConfiguration } = contextResult.value;
 
         const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
           auth,
@@ -438,7 +436,7 @@ function createServer(
         }
 
         getStatsDClient().increment("tools.schedules_management.updated", 1, [
-          `workspace_id:${workspaceSId}`,
+          `workspace_id:${workspaceId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
 
@@ -480,8 +478,7 @@ function createServer(
         if (contextResult.isErr()) {
           return contextResult;
         }
-        const { userId, workspaceSId, agentConfiguration } =
-          contextResult.value;
+        const { userId, workspaceId, agentConfiguration } = contextResult.value;
 
         const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
           auth,
@@ -506,7 +503,7 @@ function createServer(
         }
 
         getStatsDClient().increment("tools.schedules_management.deleted", 1, [
-          `workspace_id:${workspaceSId}`,
+          `workspace_id:${workspaceId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
 
