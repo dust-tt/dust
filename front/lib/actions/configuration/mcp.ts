@@ -233,12 +233,11 @@ export async function fetchSkillMCPServerConfigurations(
     return [];
   }
 
-  const mcpServerViewIds = new Set<ModelId>();
-  for (const skill of enabledSkills) {
-    for (const config of skill.mcpServerConfigurations) {
-      mcpServerViewIds.add(config.mcpServerViewId);
-    }
-  }
+  const mcpServerViewIds = new Set(
+    enabledSkills.flatMap((skill) =>
+      skill.mcpServerConfigurations.map((config) => config.mcpServerViewId)
+    )
+  );
 
   if (mcpServerViewIds.size === 0) {
     return [];
