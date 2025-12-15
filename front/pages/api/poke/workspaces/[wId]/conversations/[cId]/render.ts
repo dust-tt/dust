@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -162,6 +163,27 @@ async function handler(
         attachments,
       });
 
+      const enabledSkills = await SkillResource.listEnabledForConversation(
+        auth,
+        {
+          agentConfiguration,
+          conversation,
+        }
+      );
+      const allAgentSkills = await SkillResource.listByAgentConfiguration(
+        auth,
+        agentConfiguration
+      );
+
+      const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+      const equippedSkills = allAgentSkills.filter(
+        (s) => !enabledSkillIds.has(s.sId)
+      );
+
+      // Fetch MCP server configurations from enabled skills.
+      const skillMCPServerConfigurations =
+        await fetchSkillMCPServerConfigurations(auth, enabledSkills);
+
       const clientSideMCPActionConfigurations =
         await createClientSideMCPServerConfigurations(
           auth,
@@ -206,25 +228,9 @@ async function handler(
             agentMessage: placeholderAgentMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
-          jitServers
+          jitServers,
+          skillMCPServerConfigurations
         );
-
-      const enabledSkills = await SkillResource.listEnabledForConversation(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-        }
-      );
-      const allAgentSkills = await SkillResource.listByAgentConfiguration(
-        auth,
-        agentConfiguration
-      );
-
-      const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-      const equippedSkills = allAgentSkills.filter(
-        (s) => !enabledSkillIds.has(s.sId)
-      );
 
       const availableActions = serverToolsAndInstructions.flatMap(
         (s) => s.tools

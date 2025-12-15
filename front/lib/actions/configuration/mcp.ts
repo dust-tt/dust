@@ -10,6 +10,7 @@ import {
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -20,8 +21,10 @@ import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
@@ -169,6 +172,7 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
+        // Space name for tool name prefixing to dedupe servers across spaces.
         dataSources:
           dataSourceConfigurations.length > 0
             ? dataSourceConfigurations.map(renderDataSourceConfiguration)
@@ -210,4 +214,66 @@ export async function fetchMCPServerActionConfigurations(
   }
 
   return actionsByConfigurationId;
+}
+
+/**
+ * Fetches MCP server configurations for the given enabled skills.
+ * Returns an array of MCPServerConfigurationType that can be passed to tryListMCPTools.
+ *
+ * Each skill can have multiple MCP server views associated with it.
+ * The space name is included for tool name prefixing to dedupe servers
+ * when the same MCP server is configured in different spaces via skills.
+ */
+export async function fetchSkillMCPServerConfigurations(
+  auth: Authenticator,
+  enabledSkills: SkillResource[]
+): Promise<ServerSideMCPServerConfigurationType[]> {
+  if (enabledSkills.length === 0) {
+    return [];
+  }
+
+  const mcpServerViewIds = new Set(
+    enabledSkills.flatMap((skill) =>
+      skill.mcpServerConfigurations.map((config) => config.mcpServerViewId)
+    )
+  );
+
+  if (mcpServerViewIds.size === 0) {
+    return [];
+  }
+
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    Array.from(mcpServerViewIds)
+  );
+
+  const configurations: ServerSideMCPServerConfigurationType[] = [];
+
+  for (const mcpServerView of mcpServerViews) {
+    const { name, description, icon } = mcpServerView.toJSON().server;
+
+    configurations.push({
+      id: mcpServerView.id,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: mcpServerView.name ?? name,
+      description: mcpServerView.description ?? description,
+      icon,
+      mcpServerViewId: mcpServerView.sId,
+      internalMCPServerId: mcpServerView.internalMCPServerId ?? null,
+      // Skills don't have configurations, yet.
+      // TODO(skills): support configuring skills.
+      dataSources: null,
+      tables: null,
+      dustAppConfiguration: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      secretName: null,
+    });
+  }
+
+  return configurations;
 }
