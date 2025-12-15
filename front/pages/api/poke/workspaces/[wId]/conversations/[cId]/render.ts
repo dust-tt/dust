@@ -25,7 +25,7 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { isUserMessageType } from "@app/types";
+import { isString, isUserMessageType } from "@app/types";
 
 export type PostRenderConversationRequestBody = {
   agentId: string;
@@ -50,8 +50,8 @@ async function handler(
   >,
   session: SessionWithUser
 ): Promise<void> {
-  const { wId, cId } = req.query as { wId?: string; cId?: string };
-  if (!wId || typeof wId !== "string") {
+  const { wId, cId } = req.query;
+  if (!isString(wId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -60,7 +60,7 @@ async function handler(
       },
     });
   }
-  if (!cId || typeof cId !== "string") {
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -91,7 +91,7 @@ async function handler(
         onMissingAction,
       } = req.body as PostRenderConversationRequestBody;
 
-      if (!agentId || typeof agentId !== "string") {
+      if (!isString(agentId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
