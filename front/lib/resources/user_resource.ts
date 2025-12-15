@@ -205,7 +205,7 @@ export class UserResource extends BaseResource<UserModel> {
     }: {
       searchTerm: string;
       offset: number;
-      limit: number;
+      limit?: number;
     }
   ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
     const owner = auth.getNonNullableWorkspace();

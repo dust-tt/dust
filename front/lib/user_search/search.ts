@@ -25,7 +25,7 @@ export async function searchUsers({
   owner: LightWorkspaceType;
   searchTerm: string;
   offset: number;
-  limit: number;
+  limit?: number;
 }): Promise<Result<SearchUsersResult, ElasticsearchError>> {
   return withEs(async (client) => {
     // If searchTerm is empty or only whitespace, return all users from the workspace.

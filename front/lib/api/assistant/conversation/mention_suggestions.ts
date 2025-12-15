@@ -184,7 +184,6 @@ export const suggestionsOfMentions = async (
     const res = await UserResource.searchUsers(auth, {
       searchTerm: query,
       offset: 0,
-      limit: SUGGESTION_DISPLAY_LIMIT,
     });
 
     if (res.isOk()) {
@@ -207,7 +206,7 @@ export const suggestionsOfMentions = async (
 
   // If only one type is requested, keep the simple ordering.
   if (!select.agents && select.users) {
-    return userSuggestions;
+    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
   if (select.agents && !select.users) {
     return selectedAgents;
@@ -221,7 +220,7 @@ export const suggestionsOfMentions = async (
 
   // No agent suggestions available, fallback to users.
   if (selectedAgents.length === 0) {
-    return userSuggestions;
+    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
 
   let results = interleaveMentionsPreservingAgentOrder(
