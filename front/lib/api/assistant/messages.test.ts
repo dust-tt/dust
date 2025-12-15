@@ -399,6 +399,7 @@ describe("batchRenderMessages", () => {
         messageId: userMessageModel!.id,
         userId: mentionedUser.id,
         workspaceId: workspace.id,
+        status: "approved",
       });
 
       // Render messages
@@ -475,6 +476,7 @@ describe("batchRenderMessages", () => {
         messageId: userMessageModel!.id,
         agentConfigurationId: mentionedAgentConfig.sId,
         workspaceId: workspace.id,
+        status: "approved",
       });
 
       // Render messages
@@ -556,11 +558,13 @@ describe("batchRenderMessages", () => {
         messageId: userMessageModel!.id,
         userId: mentionedUser.id,
         workspaceId: workspace.id,
+        status: "approved",
       });
       await MentionModel.create({
         messageId: userMessageModel!.id,
         agentConfigurationId: mentionedAgentConfig.sId,
         workspaceId: workspace.id,
+        status: "approved",
       });
 
       // Render messages
@@ -658,11 +662,13 @@ describe("batchRenderMessages", () => {
         messageId: agentMessageModel!.id,
         userId: mentionedUser.id,
         workspaceId: workspace.id,
+        status: "approved",
       });
       await MentionModel.create({
         messageId: agentMessageModel!.id,
         agentConfigurationId: mentionedAgentConfig.sId,
         workspaceId: workspace.id,
+        status: "approved",
       });
 
       // Render messages
@@ -823,6 +829,7 @@ describe("batchRenderMessages", () => {
         messageId: userMessageModel!.id,
         userId: mentionedUser.id,
         workspaceId: workspace.id,
+        status: "approved",
       });
 
       // Render messages with light view type

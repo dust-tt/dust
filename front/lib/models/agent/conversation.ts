@@ -767,6 +767,8 @@ MessageReactionModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
+export type MentionStatusType = "pending" | "approved" | "rejected";
+
 export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -779,6 +781,8 @@ export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare user: NonAttribute<UserModel> | null;
 
   declare message: NonAttribute<MessageModel>;
+
+  declare status: MentionStatusType;
 }
 
 MentionModel.init(
@@ -804,6 +808,11 @@ MentionModel.init(
         model: UserModel,
         key: "id",
       },
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "approved",
     },
   },
   {
