@@ -1,9 +1,5 @@
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type {
-  Editor,
-  MarkdownLexerConfiguration,
-  MarkdownToken,
-} from "@tiptap/core";
+import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
 import { InputRule } from "@tiptap/core";
 import { mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
@@ -34,84 +30,6 @@ declare module "@tiptap/core" {
       insertInstructionBlock: () => ReturnType;
     };
   }
-}
-
-/**
- * Get the position of the current instruction block
- */
-function getCurrentInstructionBlockPos(editor: Editor): number {
-  const { $from } = editor.state.selection;
-
-  for (let d = $from.depth; d >= 0; d--) {
-    if ($from.node(d).type.name === "instructionBlock") {
-      return $from.before(d);
-    }
-  }
-
-  return -1;
-}
-
-/**
- * Position cursor in the empty paragraph between XML tags
- */
-function positionCursorInMiddleParagraph(
-  editor: Editor,
-  blockPos: number
-): boolean {
-  const node = editor.state.doc.nodeAt(blockPos);
-
-  if (!node || node.type.name !== "instructionBlock") {
-    return false;
-  }
-
-  // Instruction blocks must have at least 3 paragraphs:
-  // 1. Opening tag (e.g., <instructions>)
-  // 2. Content paragraph (can be empty)
-  // 3. Closing tag (e.g., </instructions>)
-  if (node.childCount < 3) {
-    return false;
-  }
-
-  const firstPara = node.child(0);
-  const firstParaSize = firstPara.nodeSize;
-
-  // Position inside the middle paragraph (not just between nodes)
-  const targetPos = blockPos + 1 + firstParaSize + 1;
-
-  editor.commands.setTextSelection(targetPos);
-  editor.commands.focus();
-
-  return true;
-}
-
-/**
- * Focus cursor inside the current instruction block
- */
-function focusInsideCurrentInstructionBlock(editor: Editor): void {
-  if (editor.isDestroyed) {
-    return;
-  }
-
-  const blockPos = getCurrentInstructionBlockPos(editor);
-  if (blockPos > -1) {
-    positionCursorInMiddleParagraph(editor, blockPos);
-  }
-}
-
-/**
- * Queue a caret move inside the current instruction block (post-render)
- */
-function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
-  if (editor.isDestroyed || !editor.view) {
-    return;
-  }
-  requestAnimationFrame(() => {
-    // Double-check lifecycle at callback time to avoid acting on a destroyed editor
-    if (editor.isDestroyed || !editor.view) {
-      return;
-    }
-    focusInsideCurrentInstructionBlock(editor);
-  });
 }
 
 // Define consistent heading styles to match the main editor
@@ -221,8 +139,7 @@ export const InstructionBlockExtension =
     name: "instructionBlock",
     group: "block",
     priority: 1000,
-    // Allow only specific blocks inside the instruction block
-    content: "(paragraph|heading|codeBlock)+",
+    content: "block+",
     defining: true,
     // Prevents auto-merging two blocks when they're not separated by a paragraph
     isolating: true,
@@ -271,45 +188,14 @@ export const InstructionBlockExtension =
       return {
         insertInstructionBlock:
           () =>
-          ({ state, chain }) => {
-            const { selection } = state;
-            const { $from } = selection;
-
-            // Check if we're in an empty paragraph
-            const isEmptyParagraph =
-              $from.parent.type.name === "paragraph" &&
-              $from.parent.content.size === 0;
-
+          ({ chain }) => {
             const content = {
               type: this.name,
               attrs: { type: "instructions", isCollapsed: false },
               content: [{ type: "paragraph" }],
             };
 
-            if (isEmptyParagraph) {
-              // Replace empty paragraph with instruction block
-              const from = $from.before($from.depth);
-              const to = $from.after($from.depth);
-
-              return chain()
-                .focus()
-                .insertContentAt({ from, to }, content)
-                .command(({ editor }) => {
-                  queueFocusInsideCurrentInstructionBlock(editor);
-                  return true;
-                })
-                .run();
-            }
-
-            // Non-empty: insert normally
-            return chain()
-              .focus()
-              .insertContent(content)
-              .command(({ editor }) => {
-                queueFocusInsideCurrentInstructionBlock(editor);
-                return true;
-              })
-              .run();
+            return chain().focus().insertContent(content).run();
           },
       };
     },
@@ -322,7 +208,7 @@ export const InstructionBlockExtension =
       return [
         new InputRule({
           find: OPENING_TAG_REGEX,
-          handler: ({ range, match, chain, state }) => {
+          handler: ({ range, match, chain }) => {
             const type = match[1] ? match[1].toLowerCase() : "";
             const tagType = type || "instructions";
 
@@ -330,41 +216,17 @@ export const InstructionBlockExtension =
               return;
             }
 
-            const { $from } = state.selection;
-            const isEmptyParagraph =
-              $from.parent.type.name === "paragraph" &&
-              $from.parent.textContent === match[0];
             const content = {
               type: this.name,
               attrs: { type: tagType, isCollapsed: false },
               content: [{ type: "paragraph" }],
             };
 
-            if (isEmptyParagraph) {
-              // Replace entire paragraph with instruction block
-              const from = $from.before($from.depth);
-              const to = $from.after($from.depth);
-
-              chain()
-                .focus()
-                .insertContentAt({ from, to }, content)
-                .command(({ editor }) => {
-                  queueFocusInsideCurrentInstructionBlock(editor);
-                  return true;
-                })
-                .run();
-            } else {
-              // Delete the typed text and insert instruction block
-              chain()
-                .focus()
-                .deleteRange({ from: range.from, to: range.to })
-                .insertContent(content)
-                .command(({ editor }) => {
-                  queueFocusInsideCurrentInstructionBlock(editor);
-                  return true;
-                })
-                .run();
-            }
+            chain()
+              .focus()
+              .deleteRange({ from: range.from, to: range.to })
+              .insertContent(content)
+              .run();
           },
         }),
       ];

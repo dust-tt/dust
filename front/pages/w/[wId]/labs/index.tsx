@@ -9,7 +9,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
@@ -99,48 +98,46 @@ export default function LabsTranscriptsIndex({
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
   return (
-    <ConversationsNavigationProvider>
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        pageTitle="Dust - Exploratory features"
-        navChildren={<AgentSidebarMenu owner={owner} />}
-      >
-        <Page.Header
-          title="Exploratory features"
-          icon={TestTubeIcon}
-          description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
-        />
-        <Page.Layout direction="vertical">
-          <ContextItem.List>
-            <ContextItem.SectionHeader
-              title="Features"
-              description="All features presented here are in beta and may change or be removed."
-            />
+    <AppCenteredLayout
+      subscription={subscription}
+      owner={owner}
+      pageTitle="Dust - Exploratory features"
+      navChildren={<AgentSidebarMenu owner={owner} />}
+    >
+      <Page.Header
+        title="Exploratory features"
+        icon={TestTubeIcon}
+        description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
+      />
+      <Page.Layout direction="vertical">
+        <ContextItem.List>
+          <ContextItem.SectionHeader
+            title="Features"
+            description="All features presented here are in beta and may change or be removed."
+          />
 
-            {visibleFeatures.map((item) => (
-              <ContextItem
-                key={item.id}
-                title={item.label}
-                action={
-                  <FeatureAccessButton
-                    accessible={featureFlags.includes(item.featureFlag)}
-                    featureName={item.label}
-                    managePath={`/w/${owner.sId}/labs/${item.id}`}
-                    owner={owner}
-                    canRequestAccess={isAdmin}
-                    canManage={!item.onlyAdminCanManage || isAdmin}
-                  />
-                }
-                visual={<Icon visual={item.icon} />}
-              >
-                <ContextItem.Description description={item.description} />
-              </ContextItem>
-            ))}
-          </ContextItem.List>
-        </Page.Layout>
-      </AppCenteredLayout>
-    </ConversationsNavigationProvider>
+          {visibleFeatures.map((item) => (
+            <ContextItem
+              key={item.id}
+              title={item.label}
+              action={
+                <FeatureAccessButton
+                  accessible={featureFlags.includes(item.featureFlag)}
+                  featureName={item.label}
+                  managePath={`/w/${owner.sId}/labs/${item.id}`}
+                  owner={owner}
+                  canRequestAccess={isAdmin}
+                  canManage={!item.onlyAdminCanManage || isAdmin}
+                />
+              }
+              visual={<Icon visual={item.icon} />}
+            >
+              <ContextItem.Description description={item.description} />
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+      </Page.Layout>
+    </AppCenteredLayout>
   );
 }
 

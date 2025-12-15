@@ -174,5 +174,6 @@ export function getLightAgentMessageFromAgentMessage(
         contentType: f.contentType,
         ...(f.hidden ? { hidden: true } : {}),
       })),
+    richMentions: agentMessage.richMentions,
   };
 }

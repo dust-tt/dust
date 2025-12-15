@@ -23,7 +23,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -459,12 +458,7 @@ export async function createOrUpgradeAgentConfiguration({
         return;
       }
 
-      await AgentSkillModel.create({
-        workspaceId: owner.id,
-        agentConfigurationId: agentConfigurationRes.value.id,
-        customSkillId: skillResource.id,
-        globalSkillId: null,
-      });
+      await skillResource.addToAgent(auth, agentConfigurationRes.value);
     },
     { concurrency: 10 }
   );

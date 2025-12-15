@@ -630,6 +630,7 @@ export const createAgentMessages = async (
       contents: [],
       parsedContents: {},
       modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
+      richMentions: [],
     })
   );
 

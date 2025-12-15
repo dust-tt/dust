@@ -124,9 +124,7 @@ export const suggestionsOfMentions = async (
     if (res.isOk()) {
       const { users } = res.value;
 
-      userSuggestions = users
-        .filter((u) => u.sId !== currentUserSId)
-        .map((u) => toRichUserMentionType(u.toJSON()));
+      userSuggestions = users.map((u) => toRichUserMentionType(u.toJSON()));
     }
   }
 
@@ -189,11 +187,12 @@ export const suggestionsOfMentions = async (
 
         // Convert participants to RichMention format
         const participantUsers = participants.users
-          .filter((u) => u.sId !== currentUserSId)
           .map((u) => ({
             type: "user" as const,
             id: u.sId,
-            label: u.fullName ?? u.username,
+            label:
+              u.fullName ??
+              u.username + (u.sId === currentUserSId ? " (you)" : ""),
             pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
             description: u.username,
           }))

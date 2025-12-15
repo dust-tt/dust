@@ -25,6 +25,7 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -627,12 +628,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription,
       instructions,
       icon,
+      requestedSpaceIds,
     }: {
       name: string;
       agentFacingDescription: string;
       userFacingDescription: string;
       instructions: string;
       icon: string | null;
+      requestedSpaceIds: ModelId[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
@@ -646,6 +649,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         userFacingDescription,
         instructions,
         icon,
+        requestedSpaceIds,
       },
       transaction
     );
@@ -730,6 +734,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   }
 
+  async addToAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    await AgentSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      customSkillId: this.globalSId ? null : this.id,
+      globalSkillId: this.globalSId ?? null,
+    });
+  }
+
   async enableForMessage(
     auth: Authenticator,
     {
@@ -787,6 +805,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }),
     }));
 
+    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
+      SpaceResource.modelIdToSId({
+        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        workspaceId: this.workspaceId,
+      })
+    );
+
     return {
       id: this.id,
       sId: this.sId,
@@ -798,7 +823,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: this.userFacingDescription,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
-      requestedSpaceIds: this.requestedSpaceIds,
+      requestedSpaceIds: requestedSpaceIds,
       icon: this.icon ?? null,
       tools,
       canWrite: this.canWrite(auth),

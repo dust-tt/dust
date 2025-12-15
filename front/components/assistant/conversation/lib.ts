@@ -177,6 +177,7 @@ export function createPlaceholderAgentMessage({
       citations: {},
       generatedFiles: [],
       actions: [],
+      richMentions: [],
     },
     agentState: "placeholder",
     isRetrying: false,

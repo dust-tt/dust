@@ -13,7 +13,6 @@ import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -212,75 +211,74 @@ export default function WorkspaceSkills({
           owner={owner}
         />
       )}
-      <ConversationsNavigationProvider>
-        <AgentDetails
-          owner={owner}
-          user={user}
-          agentId={agentId}
-          onClose={() => setAgentId(null)}
-        />
-        <AppWideModeLayout
-          subscription={subscription}
-          owner={owner}
-          navChildren={<AgentSidebarMenu owner={owner} />}
-        >
-          <Head>
-            <title>Dust - Manage Skills</title>
-          </Head>
-          <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-            <Page.Header title="Manage Skills" icon={SKILL_ICON} />
-            <Page.Vertical gap="md" align="stretch">
-              <div className="flex flex-row gap-2">
-                <SearchInput
-                  ref={searchBarRef}
-                  className="flex-grow"
-                  name="search"
-                  placeholder="Search (Name, Editors)"
-                  value={skillSearch}
-                  onChange={(s) => {
-                    setSkillSearch(s);
-                  }}
+
+      <AgentDetails
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <AppWideModeLayout
+        subscription={subscription}
+        owner={owner}
+        navChildren={<AgentSidebarMenu owner={owner} />}
+      >
+        <Head>
+          <title>Dust - Manage Skills</title>
+        </Head>
+        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
+          <Page.Header title="Manage Skills" icon={SKILL_ICON} />
+          <Page.Vertical gap="md" align="stretch">
+            <div className="flex flex-row gap-2">
+              <SearchInput
+                ref={searchBarRef}
+                className="flex-grow"
+                name="search"
+                placeholder="Search (Name, Editors)"
+                value={skillSearch}
+                onChange={(s) => {
+                  setSkillSearch(s);
+                }}
+              />
+              <Button
+                label="Create skill"
+                href={getSkillBuilderRoute(owner.sId, "new")}
+                icon={PlusIcon}
+                tooltip="Create a new skill"
+              />
+            </div>
+            <div className="flex flex-col pt-3">
+              <Tabs value={activeTab}>
+                <TabsList>
+                  {visibleTabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      label={tab.label}
+                      onClick={() => !skillSearch && setSelectedTab(tab.id)}
+                      tooltip={tab.description}
+                      isCounter={tab.id !== "archived"}
+                      counterValue={`${skillsByTab[tab.id].length}`}
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
+              {isLoading ? (
+                <div className="mt-8 flex justify-center">
+                  <Spinner size="lg" />
+                </div>
+              ) : (
+                <SkillsTable
+                  owner={owner}
+                  skills={skillsByTab[activeTab]}
+                  onSkillClick={setSelectedSkill}
+                  onAgentClick={setAgentId}
                 />
-                <Button
-                  label="Create skill"
-                  href={getSkillBuilderRoute(owner.sId, "new")}
-                  icon={PlusIcon}
-                  tooltip="Create a new skill"
-                />
-              </div>
-              <div className="flex flex-col pt-3">
-                <Tabs value={activeTab}>
-                  <TabsList>
-                    {visibleTabs.map((tab) => (
-                      <TabsTrigger
-                        key={tab.id}
-                        value={tab.id}
-                        label={tab.label}
-                        onClick={() => !skillSearch && setSelectedTab(tab.id)}
-                        tooltip={tab.description}
-                        isCounter={tab.id !== "archived"}
-                        counterValue={`${skillsByTab[tab.id].length}`}
-                      />
-                    ))}
-                  </TabsList>
-                </Tabs>
-                {isLoading ? (
-                  <div className="mt-8 flex justify-center">
-                    <Spinner size="lg" />
-                  </div>
-                ) : (
-                  <SkillsTable
-                    owner={owner}
-                    skills={skillsByTab[activeTab]}
-                    onSkillClick={setSelectedSkill}
-                    onAgentClick={setAgentId}
-                  />
-                )}
-              </div>
-            </Page.Vertical>
-          </div>
-        </AppWideModeLayout>
-      </ConversationsNavigationProvider>
+              )}
+            </div>
+          </Page.Vertical>
+        </div>
+      </AppWideModeLayout>
     </>
   );
 }

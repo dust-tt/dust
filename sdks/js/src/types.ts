@@ -297,32 +297,32 @@ export function isSupportedAudioContentType(
   return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
 
-const UserMessageOriginSchema = FlexibleEnumSchema<
-  | "agent_handover"
-  | "api"
-  | "cli"
-  | "cli_programmatic"
-  | "email"
-  | "excel"
-  | "extension"
-  | "github-copilot-chat"
-  | "gsheet"
-  | "make"
-  | "n8n"
-  | "powerpoint"
-  | "raycast"
-  | "run_agent"
-  | "slack"
-  | "slack_workflow"
-  | "teams"
-  | "transcript"
-  | "triggered_programmatic"
-  | "triggered"
-  | "web"
-  | "zapier"
-  | "zendesk"
-  | "onboarding_conversation"
->()
+const UserMessageOriginSchema = z
+  .enum([
+    "api",
+    "cli",
+    "cli_programmatic",
+    "email",
+    "excel",
+    "extension",
+    "github-copilot-chat",
+    "gsheet",
+    "make",
+    "n8n",
+    "powerpoint",
+    "raycast",
+    "slack",
+    "slack_workflow",
+    "teams",
+    "transcript",
+    "triggered_programmatic",
+    "triggered",
+    "web",
+    "zapier",
+    "zendesk",
+    "onboarding_conversation",
+  ])
+  .catch("api")
   .or(z.null())
   .or(z.undefined());
 
@@ -979,7 +979,6 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
   lastTriggerRunAt: z.number().optional().nullable(),

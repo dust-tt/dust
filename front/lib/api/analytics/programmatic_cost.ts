@@ -286,10 +286,10 @@ export async function handleProgrammaticCostRequest(
       const { cycleStart: periodStart, cycleEnd: periodEnd } =
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      // Cap periodEnd to 5 days in the future to avoid empty chart areas.
-      const FIVE_DAYS_IN_MS = 5 * 24 * 60 * 60 * 1000;
+      // Cap periodEnd to 10 days in the future to avoid too big empty chart areas.
+      const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000;
       const cappedPeriodEnd = new Date(
-        Math.min(periodEnd.getTime(), Date.now() + FIVE_DAYS_IN_MS)
+        Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_IN_MS)
       );
 
       const timestamps = getTimestampsInRange(periodStart, cappedPeriodEnd);

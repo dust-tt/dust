@@ -404,7 +404,6 @@ export interface WorkspaceMetadata {
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
-  creditAlertIdempotencyKey?: string;
 }
 
 export async function updateWorkspaceMetadata(
@@ -444,13 +443,6 @@ export function getWorkspacePublicAPILimits(
 ): PublicAPILimitsType | null {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return owner.metadata?.publicApiLimits || null;
-}
-
-export async function setWorkspacePublicAPILimits(
-  owner: LightWorkspaceType,
-  limits: PublicAPILimitsType
-): Promise<Result<void, Error>> {
-  return updateWorkspaceMetadata(owner, { publicApiLimits: limits });
 }
 
 export async function updateExtensionConfiguration(
