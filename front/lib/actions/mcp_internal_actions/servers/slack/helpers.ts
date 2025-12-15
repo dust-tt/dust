@@ -1,5 +1,6 @@
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -112,6 +113,28 @@ export function cleanUserPayload(user: Member): MinimalUserInfo {
     real_name: user.real_name ?? "",
     display_name: user.profile?.display_name ?? "",
     email: user.profile?.email,
+  };
+}
+
+// Minimal user group information returned to reduce context window usage.
+export type MinimalUserGroupInfo = {
+  id: string;
+  handle: string;
+  name: string;
+  description?: string;
+  user_count?: number;
+};
+
+// Clean user group payload to keep only essential fields.
+export function cleanUserGroupPayload(
+  usergroup: Usergroup
+): MinimalUserGroupInfo {
+  return {
+    id: usergroup.id ?? "",
+    handle: usergroup.handle ?? "",
+    name: usergroup.name ?? "",
+    description: usergroup.description,
+    user_count: usergroup.user_count,
   };
 }
 
@@ -633,11 +656,54 @@ export async function executeScheduleMessage(
   ]);
 }
 
+export async function executeListUserGroups(accessToken: string) {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.usergroups.list({
+      include_count: true,
+      include_disabled: false,
+      include_users: false,
+    });
+
+    if (!response.ok) {
+      return new Err(new MCPError("Failed to list user groups"));
+    }
+
+    const usergroups = response.usergroups ?? [];
+    const cleanedUserGroups = usergroups.map(cleanUserGroupPayload);
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `The workspace has ${cleanedUserGroups.length} user groups`,
+      },
+      {
+        type: "text" as const,
+        text: JSON.stringify(cleanedUserGroups, null, 2),
+      },
+    ]);
+  } catch (error) {
+    return new Err(new MCPError(`Error listing user groups: ${error}`));
+  }
+}
+
 export async function executeListUsers(
   nameFilter: string | undefined,
-  accessToken: string
+  accessToken: string,
+  includeUserGroups?: boolean
 ) {
   const slackClient = await getSlackClient(accessToken);
+
+  // Load user groups first if requested.
+  let userGroupsContent: Array<{ type: "text"; text: string }> = [];
+  if (includeUserGroups) {
+    const userGroupsResult = await executeListUserGroups(accessToken);
+    if (userGroupsResult.isOk()) {
+      userGroupsContent = userGroupsResult.value;
+    }
+  }
+
   const users: Member[] = [];
 
   let cursor: string | undefined = undefined;
@@ -666,7 +732,10 @@ export async function executeListUsers(
       );
 
       if (filteredUsers.length > 0) {
-        return buildFilteredListResponse<Member, MinimalUserInfo>(
+        const usersResponse = buildFilteredListResponse<
+          Member,
+          MinimalUserInfo
+        >(
           users,
           nameFilter,
           (user, normalizedFilter) =>
@@ -682,12 +751,14 @@ export async function executeListUsers(
               : `The workspace has ${count} users`,
           cleanUserPayload
         );
+
+        return new Ok([...userGroupsContent, ...usersResponse.value]);
       }
     }
   } while (cursor);
 
   // No filter or no matches found after checking all pages.
-  return buildFilteredListResponse<Member, MinimalUserInfo>(
+  const usersResponse = buildFilteredListResponse<Member, MinimalUserInfo>(
     users,
     nameFilter,
     (user, normalizedFilter) =>
@@ -703,6 +774,8 @@ export async function executeListUsers(
         : `The workspace has ${count} users`,
     cleanUserPayload
   );
+
+  return new Ok([...userGroupsContent, ...usersResponse.value]);
 }
 
 export async function executeGetUser(userId: string, accessToken: string) {

@@ -564,7 +564,7 @@ export const INTERNAL_MCP_SERVERS = {
       // Read operations - never ask
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
-      list_users: "never_ask",
+      list_users_and_groups: "never_ask",
       list_public_channels: "never_ask",
       list_channels: "never_ask",
       list_joined_channels: "never_ask",
