@@ -544,7 +544,7 @@ async function getBlockParent(
       if (!isFullBlock(block)) {
         // Not much we can do here to get the parent page.
         localLogger.info(
-          { parentId: block.id },
+          { parentId: block.id, blockId },
           "Parent block is not a full block."
         );
         return null;
