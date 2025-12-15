@@ -360,7 +360,7 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const showLoader =
-    isSearchLoading ?? isLoadingNextPage ?? isSearchValidating ?? isDebouncing;
+    isSearchLoading || isLoadingNextPage || isSearchValidating || isDebouncing;
 
   const availableSources = [
     ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({

@@ -17,6 +17,7 @@ import type {
   SearchWarningCode,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -65,7 +66,17 @@ async function handleStreamingSearch(
     });
   }
 
-  const limit = parseInt((limitParam as string) || "25", 10);
+  if (!isString(limitParam)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "limit must be a number between 1 and 100.",
+      },
+    });
+  }
+
+  const limit = limitParam ? parseInt(limitParam, 10) : 25;
   if (isNaN(limit) || limit < 1 || limit > 100) {
     return apiError(req, res, {
       status_code: 400,
@@ -93,13 +104,11 @@ async function handleStreamingSearch(
       controller.abort();
     });
 
-    // Parse spaceIds from query parameter
     const spaceIds =
       typeof spaceIdsParam === "string" && spaceIdsParam.length > 0
         ? spaceIdsParam.split(",")
         : undefined;
 
-    // Prepare search params for handleSearch
     const searchParams = {
       query,
       viewType: viewType as "all" | "document" | "table",
@@ -225,13 +234,6 @@ async function handler(
     });
   }
 
-  logger.info(
-    {
-      workspaceId: auth.workspace()?.sId,
-      params: bodyValidation.right,
-    },
-    "Search knowledge (global)"
-  );
   const searchResult = await handleSearch(req, auth, bodyValidation.right);
 
   if (searchResult.isErr()) {
