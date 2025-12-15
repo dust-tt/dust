@@ -121,7 +121,7 @@ async function handler(
         context?.origin &&
         req.body.context.origin !== context.origin
       ) {
-        logger.info(
+        logger.warn(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             authMethod: auth.authMethod(),

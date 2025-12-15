@@ -149,7 +149,7 @@ async function handler(
         message?.context?.origin &&
         req.body.message.context.origin !== message.context.origin
       ) {
-        logger.info(
+        logger.warn(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             authMethod: auth.authMethod(),
