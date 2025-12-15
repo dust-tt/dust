@@ -8,7 +8,7 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 
-export function SkillBuilderRequestedSpace() {
+export function SkillBuilderRequestedSpacesSection() {
   const { watch } = useFormContext<SkillBuilderFormData>();
   const tools = watch("tools");
 
