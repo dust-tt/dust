@@ -116,6 +116,7 @@ function buildAutomatableTasksList(): string {
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
+  username: string;
 }): string {
   // Determine which tools to show in the first message.
   const toolSetups: Array<{ sId: string; name: string }> = [];
@@ -284,7 +285,7 @@ When the user confirms they want to automate a task:
 2. **Once you have the timezone**, call create_schedule_trigger with the timezone parameter:
    - name: A short descriptive name (e.g., "Daily email summary")
    - schedule: The schedule in natural language (e.g., "every weekday at 9am")
-   - prompt: What @dust should do (e.g., "Summarize the important emails I received since yesterday")
+   - prompt: What @dust should do. Start with @${options.username} so the user gets pinged (e.g., "@${options.username} Summarize the important emails I received since yesterday")
    - timezone: The IANA timezone the user provided (e.g., "America/New_York", "Europe/Paris")
 
 The tool will create the trigger and return a confirmation message.
@@ -459,6 +460,7 @@ export async function createOnboardingConversationIfNeeded(
   const onboardingSystemMessage = buildOnboardingPrompt({
     emailProvider,
     userJobType,
+    username: userJson.username,
   });
 
   const context: UserMessageContext = {
