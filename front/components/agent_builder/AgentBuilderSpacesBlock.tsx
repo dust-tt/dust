@@ -1,11 +1,11 @@
 import { Chip } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
-import { RemoveSpaceDialog } from "@app/components/shared/RemoveSpaceDialog";
+import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
@@ -22,7 +22,10 @@ export function AgentBuilderSpacesBlock() {
   const selectedSkills = watch("skills");
   const actions = watch("actions");
 
-  const [spaceToRemove, setSpaceToRemove] = useState<SpaceType | null>(null);
+  const confirmRemoveSpace = useRemoveSpaceConfirm({
+    entityName: "agent",
+    mcpServerViews,
+  });
 
   // Compute requested spaces from tools/knowledge (actions)
   const spaceIdToActions = useMemo(() => {
@@ -55,52 +58,47 @@ export function AgentBuilderSpacesBlock() {
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
   }, [spaces, selectedSkills, allSkills, spaceIdToActions]);
 
-  const handleRemoveSpace = (space: SpaceType) => {
-    setSpaceToRemove(space);
-  };
+  const handleRemoveSpace = async (space: SpaceType) => {
+    // Compute items to remove for the dialog
+    const actionsToRemove = (spaceIdToActions[space.sId] || []).filter(
+      (action): action is BuilderAction => action.type === "MCP"
+    );
 
-  const handleConfirmRemove = () => {
-    if (!spaceToRemove) {
+    const skillsToRemove = selectedSkills.filter((skill) =>
+      allSkills
+        .find((s) => s.sId === skill.sId)
+        ?.requestedSpaceIds.includes(space.sId)
+    );
+
+    const confirmed = await confirmRemoveSpace(
+      space,
+      actionsToRemove,
+      skillsToRemove
+    );
+
+    if (!confirmed) {
       return;
     }
 
     // Remove actions (knowledge + tools) that belong to this space
     // TODO(skill): if knowledge have data from several spaces, edit the knowledge to only remove the data from this space
-    const actionsToRemove = spaceIdToActions[spaceToRemove.sId] || [];
     const actionIdsToRemove = new Set(actionsToRemove.map((a) => a.id));
     const newActions = actions.filter((a) => !actionIdsToRemove.has(a.id));
-    setValue("actions", newActions);
+    setValue("actions", newActions, { shouldDirty: true });
 
     // Remove skills that have this space in their requestedSpaceIds
     const newSkills = selectedSkills.filter(
       (skill) =>
         !allSkills
           .find((s) => s.sId === skill.sId)
-          ?.requestedSpaceIds.includes(spaceToRemove.sId)
+          ?.requestedSpaceIds.includes(space.sId)
     );
-    setValue("skills", newSkills);
-
-    setSpaceToRemove(null);
+    setValue("skills", newSkills, { shouldDirty: true });
   };
 
   if (nonGlobalSpacesWithRestrictions.length === 0) {
     return null;
   }
-
-  // Compute items to remove for the dialog
-  const actionsToRemove = spaceToRemove
-    ? (spaceIdToActions[spaceToRemove.sId] || []).filter(
-        (action): action is BuilderAction => action.type === "MCP"
-      )
-    : [];
-
-  const skillsToRemove = spaceToRemove
-    ? selectedSkills.filter((skill) =>
-        allSkills
-          .find((s) => s.sId === skill.sId)
-          ?.requestedSpaceIds.includes(spaceToRemove.sId)
-      )
-    : [];
 
   return (
     <div className="space-y-3 px-6">
@@ -122,16 +120,6 @@ export function AgentBuilderSpacesBlock() {
           />
         ))}
       </div>
-
-      <RemoveSpaceDialog
-        space={spaceToRemove}
-        entityName="agent"
-        actions={actionsToRemove}
-        skills={skillsToRemove}
-        mcpServerViews={mcpServerViews}
-        onClose={() => setSpaceToRemove(null)}
-        onConfirm={handleConfirmRemove}
-      />
     </div>
   );
 }

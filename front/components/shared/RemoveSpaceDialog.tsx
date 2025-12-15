@@ -1,20 +1,13 @@
-import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@dust-tt/sparkle";
+import { useContext } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
-
-import type { BuilderAction } from "./tools_picker/types";
 
 function getActionDisplayName(
   action: BuilderAction,
@@ -42,89 +35,72 @@ function getActionIcon(
   return null;
 }
 
-export interface SkillItem {
+interface ItemToRemove {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+}
+
+interface SkillToRemove {
   sId: string;
   name: string;
 }
 
-interface RemoveSpaceDialogProps {
-  space: SpaceType | null;
+interface UseRemoveSpaceConfirmParams {
   entityName: "agent" | "skill";
-  actions?: BuilderAction[];
-  skills?: SkillItem[];
   mcpServerViews: MCPServerViewType[];
-  onClose: () => void;
-  onConfirm: () => void;
 }
 
-export function RemoveSpaceDialog({
-  space,
+export function useRemoveSpaceConfirm({
   entityName,
-  actions = [],
-  skills = [],
   mcpServerViews,
-  onClose,
-  onConfirm,
-}: RemoveSpaceDialogProps) {
-  if (!space) {
-    return null;
-  }
+}: UseRemoveSpaceConfirmParams) {
+  const confirm = useContext(ConfirmContext);
 
   const SkillIcon = SKILL_ICON;
 
-  // Build list of all items to remove
-  const allItems: Array<{ id: string; name: string; icon: React.ReactNode }> = [
-    ...skills.map((skill) => ({
-      id: skill.sId,
-      name: skill.name,
-      // TODO(skills): use actual skill icon
-      icon: <SkillIcon className="h-4 w-4 shrink-0" />,
-    })),
-    ...actions.map((action) => ({
-      id: action.id,
-      name: getActionDisplayName(action, mcpServerViews),
-      icon: getActionIcon(action, mcpServerViews),
-    })),
-  ];
+  return async (
+    space: SpaceType,
+    actions: BuilderAction[],
+    skills: SkillToRemove[] = []
+  ): Promise<boolean> => {
+    const allItems: ItemToRemove[] = [
+      ...skills.map((skill) => ({
+        id: skill.sId,
+        name: skill.name,
+        icon: <SkillIcon className="h-4 w-4 shrink-0" />,
+      })),
+      ...actions.map((action) => ({
+        id: action.id,
+        name: getActionDisplayName(action, mcpServerViews),
+        icon: getActionIcon(action, mcpServerViews),
+      })),
+    ];
 
-  return (
-    <Dialog open={!!space} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="md" isAlertDialog>
-        <DialogHeader hideButton>
-          <DialogTitle>Remove {getSpaceName(space)} space</DialogTitle>
-        </DialogHeader>
-        <DialogContainer>
-          <p className="text-sm">
-            This will remove the following elements from the {entityName}:
-            <div className="mt-4 flex flex-wrap items-center gap-1">
-              {allItems.map((item, index) => (
-                <span key={item.id} className="inline-flex items-center gap-1">
-                  {item.icon}
-                  <span className="text-sm text-foreground dark:text-foreground-night">
-                    {item.name}
-                  </span>
-                  {index < allItems.length - 1 && (
-                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      ,
-                    </span>
-                  )}
+    return confirm({
+      title: `Remove ${getSpaceName(space)} space`,
+      message: (
+        <p className="text-sm">
+          This will remove the following elements from the {entityName}:
+          <span className="mt-4 flex flex-wrap items-center gap-1">
+            {allItems.map((item, index) => (
+              <span key={item.id} className="inline-flex items-center gap-1">
+                {item.icon}
+                <span className="text-sm text-foreground dark:text-foreground-night">
+                  {item.name}
                 </span>
-              ))}
-            </div>
-          </p>
-        </DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: "OK",
-            variant: "warning",
-            onClick: onConfirm,
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
+                {index < allItems.length - 1 && (
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    ,
+                  </span>
+                )}
+              </span>
+            ))}
+          </span>
+        </p>
+      ),
+      validateLabel: "OK",
+      validateVariant: "warning",
+    });
+  };
 }
