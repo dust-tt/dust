@@ -834,7 +834,7 @@ async function createServer(
         }
 
         try {
-          return await executeGetUser(userId, accessToken);
+          return await executeGetUser({ userId, accessToken });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
@@ -1089,10 +1089,10 @@ async function createServer(
         }
 
         // Get display name for the channel.
-        const displayName = await resolveChannelDisplayName(
+        const displayName = await resolveChannelDisplayName({
           channelId,
-          accessToken
-        );
+          accessToken,
+        });
 
         const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
@@ -1105,7 +1105,10 @@ async function createServer(
         const threadsWithAuthors = await Promise.all(
           matches.map(async (match) => {
             const authorName = match.user
-              ? await resolveUserDisplayName(match.user, accessToken)
+              ? await resolveUserDisplayName({
+                  userId: match.user,
+                  accessToken,
+                })
               : null;
             return {
               ...match,
@@ -1183,7 +1186,7 @@ async function createServer(
           return new Err(new MCPError("Access token not found"));
         }
 
-        return executeReadThreadMessages(
+        return executeReadThreadMessages({
           channel,
           threadTs,
           limit,
@@ -1191,8 +1194,8 @@ async function createServer(
           oldest,
           latest,
           accessToken,
-          mcpServerId
-        );
+          mcpServerId,
+        });
       }
     )
   );

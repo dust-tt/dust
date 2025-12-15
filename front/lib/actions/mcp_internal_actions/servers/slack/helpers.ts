@@ -283,10 +283,13 @@ export async function resolveChannelId({
 
 // Helper function to resolve user ID to display name.
 // Returns the user's display name or real name, or null if not found.
-export async function resolveUserDisplayName(
-  userId: string,
-  accessToken: string
-): Promise<string | null> {
+export async function resolveUserDisplayName({
+  userId,
+  accessToken,
+}: {
+  userId: string;
+  accessToken: string;
+}): Promise<string | null> {
   const slackClient = await getSlackClient(accessToken);
 
   try {
@@ -311,10 +314,13 @@ export async function resolveUserDisplayName(
 // Resolves a channel ID to a human-readable display name.
 // Handles DMs (direct messages) and regular channels.
 // This function expects a normalized channel ID from resolveChannelId.
-export async function resolveChannelDisplayName(
-  channelId: string,
-  accessToken: string
-): Promise<string> {
+export async function resolveChannelDisplayName({
+  channelId,
+  accessToken,
+}: {
+  channelId: string;
+  accessToken: string;
+}): Promise<string> {
   const slackClient = await getSlackClient(accessToken);
 
   try {
@@ -325,10 +331,10 @@ export async function resolveChannelDisplayName(
     if (channelInfo.ok && channelInfo.channel) {
       // For DMs, channelId starts with "D" and channel.name contains the user ID.
       if (channelId.startsWith("D") && channelInfo.channel.name) {
-        const userName = await resolveUserDisplayName(
-          channelInfo.channel.name,
-          accessToken
-        );
+        const userName = await resolveUserDisplayName({
+          userId: channelInfo.channel.name,
+          accessToken,
+        });
         return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
       }
 
@@ -683,7 +689,11 @@ export async function executeScheduleMessage(
   ]);
 }
 
-export async function executeListUserGroups(accessToken: string) {
+export async function executeListUserGroups({
+  accessToken,
+}: {
+  accessToken: string;
+}) {
   const slackClient = await getSlackClient(accessToken);
 
   try {
@@ -738,7 +748,7 @@ export async function executeListUsers({
   // Load user groups first if requested.
   let userGroupsContent: Array<{ type: "text"; text: string }> = [];
   if (includeUserGroups) {
-    const userGroupsResult = await executeListUserGroups(accessToken);
+    const userGroupsResult = await executeListUserGroups({ accessToken });
     if (userGroupsResult.isOk()) {
       userGroupsContent = userGroupsResult.value;
     }
@@ -820,7 +830,13 @@ export async function executeListUsers({
   return new Ok([...userGroupsContent, ...usersResponse.value]);
 }
 
-export async function executeGetUser(userId: string, accessToken: string) {
+export async function executeGetUser({
+  userId,
+  accessToken,
+}: {
+  userId: string;
+  accessToken: string;
+}) {
   const slackClient = await getSlackClient(accessToken);
   const response = await slackClient.users.info({ user: userId });
 
@@ -961,16 +977,25 @@ export async function executeListJoinedChannels(
   );
 }
 
-export async function executeReadThreadMessages(
-  channel: string,
-  threadTs: string,
-  limit: number | undefined,
-  cursor: string | undefined,
-  oldest: string | undefined,
-  latest: string | undefined,
-  accessToken: string,
-  mcpServerId: string
-) {
+export async function executeReadThreadMessages({
+  channel,
+  threadTs,
+  limit,
+  cursor,
+  oldest,
+  latest,
+  accessToken,
+  mcpServerId,
+}: {
+  channel: string;
+  threadTs: string;
+  limit: number | undefined;
+  cursor: string | undefined;
+  oldest: string | undefined;
+  latest: string | undefined;
+  accessToken: string;
+  mcpServerId: string;
+}) {
   const slackClient = await getSlackClient(accessToken);
 
   // Resolve channel name/ID to channel ID (supports public/private channels and DMs).
