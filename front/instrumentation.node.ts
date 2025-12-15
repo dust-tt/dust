@@ -1,3 +1,3 @@
-import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/init";
+import { initializeOpenTelemetryInstrumentation } from "@app/lib/api/instrumentation/init";
 
-initializeLangfuseInstrumentation();
+initializeOpenTelemetryInstrumentation();

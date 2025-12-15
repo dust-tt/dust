@@ -2,7 +2,7 @@ import { trace } from "@opentelemetry/api";
 import type { Resource } from "@opentelemetry/resources";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
+import type { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 
 import config from "@app/lib/api/config";
@@ -15,13 +15,10 @@ export let resource: Resource | undefined;
 export let traceExporter: ConsoleSpanExporter | undefined;
 
 /**
- * Initialize OpenTelemetry with Langfuse instrumentation.
+ * Initialize OpenTelemetry with Langfuse instrumentation for agent-loop observability.
  * This sets up manual tracing for LLM and agent operations only.
  */
-export function initializeLangfuseInstrumentation(): void {
-  console.log("Initializing Langfuse instrumentation...");
-  console.log("Is Langfuse enabled?", config.isLangfuseEnabled());
-  console.log("Is SDK already initialized?", !!sdk);
+export function initializeOpenTelemetryInstrumentation(): void {
   if (!config.isLangfuseEnabled() || sdk) {
     return;
   }
@@ -32,16 +29,12 @@ export function initializeLangfuseInstrumentation(): void {
       [ATTR_SERVICE_NAME]: "agent-loop",
     });
 
-    // Create trace exporter - ConsoleSpanExporter works with Langfuse processor
-    traceExporter = new ConsoleSpanExporter();
-
     sdk = new NodeSDK({
-      resource,
-      traceExporter,
-      spanProcessors: [new FilteredLangfuseSpanProcessor()],
+      autoDetectResources: false,
       // Disable auto-instrumentation to avoid capturing all API calls.
       instrumentations: [],
-      autoDetectResources: false,
+      resource,
+      spanProcessors: [new FilteredLangfuseSpanProcessor()],
     });
 
     sdk.start();

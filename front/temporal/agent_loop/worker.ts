@@ -9,7 +9,7 @@ import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import {
-  initializeLangfuseInstrumentation,
+  initializeOpenTelemetryInstrumentation,
   resource,
 } from "@app/lib/api/instrumentation/init";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
@@ -42,7 +42,7 @@ export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   // Initialize LLMs instrumentation for the worker.
-  initializeLangfuseInstrumentation();
+  initializeOpenTelemetryInstrumentation();
 
   const spanExporter = new InMemorySpanExporter();
 
