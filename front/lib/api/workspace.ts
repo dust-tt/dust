@@ -445,13 +445,6 @@ export function getWorkspacePublicAPILimits(
   return owner.metadata?.publicApiLimits || null;
 }
 
-export async function setWorkspacePublicAPILimits(
-  owner: LightWorkspaceType,
-  limits: PublicAPILimitsType
-): Promise<Result<void, Error>> {
-  return updateWorkspaceMetadata(owner, { publicApiLimits: limits });
-}
-
 export async function updateExtensionConfiguration(
   auth: Authenticator,
   blacklistedDomains: string[]
