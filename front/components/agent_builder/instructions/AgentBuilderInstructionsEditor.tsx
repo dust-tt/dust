@@ -20,6 +20,7 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -142,6 +143,7 @@ export function AgentBuilderInstructionsEditor({
           class: "mt-4 mb-3",
         },
       }),
+      EmojiExtension,
     ];
 
     if (mentionsV2) {
