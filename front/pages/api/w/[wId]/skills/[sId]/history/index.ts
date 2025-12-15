@@ -2,12 +2,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { listSkillConfigurationVersions } from "@app/lib/api/assistant/configuration/skill";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
 import { GetSkillConfigurationsHistoryQuerySchema } from "@app/types/api/internal/skill";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
@@ -22,7 +22,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!isString(req.query.sId)) {
+  const { sId } = req.query;
+  if (typeof sId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -32,12 +33,10 @@ async function handler(
     });
   }
 
-  const { sId } = req.query;
-
-  // Fetch the skill - if not found or no permission, return 404
+  // Check that user has access to this skill
   const skill = await SkillResource.fetchById(auth, sId);
 
-  if (!skill || !skill.canWrite(auth)) {
+  if (!skill || (!skill.canWrite(auth) && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -69,15 +68,14 @@ async function handler(
 
       const { limit } = queryValidation.right;
 
-      let skillVersionResources = await skill.listVersions(auth);
+      let skillVersions = await listSkillConfigurationVersions(auth, {
+        skillId: sId,
+      });
 
+      // Return the latest versions first (already sorted by version DESC)
       if (limit) {
-        skillVersionResources = skillVersionResources.slice(0, limit);
+        skillVersions = skillVersions.slice(0, limit);
       }
-
-      const skillVersions = skillVersionResources.map((resource) =>
-        resource.toJSON(auth)
-      );
 
       return res.status(200).json({ history: skillVersions });
     default:
