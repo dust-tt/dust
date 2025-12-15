@@ -132,6 +132,7 @@ async function handler(
       sId: editor.user_id,
     })),
     skills: [],
+    additionalRequestedSpaceIds: [],
   };
 
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({

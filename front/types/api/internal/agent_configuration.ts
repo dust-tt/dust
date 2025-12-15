@@ -208,6 +208,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     tags: t.array(TagSchema),
     editors: t.array(EditorSchema),
     skills: t.array(SkillSchema),
+    additionalRequestedSpaceIds: t.array(t.string),
   }),
 });
 
