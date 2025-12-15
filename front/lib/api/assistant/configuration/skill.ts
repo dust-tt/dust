@@ -1,8 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { WhereOptions } from "sequelize";
 
 /**
  * Get all versions of a single skill, including the current version.
@@ -25,11 +27,13 @@ export async function listSkillConfigurationVersions(
   }
 
   // Fetch all historical versions from skill_versions table
+  const where: WhereOptions<SkillVersionModel> = {
+    workspaceId: workspace.id,
+    skillConfigurationId: currentSkill.id,
+  };
+
   const versionModels = await SkillVersionModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      skillConfigurationId: currentSkill.id,
-    },
+    where,
     order: [["version", "DESC"]],
   });
 
@@ -47,7 +51,12 @@ export async function listSkillConfigurationVersions(
       userFacingDescription: versionModel.userFacingDescription,
       instructions: versionModel.instructions,
       icon: versionModel.icon,
-      requestedSpaceIds: versionModel.requestedSpaceIds,
+      requestedSpaceIds: versionModel.requestedSpaceIds.map((spaceId) =>
+        SpaceResource.modelIdToSId({
+          id: Number(spaceId),
+          workspaceId: workspace.id,
+        })
+      ),
       // For historical versions, we use the stored mcpServerConfigurationIds
       tools: versionModel.mcpServerConfigurationIds.map((mcpServerId) => ({
         mcpServerViewId: makeSId("mcp_server_view", {
