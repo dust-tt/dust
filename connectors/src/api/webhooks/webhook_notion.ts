@@ -101,6 +101,7 @@ const _webhookNotionAPIHandler = async (
   );
 
   // Process the webhook event for all matching connectors sequentially
+  let hasFailure = false;
   for (const notionConnectorState of notionConnectorStates) {
     try {
       // Get the actual connector
@@ -136,6 +137,7 @@ const _webhookNotionAPIHandler = async (
         },
       });
     } catch (err) {
+      hasFailure = true;
       logger.error(
         {
           err: normalizeError(err),
@@ -145,6 +147,10 @@ const _webhookNotionAPIHandler = async (
         "Failed to process Notion webhook event"
       );
     }
+  }
+
+  if (hasFailure) {
+    return res.status(500).end();
   }
 
   return res.status(200).end();
