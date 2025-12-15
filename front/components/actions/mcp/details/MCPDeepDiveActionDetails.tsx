@@ -10,11 +10,11 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import { isAgentPauseOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { DEEP_DIVE_AVATAR_URL } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
 } from "@app/lib/mentions/markdown/plugin";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 export function MCPDeepDiveActionDetails({
   owner,
@@ -46,9 +46,7 @@ export function MCPDeepDiveActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName="Hand off to Deep dive"
-      visual={() => (
-        <Avatar visual={DEEP_DIVE_AVATAR_URL} size="xs" busy={isBusy} />
-      )}
+      visual={() => <Avatar visual={DUST_AVATAR_URL} size="xs" busy={isBusy} />}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-4">

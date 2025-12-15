@@ -1,3 +1,6 @@
+export const DUST_AVATAR_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
 const TAILWIND_COLOR_NAMES = [
   "gray",
   "blue",
