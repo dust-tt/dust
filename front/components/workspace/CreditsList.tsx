@@ -1,12 +1,6 @@
-import {
-  Chip,
-  DataTable,
-  Hoverable,
-  LoadingBlock,
-  Page,
-} from "@dust-tt/sparkle";
+import { Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
@@ -180,24 +174,14 @@ interface CreditsListProps {
 }
 
 export function CreditsList({ credits, isLoading }: CreditsListProps) {
-  const [showExpired, setShowExpired] = useState(false);
-
-  const { activeCredits, expiredCredits } = useMemo(() => {
+  const activeCredits = useMemo(() => {
     const sorted = sortCredits([...credits]);
-    return {
-      activeCredits: sorted.filter((c) => !isExpired(c)),
-      expiredCredits: sorted.filter((c) => isExpired(c)),
-    };
+    return sorted.filter((c) => !isExpired(c));
   }, [credits]);
 
   const displayedRows = useMemo(() => {
-    const active = getTableRows(activeCredits);
-    if (showExpired) {
-      const expired = getTableRows(expiredCredits);
-      return [...active, ...expired];
-    }
-    return active;
-  }, [activeCredits, expiredCredits, showExpired]);
+    return getTableRows(activeCredits);
+  }, [activeCredits]);
 
   if (isLoading) {
     return (
@@ -218,19 +202,5 @@ export function CreditsList({ credits, isLoading }: CreditsListProps) {
     );
   }
 
-  return (
-    <>
-      <DataTable data={displayedRows} columns={creditColumns} />
-      {expiredCredits.length > 0 && (
-        <div className="flex w-full justify-end pt-2">
-          <Hoverable
-            className="cursor-pointer text-sm text-gray-400 hover:text-gray-500 hover:underline"
-            onClick={() => setShowExpired(!showExpired)}
-          >
-            {showExpired ? "Hide expired" : "Show expired"}
-          </Hoverable>
-        </div>
-      )}
-    </>
-  );
+  return <DataTable data={displayedRows} columns={creditColumns} />;
 }

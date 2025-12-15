@@ -24,6 +24,11 @@ const TYPE_SORT_ORDER: Record<CreditType, number> = {
   payg: 3,
 };
 
+function isExpired(credit: CreditDisplayData): boolean {
+  const now = Date.now();
+  return credit.expirationDate !== null && credit.expirationDate <= now;
+}
+
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   return credits.sort((a, b) => {
     if (
@@ -31,7 +36,7 @@ function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
       b.expirationDate &&
       a.expirationDate !== b.expirationDate
     ) {
-      return a.expirationDate - b.expirationDate; // Most recent first
+      return b.expirationDate - a.expirationDate; // Most recent first
     }
 
     // Then sort by type priority
@@ -44,15 +49,27 @@ interface CreditHistorySheetProps {
   isLoading: boolean;
 }
 
+const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+
 export function CreditHistorySheet({
   credits,
   isLoading,
 }: CreditHistorySheetProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const [sixMonthsAgo] = useState(() => Date.now() - SIX_MONTHS_MS);
+  const expiredCredits = useMemo(() => {
+    return credits.filter(
+      (credit) =>
+        isExpired(credit) &&
+        credit.expirationDate !== null &&
+        credit.expirationDate >= sixMonthsAgo
+    );
+  }, [credits, sixMonthsAgo]);
+
   const sortedCredits = useMemo(() => {
-    return sortCredits([...credits]);
-  }, [credits]);
+    return sortCredits([...expiredCredits]);
+  }, [expiredCredits]);
 
   const displayedRows = useMemo(() => {
     return getTableRows(sortedCredits);
@@ -61,7 +78,7 @@ export function CreditHistorySheet({
   return (
     <>
       <Button
-        label="Show full history"
+        label="Past credits"
         variant="outline"
         size="xs"
         onClick={() => setIsOpen(true)}
@@ -69,7 +86,7 @@ export function CreditHistorySheet({
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent size="xl">
           <SheetHeader>
-            <SheetTitle>Credit history (last 6 months)</SheetTitle>
+            <SheetTitle>Past credits</SheetTitle>
           </SheetHeader>
           <SheetContainer>
             {isLoading ? (
@@ -77,19 +94,24 @@ export function CreditHistorySheet({
                 <Spinner size="sm" />
               </div>
             ) : displayedRows.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                No credits in the last 6 months.
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                No expired credits in the last 6 months.
               </p>
             ) : (
-              <DataTable data={displayedRows} columns={creditColumns} />
+              <>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Expired credits from the last 6 months.
+                </p>
+                <DataTable data={displayedRows} columns={creditColumns} />
+              </>
             )}
-            <p>
-              Any question about your credit history? Reach out to our support
-              via{" "}
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              For older credits,{" "}
               <Link href="mailto:support@dust.tt" className="underline">
-                support@dust.tt
-              </Link>{" "}
-            </p>
+                contact support
+              </Link>
+              .
+            </p>{" "}
           </SheetContainer>
         </SheetContent>
       </Sheet>

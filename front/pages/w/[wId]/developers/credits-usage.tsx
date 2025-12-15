@@ -476,19 +476,19 @@ export default function CreditsUsagePage({
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
-        {/* History Section */}
+        {/* Current Credits Section */}
         <Page.Vertical sizing="grow">
           <div className="flex w-full items-start justify-between">
             <Page.Vertical gap="sm" sizing="grow">
               <div className="flex w-full items-center justify-between">
-                <Page.H variant="h5">Credit history</Page.H>
+                <Page.H variant="h5">Current credits</Page.H>
                 <CreditHistorySheet
                   credits={credits}
                   isLoading={isCreditsLoading}
                 />
               </div>
               <Page.P variant="secondary">
-                Credit history for programmatic usage. Credits invoices are sent
+                Active credits for programmatic usage. Credits invoices are sent
                 by email at time of purchase.
               </Page.P>
             </Page.Vertical>
