@@ -5,8 +5,7 @@ import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 
 import config from "@app/lib/api/config";
 import { FilteredLangfuseSpanProcessor } from "@app/lib/api/instrumentation/processor";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 let sdk: NodeSDK | undefined;
 export let resource: Resource | undefined;
@@ -39,7 +38,8 @@ export function initializeOpenTelemetryInstrumentation({
 
     sdk.start();
   } catch (error) {
-    logger.warn(
+    // Use console.warn as this code is called in a specific context in Next.js.
+    console.warn(
       {
         error: normalizeError(error),
       },
