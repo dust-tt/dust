@@ -1,4 +1,9 @@
-import type { Block, Document, Text } from "@contentful/rich-text-types";
+import type {
+  Block,
+  Document,
+  Inline,
+  Text,
+} from "@contentful/rich-text-types";
 import { BLOCKS } from "@contentful/rich-text-types";
 
 export interface TocItem {
@@ -7,18 +12,18 @@ export interface TocItem {
   level: number;
 }
 
-function isTextNode(node: Block | Text): node is Text {
+function isTextNode(node: Block | Inline | Text): node is Text {
   return node.nodeType === "text";
 }
 
-function extractTextFromNode(node: Block): string {
+function extractTextFromNode(node: Block | Inline): string {
   let text = "";
   if ("content" in node) {
     for (const child of node.content) {
       if (isTextNode(child)) {
         text += child.value;
       } else if ("content" in child) {
-        text += extractTextFromNode(child as Block);
+        text += extractTextFromNode(child);
       }
     }
   }
