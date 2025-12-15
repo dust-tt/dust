@@ -646,7 +646,9 @@ async function createServer(
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules."
+          "The message to post, must follow the Slack message formatting rules. " +
+            "To mention a user, use <@user_id> (use the user's id field, not name). " +
+            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
       threadTs: z
         .string()
@@ -714,7 +716,9 @@ async function createServer(
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules."
+          "The message to post, must follow the Slack message formatting rules. " +
+            "To mention a user, use <@user_id> (use the user's id field, not name). " +
+            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
       post_at: z
         .union([z.number().int().positive(), z.string()])
@@ -767,12 +771,18 @@ async function createServer(
 
   server.tool(
     "list_users",
-    "List all users in the workspace",
+    "List all users in the workspace, and optionally user groups",
     {
       nameFilter: z
         .string()
         .optional()
         .describe("The name of the user to filter by (optional)"),
+      includeUserGroups: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, also include user groups in the response (optional, default: false)"
+        ),
     },
     withToolLogging(
       auth,
@@ -780,14 +790,18 @@ async function createServer(
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
       },
-      async ({ nameFilter }, { authInfo }) => {
+      async ({ nameFilter, includeUserGroups }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
           return new Err(new MCPError("Access token not found"));
         }
 
         try {
-          return await executeListUsers(nameFilter, accessToken);
+          return await executeListUsers({
+            nameFilter,
+            accessToken,
+            includeUserGroups,
+          });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
@@ -820,7 +834,7 @@ async function createServer(
         }
 
         try {
-          return await executeGetUser(userId, accessToken);
+          return await executeGetUser({ userId, accessToken });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
@@ -1075,10 +1089,10 @@ async function createServer(
         }
 
         // Get display name for the channel.
-        const displayName = await resolveChannelDisplayName(
+        const displayName = await resolveChannelDisplayName({
           channelId,
-          accessToken
-        );
+          accessToken,
+        });
 
         const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
@@ -1091,7 +1105,10 @@ async function createServer(
         const threadsWithAuthors = await Promise.all(
           matches.map(async (match) => {
             const authorName = match.user
-              ? await resolveUserDisplayName(match.user, accessToken)
+              ? await resolveUserDisplayName({
+                  userId: match.user,
+                  accessToken,
+                })
               : null;
             return {
               ...match,
@@ -1169,7 +1186,7 @@ async function createServer(
           return new Err(new MCPError("Access token not found"));
         }
 
-        return executeReadThreadMessages(
+        return executeReadThreadMessages({
           channel,
           threadTs,
           limit,
@@ -1177,8 +1194,8 @@ async function createServer(
           oldest,
           latest,
           accessToken,
-          mcpServerId
-        );
+          mcpServerId,
+        });
       }
     )
   );
