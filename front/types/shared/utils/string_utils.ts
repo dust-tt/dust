@@ -148,6 +148,7 @@ function formatAsDisplayName(name: string): string {
 }
 
 // Tool name separator used in prefixed tool names (e.g., "space__server__tool").
+// TODO(skills): unify with the one used globally, we can't import it here due to circular dependencies for now.
 const TOOL_NAME_SEPARATOR = "__";
 
 /**
