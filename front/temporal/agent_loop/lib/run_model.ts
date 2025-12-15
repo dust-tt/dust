@@ -211,7 +211,7 @@ export async function runModelActivity(
   );
 
   // Fetch MCP server configurations from enabled skills.
-  const skillMCPServerConfigurations = await fetchSkillMCPServerConfigurations(
+  const skillServers = await fetchSkillMCPServerConfigurations(
     auth,
     enabledSkills
   );
@@ -219,17 +219,16 @@ export async function runModelActivity(
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
-  } = await tryListMCPTools(
-    auth,
-    {
+  } = await tryListMCPTools(auth, {
+    agentLoopListToolsContext: {
       agentConfiguration,
       conversation,
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
     jitServers,
-    skillMCPServerConfigurations
-  );
+    skillServers,
+  });
 
   if (mcpToolsListingError) {
     localLogger.error(

@@ -649,39 +649,29 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
  */
 export async function tryListMCPTools(
   auth: Authenticator,
-  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
-  jitServers?: MCPServerConfigurationType[],
-  skillServers?: MCPServerConfigurationType[]
+  {
+    agentLoopListToolsContext,
+    jitServers,
+    skillServers,
+  }: {
+    agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType;
+    jitServers: MCPServerConfigurationType[];
+    skillServers: MCPServerConfigurationType[];
+  }
 ): Promise<{
   serverToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Combine all MCP server configurations.
-  const allMcpServerActions = [
+  // Filter for MCP server configurations.
+  const mcpServerActions = [
     ...agentLoopListToolsContext.agentConfiguration.actions,
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
-    ...(jitServers ?? []),
-    ...(skillServers ?? []),
+    ...jitServers,
+    ...skillServers,
   ];
 
-  // Dedupe by mcpServerViewId for server-side configs, or clientSideMcpServerId for client-side.
-  // This prevents duplicate tools when the same MCP server is configured both on the agent
-  // and via an enabled skill.
-  const seenServerIds = new Set<string>();
-  const mcpServerActions = allMcpServerActions.filter((action) => {
-    const serverId =
-      "mcpServerViewId" in action
-        ? action.mcpServerViewId
-        : action.clientSideMcpServerId;
-
-    if (seenServerIds.has(serverId)) {
-      return false;
-    }
-    seenServerIds.add(serverId);
-    return true;
-  });
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActions,

@@ -181,8 +181,10 @@ async function handler(
       );
 
       // Fetch MCP server configurations from enabled skills.
-      const skillMCPServerConfigurations =
-        await fetchSkillMCPServerConfigurations(auth, enabledSkills);
+      const skillServers = await fetchSkillMCPServerConfigurations(
+        auth,
+        enabledSkills
+      );
 
       const clientSideMCPActionConfigurations =
         await createClientSideMCPServerConfigurations(
@@ -220,17 +222,16 @@ async function handler(
       };
 
       const { serverToolsAndInstructions, error: mcpToolsListingError } =
-        await tryListMCPTools(
-          auth,
-          {
+        await tryListMCPTools(auth, {
+          agentLoopListToolsContext: {
             agentConfiguration,
             conversation,
             agentMessage: placeholderAgentMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
           jitServers,
-          skillMCPServerConfigurations
-        );
+          skillServers,
+        });
 
       const availableActions = serverToolsAndInstructions.flatMap(
         (s) => s.tools

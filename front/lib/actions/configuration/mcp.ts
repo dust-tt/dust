@@ -172,7 +172,6 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
-        // Space name for tool name prefixing to dedupe servers across spaces.
         dataSources:
           dataSourceConfigurations.length > 0
             ? dataSourceConfigurations.map(renderDataSourceConfiguration)
@@ -216,14 +215,6 @@ export async function fetchMCPServerActionConfigurations(
   return actionsByConfigurationId;
 }
 
-/**
- * Fetches MCP server configurations for the given enabled skills.
- * Returns an array of MCPServerConfigurationType that can be passed to tryListMCPTools.
- *
- * Each skill can have multiple MCP server views associated with it.
- * The space name is included for tool name prefixing to dedupe servers
- * when the same MCP server is configured in different spaces via skills.
- */
 export async function fetchSkillMCPServerConfigurations(
   auth: Authenticator,
   enabledSkills: SkillResource[]
@@ -250,15 +241,15 @@ export async function fetchSkillMCPServerConfigurations(
   const configurations: ServerSideMCPServerConfigurationType[] = [];
 
   for (const mcpServerView of mcpServerViews) {
-    const { name, description, icon } = mcpServerView.toJSON().server;
+    const { server } = mcpServerView.toJSON();
 
     configurations.push({
-      id: mcpServerView.id,
+      id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
-      name: mcpServerView.name ?? name,
-      description: mcpServerView.description ?? description,
-      icon,
+      name: mcpServerView.name ?? server.name,
+      description: mcpServerView.description ?? server.description,
+      icon: server.icon,
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId: mcpServerView.internalMCPServerId ?? null,
       // Skills don't have configurations, yet.
