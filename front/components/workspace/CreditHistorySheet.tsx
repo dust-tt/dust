@@ -24,13 +24,8 @@ const TYPE_SORT_ORDER: Record<CreditType, number> = {
   payg: 3,
 };
 
-function isExpired(credit: CreditDisplayData): boolean {
-  const now = Date.now();
-  return credit.expirationDate !== null && credit.expirationDate <= now;
-}
-
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
-  return credits.sort((a, b) => {
+  return [...credits].sort((a, b) => {
     if (
       a.expirationDate &&
       b.expirationDate &&
@@ -56,24 +51,17 @@ export function CreditHistorySheet({
   isLoading,
 }: CreditHistorySheetProps) {
   const [isOpen, setIsOpen] = useState(false);
-
   const [sixMonthsAgo] = useState(() => Date.now() - SIX_MONTHS_MS);
-  const expiredCredits = useMemo(() => {
+  const sixMonthsCredits = useMemo(() => {
     return credits.filter(
       (credit) =>
-        isExpired(credit) &&
-        credit.expirationDate !== null &&
-        credit.expirationDate >= sixMonthsAgo
+        credit.expirationDate !== null && credit.expirationDate >= sixMonthsAgo
     );
   }, [credits, sixMonthsAgo]);
 
-  const sortedCredits = useMemo(() => {
-    return sortCredits([...expiredCredits]);
-  }, [expiredCredits]);
-
   const displayedRows = useMemo(() => {
-    return getTableRows(sortedCredits);
-  }, [sortedCredits]);
+    return getTableRows(sortCredits([...sixMonthsCredits]));
+  }, [sixMonthsCredits]);
 
   return (
     <>

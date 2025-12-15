@@ -15,7 +15,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
-import { CreditsList } from "@app/components/workspace/CreditsList";
+import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import {
   getBillingCycle,
@@ -399,6 +399,20 @@ export default function CreditsUsagePage({
     return percentUsed >= 80;
   }, [totalConsumed, totalCredits]);
 
+  const [activeCredits, expiredCredits] = useMemo(() => {
+    return credits.reduce<[CreditDisplayData[], CreditDisplayData[]]>(
+      ([active, expired], current) => {
+        if (!isExpired(current)) {
+          active.push(current);
+        } else {
+          expired.push(current);
+        }
+        return [active, expired];
+      },
+      [[], []]
+    );
+  }, [credits]);
+
   return (
     <AppCenteredLayout
       owner={owner}
@@ -483,7 +497,7 @@ export default function CreditsUsagePage({
               <div className="flex w-full items-center justify-between">
                 <Page.H variant="h5">Current credits</Page.H>
                 <CreditHistorySheet
-                  credits={credits}
+                  credits={expiredCredits}
                   isLoading={isCreditsLoading}
                 />
               </div>
@@ -493,7 +507,7 @@ export default function CreditsUsagePage({
               </Page.P>
             </Page.Vertical>
           </div>
-          <CreditsList credits={credits} isLoading={isCreditsLoading} />
+          <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
         {/* Usage Graph */}

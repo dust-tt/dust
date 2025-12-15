@@ -43,7 +43,7 @@ const TYPE_COLORS: Record<CreditType, "green" | "blue" | "primary"> = {
 };
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
-  return credits.sort((a, b) => {
+  return [...credits].sort((a, b) => {
     // First sort by type priority
     const typeDiff = TYPE_SORT_ORDER[a.type] - TYPE_SORT_ORDER[b.type];
     if (typeDiff !== 0) {
@@ -65,7 +65,7 @@ function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   });
 }
 
-function isExpired(credit: CreditDisplayData): boolean {
+export function isExpired(credit: CreditDisplayData): boolean {
   const now = Date.now();
   return credit.expirationDate !== null && credit.expirationDate <= now;
 }
@@ -174,14 +174,9 @@ interface CreditsListProps {
 }
 
 export function CreditsList({ credits, isLoading }: CreditsListProps) {
-  const activeCredits = useMemo(() => {
-    const sorted = sortCredits([...credits]);
-    return sorted.filter((c) => !isExpired(c));
-  }, [credits]);
-
   const displayedRows = useMemo(() => {
-    return getTableRows(activeCredits);
-  }, [activeCredits]);
+    return getTableRows(sortCredits([...credits]));
+  }, [credits]);
 
   if (isLoading) {
     return (
