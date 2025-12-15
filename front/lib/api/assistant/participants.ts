@@ -6,6 +6,7 @@ import {
   AgentMessageModel,
   ConversationParticipantModel,
   MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
@@ -72,12 +73,12 @@ export async function fetchConversationParticipants(
   }
 
   // We fetch agent participants from the messages table
-  const messages = await MessageModel.findAll({
+  const agentMessages = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
     },
-    attributes: [],
+    attributes: ["createdAt"],
     include: [
       {
         model: AgentMessageModel,
@@ -88,19 +89,62 @@ export async function fetchConversationParticipants(
     ],
   });
 
-  const { agentConfigurationIds } = messages.reduce<{
+  const { agentConfigurationIds, agentLastActivityMap } = agentMessages.reduce<{
     agentConfigurationIds: Set<string>;
+    agentLastActivityMap: Map<string, number>;
   }>(
     (acc, m) => {
       const { agentMessage } = m;
 
       if (agentMessage) {
         acc.agentConfigurationIds.add(agentMessage.agentConfigurationId);
+        const timestamp = m.createdAt.getTime();
+        const currentLast = acc.agentLastActivityMap.get(
+          agentMessage.agentConfigurationId
+        );
+        if (!currentLast || timestamp > currentLast) {
+          acc.agentLastActivityMap.set(
+            agentMessage.agentConfigurationId,
+            timestamp
+          );
+        }
       }
 
       return acc;
     },
-    { agentConfigurationIds: new Set() }
+    { agentConfigurationIds: new Set(), agentLastActivityMap: new Map() }
+  );
+
+  // Fetch user last activity timestamps
+  const userMessages = await MessageModel.findAll({
+    where: {
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+    },
+    attributes: ["createdAt"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        attributes: ["userId"],
+      },
+    ],
+  });
+
+  const userLastActivityMap = userMessages.reduce<Map<ModelId, number>>(
+    (acc, m) => {
+      const { userMessage } = m;
+      if (userMessage && userMessage.userId !== null) {
+        const timestamp = m.createdAt.getTime();
+        const currentLast = acc.get(userMessage.userId);
+        if (!currentLast || timestamp > currentLast) {
+          acc.set(userMessage.userId, timestamp);
+        }
+      }
+      return acc;
+    },
+    new Map()
   );
 
   // We fetch users participants from the conversation participants table
@@ -128,13 +172,17 @@ export async function fetchConversationParticipants(
   );
 
   return new Ok({
-    agents,
+    agents: agents.map((a) => ({
+      ...a,
+      lastActivityAt: agentLastActivityMap.get(a.configurationId),
+    })),
     users: users.map((u) => ({
       sId: u.sId,
       fullName: u.fullName,
       pictureUrl: u.pictureUrl,
       username: u.username,
       action: userIdToAction.get(u.id) ?? "posted",
+      lastActivityAt: userLastActivityMap.get(u.id),
     })),
   });
 }

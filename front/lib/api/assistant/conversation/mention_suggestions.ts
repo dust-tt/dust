@@ -1,4 +1,5 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -8,14 +9,11 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  RichAgentMention,
   RichAgentMentionInConversation,
   RichMention,
-  RichUserMention,
   RichUserMentionInConversation,
 } from "@app/types";
 import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
-import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -99,8 +97,8 @@ export const suggestionsOfMentions = async (
 
   const agentSuggestions: RichAgentMentionInConversation[] = [];
   let userSuggestions: RichUserMentionInConversation[] = [];
-  let participantUsers: RichUserMention[] = [];
-  let participantAgents: RichAgentMention[] = [];
+  let participantUsers: RichUserMentionInConversation[] = [];
+  let participantAgents: RichAgentMentionInConversation[] = [];
 
   // Get conversation participants if conversationId is provided
   // This aims to prioritize them in the suggestions
@@ -123,27 +121,23 @@ export const suggestionsOfMentions = async (
         // Convert participants to RichMention format
         participantUsers = participants.users
           .filter((u) => u.sId !== currentUserSId)
-          .map(
-            (u) =>
-              ({
-                type: "user" as const,
-                id: u.sId,
-                label: u.fullName ?? u.username,
-                pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
-                description: u.username,
-              }) as RichUserMention
-          );
+          .map((u) => ({
+            type: "user" as const,
+            id: u.sId,
+            label: u.fullName ?? u.username,
+            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+            description: u.username,
+            lastActivityAt: u.lastActivityAt,
+          }));
 
-        participantAgents = participants.agents.map(
-          (a) =>
-            ({
-              type: "agent" as const,
-              id: a.configurationId,
-              label: a.name,
-              pictureUrl: a.pictureUrl,
-              description: "",
-            }) as RichAgentMention
-        );
+        participantAgents = participants.agents.map((a) => ({
+          type: "agent" as const,
+          id: a.configurationId,
+          label: a.name,
+          pictureUrl: a.pictureUrl,
+          description: "",
+          lastActivityAt: a.lastActivityAt,
+        }));
 
         // Get the last user message and check if it mentions one and only one agent
         // If yes, it will be prioritized in the suggestions.
@@ -173,6 +167,8 @@ export const suggestionsOfMentions = async (
       .map((a) => ({
         ...toRichAgentMentionType(a),
         isParticipant: participantAgents.some((pa) => pa.id === a.sId),
+        lastActivityAt:
+          participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
       }));
 
     const filteredAgents = filterAndSortEditorSuggestionAgents(
@@ -198,6 +194,8 @@ export const suggestionsOfMentions = async (
         .map((u) => ({
           ...toRichUserMentionType(u.toJSON()),
           isParticipant: participantUsers.some((pu) => pu.id === u.sId),
+          lastActivityAt:
+            participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
         }))
         .sort((a, b) => {
           // If within the conversation participants, we move it to the top.
@@ -206,6 +204,9 @@ export const suggestionsOfMentions = async (
           }
           if (b.isParticipant && !a.isParticipant) {
             return 1;
+          }
+          if (a.isParticipant && b.isParticipant) {
+            return (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0);
           }
           return 0;
         });

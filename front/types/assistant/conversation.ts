@@ -287,6 +287,7 @@ export interface AgentParticipantType {
   configurationId: string;
   name: string;
   pictureUrl: string;
+  lastActivityAt?: number;
 }
 
 export interface UserParticipantType {
@@ -295,6 +296,7 @@ export interface UserParticipantType {
   pictureUrl: string | null;
   username: string;
   action: ParticipantActionType;
+  lastActivityAt?: number;
 }
 
 export interface ConversationParticipantsType {

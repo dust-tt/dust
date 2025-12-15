@@ -37,7 +37,7 @@ function compareAgentSuggestionsForSort(
 
 /**
  * Filters and orders agent suggestions:
- * 1. Agents in the conversation
+ * 1. Agents in the conversation (most recent activity first)
  * 2. Priority mapping
  * 3. User favorite agents
  * 4. Fuzzy match score
@@ -55,6 +55,9 @@ export function filterAndSortEditorSuggestionAgents(
       }
       if (b.isParticipant && !a.isParticipant) {
         return 1;
+      }
+      if (a.isParticipant && b.isParticipant) {
+        return (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0);
       }
 
       // Then we prioritize agents based on the SUGGESTION_PRIORITY mapping

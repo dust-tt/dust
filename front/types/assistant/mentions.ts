@@ -56,6 +56,7 @@ export interface RichAgentMention extends RichMention {
 
 export interface RichAgentMentionInConversation extends RichAgentMention {
   isParticipant?: boolean;
+  lastActivityAt?: number;
 }
 
 /**
@@ -67,6 +68,7 @@ export interface RichUserMention extends RichMention {
 
 export interface RichUserMentionInConversation extends RichUserMention {
   isParticipant?: boolean;
+  lastActivityAt?: number;
 }
 
 /**
