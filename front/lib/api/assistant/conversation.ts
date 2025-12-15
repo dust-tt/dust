@@ -408,7 +408,8 @@ export function validateUserMessageContext(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "This origin is not allowed when using a custom API key. See documentation to fix to an allowed origin.",
+            message:
+              "This origin is not allowed when using a custom API key. See documentation to fix to an allowed origin.",
           },
         });
       }
@@ -419,7 +420,8 @@ export function validateUserMessageContext(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "This origin is not allowed when using OAuth for authentication. See documentation to fix to an allowed origin.",
+            message:
+              "This origin is not allowed when using OAuth for authentication. See documentation to fix to an allowed origin.",
           },
         });
       }
