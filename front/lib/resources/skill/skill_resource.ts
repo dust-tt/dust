@@ -730,6 +730,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   }
 
+  async addToAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    await AgentSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      customSkillId: this.globalSId ? null : this.id,
+      globalSkillId: this.globalSId ?? null,
+    });
+  }
+
   async enableForMessage(
     auth: Authenticator,
     {
