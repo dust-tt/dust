@@ -64,7 +64,6 @@ export const useLocalSelectedSkills = ({
             sId: skill.sId,
             name: skill.name,
             description: skill.userFacingDescription,
-            requestedSpaceIds: skill.requestedSpaceIds,
           },
         ];
       }

@@ -86,7 +86,6 @@ const skillsSchema = z.object({
   sId: z.string(),
   name: z.string(),
   description: z.string(),
-  requestedSpaceIds: z.array(z.string()),
 });
 
 export type AgentBuilderWebhookTriggerType = z.infer<

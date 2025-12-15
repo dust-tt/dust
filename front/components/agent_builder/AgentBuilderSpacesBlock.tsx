@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 
@@ -12,9 +13,10 @@ export function AgentBuilderSpacesBlock() {
   const { watch } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { skills: allSkills } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const skills = watch("skills");
+  const selectedSkills = watch("skills");
   const actions = watch("actions");
 
   // Compute requested spaces from tools/knowledge (actions)
@@ -26,9 +28,14 @@ export function AgentBuilderSpacesBlock() {
   const nonGlobalSpacesWithRestrictions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
 
-    // Collect space IDs from skills
+    // Get selected skill IDs
+    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
+
+    // Collect space IDs from selected skills using the full skill data from context
     const skillRequestedSpaceIds = new Set(
-      skills.flatMap((skill) => skill.requestedSpaceIds)
+      allSkills
+        .filter((skill) => selectedSkillIds.has(skill.sId))
+        .flatMap((skill) => skill.requestedSpaceIds)
     );
 
     // Collect space IDs from actions (tools/knowledge)
@@ -46,7 +53,7 @@ export function AgentBuilderSpacesBlock() {
     ]);
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
-  }, [spaces, skills, spaceIdToActions]);
+  }, [spaces, selectedSkills, allSkills, spaceIdToActions]);
 
   if (nonGlobalSpacesWithRestrictions.length === 0) {
     return null;
