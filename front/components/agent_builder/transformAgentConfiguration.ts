@@ -49,6 +49,7 @@ export function transformAgentConfigurationToFormData(
     },
     actions: [], // Will be populated reactively from useAgentConfigurationActions hook
     skills: [], // Will be populated reactively from useAgentConfigurationSkills hook
+    additionalSpaces: [], // Will be populated reactively if needed
     triggersToCreate: [],
     triggersToUpdate: [], // Will be populated reactively from the hook
     triggersToDelete: [],
@@ -96,6 +97,7 @@ export function getDefaultAgentFormData({
     },
     actions: [],
     skills: [],
+    additionalSpaces: [],
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],
@@ -141,6 +143,7 @@ export function transformTemplateToFormData(
     },
     actions: [],
     skills: [],
+    additionalSpaces: [],
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],

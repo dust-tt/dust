@@ -2,34 +2,53 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SelectionMode } from "@app/components/agent_builder/skills/skillSheet/types";
+import type {
+  PageContentProps,
+  SelectionMode,
+  SkillsSheetMode,
+} from "@app/components/agent_builder/skills/skillSheet/types";
+import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import { isGlobalSkillId } from "@app/lib/resources/skill/global/registry";
 import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
-export const useLocalSelectedSkills = ({
+function isGlobalSkill(
+  skill: SkillType & { relations: SkillRelations }
+): boolean {
+  return isGlobalSkillId(skill.sId);
+}
+
+function getSelectionMode(mode: SkillsSheetMode): SelectionMode {
+  if (mode.type === SKILLS_SHEET_PAGE_IDS.SELECTION) {
+    return mode;
+  }
+  return mode.previousMode;
+}
+
+export const useSkillSelection = ({
   mode,
-  onSave,
-  onClose,
-}: {
-  mode: SelectionMode;
-  onSave: (skills: AgentBuilderSkillsType[]) => void;
-  onClose: () => void;
-}) => {
+  onModeChange,
+  localSelectedSkills,
+  setLocalSelectedSkills,
+  localAdditionalSpaces,
+  setLocalAdditionalSpaces,
+}: PageContentProps) => {
   const { owner } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const [localSelectedSkills, setLocalSelectedSkills] = useState<
-    AgentBuilderSkillsType[]
-  >(mode.selectedSkills);
+
+  // Draft state for space selection (only committed on save)
+  const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>(
+    localAdditionalSpaces
+  );
 
   const {
     skillConfigurationsWithRelations,
     isSkillConfigurationsWithRelationsLoading,
   } = useSkillConfigurationsWithRelations({
     owner,
-    disabled: !open,
     status: "active",
   });
 
@@ -50,38 +69,73 @@ export const useLocalSelectedSkills = ({
     );
   }, [skillConfigurationsWithRelations, searchQuery]);
 
-  const handleSkillToggle = (
-    skill: SkillType & { relations: SkillRelations }
-  ) => {
-    setLocalSelectedSkills((prev) => {
-      const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
-      if (isAlreadySelected) {
-        return prev.filter((s) => s.sId !== skill.sId);
-      } else {
-        return [
-          ...prev,
-          {
-            sId: skill.sId,
-            name: skill.name,
-            description: skill.userFacingDescription,
-          },
-        ];
-      }
-    });
-  };
+  const selectionMode = getSelectionMode(mode);
 
-  const handleSave = useCallback(() => {
-    onSave(localSelectedSkills);
-    onClose();
-  }, [localSelectedSkills, onSave, onClose]);
+  const handleSkillToggle = useCallback(
+    (skill: SkillType & { relations: SkillRelations }) => {
+      const isAlreadySelected = localSelectedSkills.some(
+        (s) => s.sId === skill.sId
+      );
+
+      if (isAlreadySelected) {
+        setLocalSelectedSkills((prev) =>
+          prev.filter((s) => s.sId !== skill.sId)
+        );
+      } else {
+        if (isGlobalSkill(skill)) {
+          onModeChange({
+            type: SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION,
+            skillConfiguration: skill,
+            previousMode: selectionMode,
+          });
+        } else {
+          setLocalSelectedSkills((prev) => [
+            ...prev,
+            {
+              sId: skill.sId,
+              name: skill.name,
+              description: skill.userFacingDescription,
+            },
+          ]);
+        }
+      }
+    },
+    [localSelectedSkills, selectionMode, onModeChange, setLocalSelectedSkills]
+  );
+
+  const handleSpaceSelectionSave = useCallback(
+    (skill: SkillType & { relations: SkillRelations }) => {
+      // Commit draft spaces to actual state
+      setLocalAdditionalSpaces(draftSelectedSpaces);
+      // Add the skill
+      setLocalSelectedSkills((prev: AgentBuilderSkillsType[]) => [
+        ...prev,
+        {
+          sId: skill.sId,
+          name: skill.name,
+          description: skill.userFacingDescription,
+        },
+      ]);
+      onModeChange(selectionMode);
+    },
+    [
+      selectionMode,
+      onModeChange,
+      setLocalSelectedSkills,
+      setLocalAdditionalSpaces,
+      draftSelectedSpaces,
+    ]
+  );
 
   return {
     handleSkillToggle,
-    handleSave,
     filteredSkills,
     isSkillsLoading: isSkillConfigurationsWithRelationsLoading,
     searchQuery,
     selectedSkillIds,
     setSearchQuery,
+    handleSpaceSelectionSave,
+    draftSelectedSpaces,
+    setDraftSelectedSpaces,
   };
 };

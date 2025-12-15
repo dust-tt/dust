@@ -482,7 +482,7 @@ export async function submitAgentBuilderForm({
       editors: formData.agentSettings.editors.map((editor) => ({
         sId: editor.sId,
       })),
-      additionalRequestedSpaceIds: [],
+      additionalRequestedSpaceIds: formData.additionalSpaces,
     },
   };
 
