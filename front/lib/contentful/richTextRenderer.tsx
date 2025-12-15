@@ -149,7 +149,10 @@ const renderOptions: Options = {
       const text = extractTextFromChildren(children);
       const id = slugify(text);
       return (
-        <h6 id={id} className="mb-2 mt-4 scroll-mt-20 text-base font-semibold text-foreground">
+        <h6
+          id={id}
+          className="mb-2 mt-4 scroll-mt-20 text-base font-semibold text-foreground"
+        >
           {children}
         </h6>
       );
@@ -158,7 +161,10 @@ const renderOptions: Options = {
       const text = extractTextFromChildren(children);
       const id = slugify(text);
       return (
-        <h6 id={id} className="mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground">
+        <h6
+          id={id}
+          className="mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
+        >
           {children}
         </h6>
       );

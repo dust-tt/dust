@@ -106,4 +106,3 @@ export function extractTableOfContents(document: Document): TocItem[] {
 
   return toc;
 }
-
