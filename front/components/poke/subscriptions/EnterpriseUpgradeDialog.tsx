@@ -28,8 +28,10 @@ import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
 
 export default function EnterpriseUpgradeDialog({
   owner,
+  hasProgrammaticUsageConfig,
 }: {
   owner: WorkspaceType;
+  hasProgrammaticUsageConfig: boolean;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +115,13 @@ export default function EnterpriseUpgradeDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
+          {!hasProgrammaticUsageConfig && (
+            <div className="mb-4 rounded-md border border-warning-200 bg-warning-100 p-3 text-warning-800">
+              Programmatic usage configuration must be set before upgrading to
+              enterprise. Please use the "Manage Programmatic Usage
+              Configuration" plugin first.
+            </div>
+          )}
           {error && <div className="text-warning">{error}</div>}
           {isSubmitting && (
             <div className="flex justify-center">
@@ -149,7 +158,12 @@ export default function EnterpriseUpgradeDialog({
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" variant="warning" label="Upgrade" />
+                  <Button
+                    type="submit"
+                    variant="warning"
+                    label="Upgrade"
+                    disabled={!hasProgrammaticUsageConfig}
+                  />
                 </DialogFooter>
               </form>
             </PokeForm>

@@ -56,6 +56,7 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import type {
   ExtensionConfigurationType,
@@ -71,6 +72,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
+  hasProgrammaticUsageConfig: boolean;
   owner: WorkspaceType;
   registry: ActionRegistry;
   stripeSubscription: Stripe.Subscription | null;
@@ -115,6 +117,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const extensionConfig =
     await ExtensionConfigurationResource.fetchForWorkspace(auth);
 
+  const programmaticUsageConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
   let stripeSubscription: Stripe.Subscription | null = null;
   if (activeSubscription.stripeSubscriptionId) {
     stripeSubscription = await getStripeSubscription(
@@ -133,6 +138,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       workspaceVerifiedDomains,
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
+      hasProgrammaticUsageConfig: programmaticUsageConfig !== null,
       baseUrl: config.getClientFacingUrl(),
       workosEnvironmentId: config.getWorkOSEnvironmentId(),
     },
@@ -149,6 +155,7 @@ const WorkspacePage = ({
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
+  hasProgrammaticUsageConfig,
   baseUrl,
   workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -279,6 +286,7 @@ const WorkspacePage = ({
                   owner={owner}
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
+                  hasProgrammaticUsageConfig={hasProgrammaticUsageConfig}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">

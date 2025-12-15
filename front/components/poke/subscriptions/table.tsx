@@ -89,10 +89,12 @@ export function ActiveSubscriptionTable({
   owner,
   subscription,
   subscriptions,
+  hasProgrammaticUsageConfig,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   subscriptions: SubscriptionType[];
+  hasProgrammaticUsageConfig: boolean;
 }) {
   return (
     <div className="flex flex-col">
@@ -106,7 +108,11 @@ export function ActiveSubscriptionTable({
               owner={owner}
               subscriptions={subscriptions}
             />
-            <UpgradeDowngradeModal owner={owner} subscription={subscription} />
+            <UpgradeDowngradeModal
+              owner={owner}
+              subscription={subscription}
+              hasProgrammaticUsageConfig={hasProgrammaticUsageConfig}
+            />
           </div>
           <PokeTable>
             <PokeTableBody>
@@ -295,9 +301,11 @@ export function PlanLimitationsTable({
 function UpgradeDowngradeModal({
   owner,
   subscription,
+  hasProgrammaticUsageConfig,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  hasProgrammaticUsageConfig: boolean;
 }) {
   const router = useRouter();
   const { plans } = usePokePlans();
@@ -403,7 +411,10 @@ function UpgradeDowngradeModal({
               description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
             />
             <div>
-              <EnterpriseUpgradeDialog owner={owner} />
+              <EnterpriseUpgradeDialog
+                owner={owner}
+                hasProgrammaticUsageConfig={hasProgrammaticUsageConfig}
+              />
             </div>
             {isProPlanPrefix(subscription.plan.code) && (
               <>
