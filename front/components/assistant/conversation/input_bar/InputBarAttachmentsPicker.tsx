@@ -24,6 +24,7 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useToolFileUpload } from "@app/hooks/useToolFileUpload";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
+  getLocationForDataSourceViewContentNode,
   getVisualForContentNodeType,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -110,6 +111,7 @@ const KnowledgeNodeCheckboxItem = ({
             />
           )
         }
+        description={getLocationForDataSourceViewContentNode(item)}
         checked={attachedNodes.some(
           (attachedNode) =>
             attachedNode.internalId === item.internalId &&
@@ -163,6 +165,7 @@ const ToolFileCheckboxItem = ({
           />
         )
       }
+      description={asDisplayToolName(item.serverName)}
       checked={isAttached}
       disabled={isLoading || isUploading}
       onCheckedChange={(checked) => {
