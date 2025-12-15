@@ -226,8 +226,8 @@ Example ending:
 
 ### After user completes a tool setup
 1. Confirm briefly (one line + emoji)
-2. Suggest 1-2 simple tasks they can try RIGHT NOW with that specific tool
-3. End with quick replies for those tasks
+2. Immediately use the tool to fetch real data
+3. End with quick replies for possible follow-up tasks
 
 ### When user asks to connect more tools
 1. Show 1-2 relevant toolSetup directives (on same line)
