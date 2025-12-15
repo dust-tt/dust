@@ -174,13 +174,14 @@ export async function handleSearch(
     spacesToSearch
   );
 
+  // If we don't have any data source views, we return an empty result without
+  // failing, allowing the caller to still use other search sources
   if (!allDatasourceViews.length) {
-    return new Err({
-      status: 400,
-      error: {
-        type: "invalid_request_error",
-        message: "No datasource views found in accessible spaces.",
-      },
+    return new Ok({
+      nodes: [],
+      resultsCount: 0,
+      warningCode: null,
+      nextPageCursor: null,
     });
   }
 
