@@ -238,14 +238,32 @@ export async function fetchSkillMCPServerConfigurations(
     Array.from(mcpServerViewIds)
   );
 
+  // Map mcpServerViewId to the first skill that references it.
+  const mcpServerViewIdToSkill = new Map<ModelId, SkillResource>();
+  for (const skill of enabledSkills) {
+    for (const config of skill.mcpServerConfigurations) {
+      if (!mcpServerViewIdToSkill.has(config.mcpServerViewId)) {
+        mcpServerViewIdToSkill.set(config.mcpServerViewId, skill);
+      }
+    }
+  }
+
   const configurations: ServerSideMCPServerConfigurationType[] = [];
 
   for (const mcpServerView of mcpServerViews) {
     const { server } = mcpServerView.toJSON();
+    const skill = mcpServerViewIdToSkill.get(mcpServerView.id);
+
+    if (!skill) {
+      logger.warn(
+        `No skill found for MCPServerView with id ${mcpServerView.id}, this should not happen.`
+      );
+      continue;
+    }
 
     configurations.push({
       id: -1,
-      sId: generateRandomModelSId(),
+      sId: `skill_${skill.sId}_mcp_s${server.sId}`,
       type: "mcp_server_configuration",
       name: mcpServerView.name ?? server.name,
       description: mcpServerView.description ?? server.description,
