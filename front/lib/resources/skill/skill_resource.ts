@@ -605,6 +605,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { affectedCount };
   }
 
+  async restore(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{ affectedCount: number }> {
+    const [affectedCount] = await this.update(
+      {
+        status: "active",
+      },
+      transaction
+    );
+
+    return { affectedCount };
+  }
+
   async updateSkill(
     auth: Authenticator,
     {
