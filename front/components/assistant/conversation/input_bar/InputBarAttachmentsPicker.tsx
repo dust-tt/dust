@@ -457,7 +457,7 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {availableSources.length > 1 && (
-              <div className="flex flex-wrap gap-1 p-2">
+              <div className="flex flex-wrap gap-0.5 p-2">
                 {availableSources.map(({ key, label }) => (
                   <Button
                     size="xs"
