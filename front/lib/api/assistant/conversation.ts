@@ -36,7 +36,6 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -44,6 +43,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -355,7 +355,7 @@ export async function getLastUserMessageMentions(
   const mentions: string[] = removeNulls(
     (message as any).mentions.map(
       (mention: MentionModel) =>
-        mention.agentConfigurationId || mention.user?.sId
+        mention.agentConfigurationId ?? mention.user?.sId
     )
   );
   return new Ok(mentions);

@@ -3,14 +3,9 @@ import type {
   RichAgentMentionInConversation,
   RichUserMentionInConversation,
 } from "@app/types";
-import {
-  compareAgentsForSort,
-  GLOBAL_AGENTS_SID,
-  toRichUserMentionType,
-} from "@app/types";
+import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 /**
  * Maximum number of suggestions to display in the autocomplete dropdown.

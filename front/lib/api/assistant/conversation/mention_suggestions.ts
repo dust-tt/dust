@@ -97,7 +97,7 @@ export const suggestionsOfMentions = async (
   let lastMentionedId: string | null = null;
 
   const agentSuggestions: RichAgentMentionInConversation[] = [];
-  let userSuggestions: RichUserMentionInConversation[] = [];
+  const userSuggestions: RichUserMentionInConversation[] = [];
   let participantUsers: RichUserMentionInConversation[] = [];
   let participantAgents: RichAgentMentionInConversation[] = [];
 
