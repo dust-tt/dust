@@ -5,6 +5,7 @@ import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { GroupKind, LightWorkspaceType } from "@app/types";
 import { isGroupKind } from "@app/types";
@@ -142,5 +143,34 @@ export function useSearchMembers({
     isError: !!error,
     mutate,
     mutateRegardlessOfQueryParams,
+  };
+}
+
+export function useMembersLookup({
+  workspaceId,
+  memberIds,
+  disabled,
+}: {
+  workspaceId: string;
+  memberIds: number[];
+  disabled?: boolean;
+}) {
+  const membersLookupFetcher: Fetcher<MembersLookupResponseBody> = fetcher;
+
+  const query =
+    memberIds.length > 0
+      ? `/api/w/${workspaceId}/members/lookup?${memberIds
+          .map((id) => `ids=${id}`)
+          .join("&")}`
+      : null;
+
+  const { data, error } = useSWRWithDefaults(query, membersLookupFetcher, {
+    disabled,
+  });
+
+  return {
+    members: data?.users ?? emptyArray(),
+    isMembersLookupLoading: !error && !data && !!query,
+    isMembersLookupError: !!error,
   };
 }
