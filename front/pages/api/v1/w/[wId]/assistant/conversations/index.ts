@@ -28,6 +28,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgenticMessageData,
@@ -142,6 +143,22 @@ async function handler(
         skipToolsValidation,
         blocking,
       } = r.data;
+
+      if (
+        req.body.message?.context?.origin &&
+        message?.context?.origin &&
+        req.body.message.context.origin !== message.context.origin
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            authMethod: auth.authMethod(),
+            originProvided: req.body.message.context.origin,
+            originUsed: message.context.origin,
+          },
+          "Invalid origin used, fallbacking to default value"
+        );
+      }
 
       const origin = message?.context.origin ?? "api";
 

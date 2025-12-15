@@ -18,6 +18,7 @@ import {
 } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
 import { isEmptyString } from "@app/types";
@@ -114,6 +115,22 @@ async function handler(
         skipToolsValidation,
         agenticMessageData,
       } = r.data;
+
+      if (
+        req.body.context?.origin &&
+        context?.origin &&
+        req.body.context.origin !== context.origin
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            authMethod: auth.authMethod(),
+            originProvided: req.body.context.origin,
+            originUsed: context.origin,
+          },
+          "Invalid origin used, fallbacking to default value"
+        );
+      }
 
       const origin = context.origin ?? "api";
 

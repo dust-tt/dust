@@ -32,6 +32,7 @@ describe("getUserForWorkspace", () => {
       groups: [],
       workspace: null,
       subscription: null,
+      authMethod: "internal",
     });
 
     const result = await getUserForWorkspace(auth, { userId: user2.sId });
@@ -56,6 +57,7 @@ describe("getUserForWorkspace", () => {
       role: "none",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 tries to get info about user2, but user1 is not in the workspace.
@@ -81,6 +83,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 can get info about user2 because they're in the same workspace.
@@ -105,6 +108,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 gets their own info.
@@ -131,6 +135,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 tries to get user2's info, but user2 is not in workspace1.
@@ -154,6 +159,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // Try to get a non-existent user.
@@ -184,6 +190,7 @@ describe("getUserForWorkspace", () => {
       role: "admin",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // Revoke user2's membership.
@@ -195,6 +202,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 cannot see user2 because user2 no longer has an active membership.
@@ -220,6 +228,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 tries to access user2 from workspace1 context, but user2 is only in workspace2.
@@ -247,6 +256,7 @@ describe("getUserForWorkspace", () => {
       role: "user",
       groups: [],
       subscription: null,
+      authMethod: "internal",
     });
 
     // User1 can access user2 in workspace1 context.
