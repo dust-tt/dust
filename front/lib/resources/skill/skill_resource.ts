@@ -328,18 +328,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async fetchAllAvailableSkills(
-    auth: Authenticator,
-    limit?: number
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        status: "active",
-      },
-      ...(limit ? { limit } : {}),
-    });
-  }
-
   static async listSkills(
     auth: Authenticator,
     { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
