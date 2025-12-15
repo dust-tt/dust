@@ -95,6 +95,8 @@ const ALLOWED_API_KEY_ORIGINS: UserMessageOrigin[] = [
   "powerpoint",
   "zapier",
   "zendesk",
+  "slack", // TODO: should not be allowed for API key usage
+  "web", // TODO: should not be allowed for API key usage
 ];
 
 const ALLOWED_OAUTH_ORIGINS: UserMessageOrigin[] = [
@@ -105,6 +107,7 @@ const ALLOWED_OAUTH_ORIGINS: UserMessageOrigin[] = [
   "github-copilot-chat", // TODO: find out how it's used
   "raycast",
   "teams",
+  "web", // TODO: should not be allowed for OAuth usage
 ];
 
 /**
