@@ -372,6 +372,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 describe("POST /api/w/[wId]/skills", () => {
   it("creates a simple skill configuration", async () => {
     const { req, res, workspace } = await setupTest("POST", "admin");
+    await SpaceFactory.system(workspace);
 
     req.body = {
       name: "Simple Skill",

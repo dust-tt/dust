@@ -635,7 +635,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: string;
       instructions: string;
       icon: string | null;
-      requestedSpaceIds: number[];
+      requestedSpaceIds: ModelId[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
