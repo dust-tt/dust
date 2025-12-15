@@ -1,13 +1,13 @@
-import { CollapsibleComponent } from "@dust-tt/sparkle";
+import { Chip, CollapsibleComponent, Pagination } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -20,8 +20,9 @@ import type {
   CustomerStoryListingPageProps,
   CustomerStorySummary,
 } from "@app/lib/contentful/types";
-import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+
+const GRID_PAGE_SIZE = 12;
 
 function sortCompanySizes(sizes: string[]): string[] {
   return [...sizes].sort((a, b) => {
@@ -177,6 +178,15 @@ export default function CustomerStoriesListing({
   filterOptions,
 }: CustomerStoryListingPageProps) {
   const router = useRouter();
+  const initialPage = useMemo(() => {
+    const queryPage = Array.isArray(router.query.page)
+      ? router.query.page[0]
+      : router.query.page;
+    const parsed = queryPage ? parseInt(queryPage, 10) : 1;
+    return Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+  }, [router.query.page]);
+
+  const [page, setPage] = useState<number>(initialPage);
 
   // Parse filters from URL query params
   const selectedIndustries = useMemo(() => {
@@ -221,6 +231,30 @@ export default function CustomerStoriesListing({
     selectedRegions,
   ]);
 
+  useEffect(() => {
+    const queryPage = Array.isArray(router.query.page)
+      ? router.query.page[0]
+      : router.query.page;
+    const parsed = queryPage ? parseInt(queryPage, 10) : 1;
+    setPage(Number.isNaN(parsed) || parsed < 1 ? 1 : parsed);
+  }, [router.query.page]);
+
+  const buildQuery = useCallback(
+    (
+      query: Record<string, string | string[] | undefined>,
+      pageNumber: number
+    ): Record<string, string | string[] | undefined> => {
+      const nextQuery = { ...query };
+      if (pageNumber > 1) {
+        nextQuery.page = pageNumber.toString();
+      } else {
+        delete nextQuery.page;
+      }
+      return nextQuery;
+    },
+    []
+  );
+
   // Update URL with new filters
   const updateFilters = useCallback(
     (key: string, values: string[]) => {
@@ -230,15 +264,18 @@ export default function CustomerStoriesListing({
       } else {
         delete newQuery[key];
       }
+      const finalQuery = buildQuery(newQuery, 1);
+      setPage(1);
       void router.push(
-        { pathname: router.pathname, query: newQuery },
+        { pathname: router.pathname, query: finalQuery },
         undefined,
         {
           shallow: true,
+          scroll: true,
         }
       );
     },
-    [router]
+    [buildQuery, router]
   );
 
   // Filter stories based on selected filters
@@ -286,10 +323,37 @@ export default function CustomerStoriesListing({
     selectedRegions.length > 0;
 
   const clearAllFilters = useCallback(() => {
+    setPage(1);
     void router.push({ pathname: router.pathname }, undefined, {
       shallow: true,
+      scroll: true,
     });
   }, [router]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredStories.length / GRID_PAGE_SIZE)
+  );
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * GRID_PAGE_SIZE;
+  const endIndex = startIndex + GRID_PAGE_SIZE;
+  const paginatedStories = filteredStories.slice(startIndex, endIndex);
+
+  const handlePageChange = useCallback(
+    (pageNumber: number) => {
+      setPage(pageNumber);
+      const nextQuery = buildQuery(router.query, pageNumber);
+      void router.push(
+        { pathname: router.pathname, query: nextQuery },
+        undefined,
+        {
+          shallow: true,
+          scroll: true,
+        }
+      );
+    },
+    [buildQuery, router]
+  );
 
   return (
     <>
@@ -311,7 +375,7 @@ export default function CustomerStoriesListing({
 
       <Grid>
         <div className="col-span-12 pt-12">
-          <H1 mono>Customer Stories</H1>
+          <H1 className="text-5xl">Customer Stories</H1>
           <P size="lg" className="mt-4 text-muted-foreground">
             See how teams across industries are transforming their work with
             Dust
@@ -322,7 +386,7 @@ export default function CustomerStoriesListing({
         <div className="col-span-12 mt-8 flex flex-col gap-8 lg:flex-row">
           {/* Filters sidebar */}
           <aside className="w-full shrink-0 lg:w-64">
-            <div className="sticky top-24 rounded-xl bg-muted-background p-6">
+            <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-semibold text-foreground">Filters</h2>
                 {hasActiveFilters && (
@@ -370,16 +434,12 @@ export default function CustomerStoriesListing({
           <div className="flex-1">
             {filteredStories.length > 0 ? (
               <>
-                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                  {filteredStories.map((story) => (
+                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                  {paginatedStories.map((story) => (
                     <Link
                       key={story.id}
                       href={`/customers/${story.slug}`}
-                      className={classNames(
-                        "flex h-full flex-col overflow-hidden rounded-xl bg-muted-background",
-                        "group transition duration-300 ease-out",
-                        "hover:bg-primary-100"
-                      )}
+                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white transition-colors"
                     >
                       {/* Hero image or logo */}
                       <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
@@ -390,8 +450,8 @@ export default function CustomerStoriesListing({
                             width={640}
                             height={360}
                             loader={contentfulImageLoader}
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                            className="h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="h-full w-full object-cover"
                           />
                         ) : story.companyLogo ? (
                           <div className="flex h-full w-full items-center justify-center bg-white p-8">
@@ -410,48 +470,58 @@ export default function CustomerStoriesListing({
                             </span>
                           </div>
                         )}
-                        {/* Tags */}
-                        <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
-                          {story.industries.slice(0, 2).map((ind) => (
-                            <span
-                              key={ind}
-                              className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
-                            >
-                              {ind}
-                            </span>
-                          ))}
-                          {story.department.slice(0, 2).map((dept) => (
-                            <span
-                              key={dept}
-                              className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
-                            >
-                              {dept}
-                            </span>
-                          ))}
-                        </div>
                       </div>
 
-                      <div className="flex flex-1 flex-col p-6">
-                        {/* Company name and headline metric */}
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            {story.companyName}
-                          </span>
-                          {story.headlineMetric && (
-                            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-600">
-                              {story.headlineMetric}
-                            </span>
-                          )}
+                      <div className="flex flex-1 flex-col gap-3 px-6 py-6">
+                        <div className="text-sm text-muted-foreground">
+                          {story.companyName}
                         </div>
-
-                        {/* Title */}
-                        <H5 className="line-clamp-3 text-foreground" mono>
+                        <h3 className="text-xl font-semibold text-foreground">
                           {story.title}
-                        </H5>
+                        </h3>
+                        {story.headlineMetric && (
+                          <p className="text-base text-muted-foreground">
+                            {story.headlineMetric}
+                          </p>
+                        )}
+                        <div className="mt-auto flex flex-wrap gap-2">
+                          {story.industries.map((industry) => (
+                            <Chip
+                              key={industry}
+                              label={industry}
+                              size="xs"
+                              color="primary"
+                            />
+                          ))}
+                          {story.department.map((dept) => (
+                            <Chip
+                              key={dept}
+                              label={dept}
+                              size="xs"
+                              color="primary"
+                            />
+                          ))}
+                        </div>
                       </div>
                     </Link>
                   ))}
                 </div>
+
+                {filteredStories.length > GRID_PAGE_SIZE && (
+                  <div className="mt-6 flex items-center justify-center">
+                    <Pagination
+                      rowCount={filteredStories.length}
+                      pagination={{
+                        pageIndex: currentPage - 1,
+                        pageSize: GRID_PAGE_SIZE,
+                      }}
+                      setPagination={({ pageIndex }) =>
+                        handlePageChange(pageIndex + 1)
+                      }
+                      size="sm"
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <div className="py-12 text-center">

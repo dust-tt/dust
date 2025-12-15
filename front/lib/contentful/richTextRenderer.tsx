@@ -60,6 +60,28 @@ function getParagraphText(node: Block | Inline): string {
   return text;
 }
 
+function extractTextFromChildren(children: ReactNode): string {
+  if (typeof children === "string") {
+    return children;
+  }
+  if (Array.isArray(children)) {
+    return children.map(extractTextFromChildren).join("");
+  }
+  if (children && typeof children === "object" && "props" in children) {
+    return extractTextFromChildren(children.props.children);
+  }
+  return "";
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // Use our styling for the rich text renderer.
 const renderOptions: Options = {
   renderMark: {
@@ -87,24 +109,60 @@ const renderOptions: Options = {
     },
   },
   renderNode: {
-    [BLOCKS.HEADING_1]: (_node, children) => (
-      <H2 className="mb-6 mt-10">{children}</H2>
-    ),
-    [BLOCKS.HEADING_2]: (_node, children) => (
-      <H3 className="mb-4 mt-8">{children}</H3>
-    ),
-    [BLOCKS.HEADING_3]: (_node, children) => (
-      <H4 className="mb-3 mt-6">{children}</H4>
-    ),
-    [BLOCKS.HEADING_4]: (_node, children) => (
-      <H5 className="mb-2 mt-5">{children}</H5>
-    ),
-    [BLOCKS.HEADING_5]: (_node, children) => (
-      <h6 className="mb-2 mt-4 text-base font-semibold">{children}</h6>
-    ),
-    [BLOCKS.HEADING_6]: (_node, children) => (
-      <h6 className="mb-2 mt-4 text-sm font-semibold">{children}</h6>
-    ),
+    [BLOCKS.HEADING_1]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H2 id={id} className="mb-6 mt-10 scroll-mt-20 text-foreground">
+          {children}
+        </H2>
+      );
+    },
+    [BLOCKS.HEADING_2]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H3 id={id} className="mb-4 mt-8 scroll-mt-20 text-foreground">
+          {children}
+        </H3>
+      );
+    },
+    [BLOCKS.HEADING_3]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H4 id={id} className="mb-3 mt-6 scroll-mt-20 text-foreground">
+          {children}
+        </H4>
+      );
+    },
+    [BLOCKS.HEADING_4]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <H5 id={id} className="mb-2 mt-5 scroll-mt-20 text-foreground">
+          {children}
+        </H5>
+      );
+    },
+    [BLOCKS.HEADING_5]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <h6 id={id} className="mb-2 mt-4 scroll-mt-20 text-base font-semibold text-foreground">
+          {children}
+        </h6>
+      );
+    },
+    [BLOCKS.HEADING_6]: (_node, children) => {
+      const text = extractTextFromChildren(children);
+      const id = slugify(text);
+      return (
+        <h6 id={id} className="mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground">
+          {children}
+        </h6>
+      );
+    },
     [BLOCKS.PARAGRAPH]: (node, children) => {
       // Check if paragraph contains only a YouTube URL
       const text = getParagraphText(node);
@@ -114,7 +172,7 @@ const renderOptions: Options = {
       }
 
       return (
-        <div className="copy-lg mb-4 whitespace-pre-line font-sans text-muted-foreground">
+        <div className="copy-lg mb-4 whitespace-pre-line font-sans text-foreground">
           {children}
         </div>
       );
