@@ -373,7 +373,6 @@ export function constructPromptMultiActions(
       enabledSkills,
       equippedSkills,
       featureFlags,
-      serverToolsAndInstructions,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),
