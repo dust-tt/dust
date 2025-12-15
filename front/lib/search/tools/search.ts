@@ -43,9 +43,9 @@ type SearchableMCPServerNameType = keyof typeof SEARCHABLE_TOOLS;
 const TOOL_TO_CONNECTOR_PROVIDER: Partial<
   Record<SearchableMCPServerNameType, ConnectorProvider>
 > = {
-  // google_drive: "google_drive",
-  // notion: "notion",
-  // microsoft_drive: "microsoft",
+  google_drive: "google_drive",
+  notion: "notion",
+  microsoft_drive: "microsoft",
 };
 
 function _isSearchableTool(
