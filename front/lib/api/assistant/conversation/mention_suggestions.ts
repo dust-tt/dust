@@ -18,7 +18,9 @@ import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
-  users: RichUserMentionInConversation[]
+  users: RichUserMentionInConversation[],
+  lowerCaseQuery: string = "",
+  lastMentionedId: string | null = null
 ): RichMention[] {
   if (users.length === 0) {
     return [...agents];
@@ -28,7 +30,7 @@ export function interleaveMentionsPreservingAgentOrder(
     return [...users];
   }
 
-  const result: RichMention[] = [];
+  let result: RichMention[] = [];
 
   let agentIndex = 0;
   let userIndex = 0;
@@ -39,16 +41,38 @@ export function interleaveMentionsPreservingAgentOrder(
       break;
     }
 
+    const nextUser = users[userIndex];
+    const nextAgent = agents[agentIndex];
+
     // First fill in users participants
-    if (users[userIndex]?.isParticipant) {
-      result.push(users[userIndex]);
+    if (nextUser?.isParticipant) {
+      result.push(nextUser);
       userIndex += 1;
       continue;
     }
 
     // Then fill in agents participants
-    if (agents[agentIndex]?.isParticipant) {
-      result.push(agents[agentIndex]);
+    if (nextAgent?.isParticipant) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+
+    // Prioritize users/agents who start with the query
+    if (
+      lowerCaseQuery &&
+      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery)
+    ) {
+      result.push(nextUser);
+      userIndex += 1;
+      continue;
+    }
+
+    if (
+      lowerCaseQuery &&
+      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery)
+    ) {
+      result.push(nextAgent);
       agentIndex += 1;
       continue;
     }
@@ -69,7 +93,20 @@ export function interleaveMentionsPreservingAgentOrder(
     }
   }
 
-  return result;
+  // Move last mentioned agent to first position if specified
+  if (lastMentionedId) {
+    const lastMentioned =
+      agents.find((s) => s.id === lastMentionedId) ??
+      users.find((s) => s.id === lastMentionedId);
+    if (lastMentioned) {
+      result = [
+        lastMentioned,
+        ...result.filter((suggestion) => suggestion.id !== lastMentionedId),
+      ];
+    }
+  }
+
+  return result.slice(0, SUGGESTION_DISPLAY_LIMIT);
 }
 
 export const suggestionsOfMentions = async (
@@ -184,6 +221,7 @@ export const suggestionsOfMentions = async (
     const res = await UserResource.searchUsers(auth, {
       searchTerm: query,
       offset: 0,
+      limit: SUGGESTION_DISPLAY_LIMIT,
     });
 
     if (res.isOk()) {
@@ -198,6 +236,15 @@ export const suggestionsOfMentions = async (
             participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
         }));
       const sortedUsers = sortEditorSuggestionUsers(filteredUsers);
+      if (!normalizedQuery) {
+        // It's a special case when there's no query: all the conversation participants may not be in the users list (as it's limited).
+        // We want to make sure to include them at the start of the suggestions (without duplicate).
+        userSuggestions.push(
+          ...participantUsers.filter(
+            (pu) => !sortedUsers.some((su) => su.id === pu.id)
+          )
+        );
+      }
       userSuggestions.push(...sortedUsers);
     }
   }
@@ -223,19 +270,10 @@ export const suggestionsOfMentions = async (
     return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
 
-  let results = interleaveMentionsPreservingAgentOrder(
+  return interleaveMentionsPreservingAgentOrder(
     selectedAgents,
-    userSuggestions
+    userSuggestions,
+    normalizedQuery,
+    lastMentionedId
   );
-
-  // Move last mentioned agent to first position if specified
-  if (lastMentionedId) {
-    const preferredIndex = results.findIndex((s) => s.id === lastMentionedId);
-    if (preferredIndex > 0) {
-      const preferred = results[preferredIndex];
-      results = [preferred, ...results.filter((_, i) => i !== preferredIndex)];
-    }
-  }
-
-  return results;
 };
