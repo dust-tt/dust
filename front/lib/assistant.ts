@@ -1,4 +1,4 @@
-import { config as regionConfig } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/lib/api/regions/config";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type {
   AgentModelConfigurationType,
@@ -43,7 +43,8 @@ export function canUseModel(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  region: RegionType
 ) {
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
@@ -61,10 +62,7 @@ export function canUseModel(
   }
 
   // GPT 5.2 is not available in EU region
-  if (
-    m.modelId === GPT_5_2_MODEL_ID &&
-    regionConfig.getCurrentRegion() === "europe-west1"
-  ) {
+  if (m.modelId === GPT_5_2_MODEL_ID && region === "europe-west1") {
     return false;
   }
 

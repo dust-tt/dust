@@ -21,7 +21,6 @@ import type {
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
-import { isString } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -199,7 +198,11 @@ export async function decreaseProgrammaticCreditsV2(
     userMessageOrigin: UserMessageOrigin;
   },
   parentLogger?: Logger
-): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
+): Promise<{
+  totalConsumedMicroUsd: number;
+  totalInitialMicroUsd: number;
+  activeCredits: CreditResource[];
+}> {
   const localLogger = parentLogger ?? logger;
   const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
@@ -286,6 +289,7 @@ export async function decreaseProgrammaticCreditsV2(
   return {
     totalConsumedMicroUsd: totalConsumedBeforeMicroUsd + consumedAmountMicroUsd,
     totalInitialMicroUsd: totalInitialMicroUsd,
+    activeCredits,
   };
 }
 
@@ -318,6 +322,38 @@ async function initializeCredits(
   // Set initial credits with expiry.
   await redis.set(key, monthlyLimitUsd.toString());
   await redis.expire(key, secondsUntilEnd);
+}
+
+/**
+ * Returns a key used to construct a workflowId for credit alerts
+ * We use temporal's strong guarantees on idempotency - only one succeed workflow per workflow id
+ * How do we construct this key ?
+ * We "fingerprint" your pool of available credits by taking the ids of the most recent committed and free by credit started date
+ * Which means that when a new credit is started, the key will change, which means a new email will be triggered if consumption crosses 80% threshold.
+ * Otherwise, the key will be invariant.
+ *
+ **/
+export function computeCreditAlertThresholdKey(
+  activeCredits: Pick<CreditResource, "type" | "startDate" | "sId">[],
+  thresholdPercent: number
+): string {
+  const sortByStartDateDesc = (
+    a: Pick<CreditResource, "startDate">,
+    b: Pick<CreditResource, "startDate">
+  ) => (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0);
+
+  const firstFreeCredit = activeCredits
+    .filter((c) => c.type === "free")
+    .sort(sortByStartDateDesc)[0];
+
+  const firstCommittedCredit = activeCredits
+    .filter((c) => c.type === "committed")
+    .sort(sortByStartDateDesc)[0];
+
+  const freeId = firstFreeCredit?.sId;
+  const committedId = firstCommittedCredit?.sId;
+
+  return `${freeId}-${committedId}-${thresholdPercent}`;
 }
 
 export async function trackProgrammaticCost(
@@ -366,7 +402,7 @@ export async function trackProgrammaticCost(
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
-  const { totalConsumedMicroUsd, totalInitialMicroUsd } =
+  const { totalConsumedMicroUsd, totalInitialMicroUsd, activeCredits } =
     await decreaseProgrammaticCreditsV2(
       auth,
       {
@@ -386,19 +422,13 @@ export async function trackProgrammaticCost(
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
-      const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
-      // For eng-oncall:
-      // If you get this, you can defer to programmatic usage owners right away
-      // Every workspace should have this key defined
-      // If not, it means they will not get alerted
-      // when they reached their usage threshold
-      assert(
-        isString(idempotencyKey),
-        "creditAlertThresholdId must be set when credits exist"
+      const creditAlertThresholdKey = computeCreditAlertThresholdKey(
+        activeCredits,
+        CREDIT_ALERT_THRESHOLD_PERCENT
       );
-      void launchCreditAlertWorkflow({
+      await launchCreditAlertWorkflow({
         workspaceId: workspace.sId,
-        idempotencyKey: idempotencyKey,
+        creditAlertThresholdKey,
         totalInitialMicroUsd,
         totalConsumedMicroUsd,
       });
@@ -441,8 +471,8 @@ export async function getRemainingCredits(
 }
 // First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).
 export function compareCreditsForConsumption(
-  a: CreditResource,
-  b: CreditResource
+  a: Pick<CreditResource, "type" | "expirationDate">,
+  b: Pick<CreditResource, "type" | "expirationDate">
 ): number {
   if (a.type === "free" && b.type !== "free") {
     return -1;

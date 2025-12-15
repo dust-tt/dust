@@ -15,6 +15,7 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
@@ -75,8 +76,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
             [
               {
                 name: "Dust",
-                visual:
-                  "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+                visual: DUST_AVATAR_URL,
               },
             ];
         return (
@@ -150,7 +150,7 @@ export function SkillsTable({
     () =>
       skills.map((skill) => ({
         name: skill.name,
-        description: skill.agentFacingDescription,
+        description: skill.userFacingDescription,
         editors: skill.editors,
         usage: skill.usage,
         updatedAt: skill.updatedAt,
