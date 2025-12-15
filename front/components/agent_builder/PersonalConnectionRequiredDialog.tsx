@@ -192,6 +192,12 @@ export function PersonalConnectionRequiredDialog({
                 </div>
               )
             )}
+            <p className="mt-4">
+              {disconnectedCount}{" "}
+              {disconnectedCount > 1 ? "connections are" : "connection is"}{" "}
+              required. If you proceed without connecting, the agent will
+              request credentials when they use the tool.
+            </p>
           </DialogDescription>
         </DialogContainer>
 
@@ -203,8 +209,7 @@ export function PersonalConnectionRequiredDialog({
           }}
           rightButtonProps={{
             label: "Save",
-            variant: "primary",
-            disabled: disconnectedCount > 0,
+            variant: disconnectedCount > 0 ? "warning" : "primary",
             onClick: onClose,
           }}
         />
