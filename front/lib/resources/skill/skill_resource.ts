@@ -363,7 +363,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
     }
-  ) {
+  ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const conversationSkills = await ConversationSkillModel.findAll({
