@@ -61,7 +61,7 @@ export type LightMessageType =
  * origin here should not overlap with another existing origin and all user
  * messages should have an origin.
  *
- * Avoid adding an origin that:
+ * Please do not add an origin that:
  * - is not directly linked to how the original user sent the message;
  * - overlaps with existing origins (e.g. "linux" and "mac-os" would be terrible
  *   orgins in that respect, overlapping with almost all origins).
@@ -71,8 +71,6 @@ export type LightMessageType =
  *
  */
 export type UserMessageOrigin =
-  // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
-  | "agent_handover" // soon to be removed (not a fitting origin).
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
   // below are API usages dedicated to standard product features.
   | "api"
@@ -87,7 +85,6 @@ export type UserMessageOrigin =
   | "n8n"
   | "powerpoint"
   | "raycast"
-  | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
   | "slack_workflow"
   | "teams"
@@ -97,6 +94,8 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
+  // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
+  // but should be removed and most likely handled as message metadata (to be created).
   | "onboarding_conversation";
 
 export type UserMessageContext = {
@@ -106,7 +105,6 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin: UserMessageOrigin;
-  originMessageId?: string | null;
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
@@ -187,6 +185,7 @@ export type BaseAgentMessageType = {
   chainOfThought: string | null;
   error: GenericErrorContent | null;
   visibility: MessageVisibility;
+  richMentions: RichMention[];
 };
 
 export type ParsedContentItem =

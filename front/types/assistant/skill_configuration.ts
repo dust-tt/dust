@@ -1,5 +1,4 @@
 import type { AgentsUsageType } from "@app/types/data_source";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
 
 export type SkillStatus = "active" | "archived";
@@ -15,7 +14,7 @@ export type SkillConfigurationType = {
   userFacingDescription: string;
   instructions: string | null;
   icon: string | null;
-  requestedSpaceIds: ModelId[];
+  requestedSpaceIds: string[];
   tools: { mcpServerViewId: string }[];
   canWrite: boolean;
 };

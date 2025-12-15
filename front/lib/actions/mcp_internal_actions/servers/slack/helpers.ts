@@ -1,5 +1,6 @@
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Usergroup } from "@slack/web-api/dist/response/UsergroupsListResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -13,7 +14,7 @@ import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Constants for Slack API limits and pagination.
 export const SLACK_API_PAGE_SIZE = 100;
@@ -112,6 +113,28 @@ export function cleanUserPayload(user: Member): MinimalUserInfo {
     real_name: user.real_name ?? "",
     display_name: user.profile?.display_name ?? "",
     email: user.profile?.email,
+  };
+}
+
+// Minimal user group information returned to reduce context window usage.
+export type MinimalUserGroupInfo = {
+  id: string;
+  handle: string;
+  name: string;
+  description?: string;
+  user_count?: number;
+};
+
+// Clean user group payload to keep only essential fields.
+export function cleanUserGroupPayload(
+  usergroup: Usergroup
+): MinimalUserGroupInfo {
+  return {
+    id: usergroup.id ?? "",
+    handle: usergroup.handle ?? "",
+    name: usergroup.name ?? "",
+    description: usergroup.description,
+    user_count: usergroup.user_count,
   };
 }
 
@@ -260,10 +283,13 @@ export async function resolveChannelId({
 
 // Helper function to resolve user ID to display name.
 // Returns the user's display name or real name, or null if not found.
-export async function resolveUserDisplayName(
-  userId: string,
-  accessToken: string
-): Promise<string | null> {
+export async function resolveUserDisplayName({
+  userId,
+  accessToken,
+}: {
+  userId: string;
+  accessToken: string;
+}): Promise<string | null> {
   const slackClient = await getSlackClient(accessToken);
 
   try {
@@ -288,10 +314,13 @@ export async function resolveUserDisplayName(
 // Resolves a channel ID to a human-readable display name.
 // Handles DMs (direct messages) and regular channels.
 // This function expects a normalized channel ID from resolveChannelId.
-export async function resolveChannelDisplayName(
-  channelId: string,
-  accessToken: string
-): Promise<string> {
+export async function resolveChannelDisplayName({
+  channelId,
+  accessToken,
+}: {
+  channelId: string;
+  accessToken: string;
+}): Promise<string> {
   const slackClient = await getSlackClient(accessToken);
 
   try {
@@ -302,10 +331,10 @@ export async function resolveChannelDisplayName(
     if (channelInfo.ok && channelInfo.channel) {
       // For DMs, channelId starts with "D" and channel.name contains the user ID.
       if (channelId.startsWith("D") && channelInfo.channel.name) {
-        const userName = await resolveUserDisplayName(
-          channelInfo.channel.name,
-          accessToken
-        );
+        const userName = await resolveUserDisplayName({
+          userId: channelInfo.channel.name,
+          accessToken,
+        });
         return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
       }
 
@@ -326,6 +355,20 @@ export async function resolveChannelDisplayName(
   return `#${channelId}`;
 }
 
+// Format users as Markdown.
+function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
+  return users
+    .map(
+      (user) =>
+        `- **ID: ${user.id}**` +
+        `\n  - Name: ${user.name}` +
+        `\n  - Real name: ${user.real_name}` +
+        `\n  - Display name: ${user.display_name}` +
+        (user.email ? `\n  - Email: ${user.email}` : "")
+    )
+    .join("\n");
+}
+
 // Helper function to build filtered list responses.
 function buildFilteredListResponse<T, U = T>(
   items: T[],
@@ -336,16 +379,21 @@ function buildFilteredListResponse<T, U = T>(
     hasFilter: boolean,
     filterText?: string
   ) => string,
-  transformFn?: (item: T) => U
+  transformFn?: (item: T) => U,
+  formatFn?: (items: U[]) => string
 ): Ok<Array<{ type: "text"; text: string }>> {
   const transform = transformFn ?? ((item: T) => item as unknown as U);
 
   if (!nameFilter) {
+    const transformedItems = items.map(transform);
+    const formattedText = formatFn
+      ? formatFn(transformedItems)
+      : JSON.stringify(transformedItems, null, 2);
     return new Ok([
       { type: "text" as const, text: contextMessage(items.length, false) },
       {
         type: "text" as const,
-        text: JSON.stringify(items.map(transform), null, 2),
+        text: formattedText,
       },
     ]);
   }
@@ -356,6 +404,10 @@ function buildFilteredListResponse<T, U = T>(
   );
 
   if (filteredItems.length > 0) {
+    const transformedItems = filteredItems.map(transform);
+    const formattedText = formatFn
+      ? formatFn(transformedItems)
+      : JSON.stringify(transformedItems, null, 2);
     return new Ok([
       {
         type: "text" as const,
@@ -363,11 +415,15 @@ function buildFilteredListResponse<T, U = T>(
       },
       {
         type: "text" as const,
-        text: JSON.stringify(filteredItems.map(transform), null, 2),
+        text: formattedText,
       },
     ]);
   }
 
+  const transformedItems = items.map(transform);
+  const formattedText = formatFn
+    ? formatFn(transformedItems)
+    : JSON.stringify(transformedItems, null, 2);
   return new Ok([
     {
       type: "text" as const,
@@ -376,7 +432,7 @@ function buildFilteredListResponse<T, U = T>(
     },
     {
       type: "text" as const,
-      text: JSON.stringify(items.map(transform), null, 2),
+      text: formattedText,
     },
   ]);
 }
@@ -633,11 +689,71 @@ export async function executeScheduleMessage(
   ]);
 }
 
-export async function executeListUsers(
-  nameFilter: string | undefined,
-  accessToken: string
-) {
+export async function executeListUserGroups({
+  accessToken,
+}: {
+  accessToken: string;
+}) {
   const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.usergroups.list({
+      include_count: true,
+      include_disabled: false,
+      include_users: false,
+    });
+
+    if (!response.ok) {
+      return new Err(new MCPError("Failed to list user groups"));
+    }
+
+    const usergroups = response.usergroups ?? [];
+    const cleanedUserGroups = usergroups.map(cleanUserGroupPayload);
+
+    const formattedUserGroups = cleanedUserGroups
+      .map(
+        (group) =>
+          `- **@${group.handle}**` +
+          `\n  - Name: ${group.name}` +
+          `\n  - ID: \`${group.id}\``
+      )
+      .join("\n");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `The workspace has ${cleanedUserGroups.length} user groups:\n\n${formattedUserGroups}`,
+      },
+    ]);
+  } catch (error) {
+    return new Err(
+      new MCPError(
+        `Error listing user groups: ${normalizeError(error).message}`
+      )
+    );
+  }
+}
+
+export async function executeListUsers({
+  nameFilter,
+  accessToken,
+  includeUserGroups,
+}: {
+  nameFilter?: string;
+  accessToken: string;
+  includeUserGroups?: boolean;
+}) {
+  const slackClient = await getSlackClient(accessToken);
+
+  // Load user groups first if requested.
+  let userGroupsContent: Array<{ type: "text"; text: string }> = [];
+  if (includeUserGroups) {
+    const userGroupsResult = await executeListUserGroups({ accessToken });
+    if (userGroupsResult.isOk()) {
+      userGroupsContent = userGroupsResult.value;
+    }
+  }
+
   const users: Member[] = [];
 
   let cursor: string | undefined = undefined;
@@ -666,7 +782,10 @@ export async function executeListUsers(
       );
 
       if (filteredUsers.length > 0) {
-        return buildFilteredListResponse<Member, MinimalUserInfo>(
+        const usersResponse = buildFilteredListResponse<
+          Member,
+          MinimalUserInfo
+        >(
           users,
           nameFilter,
           (user, normalizedFilter) =>
@@ -678,16 +797,19 @@ export async function executeListUsers(
             ),
           (count, hasFilter, filterText) =>
             hasFilter
-              ? `The workspace has ${count} users containing "${filterText}"`
-              : `The workspace has ${count} users`,
-          cleanUserPayload
+              ? `The workspace has ${count} users containing "${filterText}":\n\n`
+              : `The workspace has ${count} users:\n\n`,
+          cleanUserPayload,
+          formatUsersAsMarkdown
         );
+
+        return new Ok([...userGroupsContent, ...usersResponse.value]);
       }
     }
   } while (cursor);
 
   // No filter or no matches found after checking all pages.
-  return buildFilteredListResponse<Member, MinimalUserInfo>(
+  const usersResponse = buildFilteredListResponse<Member, MinimalUserInfo>(
     users,
     nameFilter,
     (user, normalizedFilter) =>
@@ -699,13 +821,22 @@ export async function executeListUsers(
       ),
     (count, hasFilter, filterText) =>
       hasFilter
-        ? `The workspace has ${count} users containing "${filterText}"`
-        : `The workspace has ${count} users`,
-    cleanUserPayload
+        ? `The workspace has ${count} users containing "${filterText}":\n\n`
+        : `The workspace has ${count} users:\n\n`,
+    cleanUserPayload,
+    formatUsersAsMarkdown
   );
+
+  return new Ok([...userGroupsContent, ...usersResponse.value]);
 }
 
-export async function executeGetUser(userId: string, accessToken: string) {
+export async function executeGetUser({
+  userId,
+  accessToken,
+}: {
+  userId: string;
+  accessToken: string;
+}) {
   const slackClient = await getSlackClient(accessToken);
   const response = await slackClient.users.info({ user: userId });
 
@@ -846,16 +977,25 @@ export async function executeListJoinedChannels(
   );
 }
 
-export async function executeReadThreadMessages(
-  channel: string,
-  threadTs: string,
-  limit: number | undefined,
-  cursor: string | undefined,
-  oldest: string | undefined,
-  latest: string | undefined,
-  accessToken: string,
-  mcpServerId: string
-) {
+export async function executeReadThreadMessages({
+  channel,
+  threadTs,
+  limit,
+  cursor,
+  oldest,
+  latest,
+  accessToken,
+  mcpServerId,
+}: {
+  channel: string;
+  threadTs: string;
+  limit: number | undefined;
+  cursor: string | undefined;
+  oldest: string | undefined;
+  latest: string | undefined;
+  accessToken: string;
+  mcpServerId: string;
+}) {
   const slackClient = await getSlackClient(accessToken);
 
   // Resolve channel name/ID to channel ID (supports public/private channels and DMs).

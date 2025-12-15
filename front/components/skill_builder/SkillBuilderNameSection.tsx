@@ -16,7 +16,7 @@ export function SkillBuilderNameSection() {
           <div className="flex-grow">
             <Input
               ref={registerRef}
-              label="Skill name"
+              label="Name"
               placeholder="Enter skill name"
               onChange={onChange}
               message={errorMessage}

@@ -75,10 +75,6 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "GitHub Copilot Chat",
     color: "text-blue-500 dark:text-blue-500-night",
   },
-  agent_handover: {
-    label: "Agent handover",
-    color: "text-gray-300 dark:text-gray-300-night",
-  },
   api: { label: "API", color: "text-blue-300 dark:text-blue-300-night" },
   cli: { label: "CLI", color: "text-gray-500 dark:text-gray-500-night" },
   cli_programmatic: {
@@ -110,10 +106,6 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   raycast: {
     label: "Raycast",
     color: "rose-500 dark:rose-500-night",
-  },
-  run_agent: {
-    label: "Sub-agent",
-    color: "text-golden-500 dark:text-golden-500-night",
   },
   slack: { label: "Slack", color: "text-green-500 dark:text-green-500-night" },
   slack_workflow: {

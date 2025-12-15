@@ -17,7 +17,7 @@ const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 
-export function SkillBuilderDescriptionSection() {
+export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner } = useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
@@ -92,7 +92,7 @@ export function SkillBuilderDescriptionSection() {
         <div className="space-y-3">
           <TextArea
             ref={registerRef}
-            placeholder="When should this skill be used? What will this skill be good for?"
+            placeholder="When should this skill be used? What is this skill good for?"
             className="min-h-24"
             onChange={(e) => handleDescriptionChange(e, onChange)}
             error={hasError ? errorMessage : undefined}

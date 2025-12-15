@@ -1,5 +1,6 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Avatar,
   DataTable,
   EyeIcon,
   PencilSquareIcon,
@@ -24,6 +25,7 @@ import type { AgentsUsageType } from "@app/types/data_source";
 
 type RowData = {
   name: string;
+  icon: string | null;
   description: string;
   editors: UserType[] | null;
   usage: AgentsUsageType;
@@ -48,12 +50,17 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
-          <div className="flex min-w-0 grow flex-col py-3">
-            <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-              {info.getValue()}
+          <div className="flex flex-row items-center gap-2 py-3">
+            <div>
+              <Avatar visual={info.row.original.icon} size="sm" />
             </div>
-            <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.description}
+            <div className="flex min-w-0 grow flex-col">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+                {info.getValue()}
+              </div>
+              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {info.row.original.description}
+              </div>
             </div>
           </div>
         </DataTable.CellContent>
@@ -150,6 +157,7 @@ export function SkillsTable({
     () =>
       skills.map((skill) => ({
         name: skill.name,
+        icon: skill.icon,
         description: skill.userFacingDescription,
         editors: skill.editors,
         usage: skill.usage,

@@ -120,18 +120,38 @@
  *           example: "https://example.com/profiles/johndoe123.jpg"
  *         origin:
  *           type: string
- *           description: Origin of the context (contact us to add more at support@dust.tt)
+ *           description: Origin of the context (contact us to add more at support@dust.tt). Some values are protected - if you get a invalid_request_error, consider using "api" instead.
+ *           default: "api"
  *           enum:
  *             - api
- *             - slack
- *             - gsheet
- *             - zapier
- *             - make
- *             - zendesk
- *             - raycast
- *             - github-copilot-chat
- *             - extension
+ *             - cli
+ *             - cli_programmatic
  *             - email
+ *             - excel
+ *             - extension
+ *             - github-copilot-chat
+ *             - gsheet
+ *             - make
+ *             - n8n
+ *             - powerpoint
+ *             - raycast
+ *             - slack
+ *             - teams
+ *             - zapier
+ *             - zendesk
+ *         agenticMessageData:
+ *           type: object
+ *           properties:
+ *             type:
+ *               type: string
+ *               enum:
+ *                 - run_agent
+ *                 - agent_handover
+ *               description: Type of the agentic message
+ *             originMessageId:
+ *               type: string
+ *               description: ID of the origin message
+ *               example: "2b8e4f6a0c"
  *     AgentConfiguration:
  *       type: object
  *       properties:

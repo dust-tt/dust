@@ -61,6 +61,7 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             // User info scopes.
             "users:read.email",
             "users:read",
+            "usergroups:read",
           ];
         default:
           assert(

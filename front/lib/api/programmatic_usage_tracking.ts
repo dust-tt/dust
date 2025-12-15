@@ -26,7 +26,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
   "programmatic" | "user"
 > = {
-  agent_handover: "user",
   api: "programmatic",
   cli: "user",
   cli_programmatic: "programmatic",
@@ -39,7 +38,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   n8n: "programmatic",
   powerpoint: "programmatic",
   raycast: "user",
-  run_agent: "user",
   slack: "user",
   slack_workflow: "programmatic",
   teams: "user",
@@ -436,39 +434,6 @@ export async function trackProgrammaticCost(
   }
 }
 
-export async function resetCredits(
-  workspace: LightWorkspaceType,
-  { newCredits }: { newCredits?: number } = {}
-): Promise<void> {
-  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
-    if (newCredits) {
-      await initializeCredits(redis, workspace, newCredits);
-    } else {
-      const key = getRedisKey(workspace);
-
-      await redis.del(key);
-    }
-  });
-}
-
-export async function getRemainingCredits(
-  workspace: LightWorkspaceType
-): Promise<{ expiresInSeconds: number; remainingCredits: number } | null> {
-  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
-    const key = getRedisKey(workspace);
-    const remainingCredits = await redis.get(key);
-    if (remainingCredits === null) {
-      return null;
-    }
-
-    const expiresInSeconds = await redis.ttl(key);
-
-    return {
-      expiresInSeconds,
-      remainingCredits: parseFloat(remainingCredits),
-    };
-  });
-}
 // First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).
 export function compareCreditsForConsumption(
   a: Pick<CreditResource, "type" | "expirationDate">,

@@ -14,7 +14,8 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
-import { CreditsList } from "@app/components/workspace/CreditsList";
+import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
+import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import {
   getBillingCycle,
@@ -398,6 +399,20 @@ export default function CreditsUsagePage({
     return percentUsed >= 80;
   }, [totalConsumed, totalCredits]);
 
+  const [activeCredits, expiredCredits] = useMemo(() => {
+    return credits.reduce<[CreditDisplayData[], CreditDisplayData[]]>(
+      ([active, expired], current) => {
+        if (!isExpired(current)) {
+          active.push(current);
+        } else {
+          expired.push(current);
+        }
+        return [active, expired];
+      },
+      [[], []]
+    );
+  }, [credits]);
+
   return (
     <AppCenteredLayout
       owner={owner}
@@ -423,7 +438,31 @@ export default function CreditsUsagePage({
         <Page.Header
           title="Programmatic Usage"
           icon={CardIcon}
-          description="Monitor usage and credits for your API keys and automated workflows."
+          description={
+            <div>
+              <p>
+                Monitor usage and credits for programmatic usage (API keys,
+                automated workflows, etc.). Usage cost is based on token
+                consumption, according to our{" "}
+                <a
+                  href="https://dust-tt.notion.site/API-Pricing-12928599d941805a89dedeed342aacd5"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary-dark"
+                >
+                  pricing page
+                </a>
+                . Learn more in the{" "}
+                <a
+                  href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e?pvs=74"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary-dark"
+                >
+                  programmatic usage documentation
+                </a>
+                .
+              </p>
+            </div>
+          }
         />
 
         {shouldShowLowCreditsWarning && (
@@ -475,16 +514,24 @@ export default function CreditsUsagePage({
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
-        {/* History Section */}
-        <Page.Vertical>
-          <Page.Vertical gap="sm">
-            <Page.H variant="h5">Credit history</Page.H>
-            <Page.P variant="secondary">
-              Credit history for programmatic usage. Credits invoices are sent
-              by email at time of purchase.
-            </Page.P>
-          </Page.Vertical>
-          <CreditsList credits={credits} isLoading={isCreditsLoading} />
+        {/* Current Credits Section */}
+        <Page.Vertical sizing="grow">
+          <div className="flex w-full items-start justify-between">
+            <Page.Vertical gap="sm" sizing="grow">
+              <div className="flex w-full items-center justify-between">
+                <Page.H variant="h5">Current credits</Page.H>
+                <CreditHistorySheet
+                  credits={expiredCredits}
+                  isLoading={isCreditsLoading}
+                />
+              </div>
+              <Page.P variant="secondary">
+                Active credits for programmatic usage. Credits invoices are sent
+                by email at time of purchase.
+              </Page.P>
+            </Page.Vertical>
+          </div>
+          <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
         {/* Usage Graph */}
