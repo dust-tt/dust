@@ -27,12 +27,9 @@ export function AgentBuilderSpacesBlock() {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
 
     // Collect space IDs from skills
-    const skillRequestedSpaceIds = new Set<string>();
-    for (const skill of skills) {
-      for (const spaceId of skill.requestedSpaceIds) {
-        skillRequestedSpaceIds.add(spaceId);
-      }
-    }
+    const skillRequestedSpaceIds = new Set(
+      skills.flatMap((skill) => skill.requestedSpaceIds)
+    );
 
     // Collect space IDs from actions (tools/knowledge)
     const actionRequestedSpaceIds = new Set<string>();
