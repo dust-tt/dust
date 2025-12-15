@@ -230,7 +230,7 @@ export function useSkillConfigurationHistory({
 
   return {
     skillConfigurationHistory: data?.history,
-    isSkillConfigurationHistoryLoading: !error && !data,
+    isSkillConfigurationHistoryLoading: !error && !data && !disabled,
     isSkillConfigurationHistoryError: error,
     mutateSkillConfigurationHistory: mutate,
   };
