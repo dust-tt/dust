@@ -26,7 +26,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
   "programmatic" | "user"
 > = {
-  agent_handover: "user",
   api: "programmatic",
   cli: "user",
   cli_programmatic: "programmatic",
@@ -39,7 +38,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   n8n: "programmatic",
   powerpoint: "programmatic",
   raycast: "user",
-  run_agent: "user",
   slack: "user",
   slack_workflow: "programmatic",
   teams: "user",
