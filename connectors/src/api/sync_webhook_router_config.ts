@@ -83,8 +83,10 @@ const _syncWebhookRouterEntryHandler = async (
     }
   } else if (provider === "slack") {
     // Find all connectors for this Slack team in this region
-    const slackConfigs =
-      await SlackConfigurationResource.listForTeamId(providerWorkspaceId);
+    const slackConfigs = await SlackConfigurationResource.listForTeamId(
+      providerWorkspaceId,
+      provider
+    );
 
     if (slackConfigs.length > 0) {
       // Get the connector for this Slack configuration
