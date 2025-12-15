@@ -1,6 +1,8 @@
-import type { ConnectionOptions } from "@temporalio/client";
+import type {
+  ConnectionOptions,
+  WorkflowClientInterceptor,
+} from "@temporalio/client";
 import { Client, Connection } from "@temporalio/client";
-import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
@@ -18,7 +20,8 @@ export const TEMPORAL_MAXED_CACHED_WORKFLOWS = 50;
 const TEMPORAL_CLIENTS: Partial<Record<TemporalNamespaces, Client>> = {};
 
 export async function getTemporalClientForNamespace(
-  namespace: TemporalNamespaces
+  namespace: TemporalNamespaces,
+  workflows: WorkflowClientInterceptor[] = []
 ) {
   const cachedClient = TEMPORAL_CLIENTS[namespace];
   if (cachedClient) {
@@ -32,6 +35,9 @@ export async function getTemporalClientForNamespace(
   const client = new Client({
     connection,
     namespace: process.env[envVarForTemporalNamespace],
+    interceptors: {
+      workflow: workflows,
+    },
   });
   TEMPORAL_CLIENTS[namespace] = client;
 
@@ -98,26 +104,7 @@ export async function getTemporalWorkerConnection(): Promise<{
 }
 
 export async function getTemporalClientForAgentNamespace() {
-  const cachedClient = TEMPORAL_CLIENTS["agent"];
-  if (cachedClient) {
-    return cachedClient;
-  }
-
-  const envVarForTemporalNamespace = temporalWorkspaceToEnvVar["agent"];
-  const connectionOptions = await getConnectionOptions(
-    envVarForTemporalNamespace
-  );
-  const connection = await Connection.connect(connectionOptions);
-  const client = new Client({
-    connection,
-    namespace: process.env[envVarForTemporalNamespace],
-    interceptors: {
-      workflow: [new OpenTelemetryWorkflowClientInterceptor()],
-    },
-  });
-  TEMPORAL_CLIENTS["agent"] = client;
-
-  return client;
+  return getTemporalClientForNamespace("agent");
 }
 
 export async function getTemporalClientForFrontNamespace() {

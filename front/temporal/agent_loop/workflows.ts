@@ -38,14 +38,13 @@ const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
 export const NOTIFICATION_DELAY_MS = 30000;
 
-// Add these new imports
 import {
   OpenTelemetryInboundInterceptor,
   OpenTelemetryInternalsInterceptor,
   OpenTelemetryOutboundInterceptor,
 } from "@temporalio/interceptors-opentelemetry/lib/workflow";
 
-// Add this export right after your imports, before the proxyActivities
+// Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
 export const interceptors: WorkflowInterceptorsFactory = () => ({
   inbound: [new OpenTelemetryInboundInterceptor()],
   outbound: [new OpenTelemetryOutboundInterceptor()],

@@ -34,6 +34,7 @@ import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { trackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import { isDevelopment, removeNulls } from "@app/types";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -74,7 +75,9 @@ export async function runAgentLoopWorker() {
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
-      workflowModules: [require.resolve("./workflows")],
+      workflowModules: removeNulls([
+        isDevelopment() ? require.resolve("./workflows") : null,
+      ]),
       activity: [
         (ctx: Context) => {
           return {
