@@ -170,7 +170,7 @@ export function useMembersLookup({
 
   return {
     members: data?.users ?? emptyArray(),
-    isMembersLookupLoading: !error && !data && !!query,
+    isMembersLookupLoading: !error && !data && !!query && !disabled,
     isMembersLookupError: !!error,
   };
 }
