@@ -23,16 +23,22 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { EnterpriseUpgradeFormType, WorkspaceType } from "@app/types";
+import type {
+  EnterpriseUpgradeFormType,
+  ProgrammaticUsageConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
+
+interface EnterpriseUpgradeDialogProps {
+  owner: WorkspaceType;
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+}
 
 export default function EnterpriseUpgradeDialog({
   owner,
-  hasProgrammaticUsageConfig,
-}: {
-  owner: WorkspaceType;
-  hasProgrammaticUsageConfig: boolean;
-}) {
+  programmaticUsageConfig,
+}: EnterpriseUpgradeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -115,7 +121,7 @@ export default function EnterpriseUpgradeDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {!hasProgrammaticUsageConfig && (
+          {!programmaticUsageConfig && (
             <div className="mb-4 rounded-md border border-warning-200 bg-warning-100 p-3 text-warning-800">
               Programmatic usage configuration must be set before upgrading to
               enterprise. Please use the "Manage Programmatic Usage
@@ -162,7 +168,7 @@ export default function EnterpriseUpgradeDialog({
                     type="submit"
                     variant="warning"
                     label="Upgrade"
-                    disabled={!hasProgrammaticUsageConfig}
+                    disabled={!programmaticUsageConfig}
                   />
                 </DialogFooter>
               </form>

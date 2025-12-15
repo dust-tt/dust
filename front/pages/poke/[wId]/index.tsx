@@ -60,6 +60,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import type {
   ExtensionConfigurationType,
+  ProgrammaticUsageConfigurationType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceDomain,
@@ -72,8 +73,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
-  hasProgrammaticUsageConfig: boolean;
   owner: WorkspaceType;
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   registry: ActionRegistry;
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
@@ -138,7 +139,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       workspaceVerifiedDomains,
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
-      hasProgrammaticUsageConfig: programmaticUsageConfig !== null,
+      programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
       workosEnvironmentId: config.getWorkOSEnvironmentId(),
     },
@@ -155,7 +156,7 @@ const WorkspacePage = ({
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
-  hasProgrammaticUsageConfig,
+  programmaticUsageConfig,
   baseUrl,
   workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -286,7 +287,7 @@ const WorkspacePage = ({
                   owner={owner}
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
-                  hasProgrammaticUsageConfig={hasProgrammaticUsageConfig}
+                  programmaticUsageConfig={programmaticUsageConfig}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
