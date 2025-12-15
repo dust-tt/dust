@@ -8,7 +8,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { generateCronRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -130,26 +129,6 @@ function createServer(
         }
 
         const { agentConfiguration } = agentLoopContext.runContext;
-
-        const remaining = await rateLimiter({
-          key: `schedule_create:${owner.sId}:${user.sId}`,
-          maxPerTimeframe: 20,
-          timeframeSeconds: 86400,
-          logger,
-        });
-
-        if (remaining === 0) {
-          getStatsDClient().increment(
-            "tools.schedules_management.rate_limit_hit",
-            1,
-            [`workspace_id:${owner.sId}`, `agent_id:${agentConfiguration.sId}`]
-          );
-          return new Err(
-            new MCPError(
-              "Rate limit exceeded: You can create up to 20 schedules per day."
-            )
-          );
-        }
 
         // Determine timezone: explicit param > context > default
         const resolvedTimezone = timezone ?? getUserTimezone(agentLoopContext);
