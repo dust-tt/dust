@@ -36,6 +36,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -335,6 +336,14 @@ export async function getLastUserMessageMentions(
         model: MentionModel,
         as: "mentions",
         required: false,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: false,
+            attributes: ["sId"],
+          },
+        ],
       },
     ],
   });
@@ -345,7 +354,8 @@ export async function getLastUserMessageMentions(
 
   const mentions: string[] = removeNulls(
     (message as any).mentions.map(
-      (mention: MentionModel) => mention.agentConfigurationId
+      (mention: MentionModel) =>
+        mention.agentConfigurationId || mention.user?.sId
     )
   );
   return new Ok(mentions);

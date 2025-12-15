@@ -92,7 +92,8 @@ export const suggestionsOfMentions = async (
   const normalizedQuery = query.toLowerCase();
   const currentUserSId = auth.getNonNullableUser().sId;
 
-  let lastMentionedAgentId: string | null = null; // the prefered agent is the one mentioned by the user in his last message
+  // Id of the last user or agent mentioned by the current user in the conversation
+  let lastMentionedId: string | null = null;
 
   const agentSuggestions: RichAgentMentionInConversation[] = [];
   let userSuggestions: RichUserMentionInConversation[] = [];
@@ -148,7 +149,7 @@ export const suggestionsOfMentions = async (
           lastUserMessageMentions.isOk() &&
           lastUserMessageMentions.value.length === 1
         ) {
-          lastMentionedAgentId = lastUserMessageMentions.value[0];
+          lastMentionedId = lastUserMessageMentions.value[0];
         }
       }
     }
@@ -239,10 +240,8 @@ export const suggestionsOfMentions = async (
   );
 
   // Move last mentioned agent to first position if specified
-  if (lastMentionedAgentId) {
-    const preferredIndex = results.findIndex(
-      (s) => s.type === "agent" && s.id === lastMentionedAgentId
-    );
+  if (lastMentionedId) {
+    const preferredIndex = results.findIndex((s) => s.id === lastMentionedId);
     if (preferredIndex > 0) {
       const preferred = results[preferredIndex];
       results = [preferred, ...results.filter((_, i) => i !== preferredIndex)];
