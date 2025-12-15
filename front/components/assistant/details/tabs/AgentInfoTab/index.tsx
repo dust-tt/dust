@@ -45,7 +45,12 @@ export function AgentInfoTab({
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>
-              <div className="border-structure-200 bg-structure-50 rounded-lg border p-4">
+              <div
+                className={cn(
+                  "rounded-lg border border-border bg-muted-background px-3 py-2 " +
+                    "dark:border-border-night dark:bg-muted-background-night"
+                )}
+              >
                 <AgentMessageMarkdown
                   content={agentConfiguration.instructions}
                   owner={owner}
