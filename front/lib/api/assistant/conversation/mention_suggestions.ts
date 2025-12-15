@@ -166,6 +166,7 @@ export const suggestionsOfMentions = async (
             pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
             description: u.username,
             lastActivityAt: u.lastActivityAt,
+            isParticipant: true,
           }));
 
         participantAgents = participants.agents.map((a) => ({
@@ -175,6 +176,7 @@ export const suggestionsOfMentions = async (
           pictureUrl: a.pictureUrl,
           description: "",
           lastActivityAt: a.lastActivityAt,
+          isParticipant: true,
         }));
 
         // Get the last user message and check if it mentions one and only one agent
