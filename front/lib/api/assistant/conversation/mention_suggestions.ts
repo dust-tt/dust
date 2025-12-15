@@ -33,6 +33,11 @@ export function interleaveMentionsPreservingAgentOrder(
   let userIndex = 0;
 
   for (let position = 0; position < SUGGESTION_DISPLAY_LIMIT; position += 1) {
+    // Break if we have exhausted both lists
+    if (agentIndex >= agents.length && userIndex >= users.length) {
+      break;
+    }
+
     // First fill in users participants
     if (users[userIndex]?.isParticipant) {
       result.push(users[userIndex]);
@@ -47,23 +52,17 @@ export function interleaveMentionsPreservingAgentOrder(
       continue;
     }
 
-    const expectedUsers = Math.round(
-      ((position + 1) * users.length) / SUGGESTION_DISPLAY_LIMIT
-    );
-
-    if (userIndex < users.length && userIndex < expectedUsers) {
+    // Then interleave agents and users
+    if (position % 3 === 2 && userIndex < users.length) {
+      // Every 3rd position: add a user if available
       result.push(users[userIndex]);
       userIndex += 1;
-      continue;
-    }
-
-    if (agentIndex < agents.length) {
+    } else if (agentIndex < agents.length) {
+      // Other positions: add an agent if available
       result.push(agents[agentIndex]);
       agentIndex += 1;
-      continue;
-    }
-
-    if (userIndex < users.length) {
+    } else if (userIndex < users.length) {
+      // Fallback: if no agents left, add remaining users
       result.push(users[userIndex]);
       userIndex += 1;
     }

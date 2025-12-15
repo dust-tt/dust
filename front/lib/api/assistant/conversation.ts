@@ -307,6 +307,9 @@ export async function getLastUserMessage(
   return new Ok(content);
 }
 
+/**
+ * Get the mentions from the last user message in a conversation
+ */
 export async function getLastUserMessageMentions(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
