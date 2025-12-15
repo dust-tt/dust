@@ -9,6 +9,7 @@ import {
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
@@ -63,6 +64,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
+          {hasFeature("skills") && <AgentBuilderSpacesBlock />}
           {hasFeature("skills") && (
             <AgentBuilderSkillsBlock
               isSkillsLoading={isSkillsLoading}
