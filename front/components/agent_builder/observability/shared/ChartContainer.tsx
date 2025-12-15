@@ -99,7 +99,7 @@ export function ChartContainer({
           </>
         )}
       </div>
-      {isAllowFullScreen && (
+      {isAllowFullScreen && isFullscreen && (
         <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
           <SheetContent size="xl" className="max-w-[75%]">
             <SheetHeader>
