@@ -4,8 +4,8 @@ import {
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
-import { config as regionConfig } from "@app/lib/api/regions/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
