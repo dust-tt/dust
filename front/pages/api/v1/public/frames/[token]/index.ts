@@ -125,20 +125,18 @@ async function handler(
 
   const conversationId = file.useCaseMetadata?.conversationId;
   const user = auth && auth.user();
+  const conversation =
+    conversationId && auth
+      ? await ConversationResource.fetchById(auth, conversationId)
+      : null;
 
-  let isParticipant = false;
-
-  if (user && conversationId) {
-    const conversationResource = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-
-    if (user && conversationResource) {
-      isParticipant =
-        await conversationResource.isConversationParticipant(user);
-    }
-  }
+  const isParticipant =
+    user && conversation && auth
+      ? await ConversationResource.isConversationParticipant(auth, {
+          conversation: conversation.toJSON(),
+          user: user.toJSON(),
+        })
+      : false;
 
   // Generate access token for viz rendering.
   const accessToken = generateVizAccessToken({
