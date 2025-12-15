@@ -187,6 +187,7 @@ export type BaseAgentMessageType = {
   chainOfThought: string | null;
   error: GenericErrorContent | null;
   visibility: MessageVisibility;
+  richMentions: RichMention[];
 };
 
 export type ParsedContentItem =

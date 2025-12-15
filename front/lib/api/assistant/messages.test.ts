@@ -4,6 +4,7 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
+  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -11,11 +12,17 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgentMessageType,
   LightAgentConfigurationType,
   UserMessageType,
 } from "@app/types";
+import {
+  isRichAgentMention,
+  isRichUserMention,
+} from "@app/types/assistant/mentions";
 
 describe("batchRenderMessages", () => {
   let auth: Authenticator;
@@ -341,6 +348,506 @@ describe("batchRenderMessages", () => {
             );
             expect(renderedUserMessage.user.email).toBe(newEmail);
             expect(renderedUserMessage.user.image).toBe(newImageUrl);
+          }
+        }
+      }
+    });
+  });
+
+  describe("richMentions", () => {
+    it("should include richMentions for user messages with user mentions", async () => {
+      // Create a conversation
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Create another user and add them to the workspace
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get the user message
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      const userMessageModel = allMessages.find((m) => !!m.userMessage);
+      expect(userMessageModel).toBeDefined();
+
+      // Create a user mention
+      await MentionModel.create({
+        messageId: userMessageModel!.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+      });
+
+      // Render messages
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [userMessageModel!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedUserMessage = renderedMessages.find(
+          (m) => m.type === "user_message"
+        ) as UserMessageType | undefined;
+
+        expect(renderedUserMessage).toBeDefined();
+        if (renderedUserMessage) {
+          expect(renderedUserMessage.richMentions).toBeDefined();
+          expect(renderedUserMessage.richMentions.length).toBe(1);
+          const userMention = renderedUserMessage.richMentions[0];
+          expect(isRichUserMention(userMention)).toBe(true);
+          if (isRichUserMention(userMention)) {
+            expect(userMention.id).toBe(mentionedUser.sId);
+            expect(userMention.label).toBe(mentionedUser.fullName());
+          }
+        }
+      }
+    });
+
+    it("should include richMentions for user messages with agent mentions", async () => {
+      // Create another agent configuration
+      const mentionedAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Mentioned Agent",
+          description: "Mentioned Agent Description",
+        });
+
+      // Create a conversation
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get the user message
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      const userMessageModel = allMessages.find((m) => !!m.userMessage);
+      expect(userMessageModel).toBeDefined();
+
+      // Create an agent mention
+      await MentionModel.create({
+        messageId: userMessageModel!.id,
+        agentConfigurationId: mentionedAgentConfig.sId,
+        workspaceId: workspace.id,
+      });
+
+      // Render messages
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [userMessageModel!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedUserMessage = renderedMessages.find(
+          (m) => m.type === "user_message"
+        ) as UserMessageType | undefined;
+
+        expect(renderedUserMessage).toBeDefined();
+        if (renderedUserMessage) {
+          expect(renderedUserMessage.richMentions).toBeDefined();
+          expect(renderedUserMessage.richMentions.length).toBe(1);
+          const agentMention = renderedUserMessage.richMentions[0];
+          expect(isRichAgentMention(agentMention)).toBe(true);
+          if (isRichAgentMention(agentMention)) {
+            expect(agentMention.id).toBe(mentionedAgentConfig.sId);
+            expect(agentMention.label).toBe(mentionedAgentConfig.name);
+          }
+        }
+      }
+    });
+
+    it("should include richMentions for user messages with both user and agent mentions", async () => {
+      // Create another user and agent
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const mentionedAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Mentioned Agent",
+          description: "Mentioned Agent Description",
+        });
+
+      // Create a conversation
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get the user message
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      const userMessageModel = allMessages.find((m) => !!m.userMessage);
+      expect(userMessageModel).toBeDefined();
+
+      // Create both user and agent mentions
+      await MentionModel.create({
+        messageId: userMessageModel!.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+      });
+      await MentionModel.create({
+        messageId: userMessageModel!.id,
+        agentConfigurationId: mentionedAgentConfig.sId,
+        workspaceId: workspace.id,
+      });
+
+      // Render messages
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [userMessageModel!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedUserMessage = renderedMessages.find(
+          (m) => m.type === "user_message"
+        ) as UserMessageType | undefined;
+
+        expect(renderedUserMessage).toBeDefined();
+        if (renderedUserMessage) {
+          expect(renderedUserMessage.richMentions).toBeDefined();
+          expect(renderedUserMessage.richMentions.length).toBe(2);
+
+          const userMention = renderedUserMessage.richMentions.find(
+            (m) => m.type === "user"
+          );
+          const agentMention = renderedUserMessage.richMentions.find(
+            (m) => m.type === "agent"
+          );
+
+          expect(userMention).toBeDefined();
+          if (userMention && isRichUserMention(userMention)) {
+            expect(userMention.id).toBe(mentionedUser.sId);
+          }
+
+          expect(agentMention).toBeDefined();
+          if (agentMention && isRichAgentMention(agentMention)) {
+            expect(agentMention.id).toBe(mentionedAgentConfig.sId);
+          }
+        }
+      }
+    });
+
+    it("should include richMentions for agent messages with mentions", async () => {
+      // Create another user and agent
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const mentionedAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Mentioned Agent",
+          description: "Mentioned Agent Description",
+        });
+
+      // Create a conversation
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get all messages
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      const agentMessageModel = allMessages.find((m) => !!m.agentMessage);
+      expect(agentMessageModel).toBeDefined();
+
+      // Create both user and agent mentions on the agent message
+      await MentionModel.create({
+        messageId: agentMessageModel!.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+      });
+      await MentionModel.create({
+        messageId: agentMessageModel!.id,
+        agentConfigurationId: mentionedAgentConfig.sId,
+        workspaceId: workspace.id,
+      });
+
+      // Render messages
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [agentMessageModel!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedAgentMessage = renderedMessages.find(
+          (m) => m.type === "agent_message"
+        ) as AgentMessageType | undefined;
+
+        expect(renderedAgentMessage).toBeDefined();
+        if (renderedAgentMessage) {
+          expect(renderedAgentMessage.richMentions).toBeDefined();
+          expect(renderedAgentMessage.richMentions.length).toBe(2);
+
+          const userMention = renderedAgentMessage.richMentions.find(
+            (m) => m.type === "user"
+          );
+          const agentMention = renderedAgentMessage.richMentions.find(
+            (m) => m.type === "agent"
+          );
+
+          expect(userMention).toBeDefined();
+          if (userMention && isRichUserMention(userMention)) {
+            expect(userMention.id).toBe(mentionedUser.sId);
+          }
+
+          expect(agentMention).toBeDefined();
+          if (agentMention && isRichAgentMention(agentMention)) {
+            expect(agentMention.id).toBe(mentionedAgentConfig.sId);
+          }
+        }
+      }
+    });
+
+    it("should have empty richMentions array for messages without mentions", async () => {
+      // Create a conversation
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get all messages
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      const userMessageModel = allMessages.find((m) => !!m.userMessage);
+      const agentMessageModel = allMessages.find((m) => !!m.agentMessage);
+
+      expect(userMessageModel).toBeDefined();
+      expect(agentMessageModel).toBeDefined();
+
+      // Render messages
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [userMessageModel!, agentMessageModel!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedUserMessage = renderedMessages.find(
+          (m) => m.type === "user_message"
+        ) as UserMessageType | undefined;
+        const renderedAgentMessage = renderedMessages.find(
+          (m) => m.type === "agent_message"
+        ) as AgentMessageType | undefined;
+
+        expect(renderedUserMessage).toBeDefined();
+        expect(renderedAgentMessage).toBeDefined();
+
+        if (renderedUserMessage) {
+          expect(renderedUserMessage.richMentions).toBeDefined();
+          expect(renderedUserMessage.richMentions).toEqual([]);
+        }
+
+        if (renderedAgentMessage) {
+          expect(renderedAgentMessage.richMentions).toBeDefined();
+          expect(renderedAgentMessage.richMentions).toEqual([]);
+        }
+      }
+    });
+
+    it("should include richMentions in light view type", async () => {
+      // Create another user
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create a conversation
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      // Fetch the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Get the user message
+      const allMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+          },
+        ],
+        order: [["rank", "ASC"]],
+      });
+
+      const userMessageModel = allMessages.find((m) => !!m.userMessage);
+      expect(userMessageModel).toBeDefined();
+
+      // Create a user mention
+      await MentionModel.create({
+        messageId: userMessageModel!.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+      });
+
+      // Render messages with light view type
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [userMessageModel!],
+        "light"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const renderedMessages = result.value;
+        const renderedUserMessage = renderedMessages.find(
+          (m) => m.type === "user_message"
+        ) as UserMessageType | undefined;
+
+        expect(renderedUserMessage).toBeDefined();
+        if (renderedUserMessage) {
+          expect(renderedUserMessage.richMentions).toBeDefined();
+          expect(renderedUserMessage.richMentions.length).toBe(1);
+          const userMention = renderedUserMessage.richMentions[0];
+          expect(isRichUserMention(userMention)).toBe(true);
+          if (isRichUserMention(userMention)) {
+            expect(userMention.id).toBe(mentionedUser.sId);
           }
         }
       }
