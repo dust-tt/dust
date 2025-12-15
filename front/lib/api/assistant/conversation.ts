@@ -32,6 +32,7 @@ import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
   ConversationModel,
+  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -304,6 +305,47 @@ export async function getLastUserMessage(
     );
   }
   return new Ok(content);
+}
+
+export async function getLastUserMessageMentions(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<string[], Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await MessageModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+      {
+        model: MentionModel,
+        as: "mentions",
+        required: false,
+      },
+    ],
+  });
+
+  if (!message) {
+    return new Ok([]);
+  }
+
+  const mentions: string[] = removeNulls(
+    (message as any).mentions.map(
+      (mention: MentionModel) => mention.agentConfigurationId
+    )
+  );
+  return new Ok(mentions);
 }
 
 /**

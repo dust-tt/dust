@@ -15,6 +15,7 @@ import type {
   RichUserMentionInConversation,
 } from "@app/types";
 import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
+import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -78,7 +79,6 @@ export const suggestionsOfMentions = async (
   {
     query,
     conversationId,
-    preferredAgentId,
     select = {
       agents: true,
       users: true,
@@ -86,7 +86,6 @@ export const suggestionsOfMentions = async (
   }: {
     query: string;
     conversationId?: string | null;
-    preferredAgentId?: string | null; // the prefered agent is the one mentioned by the user in his last message
     select?: {
       agents: boolean;
       users: boolean;
@@ -95,6 +94,8 @@ export const suggestionsOfMentions = async (
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
   const currentUserSId = auth.getNonNullableUser().sId;
+
+  let lastMentionedAgentId: string | null = null; // the prefered agent is the one mentioned by the user in his last message
 
   const agentSuggestions: RichAgentMentionInConversation[] = [];
   let userSuggestions: RichUserMentionInConversation[] = [];
@@ -143,6 +144,19 @@ export const suggestionsOfMentions = async (
               description: "",
             }) as RichAgentMention
         );
+
+        // Get the last user message and check if it mentions one and only one agent
+        // If yes, it will be prioritized in the suggestions.
+        const lastUserMessageMentions = await getLastUserMessageMentions(
+          auth,
+          conversationRes.value
+        );
+        if (
+          lastUserMessageMentions.isOk() &&
+          lastUserMessageMentions.value.length === 1
+        ) {
+          lastMentionedAgentId = lastUserMessageMentions.value[0];
+        }
       }
     }
   }
@@ -224,10 +238,10 @@ export const suggestionsOfMentions = async (
     userSuggestions
   );
 
-  // Move preferred agent to first position if specified
-  if (preferredAgentId) {
+  // Move last mentioned agent to first position if specified
+  if (lastMentionedAgentId) {
     const preferredIndex = results.findIndex(
-      (s) => s.type === "agent" && s.id === preferredAgentId
+      (s) => s.type === "agent" && s.id === lastMentionedAgentId
     );
     if (preferredIndex > 0) {
       const preferred = results[preferredIndex];
