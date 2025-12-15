@@ -112,7 +112,7 @@ async function createServer(
         }
 
         try {
-          return await executeListUsers(nameFilter, accessToken);
+          return await executeListUsers({ nameFilter, accessToken });
         } catch (error) {
           return new Err(
             new MCPError(`Error listing users: ${normalizeError(error)}`)
