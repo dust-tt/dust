@@ -423,7 +423,31 @@ export default function CreditsUsagePage({
         <Page.Header
           title="Programmatic Usage"
           icon={CardIcon}
-          description="Monitor usage and credits for your API keys and automated workflows."
+          description={
+            <div>
+              <p>
+                Monitor usage and credits for programmatic usage (API keys,
+                automated workflows, etc.). Usage cost is based on token
+                consumption, according to our{" "}
+                <a
+                  href="https://dust-tt.notion.site/API-Pricing-12928599d941805a89dedeed342aacd5"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary-dark"
+                >
+                  pricing page
+                </a>
+                . Learn more in the{" "}
+                <a
+                  href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e?pvs=74"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary-dark"
+                >
+                  programmatic usage documentation
+                </a>
+                .
+              </p>
+            </div>
+          }
         />
 
         {shouldShowLowCreditsWarning && (
