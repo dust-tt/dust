@@ -1,5 +1,6 @@
 import groupBy from "lodash/groupBy";
 import omit from "lodash/omit";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -9,6 +10,9 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { DATA_WAREHOUSE_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -24,10 +28,14 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
+import {
+  AUTO_ENABLED_SKILL_IDS,
+  GlobalSkillsRegistry,
+} from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -90,7 +98,8 @@ type ConversationSkillCreationAttributes =
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillResource extends ReadonlyAttributesType<SkillConfigurationModel> {}
+export interface SkillResource
+  extends ReadonlyAttributesType<SkillConfigurationModel> {}
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -420,7 +429,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
-  static async listByAgentConfiguration(
+  private static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
   ): Promise<SkillResource[]> {
@@ -524,9 +533,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills for a conversation, returning both enabled and equipped skills.
+   * List skills for the agent loop, returning both (extended) enabled skills and equipped skills.
    */
-  static async listForConversation(
+  static async listForAgentLoop(
     auth: Authenticator,
     {
       agentConfiguration,
@@ -536,25 +545,69 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation: ConversationType;
     }
   ): Promise<{
-    enabledSkills: SkillResource[];
+    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }> {
-    const enabledSkills = await this.listEnabledForConversation(auth, {
-      agentConfiguration,
-      conversation,
-    });
+    const conversationEnabledSkills = await this.listEnabledForConversation(
+      auth,
+      {
+        agentConfiguration,
+        conversation,
+      }
+    );
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration
     );
 
+    // Auto-enabled skills are always treated as enabled when present in the agent configuration.
+    const autoEnabledSkills = allAgentSkills.filter((s) =>
+      AUTO_ENABLED_SKILL_IDS.has(s.sId)
+    );
+
+    const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
     // Skills that are already enabled are not equipped.
     const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
     const equippedSkills = allAgentSkills.filter(
       (s) => !enabledSkillIds.has(s.sId)
     );
 
-    return { enabledSkills, equippedSkills };
+    // TODO(skills 2025-12-23): refactor to retrieve extended skills from baseFetch
+    const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
+      auth,
+      enabledSkills
+    );
+
+    return {
+      enabledSkills: augmentedEnabledSkills,
+      equippedSkills,
+    };
+  }
+
+  private static async augmentSkillsWithExtendedSkills(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<(SkillResource & { extendedSkill: SkillResource | null })[]> {
+    const extendedSkillIds = removeNulls(
+      uniq(skills.map((skill) => skill.extendedSkillId))
+    );
+    const extendedSkills = await SkillResource.fetchByIds(
+      auth,
+      extendedSkillIds
+    );
+
+    // Create a map for quick lookup of extended skills.
+    const extendedSkillsMap = new Map(
+      extendedSkills.map((skill) => [skill.sId, skill])
+    );
+
+    return skills.map((skill) =>
+      Object.assign(skill, {
+        extendedSkill: skill.extendedSkillId
+          ? (extendedSkillsMap.get(skill.extendedSkillId) ?? null)
+          : null,
+      })
+    );
   }
 
   static async fetchConversationSkillRecords(
@@ -845,6 +898,59 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return shouldReturnAuthor ? author : null;
+  }
+
+  async listMCPServerConfigurations(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ): Promise<ServerSideMCPServerConfigurationType[]> {
+    let inheritedDataSources: DataSourceConfiguration[] | null = null;
+
+    if (this.globalSId !== null) {
+      const globalSkill = GlobalSkillsRegistry.getById(this.globalSId);
+      if (globalSkill?.inheritAgentConfigurationDataSources) {
+        const dataSourceViews =
+          await DataSourceViewResource.listBySpaceIdsAndGlobal(
+            auth,
+            agentConfiguration.requestedSpaceIds
+          );
+
+        inheritedDataSources = dataSourceViews.map((dsView) => ({
+          dataSourceViewId: dsView.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          filter: { parents: null, tags: null },
+        }));
+      }
+    }
+
+    return this.mcpServerViews.map((mcpServerView) => {
+      const { server } = mcpServerView.toJSON();
+      const dataSources = [
+        "data_sources_file_system",
+        DATA_WAREHOUSE_SERVER_NAME,
+      ].includes(server.name)
+        ? inheritedDataSources
+        : null;
+
+      return {
+        id: -1,
+        sId: `mcp_${server.sId}`,
+        type: "mcp_server_configuration",
+        name: mcpServerView.name ?? server.name,
+        description: mcpServerView.description ?? server.description,
+        icon: server.icon,
+        mcpServerViewId: mcpServerView.sId,
+        internalMCPServerId: mcpServerView.internalMCPServerId ?? null,
+        dataSources,
+        tables: null,
+        dustAppConfiguration: null,
+        childAgentId: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        secretName: null,
+      } satisfies ServerSideMCPServerConfigurationType;
+    });
   }
 
   async archive(

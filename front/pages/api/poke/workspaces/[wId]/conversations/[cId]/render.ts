@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -11,7 +10,6 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -19,6 +17,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
@@ -165,16 +164,15 @@ async function handler(
       });
 
       const { enabledSkills, equippedSkills } =
-        await SkillResource.listForConversation(auth, {
+        await SkillResource.listForAgentLoop(auth, {
           agentConfiguration,
           conversation,
         });
 
-      // Fetch MCP server configurations from enabled skills.
-      const skillServers = await fetchSkillMCPServerConfigurations(
-        auth,
+      const skillServers = await concurrentExecutor(
         enabledSkills,
-        agentConfiguration
+        (skill) => skill.listMCPServerConfigurations(auth, agentConfiguration),
+        { concurrency: 5 }
       );
 
       const clientSideMCPActionConfigurations =
@@ -224,7 +222,7 @@ async function handler(
           },
           {
             jitServers,
-            skillServers,
+            skillServers: skillServers.flat(),
           }
         );
 
@@ -253,12 +251,7 @@ async function handler(
         auth.getNonNullableWorkspace()
       );
 
-      const enabledWithExtendedSkills = await augmentSkillsWithExtendedSkills(
-        auth,
-        enabledSkills
-      );
-
-      const prompt = await constructPromptMultiActions(auth, {
+      const prompt = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
         fallbackPrompt,
@@ -268,7 +261,7 @@ async function handler(
         agentsList,
         conversationId: conversation.sId,
         serverToolsAndInstructions,
-        enabledSkills: enabledWithExtendedSkills,
+        enabledSkills,
         equippedSkills,
         featureFlags,
       });

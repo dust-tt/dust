@@ -1,4 +1,5 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover_knowledge";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -8,11 +9,12 @@ export interface GlobalSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
   readonly instructions: string;
-  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly name: string;
   readonly sId: string;
   readonly version: number;
   readonly icon: string;
+  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
+  readonly inheritAgentConfigurationDataSources?: boolean;
 }
 
 // Helper function that enforces unique sIds.
@@ -44,6 +46,7 @@ function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
 
 // Registry is a simple array.
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
+  discoverKnowledgeSkill,
   framesSkill,
   goDeepSkill,
 ] as const);
@@ -55,6 +58,12 @@ const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
 
 // Type derived from the actual array.
 export type GlobalSkillId = (typeof GLOBAL_SKILLS_ARRAY)[number]["sId"];
+
+// Skills listed here are automatically enabled when equipped by an agent. Unlike regular skills
+// that require explicit enabling during a conversation, auto-enabled skills are considered
+// active as soon as they are part of an agent's configuration.
+export const AUTO_ENABLED_SKILL_IDS: ReadonlySet<string> =
+  new Set<GlobalSkillId>(["discover_knowledge"]);
 
 function matchesFilter<T>(value: T, filter: T | T[]): boolean {
   return Array.isArray(filter) ? filter.includes(value) : value === filter;
