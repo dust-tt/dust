@@ -174,7 +174,7 @@ export default function SkillBuilder({
                     Create new skill
                   </h2>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Create custom capabilities for specific tasks
+                    Create a custom capability for specific tasks
                   </p>
                 </div>
                 <SkillBuilderRequestedSpacesSection />
