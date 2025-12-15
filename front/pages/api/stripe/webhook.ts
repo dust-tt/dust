@@ -749,7 +749,6 @@ async function handler(
                 );
               }
 
-              // TODO(PPUL): should we enforce that enterprise always has PAYG enabled?
               const paygEnabled = await isPAYGEnabled(auth);
 
               if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {

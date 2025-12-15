@@ -61,7 +61,7 @@ export type LightMessageType =
  * origin here should not overlap with another existing origin and all user
  * messages should have an origin.
  *
- * Avoid adding an origin that:
+ * Please do not add an origin that:
  * - is not directly linked to how the original user sent the message;
  * - overlaps with existing origins (e.g. "linux" and "mac-os" would be terrible
  *   orgins in that respect, overlapping with almost all origins).
@@ -94,6 +94,8 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
+  // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
+  // but should be removed and most likely handled as message metadata (to be created).
   | "onboarding_conversation";
 
 export type UserMessageContext = {
