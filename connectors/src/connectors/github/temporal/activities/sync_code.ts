@@ -1,6 +1,5 @@
 import { Err, INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
 import assert from "assert";
-import type { Readable } from "stream";
 
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
@@ -40,6 +39,7 @@ import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
+import { readableStreamToReadable } from "@connectors/types/shared/utils/streams";
 
 // Files are uploaded asynchronously, so we can use a high number of parallel uploads.
 const PARALLEL_FILE_UPLOADS = 128;
@@ -155,7 +155,7 @@ export async function githubExtractToGcsActivity({
         );
 
         return new Ok({
-          stream: response.data as Readable,
+          stream: readableStreamToReadable(response.data as ReadableStream),
           contentLength,
         });
       } catch (error) {
