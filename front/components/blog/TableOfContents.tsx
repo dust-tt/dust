@@ -3,8 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import { classNames } from "@app/lib/utils";
 
-// Constants
-const HEADER_OFFSET = 96; // Height of the fixed header (top-24 = 6rem = 96px)
+const HEADER_OFFSET = 96;
 const SCROLL_DEBOUNCE_MS = 100;
 
 interface TableOfContentsProps {
@@ -16,9 +15,6 @@ interface TocItemWithChildren extends TocItem {
   children: TocItemWithChildren[];
 }
 
-/**
- * Builds a hierarchical structure from flat TOC items based on heading levels.
- */
 function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
   const result: TocItemWithChildren[] = [];
   const stack: TocItemWithChildren[] = [];
@@ -29,7 +25,6 @@ function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
       children: [],
     };
 
-    // Pop items from stack that are at same or higher level
     while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
       stack.pop();
     }
@@ -46,9 +41,6 @@ function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
   return result;
 }
 
-/**
- * Finds the currently active heading based on scroll position.
- */
 function findActiveHeadingId(items: TocItem[]): string {
   const scrollPosition = window.scrollY + HEADER_OFFSET + 50;
 
@@ -65,7 +57,6 @@ function findActiveHeadingId(items: TocItem[]): string {
     .filter((h): h is { id: string; top: number } => h !== null)
     .sort((a, b) => a.top - b.top);
 
-  // Find the last heading that's above the scroll position
   let activeId = headings[0]?.id ?? "";
   for (const heading of headings) {
     if (heading.top <= scrollPosition) {
@@ -145,7 +136,6 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
 
   const hierarchy = useMemo(() => buildHierarchy(items), [items]);
 
-  // Handle scroll to update active heading
   useEffect(() => {
     if (items.length === 0) {
       return;
@@ -163,7 +153,6 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
       }, SCROLL_DEBOUNCE_MS);
     };
 
-    // Set initial active heading
     setActiveId(findActiveHeadingId(items));
 
     window.addEventListener("scroll", handleScroll, { passive: true });

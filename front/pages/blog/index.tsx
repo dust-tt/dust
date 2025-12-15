@@ -19,7 +19,6 @@ import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-// Grid page size (hero excluded from this count) to keep rows balanced.
 const GRID_PAGE_SIZE = 12;
 
 export const getStaticProps: GetStaticProps<

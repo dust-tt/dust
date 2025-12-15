@@ -188,7 +188,6 @@ export default function CustomerStoriesListing({
 
   const [page, setPage] = useState<number>(initialPage);
 
-  // Parse filters from URL query params
   const selectedIndustries = useMemo(() => {
     const param = router.query.industry;
     if (!param) {
@@ -221,7 +220,6 @@ export default function CustomerStoriesListing({
     return Array.isArray(param) ? param : [param];
   }, [router.query.region]);
 
-  // Scroll to top when filters change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [
@@ -255,7 +253,6 @@ export default function CustomerStoriesListing({
     []
   );
 
-  // Update URL with new filters
   const updateFilters = useCallback(
     (key: string, values: string[]) => {
       const newQuery = { ...router.query };
@@ -278,7 +275,6 @@ export default function CustomerStoriesListing({
     [buildQuery, router]
   );
 
-  // Filter stories based on selected filters
   const filteredStories = useMemo(() => {
     return stories.filter((story) => {
       if (
