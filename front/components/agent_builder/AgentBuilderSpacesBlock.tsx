@@ -81,7 +81,6 @@ export function AgentBuilderSpacesBlock() {
     }
 
     // Remove actions (knowledge + tools) that belong to this space
-    // TODO(skill): if knowledge have data from several spaces, edit the knowledge to only remove the data from this space
     const actionIdsToRemove = new Set(actionsToRemove.map((a) => a.id));
     const newActions = actions.filter((a) => !actionIdsToRemove.has(a.id));
     setValue("actions", newActions, { shouldDirty: true });
