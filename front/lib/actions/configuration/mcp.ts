@@ -27,6 +27,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import type { AgentFetchVariant, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
@@ -255,7 +256,7 @@ export async function fetchSkillMCPServerConfigurations(
 
     configurations.push({
       id: mcpServerView.id,
-      sId: mcpServerView.sId,
+      sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
       name: mcpServerView.name ?? name,
       description: mcpServerView.description ?? description,
