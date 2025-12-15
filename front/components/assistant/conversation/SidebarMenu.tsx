@@ -69,6 +69,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
+  useSpaceConversationsSummary,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -151,17 +152,23 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
-  const hasSkills = featureFlags.includes("skills");
+  const hasSkills = hasFeature("skills");
 
   const isRestrictedFromAgentCreation =
-    featureFlags.includes("disallow_agent_creation_to_users") &&
-    !isBuilder(owner);
+    hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
   const isMentionsV2Enabled = hasFeature("mentions_v2");
+
+  const hasSpaceConversations = hasFeature("conversations_groups");
+
+  useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !hasSpaceConversations },
+  });
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null

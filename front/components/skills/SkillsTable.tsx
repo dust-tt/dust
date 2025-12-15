@@ -15,6 +15,7 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillConfigurationRelations,
   SkillConfigurationType,
@@ -26,7 +27,7 @@ type RowData = {
   description: string;
   editors: UserType[] | null;
   usage: AgentsUsageType;
-  updatedAt: number;
+  updatedAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
 };
@@ -75,8 +76,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
             [
               {
                 name: "Dust",
-                visual:
-                  "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+                visual: DUST_AVATAR_URL,
               },
             ];
         return (
@@ -102,16 +102,15 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
     {
       header: "Last Edited",
       accessorKey: "updatedAt",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.BasicCellContent
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
-          label={
-            info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, number | null>) => {
+        const value = info.getValue();
+        return (
+          <DataTable.BasicCellContent
+            tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
+            label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
+          />
+        );
+      },
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
@@ -151,7 +150,7 @@ export function SkillsTable({
     () =>
       skills.map((skill) => ({
         name: skill.name,
-        description: skill.description,
+        description: skill.userFacingDescription,
         editors: skill.editors,
         usage: skill.usage,
         updatedAt: skill.updatedAt,

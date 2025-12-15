@@ -38,8 +38,10 @@ export type DeleteSkillConfigurationResponseBody = {
 // Request body schema for PATCH
 const PatchSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
-  description: t.string,
+  agentFacingDescription: t.string,
+  userFacingDescription: t.union([t.string, t.null]),
   instructions: t.string,
+  icon: t.union([t.string, t.null]),
   tools: t.array(
     t.type({
       mcpServerViewId: t.string,
@@ -178,8 +180,11 @@ async function handler(
           auth,
           {
             name: body.name,
-            description: body.description,
+            agentFacingDescription: body.agentFacingDescription,
+            // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
+            userFacingDescription: body.userFacingDescription ?? "",
             instructions: body.instructions,
+            icon: body.icon,
           },
           { transaction }
         );

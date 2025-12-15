@@ -46,7 +46,7 @@ export const useLocalSelectedSkills = ({
     return skillConfigurationsWithRelations.filter(
       (skill) =>
         skill.name.toLowerCase().includes(query) ||
-        skill.description.toLowerCase().includes(query)
+        skill.userFacingDescription.toLowerCase().includes(query)
     );
   }, [skillConfigurationsWithRelations, searchQuery]);
 
@@ -63,7 +63,7 @@ export const useLocalSelectedSkills = ({
           {
             sId: skill.sId,
             name: skill.name,
-            description: skill.description,
+            description: skill.userFacingDescription,
           },
         ];
       }

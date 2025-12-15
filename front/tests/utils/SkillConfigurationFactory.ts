@@ -10,7 +10,8 @@ export class SkillConfigurationFactory {
     auth: Authenticator,
     overrides: Partial<{
       name: string;
-      description: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
       instructions: string;
       status: "active" | "archived";
     }> = {}
@@ -19,13 +20,17 @@ export class SkillConfigurationFactory {
     assert(user, "User is required");
 
     const name = overrides.name ?? "Test Skill";
-    const description = overrides.description ?? "Test skill description";
+    const agentFacingDescription =
+      overrides.agentFacingDescription ?? "Test skill agent facing description";
+    const userFacingDescription =
+      overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
 
     return SkillResource.makeNew(auth, {
       authorId: user.id,
-      description,
+      agentFacingDescription,
+      userFacingDescription,
       instructions,
       name,
       requestedSpaceIds: [],

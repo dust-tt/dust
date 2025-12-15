@@ -7,12 +7,14 @@ export type SkillStatus = "active" | "archived";
 export type SkillConfigurationType = {
   id: number;
   sId: string;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: number | null;
+  updatedAt: number | null;
   status: SkillStatus;
   name: string;
-  description: string;
+  agentFacingDescription: string;
+  userFacingDescription: string;
   instructions: string | null;
+  icon: string | null;
   requestedSpaceIds: ModelId[];
   tools: { mcpServerViewId: string }[];
   canWrite: boolean;

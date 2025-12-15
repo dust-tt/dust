@@ -26,6 +26,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
+  GroupType,
   ModelId,
   Result,
   SpaceKind,
@@ -241,7 +242,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async listForGroups(
     auth: Authenticator,
-    groups: GroupResource[],
+    groups: (GroupResource | GroupType)[],
     options?: { includeConversationsSpace?: boolean }
   ) {
     const groupSpaces = await GroupSpaceModel.findAll({

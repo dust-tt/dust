@@ -11,9 +11,17 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {skillConfiguration.description}
+        {skillConfiguration.userFacingDescription}
       </div>
-      <SkillEdited skillConfiguration={skillConfiguration} />
+      {/* TODO(skills 2025-12-12): display agent facing description here */}
+      {skillConfiguration.updatedAt && (
+        <SkillEdited
+          skillConfiguration={{
+            ...skillConfiguration,
+            updatedAt: skillConfiguration.updatedAt,
+          }}
+        />
+      )}
 
       <Page.Separator />
 
@@ -30,7 +38,7 @@ export function SkillInfoTab({
 }
 
 interface SkillEditedProps {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillConfigurationType & { updatedAt: number };
 }
 
 export function SkillEdited({ skillConfiguration }: SkillEditedProps) {

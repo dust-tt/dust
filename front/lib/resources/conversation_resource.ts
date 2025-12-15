@@ -587,7 +587,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   static async listConversationsForUser(
-    auth: Authenticator
+    auth: Authenticator,
+    {
+      onlyUnread,
+      kind,
+    }: {
+      onlyUnread: boolean;
+      kind: "private" | "space";
+    } = {
+      onlyUnread: false,
+      kind: "private",
+    }
   ): Promise<ConversationResource[]> {
     // First get all participations for the user to get conversation IDs and metadata.
     const participationMap = await this.fetchParticipationMapForUser(auth);
@@ -597,12 +607,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
+    const whereClause: WhereOptions<ConversationModel> = {
+      id: { [Op.in]: conversationIds },
+    };
+
+    if (onlyUnread) {
+      const unreadConversationIds = Array.from(participationMap.entries())
+        .filter(([_, participation]) => participation.unread)
+        .map(([conversationId]) => conversationId);
+      whereClause.id = { [Op.in]: unreadConversationIds };
+    }
+
+    if (kind === "space") {
+      whereClause.spaceId = { [Op.not]: null };
+    } else if (kind === "private") {
+      whereClause.spaceId = { [Op.is]: null };
+    }
+
     const conversations = await this.baseFetchWithAuthorization(
       auth,
       {},
       {
         where: {
-          id: { [Op.in]: conversationIds },
+          ...whereClause,
           visibility: { [Op.eq]: "unlisted" },
         },
       }

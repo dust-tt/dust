@@ -51,11 +51,11 @@ describe("GET /api/w/[wId]/skills", () => {
 
     await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 1",
-      description: "First test skill",
+      agentFacingDescription: "First test skill",
     });
     await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 2",
-      description: "Second test skill",
+      agentFacingDescription: "Second test skill",
     });
 
     req.query = { ...req.query, wId: workspace.sId };
@@ -375,8 +375,10 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
+      icon: null,
       tools: [],
     };
 
@@ -386,7 +388,8 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
       tools: [],
@@ -433,8 +436,10 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Test Skill",
-      description: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
+      icon: null,
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
@@ -447,7 +452,8 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Test Skill",
-      description: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
       tools: [
@@ -464,7 +470,9 @@ describe("POST /api/w/[wId]/skills", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.description).toBe("A test skill description");
+    expect(skillConfiguration!.agentFacingDescription).toBe(
+      "Use this skill all the time"
+    );
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );

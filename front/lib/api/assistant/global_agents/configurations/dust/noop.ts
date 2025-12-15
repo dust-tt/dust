@@ -4,6 +4,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
   NOOP_MODEL_CONFIG,
 } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 export function _getNoopAgent(): AgentConfigurationType | null {
   return {
@@ -15,7 +16,7 @@ export function _getNoopAgent(): AgentConfigurationType | null {
     name: "noop",
     description: NOOP_MODEL_CONFIG.description,
     instructions: "",
-    pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+    pictureUrl: DUST_AVATAR_URL,
     status: "active",
     scope: "global",
     userFavorite: false,

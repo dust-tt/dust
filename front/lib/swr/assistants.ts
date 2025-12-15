@@ -20,7 +20,6 @@ import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
-import type { GetCostMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/cost";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
@@ -873,33 +872,6 @@ export function useAgentUsageMetrics({
     isUsageMetricsLoading: !error && !data && !disabled,
     isUsageMetricsError: error,
     isUsageMetricsValidating: isValidating,
-  };
-}
-
-export function useAgentCostMetrics({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const fetcherFn: Fetcher<GetCostMetricsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/cost?days=${days}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    costMetrics: data?.points ?? emptyArray(),
-    isCostMetricsLoading: !error && !data && !disabled,
-    isCostMetricsError: error,
-    isCostMetricsValidating: isValidating,
   };
 }
 
