@@ -1,6 +1,11 @@
-import { classNames } from "@app/lib/utils";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { classNames } from "@app/lib/utils";
+
+// Constants
+const HEADER_OFFSET = 96; // Height of the fixed header (top-24 = 6rem = 96px)
+const SCROLL_DEBOUNCE_MS = 100;
 
 interface TableOfContentsProps {
   items: TocItem[];
@@ -11,6 +16,9 @@ interface TocItemWithChildren extends TocItem {
   children: TocItemWithChildren[];
 }
 
+/**
+ * Builds a hierarchical structure from flat TOC items based on heading levels.
+ */
 function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
   const result: TocItemWithChildren[] = [];
   const stack: TocItemWithChildren[] = [];
@@ -21,19 +29,14 @@ function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
       children: [],
     };
 
-    // Remove items from stack that are at same or higher level
-    while (
-      stack.length > 0 &&
-      stack[stack.length - 1].level >= item.level
-    ) {
+    // Pop items from stack that are at same or higher level
+    while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
       stack.pop();
     }
 
     if (stack.length === 0) {
-      // Top-level item
       result.push(itemWithChildren);
     } else {
-      // Child of the last item in stack
       stack[stack.length - 1].children.push(itemWithChildren);
     }
 
@@ -43,265 +46,157 @@ function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
   return result;
 }
 
+/**
+ * Finds the currently active heading based on scroll position.
+ */
+function findActiveHeadingId(items: TocItem[]): string {
+  const scrollPosition = window.scrollY + HEADER_OFFSET + 50;
+
+  const headings = items
+    .map((item) => {
+      const element = document.getElementById(item.id);
+      return element
+        ? {
+            id: item.id,
+            top: element.getBoundingClientRect().top + window.scrollY,
+          }
+        : null;
+    })
+    .filter((h): h is { id: string; top: number } => h !== null)
+    .sort((a, b) => a.top - b.top);
+
+  // Find the last heading that's above the scroll position
+  let activeId = headings[0]?.id ?? "";
+  for (const heading of headings) {
+    if (heading.top <= scrollPosition) {
+      activeId = heading.id;
+    } else {
+      break;
+    }
+  }
+
+  return activeId;
+}
+
+interface TocItemComponentProps {
+  item: TocItemWithChildren;
+  activeId: string;
+  onItemClick: (itemId: string, e: React.MouseEvent<HTMLAnchorElement>) => void;
+}
+
+function TocItemComponent({
+  item,
+  activeId,
+  onItemClick,
+}: TocItemComponentProps) {
+  const isActive = activeId === item.id;
+  const hasActiveChild = item.children.some(
+    (child) =>
+      activeId === child.id ||
+      child.children.some((grandchild) => activeId === grandchild.id)
+  );
+  const shouldShowChildren = isActive || hasActiveChild;
+
+  return (
+    <div className="transition-all duration-200">
+      <a
+        href={`#${item.id}`}
+        onClick={(e) => onItemClick(item.id, e)}
+        className={classNames(
+          "block border-l-2 py-1 pl-3 text-sm transition-all duration-200 ease-in-out",
+          item.level === 1 && "font-medium",
+          item.level === 2 && "ml-4",
+          item.level === 3 && "ml-8",
+          item.level === 4 && "ml-12",
+          isActive
+            ? "border-primary text-foreground dark:text-foreground-night"
+            : "border-transparent text-muted-foreground hover:border-border hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+        )}
+      >
+        {item.text}
+      </a>
+      {item.children.length > 0 && (
+        <div
+          className={classNames(
+            "transition-all duration-300 ease-in-out",
+            shouldShowChildren
+              ? "max-h-screen opacity-100"
+              : "max-h-0 overflow-hidden opacity-0"
+          )}
+        >
+          <div className="mt-1 space-y-1 pl-1">
+            {item.children.map((child) => (
+              <TocItemComponent
+                key={child.id}
+                item={child}
+                activeId={activeId}
+                onItemClick={onItemClick}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TableOfContents({ items, className }: TableOfContentsProps) {
   const [activeId, setActiveId] = useState<string>("");
-  const isScrollingRef = useRef(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const headingsRef = useRef<Map<string, HTMLElement>>(new Map());
-  const activeIdRef = useRef<string>("");
-  const setupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    activeIdRef.current = activeId;
-  }, [activeId]);
+  const hierarchy = useMemo(() => buildHierarchy(items), [items]);
 
-  // Update headings map when items change
-  useEffect(() => {
-    headingsRef.current.clear();
-    items.forEach((item) => {
-      const element = document.getElementById(item.id);
-      if (element) {
-        headingsRef.current.set(item.id, element);
-      }
-    });
-  }, [items]);
-
-  // Find the active heading based on scroll position
-  const findActiveHeading = useCallback(() => {
-    if (isScrollingRef.current || headingsRef.current.size === 0) {
-      return;
-    }
-
-    const headerOffset = 120;
-    const scrollPosition = window.scrollY + headerOffset;
-
-    // Find all headings and their positions
-    const headingPositions = Array.from(headingsRef.current.entries())
-      .map(([id, element]) => ({
-        id,
-        element,
-        top: element.getBoundingClientRect().top + window.scrollY,
-      }))
-      .sort((a, b) => a.top - b.top);
-
-    // Find the heading that's currently in view
-    let activeHeadingId = "";
-    for (let i = headingPositions.length - 1; i >= 0; i--) {
-      const heading = headingPositions[i];
-      if (heading.top <= scrollPosition + 50) {
-        activeHeadingId = heading.id;
-        break;
-      }
-    }
-
-    // If no heading found, use the first one
-    if (!activeHeadingId && headingPositions.length > 0) {
-      activeHeadingId = headingPositions[0].id;
-    }
-
-    // Only update if different from current
-    if (activeHeadingId && activeHeadingId !== activeIdRef.current) {
-      setActiveId(activeHeadingId);
-    }
-  }, []); // No dependencies to prevent loops
-
-  // Setup IntersectionObserver - only when items change
+  // Handle scroll to update active heading
   useEffect(() => {
     if (items.length === 0) {
       return;
     }
 
-    // Clear any existing timeout
-    if (setupTimeoutRef.current) {
-      clearTimeout(setupTimeoutRef.current);
-    }
+    let timeoutId: NodeJS.Timeout | null = null;
 
-    // Wait for DOM to be ready
-    setupTimeoutRef.current = setTimeout(() => {
-      // Clean up existing observer
-      if (observerRef.current) {
-        headingsRef.current.forEach((element) => {
-          observerRef.current?.unobserve(element);
-        });
-        observerRef.current.disconnect();
-      }
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          // Skip if scrolling programmatically
-          if (isScrollingRef.current) {
-            return;
-          }
-
-          // Find the heading that's most visible in the viewport
-          let mostVisible: { entry: IntersectionObserverEntry; ratio: number } | null = null;
-
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              const ratio = entry.intersectionRatio;
-              if (!mostVisible || ratio > mostVisible.ratio) {
-                mostVisible = { entry, ratio };
-              }
-            }
-          });
-
-          // Also check headings that are above the viewport but close
-          if (!mostVisible) {
-            entries.forEach((entry) => {
-              const rect = entry.boundingClientRect;
-              if (rect.top < 150 && rect.bottom > 0) {
-                if (!mostVisible || rect.top > mostVisible.entry.boundingClientRect.top) {
-                  mostVisible = { entry, ratio: 0.5 };
-                }
-              }
-            });
-          }
-
-          // Only update if different from current
-          if (mostVisible) {
-            const newActiveId = mostVisible.entry.target.id;
-            if (newActiveId && newActiveId !== activeIdRef.current) {
-              setActiveId(newActiveId);
-            }
-          }
-        },
-        {
-          rootMargin: "-100px 0% -50% 0%",
-          threshold: [0, 0.1, 0.5, 1],
-        }
-      );
-
-      observerRef.current = observer;
-
-      // Observe all headings
-      headingsRef.current.forEach((element) => {
-        observer.observe(element);
-      });
-
-      // Set initial active heading
-      findActiveHeading();
-    }, 200);
-
-    // Scroll event handler with debounce
     const handleScroll = () => {
-      if (isScrollingRef.current) {
-        return;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
-
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-
-      scrollTimeoutRef.current = setTimeout(() => {
-        findActiveHeading();
-      }, 150);
+      timeoutId = setTimeout(() => {
+        const newActiveId = findActiveHeadingId(items);
+        setActiveId((prev) => (prev !== newActiveId ? newActiveId : prev));
+      }, SCROLL_DEBOUNCE_MS);
     };
+
+    // Set initial active heading
+    setActiveId(findActiveHeadingId(items));
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-
     return () => {
-      if (setupTimeoutRef.current) {
-        clearTimeout(setupTimeoutRef.current);
-      }
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
       window.removeEventListener("scroll", handleScroll);
-      if (observerRef.current) {
-        headingsRef.current.forEach((element) => {
-          observerRef.current?.unobserve(element);
-        });
-        observerRef.current.disconnect();
-        observerRef.current = null;
-      }
     };
-  }, [items, findActiveHeading]); // Only depend on items and stable findActiveHeading
-
-  const hierarchy = useMemo(() => buildHierarchy(items), [items]);
+  }, [items]);
 
   const handleClick = useCallback(
     (itemId: string, e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
-      const element = headingsRef.current.get(itemId);
+      const element = document.getElementById(itemId);
       if (!element) {
         return;
       }
 
-      // Set flag to prevent observer from updating during scroll
-      isScrollingRef.current = true;
       setActiveId(itemId);
 
-      // Calculate offset for fixed header
-      const headerOffset = 96;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition =
-        elementPosition + window.pageYOffset - headerOffset;
+        elementPosition + window.pageYOffset - HEADER_OFFSET;
 
       window.scrollTo({
         top: offsetPosition,
         behavior: "smooth",
       });
 
-      // Update URL
       window.history.pushState(null, "", `#${itemId}`);
-
-      // Re-enable observer after scroll completes
-      setTimeout(() => {
-        isScrollingRef.current = false;
-        // Don't call findActiveHeading here to avoid loops
-      }, 1000);
     },
-    [] // No dependencies
-  );
-
-  const renderItem = useCallback(
-    (item: TocItemWithChildren): React.ReactNode => {
-      const isActive = activeId === item.id;
-      const hasActiveChild = item.children.some(
-        (child) =>
-          activeId === child.id ||
-          child.children.some((grandchild) => activeId === grandchild.id)
-      );
-      const shouldShowChildren = isActive || hasActiveChild;
-
-      return (
-        <div key={item.id} className="transition-all duration-200">
-          <a
-            href={`#${item.id}`}
-            onClick={(e) => handleClick(item.id, e)}
-            className={classNames(
-              "block border-l-2 pl-3 py-1 text-sm transition-all duration-200 ease-in-out",
-              item.level === 1 && "font-medium",
-              item.level === 2 && "ml-4",
-              item.level === 3 && "ml-8",
-              item.level === 4 && "ml-12",
-              isActive
-                ? "border-gray-300 text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-200"
-            )}
-          >
-            {item.text}
-          </a>
-          {item.children.length > 0 && (
-            <div
-              className={classNames(
-                "transition-all duration-300 ease-in-out",
-                shouldShowChildren
-                  ? "max-h-[2000px] opacity-100"
-                  : "max-h-0 opacity-0 overflow-hidden"
-              )}
-            >
-              <div className="mt-1 space-y-1 pl-1">
-                {item.children.map((child) => renderItem(child))}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    },
-    [activeId, handleClick]
+    []
   );
 
   if (items.length === 0) {
@@ -312,14 +207,21 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
     <div
       className={classNames(
         "sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto",
-        className
+        className ?? null
       )}
     >
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
         Table of contents
       </h3>
-      <nav className="space-y-1">
-        {hierarchy.map((item) => renderItem(item))}
+      <nav className="space-y-1" aria-label="Table of contents">
+        {hierarchy.map((item) => (
+          <TocItemComponent
+            key={item.id}
+            item={item}
+            activeId={activeId}
+            onItemClick={handleClick}
+          />
+        ))}
       </nav>
     </div>
   );
