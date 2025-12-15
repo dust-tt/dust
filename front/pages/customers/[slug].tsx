@@ -200,7 +200,16 @@ export default function CustomerStoryPage({
 
       <article>
         <Grid>
-          <header className={classNames(WIDE_CLASSES, "pt-12")}>
+          <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+            <Link
+              href="/customers"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              ← Back to Customer Stories
+            </Link>
+          </div>
+
+          <header className={WIDE_CLASSES}>
             <H1 className="text-4xl md:text-5xl">{story.title}</H1>
 
             {story.headlineMetric && (

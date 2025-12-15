@@ -184,7 +184,16 @@ export default function BlogPost({
 
       <article>
         <Grid>
-          <header className={classNames(WIDE_CLASSES, "pt-12")}>
+          <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+            <Link
+              href="/blog"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              ← Back to Blog
+            </Link>
+          </div>
+
+          <header className={WIDE_CLASSES}>
             {post.tags.length > 0 && (
               <div className="mb-4 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (

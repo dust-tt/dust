@@ -182,8 +182,6 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
         top: offsetPosition,
         behavior: "smooth",
       });
-
-      window.history.pushState(null, "", `#${itemId}`);
     },
     []
   );
