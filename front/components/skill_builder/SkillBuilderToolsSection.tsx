@@ -60,9 +60,6 @@ export function SkillBuilderToolsSection() {
           <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
             Tools
           </h3>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Add tools to enhance your skill's abilities.
-          </p>
         </div>
         {headerActions}
       </div>
