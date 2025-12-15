@@ -14,7 +14,7 @@ import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Constants for Slack API limits and pagination.
 export const SLACK_API_PAGE_SIZE = 100;
@@ -684,7 +684,11 @@ export async function executeListUserGroups(accessToken: string) {
       },
     ]);
   } catch (error) {
-    return new Err(new MCPError(`Error listing user groups: ${error}`));
+    return new Err(
+      new MCPError(
+        `Error listing user groups: ${normalizeError(error).message}`
+      )
+    );
   }
 }
 
