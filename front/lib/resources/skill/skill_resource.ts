@@ -339,10 +339,44 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * List skills for a conversation, returning both enabled and equipped (not yet enabled) skills.
+   */
+  static async listSkillsForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ): Promise<{
+    enabledSkills: SkillResource[];
+    equippedSkills: SkillResource[];
+  }> {
+    const enabledSkills = await this.listEnabledSkillsForConversation(auth, {
+      agentConfiguration,
+      conversation,
+    });
+    const allAgentSkills = await this.listByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+
+    // Skills that are already enabled are not equipped.
+    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+    const equippedSkills = allAgentSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId)
+    );
+
+    return { enabledSkills, equippedSkills };
+  }
+
+  /**
    * List enabled skills for a given conversation and agent configuration.
    * Returns only active skills.
    */
-  static async listEnabledForConversation(
+  private static async listEnabledSkillsForConversation(
     auth: Authenticator,
     {
       agentConfiguration,

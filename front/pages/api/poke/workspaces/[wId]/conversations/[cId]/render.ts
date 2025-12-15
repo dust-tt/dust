@@ -163,22 +163,11 @@ async function handler(
         attachments,
       });
 
-      const enabledSkills = await SkillResource.listEnabledForConversation(
-        auth,
-        {
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listSkillsForConversation(auth, {
           agentConfiguration,
           conversation,
-        }
-      );
-      const allAgentSkills = await SkillResource.listByAgentConfiguration(
-        auth,
-        agentConfiguration
-      );
-
-      const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-      const equippedSkills = allAgentSkills.filter(
-        (s) => !enabledSkillIds.has(s.sId)
-      );
+        });
 
       // Fetch MCP server configurations from enabled skills.
       const skillServers = await fetchSkillMCPServerConfigurations(
