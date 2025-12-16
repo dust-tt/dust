@@ -559,6 +559,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare agentMessage?: NonAttribute<AgentMessageModel>;
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReactionModel[]>;
+  declare mentions?: NonAttribute<MentionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
 }
