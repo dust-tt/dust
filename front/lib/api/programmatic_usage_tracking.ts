@@ -32,7 +32,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   email: "user",
   excel: "programmatic",
   extension: "user",
-  "github-copilot-chat": "user",
   gsheet: "programmatic",
   make: "programmatic",
   n8n: "programmatic",

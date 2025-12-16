@@ -395,7 +395,6 @@ export function isUserMessageContextValid(
     case "api":
     case "slack": // TODO: should not be allowed
     case "web": // TODO: should not be allowed
-    case "github-copilot-chat": // TODO: find out how it's used
       return true;
     case "excel":
     case "gsheet":
