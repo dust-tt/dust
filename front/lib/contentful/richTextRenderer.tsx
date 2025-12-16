@@ -1,11 +1,6 @@
 import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import type {
-  Block,
-  Document,
-  Inline,
-  Text,
-} from "@contentful/rich-text-types";
+import type { Block, Document, Inline } from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -13,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
+import { isTextNode } from "@app/lib/contentful/tableOfContents";
 import { isString } from "@app/types";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
@@ -51,8 +47,8 @@ function getParagraphText(node: Block | Inline): string {
   let text = "";
   if ("content" in node) {
     for (const child of node.content) {
-      if (child.nodeType === "text") {
-        text += (child as Text).value;
+      if (isTextNode(child)) {
+        text += child.value;
       } else if ("content" in child) {
         text += getParagraphText(child as Block | Inline);
       }
@@ -74,10 +70,28 @@ function extractTextFromChildren(children: ReactNode): string {
   return "";
 }
 
+type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+type HeadingComponent = typeof H2 | typeof H3 | typeof H4 | typeof H5;
+
+function createHeadingRenderer(
+  Component: HeadingComponent | HeadingTag,
+  className: string
+) {
+  return (_node: Block | Inline, children: ReactNode) => {
+    const text = extractTextFromChildren(children);
+    const id = slugify(text);
+    const Tag = Component;
+    return (
+      <Tag id={id} className={className}>
+        {children}
+      </Tag>
+    );
+  };
+}
+
 interface ContentfulLightboxImageProps {
   src: string;
   alt: string;
-  title?: string | null;
   width: number;
   height: number;
 }
@@ -85,7 +99,6 @@ interface ContentfulLightboxImageProps {
 function ContentfulLightboxImage({
   src,
   alt,
-  title,
   width,
   height,
 }: ContentfulLightboxImageProps) {
@@ -123,11 +136,6 @@ function ContentfulLightboxImage({
             loading="lazy"
           />
         </button>
-        {title ? (
-          <figcaption className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            {title}
-          </figcaption>
-        ) : null}
       </figure>
       {open && (
         <div
@@ -181,66 +189,30 @@ const renderOptions: Options = {
     ),
   },
   renderNode: {
-    [BLOCKS.HEADING_1]: (_node, children) => {
-      const text = extractTextFromChildren(children);
-      const id = slugify(text);
-      return (
-        <H2 id={id} className="mb-6 mt-10 scroll-mt-20 text-foreground">
-          {children}
-        </H2>
-      );
-    },
-    [BLOCKS.HEADING_2]: (_node, children) => {
-      const text = extractTextFromChildren(children);
-      const id = slugify(text);
-      return (
-        <H3 id={id} className="mb-4 mt-8 scroll-mt-20 text-foreground">
-          {children}
-        </H3>
-      );
-    },
-    [BLOCKS.HEADING_3]: (_node, children) => {
-      const text = extractTextFromChildren(children);
-      const id = slugify(text);
-      return (
-        <H4 id={id} className="mb-3 mt-6 scroll-mt-20 text-foreground">
-          {children}
-        </H4>
-      );
-    },
-    [BLOCKS.HEADING_4]: (_node, children) => {
-      const text = extractTextFromChildren(children);
-      const id = slugify(text);
-      return (
-        <H5 id={id} className="mb-2 mt-5 scroll-mt-20 text-foreground">
-          {children}
-        </H5>
-      );
-    },
-    [BLOCKS.HEADING_5]: (_node, children) => {
-      const text = extractTextFromChildren(children);
-      const id = slugify(text);
-      return (
-        <h6
-          id={id}
-          className="mb-2 mt-4 scroll-mt-20 text-base font-semibold text-foreground"
-        >
-          {children}
-        </h6>
-      );
-    },
-    [BLOCKS.HEADING_6]: (_node, children) => {
-      const text = extractTextFromChildren(children);
-      const id = slugify(text);
-      return (
-        <h6
-          id={id}
-          className="mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
-        >
-          {children}
-        </h6>
-      );
-    },
+    [BLOCKS.HEADING_1]: createHeadingRenderer(
+      H2,
+      "mb-6 mt-10 scroll-mt-20 text-foreground"
+    ),
+    [BLOCKS.HEADING_2]: createHeadingRenderer(
+      H3,
+      "mb-4 mt-8 scroll-mt-20 text-foreground"
+    ),
+    [BLOCKS.HEADING_3]: createHeadingRenderer(
+      H4,
+      "mb-3 mt-6 scroll-mt-20 text-foreground"
+    ),
+    [BLOCKS.HEADING_4]: createHeadingRenderer(
+      H5,
+      "mb-2 mt-5 scroll-mt-20 text-foreground"
+    ),
+    [BLOCKS.HEADING_5]: createHeadingRenderer(
+      "h6",
+      "mb-2 mt-4 scroll-mt-20 text-base font-semibold text-foreground"
+    ),
+    [BLOCKS.HEADING_6]: createHeadingRenderer(
+      "h6",
+      "mb-2 mt-4 scroll-mt-20 text-sm font-semibold text-foreground"
+    ),
     [BLOCKS.PARAGRAPH]: (node, children) => {
       // Check if paragraph contains only a YouTube URL
       const text = getParagraphText(node);
@@ -270,13 +242,12 @@ const renderOptions: Options = {
       </blockquote>
     ),
     [BLOCKS.EMBEDDED_ASSET]: (node) => {
-      const { url, title, description, contentType } = node.data.target.fields;
-      const details = node.data.target.fields.file.details;
-
-      if (!isString(url) || !contentType) {
+      const { file, title, description } = node.data.target.fields;
+      if (!file) {
         return null;
       }
 
+      const { url, details } = file;
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const { width, height } = details?.image || { width: 800, height: 400 };
       const alt = title ?? description ?? "Image";
@@ -285,7 +256,6 @@ const renderOptions: Options = {
         <ContentfulLightboxImage
           src={`https:${url}`}
           alt={alt}
-          title={title ?? null}
           width={width}
           height={height}
         />

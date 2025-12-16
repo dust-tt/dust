@@ -12,7 +12,6 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import {
   buildPreviewQueryString,
   CONTENTFUL_REVALIDATE_SECONDS,
-  getAllCustomerStories,
   getCustomerStoryBySlug,
   getRelatedCustomerStories,
 } from "@app/lib/contentful/client";
@@ -25,25 +24,10 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const storiesResult = await getAllCustomerStories();
-
-  if (storiesResult.isErr()) {
-    logger.error(
-      { error: storiesResult.error },
-      "Error fetching customer stories for static paths"
-    );
-    return {
-      paths: [],
-      fallback: "blocking",
-    };
-  }
-
-  const paths = storiesResult.value.map((story) => ({
-    params: { slug: story.slug },
-  }));
-
+  // Don't pre-generate any paths at build time to minimize Contentful API calls.
+  // Pages are generated on-demand via fallback: "blocking" and cached with ISR.
   return {
-    paths,
+    paths: [],
     fallback: "blocking",
   };
 };

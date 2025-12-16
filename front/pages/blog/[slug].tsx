@@ -13,7 +13,6 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import {
   buildPreviewQueryString,
   CONTENTFUL_REVALIDATE_SECONDS,
-  getAllBlogPosts,
   getBlogPostBySlug,
   getRelatedPosts,
 } from "@app/lib/contentful/client";
@@ -26,25 +25,10 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const postsResult = await getAllBlogPosts();
-
-  if (postsResult.isErr()) {
-    logger.error(
-      { error: postsResult.error },
-      "Error fetching blog posts for static paths"
-    );
-    return {
-      paths: [],
-      fallback: "blocking",
-    };
-  }
-
-  const paths = postsResult.value.map((post) => ({
-    params: { slug: post.slug },
-  }));
-
+  // Don't pre-generate any paths at build time to minimize Contentful API calls.
+  // Pages are generated on-demand via fallback: "blocking" and cached with ISR.
   return {
-    paths,
+    paths: [],
     fallback: "blocking",
   };
 };

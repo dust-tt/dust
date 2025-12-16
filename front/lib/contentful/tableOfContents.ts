@@ -14,7 +14,7 @@ export interface TocItem {
   level: number;
 }
 
-function isTextNode(node: Block | Inline | Text): node is Text {
+export function isTextNode(node: Block | Inline | Text): node is Text {
   return node.nodeType === "text";
 }
 
