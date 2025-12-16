@@ -190,7 +190,7 @@ function createServer(
         const { agentConfiguration } = agentLoopContext.runContext;
 
         const schedulesResult =
-          await TriggerResource.listSchedulesByAgentAndEditor(auth, {
+          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
             agentConfigurationId: agentConfiguration.sId,
             editorIds: [userId],
           });
@@ -253,18 +253,20 @@ function createServer(
         }
         const { agentConfiguration } = agentLoopContext.runContext;
 
-        const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
-          auth,
-          scheduleId,
-          {
+        const triggersResult =
+          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
             agentConfigurationId: agentConfiguration.sId,
-            editorId: userId,
-          }
-        );
-        if (scheduleResult.isErr()) {
-          return new Err(new MCPError(scheduleResult.error.message));
+            editorIds: [userId],
+          });
+        if (triggersResult.isErr()) {
+          return new Err(new MCPError("Error fetching schedules"));
         }
-        const schedule = scheduleResult.value;
+        const schedule = triggersResult.value.find(
+          (t) => t.kind === "schedule" && t.sId === scheduleId
+        );
+        if (!schedule) {
+          return new Err(new MCPError("Schedule not found"));
+        }
 
         const scheduleName = schedule.name;
         const result = await schedule.disable(auth);
