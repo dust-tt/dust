@@ -60,7 +60,7 @@ export async function runAgentLoopWorker() {
     activities: {
       conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
-      finalizeAgentLoopActivity: finalizeSuccessfulAgentLoopActivity,
+      finalizeSuccessfulAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
       finalizeCancellationActivity,

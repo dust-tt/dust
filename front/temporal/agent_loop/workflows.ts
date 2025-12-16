@@ -280,7 +280,7 @@ export async function agentLoopWorkflow({
       // Ensure analytics runs even if workflow is cancelled
       await CancellationScope.nonCancellable(async () => {
         if (patched("finalize-activity-consolidation")) {
-          await finalizeAgentLoopActivity(authType, agentLoopArgs);
+          await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
         } else {
           await Promise.all([
             launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
