@@ -644,7 +644,7 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 >;
 
 /**
- * Deduplicates MCP server configurations by view ID.
+ * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent actions > client-side > skill servers > JIT servers.
  */
 function deduplicateMCPServerConfigurations({
@@ -665,9 +665,10 @@ function deduplicateMCPServerConfigurations({
     ...skillServers,
     ...jitServers,
   ].filter((config) => {
-    const key = isServerSideMCPServerConfiguration(config)
+    const viewId = isServerSideMCPServerConfiguration(config)
       ? config.mcpServerViewId
       : config.clientSideMcpServerId;
+    const key = `${viewId}:${config.name}`;
 
     if (seen.has(key)) {
       return false;
