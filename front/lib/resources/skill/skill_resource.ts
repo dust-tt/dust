@@ -8,6 +8,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -34,7 +35,7 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import type { UserResource } from "@app/lib/resources/user_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -695,6 +696,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
+  }
+
+  async fetchAuthor(auth: Authenticator): Promise<UserResource | null> {
+    const author = await UserResource.fetchByModelId(this.authorId);
+
+    if (!author) {
+      return null;
+    }
+
+    const shouldReturnAuthor = await hasSharedMembership(auth, {
+      user: author,
+    });
+
+    return shouldReturnAuthor ? author : null;
   }
 
   async archive(
