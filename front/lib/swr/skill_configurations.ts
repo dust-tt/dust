@@ -44,10 +44,10 @@ export function useSkills({
   );
 
   return {
-    skillConfigurations: data?.skillConfigurations ?? emptyArray(),
-    isSkillConfigurationsError: !!error,
-    isSkillConfigurationsLoading: isLoading,
-    mutateSkillConfigurations: mutate,
+    skills: data?.skillConfigurations ?? emptyArray(),
+    isSkillsError: !!error,
+    isSkillsLoading: isLoading,
+    mutateSkills: mutate,
   };
 }
 
@@ -70,9 +70,9 @@ export function useSkillsWithRelations({
   );
 
   return {
-    skillConfigurationsWithRelations: data?.skillConfigurations ?? emptyArray(),
-    isSkillConfigurationsWithRelationsLoading: isLoading,
-    mutateSkillConfigurationsWithRelations: mutate,
+    skillsWithRelations: data?.skillConfigurations ?? emptyArray(),
+    isSkillsWithRelationsLoading: isLoading,
+    mutateSkillsWithRelations: mutate,
   };
 }
 
@@ -106,13 +106,13 @@ export function useArchiveSkill({
   skillConfiguration: SkillType;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
+  const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
       owner,
       status: "archived",
       disabled: true,
     });
-  const { mutateSkillConfigurationsWithRelations: mutateActiveSkills } =
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
     useSkillsWithRelations({
       owner,
       status: "active",
@@ -162,13 +162,13 @@ export function useRestoreSkill({
   skill: SkillType;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
+  const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
       owner,
       status: "archived",
       disabled: true,
     });
-  const { mutateSkillConfigurationsWithRelations: mutateActiveSkills } =
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
     useSkillsWithRelations({
       owner,
       status: "active",
@@ -234,10 +234,10 @@ export function useSkillHistory({
   );
 
   return {
-    skillConfigurationHistory: data?.history,
-    isSkillConfigurationHistoryLoading: !error && !data && !disabled,
-    isSkillConfigurationHistoryError: error,
-    mutateSkillConfigurationHistory: mutate,
+    skillHistory: data?.history,
+    isSkillHistoryLoading: !error && !data && !disabled,
+    isSkillHistoryError: error,
+    mutateSkillHistory: mutate,
   };
 }
 

@@ -30,7 +30,7 @@ export function SkillBuilderInstructionsSection({
   const [compareVersion, setCompareVersion] = useState<SkillType | null>(null);
   const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
 
-  const { skillConfigurationHistory } = useSkillHistory({
+  const { skillHistory } = useSkillHistory({
     owner,
     skillConfiguration,
     disabled: !skillConfiguration,
@@ -51,18 +51,17 @@ export function SkillBuilderInstructionsSection({
     setIsInstructionDiffMode(false);
   };
 
-  const headerActions = skillConfigurationHistory &&
-    skillConfigurationHistory.length > 1 && (
-      <SkillInstructionsHistory
-        history={skillConfigurationHistory}
-        selectedConfig={compareVersion}
-        onSelect={(config) => {
-          setCompareVersion(config);
-          setIsInstructionDiffMode(true);
-        }}
-        owner={owner}
-      />
-    );
+  const headerActions = skillHistory && skillHistory.length > 1 && (
+    <SkillInstructionsHistory
+      history={skillHistory}
+      selectedConfig={compareVersion}
+      onSelect={(config) => {
+        setCompareVersion(config);
+        setIsInstructionDiffMode(true);
+      }}
+      owner={owner}
+    />
+  );
 
   return (
     <section className="flex flex-col gap-3">

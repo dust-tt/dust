@@ -31,26 +31,18 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasSkillsFeature = hasFeature("skills");
 
-  const {
-    skillConfigurations,
-    isSkillConfigurationsLoading,
-    isSkillConfigurationsError,
-  } = useSkills({
+  const { skills, isSkillsLoading, isSkillsError } = useSkills({
     owner,
     disabled: !hasSkillsFeature,
   });
 
   const value: SkillsContextType = useMemo(() => {
     return {
-      skills: skillConfigurations,
-      isSkillsLoading: isSkillConfigurationsLoading,
-      isSkillsError: isSkillConfigurationsError,
+      skills: skills,
+      isSkillsLoading: isSkillsLoading,
+      isSkillsError: isSkillsError,
     };
-  }, [
-    skillConfigurations,
-    isSkillConfigurationsLoading,
-    isSkillConfigurationsError,
-  ]);
+  }, [skills, isSkillsLoading, isSkillsError]);
 
   return (
     <SkillsContext.Provider value={value}>{children}</SkillsContext.Provider>

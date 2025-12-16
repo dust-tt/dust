@@ -126,16 +126,16 @@ export default function WorkspaceSkills({
   }, [selectedTab, skillSearch]);
 
   const {
-    skillConfigurationsWithRelations: activeSkills,
-    isSkillConfigurationsWithRelationsLoading: isActiveLoading,
+    skillsWithRelations: activeSkills,
+    isSkillsWithRelationsLoading: isActiveLoading,
   } = useSkillsWithRelations({
     owner,
     status: "active",
   });
 
   const {
-    skillConfigurationsWithRelations: archivedSkills,
-    isSkillConfigurationsWithRelationsLoading: isArchivedLoading,
+    skillsWithRelations: archivedSkills,
+    isSkillsWithRelationsLoading: isArchivedLoading,
   } = useSkillsWithRelations({
     owner,
     status: "archived",
