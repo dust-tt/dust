@@ -34,7 +34,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon } from "@app/lib/skill";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -594,7 +594,7 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   label={skill.name}
-                  icon={SKILL_ICON}
+                  icon={getSkillIcon(skill.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
                   onRemove={
                     disableInput
@@ -606,7 +606,7 @@ const InputBarContainer = ({
                 />
                 <Chip
                   size="xs"
-                  icon={SKILL_ICON}
+                  icon={getSkillIcon(skill.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
                   onRemove={
                     disableInput

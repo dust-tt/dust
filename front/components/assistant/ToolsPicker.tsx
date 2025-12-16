@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BoltIcon,
   Button,
   Chip,
@@ -26,7 +27,7 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
@@ -65,8 +66,11 @@ interface CapabilityItemProps {
   icon: React.ComponentType<{ className?: string }> | (() => React.ReactNode);
   label: string;
   description: string | null;
-  onClick: () => void;
+  onClick?: () => void;
   keyPrefix: string;
+  endComponent?: React.ReactNode;
+  disabled?: boolean;
+  className?: string;
 }
 
 function CapabilityItem({
@@ -76,19 +80,30 @@ function CapabilityItem({
   description,
   onClick,
   keyPrefix,
+  endComponent,
+  disabled,
+  className,
 }: CapabilityItemProps) {
   return (
     <DropdownMenuItem
       key={`${keyPrefix}-${id}`}
+      id={`${keyPrefix}-${id}`}
       icon={icon}
       label={label}
       description={description ?? undefined}
       truncateText
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        onClick();
-      }}
+      endComponent={endComponent}
+      disabled={disabled}
+      className={className}
+      onClick={
+        onClick
+          ? (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onClick();
+            }
+          : undefined
+      }
     />
   );
 }
@@ -361,7 +376,7 @@ export function ToolsPicker({
                 <CapabilityItem
                   key={`skills-picker-${skill.sId}`}
                   id={skill.sId}
-                  icon={SKILL_ICON}
+                  icon={getSkillAvatarIcon(skill.icon)}
                   label={skill.name}
                   description={skill.userFacingDescription}
                   keyPrefix="skills-picker"
@@ -417,19 +432,17 @@ export function ToolsPicker({
           {isDataReady && filteredUninstalledServers.length > 0 && (
             <>
               {filteredUninstalledServers.map((server) => (
-                <DropdownMenuItem
+                <CapabilityItem
                   key={`tools-to-install-${server.sId}`}
+                  id={server.sId}
                   icon={() => getAvatar(server)}
                   label={asDisplayName(server.name)}
                   description={server.description}
-                  truncateText
+                  keyPrefix="tools-to-install"
                   endComponent={
                     <Chip size="xs" color="golden" label="Configure" />
                   }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-
+                  onClick={() => {
                     const remoteMcpServerConfig =
                       getDefaultRemoteMCPServerByName(server.name);
 
@@ -455,8 +468,8 @@ export function ToolsPicker({
             filteredSkillsUnselected.length === 0 &&
             filteredServerViewsUnselected.length === 0 &&
             filteredUninstalledServers.length === 0 && (
-              <DropdownMenuItem
-                id="tools-picker-no-selected"
+              <CapabilityItem
+                id="no-selected"
                 icon={() => <Icon visual={BoltIcon} size="xs" />}
                 label={
                   searchText.length > 0
@@ -468,7 +481,9 @@ export function ToolsPicker({
                     ? "No skills or tools found matching your search."
                     : "All available skills and tools are already selected."
                 }
+                keyPrefix="tools-picker"
                 disabled
+                className="italic"
               />
             )}
         </DropdownMenuContent>
