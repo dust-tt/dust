@@ -85,6 +85,7 @@
     "@tiptap/core": "^3.13.0",
     "@tiptap/extension-blockquote": "^3.13.0",
     "@tiptap/extension-emoji": "^3.13.0",
+    "@emoji-mart/data": "^1.2.1",
     "@tiptap/extension-heading": "^3.13.0",
     "@tiptap/extension-link": "^3.13.0",
     "@tiptap/extension-mention": "^3.13.0",
