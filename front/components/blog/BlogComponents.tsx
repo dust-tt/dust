@@ -124,7 +124,7 @@ export function BlogPostGrid({ posts, emptyMessage }: BlogPostGridProps) {
       ) : (
         <div className="col-span-full py-12 text-center">
           <P size="md" className="text-muted-foreground">
-            {emptyMessage || "No blog posts available."}
+            {emptyMessage ?? "No blog posts available."}
           </P>
         </div>
       )}
