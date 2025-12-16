@@ -2,9 +2,8 @@ import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useUserMetadata } from "@app/lib/swr/user";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { WorkspaceType } from "@app/types";
+import { type WorkspaceType, isString } from "@app/types";
 
 // TODO(dust-wrapped): Update background image for 2025 wrapped background image
 const BACKGROUND_IMAGE_PATH = "/static/spiritavatar/Spirit_Black_1.jpg";
@@ -25,10 +24,19 @@ function getLocalStorageKey(owner: WorkspaceType) {
   return `${LOCAL_STORAGE_KEY_PREFIX}-${owner.sId}`;
 }
 
-export function InAppBanner({ owner }: InAppBannerProps) {
-  const { metadata, isMetadataLoading, isMetadataError } =
-    useUserMetadata("dust_wrapped");
+function getWrappedUrl(owner: WorkspaceType): string | null {
+  const metadata = owner.metadata;
+  if (!metadata) {
+    return null;
+  }
+  const wrappedUrl = metadata.wrappedUrl;
+  if (wrappedUrl && isString(wrappedUrl)) {
+    return wrappedUrl;
+  }
+  return null;
+}
 
+export function InAppBanner({ owner }: InAppBannerProps) {
   const [showInAppBanner, setShowInAppBanner] = useState(
     localStorage.getItem(getLocalStorageKey(owner)) !== "true"
   );
@@ -38,18 +46,14 @@ export function InAppBanner({ owner }: InAppBannerProps) {
     setShowInAppBanner(false);
   };
 
-  if (
-    isMetadataLoading ||
-    isMetadataError ||
-    !metadata ||
-    !metadata.value ||
-    !showInAppBanner
-  ) {
+  const wrappedUrl = getWrappedUrl(owner);
+
+  if (!showInAppBanner || !wrappedUrl) {
     return null;
   }
 
   const onLearnMore = () => {
-    window.open(metadata.value, "_blank", "noopener,noreferrer");
+    window.open(wrappedUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
