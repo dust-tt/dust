@@ -13,14 +13,12 @@ export function useMentionSuggestions({
   workspaceId,
   conversationId,
   query = "",
-  preferredAgentId,
   select,
   disabled = false,
 }: {
   workspaceId: string;
   conversationId: string | null;
   query?: string;
-  preferredAgentId?: string | null;
   select: {
     agents: boolean;
     users: boolean;
@@ -47,9 +45,6 @@ export function useMentionSuggestions({
   }
   if (select.users) {
     searchParams.append("select", "users");
-  }
-  if (preferredAgentId) {
-    searchParams.append("preferredAgentId", preferredAgentId);
   }
 
   const url =

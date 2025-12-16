@@ -76,14 +76,9 @@ async function handler(
     return { agents, users };
   })();
 
-  const { preferredAgentId: preferredAgentIdParam } = req.query;
-  const preferredAgentId =
-    typeof preferredAgentIdParam === "string" ? preferredAgentIdParam : null;
-
   const suggestions = await suggestionsOfMentions(auth, {
     query,
     conversationId,
-    preferredAgentId,
     select,
   });
 

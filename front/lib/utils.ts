@@ -253,11 +253,18 @@ export function subFilter(a: string, b: string) {
 }
 
 /**
- * Compares two strings for fuzzy sorting against a query First sort by spread
- * of subfilter, then by first index of subfilter, then length, then by
+ * Compares two strings for fuzzy sorting against a query
+ * First sort by substring, then by spread of subfilter, then by first index of subfilter, then length, then by
  * lexicographic order
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
+  if (a.includes(query) && !b.includes(query)) {
+    return -1;
+  }
+  if (b.includes(query) && !a.includes(query)) {
+    return 1;
+  }
+
   const spreadA = spreadLength(query, a);
   if (spreadA === -1) {
     return 1;
