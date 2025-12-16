@@ -830,7 +830,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     await AgentSkillModel.create({
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId: agentConfiguration.id,
       customSkillId: this.globalSId ? null : this.id,
       globalSkillId: this.globalSId ?? null,
     });
@@ -863,7 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const conversationSkillBlob = {
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
+      agentConfigurationId: agentConfiguration.sId,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
       agentMessageId: agentMessage.agentMessageId,
