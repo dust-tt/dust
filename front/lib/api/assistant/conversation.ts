@@ -1,5 +1,5 @@
 import assert from "assert";
-import { NextApiRequest } from "next";
+import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
