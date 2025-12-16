@@ -1,4 +1,4 @@
-import { Chip, Page } from "@dust-tt/sparkle";
+import { Chip, cn, Page } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
@@ -41,11 +41,16 @@ export function AgentInfoTab({
           />
 
           {agentConfiguration?.instructions ? (
-            <div className="dd-privacy-mask flex flex-col gap-5">
+            <div className="dd-privacy-mask flex flex-col gap-4">
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>
-              <div className="border-structure-200 bg-structure-50 rounded-lg border p-4">
+              <div
+                className={cn(
+                  "rounded-lg border border-border bg-muted-background px-3 py-2 " +
+                    "dark:border-border-night dark:bg-muted-background-night"
+                )}
+              >
                 <AgentMessageMarkdown
                   content={agentConfiguration.instructions}
                   owner={owner}
