@@ -133,6 +133,11 @@ export type UserMessageType = {
   agenticMessageData?: AgenticMessageData;
 };
 
+export type UserMessageTypeWithoutMentions = Omit<
+  UserMessageType,
+  "richMentions" | "mentions"
+>;
+
 export type UserMessageTypeWithContentFragments = UserMessageType & {
   contentFragments: ContentFragmentType[];
 };
@@ -211,6 +216,11 @@ export type AgentMessageType = BaseAgentMessageType & {
   modelInteractionDurationMs: number | null;
 };
 
+export type AgentMessageTypeWithoutMentions = Omit<
+  AgentMessageType,
+  "richMentions"
+>;
+
 export type LightAgentMessageType = BaseAgentMessageType & {
   configuration: {
     sId: string;
@@ -276,6 +286,7 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
+  triggerId: string | null;
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];

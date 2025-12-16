@@ -1,8 +1,7 @@
 import { handleAgentMessage } from "@app/lib/api/assistant/conversation";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { isAgentMessageType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -30,68 +29,40 @@ export async function handleMentionsActivity(
     return;
   }
 
-  const conversationResource = await ConversationResource.fetchById(
+  const conversationRes = await getConversation(
     auth,
     agentLoopArgs.conversationId
   );
-  if (!conversationResource) {
-    logger.warn(
-      {
-        conversationId: agentLoopArgs.conversationId,
-        agentMessageId: agentLoopArgs.agentMessageId,
-      },
-      "Conversation not found while handling mentions"
-    );
-    return;
-  }
 
-  const messageRes = await conversationResource.getMessageById(
-    auth,
-    agentLoopArgs.agentMessageId
-  );
-
-  if (messageRes.isErr()) {
+  if (conversationRes.isErr()) {
     logger.error(
       {
         conversationId: agentLoopArgs.conversationId,
         agentMessageId: agentLoopArgs.agentMessageId,
-        error: messageRes.error,
+        error: conversationRes.error,
       },
-      "Failed to fetch agent message while handling mentions"
+      "Failed to fetch conversation while handling mentions"
     );
     return;
   }
 
-  const renderMessageRes = await batchRenderMessages(
-    auth,
-    conversationResource,
-    [messageRes.value],
-    "full"
-  );
+  const conversation = conversationRes.value;
 
-  if (renderMessageRes.isErr()) {
-    logger.error(
-      {
-        conversationId: agentLoopArgs.conversationId,
-        agentMessageId: agentLoopArgs.agentMessageId,
-        error: renderMessageRes.error,
-      },
-      "Failed to batch render agent messages while handling mentions"
-    );
-    return;
-  }
-  if (renderMessageRes.value.length !== 1) {
+  const agentMessage = conversation.content
+    .flat()
+    .find((message) => message.sId === agentLoopArgs.agentMessageId);
+
+  if (!agentMessage) {
     logger.error(
       {
         conversationId: agentLoopArgs.conversationId,
         agentMessageId: agentLoopArgs.agentMessageId,
       },
-      "Unexpected number of messages post render processing while handling mentions"
+      "Agent message not found while handling mentions"
     );
     return;
   }
 
-  const agentMessage = renderMessageRes.value[0];
   if (!isAgentMessageType(agentMessage)) {
     logger.error(
       {
@@ -111,7 +82,6 @@ export async function handleMentionsActivity(
     return;
   }
 
-  const conversation = conversationResource.toJSON();
   await handleAgentMessage(auth, {
     conversation,
     agentMessage,

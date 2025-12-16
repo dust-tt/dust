@@ -1,10 +1,12 @@
-import React from "react";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import React, { useMemo } from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
   VirtuosoMessage,
@@ -22,6 +24,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
+import type { UserType } from "@app/types";
 
 interface MessageItemProps {
   data: VirtuosoMessage;
@@ -44,6 +47,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const sendNotification = useSendNotification();
 
     const { mutate } = useSWRConfig();
+    const methods = useVirtuosoMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >();
     const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
@@ -126,6 +133,19 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    const triggeringUser = useMemo((): UserType | null => {
+      if (isMessageTemporayState(data)) {
+        const parentMessageId = data.parentMessageId;
+        const messages = methods.data.get();
+        const parentUserMessage = messages
+          .filter(isUserMessage)
+          .find((m) => m.sId === parentMessageId);
+        return parentUserMessage?.user ?? null;
+      } else {
+        return data.user;
+      }
+    }, [data, methods.data]);
+
     if (isHiddenMessage(data)) {
       // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
       // because it has no value to display.
@@ -157,6 +177,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           {isMessageTemporayState(data) && (
             <AgentMessage
               user={context.user}
+              triggeringUser={triggeringUser}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
               agentMessage={data}
@@ -165,6 +186,19 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               handleSubmit={context.handleSubmit}
             />
           )}
+          {data.visibility !== "deleted" &&
+            data.richMentions
+              .filter((mention) => mention.status === "pending")
+              .map((mention) => (
+                <MentionValidationRequired
+                  key={mention.id}
+                  pendingMention={mention}
+                  message={data}
+                  owner={context.owner}
+                  triggeringUser={triggeringUser}
+                  conversationId={context.conversationId}
+                />
+              ))}
         </div>
       </>
     );

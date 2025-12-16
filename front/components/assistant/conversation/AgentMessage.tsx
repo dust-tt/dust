@@ -93,6 +93,7 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
+  triggeringUser: UserType | null;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -107,6 +108,7 @@ export function AgentMessage({
   messageFeedback,
   owner,
   user,
+  triggeringUser,
   handleSubmit,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
@@ -132,15 +134,6 @@ export function AgentMessage({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
-
-  const triggeringUser = useMemo((): UserType | null => {
-    const parentMessageId = agentMessage.parentMessageId;
-    const messages = methods.data.get();
-    const parentUserMessage = messages
-      .filter(isUserMessage)
-      .find((m) => m.sId === parentMessageId);
-    return parentUserMessage?.user ?? null;
-  }, [agentMessage.parentMessageId, methods.data]);
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
