@@ -241,7 +241,7 @@ export function useSkillConfigurationHistory({
   };
 }
 
-export function useSkillConfigurationWithRelations({
+export function useSkillWithRelations({
   owner,
   disabled,
   id,

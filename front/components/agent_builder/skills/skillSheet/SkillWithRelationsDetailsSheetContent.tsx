@@ -1,7 +1,7 @@
 import React from "react";
 
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
-import { useSkillConfigurationWithRelations } from "@app/lib/swr/skill_configurations";
+import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -16,7 +16,7 @@ export function SkillWithRelationsDetailsSheetContent({
   user,
   skill,
 }: SkillWithRelationsDetailsSheetContentProps) {
-  const { skillWithRelations } = useSkillConfigurationWithRelations({
+  const { skillWithRelations } = useSkillWithRelations({
     owner,
     id: skill.sId,
   });
