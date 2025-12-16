@@ -3,7 +3,8 @@ import { cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { type WorkspaceType, isString } from "@app/types";
+import type { WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 // TODO(dust-wrapped): Update background image for 2025 wrapped background image
 const BACKGROUND_IMAGE_PATH = "/static/spiritavatar/Spirit_Black_1.jpg";
