@@ -17,6 +17,10 @@ import {
   download as notionDownload,
   search as notionSearch,
 } from "@app/lib/providers/notion/search";
+import {
+  download as zendeskDownload,
+  search as zendeskSearch,
+} from "@app/lib/providers/zendesk/search";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -35,6 +39,7 @@ const SEARCHABLE_TOOLS = {
   google_drive: { search: googleDriveSearch, download: googleDriveDownload },
   notion: { search: notionSearch, download: notionDownload },
   microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
+  zendesk: { search: zendeskSearch, download: zendeskDownload },
 } as const satisfies Partial<Record<InternalMCPServerNameType, SearchableTool>>;
 type SearchableMCPServerNameType = keyof typeof SEARCHABLE_TOOLS;
 
@@ -57,7 +62,11 @@ function _isSearchableTool(
 async function _getToolAndAccessTokenForView(
   auth: Authenticator,
   serverView: MCPServerViewResource
-): Promise<{ tool: SearchableTool; accessToken: string } | null> {
+): Promise<{
+  tool: SearchableTool;
+  accessToken: string;
+  metadata: Record<string, string>;
+} | null> {
   const r = getInternalMCPServerNameAndWorkspaceId(serverView.mcpServerId);
   if (r.isErr() || !_isSearchableTool(r.value.name)) {
     return null;
@@ -78,6 +87,7 @@ async function _getToolAndAccessTokenForView(
   return {
     tool: SEARCHABLE_TOOLS[r.value.name],
     accessToken: connectionResult.access_token,
+    metadata: connectionResult.connection.metadata,
   };
 }
 
@@ -98,6 +108,7 @@ async function searchServerView(
       accessToken: result.accessToken,
       query,
       pageSize,
+      metadata: result.metadata,
     });
   } catch (error) {
     const r = getInternalMCPServerNameAndWorkspaceId(serverView.mcpServerId);
@@ -201,7 +212,12 @@ export async function getToolAccessToken({
 }: {
   auth: Authenticator;
   serverViewId: string;
-}): Promise<Result<{ tool: SearchableTool; accessToken: string }, Error>> {
+}): Promise<
+  Result<
+    { tool: SearchableTool; accessToken: string; metadata: Record<string, string> },
+    Error
+  >
+> {
   const serverView = await MCPServerViewResource.fetchById(auth, serverViewId);
   if (!serverView) {
     return new Err(new Error("MCP server view not found."));
@@ -221,12 +237,14 @@ export async function downloadAndUploadToolFile({
   accessToken,
   externalId,
   conversationId,
+  metadata,
 }: {
   auth: Authenticator;
   tool: SearchableTool;
   accessToken: string;
   externalId: string;
   conversationId?: string;
+  metadata?: Record<string, string>;
 }): Promise<Result<FileType, Error>> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
@@ -236,6 +254,7 @@ export async function downloadAndUploadToolFile({
     downloadResult = await tool.download({
       accessToken,
       externalId,
+      metadata,
     });
   } catch (error) {
     logger.error(

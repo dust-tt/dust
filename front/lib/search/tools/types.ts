@@ -24,11 +24,13 @@ export type ToolSearchParams = {
   accessToken: string;
   query: string;
   pageSize: number;
+  metadata?: Record<string, string>;
 };
 
 export type ToolDownloadParams = {
   accessToken: string;
   externalId: string;
+  metadata?: Record<string, string>;
 };
 
 export type ToolDownloadResult = {
