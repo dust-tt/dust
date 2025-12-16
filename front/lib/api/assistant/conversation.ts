@@ -388,6 +388,7 @@ export function isUserMessageContextValid(
   const {
     "user-agent": userAgent,
     "x-dust-extension-version": extensionVersion,
+    "x-zendesk-app-id": zendeskAppId,
   } = req.headers;
 
   switch (context.origin) {
@@ -403,7 +404,9 @@ export function isUserMessageContextValid(
     case "powerpoint":
     case "zapier":
     case "zendesk": // TODO: switch to OAuth
-      return authMethod === "api_key";
+      return (
+        (authMethod === "api_key" || authMethod === "oauth") && !!zendeskAppId
+      );
     case "cli":
     case "cli_programmatic":
       return authMethod === "oauth" && userAgent === "Dust CLI";
