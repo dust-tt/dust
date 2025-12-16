@@ -5,11 +5,11 @@ import type { ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  BLOG_PAGE_SIZE,
   BlogHeader,
   BlogLayout,
   BlogPostGrid,
   BlogTagFilter,
-  BLOG_PAGE_SIZE,
   FeaturedPost,
 } from "@app/components/blog/BlogComponents";
 import { BlogPagination } from "@app/components/blog/BlogPagination";

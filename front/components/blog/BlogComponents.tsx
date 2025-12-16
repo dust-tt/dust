@@ -22,8 +22,8 @@ export function BlogHeader() {
       />
       <H1 className="text-5xl">Blog</H1>
       <P className="max-w-2xl text-center text-muted-foreground">
-        Learn more about Dust, get product updates, AI agents best practices
-        and more.
+        Learn more about Dust, get product updates, AI agents best practices and
+        more.
       </P>
     </div>
   );
@@ -43,7 +43,11 @@ export function BlogTagFilter({ allTags, selectedTag }: BlogTagFilterProps) {
     <div className="col-span-12 flex flex-wrap justify-center gap-2 pt-0">
       <Button
         label="All"
-        variant={selectedTag === null || selectedTag === undefined ? "primary" : "outline"}
+        variant={
+          selectedTag === null || selectedTag === undefined
+            ? "primary"
+            : "outline"
+        }
         size="sm"
         href="/blog"
       />

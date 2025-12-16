@@ -3,11 +3,11 @@ import Head from "next/head";
 import type { ReactElement } from "react";
 
 import {
+  BLOG_PAGE_SIZE,
   BlogHeader,
   BlogLayout,
   BlogPostGrid,
   BlogTagFilter,
-  BLOG_PAGE_SIZE,
 } from "@app/components/blog/BlogComponents";
 import { BlogPagination } from "@app/components/blog/BlogPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
