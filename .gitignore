@@ -11,7 +11,7 @@ qdrant_storage
 core-api-keys.json
 oauth-api-keys.json
 /extension/build/
-**/.claude/settings.local.json
+**/.claude
 **/.yalc
 yalc.lock
 front/public/sitemap.xml
