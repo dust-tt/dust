@@ -69,8 +69,11 @@ function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
 }
 
-function getSkillSearchString(skill: SkillType & SkillRelations): string {
-  const skillEditorNames = skill.editors?.map((e) => e.fullName) ?? [];
+function getSkillSearchString(
+  skill: SkillType & { relations: SkillRelations }
+): string {
+  const skillEditorNames =
+    skill.relations.editors?.map((e) => e.fullName) ?? [];
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
 }
 
@@ -112,7 +115,7 @@ export default function WorkspaceSkills({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [selectedSkill, setSelectedSkill] = useState<
-    (SkillType & SkillRelations) | null
+    (SkillType & { relations: SkillRelations }) | null
   >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
@@ -149,7 +152,7 @@ export default function WorkspaceSkills({
     () => ({
       active: activeSkills,
       editable_by_me: activeSkills.filter((s) => s.canWrite),
-      default: activeSkills.filter((s) => !s.editors),
+      default: activeSkills.filter((s) => !s.relations.editors),
       archived: archivedSkills,
       search: activeSkills
         .filter((s) =>

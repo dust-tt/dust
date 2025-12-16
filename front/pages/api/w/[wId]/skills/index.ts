@@ -24,7 +24,7 @@ export type GetSkillConfigurationsResponseBody = {
 };
 
 export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: (SkillType & SkillRelations)[];
+  skillConfigurations: (SkillType & { relations: SkillRelations })[];
 };
 
 export type PostSkillConfigurationResponseBody = {
@@ -118,9 +118,11 @@ async function handler(
             const editors = await sc.listEditors(auth);
             return {
               ...sc.toJSON(auth),
-              usage,
-              editors: editors ? editors.map((e) => e.toJSON()) : null,
-            } satisfies SkillType & SkillRelations;
+              relations: {
+                usage,
+                editors: editors ? editors.map((e) => e.toJSON()) : null,
+              },
+            } satisfies SkillType & { relations: SkillRelations };
           },
           { concurrency: 10 }
         );

@@ -29,7 +29,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillType & SkillRelations;
+  skillConfiguration: SkillType & { relations: SkillRelations };
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
@@ -74,7 +74,7 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillType & SkillRelations;
+  skillConfiguration: SkillType & { relations: SkillRelations };
   owner: WorkspaceType;
   user: UserType;
 };

@@ -134,9 +134,9 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: (SkillType & SkillRelations)[];
+  skills: (SkillType & { relations: SkillRelations })[];
   owner: LightWorkspaceType;
-  onSkillClick: (skill: SkillType & SkillRelations) => void;
+  onSkillClick: (skill: SkillType & { relations: SkillRelations }) => void;
   onAgentClick: (agentId: string) => void;
 };
 
@@ -156,8 +156,8 @@ export function SkillsTable({
         name: skill.name,
         icon: skill.icon,
         description: skill.userFacingDescription,
-        editors: skill.editors,
-        usage: skill.usage,
+        editors: skill.relations.editors,
+        usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
         onClick: () => {
           onSkillClick(skill);

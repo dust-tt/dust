@@ -50,7 +50,9 @@ export const useLocalSelectedSkills = ({
     );
   }, [skillConfigurationsWithRelations, searchQuery]);
 
-  const handleSkillToggle = (skill: SkillType & SkillRelations) => {
+  const handleSkillToggle = (
+    skill: SkillType & { relations: SkillRelations }
+  ) => {
     setLocalSelectedSkills((prev) => {
       const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
       if (isAlreadySelected) {

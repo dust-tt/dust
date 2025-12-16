@@ -14,8 +14,8 @@ import type {
 
 type SelectionPageProps = PageContentProps & {
   mode: SelectionMode;
-  handleSkillToggle: (skill: SkillType & SkillRelations) => void;
-  filteredSkills: (SkillType & SkillRelations)[];
+  handleSkillToggle: (skill: SkillType & { relations: SkillRelations }) => void;
+  filteredSkills: (SkillType & { relations: SkillRelations })[];
   isSkillsLoading: boolean;
   searchQuery: string;
   selectedSkillIds: Set<string>;

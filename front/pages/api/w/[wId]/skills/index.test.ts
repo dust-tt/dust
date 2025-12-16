@@ -23,7 +23,9 @@ import type {
 
 import handler from "./index";
 
-type SkillConfigurationWithRelations = SkillType & SkillRelations;
+type SkillConfigurationWithRelations = SkillType & {
+  relations: SkillRelations;
+};
 
 async function setupTest(
   method: RequestMethod = "GET",

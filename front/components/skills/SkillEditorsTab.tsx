@@ -19,7 +19,7 @@ import type {
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
   user: UserType;
-  skillConfiguration: SkillType & SkillRelations;
+  skillConfiguration: SkillType & { relations: SkillRelations };
 };
 
 export function SkillEditorsTab({

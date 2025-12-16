@@ -17,7 +17,7 @@ export type SkillsSheetMode =
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.INFO;
-      skillConfiguration: SkillType & SkillRelations;
+      skillConfiguration: SkillType & { relations: SkillRelations };
       previousMode: SelectionMode;
     };
 
