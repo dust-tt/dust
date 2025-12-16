@@ -1,12 +1,18 @@
 import { Page, ReadOnlyTextArea } from "@dust-tt/sparkle";
 
 import { timeAgoFrom } from "@app/lib/utils";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 export function SkillInfoTab({
   skillConfiguration,
 }: {
   skillConfiguration: SkillConfigurationType;
+  skillConfigurationWithRelations:
+    | (SkillConfigurationType & SkillConfigurationRelations)
+    | null;
 }) {
   return (
     <div className="flex flex-col gap-4">

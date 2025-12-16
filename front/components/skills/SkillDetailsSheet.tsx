@@ -22,6 +22,7 @@ import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { SKILL_ICON } from "@app/lib/skill";
+import { useSkillConfigurationWithRelations } from "@app/lib/swr/skill_configurations";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillConfigurationRelations,
@@ -74,7 +75,7 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
+  skillConfiguration: SkillConfigurationType;
   owner: WorkspaceType;
   user: UserType;
 };
@@ -85,6 +86,12 @@ export function SkillDetailsSheetContent({
   user,
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
+
+  const { skillConfiguration: skillConficurationWithRelations } =
+    useSkillConfigurationWithRelations({
+      owner,
+      id: skillConfiguration.sId,
+    });
 
   const showEditorsTabs = skillConfiguration.canWrite;
 
@@ -103,25 +110,36 @@ export function SkillDetailsSheetContent({
             label="Editors"
             icon={UserGroupIcon}
             onClick={() => setSelectedTab("editors")}
+            disabled={!!skillConficurationWithRelations}
           />
         </TabsList>
         <div className="mt-4">
           <TabsContent value="info">
-            <SkillInfoTab skillConfiguration={skillConfiguration} />
+            <SkillInfoTab
+              skillConfiguration={skillConfiguration}
+              skillConfigurationWithRelations={skillConficurationWithRelations}
+            />
           </TabsContent>
           <TabsContent value="editors">
-            <SkillEditorsTab
-              skillConfiguration={skillConfiguration}
-              owner={owner}
-              user={user}
-            />
+            {skillConficurationWithRelations && (
+              <SkillEditorsTab
+                skillConfiguration={skillConficurationWithRelations}
+                owner={owner}
+                user={user}
+              />
+            )}
           </TabsContent>
         </div>
       </Tabs>
     );
   }
 
-  return <SkillInfoTab skillConfiguration={skillConfiguration} />;
+  return (
+    <SkillInfoTab
+      skillConfiguration={skillConfiguration}
+      skillConfigurationWithRelations={skillConficurationWithRelations}
+    />
+  );
 }
 
 type DescriptionSectionProps = {

@@ -3,11 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SelectionMode } from "@app/components/agent_builder/skills/skillSheet/types";
-import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
-import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
-} from "@app/types/assistant/skill_configuration";
+import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 export const useLocalSelectedSkills = ({
   mode,
@@ -24,14 +21,12 @@ export const useLocalSelectedSkills = ({
     AgentBuilderSkillsType[]
   >(mode.selectedSkills);
 
-  const {
-    skillConfigurationsWithRelations,
-    isSkillConfigurationsWithRelationsLoading,
-  } = useSkillConfigurationsWithRelations({
-    owner,
-    disabled: !open,
-    status: "active",
-  });
+  const { skillConfigurations, isSkillConfigurationsLoading } =
+    useSkillConfigurations({
+      owner,
+      disabled: !open,
+      status: "active",
+    });
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
@@ -40,19 +35,17 @@ export const useLocalSelectedSkills = ({
 
   const filteredSkills = useMemo(() => {
     if (!searchQuery.trim()) {
-      return skillConfigurationsWithRelations;
+      return skillConfigurations;
     }
     const query = searchQuery.toLowerCase();
-    return skillConfigurationsWithRelations.filter(
+    return skillConfigurations.filter(
       (skill) =>
         skill.name.toLowerCase().includes(query) ||
         skill.userFacingDescription.toLowerCase().includes(query)
     );
-  }, [skillConfigurationsWithRelations, searchQuery]);
+  }, [skillConfigurations, searchQuery]);
 
-  const handleSkillToggle = (
-    skill: SkillConfigurationType & SkillConfigurationRelations
-  ) => {
+  const handleSkillToggle = (skill: SkillConfigurationType) => {
     setLocalSelectedSkills((prev) => {
       const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
       if (isAlreadySelected) {
@@ -79,7 +72,7 @@ export const useLocalSelectedSkills = ({
     handleSkillToggle,
     handleSave,
     filteredSkills,
-    isSkillsLoading: isSkillConfigurationsWithRelationsLoading,
+    isSkillsLoading: isSkillConfigurationsLoading,
     searchQuery,
     selectedSkillIds,
     setSearchQuery,

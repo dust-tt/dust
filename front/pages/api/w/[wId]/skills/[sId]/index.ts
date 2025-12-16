@@ -14,10 +14,16 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { Err, isBuilder, isString, Ok } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillConfigurationRelations,
+  SkillConfigurationType,
+} from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
   skillConfiguration: SkillConfigurationType;
+};
+export type GetSkillConfigurationWithRelationsResponseBody = {
+  skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
 };
 
 export type PatchSkillConfigurationResponseBody = {
@@ -59,6 +65,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<
       | GetSkillConfigurationResponseBody
+      | GetSkillConfigurationWithRelationsResponseBody
       | PatchSkillConfigurationResponseBody
       | DeleteSkillConfigurationResponseBody
     >
@@ -113,7 +120,26 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const { withRelations } = req.query;
+
       const skillConfiguration = skillResource.toJSON(auth);
+
+      if (withRelations === "true") {
+        const usage = await skillResource.fetchUsage(auth);
+        const editors = await skillResource.listEditors(auth);
+
+        const skillConfigurationWithRelations: SkillConfigurationType &
+          SkillConfigurationRelations = {
+          ...skillConfiguration,
+          usage,
+          editors: editors ? editors.map((e) => e.toJSON()) : null,
+        };
+
+        res.status(200).json({
+          skillConfiguration: skillConfigurationWithRelations,
+        });
+      }
+
       return res.status(200).json({ skillConfiguration });
     }
 

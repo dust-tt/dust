@@ -13,6 +13,7 @@ import type {
   GetSkillConfigurationsResponseBody,
   GetSkillConfigurationsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillConfigurationWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
@@ -204,4 +205,28 @@ export function useRestoreSkillConfiguration({
   };
 
   return doRestore;
+}
+
+export function useSkillConfigurationWithRelations({
+  owner,
+  disabled,
+  id,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+  id: string;
+}) {
+  const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationWithRelationsResponseBody> =
+    fetcher;
+
+  const { data, isLoading } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/${id}?withRelations=true`,
+    skillConfigurationsFetcher,
+    { disabled }
+  );
+
+  return {
+    skillConfiguration: data?.skillConfiguration ?? null,
+    isSkillConfigurationLoading: isLoading,
+  };
 }
