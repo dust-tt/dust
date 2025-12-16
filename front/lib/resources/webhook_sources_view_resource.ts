@@ -169,6 +169,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     } else {
       for (const view of views) {
         const r = await view.init(auth);
+
         if (r.isOk()) {
           filteredViews.push(view);
         }
@@ -205,11 +206,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: viewModelIds,
         },
       },
-    }).then((views) =>
-      views.filter((view) => view.canReadOrAdministrate(auth))
-    );
+    });
 
-    return views ?? [];
+    return views.filter((view) => view.canReadOrAdministrate(auth));
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {

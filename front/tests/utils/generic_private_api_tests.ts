@@ -59,8 +59,8 @@ export const createPrivateApiMockRequest = async ({
     : UserFactory.basic());
 
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
-  const globalSpace = await SpaceFactory.global(workspace);
-  const systemSpace = await SpaceFactory.system(workspace);
+  const systemSpace = await SpaceFactory.system(workspace, systemGroup);
+  const globalSpace = await SpaceFactory.global(workspace, globalGroup);
 
   const membership = await MembershipFactory.associate(workspace, user, {
     role,
