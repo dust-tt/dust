@@ -11,7 +11,7 @@ import {
   useSkillConfigurations,
 } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
@@ -28,9 +28,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     disabled: !isSimilarSkillsEnabled,
   });
 
-  const [similarSkills, setSimilarSkills] = useState<SkillConfigurationType[]>(
-    []
-  );
+  const [similarSkills, setSimilarSkills] = useState<SkillType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSimilarSkills = useCallback(

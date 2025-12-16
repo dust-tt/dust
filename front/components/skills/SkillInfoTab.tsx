@@ -1,12 +1,12 @@
 import { Page, ReadOnlyTextArea } from "@dust-tt/sparkle";
 
 import { timeAgoFrom } from "@app/lib/utils";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export function SkillInfoTab({
   skillConfiguration,
 }: {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -38,7 +38,7 @@ export function SkillInfoTab({
 }
 
 interface SkillEditedProps {
-  skillConfiguration: SkillConfigurationType & { updatedAt: number };
+  skillConfiguration: SkillType & { updatedAt: number };
 }
 
 export function SkillEdited({ skillConfiguration }: SkillEditedProps) {

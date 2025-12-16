@@ -18,8 +18,8 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 
@@ -134,11 +134,9 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: (SkillConfigurationType & SkillConfigurationRelations)[];
+  skills: (SkillType & { relations: SkillRelations })[];
   owner: LightWorkspaceType;
-  onSkillClick: (
-    skill: SkillConfigurationType & SkillConfigurationRelations
-  ) => void;
+  onSkillClick: (skill: SkillType & { relations: SkillRelations }) => void;
   onAgentClick: (agentId: string) => void;
 };
 
@@ -150,8 +148,7 @@ export function SkillsTable({
 }: SkillsTableProps) {
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
-  const [skillToArchive, setSkillToArchive] =
-    useState<SkillConfigurationType | null>(null);
+  const [skillToArchive, setSkillToArchive] = useState<SkillType | null>(null);
 
   const rows: RowData[] = useMemo(
     () =>
@@ -159,8 +156,8 @@ export function SkillsTable({
         name: skill.name,
         icon: skill.icon,
         description: skill.userFacingDescription,
-        editors: skill.editors,
-        usage: skill.usage,
+        editors: skill.relations.editors,
+        usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
         onClick: () => {
           onSkillClick(skill);

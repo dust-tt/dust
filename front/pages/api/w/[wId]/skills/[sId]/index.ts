@@ -14,15 +14,15 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { Err, isBuilder, isString, Ok } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 };
 
 export type PatchSkillConfigurationResponseBody = {
   skillConfiguration: Omit<
-    SkillConfigurationType,
+    SkillType,
     | "author"
     | "requestedSpaceIds"
     | "workspaceId"

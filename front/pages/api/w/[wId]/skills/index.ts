@@ -15,20 +15,20 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillConfigurationType[];
+  skillConfigurations: SkillType[];
 };
 
 export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: (SkillConfigurationType & SkillConfigurationRelations)[];
+  skillConfigurations: (SkillType & { relations: SkillRelations })[];
 };
 
 export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 };
 
 // Schema for GET status query parameter
@@ -118,9 +118,11 @@ async function handler(
             const editors = await sc.listEditors(auth);
             return {
               ...sc.toJSON(auth),
-              usage,
-              editors: editors ? editors.map((e) => e.toJSON()) : null,
-            } satisfies SkillConfigurationType & SkillConfigurationRelations;
+              relations: {
+                usage,
+                editors: editors ? editors.map((e) => e.toJSON()) : null,
+              },
+            } satisfies SkillType & { relations: SkillRelations };
           },
           { concurrency: 10 }
         );
