@@ -103,7 +103,7 @@ export function SkillDetailsSheetContent({
         </TabsList>
         <div className="mt-4">
           <TabsContent value="info">
-            <SkillInfoTab skillConfiguration={skill} />
+            <SkillInfoTab skill={skill} />
           </TabsContent>
           <TabsContent value="editors">
             {hasRelations(skill) && (
@@ -119,7 +119,7 @@ export function SkillDetailsSheetContent({
     );
   }
 
-  return <SkillInfoTab skillConfiguration={skill} />;
+  return <SkillInfoTab skill={skill} />;
 }
 
 type DescriptionSectionProps = {
