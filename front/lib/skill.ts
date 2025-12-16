@@ -12,10 +12,6 @@ import {
 // TODO(skills 2025-12-05): use the right icon
 export const SKILL_ICON = PuzzleIcon;
 
-/**
- * Returns an avatar component for a skill icon (used in dropdowns).
- * Validates the icon string and falls back to the default SKILL_ICON if invalid.
- */
 export function getSkillAvatarIcon(
   iconString: string | null
 ): () => React.ReactNode {
@@ -29,10 +25,6 @@ export function getSkillAvatarIcon(
   return () => React.createElement(Avatar, { icon: SKILL_ICON, size: "sm" });
 }
 
-/**
- * Returns a plain icon component for a skill icon (used in chips).
- * Validates the icon string and falls back to the default SKILL_ICON if invalid.
- */
 export function getSkillIcon(
   iconString: string | null
 ): React.ComponentType<{ className?: string }> {

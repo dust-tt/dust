@@ -1,5 +1,4 @@
 import {
-  Avatar,
   BoltIcon,
   Button,
   Chip,
