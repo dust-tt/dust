@@ -57,8 +57,8 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     const queryPage = Array.isArray(router.query.page)
       ? router.query.page[0]
       : router.query.page;
-    const parsed = queryPage ? parseInt(queryPage, 10) : 1;
-    return Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+   const parsed = parseInt(queryPage || "1", 10);
+   return parsed > 0 ? parsed : 1;
   }, [router.query.page]);
 
   const [selectedTag, setSelectedTag] = useState<string | null>(initialTag);
