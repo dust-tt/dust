@@ -10,19 +10,16 @@ import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
+import { isScheduleTrigger } from "@app/types/assistant/triggers";
 
-function renderSchedule(schedule: TriggerResource): string {
+function renderSchedule(schedule: ScheduleTriggerType): string {
   const config = schedule.configuration;
-  const scheduleInfo =
-    "cron" in config
-      ? `${schedule.naturalLanguageDescription ?? config.cron} (${config.timezone})`
-      : "";
+  const scheduleInfo = `${schedule.naturalLanguageDescription ?? config.cron} (${config.timezone})`;
   const lines = [
-    `- **${schedule.name}** (ID: ${schedule.sId()})`,
+    `- **${schedule.name}** (ID: ${schedule.sId})`,
     `  Schedule: ${scheduleInfo}`,
   ];
   if (schedule.customPrompt) {
@@ -30,35 +27,6 @@ function renderSchedule(schedule: TriggerResource): string {
   }
   lines.push(`  Enabled: ${schedule.enabled ? "Yes" : "No"}`);
   return lines.join("\n");
-}
-
-function getToolContext(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Result<
-  {
-    userId: number;
-    workspaceId: string;
-    agentConfiguration: AgentConfigurationType;
-  },
-  MCPError
-> {
-  const user = auth.user();
-  const workspace = auth.workspace();
-  if (!user) {
-    return new Err(new MCPError("User not found"));
-  }
-  if (!workspace) {
-    return new Err(new MCPError("Workspace not found"));
-  }
-  if (!agentLoopContext?.runContext) {
-    return new Err(new MCPError("Agent context is required"));
-  }
-  return new Ok({
-    userId: user.id,
-    workspaceId: workspace.sId,
-    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-  });
 }
 
 function getUserTimezone(
@@ -96,6 +64,7 @@ function createServer(
         ),
       prompt: z
         .string()
+        .optional()
         .describe(
           "What the agent should do when the schedule runs. Examples: 'Summarize my emails from yesterday', 'Show PRs that need my review', 'Generate a weekly status report'"
         ),
@@ -113,16 +82,8 @@ function createServer(
         agentLoopContext,
       },
       async ({ name, schedule, prompt, timezone }) => {
-        const owner = auth.workspace();
-        const user = auth.user();
-
-        if (!owner) {
-          return new Err(new MCPError("Workspace not found"));
-        }
-
-        if (!user) {
-          return new Err(new MCPError("User not found"));
-        }
+        const owner = auth.getNonNullableWorkspace();
+        const user = auth.getNonNullableUser();
 
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("Agent context is required"));
@@ -189,6 +150,11 @@ function createServer(
           `agent_id:${agentConfiguration.sId}`,
         ]);
 
+        const trigger = result.value.toJSON();
+        if (!isScheduleTrigger(trigger)) {
+          return new Err(new MCPError("Unexpected trigger type"));
+        }
+
         return new Ok([
           {
             type: "text" as const,
@@ -197,7 +163,7 @@ function createServer(
               `Schedule: ${schedule}\n` +
               `Cron: ${cron} (${resultTimezone})\n\n` +
               `The agent will execute "${prompt}" according to this schedule.\n\n` +
-              renderSchedule(result.value),
+              renderSchedule(trigger),
           },
         ]);
       }
@@ -215,11 +181,12 @@ function createServer(
         agentLoopContext,
       },
       async () => {
-        const contextResult = getToolContext(auth, agentLoopContext);
-        if (contextResult.isErr()) {
-          return contextResult;
+        const userId = auth.getNonNullableUser().id;
+        const workspaceId = auth.getNonNullableWorkspace().id;
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("Agent context is required"));
         }
-        const { userId, workspaceId, agentConfiguration } = contextResult.value;
+        const { agentConfiguration } = agentLoopContext.runContext;
 
         const schedulesResult =
           await TriggerResource.listSchedulesByAgentAndEditor(auth, {
@@ -248,6 +215,8 @@ function createServer(
         }
 
         const scheduleList = schedulesResult.value
+          .map((s) => s.toJSON())
+          .filter(isScheduleTrigger)
           .map((schedule) => renderSchedule(schedule))
           .join("\n\n");
 
@@ -262,8 +231,8 @@ function createServer(
   );
 
   server.tool(
-    "get_schedule",
-    "Get details of a specific schedule trigger by ID. Returns name, schedule, prompt, and status.",
+    "disable_schedule",
+    "Disable a schedule.",
     {
       scheduleId: z
         .string()
@@ -272,192 +241,16 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "schedules_management_get",
+        toolNameForMonitoring: "schedules_management_disable",
         agentLoopContext,
       },
       async ({ scheduleId }) => {
-        const contextResult = getToolContext(auth, agentLoopContext);
-        if (contextResult.isErr()) {
-          return contextResult;
+        const userId = auth.getNonNullableUser().id;
+        const workspaceId = auth.getNonNullableWorkspace().id;
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("Agent context is required"));
         }
-        const { userId, agentConfiguration } = contextResult.value;
-
-        const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
-          auth,
-          scheduleId,
-          {
-            agentConfigurationId: agentConfiguration.sId,
-            editorId: userId,
-          }
-        );
-        if (scheduleResult.isErr()) {
-          return new Err(new MCPError(scheduleResult.error.message));
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: renderSchedule(scheduleResult.value),
-          },
-        ]);
-      }
-    )
-  );
-
-  server.tool(
-    "update_schedule",
-    "Update an existing schedule. Can change name, schedule, prompt, or enabled state. Setting enabled to false pauses the schedule, true reactivates it.",
-    {
-      scheduleId: z
-        .string()
-        .describe("The schedule ID (get this from list_schedules)"),
-      name: z
-        .string()
-        .max(255)
-        .optional()
-        .describe(
-          "New name for the schedule (e.g., 'Daily email summary', 'Weekly PR review')"
-        ),
-      schedule: z
-        .string()
-        .optional()
-        .describe(
-          "New schedule in natural language (e.g., 'every weekday at 9am', 'every Monday morning', 'daily at 8am')"
-        ),
-      prompt: z
-        .string()
-        .optional()
-        .describe(
-          "New prompt - what the agent should do when the schedule runs (e.g., 'Summarize my emails from yesterday')"
-        ),
-      enabled: z
-        .boolean()
-        .optional()
-        .describe(
-          "Set to true to enable the schedule, false to disable/pause it"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: "schedules_management_update",
-        agentLoopContext,
-      },
-      async ({ scheduleId, name, schedule, prompt, enabled }) => {
-        const contextResult = getToolContext(auth, agentLoopContext);
-        if (contextResult.isErr()) {
-          return contextResult;
-        }
-        const { userId, workspaceId, agentConfiguration } = contextResult.value;
-
-        const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
-          auth,
-          scheduleId,
-          {
-            agentConfigurationId: agentConfiguration.sId,
-            editorId: userId,
-          }
-        );
-        if (scheduleResult.isErr()) {
-          return new Err(new MCPError(scheduleResult.error.message));
-        }
-
-        let scheduleUpdate:
-          | { cron: string; timezone: string; naturalLanguage: string }
-          | undefined;
-
-        if (schedule) {
-          const resolvedTimezone = getUserTimezone(agentLoopContext);
-
-          if (!resolvedTimezone) {
-            return new Err(new MCPError("Provide a timezone"));
-          }
-
-          const cronResult = await generateCronRule(auth, {
-            naturalDescription: schedule,
-            defaultTimezone: resolvedTimezone,
-          });
-
-          if (cronResult.isErr()) {
-            return new Err(
-              new MCPError(
-                `Unable to understand the schedule "${schedule}". Please try rephrasing (e.g., "every weekday at 9am", "every Monday at 10am").`
-              )
-            );
-          }
-
-          scheduleUpdate = {
-            cron: cronResult.value.cron,
-            timezone: cronResult.value.timezone,
-            naturalLanguage: schedule,
-          };
-        }
-
-        const updateResult = await TriggerResource.update(auth, scheduleId, {
-          name,
-          enabled,
-          customPrompt: prompt,
-          ...(scheduleUpdate && {
-            configuration: {
-              cron: scheduleUpdate.cron,
-              timezone: scheduleUpdate.timezone,
-            },
-            naturalLanguageDescription: scheduleUpdate.naturalLanguage,
-          }),
-        });
-
-        if (updateResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to update schedule: ${updateResult.error.message}`
-            )
-          );
-        }
-
-        getStatsDClient().increment("tools.schedules_management.updated", 1, [
-          `workspace_id:${workspaceId}`,
-          `agent_id:${agentConfiguration.sId}`,
-        ]);
-
-        const changedFields = [
-          name !== undefined && "name",
-          schedule !== undefined && "schedule",
-          prompt !== undefined && "prompt",
-          enabled !== undefined && (enabled ? "enabled" : "disabled"),
-        ]
-          .filter(Boolean)
-          .join(", ");
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Updated schedule (changed: ${changedFields}).\n\n${renderSchedule(updateResult.value)}`,
-          },
-        ]);
-      }
-    )
-  );
-
-  server.tool(
-    "delete_schedule",
-    "Permanently delete a schedule.",
-    {
-      scheduleId: z
-        .string()
-        .describe("The schedule ID (get this from list_schedules)"),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: "schedules_management_delete",
-        agentLoopContext,
-      },
-      async ({ scheduleId }) => {
-        const contextResult = getToolContext(auth, agentLoopContext);
-        if (contextResult.isErr()) {
-          return contextResult;
-        }
-        const { userId, workspaceId, agentConfiguration } = contextResult.value;
+        const { agentConfiguration } = agentLoopContext.runContext;
 
         const scheduleResult = await TriggerResource.fetchScheduleByIdForEditor(
           auth,
@@ -473,15 +266,15 @@ function createServer(
         const schedule = scheduleResult.value;
 
         const scheduleName = schedule.name;
-        const result = await schedule.delete(auth);
+        const result = await schedule.disable(auth);
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(`Failed to delete schedule: ${result.error.message}`)
+            new MCPError(`Failed to disable schedule: ${result.error.message}`)
           );
         }
 
-        getStatsDClient().increment("tools.schedules_management.deleted", 1, [
+        getStatsDClient().increment("tools.schedules_management.disabled", 1, [
           `workspace_id:${workspaceId}`,
           `agent_id:${agentConfiguration.sId}`,
         ]);
@@ -489,7 +282,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Deleted schedule "${scheduleName}".`,
+            text: `Disabled schedule "${scheduleName}".`,
           },
         ]);
       }
