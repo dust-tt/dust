@@ -5,7 +5,6 @@ import {
 import {
   renderTicket,
   renderTicketComments,
-  renderTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
 import type { ZendeskUser } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import type {
@@ -111,7 +110,6 @@ export async function download({
     throw new Error(`Invalid ticket ID: ${externalId}`);
   }
 
-  // Fetch ticket details
   const ticketResult = await client.getTicket(ticketId);
   if (ticketResult.isErr()) {
     throw new Error(ticketResult.error.message);
@@ -123,20 +121,6 @@ export async function download({
   const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
 
   let content = renderTicket(ticket, ticketFieldsResult);
-
-  // Fetch and add metrics
-  const metricsResult = await client.getTicketMetrics(ticketId);
-  if (metricsResult.isOk()) {
-    content += "\n" + renderTicketMetrics(metricsResult.value);
-  } else {
-    logger.warn(
-      {
-        ticketId,
-        error: metricsResult.error.message,
-      },
-      "[Zendesk] Failed to retrieve ticket metrics"
-    );
-  }
 
   // Fetch and add comments
   const commentsResult = await client.getTicketComments(ticketId);
