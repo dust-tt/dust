@@ -33,10 +33,10 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillConfigurationTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
-  skillConfiguration?: SkillConfigurationType;
+  skillConfiguration?: SkillType;
 }
 
 export default function SkillBuilder({

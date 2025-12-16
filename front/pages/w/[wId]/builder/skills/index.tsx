@@ -30,7 +30,7 @@ import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { isBuilder, isEmptyString } from "@app/types";
 import type {
   SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 const SKILL_SEARCH_TAB = {
@@ -70,7 +70,7 @@ function isValidTab(tab: string): tab is SkillManagerTabType {
 }
 
 function getSkillSearchString(
-  skill: SkillConfigurationType & SkillConfigurationRelations
+  skill: SkillType & SkillConfigurationRelations
 ): string {
   const skillEditorNames = skill.editors?.map((e) => e.fullName) ?? [];
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
@@ -114,7 +114,7 @@ export default function WorkspaceSkills({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [selectedSkill, setSelectedSkill] = useState<
-    (SkillConfigurationType & SkillConfigurationRelations) | null
+    (SkillType & SkillConfigurationRelations) | null
   >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");

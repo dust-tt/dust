@@ -17,8 +17,8 @@ import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
 import type {
-  SkillConfigurationType,
   SkillStatus,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 export function useSkillConfigurations({
@@ -97,7 +97,7 @@ export function useArchiveSkillConfiguration({
   skillConfiguration,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
@@ -153,7 +153,7 @@ export function useRestoreSkillConfiguration({
   skillConfiguration,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =

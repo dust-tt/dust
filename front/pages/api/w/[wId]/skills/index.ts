@@ -16,19 +16,19 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
 import type {
   SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillConfigurationType[];
+  skillConfigurations: SkillType[];
 };
 
 export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: (SkillConfigurationType & SkillConfigurationRelations)[];
+  skillConfigurations: (SkillType & SkillConfigurationRelations)[];
 };
 
 export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 };
 
 // Schema for GET status query parameter
@@ -120,7 +120,7 @@ async function handler(
               ...sc.toJSON(auth),
               usage,
               editors: editors ? editors.map((e) => e.toJSON()) : null,
-            } satisfies SkillConfigurationType & SkillConfigurationRelations;
+            } satisfies SkillType & SkillConfigurationRelations;
           },
           { concurrency: 10 }
         );

@@ -18,13 +18,12 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
   SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
 
-type SkillConfigurationWithRelations = SkillConfigurationType &
-  SkillConfigurationRelations;
+type SkillConfigurationWithRelations = SkillType & SkillConfigurationRelations;
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -66,9 +65,7 @@ describe("GET /api/w/[wId]/skills", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skillConfigurations");
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -97,9 +94,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
@@ -159,7 +154,7 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(res._getStatusCode()).toBe(200);
       const skillNames = res
         ._getJSONData()
-        .skillConfigurations.map((s: SkillConfigurationType) => s.name);
+        .skillConfigurations.map((s: SkillType) => s.name);
       expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
@@ -308,9 +303,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillConfigurationType) => s.sId === skillSId
-      );
+      .skillConfigurations.find((s: SkillType) => s.sId === skillSId);
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
