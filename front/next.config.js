@@ -427,6 +427,13 @@ const config = {
       config.devtool = "source-map";
     }
 
+    if (isServer) {
+      config.ignoreWarnings = [
+        { module: /opentelemetry/ },
+        { module: /require-in-the-middle/ },
+      ];
+    }
+
     if (!dev && !isServer && process.env.ANALYZE === "true") {
       config.plugins.push(
         new StatsWriterPlugin({

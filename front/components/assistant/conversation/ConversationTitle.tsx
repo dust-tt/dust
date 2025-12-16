@@ -5,14 +5,14 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
-  const { activeConversationId } = useConversationsNavigation();
+  const activeConversationId = useActiveConversationId();
   const { user } = useUser();
   const { conversation } = useConversation({
     conversationId: activeConversationId,

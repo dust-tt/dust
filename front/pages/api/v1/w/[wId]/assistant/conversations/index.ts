@@ -144,6 +144,22 @@ async function handler(
         blocking,
       } = r.data;
 
+      if (
+        req.body.message?.context?.origin &&
+        message?.context?.origin &&
+        req.body.message.context.origin !== message.context.origin
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            authMethod: auth.authMethod(),
+            originProvided: req.body.message.context.origin,
+            originUsed: message.context.origin,
+          },
+          "Invalid origin used, fallbacking to default value"
+        );
+      }
+
       const origin = message?.context.origin ?? "api";
 
       if (message) {
@@ -229,21 +245,6 @@ async function handler(
                 "Messages from run_agent or agent_handover must come from a system key.",
             },
           });
-        }
-
-        if (
-          message.context.origin === "agent_handover" ||
-          message.context.origin === "run_agent" ||
-          message.context.originMessageId
-        ) {
-          logger.error(
-            {
-              panic: true,
-              origin: message.context.origin,
-              originMessageId: message.context.originMessageId,
-            },
-            "use agenticMessageData instead of origin."
-          );
         }
       }
 

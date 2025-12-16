@@ -1,19 +1,27 @@
 import { Page, ReadOnlyTextArea } from "@dust-tt/sparkle";
 
 import { timeAgoFrom } from "@app/lib/utils";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export function SkillInfoTab({
   skillConfiguration,
 }: {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {skillConfiguration.description}
+        {skillConfiguration.userFacingDescription}
       </div>
-      <SkillEdited skillConfiguration={skillConfiguration} />
+      {/* TODO(skills 2025-12-12): display agent facing description here */}
+      {skillConfiguration.updatedAt && (
+        <SkillEdited
+          skillConfiguration={{
+            ...skillConfiguration,
+            updatedAt: skillConfiguration.updatedAt,
+          }}
+        />
+      )}
 
       <Page.Separator />
 
@@ -30,7 +38,7 @@ export function SkillInfoTab({
 }
 
 interface SkillEditedProps {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType & { updatedAt: number };
 }
 
 export function SkillEdited({ skillConfiguration }: SkillEditedProps) {

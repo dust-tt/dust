@@ -2,12 +2,16 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
 import handler from "./index";
@@ -36,6 +40,25 @@ async function setupTest(
 
   // Enable skills feature flag for the workspace
   await FeatureFlagFactory.basic("skills", workspace);
+
+  // Create default spaces (including system space required for PATCH operations)
+  // We need an admin auth to create spaces, so create a temporary admin if needed
+  if (requestUserRole === "admin") {
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      requestUser.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+  } else {
+    // Create a temporary admin user to set up spaces
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+  }
 
   let requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
     requestUser.sId,
@@ -134,8 +157,10 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     req.body = {
       name: "Unauthorized Update",
-      description: "Description",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
       instructions: "Instructions",
+      icon: null,
       tools: [],
     };
 
@@ -163,8 +188,10 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     // Try to update the skill name to the duplicate name
     req.body = {
       name: "Other Skill",
-      description: "Description",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
       instructions: "Instructions",
+      icon: null,
       tools: [],
     };
 
@@ -186,8 +213,10 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     req.body = {
       name: "Updated Skill",
-      description: "Description",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
       instructions: "Instructions",
+      icon: null,
       tools: [{ mcpServerViewId: "invalid_id" }],
     };
 
@@ -211,6 +240,95 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  it("should successfully update the description", async () => {
+    const { req, res, skill } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    const newDescription = "Updated description for the skill";
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: newDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+    };
+
+    await handler(req, res);
+
+    const data = res._getJSONData();
+    expect(data).not.toHaveProperty("error");
+    expect(res._getStatusCode()).toBe(200);
+    expect(data).toHaveProperty("skillConfiguration");
+    expect(data.skillConfiguration.sId).toBe(skill.sId);
+    expect(data.skillConfiguration.agentFacingDescription).toBe(newDescription);
+
+    // Verify the update persisted by fetching directly from the model
+    const updatedSkillModel = await SkillConfigurationModel.findByPk(skill.id);
+    expect(updatedSkillModel).not.toBeNull();
+    expect(updatedSkillModel!.agentFacingDescription).toBe(newDescription);
+  });
+
+  it("should update requestedSpaceIds when adding a tool from a new space", async () => {
+    const { req, res, skill, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    // Create two regular spaces
+    const space1 = await SpaceFactory.regular(workspace);
+    const space2 = await SpaceFactory.regular(workspace);
+
+    // Create MCP servers and views in each space
+    const server1 = await RemoteMCPServerFactory.create(workspace, {
+      name: "Server 1",
+    });
+    const server2 = await RemoteMCPServerFactory.create(workspace, {
+      name: "Server 2",
+    });
+
+    const serverView1 = await MCPServerViewFactory.create(
+      workspace,
+      server1.sId,
+      space1
+    );
+    const serverView2 = await MCPServerViewFactory.create(
+      workspace,
+      server2.sId,
+      space2
+    );
+
+    // Update skill with both tools
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [
+        { mcpServerViewId: serverView1.sId },
+        { mcpServerViewId: serverView2.sId },
+      ],
+    };
+
+    await handler(req, res);
+
+    const data = res._getJSONData();
+    expect(data).not.toHaveProperty("error");
+    expect(res._getStatusCode()).toBe(200);
+    expect(data.skillConfiguration.tools).toHaveLength(2);
+    expect(data.skillConfiguration.requestedSpaceIds).toHaveLength(2);
+    expect(data.skillConfiguration.requestedSpaceIds).toContain(space1.sId);
+    expect(data.skillConfiguration.requestedSpaceIds).toContain(space2.sId);
+
+    // Verify the update persisted in the database
+    const updatedSkillModel = await SkillConfigurationModel.findByPk(skill.id);
+    expect(updatedSkillModel).not.toBeNull();
+    expect(updatedSkillModel!.requestedSpaceIds).toHaveLength(2);
   });
 });
 

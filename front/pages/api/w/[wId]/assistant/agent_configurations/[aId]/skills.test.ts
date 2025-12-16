@@ -7,7 +7,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
 import type { MembershipRoleType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 import handler from "./skills";
 
@@ -58,11 +58,11 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     // Create skills and link them to the agent
     const skill1 = await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 1",
-      description: "First test skill",
+      agentFacingDescription: "First test skill",
     });
     const skill2 = await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 2",
-      description: "Second test skill",
+      agentFacingDescription: "Second test skill",
     });
 
     await SkillConfigurationFactory.linkToAgent(auth, {
@@ -83,9 +83,9 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     expect(data.skills).toHaveLength(2);
     expect(data.skills[0]).toHaveProperty("sId");
     expect(data.skills[0]).toHaveProperty("name");
-    expect(data.skills[0]).toHaveProperty("description");
+    expect(data.skills[0]).toHaveProperty("agentFacingDescription");
 
-    const skillNames = data.skills.map((s: SkillConfigurationType) => s.name);
+    const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });

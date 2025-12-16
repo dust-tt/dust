@@ -25,6 +25,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -46,8 +47,8 @@ import type {
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 import type {
-  SkillConfigurationType,
   SkillStatus,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 type SkillMCPServerAttributes = Omit<
@@ -430,18 +431,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async fetchAllAvailableSkills(
-    auth: Authenticator,
-    limit?: number
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        status: "active",
-      },
-      ...(limit ? { limit } : {}),
-    });
-  }
-
   static async listSkills(
     auth: Authenticator,
     { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
@@ -450,6 +439,88 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { status },
       ...(limit ? { limit } : {}),
     });
+  }
+
+  /**
+   * List enabled skills for a given conversation and agent configuration.
+   * Returns only active skills.
+   */
+  private static async listEnabledForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: agentConfiguration.id,
+      },
+    });
+
+    const customSkillIds = removeNulls(
+      conversationSkills.map((cs) =>
+        cs.customSkillId
+          ? SkillResource.modelIdToSId({
+              id: cs.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null
+      )
+    );
+
+    const globalSkillIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
+    );
+
+    const allSkillIds = [...customSkillIds, ...globalSkillIds];
+
+    if (allSkillIds.length === 0) {
+      return [];
+    }
+
+    return SkillResource.fetchByIds(auth, allSkillIds);
+  }
+
+  /**
+   * List skills for a conversation, returning both enabled and equipped skills.
+   */
+  static async listForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ): Promise<{
+    enabledSkills: SkillResource[];
+    equippedSkills: SkillResource[];
+  }> {
+    const enabledSkills = await this.listEnabledForConversation(auth, {
+      agentConfiguration,
+      conversation,
+    });
+    const allAgentSkills = await this.listByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+
+    // Skills that are already enabled are not equipped.
+    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+    const equippedSkills = allAgentSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId)
+    );
+
+    return { enabledSkills, equippedSkills };
   }
 
   private static async fromGlobalSkill(
@@ -492,7 +563,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         authorId: -1,
         createdAt: new Date(),
-        description: def.description,
+        agentFacingDescription: def.agentFacingDescription,
+        userFacingDescription: def.userFacingDescription,
         // We fake the id here. We should rely exclusively on sId for global skills.
         id: -1,
         instructions: def.instructions,
@@ -501,6 +573,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
+        icon: null,
       },
       { globalSId: def.sId, mcpServerConfigurations }
     );
@@ -554,6 +627,65 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
+  async listVersions(auth: Authenticator): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch all historical versions from skill_versions table
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: this.id,
+    };
+
+    const versionModels = await SkillVersionModel.findAll({
+      where,
+    });
+
+    // Sort application-side
+    const sortedVersionModels = versionModels.sort(
+      (a, b) => b.version - a.version
+    );
+
+    // Convert version models to SkillResource instances
+    const historicalVersions: SkillResource[] = sortedVersionModels.map(
+      (versionModel) => {
+        const mcpServerConfigurations =
+          versionModel.mcpServerConfigurationIds.map((mcpServerId) => ({
+            id: -1,
+            workspaceId: workspace.id,
+            skillConfigurationId: this.id,
+            mcpServerViewId: mcpServerId,
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
+          }));
+
+        return new SkillResource(
+          this.model,
+          {
+            id: this.id,
+            workspaceId: workspace.id,
+            authorId: versionModel.authorId,
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
+            status: versionModel.status,
+            name: versionModel.name,
+            agentFacingDescription: versionModel.agentFacingDescription,
+            userFacingDescription: versionModel.userFacingDescription,
+            instructions: versionModel.instructions,
+            icon: versionModel.icon,
+            requestedSpaceIds: versionModel.requestedSpaceIds,
+          },
+          {
+            editorGroup: this.editorGroup ?? undefined,
+            mcpServerConfigurations,
+          }
+        );
+      }
+    );
+
+    // Return current version + all historical versions
+    return [this, ...historicalVersions];
+  }
+
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
@@ -583,16 +715,36 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { affectedCount };
   }
 
+  async restore(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{ affectedCount: number }> {
+    const [affectedCount] = await this.update(
+      {
+        status: "active",
+      },
+      transaction
+    );
+
+    return { affectedCount };
+  }
+
   async updateSkill(
     auth: Authenticator,
     {
       name,
-      description,
+      agentFacingDescription,
+      userFacingDescription,
       instructions,
+      icon,
+      requestedSpaceIds,
     }: {
       name: string;
-      description: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
       instructions: string;
+      icon: string | null;
+      requestedSpaceIds: ModelId[];
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<SkillResource, Error>> {
@@ -602,8 +754,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update(
       {
         name,
-        description,
+        agentFacingDescription,
+        userFacingDescription,
         instructions,
+        icon,
+        requestedSpaceIds,
       },
       transaction
     );
@@ -654,7 +809,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
     // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
-    if (!this.globalSId) {
+    if (this.globalSId) {
       throw new Error("Cannot update a global skill configuration.");
     }
 
@@ -686,6 +841,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  async addToAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    await AgentSkillModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.id,
+      customSkillId: this.globalSId ? null : this.id,
+      globalSkillId: this.globalSId ?? null,
+    });
   }
 
   async enableForMessage(
@@ -737,55 +906,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  /**
-   * List enabled skills for a given conversation and agent configuration.
-   * Returns only active skills.
-   */
-  static async listEnabledForConversation(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      conversation,
-    }: {
-      agentConfiguration: AgentConfigurationType;
-      conversation: ConversationType;
-    }
-  ) {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversationSkills = await ConversationSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.id,
-      },
-    });
-
-    const customSkillIds = removeNulls(
-      conversationSkills.map((cs) =>
-        cs.customSkillId
-          ? SkillResource.modelIdToSId({
-              id: cs.customSkillId,
-              workspaceId: workspace.id,
-            })
-          : null
-      )
-    );
-
-    const globalSkillIds = removeNulls(
-      conversationSkills.map((cs) => cs.globalSkillId)
-    );
-
-    const allSkillIds = [...customSkillIds, ...globalSkillIds];
-
-    if (allSkillIds.length === 0) {
-      return [];
-    }
-
-    return SkillResource.fetchByIds(auth, allSkillIds);
-  }
-
-  toJSON(auth: Authenticator): SkillConfigurationType {
+  toJSON(auth: Authenticator): SkillType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
         id: config.mcpServerViewId,
@@ -793,17 +914,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }),
     }));
 
+    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
+      SpaceResource.modelIdToSId({
+        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        workspaceId: this.workspaceId,
+      })
+    );
+
     return {
       id: this.id,
       sId: this.sId,
-      createdAt: this.createdAt.getTime(),
-      updatedAt: this.updatedAt.getTime(),
+      createdAt: this.globalSId ? null : this.createdAt.getTime(),
+      updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
+      versionAuthorId: this.globalSId ? null : this.authorId,
       status: this.status,
       name: this.name,
-      description: this.description,
+      agentFacingDescription: this.agentFacingDescription,
+      userFacingDescription: this.userFacingDescription,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
-      requestedSpaceIds: this.requestedSpaceIds,
+      requestedSpaceIds: requestedSpaceIds,
+      icon: this.icon ?? null,
       tools,
       canWrite: this.canWrite(auth),
     };
@@ -849,7 +980,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       version: versionNumber,
       status: this.status,
       name: this.name,
-      description: this.description,
+      agentFacingDescription: this.agentFacingDescription,
+      userFacingDescription: this.userFacingDescription,
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       authorId: this.authorId,

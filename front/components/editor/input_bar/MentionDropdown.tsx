@@ -11,7 +11,6 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -36,15 +35,16 @@ export const MentionDropdown = forwardRef<
       onClose,
       owner,
       conversationId,
-      preferredAgentId,
+      includeCurrentUser,
     },
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const triggerRect = useMemo(
-      () => (clientRect ? clientRect() : null),
-      [clientRect]
-    );
+
+    // Call clientRect() on every render to get the latest position.
+    // This avoids caching stale coordinates that may be invalid (0,0) when typing @ quickly after refresh.
+    const triggerRect = clientRect?.();
+
     const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
     const mentionsV2 = featureFlags.hasFeature("mentions_v2");
 
@@ -54,8 +54,8 @@ export const MentionDropdown = forwardRef<
       workspaceId: owner.sId,
       conversationId,
       query,
-      preferredAgentId,
       select: { agents: true, users: true },
+      includeCurrentUser,
     });
 
     const triggerRef = useRef<HTMLDivElement>(null);

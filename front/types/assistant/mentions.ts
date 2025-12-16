@@ -54,11 +54,21 @@ export interface RichAgentMention extends RichMention {
   userFavorite?: boolean;
 }
 
+export interface RichAgentMentionInConversation extends RichAgentMention {
+  isParticipant?: boolean;
+  lastActivityAt?: number;
+}
+
 /**
  * User-specific rich mention.
  */
 export interface RichUserMention extends RichMention {
   type: "user";
+}
+
+export interface RichUserMentionInConversation extends RichUserMention {
+  isParticipant?: boolean;
+  lastActivityAt?: number;
 }
 
 /**
@@ -130,6 +140,7 @@ export function toRichAgentMentionType(
     label: agentConfiguration.name,
     pictureUrl: agentConfiguration.pictureUrl,
     description: agentConfiguration.description,
+    userFavorite: agentConfiguration.userFavorite,
   };
 }
 

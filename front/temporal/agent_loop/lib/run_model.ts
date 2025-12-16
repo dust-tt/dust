@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
@@ -195,18 +196,16 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
-  const enabledSkills = await SkillResource.listEnabledForConversation(auth, {
-    agentConfiguration,
-    conversation,
-  });
-  const allAgentSkills = await SkillResource.listByAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
+  const { enabledSkills, equippedSkills } =
+    await SkillResource.listForConversation(auth, {
+      agentConfiguration,
+      conversation,
+    });
 
-  const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-  const equippedSkills = allAgentSkills.filter(
-    (s) => !enabledSkillIds.has(s.sId)
+  // Fetch MCP server configurations from enabled skills.
+  const skillServers = await fetchSkillMCPServerConfigurations(
+    auth,
+    enabledSkills
   );
 
   const {
@@ -220,7 +219,10 @@ export async function runModelActivity(
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers
+    {
+      jitServers,
+      skillServers,
+    }
   );
 
   if (mcpToolsListingError) {
@@ -267,8 +269,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
-    enabledSkills: enabledSkills,
-    equippedSkills: equippedSkills,
+    enabledSkills,
+    equippedSkills,
     featureFlags,
   });
 

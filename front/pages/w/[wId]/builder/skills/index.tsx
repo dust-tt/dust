@@ -1,7 +1,9 @@
 import {
   Button,
+  MagnifyingGlassIcon,
   Page,
   PlusIcon,
+  SearchInput,
   Spinner,
   Tabs,
   TabsList,
@@ -9,9 +11,8 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -23,15 +24,23 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isBuilder, isEmptyString } from "@app/types";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
-export const SKILL_MANAGER_TABS = [
+const SKILL_SEARCH_TAB = {
+  id: "search",
+  label: "Searching across all skills",
+  icon: MagnifyingGlassIcon,
+  description: "Searching across all skills.",
+} as const;
+
+const SKILL_MANAGER_TABS = [
   {
     id: "active",
     label: "All",
@@ -54,12 +63,18 @@ export const SKILL_MANAGER_TABS = [
   },
 ] as const;
 
-export type SkillManagerTabsType = (typeof SKILL_MANAGER_TABS)[number]["id"];
+type SkillManagerTabType = (typeof SKILL_MANAGER_TABS)[number]["id"];
 
-function isValidTab(tab: string): tab is SkillManagerTabsType {
-  return SKILL_MANAGER_TABS.map((tab) => tab.id).includes(
-    tab as SkillManagerTabsType
-  );
+function isValidTab(tab: string): tab is SkillManagerTabType {
+  return SKILL_MANAGER_TABS.some((t) => t.id === tab);
+}
+
+function getSkillSearchString(
+  skill: SkillType & { relations: SkillRelations }
+): string {
+  const skillEditorNames =
+    skill.relations.editors?.map((e) => e.fullName) ?? [];
+  return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -100,14 +115,21 @@ export default function WorkspaceSkills({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [selectedSkill, setSelectedSkill] = useState<
-    (SkillConfigurationType & SkillConfigurationRelations) | null
+    (SkillType & { relations: SkillRelations }) | null
   >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
+  const [skillSearch, setSkillSearch] = useState("");
 
   const activeTab = useMemo(() => {
-    return selectedTab && isValidTab(selectedTab) ? selectedTab : "active";
-  }, [selectedTab]);
+    if (!isEmptyString(skillSearch)) {
+      return "search";
+    }
+    if (selectedTab && isValidTab(selectedTab)) {
+      return selectedTab;
+    }
+    return "active";
+  }, [selectedTab, skillSearch]);
 
   const {
     skillConfigurationsWithRelations: activeSkills,
@@ -130,13 +152,55 @@ export default function WorkspaceSkills({
     () => ({
       active: activeSkills,
       editable_by_me: activeSkills.filter((s) => s.canWrite),
-      default: activeSkills.filter((s) => !s.editors),
+      default: activeSkills.filter((s) => !s.relations.editors),
       archived: archivedSkills,
+      search: activeSkills
+        .filter((s) =>
+          subFilter(skillSearch.toLowerCase(), getSkillSearchString(s))
+        )
+        .sort((a, b) =>
+          compareForFuzzySort(
+            skillSearch.toLowerCase(),
+            getSkillSearchString(a),
+            getSkillSearchString(b)
+          )
+        ),
     }),
-    [activeSkills, archivedSkills]
+    [activeSkills, archivedSkills, skillSearch]
   );
 
   const isLoading = isActiveLoading || isArchivedLoading;
+
+  const visibleTabs = useMemo(() => {
+    return !isEmptyString(skillSearch)
+      ? [SKILL_SEARCH_TAB]
+      : SKILL_MANAGER_TABS;
+  }, [skillSearch]);
+
+  const searchBarRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchBarRef.current) {
+      searchBarRef.current.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchBarRef.current]);
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "/") {
+        event.preventDefault();
+        if (searchBarRef.current) {
+          searchBarRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, []);
 
   return (
     <>
@@ -148,65 +212,74 @@ export default function WorkspaceSkills({
           owner={owner}
         />
       )}
-      <ConversationsNavigationProvider>
-        <AgentDetails
-          owner={owner}
-          user={user}
-          agentId={agentId}
-          onClose={() => setAgentId(null)}
-        />
-        <AppWideModeLayout
-          subscription={subscription}
-          owner={owner}
-          navChildren={<AgentSidebarMenu owner={owner} />}
-        >
-          <Head>
-            <title>Dust - Manage Skills</title>
-          </Head>
-          <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-            <Page.Header title="Manage Skills" icon={SKILL_ICON} />
-            <Page.Vertical gap="md" align="stretch">
-              <div className="flex justify-end">
-                <Button
-                  label="Create skill"
-                  href={getSkillBuilderRoute(owner.sId, "new")}
-                  icon={PlusIcon}
-                  tooltip="Create a new skill"
+
+      <AgentDetails
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <AppWideModeLayout
+        subscription={subscription}
+        owner={owner}
+        navChildren={<AgentSidebarMenu owner={owner} />}
+      >
+        <Head>
+          <title>Dust - Manage Skills</title>
+        </Head>
+        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
+          <Page.Header title="Manage Skills" icon={SKILL_ICON} />
+          <Page.Vertical gap="md" align="stretch">
+            <div className="flex flex-row gap-2">
+              <SearchInput
+                ref={searchBarRef}
+                className="flex-grow"
+                name="search"
+                placeholder="Search (Name, Editors)"
+                value={skillSearch}
+                onChange={(s) => {
+                  setSkillSearch(s);
+                }}
+              />
+              <Button
+                label="Create skill"
+                href={getSkillBuilderRoute(owner.sId, "new")}
+                icon={PlusIcon}
+                tooltip="Create a new skill"
+              />
+            </div>
+            <div className="flex flex-col pt-3">
+              <Tabs value={activeTab}>
+                <TabsList>
+                  {visibleTabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      label={tab.label}
+                      onClick={() => !skillSearch && setSelectedTab(tab.id)}
+                      tooltip={tab.description}
+                      isCounter={tab.id !== "archived"}
+                      counterValue={`${skillsByTab[tab.id].length}`}
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
+              {isLoading ? (
+                <div className="mt-8 flex justify-center">
+                  <Spinner size="lg" />
+                </div>
+              ) : (
+                <SkillsTable
+                  owner={owner}
+                  skills={skillsByTab[activeTab]}
+                  onSkillClick={setSelectedSkill}
+                  onAgentClick={setAgentId}
                 />
-              </div>
-              <div className="flex flex-col pt-3">
-                <Tabs value={activeTab}>
-                  <TabsList>
-                    {SKILL_MANAGER_TABS.map((tab) => (
-                      <TabsTrigger
-                        key={tab.id}
-                        value={tab.id}
-                        label={tab.label}
-                        onClick={() => setSelectedTab(tab.id)}
-                        tooltip={tab.description}
-                        isCounter={tab.id !== "archived"}
-                        counterValue={`${skillsByTab[tab.id].length}`}
-                      />
-                    ))}
-                  </TabsList>
-                </Tabs>
-                {isLoading ? (
-                  <div className="mt-8 flex justify-center">
-                    <Spinner size="lg" />
-                  </div>
-                ) : (
-                  <SkillsTable
-                    owner={owner}
-                    skills={skillsByTab[activeTab]}
-                    onSkillClick={setSelectedSkill}
-                    onAgentClick={setAgentId}
-                  />
-                )}
-              </div>
-            </Page.Vertical>
-          </div>
-        </AppWideModeLayout>
-      </ConversationsNavigationProvider>
+              )}
+            </div>
+          </Page.Vertical>
+        </div>
+      </AppWideModeLayout>
     </>
   );
 }

@@ -61,7 +61,6 @@ export function AgentBuilderInstructionsBlock({
             setIsInstructionDiffMode(true);
           }}
           owner={owner}
-          agentConfigurationId={agentConfigurationId}
         />
       )}
     </>

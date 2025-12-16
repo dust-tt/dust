@@ -13,12 +13,20 @@ permissions:
   checks: write
 
 jobs:
+  check-package-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Check package.json and package-lock.json sync
+        run: ./scripts/check-package-lock-sync.sh front sdks/js
   tests:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [1, 2, 3]
-        shardTotal: [3]
+        shardIndex: [ 1, 2, 3 ]
+        shardTotal: [ 3 ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

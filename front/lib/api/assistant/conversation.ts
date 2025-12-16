@@ -32,6 +32,7 @@ import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
   ConversationModel,
+  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -42,6 +43,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -67,6 +69,7 @@ import type {
   ModelId,
   Result,
   UserMessageContext,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types";
 import {
@@ -83,6 +86,31 @@ import {
   removeNulls,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+
+const ALLOWED_API_KEY_ORIGINS: UserMessageOrigin[] = [
+  "api",
+  "excel",
+  "github-copilot-chat", // TODO: find out how it's used
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "zapier",
+  "zendesk",
+  "slack", // TODO: should not be allowed for API key usage
+  "web", // TODO: should not be allowed for API key usage
+];
+
+const ALLOWED_OAUTH_ORIGINS: UserMessageOrigin[] = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "extension",
+  "github-copilot-chat", // TODO: find out how it's used
+  "raycast",
+  "teams",
+  "web", // TODO: should not be allowed for OAuth usage
+];
 
 /**
  * Conversation Creation, update and deletion
@@ -307,6 +335,59 @@ export async function getLastUserMessage(
 }
 
 /**
+ * Get the mentions from the last user message in a conversation
+ */
+export async function getLastUserMessageMentions(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<string[], Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await MessageModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+      {
+        model: MentionModel,
+        as: "mentions",
+        required: false,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: false,
+            attributes: ["sId"],
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!message) {
+    return new Ok([]);
+  }
+
+  const mentions: string[] = removeNulls(
+    (message as any).mentions.map(
+      (mention: MentionModel) =>
+        mention.agentConfigurationId ?? mention.user?.sId
+    )
+  );
+  return new Ok(mentions);
+}
+
+/**
  * Conversation API
  */
 
@@ -373,6 +454,47 @@ export function getRelatedContentFragments(
   return relatedContentFragments;
 }
 
+export function validateUserMessageContext(
+  auth: Authenticator,
+  context: UserMessageContext
+): Result<void, APIErrorWithStatusCode> {
+  const authMethod = auth.authMethod();
+  switch (authMethod) {
+    case "api_key":
+      if (!ALLOWED_API_KEY_ORIGINS.includes(context.origin)) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This origin is not allowed when using a custom API key. See documentation to fix to an allowed origin.",
+          },
+        });
+      }
+      break;
+    case "oauth":
+      if (!ALLOWED_OAUTH_ORIGINS.includes(context.origin)) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This origin is not allowed when using OAuth for authentication. See documentation to fix to an allowed origin.",
+          },
+        });
+      }
+      break;
+    case "session":
+    case "internal":
+    case "system_api_key":
+      break;
+    default:
+      assertNever(authMethod);
+  }
+
+  return new Ok(undefined);
+}
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -402,6 +524,14 @@ export async function postUserMessage(
     APIErrorWithStatusCode
   >
 > {
+  const validateUserMessageContextRes = validateUserMessageContext(
+    auth,
+    context
+  );
+  if (validateUserMessageContextRes.isErr()) {
+    return validateUserMessageContextRes;
+  }
+
   const user = auth.user();
   const owner = auth.workspace();
   const subscription = auth.subscription();

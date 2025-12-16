@@ -11,14 +11,15 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import { SkillBuilderDescriptionSection } from "@app/components/skill_builder/SkillBuilderDescriptionSection";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   SkillBuilderFormContext,
   skillBuilderFormSchema,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
+import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
@@ -32,10 +33,10 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillConfigurationTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
-  skillConfiguration?: SkillConfigurationType;
+  skillConfiguration?: SkillType;
 }
 
 export default function SkillBuilder({
@@ -173,11 +174,14 @@ export default function SkillBuilder({
                     Create new skill
                   </h2>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Create custom capabilities for specific tasks
+                    Create a custom capability for specific tasks
                   </p>
                 </div>
-                <SkillBuilderDescriptionSection />
-                <SkillBuilderInstructionsSection />
+                <SkillBuilderRequestedSpacesSection />
+                <SkillBuilderAgentFacingDescriptionSection />
+                <SkillBuilderInstructionsSection
+                  skillConfiguration={skillConfiguration}
+                />
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />
               </div>

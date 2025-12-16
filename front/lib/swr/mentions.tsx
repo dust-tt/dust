@@ -13,19 +13,19 @@ export function useMentionSuggestions({
   workspaceId,
   conversationId,
   query = "",
-  preferredAgentId,
   select,
   disabled = false,
+  includeCurrentUser = false,
 }: {
   workspaceId: string;
   conversationId: string | null;
   query?: string;
-  preferredAgentId?: string | null;
   select: {
     agents: boolean;
     users: boolean;
   };
   disabled?: boolean;
+  includeCurrentUser?: boolean;
 }) {
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
 
@@ -48,8 +48,8 @@ export function useMentionSuggestions({
   if (select.users) {
     searchParams.append("select", "users");
   }
-  if (preferredAgentId) {
-    searchParams.append("preferredAgentId", preferredAgentId);
+  if (includeCurrentUser) {
+    searchParams.append("current", "true");
   }
 
   const url =

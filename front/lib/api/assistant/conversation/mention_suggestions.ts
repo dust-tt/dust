@@ -1,29 +1,26 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
+  sortEditorSuggestionUsers,
   SUGGESTION_DISPLAY_LIMIT,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  RichAgentMention,
+  RichAgentMentionInConversation,
   RichMention,
-  RichUserMention,
+  RichUserMentionInConversation,
 } from "@app/types";
-import {
-  compareAgentsForSort,
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types";
-
-const USER_RATIO = 0.3;
-const MIN_USER_COUNT = 1;
+import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
 
 export function interleaveMentionsPreservingAgentOrder(
-  agents: RichAgentMention[],
-  users: RichUserMention[]
+  agents: RichAgentMentionInConversation[],
+  users: RichUserMentionInConversation[],
+  lowerCaseQuery: string = "",
+  lastMentionedId: string | null = null
 ): RichMention[] {
   if (users.length === 0) {
     return [...agents];
@@ -33,42 +30,83 @@ export function interleaveMentionsPreservingAgentOrder(
     return [...users];
   }
 
-  const totalSlots = agents.length + users.length;
-  const result: RichMention[] = [];
+  let result: RichMention[] = [];
 
   let agentIndex = 0;
   let userIndex = 0;
 
-  for (let position = 0; position < totalSlots; position += 1) {
-    if (position === 0) {
-      result.push(agents[agentIndex]);
-      agentIndex += 1;
-      continue;
+  for (let position = 0; position < SUGGESTION_DISPLAY_LIMIT; position += 1) {
+    // Break if we have exhausted both lists
+    if (agentIndex >= agents.length && userIndex >= users.length) {
+      break;
     }
 
-    const expectedUsers = Math.round(
-      ((position + 1) * users.length) / totalSlots
-    );
+    const nextUser = users[userIndex];
+    const nextAgent = agents[agentIndex];
 
-    if (userIndex < users.length && userIndex < expectedUsers) {
-      result.push(users[userIndex]);
+    // First fill in users participants
+    if (nextUser?.isParticipant) {
+      result.push(nextUser);
       userIndex += 1;
       continue;
     }
 
-    if (agentIndex < agents.length) {
-      result.push(agents[agentIndex]);
+    // Then fill in agents participants
+    if (nextAgent?.isParticipant) {
+      result.push(nextAgent);
       agentIndex += 1;
       continue;
     }
 
-    if (userIndex < users.length) {
+    // Prioritize users/agents who start with the query
+    if (
+      lowerCaseQuery &&
+      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery)
+    ) {
+      result.push(nextUser);
+      userIndex += 1;
+      continue;
+    }
+
+    if (
+      lowerCaseQuery &&
+      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery)
+    ) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+
+    // Then interleave agents and users
+    if (position % 3 === 2 && userIndex < users.length) {
+      // Every 3rd position: add a user if available
+      result.push(users[userIndex]);
+      userIndex += 1;
+    } else if (agentIndex < agents.length) {
+      // Other positions: add an agent if available
+      result.push(agents[agentIndex]);
+      agentIndex += 1;
+    } else if (userIndex < users.length) {
+      // Fallback: if no agents left, add remaining users
       result.push(users[userIndex]);
       userIndex += 1;
     }
   }
 
-  return result;
+  // Move last mentioned agent to first position if specified
+  if (lastMentionedId) {
+    const lastMentioned =
+      agents.find((s) => s.id === lastMentionedId) ??
+      users.find((s) => s.id === lastMentionedId);
+    if (lastMentioned) {
+      result = [
+        lastMentioned,
+        ...result.filter((suggestion) => suggestion.id !== lastMentionedId),
+      ];
+    }
+  }
+
+  return result.slice(0, SUGGESTION_DISPLAY_LIMIT);
 }
 
 export const suggestionsOfMentions = async (
@@ -76,100 +114,35 @@ export const suggestionsOfMentions = async (
   {
     query,
     conversationId,
-    preferredAgentId,
     select = {
       agents: true,
       users: true,
     },
+    current = false,
   }: {
     query: string;
     conversationId?: string | null;
-    preferredAgentId?: string | null;
     select?: {
       agents: boolean;
       users: boolean;
     };
+    current?: boolean; // Include current user in suggestions
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
   const currentUserSId = auth.getNonNullableUser().sId;
 
-  const agentSuggestions: RichAgentMention[] = [];
-  let userSuggestions: RichUserMention[] = [];
+  // Id of the last user or agent mentioned by the current user in the conversation
+  let lastMentionedId: string | null = null;
 
-  if (select.agents) {
-    // Fetch agent configurations.
-    const agentConfigurations = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "list",
-      variant: "light",
-    });
+  const agentSuggestions: RichAgentMentionInConversation[] = [];
+  const userSuggestions: RichUserMentionInConversation[] = [];
+  let participantUsers: RichUserMentionInConversation[] = [];
+  let participantAgents: RichAgentMentionInConversation[] = [];
 
-    // Convert to RichAgentMention format.
-    agentSuggestions.push(
-      ...agentConfigurations
-        .filter((a) => a.status === "active")
-        .sort(compareAgentsForSort)
-        .map(toRichAgentMentionType)
-    );
-  }
-
-  if (select.users) {
-    const res = await UserResource.searchUsers(auth, {
-      searchTerm: query,
-      offset: 0,
-      limit: SUGGESTION_DISPLAY_LIMIT,
-    });
-
-    if (res.isOk()) {
-      const { users } = res.value;
-
-      userSuggestions = users
-        .filter((u) => u.sId !== currentUserSId)
-        .map((u) => toRichUserMentionType(u.toJSON()));
-    }
-  }
-
-  const filteredAgents = filterAndSortEditorSuggestionAgents(
-    normalizedQuery,
-    agentSuggestions
-  );
-
-  // If only one type is requested, keep the simple ordering.
-  if (!select.agents && select.users) {
-    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  }
-  if (select.agents && !select.users) {
-    return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  }
-
-  // Both agents and users are requested.
-  // If we have no users, fall back to agents.
-  if (userSuggestions.length === 0) {
-    return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  }
-
-  const selectedAgents = filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
-
-  // No agent suggestions available, fallback to users.
-  if (selectedAgents.length === 0) {
-    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  }
-
-  const targetUserCount = Math.min(
-    userSuggestions.length,
-    Math.max(MIN_USER_COUNT, Math.round(USER_RATIO * selectedAgents.length))
-  );
-  const selectedUsers = userSuggestions.slice(0, targetUserCount);
-
-  let results: RichMention[] = interleaveMentionsPreservingAgentOrder(
-    selectedAgents,
-    selectedUsers
-  );
-
-  // Apply conversation participant prioritization if conversationId is provided
-  // This only runs when mentions_v2 is enabled (select.users === true)
-  if (conversationId && select.users) {
+  // Get conversation participants if conversationId is provided
+  // This aims to prioritize them in the suggestions
+  if (conversationId) {
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(
         auth,
@@ -184,79 +157,127 @@ export const suggestionsOfMentions = async (
 
       if (participantsRes.isOk()) {
         const participants = participantsRes.value;
-        const matchesQuery = (label: string) =>
-          !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
 
         // Convert participants to RichMention format
-        const participantUsers = participants.users
-          .filter((u) => u.sId !== currentUserSId)
+        participantUsers = participants.users
+          .filter((u) => current || u.sId !== currentUserSId)
           .map((u) => ({
             type: "user" as const,
             id: u.sId,
             label: u.fullName ?? u.username,
             pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
             description: u.username,
-          }))
-          .filter((m) => matchesQuery(m.label));
+            lastActivityAt: u.lastActivityAt,
+            isParticipant: true,
+          }));
 
-        const participantAgents = participants.agents
-          .map((a) => ({
-            type: "agent" as const,
-            id: a.configurationId,
-            label: a.name,
-            pictureUrl: a.pictureUrl,
-            description: "",
-            userFavorite: false,
-          }))
-          .filter((m) => matchesQuery(m.label));
+        participantAgents = participants.agents.map((a) => ({
+          type: "agent" as const,
+          id: a.configurationId,
+          label: a.name,
+          pictureUrl: a.pictureUrl,
+          description: "",
+          lastActivityAt: a.lastActivityAt,
+          isParticipant: true,
+        }));
 
-        // Find participants not already in results
-        const key = (m: { type: string; id: string }) => `${m.type}:${m.id}`;
-        const existingKeys = new Set(results.map(key));
-
-        const MAX_TOP_PARTICIPANTS = 5;
-        const MAX_TOP_USERS = 3;
-
-        const newUserParticipants = participantUsers.filter(
-          (m) => !existingKeys.has(key(m))
+        // Get the last user message and check if it mentions one and only one agent
+        // If yes, it will be prioritized in the suggestions.
+        const lastUserMessageMentions = await getLastUserMessageMentions(
+          auth,
+          conversationRes.value
         );
-        const cappedUserParticipants = newUserParticipants.slice(
-          0,
-          MAX_TOP_USERS
-        );
-
-        const remainingSlots =
-          MAX_TOP_PARTICIPANTS - cappedUserParticipants.length;
-
-        const newAgentParticipants = participantAgents.filter(
-          (m) => !existingKeys.has(key(m))
-        );
-        const cappedAgentParticipants =
-          remainingSlots > 0
-            ? newAgentParticipants.slice(0, remainingSlots)
-            : [];
-
-        const cappedParticipants = [
-          ...cappedUserParticipants,
-          ...cappedAgentParticipants,
-        ];
-
-        // Prepend conversation participants to the results
-        results = [...cappedParticipants, ...results];
+        if (
+          lastUserMessageMentions.isOk() &&
+          lastUserMessageMentions.value.length === 1
+        ) {
+          lastMentionedId = lastUserMessageMentions.value[0];
+        }
       }
     }
   }
 
-  // Move preferred agent to first position if specified
-  if (preferredAgentId) {
-    const preferredIndex = results.findIndex(
-      (s) => s.type === "agent" && s.id === preferredAgentId
+  if (select.agents) {
+    const agentConfigurations = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "list",
+      variant: "light",
+    });
+
+    const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
+      .filter((a) => a.status === "active")
+      .map((a) => ({
+        ...toRichAgentMentionType(a),
+        isParticipant: participantAgents.some((pa) => pa.id === a.sId),
+        lastActivityAt:
+          participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
+      }));
+
+    const filteredAgents = filterAndSortEditorSuggestionAgents(
+      normalizedQuery,
+      activeAgents
     );
-    if (preferredIndex > 0) {
-      const preferred = results[preferredIndex];
-      results = [preferred, ...results.filter((_, i) => i !== preferredIndex)];
+
+    agentSuggestions.push(...filteredAgents);
+  }
+
+  if (select.users) {
+    const res = await UserResource.searchUsers(auth, {
+      searchTerm: query,
+      offset: 0,
+      limit: SUGGESTION_DISPLAY_LIMIT,
+    });
+
+    if (res.isOk()) {
+      const { users } = res.value;
+
+      const filteredUsers: RichUserMentionInConversation[] = users
+        .filter((u) => current || u.sId !== currentUserSId)
+        .map((u) => ({
+          ...toRichUserMentionType(u.toJSON()),
+          isParticipant: participantUsers.some((pu) => pu.id === u.sId),
+          lastActivityAt:
+            participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
+        }));
+      const sortedUsers = sortEditorSuggestionUsers(filteredUsers);
+      if (!normalizedQuery) {
+        // It's a special case when there's no query: all the conversation participants may not be in the users list (as it's limited).
+        // We want to make sure to include them at the start of the suggestions (without duplicate).
+        userSuggestions.push(
+          ...participantUsers.filter(
+            (pu) => !sortedUsers.some((su) => su.id === pu.id)
+          )
+        );
+      }
+      userSuggestions.push(...sortedUsers);
     }
   }
 
-  return results;
+  const selectedAgents = agentSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+
+  // If only one type is requested, keep the simple ordering.
+  if (!select.agents && select.users) {
+    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+  if (select.agents && !select.users) {
+    return selectedAgents;
+  }
+
+  // Both agents and users are requested.
+  // If we have no users, fall back to agents.
+  if (userSuggestions.length === 0) {
+    return selectedAgents;
+  }
+
+  // No agent suggestions available, fallback to users.
+  if (selectedAgents.length === 0) {
+    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  return interleaveMentionsPreservingAgentOrder(
+    selectedAgents,
+    userSuggestions,
+    normalizedQuery,
+    lastMentionedId
+  );
 };

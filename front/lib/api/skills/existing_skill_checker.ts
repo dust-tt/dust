@@ -122,7 +122,7 @@ export async function getSimilarSkills(
   const existingSkills = skills
     .map(
       (s) => `Skill ID ${s.sId}:
-"${truncateDescription(s.description)}"`
+"${truncateDescription(s.agentFacingDescription)}"`
     )
     .join("\n---\n");
   const inputText = `Input description:"${inputs.naturalDescription}"

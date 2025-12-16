@@ -1,6 +1,9 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
+import type {
+  UnsavedMCPServerConfigurationType,
+  UnsavedServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -146,6 +149,33 @@ export async function getAgentConfigurationRequirementsFromActions(
       Array.from(spacePermissions).map(getResourceIdFromSId)
     ),
   };
+}
+
+export async function getRequestedSpaceIdsFromMCPServerViewIds(
+  auth: Authenticator,
+  mcpServerViewIds: string[]
+): Promise<ModelId[]> {
+  // create dummy actions to reuse existing logic.
+  // we only need the space ids based on the MCP server views so other fields can be empty.
+  const actions: UnsavedServerSideMCPServerConfigurationType[] =
+    mcpServerViewIds.map((mcpServerViewId) => ({
+      type: "mcp_server_configuration" as const,
+      mcpServerViewId,
+      name: "",
+      description: "",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      secretName: null,
+    }));
+  const { requestedSpaceIds } =
+    await getAgentConfigurationRequirementsFromActions(auth, { actions });
+  return requestedSpaceIds;
 }
 
 export async function getContentFragmentGroupIds(

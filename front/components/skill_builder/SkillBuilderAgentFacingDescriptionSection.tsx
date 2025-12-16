@@ -11,13 +11,13 @@ import {
   useSkillConfigurations,
 } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-const DESCRIPTION_FIELD_NAME = "description";
+const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
 const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 
-export function SkillBuilderDescriptionSection() {
+export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner } = useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
@@ -28,9 +28,7 @@ export function SkillBuilderDescriptionSection() {
     disabled: !isSimilarSkillsEnabled,
   });
 
-  const [similarSkills, setSimilarSkills] = useState<SkillConfigurationType[]>(
-    []
-  );
+  const [similarSkills, setSimilarSkills] = useState<SkillType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSimilarSkills = useCallback(
@@ -85,14 +83,14 @@ export function SkillBuilderDescriptionSection() {
   return (
     <BaseFormFieldSection
       title="What will this skill be used for?"
-      fieldName={DESCRIPTION_FIELD_NAME}
+      fieldName={AGENT_FACING_DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={false}
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
         <div className="space-y-3">
           <TextArea
             ref={registerRef}
-            placeholder="When should this skill be used? What will this skill be good for?"
+            placeholder="When should this skill be used? What is this skill good for?"
             className="min-h-24"
             onChange={(e) => handleDescriptionChange(e, onChange)}
             error={hasError ? errorMessage : undefined}

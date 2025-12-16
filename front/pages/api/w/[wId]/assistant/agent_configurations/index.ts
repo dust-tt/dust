@@ -23,10 +23,11 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -44,6 +45,7 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  removeNulls,
 } from "@app/types";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -345,6 +347,40 @@ export async function createOrUpgradeAgentConfiguration({
     ];
   }
 
+  // Collect additional requestedSpaceIds
+  if (
+    assistant.additionalRequestedSpaceIds &&
+    assistant.additionalRequestedSpaceIds.length > 0
+  ) {
+    const additionalSpaces = await SpaceResource.fetchByIds(
+      auth,
+      assistant.additionalRequestedSpaceIds
+    );
+
+    // Validate that all requested spaces were found and user can read them
+    const readableSpaceIds = new Set(
+      additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
+    );
+    const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
+      (sId) => !readableSpaceIds.has(sId)
+    );
+    if (inaccessibleSpaces.length > 0) {
+      return new Err(
+        new Error(
+          `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
+        )
+      );
+    }
+
+    const additionalSpaceModelIds = removeNulls(
+      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
+    );
+
+    allRequestedSpaceIds = [
+      ...new Set([...allRequestedSpaceIds, ...additionalSpaceModelIds]),
+    ];
+  }
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -459,12 +495,7 @@ export async function createOrUpgradeAgentConfiguration({
         return;
       }
 
-      await AgentSkillModel.create({
-        workspaceId: owner.id,
-        agentConfigurationId: agentConfigurationRes.value.id,
-        customSkillId: skillResource.id,
-        globalSkillId: null,
-      });
+      await skillResource.addToAgent(auth, agentConfigurationRes.value);
     },
     { concurrency: 10 }
   );

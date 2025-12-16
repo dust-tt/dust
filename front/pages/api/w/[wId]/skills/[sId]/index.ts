@@ -3,25 +3,26 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { Err, isBuilder, isString, Ok } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 };
 
 export type PatchSkillConfigurationResponseBody = {
   skillConfiguration: Omit<
-    SkillConfigurationType,
+    SkillType,
     | "author"
     | "requestedSpaceIds"
     | "workspaceId"
@@ -38,8 +39,10 @@ export type DeleteSkillConfigurationResponseBody = {
 // Request body schema for PATCH
 const PatchSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
-  description: t.string,
+  agentFacingDescription: t.string,
+  userFacingDescription: t.union([t.string, t.null]),
   instructions: t.string,
+  icon: t.union([t.string, t.null]),
   tools: t.array(
     t.type({
       mcpServerViewId: t.string,
@@ -172,14 +175,40 @@ async function handler(
         }
       }
 
+      // Fetch MCP server views first to compute requestedSpaceIds
+      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+      const mcpServerViews = await MCPServerViewResource.fetchByIds(
+        auth,
+        mcpServerViewIds
+      );
+
+      if (mcpServerViewIds.length !== mcpServerViews.length) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
+          },
+        });
+      }
+
+      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
+        auth,
+        mcpServerViewIds
+      );
+
       // Wrap everything in a transaction to avoid inconsistent state.
-      const result = await frontSequelize.transaction(async (transaction) => {
+      const result = await withTransaction(async (transaction) => {
         const updateResult = await skillResource.updateSkill(
           auth,
           {
             name: body.name,
-            description: body.description,
+            agentFacingDescription: body.agentFacingDescription,
+            // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
+            userFacingDescription: body.userFacingDescription ?? "",
             instructions: body.instructions,
+            icon: body.icon,
+            requestedSpaceIds,
           },
           { transaction }
         );
@@ -189,21 +218,6 @@ async function handler(
         }
 
         const updatedSkill = updateResult.value;
-
-        // Update tools
-        const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
-        const mcpServerViews = await MCPServerViewResource.fetchByIds(
-          auth,
-          mcpServerViewIds
-        );
-
-        if (mcpServerViewIds.length !== mcpServerViews.length) {
-          return new Err(
-            new Error(
-              `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`
-            )
-          );
-        }
 
         await updatedSkill.updateTools(
           auth,

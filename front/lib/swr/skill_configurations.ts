@@ -13,12 +13,13 @@ import type {
   GetSkillConfigurationsResponseBody,
   GetSkillConfigurationsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
 import type {
-  SkillConfigurationType,
   SkillStatus,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 export function useSkillConfigurations({
@@ -57,7 +58,7 @@ export function useSkillConfigurationsWithRelations({
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
     fetcher;
 
-  const { data, isLoading } = useSWRWithDefaults(
+  const { data, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills?withRelations=true&status=${status}`,
     skillConfigurationsFetcher,
     { disabled }
@@ -66,6 +67,7 @@ export function useSkillConfigurationsWithRelations({
   return {
     skillConfigurationsWithRelations: data?.skillConfigurations ?? emptyArray(),
     isSkillConfigurationsWithRelationsLoading: isLoading,
+    mutateSkillConfigurationsWithRelations: mutate,
   };
 }
 
@@ -96,13 +98,21 @@ export function useArchiveSkillConfiguration({
   skillConfiguration,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateSkillConfigurations } = useSkillConfigurations({
-    owner,
-    disabled: true,
-  });
+  const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
+    useSkillConfigurationsWithRelations({
+      owner,
+      status: "archived",
+      disabled: true,
+    });
+  const { mutateSkillConfigurationsWithRelations: mutateActiveSkills } =
+    useSkillConfigurationsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
 
   const doArchive = async () => {
     if (!skillConfiguration.sId) {
@@ -116,7 +126,8 @@ export function useArchiveSkillConfiguration({
     );
 
     if (res.ok) {
-      void mutateSkillConfigurations();
+      void mutateArchivedSkills();
+      void mutateActiveSkills();
 
       sendNotification({
         type: "success",
@@ -136,4 +147,91 @@ export function useArchiveSkillConfiguration({
   };
 
   return doArchive;
+}
+
+export function useRestoreSkillConfiguration({
+  owner,
+  skillConfiguration,
+}: {
+  owner: LightWorkspaceType;
+  skillConfiguration: SkillType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
+    useSkillConfigurationsWithRelations({
+      owner,
+      status: "archived",
+      disabled: true,
+    });
+  const { mutateSkillConfigurationsWithRelations: mutateActiveSkills } =
+    useSkillConfigurationsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+
+  const doRestore = async () => {
+    if (!skillConfiguration.sId) {
+      return;
+    }
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/restore`,
+      {
+        method: "POST",
+      }
+    );
+
+    if (res.ok) {
+      void mutateArchivedSkills();
+      void mutateActiveSkills();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully restored ${skillConfiguration.name}`,
+        description: `${skillConfiguration.name} was successfully restored.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error restoring ${skillConfiguration.name}`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doRestore;
+}
+
+export function useSkillConfigurationHistory({
+  owner,
+  skillConfiguration,
+  limit,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  skillConfiguration?: SkillType;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const skillConfigurationHistoryFetcher: Fetcher<GetSkillConfigurationsHistoryResponseBody> =
+    fetcher;
+
+  const queryParams = limit ? `?limit=${limit}` : "";
+  const { data, error, mutate } = useSWRWithDefaults(
+    skillConfiguration
+      ? `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/history${queryParams}`
+      : null,
+    skillConfigurationHistoryFetcher,
+    { disabled }
+  );
+
+  return {
+    skillConfigurationHistory: data?.history,
+    isSkillConfigurationHistoryLoading: !error && !data && !disabled,
+    isSkillConfigurationHistoryError: error,
+    mutateSkillConfigurationHistory: mutate,
+  };
 }

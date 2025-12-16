@@ -17,14 +17,15 @@ import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFa
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
 
-type SkillConfigurationWithRelations = SkillConfigurationType &
-  SkillConfigurationRelations;
+type SkillConfigurationWithRelations = SkillType & {
+  relations: SkillRelations;
+};
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -51,11 +52,11 @@ describe("GET /api/w/[wId]/skills", () => {
 
     await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 1",
-      description: "First test skill",
+      agentFacingDescription: "First test skill",
     });
     await SkillConfigurationFactory.create(auth, {
       name: "Test Skill 2",
-      description: "Second test skill",
+      agentFacingDescription: "Second test skill",
     });
 
     req.query = { ...req.query, wId: workspace.sId };
@@ -66,9 +67,7 @@ describe("GET /api/w/[wId]/skills", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skillConfigurations");
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -97,9 +96,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
@@ -159,7 +156,7 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(res._getStatusCode()).toBe(200);
       const skillNames = res
         ._getJSONData()
-        .skillConfigurations.map((s: SkillConfigurationType) => s.name);
+        .skillConfigurations.map((s: SkillType) => s.name);
       expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
@@ -204,9 +201,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 1,
-        agents: [{ sId: agent.sId }],
+      relations: {
+        usage: {
+          count: 1,
+          agents: [{ sId: agent.sId }],
+        },
       },
     });
   });
@@ -241,9 +240,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 1,
-        agents: [{ sId: agent.sId }],
+      relations: {
+        usage: {
+          count: 1,
+          agents: [{ sId: agent.sId }],
+        },
       },
     });
   });
@@ -277,9 +278,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 0,
-        agents: [],
+      relations: {
+        usage: {
+          count: 0,
+          agents: [],
+        },
       },
     });
   });
@@ -308,9 +311,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillConfigurationType) => s.sId === skillSId
-      );
+      .skillConfigurations.find((s: SkillType) => s.sId === skillSId);
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
@@ -361,9 +362,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 2,
-        agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+      relations: {
+        usage: {
+          count: 2,
+          agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+        },
       },
     });
   });
@@ -372,11 +375,14 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 describe("POST /api/w/[wId]/skills", () => {
   it("creates a simple skill configuration", async () => {
     const { req, res, workspace } = await setupTest("POST", "admin");
+    await SpaceFactory.system(workspace);
 
     req.body = {
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
+      icon: null,
       tools: [],
     };
 
@@ -386,7 +392,8 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Simple Skill",
-      description: "A simple skill without tools",
+      agentFacingDescription: "To use in various situations",
+      userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
       tools: [],
@@ -433,8 +440,10 @@ describe("POST /api/w/[wId]/skills", () => {
 
     req.body = {
       name: "Test Skill",
-      description: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
+      icon: null,
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
@@ -447,7 +456,8 @@ describe("POST /api/w/[wId]/skills", () => {
     const responseData = res._getJSONData();
     expect(responseData.skillConfiguration).toMatchObject({
       name: "Test Skill",
-      description: "A test skill description",
+      agentFacingDescription: "Use this skill all the time",
+      userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
       tools: [
@@ -464,7 +474,9 @@ describe("POST /api/w/[wId]/skills", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.description).toBe("A test skill description");
+    expect(skillConfiguration!.agentFacingDescription).toBe(
+      "Use this skill all the time"
+    );
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );
@@ -490,6 +502,55 @@ describe("POST /api/w/[wId]/skills", () => {
     );
     expect(serverViewIds).toContain(view1!.id);
     expect(serverViewIds).toContain(view2!.id);
+  });
+
+  it("creates a skill configuration with requestedSpaceIds derived from tool's space", async () => {
+    const { req, res, workspace } = await setupTest("POST", "admin");
+
+    // Create system space (required for MCP servers)
+    await SpaceFactory.system(workspace);
+
+    // Create a regular space where the tool will be placed
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    // Create a remote MCP server and view in the regular space
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Server in Regular Space",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      regularSpace
+    );
+
+    req.body = {
+      name: "Skill With Space Restrictions",
+      agentFacingDescription: "A skill restricted to specific spaces",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [{ mcpServerViewId: serverView.sId }],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData.skillConfiguration).toMatchObject({
+      name: "Skill With Space Restrictions",
+      requestedSpaceIds: [regularSpace.sId],
+    });
+
+    const skillConfiguration = await SkillConfigurationModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        name: "Skill With Space Restrictions",
+      },
+    });
+    expect(skillConfiguration).not.toBeNull();
+    expect(skillConfiguration!.requestedSpaceIds).toEqual([
+      String(regularSpace.id), // BigInt array returned as string
+    ]);
   });
 });
 

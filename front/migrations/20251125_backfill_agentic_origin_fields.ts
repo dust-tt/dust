@@ -1,208 +1,210 @@
-import { Op } from "sequelize";
+// Commented out - old columns have been removed, this backfill script can't be used anymore
 
-import {
-  MessageModel,
-  UserMessageModel,
-} from "@app/lib/models/agent/conversation";
-import type { Logger } from "@app/logger/logger";
-import { makeScript } from "@app/scripts/helpers";
-import { UserMessageOrigin } from "@app/types";
+// import { Op } from "sequelize";
 
-const BATCH_SIZE = 1000;
+// import {
+//   MessageModel,
+//   UserMessageModel,
+// } from "@app/lib/models/agent/conversation";
+// import type { Logger } from "@app/logger/logger";
+// import { makeScript } from "@app/scripts/helpers";
+// import { UserMessageOrigin } from "@app/types";
 
-export async function getRootContextOrigin(
-  userMessage: UserMessageModel
-): Promise<UserMessageOrigin | null> {
-  const originAgentMessageId = userMessage.userContextOriginMessageId;
-  if (originAgentMessageId) {
-    const originAgentMessageRow = await MessageModel.findOne({
-      where: {
-        sId: originAgentMessageId,
-        workspaceId: userMessage.workspaceId,
-      },
-      attributes: ["parentId"],
-    });
-    if (originAgentMessageRow?.parentId) {
-      const parentMessage = await MessageModel.findOne({
-        where: {
-          id: originAgentMessageRow.parentId,
-          workspaceId: userMessage.workspaceId,
-        },
-        include: [
-          {
-            model: UserMessageModel,
-            as: "userMessage",
-            required: true,
-          },
-        ],
-      });
-      if (parentMessage?.userMessage) {
-        return getRootContextOrigin(parentMessage.userMessage);
-      }
-    }
-  }
+// const BATCH_SIZE = 1000;
 
-  return userMessage.userContextOrigin;
-}
+// export async function getRootContextOrigin(
+//   userMessage: UserMessageModel
+// ): Promise<UserMessageOrigin | null> {
+//   const originAgentMessageId = userMessage.userContextOriginMessageId;
+//   if (originAgentMessageId) {
+//     const originAgentMessageRow = await MessageModel.findOne({
+//       where: {
+//         sId: originAgentMessageId,
+//         workspaceId: userMessage.workspaceId,
+//       },
+//       attributes: ["parentId"],
+//     });
+//     if (originAgentMessageRow?.parentId) {
+//       const parentMessage = await MessageModel.findOne({
+//         where: {
+//           id: originAgentMessageRow.parentId,
+//           workspaceId: userMessage.workspaceId,
+//         },
+//         include: [
+//           {
+//             model: UserMessageModel,
+//             as: "userMessage",
+//             required: true,
+//           },
+//         ],
+//       });
+//       if (parentMessage?.userMessage) {
+//         return getRootContextOrigin(parentMessage.userMessage);
+//       }
+//     }
+//   }
 
-/**
- * Batched update of userContextOrigin, agenticOriginMessageId and agenticMessageType
- * for messages with origin "run_agent" or "agent_handover"
- */
-async function updateAgenticFields(
-  logger: Logger,
-  execute: boolean,
-  startFromId?: number
-): Promise<void> {
-  logger.info(
-    "Starting batched update of userContextOrigin, agenticOriginMessageId and agenticMessageType"
-  );
+//   return userMessage.userContextOrigin;
+// }
 
-  let lastId = startFromId || 0;
-  let totalUpdated = 0;
-  let batchNum = 0;
-  let hasMore = true;
+// /**
+//  * Batched update of userContextOrigin, agenticOriginMessageId and agenticMessageType
+//  * for messages with origin "run_agent" or "agent_handover"
+//  */
+// async function updateAgenticFields(
+//   logger: Logger,
+//   execute: boolean,
+//   startFromId?: number
+// ): Promise<void> {
+//   logger.info(
+//     "Starting batched update of userContextOrigin, agenticOriginMessageId and agenticMessageType"
+//   );
 
-  // Get total count for progress tracking
-  const totalCount = await UserMessageModel.count({
-    where: {
-      userContextOrigin: {
-        [Op.in]: ["run_agent", "agent_handover"],
-      },
-      id: {
-        [Op.gt]: lastId,
-      },
-    },
-  });
-  logger.info(
-    { totalCount, startFromId: lastId },
-    "Found rows to process for agentic fields"
-  );
+//   let lastId = startFromId || 0;
+//   let totalUpdated = 0;
+//   let batchNum = 0;
+//   let hasMore = true;
 
-  while (hasMore) {
-    batchNum++;
+//   // Get total count for progress tracking
+//   const totalCount = await UserMessageModel.count({
+//     where: {
+//       userContextOrigin: {
+//         [Op.in]: ["run_agent", "agent_handover"],
+//       },
+//       id: {
+//         [Op.gt]: lastId,
+//       },
+//     },
+//   });
+//   logger.info(
+//     { totalCount, startFromId: lastId },
+//     "Found rows to process for agentic fields"
+//   );
 
-    try {
-      // Get batch of messages to update - need full objects to resolve root origin
-      const batchMessages = await UserMessageModel.findAll({
-        where: {
-          userContextOrigin: {
-            [Op.in]: ["run_agent", "agent_handover"],
-          },
-          id: {
-            [Op.gt]: lastId,
-          },
-        },
-        order: [["id", "ASC"]],
-        limit: BATCH_SIZE,
-      });
+//   while (hasMore) {
+//     batchNum++;
 
-      if (batchMessages.length === 0) {
-        hasMore = false;
-        break;
-      }
+//     try {
+//       // Get batch of messages to update - need full objects to resolve root origin
+//       const batchMessages = await UserMessageModel.findAll({
+//         where: {
+//           userContextOrigin: {
+//             [Op.in]: ["run_agent", "agent_handover"],
+//           },
+//           id: {
+//             [Op.gt]: lastId,
+//           },
+//         },
+//         order: [["id", "ASC"]],
+//         limit: BATCH_SIZE,
+//       });
 
-      const batchIds = batchMessages.map((msg) => msg.id);
-      const maxId = Math.max(...batchIds);
+//       if (batchMessages.length === 0) {
+//         hasMore = false;
+//         break;
+//       }
 
-      // Process each message to resolve root context origin
-      for (const userMessage of batchMessages) {
-        const rootContextOrigin = await getRootContextOrigin(userMessage);
+//       const batchIds = batchMessages.map((msg) => msg.id);
+//       const maxId = Math.max(...batchIds);
 
-        // Update all three fields: userContextOrigin, agenticOriginMessageId, and agenticMessageType
-        // Store the original userContextOrigin before updating it
-        const originalUserContextOrigin = userMessage.userContextOrigin;
+//       // Process each message to resolve root context origin
+//       for (const userMessage of batchMessages) {
+//         const rootContextOrigin = await getRootContextOrigin(userMessage);
 
-        if (execute) {
-          await userMessage.update(
-            {
-              userContextOrigin: rootContextOrigin ?? "api",
-              agenticOriginMessageId: userMessage.userContextOriginMessageId,
-              agenticMessageType: originalUserContextOrigin as
-                | "run_agent"
-                | "agent_handover",
-            },
-            {
-              hooks: false,
-              silent: true,
-            }
-          );
-        } else {
-          logger.info(
-            {
-              userMessageId: userMessage.id,
-              userContextOrigin: rootContextOrigin,
-              agenticOriginMessageId: userMessage.userContextOriginMessageId,
-              agenticMessageType: originalUserContextOrigin,
-            },
-            "[DRYRUN] Would update"
-          );
-        }
+//         // Update all three fields: userContextOrigin, agenticOriginMessageId, and agenticMessageType
+//         // Store the original userContextOrigin before updating it
+//         const originalUserContextOrigin = userMessage.userContextOrigin;
 
-        totalUpdated += 1;
-      }
+//         if (execute) {
+//           await userMessage.update(
+//             {
+//               userContextOrigin: rootContextOrigin ?? "api",
+//               agenticOriginMessageId: userMessage.userContextOriginMessageId,
+//               agenticMessageType: originalUserContextOrigin as
+//                 | "run_agent"
+//                 | "agent_handover",
+//             },
+//             {
+//               hooks: false,
+//               silent: true,
+//             }
+//           );
+//         } else {
+//           logger.info(
+//             {
+//               userMessageId: userMessage.id,
+//               userContextOrigin: rootContextOrigin,
+//               agenticOriginMessageId: userMessage.userContextOriginMessageId,
+//               agenticMessageType: originalUserContextOrigin,
+//             },
+//             "[DRYRUN] Would update"
+//           );
+//         }
 
-      // Log progress every 10 batches
-      if (batchNum % 10 === 0 || !hasMore) {
-        const progress =
-          totalCount > 0 ? Math.round((totalUpdated / totalCount) * 100) : 0;
-        logger.info(
-          {
-            batchNum,
-            batchSize: batchMessages.length,
-            totalUpdated,
-            progress: `${progress}%`,
-            lastId: maxId,
-          },
-          execute
-            ? "Batch processed for agentic fields"
-            : "[DRYRUN] Would process batch"
-        );
-      }
+//         totalUpdated += 1;
+//       }
 
-      lastId = maxId;
-      hasMore = batchMessages.length === BATCH_SIZE;
+//       // Log progress every 10 batches
+//       if (batchNum % 10 === 0 || !hasMore) {
+//         const progress =
+//           totalCount > 0 ? Math.round((totalUpdated / totalCount) * 100) : 0;
+//         logger.info(
+//           {
+//             batchNum,
+//             batchSize: batchMessages.length,
+//             totalUpdated,
+//             progress: `${progress}%`,
+//             lastId: maxId,
+//           },
+//           execute
+//             ? "Batch processed for agentic fields"
+//             : "[DRYRUN] Would process batch"
+//         );
+//       }
 
-      // Small delay to avoid locking
-      if (execute && hasMore) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          batchNum,
-          lastId,
-          totalUpdated,
-        },
-        "Error processing batch for agentic fields"
-      );
-      throw error;
-    }
-  }
+//       lastId = maxId;
+//       hasMore = batchMessages.length === BATCH_SIZE;
 
-  logger.info(
-    {
-      totalUpdated,
-      totalBatches: batchNum,
-      lastProcessedId: lastId,
-    },
-    execute
-      ? "Completed: Updated userContextOrigin, agenticOriginMessageId and agenticMessageType"
-      : "[DRYRUN] Would complete"
-  );
-}
+//       // Small delay to avoid locking
+//       if (execute && hasMore) {
+//         await new Promise((resolve) => setTimeout(resolve, 50));
+//       }
+//     } catch (error) {
+//       logger.error(
+//         {
+//           error,
+//           batchNum,
+//           lastId,
+//           totalUpdated,
+//         },
+//         "Error processing batch for agentic fields"
+//       );
+//       throw error;
+//     }
+//   }
 
-makeScript(
-  {
-    startFromId: {
-      type: "number",
-      description:
-        "Start from this ID (useful for resuming). The migration is batched.",
-      required: false,
-    },
-  },
-  async ({ execute, startFromId }, logger) => {
-    await updateAgenticFields(logger, execute || false, startFromId);
-  }
-);
+//   logger.info(
+//     {
+//       totalUpdated,
+//       totalBatches: batchNum,
+//       lastProcessedId: lastId,
+//     },
+//     execute
+//       ? "Completed: Updated userContextOrigin, agenticOriginMessageId and agenticMessageType"
+//       : "[DRYRUN] Would complete"
+//   );
+// }
+
+// makeScript(
+//   {
+//     startFromId: {
+//       type: "number",
+//       description:
+//         "Start from this ID (useful for resuming). The migration is batched.",
+//       required: false,
+//     },
+//   },
+//   async ({ execute, startFromId }, logger) => {
+//     await updateAgenticFields(logger, execute || false, startFromId);
+//   }
+// );

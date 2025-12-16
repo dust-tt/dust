@@ -45,6 +45,7 @@ import {
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 const INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
@@ -351,7 +352,7 @@ function _getDustLikeGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const description = "An agent with context on your company data.";
-  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+  const pictureUrl = DUST_AVATAR_URL;
 
   let isPreferredModel = false;
 

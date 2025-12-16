@@ -650,7 +650,13 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 export async function tryListMCPTools(
   auth: Authenticator,
   agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
-  jitServers?: MCPServerConfigurationType[]
+  {
+    jitServers,
+    skillServers,
+  }: {
+    jitServers: MCPServerConfigurationType[];
+    skillServers: MCPServerConfigurationType[];
+  }
 ): Promise<{
   serverToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
@@ -661,7 +667,8 @@ export async function tryListMCPTools(
   const mcpServerActions = [
     ...agentLoopListToolsContext.agentConfiguration.actions,
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
-    ...(jitServers ?? []),
+    ...jitServers,
+    ...skillServers,
   ];
 
   // Discover all tools exposed by all available MCP servers.

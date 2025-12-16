@@ -6,6 +6,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -14,6 +15,7 @@ import { URLStorageExtension } from "@app/components/editor/extensions/input_bar
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import {
   createMentionSuggestion,
@@ -170,7 +172,6 @@ export interface CustomEditorProps {
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
   conversationId: string | null;
-  preferredAgentId?: string | null;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
     text: string;
@@ -184,13 +185,11 @@ export interface CustomEditorProps {
 export const buildEditorExtensions = ({
   owner,
   conversationId,
-  preferredAgentId,
   onInlineText,
   onUrlDetected,
 }: {
   owner: WorkspaceType;
   conversationId: string | null;
-  preferredAgentId?: string | null;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -258,9 +257,9 @@ export const buildEditorExtensions = ({
       suggestion: createMentionSuggestion({
         owner,
         conversationId,
-        preferredAgentId,
       }),
     }),
+    EmojiExtension,
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:
@@ -288,7 +287,6 @@ const useCustomEditor = ({
   onUrlDetected,
   owner,
   conversationId,
-  preferredAgentId,
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
@@ -298,7 +296,6 @@ const useCustomEditor = ({
     extensions: buildEditorExtensions({
       owner,
       conversationId,
-      preferredAgentId,
       onInlineText,
       onUrlDetected,
     }),
@@ -358,6 +355,12 @@ const useCustomEditor = ({
             const mentionPluginState = mentionPluginKey.getState(view.state);
             // Let the mention extension handle the event if its dropdown is currently opened.
             if (mentionPluginState?.active) {
+              return false;
+            }
+
+            const emojiPluginState = emojiPluginKey.getState(view.state);
+            // Let the emoji extension handle the event if its dropdown is currently opened.
+            if (emojiPluginState?.active) {
               return false;
             }
 

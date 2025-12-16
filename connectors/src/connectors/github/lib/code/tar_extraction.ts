@@ -18,11 +18,72 @@ import {
   isGithubRequestErrorRepositoryAccessBlocked,
   RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 
 export const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
+const MAX_TARBALL_EXTRACTION_RETRIES = 3;
+const TARBALL_RETRY_BASE_DELAY_MS = 1000;
+
+const ZLIB_ERROR_CODES = ["Z_BUF_ERROR", "Z_DATA_ERROR"] as const;
+type ZlibErrorCode = (typeof ZLIB_ERROR_CODES)[number];
+
+function isIncompleteGzipStreamError(
+  error: Error
+): error is Error & { code: ZlibErrorCode } {
+  return (
+    "code" in error &&
+    typeof error.code === "string" &&
+    ZLIB_ERROR_CODES.includes(error.code as ZlibErrorCode)
+  );
+}
+
+/**
+ * Checks if an error is a retryable stream error (zlib decompression failures,
+ * incomplete downloads, connection resets).
+ */
+function isRetryableStreamError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (isIncompleteGzipStreamError(error)) {
+    return true;
+  }
+
+  // Check error message for common stream/network issues.
+  const retryableMessages = [
+    "unexpected end of file",
+    "incorrect header check",
+    "invalid stored block lengths",
+    "other side closed",
+    "ECONNRESET",
+    "socket hang up",
+  ];
+
+  return retryableMessages.some((msg) =>
+    error.message.toLowerCase().includes(msg.toLowerCase())
+  );
+}
+
+// Marker class to indicate tarball was not found (repo deleted/inaccessible).
+export class TarballNotFoundError extends Error {
+  constructor(message = "Tarball not found") {
+    super(message);
+    this.name = "TarballNotFoundError";
+  }
+}
+
+export interface TarballStreamProvider {
+  getStream: () => Promise<
+    Result<
+      { stream: Readable; contentLength: number | null },
+      TarballNotFoundError
+    >
+  >;
+}
 
 interface TarExtractionOptions {
   repoId: number;
@@ -125,30 +186,20 @@ function parseGitHubPath(
 }
 
 export async function extractGitHubTarballToGCS(
-  tarballStream: Readable,
+  tarballStreamProvider: TarballStreamProvider,
   { repoId, connectorId }: TarExtractionOptions,
   logger: Logger
 ): Promise<
   Result<
     TarExtractionResult,
-    ExternalOAuthTokenError | RepositoryAccessBlockedError
+    | ExternalOAuthTokenError
+    | RepositoryAccessBlockedError
+    | TarballNotFoundError
   >
 > {
   // Initialize GCS manager.
   const gcsManager = new GCSRepositoryManager();
   const gcsBasePath = gcsManager.generateBasePath(connectorId, repoId);
-
-  // Track results.
-  let filesUploaded = 0;
-  let filesSkipped = 0;
-  const seenDirs = new Set<string>();
-
-  // Create upload queue to limit concurrent GCS uploads.
-  const uploadQueue = new PQueue({ concurrency: MAX_CONCURRENT_GCS_UPLOADS });
-  const uploadErrors: unknown[] = [];
-
-  // Create tar stream extractor.
-  const extract = tar.extract();
 
   const childLogger = logger.child({
     gcsBasePath,
@@ -159,166 +210,252 @@ export async function extractGitHubTarballToGCS(
     "Starting GitHub tarball extraction to GCS"
   );
 
-  extract.on("entry", (header, stream, next) => {
-    // The tar archive is streamed sequentially, meaning you must drain each entry's stream
-    // as you get them or else the main extract stream will receive backpressure and stop reading.
-    const drainAndNext = () => {
-      stream.on("end", () => next());
-      stream.resume();
-    };
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_TARBALL_EXTRACTION_RETRIES; attempt++) {
+    let filesUploaded = 0;
+    let filesSkipped = 0;
+    const seenDirs = new Set<string>();
 
-    try {
-      if (header.type === "file") {
-        const { cleanPath, filePath, fileName } = parseGitHubPath(header.name);
+    // Create upload queue to limit concurrent GCS uploads.
+    const uploadQueue = new PQueue({ concurrency: MAX_CONCURRENT_GCS_UPLOADS });
+    const uploadErrors: unknown[] = [];
 
-        if (shouldProcessFile(header, [...filePath, fileName], childLogger)) {
-          // Upload file to GCS with preserved hierarchy.
-          const gcsPath = `${gcsBasePath}/${cleanPath}`;
+    // Create tar stream extractor - must be recreated for each attempt.
+    const extract = tar.extract();
 
-          // Track directories for placeholder creation immediately.
-          for (let i = 0; i < filePath.length; i++) {
-            const dirPath = filePath.slice(0, i + 1).join("/");
-            if (!seenDirs.has(dirPath)) {
-              seenDirs.add(dirPath);
+    // Track bytes received for validation.
+    let bytesReceived = 0;
+
+    extract.on("entry", (header, stream, next) => {
+      // The tar archive is streamed sequentially, meaning you must drain each entry's stream
+      // as you get them or else the main extract stream will receive backpressure and stop reading.
+      const drainAndNext = () => {
+        stream.on("end", () => next());
+        stream.resume();
+      };
+
+      try {
+        if (header.type === "file") {
+          const { cleanPath, filePath, fileName } = parseGitHubPath(
+            header.name
+          );
+
+          if (shouldProcessFile(header, [...filePath, fileName], childLogger)) {
+            // Upload file to GCS with preserved hierarchy.
+            const gcsPath = `${gcsBasePath}/${cleanPath}`;
+
+            // Track directories for placeholder creation immediately.
+            for (let i = 0; i < filePath.length; i++) {
+              const dirPath = filePath.slice(0, i + 1).join("/");
+              if (!seenDirs.has(dirPath)) {
+                seenDirs.add(dirPath);
+              }
+            }
+
+            // Upload file to GCS using hybrid approach.
+            filesUploaded++;
+            childLogger.info(
+              { gcsPath, fileName, filePath, filesUploaded, size: header.size },
+              "Uploading file to GCS"
+            );
+
+            // Queue the upload.
+            void uploadQueue.add(async () => {
+              try {
+                await gcsManager.uploadFileStream(gcsPath, stream, {
+                  size: header.size,
+                  contentType: "text/plain",
+                  childLogger,
+                });
+              } catch (error) {
+                logger.error(
+                  { error, gcsPath, fileName },
+                  "Error uploading file to GCS"
+                );
+                uploadErrors.push(error);
+              }
+            });
+
+            // Continue tar extraction immediately.
+            next();
+          } else {
+            // Skip filtered file but must drain stream to prevent backpressure.
+            filesSkipped++;
+            childLogger.info(
+              { fileName: header.name },
+              "Skipping file (filtered out)"
+            );
+            drainAndNext();
+          }
+        } else if (header.type === "directory") {
+          // Track directory entries from tarball (including empty ones).
+          const { cleanPath, filePath } = parseGitHubPath(header.name, {
+            isDirectory: true,
+          });
+
+          // Check if directory should be processed (not blacklisted).
+          const pathParts = [...filePath, cleanPath.split("/").pop()].filter(
+            (p) => p && p.length > 0
+          );
+          let shouldInclude = true;
+
+          for (const part of pathParts) {
+            if (!isSupportedDirectory(part!)) {
+              shouldInclude = false;
+              break;
             }
           }
 
-          // Upload file to GCS using hybrid approach.
-          filesUploaded++;
-          childLogger.info(
-            { gcsPath, fileName, filePath, filesUploaded, size: header.size },
-            "Uploading file to GCS"
-          );
+          if (shouldInclude && cleanPath) {
+            seenDirs.add(cleanPath);
+            childLogger.info(
+              { dirPath: cleanPath },
+              "Found directory in tarball"
+            );
+          }
 
-          // Queue the upload.
-          void uploadQueue.add(async () => {
-            try {
-              await gcsManager.uploadFileStream(gcsPath, stream, {
-                size: header.size,
-                contentType: "text/plain",
-                childLogger,
-              });
-            } catch (error) {
-              logger.error(
-                { error, gcsPath, fileName },
-                "Error uploading file to GCS"
-              );
-              uploadErrors.push(error);
-            }
-          });
-
-          // Continue tar extraction immediately.
-          next();
+          // Drain directory stream to prevent backpressure.
+          drainAndNext();
         } else {
-          // Skip filtered file but must drain stream to prevent backpressure.
-          filesSkipped++;
+          // Skip non-file/directory entries but drain to prevent backpressure.
           childLogger.info(
-            { fileName: header.name },
-            "Skipping file (filtered out)"
+            { fileName: header.name, type: header.type },
+            "Skipping non-file/directory entry"
           );
           drainAndNext();
         }
-      } else if (header.type === "directory") {
-        // Track directory entries from tarball (including empty ones).
-        const { cleanPath, filePath } = parseGitHubPath(header.name, {
-          isDirectory: true,
-        });
-
-        // Check if directory should be processed (not blacklisted).
-        const pathParts = [...filePath, cleanPath.split("/").pop()].filter(
-          (p) => p && p.length > 0
-        );
-        let shouldInclude = true;
-
-        for (const part of pathParts) {
-          if (!isSupportedDirectory(part!)) {
-            shouldInclude = false;
-            break;
-          }
-        }
-
-        if (shouldInclude && cleanPath) {
-          seenDirs.add(cleanPath);
-          childLogger.info(
-            { dirPath: cleanPath },
-            "Found directory in tarball"
-          );
-        }
-
-        // Drain directory stream to prevent backpressure.
-        drainAndNext();
-      } else {
-        // Skip non-file/directory entries but drain to prevent backpressure.
-        childLogger.info(
-          { fileName: header.name, type: header.type },
-          "Skipping non-file/directory entry"
-        );
-        drainAndNext();
-      }
-    } catch (error) {
-      if (isGithubRequestErrorNotFound(error)) {
-        return new Err(new ExternalOAuthTokenError(error));
-      }
-      if (isGithubRequestErrorRepositoryAccessBlocked(error)) {
-        return new Err(new RepositoryAccessBlockedError(error));
-      }
-
-      childLogger.error(
-        { error, header },
-        "Error processing tarball entry, resuming stream."
-      );
-      // Drain stream to prevent backpressure despite error.
-      drainAndNext();
-    }
-  });
-
-  // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
-  await pipeline(tarballStream, gunzip(), extract);
-
-  childLogger.info({ repoId, connectorId }, "All files uploaded");
-
-  // Create directory placeholder files to preserve GitHub hierarchy.
-  Array.from(seenDirs).forEach((dirPath) =>
-    uploadQueue.add(async () => {
-      try {
-        await gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath);
       } catch (error) {
+        if (isGithubRequestErrorNotFound(error)) {
+          return new Err(new ExternalOAuthTokenError(error));
+        }
+        if (isGithubRequestErrorRepositoryAccessBlocked(error)) {
+          return new Err(new RepositoryAccessBlockedError(error));
+        }
+
         childLogger.error(
-          { error, dirPath, gcsBasePath },
-          "Error creating directory placeholder in GCS"
+          { error, header },
+          "Error processing tarball entry, resuming stream."
         );
-        uploadErrors.push(error);
+        // Drain stream to prevent backpressure despite error.
+        drainAndNext();
       }
-    })
-  );
+    });
 
-  // Wait for all queued uploads to complete.
-  await uploadQueue.onIdle();
+    try {
+      // Get a fresh stream for this attempt.
+      const streamResult = await tarballStreamProvider.getStream();
 
-  if (uploadErrors.length > 0) {
-    childLogger.error(
-      { errorCount: uploadErrors.length },
-      "Received GCS uploads errors, aborting"
-    );
-    return new Err(new Error("GCS upload errors occurred"));
+      // If the stream provider returns an error (e.g., tarball not found), propagate it.
+      if (streamResult.isErr()) {
+        return new Err(streamResult.error);
+      }
+
+      const { stream: tarballStream, contentLength } = streamResult.value;
+
+      // Track bytes received for content-length validation.
+      // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
+      tarballStream.on("data", (chunk: Buffer | string) => {
+        bytesReceived += Buffer.isBuffer(chunk)
+          ? chunk.length
+          : Buffer.byteLength(chunk, "utf8");
+      });
+
+      // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
+      await pipeline(tarballStream, gunzip(), extract);
+
+      // Validate content-length if provided.
+      if (contentLength !== null && bytesReceived < contentLength) {
+        throw new Error(
+          `Incomplete tarball download: received ${bytesReceived} bytes, expected ${contentLength} bytes`
+        );
+      }
+
+      childLogger.info(
+        { repoId, connectorId, bytesReceived, contentLength },
+        "Tarball extraction completed"
+      );
+
+      // Create directory placeholder files to preserve GitHub hierarchy.
+      Array.from(seenDirs).forEach((dirPath) =>
+        uploadQueue.add(async () => {
+          try {
+            await gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath);
+          } catch (error) {
+            childLogger.error(
+              { error, dirPath, gcsBasePath },
+              "Error creating directory placeholder in GCS"
+            );
+            uploadErrors.push(error);
+          }
+        })
+      );
+
+      // Wait for all queued uploads to complete.
+      await uploadQueue.onIdle();
+
+      if (uploadErrors.length > 0) {
+        childLogger.error(
+          { errorCount: uploadErrors.length },
+          "Received GCS uploads errors, aborting"
+        );
+        return new Err(new Error("GCS upload errors occurred"));
+      }
+
+      childLogger.info(
+        {
+          repoId,
+          connectorId,
+          gcsBasePath,
+          filesUploaded,
+          filesSkipped,
+          directoriesCreated: seenDirs.size,
+        },
+        "Completed GitHub tarball extraction to GCS"
+      );
+
+      return new Ok({
+        directoriesCreated: seenDirs.size,
+        filesSkipped,
+        filesUploaded,
+        gcsBasePath,
+      });
+    } catch (error) {
+      lastError = error;
+
+      // Check if this is a retryable error.
+      if (
+        isRetryableStreamError(error) &&
+        attempt < MAX_TARBALL_EXTRACTION_RETRIES - 1
+      ) {
+        const delay = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        childLogger.warn(
+          {
+            error,
+            attempt,
+            maxAttempts: MAX_TARBALL_EXTRACTION_RETRIES,
+            bytesReceived,
+            delay,
+          },
+          "Retryable stream error during tarball extraction, will retry"
+        );
+        await setTimeoutAsync(delay);
+        continue;
+      }
+
+      // Non-retryable error or max retries reached.
+      childLogger.error(
+        {
+          error,
+          attempt,
+          maxAttempts: MAX_TARBALL_EXTRACTION_RETRIES,
+          bytesReceived,
+        },
+        "Non-retryable error or max retries reached during tarball extraction"
+      );
+      throw error;
+    }
   }
 
-  childLogger.info(
-    {
-      repoId,
-      connectorId,
-      gcsBasePath,
-      filesUploaded,
-      filesSkipped,
-      directoriesCreated: seenDirs.size,
-    },
-    "Completed GitHub tarball extraction to GCS"
-  );
-
-  return new Ok({
-    directoriesCreated: seenDirs.size,
-    filesSkipped,
-    filesUploaded,
-    gcsBasePath,
-  });
+  // This should not be reached, but just in case.
+  throw lastError;
 }

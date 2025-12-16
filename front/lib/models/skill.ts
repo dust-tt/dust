@@ -32,9 +32,13 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: false,
   },
-  description: {
+  agentFacingDescription: {
     type: DataTypes.TEXT,
     allowNull: false,
+  },
+  userFacingDescription: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   instructions: {
     type: DataTypes.TEXT,
@@ -43,6 +47,10 @@ const SKILL_MODEL_ATTRIBUTES = {
   requestedSpaceIds: {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
     allowNull: false,
+  },
+  icon: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
 } as const satisfies ModelAttributes<Model>;
 
@@ -53,8 +61,10 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare status: SkillStatus;
 
   declare name: string;
-  declare description: string;
+  declare agentFacingDescription: string;
+  declare userFacingDescription: string;
   declare instructions: string;
+  declare icon: string | null;
 
   declare authorId: ForeignKey<UserModel["id"]>;
 
@@ -78,6 +88,7 @@ export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
   declare mcpServerConfigurationIds: number[];
+  declare version: number;
 }
 
 SkillVersionModel.init(
@@ -89,6 +100,10 @@ SkillVersionModel.init(
     },
     mcpServerConfigurationIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },

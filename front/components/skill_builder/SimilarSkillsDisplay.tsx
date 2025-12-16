@@ -6,10 +6,10 @@ import {
 } from "@dust-tt/sparkle";
 
 import { SKILL_ICON } from "@app/lib/skill";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SimilarSkillsDisplayProps = {
-  similarSkills: SkillConfigurationType[];
+  similarSkills: SkillType[];
   isLoading: boolean;
 };
 
@@ -49,11 +49,9 @@ export function SimilarSkillsDisplay({
               <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                 {skill.name}
               </span>
-              {skill.description && (
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {skill.description}
-                </span>
-              )}
+              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                {skill.agentFacingDescription}
+              </span>
             </div>
           </div>
         ))}

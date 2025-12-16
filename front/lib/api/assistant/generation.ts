@@ -147,6 +147,7 @@ function constructToolsSection({
   return toolsSection;
 }
 
+// TODO(skills): add detailed tools per skill
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
@@ -182,7 +183,10 @@ function constructSkillsSection({
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${DEFAULT_ENABLE_SKILL_TOOL_NAME} tool.\n`;
     const skillList = equippedSkills
-      .map(({ name, description }) => `- **${name}**: ${description}`)
+      .map(
+        ({ name, agentFacingDescription }) =>
+          `- **${name}**: ${agentFacingDescription}`
+      )
       .join("\n");
     skillsSection += skillList + "\n";
   }

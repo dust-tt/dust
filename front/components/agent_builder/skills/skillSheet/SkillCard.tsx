@@ -2,10 +2,10 @@ import { ActionCard } from "@dust-tt/sparkle";
 import React from "react";
 
 import { SKILL_ICON } from "@app/lib/skill";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillCardProps {
-  skill: SkillConfigurationType;
+  skill: SkillType;
   isSelected: boolean;
   onClick: () => void;
   onMoreInfoClick: () => void;
@@ -21,7 +21,7 @@ export function SkillCard({
     <ActionCard
       icon={SKILL_ICON}
       label={skill.name}
-      description={skill.description}
+      description={skill.userFacingDescription}
       isSelected={isSelected}
       canAdd
       onClick={onClick}

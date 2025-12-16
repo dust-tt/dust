@@ -290,7 +290,16 @@ export const ConversationViewer = ({
                 // Do not scroll if the message is from the current user.
                 // Can happen with fake user messages (like handover messages).
                 const scroll = userMessage.user?.sId !== user.sId;
-                ref.current.data.append([userMessage], scroll);
+
+                // Find the first message with a rank greater than the user message to insert the new message at the correct position.
+                const offset = ref.current.data.findIndex(
+                  (m) => getMessageRank(m) > getMessageRank(userMessage)
+                );
+                if (offset !== -1) {
+                  ref.current.data.insert([userMessage], offset, scroll);
+                } else {
+                  ref.current.data.append([userMessage], scroll);
+                }
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
                 // We only update if the version is greater than the existing version.
@@ -345,7 +354,15 @@ export const ConversationViewer = ({
                   predicate(m) ? messageStreamState : m
                 );
               } else {
-                ref.current.data.append([messageStreamState]);
+                // Find the first message with a rank greater than the agent message to insert the new message at the correct position.
+                const offset = ref.current.data.findIndex(
+                  (m) => getMessageRank(m) > getMessageRank(messageStreamState)
+                );
+                if (offset !== -1) {
+                  ref.current.data.insert([messageStreamState], offset);
+                } else {
+                  ref.current.data.append([messageStreamState]);
+                }
               }
 
               void mutateConversationParticipants(async (participants) =>

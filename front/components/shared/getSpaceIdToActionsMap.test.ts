@@ -4,7 +4,7 @@ import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-import { getSpaceIdToActionsMap } from "./get_spaceid_to_actions_map";
+import { getSpaceIdToActionsMap } from "./getSpaceIdToActionsMap";
 
 const createMockMCPAction = (
   id: string,

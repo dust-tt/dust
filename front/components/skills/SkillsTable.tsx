@@ -1,5 +1,6 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Avatar,
   DataTable,
   EyeIcon,
   PencilSquareIcon,
@@ -15,18 +16,20 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 
 type RowData = {
   name: string;
+  icon: string | null;
   description: string;
   editors: UserType[] | null;
   usage: AgentsUsageType;
-  updatedAt: number;
+  updatedAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
 };
@@ -47,12 +50,17 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
-          <div className="flex min-w-0 grow flex-col py-3">
-            <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-              {info.getValue()}
+          <div className="flex flex-row items-center gap-2 py-3">
+            <div>
+              <Avatar visual={info.row.original.icon} size="sm" />
             </div>
-            <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.description}
+            <div className="flex min-w-0 grow flex-col">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+                {info.getValue()}
+              </div>
+              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {info.row.original.description}
+              </div>
             </div>
           </div>
         </DataTable.CellContent>
@@ -75,8 +83,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
             [
               {
                 name: "Dust",
-                visual:
-                  "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+                visual: DUST_AVATAR_URL,
               },
             ];
         return (
@@ -102,16 +109,15 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
     {
       header: "Last Edited",
       accessorKey: "updatedAt",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.BasicCellContent
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
-          label={
-            info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, number | null>) => {
+        const value = info.getValue();
+        return (
+          <DataTable.BasicCellContent
+            tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
+            label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
+          />
+        );
+      },
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
@@ -128,11 +134,9 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: (SkillConfigurationType & SkillConfigurationRelations)[];
+  skills: (SkillType & { relations: SkillRelations })[];
   owner: LightWorkspaceType;
-  onSkillClick: (
-    skill: SkillConfigurationType & SkillConfigurationRelations
-  ) => void;
+  onSkillClick: (skill: SkillType & { relations: SkillRelations }) => void;
   onAgentClick: (agentId: string) => void;
 };
 
@@ -144,16 +148,16 @@ export function SkillsTable({
 }: SkillsTableProps) {
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
-  const [skillToArchive, setSkillToArchive] =
-    useState<SkillConfigurationType | null>(null);
+  const [skillToArchive, setSkillToArchive] = useState<SkillType | null>(null);
 
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({
         name: skill.name,
-        description: skill.description,
-        editors: skill.editors,
-        usage: skill.usage,
+        icon: skill.icon,
+        description: skill.userFacingDescription,
+        editors: skill.relations.editors,
+        usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
         onClick: () => {
           onSkillClick(skill);
