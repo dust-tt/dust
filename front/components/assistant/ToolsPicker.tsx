@@ -26,10 +26,12 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import { SKILL_ICON } from "@app/lib/skill";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
+import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import {
   trackEvent,
@@ -38,6 +40,7 @@ import {
 } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 function ToolsPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -62,6 +65,9 @@ interface ToolsPickerProps {
   selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
   onDeselect: (serverView: MCPServerViewType) => void;
+  selectedSkills: SkillType[];
+  onSkillSelect: (skill: SkillType) => void;
+  onSkillDeselect: (skill: SkillType) => void;
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
@@ -72,6 +78,8 @@ export function ToolsPicker({
   selectedMCPServerViews,
   onSelect,
   onDeselect,
+  selectedSkills,
+  onSkillSelect,
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
@@ -165,7 +173,35 @@ export function ToolsPicker({
       disabled: !shouldFetchToolsData,
     });
 
-  const isDataReady = !isServerViewsLoading && !isAvailableMCPServersLoading;
+  const { skillConfigurations, isSkillConfigurationsLoading } =
+    useSkillConfigurations({
+      owner,
+      status: "active",
+      disabled: !shouldFetchToolsData,
+    });
+
+  const isDataReady =
+    !isServerViewsLoading &&
+    !isAvailableMCPServersLoading &&
+    !isSkillConfigurationsLoading;
+
+  const filteredSkillsUnselected = useMemo(() => {
+    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
+
+    return skillConfigurations
+      .filter((skill) => !selectedSkillIds.has(skill.sId))
+      .filter((skill) => {
+        if (searchText.trim().length === 0) {
+          return true;
+        }
+        const query = searchText.toLowerCase();
+        return (
+          skill.name.toLowerCase().includes(query) ||
+          (skill.userFacingDescription &&
+            skill.userFacingDescription.toLowerCase().includes(query))
+        );
+      });
+  }, [skillConfigurations, selectedSkills, searchText]);
 
   // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
@@ -241,7 +277,7 @@ export function ToolsPicker({
               <DropdownMenuSearchbar
                 autoFocus
                 name="search-tools"
-                placeholder="Search Tools"
+                placeholder="Search capabilities"
                 value={searchText}
                 onChange={setSearchText}
                 onKeyDown={(e) => {
@@ -283,8 +319,43 @@ export function ToolsPicker({
         >
           {!isDataReady && <ToolsPickerLoading />}
 
+          {isDataReady && filteredSkillsUnselected.length > 0 && (
+            <>
+              <div className="text-element-700 px-4 py-2 text-xs font-semibold">
+                Skills
+              </div>
+              {filteredSkillsUnselected.map((skill) => (
+                <DropdownMenuItem
+                  key={`skills-picker-${skill.sId}`}
+                  icon={SKILL_ICON}
+                  label={skill.name}
+                  description={skill.userFacingDescription}
+                  truncateText
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    trackEvent({
+                      area: TRACKING_AREAS.TOOLS,
+                      object: "skill_select",
+                      action: TRACKING_ACTIONS.SELECT,
+                      extra: {
+                        skill_id: skill.sId,
+                        skill_name: skill.name,
+                      },
+                    });
+                    onSkillSelect(skill);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
+            </>
+          )}
+
           {isDataReady && filteredServerViews.length > 0 && (
             <>
+              <div className="text-element-700 px-4 py-2 text-xs font-semibold">
+                Tools
+              </div>
               {filteredServerViewsUnselected.map((v) => {
                 return (
                   <DropdownMenuItem
@@ -352,21 +423,21 @@ export function ToolsPicker({
           )}
 
           {isDataReady &&
+            filteredSkillsUnselected.length === 0 &&
             filteredServerViewsUnselected.length === 0 &&
             filteredUninstalledServers.length === 0 && (
               <DropdownMenuItem
                 id="tools-picker-no-selected"
                 icon={() => <Icon visual={BoltIcon} size="xs" />}
-                className="italic"
                 label={
                   searchText.length > 0
                     ? "No result"
-                    : "No more tools to select"
+                    : "No more skills or tools to select"
                 }
                 description={
                   searchText.length > 0
-                    ? "No tools found matching your search."
-                    : "All available tools are already selected."
+                    ? "No skills or tools found matching your search."
+                    : "All available skills and tools are already selected."
                 }
                 disabled
               />
