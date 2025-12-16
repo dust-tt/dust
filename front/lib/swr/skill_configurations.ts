@@ -244,17 +244,17 @@ export function useSkillConfigurationHistory({
 export function useSkillWithRelations({
   owner,
   disabled,
-  id,
+  skillId,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
-  id: string;
+  skillId: string;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillWithRelationsResponseBody> =
     fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills/${id}?withRelations=true`,
+    `/api/w/${owner.sId}/skills/${skillId}?withRelations=true`,
     skillConfigurationsFetcher,
     { disabled }
   );

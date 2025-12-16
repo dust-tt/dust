@@ -18,7 +18,7 @@ export function SkillWithRelationsDetailsSheetContent({
 }: SkillWithRelationsDetailsSheetContentProps) {
   const { skillWithRelations } = useSkillWithRelations({
     owner,
-    id: skill.sId,
+    skillId: skill.sId,
   });
 
   return (
