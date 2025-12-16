@@ -459,27 +459,31 @@ export function renderTests(response: VantaTestsResponse): string {
 function formatTest(test: VantaTest, index: number): string {
   const parts: string[] = [];
   parts.push(`Test #${index}`);
-  addField(parts, "Name", test.name);
-  addField(parts, "ID", test.id);
-  addField(parts, "Status", test.status);
-  addField(parts, "Category", test.category);
-  addTextField(parts, "Description", test.description);
-  addTextField(parts, "Failure Info", test.failureDescription);
-  addTextField(parts, "Remediation", test.remediationDescription);
-
-  addArrayField(parts, "Integrations", test.integrations);
-
-  addOwnerField(parts, test.owner);
+  parts.push(
+    ...[
+      addField("Name", test.name),
+      addField("ID", test.id),
+      addField("Status", test.status),
+      addField("Category", test.category),
+      addTextField("Description", test.description),
+      addTextField("Failure Info", test.failureDescription),
+      addTextField("Remediation", test.remediationDescription),
+      addArrayField("Integrations", test.integrations),
+      addOwnerField(test.owner),
+    ].filter((x): x is string => x !== null)
+  );
 
   if (test.deactivatedStatusInfo?.isDeactivated) {
     const reason =
       test.deactivatedStatusInfo.deactivatedReason ?? "No reason provided";
     parts.push(`Deactivated: Yes (${reason})`);
-    addDateField(
-      parts,
+    const deactivatedDate = addDateField(
       "Deactivated Last Updated",
       test.deactivatedStatusInfo.lastUpdatedDate
     );
+    if (deactivatedDate) {
+      parts.push(deactivatedDate);
+    }
   }
 
   if (
@@ -491,15 +495,21 @@ function formatTest(test: VantaTest, index: number): string {
     parts.push(
       `Remediation Status: ${test.remediationStatusInfo.status} (${count} items)`
     );
-    addDateField(
-      parts,
+    const remediateByDate = addDateField(
       "Soonest Remediate By",
       test.remediationStatusInfo.soonestRemediateByDate
     );
+    if (remediateByDate) {
+      parts.push(remediateByDate);
+    }
   }
 
-  addDateField(parts, "Last Run", test.lastTestRunDate);
-  addDateField(parts, "Latest Flip Date", test.latestFlipDate);
+  parts.push(
+    ...[
+      addDateField("Last Run", test.lastTestRunDate),
+      addDateField("Latest Flip Date", test.latestFlipDate),
+    ].filter((x): x is string => x !== null)
+  );
   if (test.version) {
     parts.push(
       `Version: ${test.version.major}.${test.version.minor} (${test.version._id})`
@@ -555,73 +565,71 @@ function formatDate(isoDate: string | null | undefined): string | null {
   }
 }
 
-function addField(parts: string[], label: string, value: unknown): void {
+function addField(label: string, value: unknown): string | null {
   if (value != null && value !== "") {
-    parts.push(`${label}: ${value}`);
+    return `${label}: ${value}`;
   }
+  return null;
 }
 
-function addRequiredField(
-  parts: string[],
-  label: string,
-  value: unknown
-): void {
+function addRequiredField(label: string, value: unknown): string | null {
   if (value !== null && value !== undefined && value !== "") {
-    parts.push(`${label}: ${value}`);
+    return `${label}: ${value}`;
   }
+  return null;
 }
 
 function addTextField(
-  parts: string[],
   label: string,
   value: string | null | undefined
-): void {
+): string | null {
   if (value) {
-    parts.push(`${label}: ${cleanText(value)}`);
+    return `${label}: ${cleanText(value)}`;
   }
+  return null;
 }
 
 function addDateField(
-  parts: string[],
   label: string,
   value: string | null | undefined
-): void {
+): string | null {
   if (value) {
-    parts.push(`${label}: ${formatDate(value)}`);
+    return `${label}: ${formatDate(value)}`;
   }
+  return null;
 }
 
 function addBooleanField(
-  parts: string[],
   label: string,
   value: boolean | null | undefined
-): void {
+): string | null {
   if (value != null) {
-    parts.push(`${label}: ${value ? "Yes" : "No"}`);
+    return `${label}: ${value ? "Yes" : "No"}`;
   }
+  return null;
 }
 
 function addArrayField(
-  parts: string[],
   label: string,
   value: unknown[] | null | undefined,
   separator = ", "
-): void {
+): string | null {
   if (value?.length) {
-    parts.push(`${label}: ${value.join(separator)}`);
+    return `${label}: ${value.join(separator)}`;
   }
+  return null;
 }
 
 function addOwnerField(
-  parts: string[],
   owner: z.infer<typeof VantaOwnerSchema> | null | undefined
-): void {
+): string | null {
   if (owner) {
     const ownerName = formatOwner(owner);
     if (ownerName) {
-      parts.push(`Owner: ${ownerName}`);
+      return `Owner: ${ownerName}`;
     }
   }
+  return null;
 }
 
 export function renderTestEntities(
@@ -656,13 +664,17 @@ export function renderTestEntities(
 function formatTestEntity(entity: VantaTestEntity, index: number): string {
   const parts: string[] = [];
   parts.push(`Entity #${index}`);
-  addRequiredField(parts, "ID", entity.id);
-  addRequiredField(parts, "Name", entity.displayName);
-  addRequiredField(parts, "Entity Status", entity.entityStatus);
-  addRequiredField(parts, "Response Type", entity.responseType);
-  addField(parts, "Deactivated Reason", entity.deactivatedReason);
-  addRequiredField(parts, "Created", formatDate(entity.createdDate));
-  addRequiredField(parts, "Last Updated", formatDate(entity.lastUpdatedDate));
+  parts.push(
+    ...[
+      addRequiredField("ID", entity.id),
+      addRequiredField("Name", entity.displayName),
+      addRequiredField("Entity Status", entity.entityStatus),
+      addRequiredField("Response Type", entity.responseType),
+      addField("Deactivated Reason", entity.deactivatedReason),
+      addRequiredField("Created", formatDate(entity.createdDate)),
+      addRequiredField("Last Updated", formatDate(entity.lastUpdatedDate)),
+    ].filter((x): x is string => x !== null)
+  );
   return parts.join("\n");
 }
 
@@ -696,14 +708,18 @@ export function renderControls(response: VantaControlsResponse): string {
 function formatControl(control: VantaControl, index: number): string {
   const parts: string[] = [];
   parts.push(`Control #${index}`);
-  addField(parts, "Name", control.name);
-  addField(parts, "ID", control.id);
-  addField(parts, "External ID", control.externalId);
-  addField(parts, "Source", control.source);
-  addArrayField(parts, "Domains", control.domains);
-  addField(parts, "Role", control.role);
-  addTextField(parts, "Description", control.description);
-  addOwnerField(parts, control.owner);
+  parts.push(
+    ...[
+      addField("Name", control.name),
+      addField("ID", control.id),
+      addField("External ID", control.externalId),
+      addField("Source", control.source),
+      addArrayField("Domains", control.domains),
+      addField("Role", control.role),
+      addTextField("Description", control.description),
+      addOwnerField(control.owner),
+    ].filter((x): x is string => x !== null)
+  );
   if (control.customFields?.length) {
     parts.push("Custom Fields:");
     control.customFields.forEach((field) => {
@@ -743,15 +759,19 @@ export function renderDocuments(response: VantaDocumentsResponse): string {
 function formatDocument(doc: VantaDocument, index: number): string {
   const parts: string[] = [];
   parts.push(`Document #${index}`);
-  addField(parts, "Title", doc.title);
-  addField(parts, "ID", doc.id);
-  addField(parts, "Status", doc.uploadStatus);
-  addField(parts, "Category", doc.category);
-  addBooleanField(parts, "Sensitive", doc.isSensitive);
-  addField(parts, "Owner ID", doc.ownerId);
-  addTextField(parts, "Description", doc.description);
-  addField(parts, "URL", doc.url);
-  addDateField(parts, "Upload Status Date", doc.uploadStatusDate);
+  parts.push(
+    ...[
+      addField("Title", doc.title),
+      addField("ID", doc.id),
+      addField("Status", doc.uploadStatus),
+      addField("Category", doc.category),
+      addBooleanField("Sensitive", doc.isSensitive),
+      addField("Owner ID", doc.ownerId),
+      addTextField("Description", doc.description),
+      addField("URL", doc.url),
+      addDateField("Upload Status Date", doc.uploadStatusDate),
+    ].filter((x): x is string => x !== null)
+  );
   return parts.join("\n");
 }
 
@@ -790,9 +810,13 @@ function formatIntegration(
 ): string {
   const parts: string[] = [];
   parts.push(`Integration #${index}`);
-  addRequiredField(parts, "ID", integration.integrationId);
-  addRequiredField(parts, "Name", integration.displayName);
-  addArrayField(parts, "Resource Kinds", integration.resourceKinds);
+  parts.push(
+    ...[
+      addRequiredField("ID", integration.integrationId),
+      addRequiredField("Name", integration.displayName),
+      addArrayField("Resource Kinds", integration.resourceKinds),
+    ].filter((x): x is string => x !== null)
+  );
   if (integration.connections?.length) {
     parts.push(`Connections: ${integration.connections.length}`);
     integration.connections.forEach((conn, idx) => {
@@ -837,14 +861,18 @@ export function renderFrameworks(response: VantaFrameworksResponse): string {
 function formatFramework(framework: VantaFramework, index: number): string {
   const parts: string[] = [];
   parts.push(`Framework #${index}`);
-  addField(parts, "Name", framework.name);
-  addField(parts, "ID", framework.id);
-  addField(parts, "Status", framework.status);
+  parts.push(
+    ...[
+      addField("Name", framework.name),
+      addField("ID", framework.id),
+      addField("Status", framework.status),
+      addField("Controls", framework.controlCount),
+      addField("Description", framework.description),
+    ].filter((x): x is string => x !== null)
+  );
   if (framework.completionPercentage != null) {
     parts.push(`Completion: ${framework.completionPercentage}%`);
   }
-  addField(parts, "Controls", framework.controlCount);
-  addField(parts, "Description", framework.description);
   return parts.join("\n");
 }
 
@@ -878,19 +906,34 @@ export function renderPeople(response: VantaPeopleResponse): string {
 function formatPerson(person: VantaPerson, index: number): string {
   const parts: string[] = [];
   parts.push(`Person #${index}`);
-  addRequiredField(parts, "ID", person.id);
+  const idField = addRequiredField("ID", person.id);
+  if (idField) {
+    parts.push(idField);
+  }
   if (person.name) {
     parts.push(`Name: ${person.name.display}`);
-    addField(parts, "First Name", person.name.first);
-    addField(parts, "Last Name", person.name.last);
+    parts.push(
+      ...[
+        addField("First Name", person.name.first),
+        addField("Last Name", person.name.last),
+      ].filter((x): x is string => x !== null)
+    );
   }
-  addField(parts, "Email", person.emailAddress);
-  addArrayField(parts, "Group IDs", person.groupIds);
+  parts.push(
+    ...[
+      addField("Email", person.emailAddress),
+      addArrayField("Group IDs", person.groupIds),
+    ].filter((x): x is string => x !== null)
+  );
   if (person.employment) {
-    addField(parts, "Employment Status", person.employment.status);
-    addField(parts, "Job Title", person.employment.jobTitle);
-    addDateField(parts, "Start Date", person.employment.startDate);
-    addDateField(parts, "End Date", person.employment.endDate);
+    parts.push(
+      ...[
+        addField("Employment Status", person.employment.status),
+        addField("Job Title", person.employment.jobTitle),
+        addDateField("Start Date", person.employment.startDate),
+        addDateField("End Date", person.employment.endDate),
+      ].filter((x): x is string => x !== null)
+    );
   }
   if (person.leaveInfo) {
     parts.push(`Leave Info: ${JSON.stringify(person.leaveInfo)}`);
@@ -934,27 +977,31 @@ export function renderRisks(response: VantaRisksResponse): string {
 function formatRisk(risk: VantaRisk, index: number): string {
   const parts: string[] = [];
   parts.push(`Risk #${index}`);
-  addRequiredField(parts, "Risk ID", risk.riskId);
-  addArrayField(parts, "Categories", risk.categories);
-  addTextField(parts, "Description", risk.description);
-  addField(parts, "Review Status", risk.reviewStatus);
-  addField(parts, "Likelihood", risk.likelihood);
-  addField(parts, "Impact", risk.impact);
-  addField(parts, "Treatment", risk.treatment);
-  addField(parts, "Owner", risk.owner);
-  addField(parts, "Residual Likelihood", risk.residualLikelihood);
-  addField(parts, "Residual Impact", risk.residualImpact);
-  addArrayField(parts, "CIA Categories", risk.ciaCategories);
-  addTextField(parts, "Note", risk.note);
-  addField(parts, "Risk Register", risk.riskRegister);
+  parts.push(
+    ...[
+      addRequiredField("Risk ID", risk.riskId),
+      addArrayField("Categories", risk.categories),
+      addTextField("Description", risk.description),
+      addField("Review Status", risk.reviewStatus),
+      addField("Likelihood", risk.likelihood),
+      addField("Impact", risk.impact),
+      addField("Treatment", risk.treatment),
+      addField("Owner", risk.owner),
+      addField("Residual Likelihood", risk.residualLikelihood),
+      addField("Residual Impact", risk.residualImpact),
+      addArrayField("CIA Categories", risk.ciaCategories),
+      addTextField("Note", risk.note),
+      addField("Risk Register", risk.riskRegister),
+      addBooleanField("Archived", risk.isArchived),
+      addArrayField("Required Approvers", risk.requiredApprovers),
+    ].filter((x): x is string => x !== null)
+  );
   if (risk.customFields?.length) {
     parts.push("Custom Fields:");
     risk.customFields.forEach((field) => {
       parts.push(`  ${field.label}: ${String(field.value)}`);
     });
   }
-  addBooleanField(parts, "Archived", risk.isArchived);
-  addArrayField(parts, "Required Approvers", risk.requiredApprovers);
   return parts.join("\n");
 }
 
@@ -990,37 +1037,46 @@ export function renderVulnerabilities(
 function formatVulnerability(vuln: VantaVulnerability, index: number): string {
   const parts: string[] = [];
   parts.push(`Vulnerability #${index}`);
-  addRequiredField(parts, "ID", vuln.id);
-  addRequiredField(parts, "Name", vuln.name);
-  addRequiredField(parts, "Description", cleanText(vuln.description));
-  addRequiredField(parts, "Severity", vuln.severity);
-  addRequiredField(parts, "Type", vuln.vulnerabilityType);
-  addRequiredField(parts, "Integration ID", vuln.integrationId);
-  addRequiredField(parts, "Target ID", vuln.targetId);
-  addField(parts, "Package", vuln.packageIdentifier);
-  addField(parts, "CVSS Score", vuln.cvssSeverityScore);
-  addField(parts, "Scanner Score", vuln.scannerScore);
-  addBooleanField(parts, "Fixable", vuln.isFixable);
-  addDateField(parts, "Remediate By", vuln.remediateByDate);
-  addRequiredField(parts, "First Detected", formatDate(vuln.firstDetectedDate));
-  addDateField(parts, "Source Detected", vuln.sourceDetectedDate);
-  addDateField(parts, "Last Detected", vuln.lastDetectedDate);
-  addField(parts, "Scan Source", vuln.scanSource);
-  addField(parts, "External URL", vuln.externalURL);
-  addArrayField(parts, "Related Vulnerabilities", vuln.relatedVulns);
-  addArrayField(parts, "Related URLs", vuln.relatedUrls);
+  parts.push(
+    ...[
+      addRequiredField("ID", vuln.id),
+      addRequiredField("Name", vuln.name),
+      addRequiredField("Description", cleanText(vuln.description)),
+      addRequiredField("Severity", vuln.severity),
+      addRequiredField("Type", vuln.vulnerabilityType),
+      addRequiredField("Integration ID", vuln.integrationId),
+      addRequiredField("Target ID", vuln.targetId),
+      addField("Package", vuln.packageIdentifier),
+      addField("CVSS Score", vuln.cvssSeverityScore),
+      addField("Scanner Score", vuln.scannerScore),
+      addBooleanField("Fixable", vuln.isFixable),
+      addDateField("Remediate By", vuln.remediateByDate),
+      addRequiredField("First Detected", formatDate(vuln.firstDetectedDate)),
+      addDateField("Source Detected", vuln.sourceDetectedDate),
+      addDateField("Last Detected", vuln.lastDetectedDate),
+      addField("Scan Source", vuln.scanSource),
+      addField("External URL", vuln.externalURL),
+      addArrayField("Related Vulnerabilities", vuln.relatedVulns),
+      addArrayField("Related URLs", vuln.relatedUrls),
+    ].filter((x): x is string => x !== null)
+  );
   if (vuln.deactivateMetadata) {
     parts.push(`Deactivated: Yes`);
-    addDateField(
-      parts,
+    const deactivatedAt = addDateField(
       "Deactivated At",
       vuln.deactivateMetadata.deactivatedAt
     );
-    addField(parts, "Deactivated By", vuln.deactivateMetadata.deactivatedBy);
-    addField(
-      parts,
-      "Deactivation Reason",
-      vuln.deactivateMetadata.deactivationReason
+    if (deactivatedAt) {
+      parts.push(deactivatedAt);
+    }
+    parts.push(
+      ...[
+        addField("Deactivated By", vuln.deactivateMetadata.deactivatedBy),
+        addField(
+          "Deactivation Reason",
+          vuln.deactivateMetadata.deactivationReason
+        ),
+      ].filter((x): x is string => x !== null)
     );
   }
   return parts.join("\n");
@@ -1064,11 +1120,15 @@ function formatDocumentResource(
   const parts: string[] = [];
   const label = resourceType.slice(0, -1);
   parts.push(`${label.charAt(0).toUpperCase() + label.slice(1)} #${index}`);
-  addField(parts, "ID", resource.id);
-  addField(parts, "Name", resource.name);
-  addField(parts, "Type", resource.type);
-  addField(parts, "URL", resource.url);
-  addField(parts, "Description", resource.description);
+  parts.push(
+    ...[
+      addField("ID", resource.id),
+      addField("Name", resource.name),
+      addField("Type", resource.type),
+      addField("URL", resource.url),
+      addField("Description", resource.description),
+    ].filter((x): x is string => x !== null)
+  );
   return parts.join("\n");
 }
 
@@ -1133,14 +1193,18 @@ function formatIntegrationResource(
 ): string {
   const parts: string[] = [];
   parts.push(`Resource #${index}`);
-  addRequiredField(parts, "ID", resource.id);
-  addRequiredField(parts, "Name", resource.displayName);
-  addRequiredField(parts, "Kind", resource.kind);
-  addBooleanField(parts, "In Scope", resource.inScope);
-  addField(parts, "Account", resource.account);
-  addField(parts, "Region", resource.region);
-  addField(parts, "Owner", resource.owner);
-  addField(parts, "Description", resource.description);
-  addDateField(parts, "Created", resource.createdDate);
+  parts.push(
+    ...[
+      addRequiredField("ID", resource.id),
+      addRequiredField("Name", resource.displayName),
+      addRequiredField("Kind", resource.kind),
+      addBooleanField("In Scope", resource.inScope),
+      addField("Account", resource.account),
+      addField("Region", resource.region),
+      addField("Owner", resource.owner),
+      addField("Description", resource.description),
+      addDateField("Created", resource.createdDate),
+    ].filter((x): x is string => x !== null)
+  );
   return parts.join("\n");
 }
