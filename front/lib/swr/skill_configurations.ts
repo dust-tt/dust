@@ -25,11 +25,11 @@ import type {
 export function useSkillConfigurations({
   owner,
   disabled,
-  status,
+  status = "active",
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
-  status: SkillStatus;
+  status?: SkillStatus;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
     fetcher;
