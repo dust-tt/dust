@@ -45,6 +45,7 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  removeNulls,
 } from "@app/types";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -371,9 +372,9 @@ export async function createOrUpgradeAgentConfiguration({
       );
     }
 
-    const additionalSpaceModelIds = additionalSpaces
-      .map((s) => getResourceIdFromSId(s.sId))
-      .filter((id) => id !== null);
+    const additionalSpaceModelIds = removeNulls(
+      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
+    );
 
     allRequestedSpaceIds = [
       ...new Set([...allRequestedSpaceIds, ...additionalSpaceModelIds]),
