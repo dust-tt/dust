@@ -110,7 +110,7 @@ export function SkillDetailsSheetContent({
             label="Editors"
             icon={UserGroupIcon}
             onClick={() => setSelectedTab("editors")}
-            disabled={!!skillConficurationWithRelations}
+            disabled={skillConficurationWithRelations === null}
           />
         </TabsList>
         <div className="mt-4">
