@@ -443,7 +443,7 @@ export function isUserMessageContextValid(
   const {
     "user-agent": userAgent,
     "x-dust-extension-version": extensionVersion,
-    "x-zendesk-app-id": zendeskAppId,
+    "x-zendesk-request-id": zendeskReqId,
   } = req.headers;
 
   switch (context.origin) {
@@ -460,7 +460,7 @@ export function isUserMessageContextValid(
       return authMethod === "api_key";
     case "zendesk": // TODO: switch to OAuth
       return (
-        (authMethod === "api_key" || authMethod === "oauth") && !!zendeskAppId
+        (authMethod === "api_key" || authMethod === "oauth") && !!zendeskReqId
       );
     case "cli":
     case "cli_programmatic":
