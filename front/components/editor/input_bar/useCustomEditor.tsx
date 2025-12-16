@@ -6,6 +6,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -257,6 +258,7 @@ export const buildEditorExtensions = ({
         conversationId,
       }),
     }),
+    EmojiExtension,
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:

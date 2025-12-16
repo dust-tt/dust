@@ -14,3 +14,14 @@ export interface MentionDropdownProps {
   clientRect?: (() => DOMRect | null) | null;
   onClose?: () => void;
 }
+
+export type EmojiDropdownOnKeyDown = {
+  onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+};
+
+export interface EmojiDropdownProps {
+  query: string;
+  command: (item: { name: string }) => void;
+  clientRect?: (() => DOMRect | null) | null;
+  onClose?: () => void;
+}
