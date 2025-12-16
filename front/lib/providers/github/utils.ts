@@ -9,6 +9,7 @@ const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
 /**
  * Truncates a GitHub search query to respect both the 256 character limit
  * and the maximum of 5 AND/OR/NOT operators.
+ * https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#limitations-on-query-length
  */
 export function truncateGitHubQuery(query: string): string {
   // First, check operator count
