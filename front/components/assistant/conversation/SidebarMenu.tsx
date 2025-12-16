@@ -793,6 +793,8 @@ const ConversationListItem = memo(
             selected={router.query.cId === conversation.sId}
             status={getConversationDotStatus(conversation)}
             label={conversationLabel}
+            href={getConversationRoute(owner.sId, conversation.sId)}
+            shallow
             moreMenu={
               <ConversationMenu
                 activeConversationId={conversation.sId}
@@ -813,13 +815,6 @@ const ConversationListItem = memo(
                 // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
                 await new Promise((resolve) => setTimeout(resolve, 600));
               }
-              await router.push(
-                getConversationRoute(owner.sId, conversation.sId),
-                undefined,
-                {
-                  shallow: true,
-                }
-              );
             }}
           />
         )}
