@@ -224,7 +224,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     await SkillConfigurationFactory.linkGlobalSkillToAgent(auth, {
       globalSkillId: "frames",
-      agentConfigurationId: agent.id,
+      agentConfigurationId: agent,
     });
 
     req.query = { ...req.query, wId: workspace.sId, withRelations: "true" };

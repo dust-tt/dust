@@ -67,11 +67,11 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
 
     await SkillConfigurationFactory.linkToAgent(auth, {
       skillId: skill1.id,
-      agentConfigurationId: agent.id,
+      agentConfiguration: agent,
     });
     await SkillConfigurationFactory.linkToAgent(auth, {
       skillId: skill2.id,
-      agentConfigurationId: agent.id,
+      agentConfiguration: agent,
     });
 
     req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
@@ -163,7 +163,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     });
     await SkillConfigurationFactory.linkToAgent(auth, {
       skillId: skill.id,
-      agentConfigurationId: agent.id,
+      agentConfiguration: agent,
     });
 
     req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
@@ -191,7 +191,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
       });
       await SkillConfigurationFactory.linkToAgent(auth, {
         skillId: skill.id,
-        agentConfigurationId: agent.id,
+        agentConfiguration: agent,
       });
 
       req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };

@@ -302,7 +302,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agentConfiguration.sId,
         workspaceId: workspace.id,
       },
     });
@@ -863,7 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const conversationSkillBlob = {
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
+      agentConfigurationId: agentConfiguration.sId,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
       agentMessageId: agentMessage.agentMessageId,

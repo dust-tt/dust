@@ -20,8 +20,7 @@ export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
-  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
-  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
+  declare agentConfigurationId: string;
 
   declare getCustomSkill: BelongsToGetAssociationMixin<SkillConfigurationModel>;
   declare getAgentConfigurationModel: BelongsToGetAssociationMixin<AgentConfigurationModel>;
@@ -48,7 +47,7 @@ AgentSkillModel.init(
       allowNull: true,
     },
     agentConfigurationId: {
-      type: DataTypes.BIGINT,
+      type: DataTypes.STRING,
       allowNull: false,
     },
   },
@@ -83,16 +82,6 @@ SkillConfigurationModel.hasMany(AgentSkillModel, {
   foreignKey: { name: "customSkillId", allowNull: true },
   as: "skillAgentLinks",
   onDelete: "RESTRICT",
-});
-
-// Association with AgentConfigurationModel
-AgentSkillModel.belongsTo(AgentConfigurationModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-AgentConfigurationModel.hasMany(AgentSkillModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  as: "skillAgentLinks",
 });
 
 // Many-to-Many associations
