@@ -599,65 +599,63 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  static async listVersions(
-    auth: Authenticator,
-    skillId: string
-  ): Promise<SkillConfigurationType[]> {
+  async listVersions(auth: Authenticator): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
-
-    // Fetch the current skill configuration
-    const currentSkill = await this.fetchById(auth, skillId);
-
-    if (!currentSkill) {
-      return [];
-    }
 
     // Fetch all historical versions from skill_versions table
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: workspace.id,
-      skillConfigurationId: currentSkill.id,
+      skillConfigurationId: this.id,
     };
 
     const versionModels = await SkillVersionModel.findAll({
       where,
-      order: [["version", "DESC"]],
     });
 
-    // Convert version models to SkillConfigurationType
-    const historicalVersions: SkillConfigurationType[] = versionModels.map(
-      (versionModel) => ({
-        id: versionModel.id,
-        sId: currentSkill.sId,
-        createdAt: versionModel.createdAt?.getTime() ?? null,
-        updatedAt: versionModel.updatedAt?.getTime() ?? null,
-        versionAuthorId: versionModel.authorId,
-        status: versionModel.status,
-        name: versionModel.name,
-        agentFacingDescription: versionModel.agentFacingDescription,
-        userFacingDescription: versionModel.userFacingDescription,
-        instructions: versionModel.instructions,
-        icon: versionModel.icon,
-        requestedSpaceIds: versionModel.requestedSpaceIds.map((spaceId) =>
-          SpaceResource.modelIdToSId({
-            id: Number(spaceId),
-            workspaceId: workspace.id,
-          })
-        ),
-        tools: versionModel.mcpServerConfigurationIds.map((mcpServerId) => ({
-          mcpServerViewId: makeSId("mcp_server_view", {
-            id: mcpServerId,
-            workspaceId: workspace.id,
-          }),
-        })),
-        canWrite: currentSkill.canWrite(auth),
-      })
+    // Sort application-side
+    const sortedVersionModels = versionModels.sort(
+      (a, b) => b.version - a.version
     );
 
-    // Include the current version as the first item (latest)
-    const currentVersion: SkillConfigurationType = currentSkill.toJSON(auth);
+    // Convert version models to SkillResource instances
+    const historicalVersions: SkillResource[] = sortedVersionModels.map(
+      (versionModel) => {
+        const mcpServerConfigurations =
+          versionModel.mcpServerConfigurationIds.map((mcpServerId) => ({
+            id: -1,
+            workspaceId: workspace.id,
+            skillConfigurationId: this.id,
+            mcpServerViewId: mcpServerId,
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
+          }));
+
+        return new SkillResource(
+          this.model,
+          {
+            id: this.id,
+            workspaceId: workspace.id,
+            authorId: versionModel.authorId,
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
+            status: versionModel.status,
+            name: versionModel.name,
+            agentFacingDescription: versionModel.agentFacingDescription,
+            userFacingDescription: versionModel.userFacingDescription,
+            instructions: versionModel.instructions,
+            icon: versionModel.icon,
+            requestedSpaceIds: versionModel.requestedSpaceIds,
+          },
+          {
+            editorGroup: this.editorGroup ?? undefined,
+            mcpServerConfigurations,
+          }
+        );
+      }
+    );
 
     // Return current version + all historical versions
-    return [currentVersion, ...historicalVersions];
+    return [this, ...historicalVersions];
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {

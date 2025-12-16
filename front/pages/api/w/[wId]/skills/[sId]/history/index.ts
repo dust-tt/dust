@@ -2,7 +2,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { listSkillConfigurationVersions } from "@app/lib/api/assistant/configuration/skill";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -70,14 +69,15 @@ async function handler(
 
       const { limit } = queryValidation.right;
 
-      let skillVersions = await listSkillConfigurationVersions(auth, {
-        skillId: sId,
-      });
+      let skillVersionResources = await skill.listVersions(auth);
 
-      // Return the latest versions first (already sorted by version DESC)
       if (limit) {
-        skillVersions = skillVersions.slice(0, limit);
+        skillVersionResources = skillVersionResources.slice(0, limit);
       }
+
+      const skillVersions = skillVersionResources.map((resource) =>
+        resource.toJSON(auth)
+      );
 
       return res.status(200).json({ history: skillVersions });
     default:
