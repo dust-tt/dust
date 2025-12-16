@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -842,6 +843,75 @@ export const WithTags: Story = {
           ))}
         </div>
       </div>
+    );
+  },
+};
+
+export const WithFilters: Story = {
+  render: () => {
+    const [selectedFilter, setSelectedFilter] = useState<string | null>("all");
+
+    const filters = [
+      { label: "All", value: "all" },
+      { label: "Documents", value: "documents" },
+      { label: "Images", value: "images" },
+      { label: "Videos", value: "videos" },
+    ];
+
+    const allItems = [
+      { name: "Project Proposal.pdf", type: "documents", icon: DocumentIcon },
+      { name: "Q4 Report.docx", type: "documents", icon: DocumentIcon },
+      { name: "Team Photo.jpg", type: "images", icon: FolderIcon },
+      { name: "Logo Design.png", type: "images", icon: FolderIcon },
+      { name: "Product Demo.mp4", type: "videos", icon: FolderIcon },
+      { name: "Tutorial.mov", type: "videos", icon: FolderIcon },
+      { name: "Budget 2024.xlsx", type: "documents", icon: DocumentIcon },
+      { name: "Banner.svg", type: "images", icon: FolderIcon },
+    ];
+
+    const filteredItems =
+      selectedFilter === "all"
+        ? allItems
+        : allItems.filter((item) => item.type === selectedFilter);
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={`Files (${filteredItems.length})`}
+            icon={FolderIcon}
+            variant="outline"
+            size="sm"
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="s-w-[320px]"
+          dropdownHeaders={
+            <DropdownMenuFilters
+              filters={filters}
+              selectedValue={selectedFilter}
+              onSelectFilter={setSelectedFilter}
+            />
+          }
+        >
+          <DropdownMenuSeparator />
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item) => (
+              <DropdownMenuItem
+                key={item.name}
+                label={item.name}
+                icon={item.icon}
+                onClick={() => console.log("Selected:", item.name)}
+              />
+            ))
+          ) : (
+            <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+              No items found
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   },
 };
