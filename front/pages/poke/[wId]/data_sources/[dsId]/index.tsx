@@ -878,9 +878,146 @@ function NotionUrlCheckOrFind({
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
   >(null);
-  const [command, setCommand] = useState<"check-url" | "find-url" | null>(
+  const [command, setCommand] = useState<"check-url" | "find-url" | "parent-chain" | null>(
     "check-url"
   );
+  const [parentChainResult, setParentChainResult] = useState<string | null>(null);
+  const [isLoadingParentChain, setIsLoadingParentChain] = useState(false);
+
+  const handleParentChain = async () => {
+    setCommand("parent-chain");
+    setUrlDetails(null);
+    setParentChainResult(null);
+    setIsLoadingParentChain(true);
+
+    try {
+      // Extract Notion ID from URL
+      // Handle both full URLs (https://www.notion.so/Block-child-page-28cd1abaf14f80a4bfd4c51ba853d732)
+      // and just IDs (28cd1abaf14f80a4bfd4c51ba853d732)
+      let notionId = notionUrl.trim();
+
+      // If it's a full URL, extract the last part
+      if (notionId.includes("notion.so/")) {
+        const urlParts = notionId.split("/").filter((p) => p);
+        notionId = urlParts[urlParts.length - 1];
+      }
+
+      // Handle URLs with query parameters
+      if (notionId.includes("?")) {
+        notionId = notionId.split("?")[0];
+      }
+
+      // Extract the ID part (last 32 hex characters)
+      // For URLs like "Block-child-page-28cd1abaf14f80a4bfd4c51ba853d732"
+      // we want to extract "28cd1abaf14f80a4bfd4c51ba853d732"
+      const idMatch = notionId.match(/([a-f0-9]{32})$/i);
+      if (idMatch) {
+        notionId = idMatch[1];
+      } else {
+        // If no 32-char hex string found, try removing all dashes and using the whole string
+        notionId = notionId.replaceAll("-", "");
+      }
+
+      // Format as UUID
+      const formattedId = `${notionId.slice(0, 8)}-${notionId.slice(8, 12)}-${notionId.slice(12, 16)}-${notionId.slice(16, 20)}-${notionId.slice(20)}`;
+
+      const chain: string[] = [];
+      let currentId = formattedId;
+      let currentType: "page_id" | "database_id" | "block_id" | null = "block_id";
+      let reachedWorkspace = false;
+
+      // Start with trying pages, then databases
+      while (!reachedWorkspace && chain.length < 20) {
+        try {
+          const apiType = currentType === "page_id" ? "pages" : currentType === "database_id" ? "databases" : "blocks";
+
+          const res = await clientFetch(`/api/poke/admin`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              majorCommand: "notion",
+              command: "api-request",
+              args: {
+                wId: owner.sId,
+                dsId: dsId,
+                url: `${apiType}/${currentId}`,
+                method: "GET",
+              },
+            }),
+          });
+
+          if (!res.ok) {
+            chain.push(`${currentId} error: ${res.statusText}`);
+            break;
+          }
+
+          const result = await res.json();
+          const responseData = result.data;
+          let title = "";
+
+          if (result.status !== 200) {
+           chain.push(`${currentId} error: ${responseData.message}`);
+          }
+          else if (apiType === "pages") {
+            // Find the first property with type "title"
+            const properties = responseData.properties ?? {};
+            let titleProp = null;
+            for (const key in properties) {
+              if (properties[key]?.type === "title") {
+                titleProp = properties[key];
+                break;
+              }
+            }
+            title = titleProp?.title?.[0]?.plain_text ?? "Untitled";
+            chain.push(`${currentId} page: ${title}`);
+          } else if (apiType === "databases") {
+            title = responseData.title?.[0]?.plain_text ?? "Untitled";
+            chain.push(`${currentId} DB: ${title}`);
+          } else if (apiType === "blocks") {
+            const blockType = responseData.type ?? "unknown";
+            chain.push(`${currentId} block: ${blockType}`);
+          }
+
+          // Check if we reached workspace
+          if (responseData.parent?.type === "workspace") {
+            chain.push("workspace");
+            reachedWorkspace = true;
+            break;
+          }
+
+          // Get parent info
+          currentType = responseData.parent?.type;
+          if (responseData.parent?.page_id) {
+            currentId = responseData.parent.page_id;
+          } else if (responseData.parent?.database_id) {
+            currentId = responseData.parent.database_id;
+          } else if (responseData.parent?.block_id) {
+            currentId = responseData.parent.block_id;
+          } else {
+            break;
+          }
+        } catch (err) {
+          chain.push(`${currentId} error: ${err instanceof Error ? err.message : "Unknown error"}`);
+          break;
+        }
+      }
+
+      // Reverse and add indentation based on depth
+      const reversedChain = chain.reverse();
+      const indentedChain = reversedChain.map((item, index) => {
+        const indent = "  ".repeat(index);
+        return `${indent}${item}`;
+      });
+
+      setParentChainResult(indentedChain.join("\n"));
+    } catch (err) {
+      setParentChainResult(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingParentChain(false);
+    }
+  };
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -922,6 +1059,12 @@ function NotionUrlCheckOrFind({
               )
             );
           }}
+        />
+        <Button
+          variant="outline"
+          label={isLoadingParentChain ? "Loading..." : "Parent Chain"}
+          disabled={isLoadingParentChain}
+          onClick={handleParentChain}
         />
       </div>
       <div className="text-muted-foreground dark:text-muted-foreground-night">
@@ -1019,6 +1162,14 @@ function NotionUrlCheckOrFind({
                 </span>
               </div>
             )}
+          </div>
+        )}
+        {command === "parent-chain" && parentChainResult && (
+          <div className="text-md flex flex-col gap-2 rounded-md p-4 pt-2">
+            <Chip label="Parent Chain" color="success" />
+            <div className="whitespace-pre-wrap font-mono text-sm">
+              {parentChainResult}
+            </div>
           </div>
         )}
       </div>
