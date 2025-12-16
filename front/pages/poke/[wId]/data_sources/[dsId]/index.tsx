@@ -60,6 +60,8 @@ import {
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
+const maxNotionParentChainDepth = 20;
+
 type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;
@@ -921,17 +923,27 @@ function NotionUrlCheckOrFind({
         notionId = notionId.replaceAll("-", "");
       }
 
-      // Format as UUID
-      const formattedId = `${notionId.slice(0, 8)}-${notionId.slice(8, 12)}-${notionId.slice(12, 16)}-${notionId.slice(16, 20)}-${notionId.slice(20)}`;
-
       const chain: string[] = [];
-      let currentId = formattedId;
+
+      const addEntryAndDisplayChain = (entry: string) => {
+        chain.unshift(entry);
+
+        // Add indentation based on depth
+        const indentedChain = chain.map((item, index) => {
+          const indent = "  ".repeat(index);
+          return `${indent}${item}`;
+        });
+
+        setParentChainResult(indentedChain.join("\n"));
+      };
+
+      let currentId = notionId;
       let currentType: "page_id" | "database_id" | "block_id" | null =
         "block_id";
       let reachedWorkspace = false;
 
       // Start with trying pages, then databases
-      while (!reachedWorkspace && chain.length < 20) {
+      while (!reachedWorkspace && chain.length < maxNotionParentChainDepth) {
         try {
           const apiType =
             currentType === "page_id"
@@ -958,7 +970,7 @@ function NotionUrlCheckOrFind({
           });
 
           if (!res.ok) {
-            chain.push(`${currentId} error: ${res.statusText}`);
+            addEntryAndDisplayChain(`${currentId} error: ${res.statusText}`);
             break;
           }
 
@@ -967,7 +979,10 @@ function NotionUrlCheckOrFind({
           let title = "";
 
           if (result.status !== 200) {
-            chain.push(`${currentId} error: ${responseData.message}`);
+            addEntryAndDisplayChain(
+              `${currentId} error: ${responseData.message}`
+            );
+            break;
           } else if (apiType === "pages") {
             // Find the first property with type "title"
             const properties = responseData.properties ?? {};
@@ -979,18 +994,18 @@ function NotionUrlCheckOrFind({
               }
             }
             title = titleProp?.title?.[0]?.plain_text ?? "Untitled";
-            chain.push(`${currentId} page: ${title}`);
+            addEntryAndDisplayChain(`${currentId} page: ${title}`);
           } else if (apiType === "databases") {
             title = responseData.title?.[0]?.plain_text ?? "Untitled";
-            chain.push(`${currentId} DB: ${title}`);
+            addEntryAndDisplayChain(`${currentId} DB: ${title}`);
           } else if (apiType === "blocks") {
             const blockType = responseData.type ?? "unknown";
-            chain.push(`${currentId} block: ${blockType}`);
+            addEntryAndDisplayChain(`${currentId} block: ${blockType}`);
           }
 
           // Check if we reached workspace
           if (responseData.parent?.type === "workspace") {
-            chain.push("workspace");
+            addEntryAndDisplayChain("workspace");
             reachedWorkspace = true;
             break;
           }
@@ -1007,19 +1022,12 @@ function NotionUrlCheckOrFind({
             break;
           }
         } catch (err) {
-          chain.push(`${currentId} error: ${normalizeError(err).message}`);
+          addEntryAndDisplayChain(
+            `${currentId} error: ${normalizeError(err).message}`
+          );
           break;
         }
       }
-
-      // Reverse and add indentation based on depth
-      const reversedChain = chain.reverse();
-      const indentedChain = reversedChain.map((item, index) => {
-        const indent = "  ".repeat(index);
-        return `${indent}${item}`;
-      });
-
-      setParentChainResult(indentedChain.join("\n"));
     } catch (err) {
       setParentChainResult(`Error: ${normalizeError(err).message}`);
     } finally {
