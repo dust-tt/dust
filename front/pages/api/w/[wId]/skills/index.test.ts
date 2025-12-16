@@ -201,9 +201,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 1,
-        agents: [{ sId: agent.sId }],
+      relations: {
+        usage: {
+          count: 1,
+          agents: [{ sId: agent.sId }],
+        },
       },
     });
   });
@@ -238,9 +240,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 1,
-        agents: [{ sId: agent.sId }],
+      relations: {
+        usage: {
+          count: 1,
+          agents: [{ sId: agent.sId }],
+        },
       },
     });
   });
@@ -274,9 +278,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 0,
-        agents: [],
+      relations: {
+        usage: {
+          count: 0,
+          agents: [],
+        },
       },
     });
   });
@@ -356,9 +362,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 2,
-        agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+      relations: {
+        usage: {
+          count: 2,
+          agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+        },
       },
     });
   });
