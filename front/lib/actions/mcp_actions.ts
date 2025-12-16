@@ -649,12 +649,11 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
  */
 export async function tryListMCPTools(
   auth: Authenticator,
+  agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
   {
-    agentLoopListToolsContext,
     jitServers,
     skillServers,
   }: {
-    agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType;
     jitServers: MCPServerConfigurationType[];
     skillServers: MCPServerConfigurationType[];
   }

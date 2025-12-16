@@ -328,18 +328,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async fetchAllAvailableSkills(
-    auth: Authenticator,
-    limit?: number
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        status: "active",
-      },
-      ...(limit ? { limit } : {}),
-    });
-  }
-
   static async listSkills(
     auth: Authenticator,
     { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
@@ -354,7 +342,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * List enabled skills for a given conversation and agent configuration.
    * Returns only active skills.
    */
-  static async listEnabledForConversation(
+  private static async listEnabledForConversation(
     auth: Authenticator,
     {
       agentConfiguration,
@@ -363,7 +351,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
     }
-  ) {
+  ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const conversationSkills = await ConversationSkillModel.findAll({
@@ -396,6 +384,40 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return SkillResource.fetchByIds(auth, allSkillIds);
+  }
+
+  /**
+   * List skills for a conversation, returning both enabled and equipped skills.
+   */
+  static async listForConversation(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+      conversation: ConversationType;
+    }
+  ): Promise<{
+    enabledSkills: SkillResource[];
+    equippedSkills: SkillResource[];
+  }> {
+    const enabledSkills = await this.listEnabledForConversation(auth, {
+      agentConfiguration,
+      conversation,
+    });
+    const allAgentSkills = await this.listByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+
+    // Skills that are already enabled are not equipped.
+    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
+    const equippedSkills = allAgentSkills.filter(
+      (s) => !enabledSkillIds.has(s.sId)
+    );
+
+    return { enabledSkills, equippedSkills };
   }
 
   private static async baseFetch(
