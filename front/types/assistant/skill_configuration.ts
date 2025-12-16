@@ -1,3 +1,4 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { UserType } from "@app/types/user";
 
@@ -22,4 +23,5 @@ export type SkillConfigurationType = {
 export type SkillConfigurationRelations = {
   usage: AgentsUsageType;
   editors: UserType[] | null;
+  mcpServerViews: MCPServerViewType[];
 };

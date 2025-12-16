@@ -21,7 +21,7 @@ import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -715,6 +715,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       { transaction }
     );
+  }
+
+  async listMCPServerViews(
+    auth: Authenticator
+  ): Promise<MCPServerViewResource[]> {
+    const mcpServerViewIds = this.mcpServerConfigurations.map(
+      (config) => config.mcpServerViewId
+    );
+
+    if (mcpServerViewIds.length === 0) {
+      return [];
+    }
+
+    const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+      auth,
+      mcpServerViewIds
+    );
+
+    return mcpServerViews;
   }
 
   async update(

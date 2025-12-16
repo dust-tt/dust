@@ -116,10 +116,13 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
+            const mcpServerViews = await sc.listMCPServerViews(auth);
+
             return {
               ...sc.toJSON(auth),
               usage,
               editors: editors ? editors.map((e) => e.toJSON()) : null,
+              mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
             } satisfies SkillConfigurationType & SkillConfigurationRelations;
           },
           { concurrency: 10 }
