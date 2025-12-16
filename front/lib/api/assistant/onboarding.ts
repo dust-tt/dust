@@ -224,11 +224,6 @@ Example ending:
 Example ending:
 :quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
 
-### After user completes a tool setup
-1. Confirm briefly (one line + emoji)
-2. Immediately use the tool to fetch real data
-3. End with quick replies for possible follow-up tasks
-
 ### When user asks to connect more tools
 1. Show 1-2 relevant toolSetup directives (on same line)
 2. Include a skip option
