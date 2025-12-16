@@ -224,11 +224,6 @@ Example ending:
 Example ending:
 :quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
 
-### After user completes a tool setup
-1. Confirm briefly (one line + emoji)
-2. Suggest 1-2 simple tasks they can try RIGHT NOW with that specific tool
-3. End with quick replies for those tasks
-
 ### When user asks to connect more tools
 1. Show 1-2 relevant toolSetup directives (on same line)
 2. Include a skip option
@@ -236,67 +231,93 @@ Example ending:
 </dust_system>`;
 }
 
-// Tool-specific task suggestions for the follow-up prompt after connecting a tool.
-// These are intentionally generic and don't assume what data the user has.
-const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
-  gmail: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Search emails]{message="Search my emails for messages from last week"}`,
+// Tool-specific guidance for automatically querying tools during onboarding.
+// The agent will use these to fetch real data and generate personalized suggestions.
+const TOOL_AUTO_QUERY_GUIDANCE: Record<string, string> = {
+  gmail: `Automatically fetch recent unread emails from the last 2-3 days. Look for emails that might need a response or action. Present 1-2 specific examples with sender names and brief context.`,
 
-  outlook: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Search emails]{message="Search my emails for messages from last week"}`,
+  outlook: `Automatically fetch recent unread emails from the last 2-3 days. Look for emails that might need a response or action. Present 1-2 specific examples with sender names and brief context.`,
 
-  github: `Example quick replies:
-:quickReply[My open PRs]{message="Show my open pull requests"} :quickReply[My issues]{message="Show issues assigned to me"}`,
+  github: `Automatically check for recent notifications, open pull requests, or issues assigned to the user. Present 1-2 specific examples with repo names and brief context.`,
 
-  notion: `Example quick replies:
-:quickReply[Search pages]{message="Search for a page in Notion"} :quickReply[Recent pages]{message="Show recently updated pages"}`,
+  notion: `Automatically check for recently edited or created pages from the last few days. Present 1-2 specific examples with page titles.`,
 
-  slack: `Example quick replies:
-:quickReply[Search messages]{message="Search my Slack messages"} :quickReply[Recent messages]{message="Show my recent Slack messages"}`,
+  slack: `Automatically check for recent unread messages, mentions, or important threads from the last day or two. Present 1-2 specific examples with channel or sender names.`,
 
-  hubspot: `Example quick replies:
-:quickReply[Search contacts]{message="Search for a contact in HubSpot"} :quickReply[Recent deals]{message="Show recent deals"}`,
+  hubspot: `Automatically check for recent deals, contacts, or activities. Present 1-2 specific examples with names and brief context.`,
 
-  jira: `Example quick replies:
-:quickReply[My tickets]{message="Show my open Jira tickets"} :quickReply[Search tickets]{message="Search for a Jira ticket"}`,
+  jira: `Automatically check for open tickets assigned to the user or recently updated tickets. Present 1-2 specific examples with ticket IDs and brief context.`,
 
-  google_drive: `Example quick replies:
-:quickReply[Search files]{message="Search for a file in Google Drive"} :quickReply[Recent files]{message="Show my recently modified files"}`,
+  google_drive: `Automatically check for recently modified or created files from the last few days. Present 1-2 specific examples with file names and types.`,
 
-  microsoft_drive: `Example quick replies:
-:quickReply[Search files]{message="Search for a file in OneDrive"} :quickReply[Recent files]{message="Show my recently modified files"}`,
+  microsoft_drive: `Automatically check for recently modified or created files from the last few days. Present 1-2 specific examples with file names and types.`,
 
-  google_calendar: `Example quick replies:
-:quickReply[Today's events]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
+  google_calendar: `Automatically check for upcoming events today or tomorrow. Present 1-2 specific examples with event names and times.`,
 
-  outlook_calendar: `Example quick replies:
-:quickReply[Today's events]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
+  outlook_calendar: `Automatically check for upcoming events today or tomorrow. Present 1-2 specific examples with event names and times.`,
 
-  microsoft_teams: `Example quick replies:
-:quickReply[Search messages]{message="Search my Teams messages"} :quickReply[Recent messages]{message="Show my recent Teams messages"}`,
+  microsoft_teams: `Automatically check for recent unread messages or mentions from the last day or two. Present 1-2 specific examples with channel or sender names.`,
 
-  microsoft_excel: `Example quick replies:
-:quickReply[List files]{message="List my Excel files"} :quickReply[Open a file]{message="Help me find an Excel file"}`,
+  microsoft_excel: `Automatically list recently modified Excel files. Present 1-2 specific examples with file names.`,
 };
 
-const DEFAULT_TASK_SUGGESTIONS = `Example quick replies:
-:quickReply[Try it out]{message="What can I do with this tool?"} :quickReply[Connect more]{message="What other tools can I connect?"}`;
+const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
 export function buildOnboardingFollowUpPrompt(toolId: string): string {
-  const taskSuggestions =
-    TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_TASK_SUGGESTIONS;
+  const queryGuidance =
+    TOOL_AUTO_QUERY_GUIDANCE[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
 
   return `<dust_system>
-The user just connected a tool. Respond briefly (2-3 lines max).
+The user just connected a tool (${toolId}). Your task is to AUTOMATICALLY use this tool to provide a personalized, helpful suggestion.
 
-1. Confirm the connection (one line + emoji)
-2. End with the quick replies below
+## Instructions:
 
-${taskSuggestions}
+1. **Immediately use the ${toolId} tool** to fetch real data (don't ask permission, just do it)
+2. **Query guidance**: ${queryGuidance}
+3. **If you find relevant data**:
+   - Briefly confirm the connection (one line + emoji)
+   - Share what you found in a conversational way (e.g., "I see you have an email from Roger 2 days ago that you haven't replied to")
+   - Suggest 1-2 specific, actionable things the user can do with this data
+   - End with quick reply buttons for those specific actions
 
-Do NOT invent specific searches or assume what data the user has. Only use the quick replies above.
+4. **If you don't find relevant data or get an error**:
+   - Briefly confirm the connection (one line + emoji)
+   - Mention you checked but didn't find urgent items
+   - Suggest 2 general things they can try with this tool
+   - End with quick reply buttons for general actions
 
-After tasks, end with: :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+## Response format:
+
+Keep your response SHORT (4-5 lines max). Structure it like:
+- Connection confirmed + emoji
+- What you found (specific names/titles/dates)
+- Suggestion(s)
+- Quick reply buttons
+
+## Quick reply format:
+
+End with 2-3 quick reply buttons on a single line:
+:quickReply[Button 1 Label]{message="The exact message to send"} :quickReply[Button 2 Label]{message="The exact message to send"}
+
+Then add these standard buttons on the next line:
+:quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+
+## CRITICAL: Be specific and actionable
+
+- Use actual names, titles, dates from the data you fetch
+- Make suggestions that are immediately actionable
+- Don't be vague or generic
+- If you can't find data, admit it and pivot to general suggestions
+
+## Example (Gmail):
+
+Great! Your Gmail is connected ✅
+
+I see you have an unread email from Sarah Chen from 2 days ago about the Q4 planning meeting, and one from Mike Rodriguez about reviewing the proposal draft.
+
+:quickReply[Draft reply to Sarah]{message="Help me draft a reply to Sarah Chen's email about Q4 planning"} :quickReply[Summarize today's emails]{message="Summarize my emails from today"}
+:quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+
 </dust_system>`;
 }
 
