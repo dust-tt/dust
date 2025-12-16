@@ -118,6 +118,7 @@ export const suggestionsOfMentions = async (
       agents: true,
       users: true,
     },
+    current = false,
   }: {
     query: string;
     conversationId?: string | null;
@@ -125,6 +126,7 @@ export const suggestionsOfMentions = async (
       agents: boolean;
       users: boolean;
     };
+    current?: boolean; // Include current user in suggestions
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
@@ -158,7 +160,7 @@ export const suggestionsOfMentions = async (
 
         // Convert participants to RichMention format
         participantUsers = participants.users
-          .filter((u) => u.sId !== currentUserSId)
+          .filter((u) => current || u.sId !== currentUserSId)
           .map((u) => ({
             type: "user" as const,
             id: u.sId,
@@ -230,7 +232,7 @@ export const suggestionsOfMentions = async (
       const { users } = res.value;
 
       const filteredUsers: RichUserMentionInConversation[] = users
-        .filter((u) => u.sId !== currentUserSId)
+        .filter((u) => current || u.sId !== currentUserSId)
         .map((u) => ({
           ...toRichUserMentionType(u.toJSON()),
           isParticipant: participantUsers.some((pu) => pu.id === u.sId),

@@ -48,6 +48,12 @@ import type { WithAPIErrorResponse } from "@app/types";
  *             enum:
  *               - agents
  *               - users
+ *       - in: query
+ *         name: current
+ *         required: false
+ *         description: Whether to include the current user in the suggestions.
+ *         schema:
+ *           type: boolean
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -117,7 +123,7 @@ async function handler(
   }
 
   const parsedQuery = GetMentionSuggestionsRequestQuerySchema.parse(req.query);
-  const { query, select: selectParam } = parsedQuery;
+  const { query, select: selectParam, current } = parsedQuery;
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   const mentions_v2_enabled = featureFlags.includes("mentions_v2");
@@ -145,6 +151,7 @@ async function handler(
   const suggestions = await suggestionsOfMentions(auth, {
     query,
     select,
+    current,
   });
 
   return res.status(200).json({ suggestions });
