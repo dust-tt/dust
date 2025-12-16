@@ -24,15 +24,17 @@ import type {
 export function useSkillConfigurations({
   owner,
   disabled,
+  status,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
+  status: SkillStatus;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
     fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills`,
+    `/api/w/${owner.sId}/skills?status=${status}`,
     skillConfigurationsFetcher,
     { disabled }
   );
