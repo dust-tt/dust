@@ -212,7 +212,7 @@ export function useSkillConfigurationHistory({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration?: SkillConfigurationType;
+  skillConfiguration?: SkillType;
   limit?: number;
   disabled?: boolean;
 }) {

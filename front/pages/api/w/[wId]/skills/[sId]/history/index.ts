@@ -9,10 +9,10 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import { GetSkillConfigurationsHistoryQuerySchema } from "@app/types/api/internal/skill";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsHistoryResponseBody = {
-  history: SkillConfigurationType[];
+  history: SkillType[];
 };
 
 async function handler(
