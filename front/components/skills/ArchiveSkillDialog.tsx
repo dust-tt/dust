@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useArchiveSkillConfiguration } from "@app/lib/swr/skill_configurations";
+import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -27,7 +27,7 @@ export function ArchiveSkillDialog({
   owner,
 }: DeleteSkillDialogProps) {
   const [isArchiving, setIsArchiving] = useState(false);
-  const doArchive = useArchiveSkillConfiguration({ owner, skillConfiguration });
+  const doArchive = useArchiveSkill({ owner, skillConfiguration });
 
   return (
     <Dialog

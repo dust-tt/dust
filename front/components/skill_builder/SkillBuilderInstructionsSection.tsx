@@ -13,7 +13,7 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
-import { useSkillConfigurationHistory } from "@app/lib/swr/skill_configurations";
+import { useSkillHistory } from "@app/lib/swr/skill_configurations";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
@@ -30,7 +30,7 @@ export function SkillBuilderInstructionsSection({
   const [compareVersion, setCompareVersion] = useState<SkillType | null>(null);
   const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
 
-  const { skillConfigurationHistory } = useSkillConfigurationHistory({
+  const { skillConfigurationHistory } = useSkillHistory({
     owner,
     skillConfiguration,
     disabled: !skillConfiguration,
@@ -51,21 +51,18 @@ export function SkillBuilderInstructionsSection({
     setIsInstructionDiffMode(false);
   };
 
-  const headerActions = (
-    <>
-      {skillConfigurationHistory && skillConfigurationHistory.length > 1 && (
-        <SkillInstructionsHistory
-          history={skillConfigurationHistory}
-          selectedConfig={compareVersion}
-          onSelect={(config) => {
-            setCompareVersion(config);
-            setIsInstructionDiffMode(true);
-          }}
-          owner={owner}
-        />
-      )}
-    </>
-  );
+  const headerActions = skillConfigurationHistory &&
+    skillConfigurationHistory.length > 1 && (
+      <SkillInstructionsHistory
+        history={skillConfigurationHistory}
+        selectedConfig={compareVersion}
+        onSelect={(config) => {
+          setCompareVersion(config);
+          setIsInstructionDiffMode(true);
+        }}
+        owner={owner}
+      />
+    );
 
   return (
     <section className="flex flex-col gap-3">

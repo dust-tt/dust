@@ -23,7 +23,7 @@ import type {
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
-export function useSkillConfigurations({
+export function useSkills({
   owner,
   disabled,
   status,
@@ -51,7 +51,7 @@ export function useSkillConfigurations({
   };
 }
 
-export function useSkillConfigurationsWithRelations({
+export function useSkillsWithRelations({
   owner,
   disabled,
   status,
@@ -98,7 +98,7 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
   return { getSimilarSkills };
 }
 
-export function useArchiveSkillConfiguration({
+export function useArchiveSkill({
   owner,
   skillConfiguration,
 }: {
@@ -107,13 +107,13 @@ export function useArchiveSkillConfiguration({
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
-    useSkillConfigurationsWithRelations({
+    useSkillsWithRelations({
       owner,
       status: "archived",
       disabled: true,
     });
   const { mutateSkillConfigurationsWithRelations: mutateActiveSkills } =
-    useSkillConfigurationsWithRelations({
+    useSkillsWithRelations({
       owner,
       status: "active",
       disabled: true,
@@ -154,7 +154,7 @@ export function useArchiveSkillConfiguration({
   return doArchive;
 }
 
-export function useRestoreSkillConfiguration({
+export function useRestoreSkill({
   owner,
   skill,
 }: {
@@ -163,13 +163,13 @@ export function useRestoreSkillConfiguration({
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
-    useSkillConfigurationsWithRelations({
+    useSkillsWithRelations({
       owner,
       status: "archived",
       disabled: true,
     });
   const { mutateSkillConfigurationsWithRelations: mutateActiveSkills } =
-    useSkillConfigurationsWithRelations({
+    useSkillsWithRelations({
       owner,
       status: "active",
       disabled: true,
@@ -210,7 +210,7 @@ export function useRestoreSkillConfiguration({
   return doRestore;
 }
 
-export function useSkillConfigurationHistory({
+export function useSkillHistory({
   owner,
   skillConfiguration,
   limit,

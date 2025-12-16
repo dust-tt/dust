@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 
-import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -35,7 +35,7 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
     skillConfigurations,
     isSkillConfigurationsLoading,
     isSkillConfigurationsError,
-  } = useSkillConfigurations({
+  } = useSkills({
     owner,
     disabled: !hasSkillsFeature,
   });

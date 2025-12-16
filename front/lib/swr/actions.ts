@@ -40,7 +40,7 @@ export function useAgentConfigurationActions(
   };
 }
 
-export function useSkillConfigurationTools(
+export function useSkillTools(
   owner: LightWorkspaceType,
   skillConfigurationId: string | null
 ) {
