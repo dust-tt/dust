@@ -46,8 +46,8 @@ import type {
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 import type {
-  SkillConfigurationType,
   SkillStatus,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 type SkillResourceConstructorOptions =
@@ -878,7 +878,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  toJSON(auth: Authenticator): SkillConfigurationType {
+  toJSON(auth: Authenticator): SkillType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
         id: config.mcpServerViewId,

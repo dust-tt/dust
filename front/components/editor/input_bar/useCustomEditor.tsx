@@ -15,6 +15,7 @@ import { URLStorageExtension } from "@app/components/editor/extensions/input_bar
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import {
   createMentionSuggestion,
@@ -354,6 +355,12 @@ const useCustomEditor = ({
             const mentionPluginState = mentionPluginKey.getState(view.state);
             // Let the mention extension handle the event if its dropdown is currently opened.
             if (mentionPluginState?.active) {
+              return false;
+            }
+
+            const emojiPluginState = emojiPluginKey.getState(view.state);
+            // Let the emoji extension handle the event if its dropdown is currently opened.
+            if (emojiPluginState?.active) {
               return false;
             }
 

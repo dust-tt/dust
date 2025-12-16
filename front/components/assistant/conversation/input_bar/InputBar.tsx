@@ -8,6 +8,7 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
@@ -28,6 +29,7 @@ import type {
   DataSourceViewContentNode,
   Result,
   RichMention,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
@@ -36,6 +38,7 @@ const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 interface InputBarProps {
   owner: WorkspaceType;
+  user: UserType | null;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -54,6 +57,7 @@ interface InputBarProps {
 
 export const InputBar = React.memo(function InputBar({
   owner,
+  user,
   onSubmit,
   conversationId,
   stickyMentions,
@@ -83,6 +87,12 @@ export const InputBar = React.memo(function InputBar({
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
+
+  const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
+    workspaceId: owner.sId,
+    userId: user?.sId ?? null,
+    conversationId,
+  });
 
   useEffect(() => {
     if (droppedFiles.length > 0) {
@@ -245,6 +255,7 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(false);
       if (r.isOk()) {
         resetEditorText();
+        clearDraft();
         fileUploaderService.resetUpload();
       }
     } else {
@@ -260,6 +271,7 @@ export const InputBar = React.memo(function InputBar({
       });
 
       resetEditorText();
+      clearDraft();
       fileUploaderService.resetUpload();
       setAttachedNodes([]);
     }
@@ -338,6 +350,8 @@ export const InputBar = React.memo(function InputBar({
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             attachedNodes={attachedNodes}
+            saveDraft={saveDraft}
+            getDraft={getDraft}
           />
         </div>
       </div>

@@ -17,14 +17,15 @@ import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFa
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
 
-type SkillConfigurationWithRelations = SkillConfigurationType &
-  SkillConfigurationRelations;
+type SkillConfigurationWithRelations = SkillType & {
+  relations: SkillRelations;
+};
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -66,9 +67,7 @@ describe("GET /api/w/[wId]/skills", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skillConfigurations");
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -97,9 +96,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skillConfigurations.map(
-      (s: SkillConfigurationType) => s.name
-    );
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
@@ -159,7 +156,7 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(res._getStatusCode()).toBe(200);
       const skillNames = res
         ._getJSONData()
-        .skillConfigurations.map((s: SkillConfigurationType) => s.name);
+        .skillConfigurations.map((s: SkillType) => s.name);
       expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
@@ -204,9 +201,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 1,
-        agents: [{ sId: agent.sId }],
+      relations: {
+        usage: {
+          count: 1,
+          agents: [{ sId: agent.sId }],
+        },
       },
     });
   });
@@ -241,9 +240,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 1,
-        agents: [{ sId: agent.sId }],
+      relations: {
+        usage: {
+          count: 1,
+          agents: [{ sId: agent.sId }],
+        },
       },
     });
   });
@@ -277,9 +278,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 0,
-        agents: [],
+      relations: {
+        usage: {
+          count: 0,
+          agents: [],
+        },
       },
     });
   });
@@ -308,9 +311,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillConfigurationType) => s.sId === skillSId
-      );
+      .skillConfigurations.find((s: SkillType) => s.sId === skillSId);
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
@@ -361,9 +362,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       );
 
     expect(skillResult).toMatchObject({
-      usage: {
-        count: 2,
-        agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+      relations: {
+        usage: {
+          count: 2,
+          agents: [{ name: "Agent Alpha" }, { name: "Agent Beta" }],
+        },
       },
     });
   });

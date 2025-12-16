@@ -1,6 +1,6 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { UserType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 /**
  * Transforms a skill configuration (server-side) into skill builder form data (client-side).
@@ -8,7 +8,7 @@ import type { SkillConfigurationType } from "@app/types/assistant/skill_configur
  * as they will be populated reactively in the component.
  */
 export function transformSkillConfigurationToFormData(
-  skillConfiguration: SkillConfigurationType
+  skillConfiguration: SkillType
 ): SkillBuilderFormData {
   return {
     name: skillConfiguration.name,

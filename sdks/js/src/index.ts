@@ -693,16 +693,19 @@ export class DustAPI {
    * @param query - Search query string to filter suggestions
    * @param select - Optional array of mention types to include. Can be "agents", "users", or both.
    * @param conversationId - Optional conversation ID to scope suggestions to a specific conversation
+   * @param current - Optional boolean to include the current user in the suggestions
    * @returns A promise that resolves to a Result containing an array of mention suggestions
    */
   async getMentionsSuggestions({
     query,
     select,
     conversationId,
+    current,
   }: {
     query: string;
     select?: "agents" | "users" | ("agents" | "users")[];
     conversationId?: string;
+    current?: boolean;
   }) {
     const queryParams = new URLSearchParams({ query });
     if (select) {
@@ -711,6 +714,9 @@ export class DustAPI {
       } else {
         queryParams.append("select", select);
       }
+    }
+    if (current !== undefined) {
+      queryParams.append("current", current ? "true" : "false");
     }
 
     const path = conversationId

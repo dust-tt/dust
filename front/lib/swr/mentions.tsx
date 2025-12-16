@@ -15,6 +15,7 @@ export function useMentionSuggestions({
   query = "",
   select,
   disabled = false,
+  includeCurrentUser = false,
 }: {
   workspaceId: string;
   conversationId: string | null;
@@ -24,6 +25,7 @@ export function useMentionSuggestions({
     users: boolean;
   };
   disabled?: boolean;
+  includeCurrentUser?: boolean;
 }) {
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
 
@@ -45,6 +47,9 @@ export function useMentionSuggestions({
   }
   if (select.users) {
     searchParams.append("select", "users");
+  }
+  if (includeCurrentUser) {
+    searchParams.append("current", "true");
   }
 
   const url =

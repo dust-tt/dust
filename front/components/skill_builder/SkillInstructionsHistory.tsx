@@ -16,12 +16,12 @@ import React, { useCallback, useMemo } from "react";
 
 import { useMembersLookup } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillInstructionsHistoryProps {
-  history: SkillConfigurationType[];
-  selectedConfig: SkillConfigurationType | null;
-  onSelect: (config: SkillConfigurationType) => void;
+  history: SkillType[];
+  selectedConfig: SkillType | null;
+  onSelect: (config: SkillType) => void;
   owner: LightWorkspaceType;
 }
 
@@ -57,14 +57,14 @@ export function SkillInstructionsHistory({
     return map;
   }, [authorLookupMembers]);
 
-  const formatVersionLabel = useCallback((config: SkillConfigurationType) => {
+  const formatVersionLabel = useCallback((config: SkillType) => {
     return config.createdAt
       ? format(config.createdAt, "Pp")
       : `Version ${config.id}`;
   }, []);
 
   const getAuthorName = useCallback(
-    (config: SkillConfigurationType) => {
+    (config: SkillType) => {
       if (!config.versionAuthorId) {
         return "System";
       }
@@ -82,7 +82,7 @@ export function SkillInstructionsHistory({
       .sort((a, b) => compareDesc(a.createdAt ?? a.id, b.createdAt ?? b.id));
 
     const result: Array<{
-      config: SkillConfigurationType;
+      config: SkillType;
       prevInstructions: string;
     }> = [];
 

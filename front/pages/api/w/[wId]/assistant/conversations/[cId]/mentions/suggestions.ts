@@ -54,7 +54,7 @@ async function handler(
     });
   }
 
-  const { select: selectParam } = req.query;
+  const { select: selectParam, current } = req.query;
 
   const { query: queryParam } = req.query;
   const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
@@ -80,6 +80,7 @@ async function handler(
     query,
     conversationId,
     select,
+    current: current === "true",
   });
 
   return res.status(200).json({ suggestions });

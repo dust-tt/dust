@@ -10,6 +10,7 @@ export interface MentionDropdownProps {
   query: string;
   owner: WorkspaceType;
   conversationId: string | null;
+  includeCurrentUser?: boolean;
   command: (item: RichMention) => void;
   clientRect?: (() => DOMRect | null) | null;
   onClose?: () => void;
