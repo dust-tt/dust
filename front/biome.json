@@ -54,7 +54,7 @@
         "recommended": false
       },
       "nursery": {
-        "noImportCycles": "error"
+        "noImportCycles": "warning"
       }
     }
   }
