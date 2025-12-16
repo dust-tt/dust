@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  RichAgentMention,
+  RichAgentMentionInConversation,
   RichUserMentionInConversation,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
@@ -16,14 +16,18 @@ describe("filterAndSortEditorSuggestionAgents", () => {
   const createAgentMention = (
     id: string,
     label: string,
-    userFavorite = false
-  ): RichAgentMention => ({
+    userFavorite = false,
+    isParticipant?: boolean,
+    lastActivityAt?: number
+  ): RichAgentMentionInConversation => ({
     type: "agent",
     id,
     label,
     pictureUrl: "",
     description: "",
     userFavorite,
+    isParticipant,
+    lastActivityAt,
   });
 
   describe("filtering", () => {
@@ -218,6 +222,149 @@ describe("filterAndSortEditorSuggestionAgents", () => {
       // Priority agents should be first
       expect(result[0].id).toBe(GLOBAL_AGENTS_SID.DUST);
       expect(result[1].id).toBe(GLOBAL_AGENTS_SID.DEEP_DIVE);
+    });
+  });
+
+  describe("participant sorting (isParticipant)", () => {
+    it("should prioritize participants over non-participants", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", false, false),
+        createAgentMention("2", "Agent B", false, true),
+        createAgentMention("3", "Agent C", false, false),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      expect(result[0].label).toBe("Agent B");
+      expect(result[0].isParticipant).toBe(true);
+    });
+
+    it("should prioritize participants even over user favorites", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", true, false),
+        createAgentMention("2", "Agent B", false, true),
+        createAgentMention("3", "Agent C", true, false),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      expect(result[0].label).toBe("Agent B");
+      expect(result[0].isParticipant).toBe(true);
+      expect(result[0].userFavorite).toBe(false);
+    });
+
+    it("should prioritize participants even over priority agents", () => {
+      const agents = [
+        createAgentMention(GLOBAL_AGENTS_SID.DUST, "Dust", false, false),
+        createAgentMention("1", "Agent A", false, true, 1000),
+        createAgentMention(
+          GLOBAL_AGENTS_SID.DEEP_DIVE,
+          "Deep Dive",
+          false,
+          false
+        ),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      expect(result[0].label).toBe("Agent A");
+      expect(result[0].isParticipant).toBe(true);
+    });
+
+    it("should sort participants by lastActivityAt (most recent first)", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", false, true, 1000),
+        createAgentMention("2", "Agent B", false, true, 3000),
+        createAgentMention("3", "Agent C", false, true, 2000),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      expect(result[0].label).toBe("Agent B");
+      expect(result[1].label).toBe("Agent C");
+      expect(result[2].label).toBe("Agent A");
+    });
+
+    it("should handle undefined lastActivityAt as 0", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", false, true, 1000),
+        createAgentMention("2", "Agent B", false, true, undefined),
+        createAgentMention("3", "Agent C", false, true, 2000),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      expect(result[0].label).toBe("Agent C");
+      expect(result[1].label).toBe("Agent A");
+      expect(result[2].label).toBe("Agent B");
+    });
+
+    it("should handle mix of participants with and without lastActivityAt", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", false, true, undefined),
+        createAgentMention("2", "Agent B", false, true, 1500),
+        createAgentMention("3", "Agent C", false, true, undefined),
+        createAgentMention("4", "Agent D", false, true, 500),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      expect(result[0].label).toBe("Agent B");
+      expect(result[1].label).toBe("Agent D");
+      // Agents with undefined lastActivityAt are treated as 0
+      expect(result[2].label).toBe("Agent A");
+      expect(result[3].label).toBe("Agent C");
+    });
+
+    it("should maintain non-participant sorting when all are participants", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", true, true, 1000),
+        createAgentMention(GLOBAL_AGENTS_SID.DUST, "Dust", false, true, 500),
+        createAgentMention("2", "Agent B", false, true, 2000),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      // All are participants, so sorted by lastActivityAt
+      expect(result[0].label).toBe("Agent B");
+      expect(result[1].label).toBe("Agent A");
+      expect(result[2].label).toBe("Dust");
+    });
+
+    it("should keep non-participants after participants regardless of other properties", () => {
+      const agents = [
+        createAgentMention(GLOBAL_AGENTS_SID.DUST, "Dust", false, false),
+        createAgentMention("1", "Regular Agent", false, true, 100),
+        createAgentMention("2", "Favorite Agent", true, false),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      // Participant should be first
+      expect(result[0].label).toBe("Regular Agent");
+      expect(result[0].isParticipant).toBe(true);
+
+      // Non-participants follow their usual sorting (priority, then favorite)
+      expect(result[1].id).toBe(GLOBAL_AGENTS_SID.DUST);
+      expect(result[2].label).toBe("Favorite Agent");
+    });
+
+    it("should handle undefined isParticipant as non-participant", () => {
+      const agents = [
+        createAgentMention("1", "Agent A", false, undefined),
+        createAgentMention("2", "Agent B", false, true, 1000),
+        createAgentMention("3", "Agent C", false, undefined),
+      ];
+
+      const result = filterAndSortEditorSuggestionAgents("", agents);
+
+      // Only Agent B is explicitly a participant
+      expect(result[0].label).toBe("Agent B");
+      expect(result[0].isParticipant).toBe(true);
+
+      // Others are treated as non-participants
+      expect(result[1].label).toBe("Agent A");
+      expect(result[2].label).toBe("Agent C");
     });
   });
 
