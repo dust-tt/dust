@@ -375,7 +375,6 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 describe("POST /api/w/[wId]/skills", () => {
   it("creates a simple skill configuration", async () => {
     const { req, res, workspace } = await setupTest("POST", "admin");
-    await SpaceFactory.system(workspace);
 
     req.body = {
       name: "Simple Skill",
@@ -410,15 +409,8 @@ describe("POST /api/w/[wId]/skills", () => {
   });
 
   it("creates a skill configuration with 2 tools", async () => {
-    const { req, res, workspace, authenticator, user } = await setupTest(
-      "POST",
-      "admin"
-    );
-
-    // Create spaces (system space is required for MCP servers)
-    await SpaceFactory.system(workspace);
-
-    const globalSpace = await SpaceFactory.global(workspace);
+    const { req, res, workspace, authenticator, user, globalSpace } =
+      await setupTest("POST", "admin");
 
     const server1 = await RemoteMCPServerFactory.create(workspace, {
       name: "Server 1",
@@ -506,9 +498,6 @@ describe("POST /api/w/[wId]/skills", () => {
 
   it("creates a skill configuration with requestedSpaceIds derived from tool's space", async () => {
     const { req, res, workspace } = await setupTest("POST", "admin");
-
-    // Create system space (required for MCP servers)
-    await SpaceFactory.system(workspace);
 
     // Create a regular space where the tool will be placed
     const regularSpace = await SpaceFactory.regular(workspace);

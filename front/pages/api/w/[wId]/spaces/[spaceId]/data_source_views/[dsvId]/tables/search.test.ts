@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./search";
 
@@ -111,17 +110,20 @@ vi.mock(
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search", () => {
   it("blocks non-GET methods", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "valid",
     };
@@ -131,17 +133,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
   });
 
   it("requires minimum query length", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "a",
     };
@@ -151,17 +156,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
   });
 
   it.skip("returns tables with search results", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "tasks",
     };
@@ -173,17 +181,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
   });
 
   it.skip("handles empty results", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "empty",
     };
@@ -192,17 +203,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
   });
 
   it.skip("propagates warnings", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "warning",
     };

@@ -4,7 +4,6 @@ import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_conn
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./index";
 
@@ -15,9 +14,6 @@ describe("MCP Connections API Handler", () => {
         method: "GET",
       });
     req.query.connectionType = "personal";
-
-    // Create a system space to hold the Remote MCP servers.
-    await SpaceFactory.system(workspace);
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
@@ -48,9 +44,6 @@ describe("MCP Connections API Handler", () => {
         role: "admin",
       });
     req.query.connectionType = "workspace";
-
-    // Create a system space to hold the Remote MCP servers
-    await SpaceFactory.system(workspace);
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
     const now = new Date();
@@ -83,9 +76,6 @@ describe("MCP Connections API Handler", () => {
         method: "GET",
       });
     req.query.connectionType = "personal";
-
-    // Create a system space to hold the Remote MCP servers
-    await SpaceFactory.system(workspace);
 
     const remoteServer1 = await RemoteMCPServerFactory.create(workspace);
     const remoteServer2 = await RemoteMCPServerFactory.create(workspace);
@@ -165,7 +155,7 @@ describe("MCP Connections API Handler", () => {
       await createPrivateApiMockRequest({
         method: "GET",
       });
-    await SpaceFactory.system(workspace1);
+
     const remoteServer1 = await RemoteMCPServerFactory.create(workspace1);
     const connection1 = await MCPServerConnectionFactory.remote(
       authenticator1,
@@ -183,7 +173,6 @@ describe("MCP Connections API Handler", () => {
       method: "GET",
     });
     req.query.connectionType = "personal";
-    await SpaceFactory.system(workspace2);
     const remoteServer2 = await RemoteMCPServerFactory.create(workspace2);
     const connection2 = await MCPServerConnectionFactory.remote(
       authenticator2,
@@ -209,7 +198,6 @@ describe("MCP Connections API Handler", () => {
         method: "GET",
         role: "admin",
       });
-    await SpaceFactory.system(workspace1);
     const remoteServer1 = await RemoteMCPServerFactory.create(workspace1);
     const connection1 = await MCPServerConnectionFactory.remote(
       authenticator1,
@@ -228,7 +216,6 @@ describe("MCP Connections API Handler", () => {
       role: "admin",
     });
     req.query.connectionType = "workspace";
-    await SpaceFactory.system(workspace2);
     const remoteServer2 = await RemoteMCPServerFactory.create(workspace2);
     const connection2 = await MCPServerConnectionFactory.remote(
       authenticator2,
