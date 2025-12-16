@@ -189,7 +189,7 @@ export default function BlogPost({
               href="/blog"
               className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              ← Back to Blog
+              <span>&larr;</span> Back to Blog
             </Link>
           </div>
 
