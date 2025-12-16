@@ -137,6 +137,7 @@ function createServer(
           webhookSourceViewId: null,
           executionPerDayLimitOverride: null,
           executionMode: "fair_use",
+          origin: "agent",
         });
 
         if (result.isErr()) {

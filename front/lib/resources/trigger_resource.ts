@@ -781,6 +781,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       enabled: this.enabled,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
+      origin: this.origin,
     };
 
     if (this.kind === "webhook") {
