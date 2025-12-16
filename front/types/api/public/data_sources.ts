@@ -40,6 +40,9 @@ export const PostDataSourceDocumentRequestBodySchema = t.type({
   async: t.union([t.boolean, t.undefined, t.null]),
   title: t.string,
   mime_type: t.string,
+  // Optional document_id for LLM-friendly node IDs (e.g., slugified).
+  // Falls back to title if not provided.
+  document_id: t.union([t.string, t.undefined]),
 });
 
 export type PostDataSourceDocumentRequestBody = t.TypeOf<
