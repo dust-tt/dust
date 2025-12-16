@@ -62,7 +62,7 @@ export function getPageAndFooter(props: PageContentProps): {
           icon: SKILL_ICON,
           content: (
             <SkillDetailsSheetContent
-              skillConfiguration={mode.skill}
+              skill={mode.skill}
               owner={props.owner}
               user={props.user}
             />

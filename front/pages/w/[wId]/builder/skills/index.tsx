@@ -206,7 +206,7 @@ export default function WorkspaceSkills({
     <>
       {!!selectedSkill && (
         <SkillDetailsSheet
-          skillConfiguration={selectedSkill}
+          skill={selectedSkill}
           onClose={() => setSelectedSkill(null)}
           user={user}
           owner={owner}
