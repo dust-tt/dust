@@ -26,7 +26,6 @@ import {
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -52,7 +51,7 @@ function makeJITServerSideMCPServerConfiguration({
 }: {
   name: string;
   description: string;
-  mcpServerView: MCPServerViewType;
+  mcpServerView: MCPServerViewResource;
   dataSources?: DataSourceConfiguration[] | null;
   tables?: TableDataSourceConfiguration[] | null;
 }): ServerSideMCPServerConfigurationType {
@@ -73,7 +72,9 @@ function makeJITServerSideMCPServerConfiguration({
     mcpServerViewId: mcpServerView.sId,
     dustAppConfiguration: null,
     internalMCPServerId:
-      mcpServerView.serverType === "internal" ? mcpServerView.server.sId : null,
+      mcpServerView.serverType === "internal"
+        ? mcpServerView.mcpServerId
+        : null,
   };
 }
 
@@ -118,7 +119,7 @@ export async function getJITServers(
         name: mcpServerView.name ?? mcpServerView.server.name,
         description:
           mcpServerView.description ?? mcpServerView.server.description,
-        mcpServerView,
+        mcpServerView: mcpServerViewResource,
       })
     );
   }
@@ -140,7 +141,7 @@ export async function getJITServers(
         description:
           commonUtilitiesViewJSON.description ??
           commonUtilitiesViewJSON.server.description,
-        mcpServerView: commonUtilitiesViewJSON,
+        mcpServerView: commonUtilitiesView,
       })
     );
   }
@@ -178,7 +179,7 @@ export async function getJITServers(
           makeJITServerSideMCPServerConfiguration({
             name: SKILL_MANAGEMENT_SERVER_NAME,
             description: "Enable skills for the conversation.",
-            mcpServerView: skillManagementView.toJSON(),
+            mcpServerView: skillManagementView,
           })
         );
       }
@@ -205,7 +206,7 @@ export async function getJITServers(
     makeJITServerSideMCPServerConfiguration({
       name: "conversation_files",
       description: "Access and include files from the conversation",
-      mcpServerView: conversationFilesView.toJSON(),
+      mcpServerView: conversationFilesView,
     })
   );
 
@@ -302,7 +303,7 @@ export async function getJITServers(
       makeJITServerSideMCPServerConfiguration({
         name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
         description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
-        mcpServerView: queryTablesView.toJSON(),
+        mcpServerView: queryTablesView,
         tables,
       })
     );
@@ -360,7 +361,7 @@ export async function getJITServers(
       makeJITServerSideMCPServerConfiguration({
         name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
         description: "Semantic search over all files from the conversation",
-        mcpServerView: retrievalView.toJSON(),
+        mcpServerView: retrievalView,
         dataSources,
       })
     );
@@ -397,7 +398,7 @@ export async function getJITServers(
       makeJITServerSideMCPServerConfiguration({
         name: `search_folder_${i}`,
         description: `Search content within the documents inside "${folder.title}"`,
-        mcpServerView: retrievalView.toJSON(),
+        mcpServerView: retrievalView,
         dataSources,
       })
     );
