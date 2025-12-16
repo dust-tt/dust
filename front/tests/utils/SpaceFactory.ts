@@ -28,7 +28,7 @@ export class SpaceFactory {
   }
 
   static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
-    const space = SpaceResource.makeNew(
+    return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "global",
@@ -36,8 +36,6 @@ export class SpaceFactory {
       },
       removeNulls([globalGroup]) // TODO: Add groups
     );
-
-    return space;
   }
 
   static async system(workspace: WorkspaceType, systemGroup?: GroupResource) {
