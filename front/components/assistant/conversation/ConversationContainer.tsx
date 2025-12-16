@@ -167,6 +167,7 @@ export function ConversationContainerVirtuoso({
           >
             <InputBar
               owner={owner}
+              user={user}
               onSubmit={handleConversationCreation}
               conversationId={null}
               disableAutoFocus={false}
