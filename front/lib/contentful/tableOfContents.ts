@@ -46,63 +46,29 @@ export function extractTableOfContents(document: Document): TocItem[] {
     return toc;
   }
 
-  for (const node of document.content) {
-    if (node.nodeType === BLOCKS.HEADING_1) {
-      const text = extractTextFromNode(node);
-      if (text) {
-        toc.push({
-          id: slugify(text),
-          text,
-          level: 1,
-        });
-      }
-    } else if (node.nodeType === BLOCKS.HEADING_2) {
-      const text = extractTextFromNode(node);
-      if (text) {
-        toc.push({
-          id: slugify(text),
-          text,
-          level: 2,
-        });
-      }
-    } else if (node.nodeType === BLOCKS.HEADING_3) {
-      const text = extractTextFromNode(node);
-      if (text) {
-        toc.push({
-          id: slugify(text),
-          text,
-          level: 3,
-        });
-      }
-    } else if (node.nodeType === BLOCKS.HEADING_4) {
-      const text = extractTextFromNode(node);
-      if (text) {
-        toc.push({
-          id: slugify(text),
-          text,
-          level: 4,
-        });
-      }
-    } else if (node.nodeType === BLOCKS.HEADING_5) {
-      const text = extractTextFromNode(node);
-      if (text) {
-        toc.push({
-          id: slugify(text),
-          text,
-          level: 5,
-        });
-      }
-    } else if (node.nodeType === BLOCKS.HEADING_6) {
-      const text = extractTextFromNode(node);
-      if (text) {
-        toc.push({
-          id: slugify(text),
-          text,
-          level: 6,
-        });
-      }
+ const HEADING_TYPES = [
+  BLOCKS.HEADING_1,
+  BLOCKS.HEADING_2,
+  BLOCKS.HEADING_3,
+  BLOCKS.HEADING_4,
+  BLOCKS.HEADING_5,
+  BLOCKS.HEADING_6,
+];
+
+for (const node of document.content) {
+  const level = HEADING_TYPES.indexOf(node.nodeType) + 1;
+  
+  if (level > 0) {
+    const text = extractTextFromNode(node);
+    if (text) {
+      toc.push({
+        id: slugify(text),
+        text,
+        level,
+      });
     }
   }
+}
 
   return toc;
 }
