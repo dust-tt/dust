@@ -4,9 +4,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
-  extractMetadataFromServerVersion,
   extractMetadataFromTools,
 } from "@app/lib/actions/mcp_metadata";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { Authenticator } from "@app/lib/auth";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { isDevelopment } from "@app/types";

@@ -33,7 +33,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import {

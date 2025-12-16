@@ -16,7 +16,7 @@ import {
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
-import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
