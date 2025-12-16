@@ -850,6 +850,7 @@ export const WithTags: Story = {
 export const WithFilters: Story = {
   render: () => {
     const [selectedFilter, setSelectedFilter] = useState<string | null>("all");
+    const [searchText, setSearchText] = useState("");
 
     const filters = [
       { label: "All", value: "all" },
@@ -874,6 +875,10 @@ export const WithFilters: Story = {
         ? allItems
         : allItems.filter((item) => item.type === selectedFilter);
 
+    const searchFilteredItems = filteredItems.filter((item) =>
+      item.name.includes(searchText)
+    );
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -888,16 +893,23 @@ export const WithFilters: Story = {
         <DropdownMenuContent
           className="s-w-[320px]"
           dropdownHeaders={
-            <DropdownMenuFilters
-              filters={filters}
-              selectedValue={selectedFilter}
-              onSelectFilter={setSelectedFilter}
-            />
+            <>
+              <DropdownMenuSearchbar
+                value={searchText}
+                onChange={setSearchText}
+                name="search"
+              />
+              <DropdownMenuFilters
+                filters={filters}
+                selectedValue={selectedFilter}
+                onSelectFilter={setSelectedFilter}
+              />
+            </>
           }
         >
           <DropdownMenuSeparator />
-          {filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
+          {searchFilteredItems.length > 0 ? (
+            searchFilteredItems.map((item) => (
               <DropdownMenuItem
                 key={item.name}
                 label={item.name}

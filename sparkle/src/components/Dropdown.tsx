@@ -663,7 +663,7 @@ const DropdownMenuSearchbar = React.forwardRef<
     return (
       <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
-          className="w-full"
+          className="s-w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}
