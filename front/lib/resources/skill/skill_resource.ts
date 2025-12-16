@@ -758,6 +758,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Save the current version before updating.
     await this.saveVersion(auth, { transaction });
 
+    const authorId = auth.user()?.id;
+
     await this.update(
       {
         name,
@@ -766,6 +768,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         instructions,
         icon,
         requestedSpaceIds,
+        authorId,
       },
       transaction
     );
