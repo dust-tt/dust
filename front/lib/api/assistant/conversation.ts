@@ -374,7 +374,7 @@ export function getRelatedContentFragments(
   return relatedContentFragments;
 }
 
-export function validateUserMessageContext(
+export function isUserMessageContextValid(
   auth: Authenticator,
   req: NextApiRequest,
   context: UserMessageContext

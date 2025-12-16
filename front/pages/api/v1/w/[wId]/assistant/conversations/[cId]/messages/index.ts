@@ -6,7 +6,7 @@ import { fromError } from "zod-validation-error";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   postUserMessage,
-  validateUserMessageContext,
+  isUserMessageContextValid,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
@@ -220,7 +220,7 @@ async function handler(
         username: context.username,
       };
 
-      const validateUserMessageContextRes = validateUserMessageContext(
+      const validateUserMessageContextRes = isUserMessageContextValid(
         auth,
         req,
         ctx
