@@ -16,9 +16,9 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 
 const LOCAL_STORAGE_KEY_PREFIX = "dust-wrapped-dismissed";
 
-type InAppBannerProps = {
+interface InAppBannerProps {
   owner: WorkspaceType;
-};
+}
 
 function getLocalStorageKey(owner: WorkspaceType) {
   return `${LOCAL_STORAGE_KEY_PREFIX}-${owner.sId}`;
