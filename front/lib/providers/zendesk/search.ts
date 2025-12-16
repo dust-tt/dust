@@ -36,7 +36,7 @@ export async function search({
   });
 
   if (clientResult.isErr()) {
-    throw new Error(clientResult.error.message);
+    return [];
   }
 
   const client = clientResult.value;
@@ -50,7 +50,6 @@ export async function search({
     const ticketResult = await client.getTicket(ticketId);
 
     if (ticketResult.isErr()) {
-      // If the ticket doesn't exist or there's an error, return empty results
       return [];
     }
 
@@ -66,18 +65,16 @@ export async function search({
     ];
   }
 
-  // Format the query to search only in subject (title) field
   // Zendesk search syntax: subject:query searches in the ticket subject/title
   const formattedQuery = `subject:${query}`;
   const result = await client.searchTickets(formattedQuery);
 
   if (result.isErr()) {
-    throw new Error(result.error.message);
+    return [];
   }
 
   const { results } = result.value;
 
-  // Limit results to pageSize
   const limitedResults = results.slice(0, pageSize);
 
   return limitedResults.map((ticket) => ({
@@ -122,11 +119,9 @@ export async function download({
 
   const ticket = ticketResult.value;
 
-  // Fetch custom field definitions
   const fieldIds = getUniqueCustomFieldIds(ticket);
   const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
 
-  // Start building the content
   let content = renderTicket(ticket, ticketFieldsResult);
 
   // Fetch and add metrics
