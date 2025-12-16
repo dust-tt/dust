@@ -3,6 +3,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
+import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
@@ -679,6 +680,42 @@ const DropdownMenuSearchbar = React.forwardRef<
 
 DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
 
+export interface DropdownMenuFilterOption {
+  label: string;
+  value: string;
+}
+
+interface DropdownMenuFiltersProps {
+  filters: DropdownMenuFilterOption[];
+  selectedValue: string | null;
+  onSelectFilter: (value: string) => void;
+  className?: string;
+}
+
+const DropdownMenuFilters = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuFiltersProps
+>(({ filters, selectedValue, onSelectFilter, className }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn("s-flex s-flex-wrap s-gap-2 s-p-1.5", className)}
+    >
+      {filters.map((filter) => (
+        <Button
+          key={filter.value}
+          size="xs"
+          variant={selectedValue === filter.value ? "primary" : "outline"}
+          label={filter.label}
+          onClick={() => onSelectFilter(filter.value)}
+        />
+      ))}
+    </div>
+  );
+});
+
+DropdownMenuFilters.displayName = "DropdownMenuFilters";
+
 interface DropdownMenuStaticItemProps {
   label: string;
   value?: string;
@@ -718,6 +755,7 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
