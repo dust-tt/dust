@@ -73,11 +73,15 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
-export type { DropdownMenuItemProps } from "./Dropdown";
+export type {
+  DropdownMenuFilterOption,
+  DropdownMenuItemProps,
+} from "./Dropdown";
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
