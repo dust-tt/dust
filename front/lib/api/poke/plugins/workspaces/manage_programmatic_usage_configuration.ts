@@ -139,7 +139,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       calculateFreeCreditAmountMicroUsd(userCount);
     const automaticCreditsDollars = automaticCreditsMicroUsd / 1_000_000;
 
-    const freeCreditsDescription = `Enable negotiated free monthly credits to replace seat-based amount. Current seat-based amount: $${automaticCreditsDollars.toLocaleString()}`;
+    const freeCreditsDescription = `Enable negotiated free monthly credits to replace default free credits amount. Current default amount (seat-based): $${automaticCreditsDollars.toLocaleString()}`;
 
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
