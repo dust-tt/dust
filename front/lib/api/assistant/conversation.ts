@@ -380,6 +380,11 @@ export function validateUserMessageContext(
   context: UserMessageContext
 ): boolean {
   const authMethod = auth.authMethod();
+
+  if (authMethod === "system_api_key") {
+    return true;
+  }
+
   const {
     "user-agent": userAgent,
     "x-dust-extension-version": extensionVersion,
