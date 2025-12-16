@@ -17,13 +17,13 @@ import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFa
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
-  SkillConfigurationRelations,
+  SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
 
-type SkillConfigurationWithRelations = SkillType & SkillConfigurationRelations;
+type SkillConfigurationWithRelations = SkillType & SkillRelations;
 
 async function setupTest(
   method: RequestMethod = "GET",

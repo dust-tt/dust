@@ -8,14 +8,14 @@ import type {
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import type {
-  SkillConfigurationRelations,
+  SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 type SelectionPageProps = PageContentProps & {
   mode: SelectionMode;
-  handleSkillToggle: (skill: SkillType & SkillConfigurationRelations) => void;
-  filteredSkills: (SkillType & SkillConfigurationRelations)[];
+  handleSkillToggle: (skill: SkillType & SkillRelations) => void;
+  filteredSkills: (SkillType & SkillRelations)[];
   isSkillsLoading: boolean;
   searchQuery: string;
   selectedSkillIds: Set<string>;

@@ -18,7 +18,7 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
-  SkillConfigurationRelations,
+  SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -134,9 +134,9 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: (SkillType & SkillConfigurationRelations)[];
+  skills: (SkillType & SkillRelations)[];
   owner: LightWorkspaceType;
-  onSkillClick: (skill: SkillType & SkillConfigurationRelations) => void;
+  onSkillClick: (skill: SkillType & SkillRelations) => void;
   onAgentClick: (agentId: string) => void;
 };
 

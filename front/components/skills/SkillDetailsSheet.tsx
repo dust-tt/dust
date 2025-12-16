@@ -24,12 +24,12 @@ import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { SKILL_ICON } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
-  SkillConfigurationRelations,
+  SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillType & SkillConfigurationRelations;
+  skillConfiguration: SkillType & SkillRelations;
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
@@ -74,7 +74,7 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillType & SkillConfigurationRelations;
+  skillConfiguration: SkillType & SkillRelations;
   owner: WorkspaceType;
   user: UserType;
 };

@@ -5,7 +5,7 @@ import type { AgentBuilderSkillsType } from "@app/components/agent_builder/Agent
 import type { SelectionMode } from "@app/components/agent_builder/skills/skillSheet/types";
 import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
 import type {
-  SkillConfigurationRelations,
+  SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
@@ -50,9 +50,7 @@ export const useLocalSelectedSkills = ({
     );
   }, [skillConfigurationsWithRelations, searchQuery]);
 
-  const handleSkillToggle = (
-    skill: SkillType & SkillConfigurationRelations
-  ) => {
+  const handleSkillToggle = (skill: SkillType & SkillRelations) => {
     setLocalSelectedSkills((prev) => {
       const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
       if (isAlreadySelected) {

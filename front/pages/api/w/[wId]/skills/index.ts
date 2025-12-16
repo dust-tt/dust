@@ -15,7 +15,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
 import type {
-  SkillConfigurationRelations,
+  SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
@@ -24,7 +24,7 @@ export type GetSkillConfigurationsResponseBody = {
 };
 
 export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: (SkillType & SkillConfigurationRelations)[];
+  skillConfigurations: (SkillType & SkillRelations)[];
 };
 
 export type PostSkillConfigurationResponseBody = {
@@ -120,7 +120,7 @@ async function handler(
               ...sc.toJSON(auth),
               usage,
               editors: editors ? editors.map((e) => e.toJSON()) : null,
-            } satisfies SkillType & SkillConfigurationRelations;
+            } satisfies SkillType & SkillRelations;
           },
           { concurrency: 10 }
         );
