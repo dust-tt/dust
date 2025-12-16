@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { CoreAPI } from "@app/types";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { CoreAPI } from "@app/types";
 
 import handler from "./index";
 
