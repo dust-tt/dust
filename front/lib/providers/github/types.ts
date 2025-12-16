@@ -9,10 +9,10 @@ export interface GitHubSearchIssueItem {
   // The pull_request field exists on items that are pull requests
   // Its presence (not its value) is what matters for type discrimination
   pull_request?: {
-    url: string;
-    html_url: string;
-    diff_url: string;
-    patch_url: string;
+    url: string | null;
+    html_url: string | null;
+    diff_url: string | null;
+    patch_url: string | null;
   };
 }
 

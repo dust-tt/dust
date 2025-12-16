@@ -2,7 +2,6 @@ import TurndownService from "turndown";
 
 import {
   getGoogleDriveClient,
-  MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/providers/google_drive/utils";
 import type {
@@ -12,6 +11,8 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
+
+import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
 
 const turndownService = new TurndownService({
   headingStyle: "atx",
@@ -90,9 +91,9 @@ export async function download({
     throw new Error("File metadata is incomplete.");
   }
 
-  if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
+  if (file.size && parseInt(file.size, 10) > PROVIDER_DOWNLOAD_MAX_FILE_SIZE) {
     throw new Error(
-      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+      `File size exceeds the maximum limit of ${PROVIDER_DOWNLOAD_MAX_FILE_SIZE / (1024 * 1024)} MB.`
     );
   }
 

@@ -3,6 +3,7 @@ import type {
   GitHubPullRequestNode,
 } from "@app/lib/providers/github/types";
 
+// replace with larger one
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB max content size
 
 export function buildContentSummaryForIssue(node: GitHubIssueNode): string {
@@ -48,10 +49,11 @@ export function buildContentSummaryForPullRequest(
     content += `## Description\n\n${node.body}\n\n`;
   }
 
+  // change this to >> look at activities file in temporal
   if (node.comments.nodes.length > 0) {
     content += `## Comments (${node.comments.nodes.length})\n\n`;
     for (const comment of node.comments.nodes) {
-      content += `### @${comment.author.login} (${comment.createdAt})\n\n`;
+      content += `>> @${comment.author.login}:\n\n`;
       content += `${comment.body}\n\n`;
     }
   }

@@ -5,10 +5,7 @@ import type {
   PartialBlockObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
-import {
-  getNotionClient,
-  MAX_FILE_SIZE,
-} from "@app/lib/providers/notion/utils";
+import { getNotionClient } from "@app/lib/providers/notion/utils";
 import type {
   ToolDownloadParams,
   ToolDownloadResult,
@@ -16,6 +13,8 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
+
+import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
 
 // Maximum time to spend extracting content (in milliseconds)
 const MAX_EXTRACTION_TIME_MS = 5000;
@@ -254,9 +253,9 @@ export async function download({
 
   // Check content size
   const contentSize = Buffer.byteLength(content, "utf8");
-  if (contentSize > MAX_FILE_SIZE) {
+  if (contentSize > PROVIDER_DOWNLOAD_MAX_FILE_SIZE) {
     throw new Error(
-      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+      `File size exceeds the maximum limit of ${PROVIDER_DOWNLOAD_MAX_FILE_SIZE / (1024 * 1024)} MB.`
     );
   }
   logger.info(

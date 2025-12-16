@@ -6,7 +6,6 @@ import {
 import {
   buildContentSummaryForIssue,
   buildContentSummaryForPullRequest,
-  MAX_FILE_SIZE,
 } from "@app/lib/providers/github/utils";
 import type {
   ToolDownloadParams,
@@ -15,14 +14,18 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 
+import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
+
+const PULL_REQUEST_MIME_TYPE = "application/vnd.github.pull-request";
+const ISSUE_MIME_TYPE = "application/vnd.github.issue";
+const FILE_TRUNCATION_MESSAGE =
+  "\n\n---\n\n**Note:** Content was truncated due to size limits. Some comments or reviews may not be included.";
+
 export async function search({
   accessToken,
   query,
   pageSize,
 }: ToolSearchParams): Promise<ToolSearchRawResult[]> {
-  // Use GitHub's REST API for search
-  // The /search/issues endpoint gives both issues and PRs
-  // GitHub's default "best match" search balances relevance and recency
   const result = await searchGitHubIssues({
     accessToken,
     query,
@@ -42,9 +45,7 @@ export async function search({
     return {
       // Use node_id as the external ID for direct GraphQL node lookup
       externalId: item.node_id,
-      mimeType: isPullRequest
-        ? "application/vnd.github.pull-request"
-        : "application/vnd.github.issue",
+      mimeType: isPullRequest ? PULL_REQUEST_MIME_TYPE : ISSUE_MIME_TYPE,
       title: `#${item.number}: ${item.title}`,
       type: "document",
       sourceUrl: item.html_url,
@@ -82,15 +83,13 @@ export async function download({
 
   // Truncate content if it exceeds max size
   const contentSize = Buffer.byteLength(content, "utf8");
-  if (contentSize > MAX_FILE_SIZE) {
+  if (contentSize > PROVIDER_DOWNLOAD_MAX_FILE_SIZE) {
     // Truncate to max size and add truncation notice
     const truncatedContent = content.slice(
       0,
-      MAX_FILE_SIZE - 200 // Leave room for truncation message
+      PROVIDER_DOWNLOAD_MAX_FILE_SIZE - FILE_TRUNCATION_MESSAGE.length // Leave room for truncation message
     );
-    content =
-      truncatedContent +
-      "\n\n---\n\n**Note:** Content was truncated due to size limits. Some comments or reviews may not be included.";
+    content = truncatedContent + FILE_TRUNCATION_MESSAGE;
   }
 
   return {
