@@ -63,7 +63,8 @@ const ManageProgrammaticUsageConfigurationSchema = z
       return true;
     },
     {
-      message: "Free credits amount is required when override is enabled",
+      message:
+        "Free credits amount is required when negotiated credits are enabled",
       path: ["freeCreditsDollars"],
     }
   )
@@ -95,14 +96,14 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       freeCreditsOverrideEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "Override Monthly Free Credits",
+        label: "Negotiated Free Credits",
         async: true,
         asyncDescription: true,
       },
       freeCreditsDollars: {
         type: "number",
-        label: "Monthly Free Credits (USD)",
-        description: `Custom monthly free credits ($1-$${MAX_FREE_CREDITS_DOLLARS.toLocaleString()}). ⚠️This will top-up next billing cycle's free credits. If you want an immediate top-up, use "Buy Committed Credits" plugin in free mode.`,
+        label: "Negotiated Monthly Free Credits (USD)",
+        description: `Negotiated monthly free credits ($1-$${MAX_FREE_CREDITS_DOLLARS.toLocaleString()}). ⚠️This will top-up next billing cycle's free credits. If you want an immediate top-up, use "Buy Committed Credits" plugin in free mode.`,
         async: true,
         dependsOn: { field: "freeCreditsOverrideEnabled", value: true },
       },
@@ -138,7 +139,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       calculateFreeCreditAmountMicroUsd(userCount);
     const automaticCreditsDollars = automaticCreditsMicroUsd / 1_000_000;
 
-    const freeCreditsDescription = `Override automatic free credits. Current automatic amount: $${automaticCreditsDollars.toLocaleString()}`;
+    const freeCreditsDescription = `Enable negotiated free monthly credits to replace default free credits amount. Current default amount (seat-based): $${automaticCreditsDollars.toLocaleString()}`;
 
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
