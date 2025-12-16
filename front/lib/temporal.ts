@@ -3,6 +3,7 @@ import type {
   WorkflowClientInterceptor,
 } from "@temporalio/client";
 import { Client, Connection } from "@temporalio/client";
+import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
@@ -104,7 +105,9 @@ export async function getTemporalWorkerConnection(): Promise<{
 }
 
 export async function getTemporalClientForAgentNamespace() {
-  return getTemporalClientForNamespace("agent");
+  return getTemporalClientForNamespace("agent", [
+    new OpenTelemetryWorkflowClientInterceptor(),
+  ]);
 }
 
 export async function getTemporalClientForFrontNamespace() {
