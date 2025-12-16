@@ -6,14 +6,15 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { isString } from "@app/types";
 
-// TODO(dust-wrapped): Update background image for 2025 wrapped background image
-const BACKGROUND_IMAGE_PATH = "/static/spiritavatar/Spirit_Black_1.jpg";
+const BACKGROUND_IMAGE_PATH = "/static/year-in-review-bg.png";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
   backgroundRepeat: "no-repeat",
   backgroundPosition: "center",
-  backgroundSize: "auto",
+  backgroundSize: "cover",
 };
+
+const YEAR_IN_REVIEW_TITLE = "/static/year-in-review-title.svg";
 
 const LOCAL_STORAGE_KEY_PREFIX = "dust-wrapped-dismissed";
 
@@ -68,18 +69,21 @@ export function InAppBanner({ owner }: InAppBannerProps) {
       style={BACKGROUND_IMAGE_STYLE_PROPS}
     >
       <div className="relative p-4">
-        <div className="pt-20">
-          <Button
-            variant="highlight"
-            size="xs"
-            onClick={withTracking(
-              TRACKING_AREAS.DUST_WRAPPED,
-              "cta_dust_wrapped_banner",
-              onLearnMore
-            )}
-            label="Open your holiday recap"
-          />
-        </div>
+        <img
+          src={YEAR_IN_REVIEW_TITLE}
+          alt="Year in Review"
+          className="mb-4 h-12"
+        />
+        <Button
+          variant="highlight"
+          size="xs"
+          onClick={withTracking(
+            TRACKING_AREAS.DUST_WRAPPED,
+            "cta_dust_wrapped_banner",
+            onLearnMore
+          )}
+          label="Open your holiday recap"
+        />
         <Button
           variant="ghost"
           icon={XMarkIcon}
