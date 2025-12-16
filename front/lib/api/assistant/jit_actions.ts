@@ -136,13 +136,10 @@ export async function getJITServers(
     jitServers.push(
       makeJITServerSideMCPServerConfiguration({
         name:
-          commonUtilitiesViewJSON.name ??
-          commonUtilitiesViewJSON.server.name ??
-          "common_utilities",
+          commonUtilitiesViewJSON.name ?? commonUtilitiesViewJSON.server.name,
         description:
           commonUtilitiesViewJSON.description ??
-          commonUtilitiesViewJSON.server.description ??
-          "Common utilities such as random numbers and timers.",
+          commonUtilitiesViewJSON.server.description,
         mcpServerView: commonUtilitiesViewJSON,
       })
     );
