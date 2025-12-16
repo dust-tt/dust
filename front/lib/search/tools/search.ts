@@ -214,7 +214,11 @@ export async function getToolAccessToken({
   serverViewId: string;
 }): Promise<
   Result<
-    { tool: SearchableTool; accessToken: string; metadata: Record<string, string> },
+    {
+      tool: SearchableTool;
+      accessToken: string;
+      metadata: Record<string, string>;
+    },
     Error
   >
 > {
