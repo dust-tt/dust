@@ -34,10 +34,10 @@ export function useSkillConfigurations({
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
     fetcher;
 
-  const queryParams = status ? `?status=${status}` : "";
+  const statusQueryParam = status ? `?status=${status}` : "";
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills${queryParams}`,
+    `/api/w/${owner.sId}/skills${statusQueryParam}`,
     skillConfigurationsFetcher,
     { disabled }
   );
