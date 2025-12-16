@@ -10,7 +10,6 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -57,13 +56,6 @@ export async function getJITServers(
 ): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
-  // Get the list of tools from the agent configuration to avoid duplicates.
-  const agentMcpServerViewIds = agentConfiguration.actions
-    .map((action) =>
-      isServerSideMCPServerConfiguration(action) ? action.mcpServerViewId : null
-    )
-    .filter((mcpServerViewId) => mcpServerViewId !== null);
-
   // Get the conversation MCP server views (aka Tools)
   const conversationMCPServerViews =
     await ConversationResource.fetchMCPServerViews(auth, conversation, true);
@@ -80,10 +72,7 @@ export async function getJITServers(
       conversationMCPServerView.mcpServerViewId
     );
 
-    if (
-      !mcpServerViewResource ||
-      agentMcpServerViewIds.includes(mcpServerViewResource.sId)
-    ) {
+    if (!mcpServerViewResource) {
       continue;
     }
 
@@ -123,7 +112,7 @@ export async function getJITServers(
       },
       "MCP server view not found for common_utilities. Ensure auto tools are created."
     );
-  } else if (!agentMcpServerViewIds.includes(commonUtilitiesView.sId)) {
+  } else {
     const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
     const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
       id: -1,
@@ -181,7 +170,7 @@ export async function getJITServers(
           },
           "MCP server view not found for skill_management. Ensure auto tools are created."
         );
-      } else if (!agentMcpServerViewIds.includes(skillManagementView.sId)) {
+      } else {
         const skillManagementServer: ServerSideMCPServerConfigurationType = {
           id: -1,
           sId: generateRandomModelSId(),
