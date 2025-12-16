@@ -60,6 +60,39 @@ function ToolsPickerLoading({ count = 5 }: { count?: number }) {
   );
 }
 
+interface CapabilityItemProps {
+  id: string;
+  icon: React.ComponentType<{ className?: string }> | (() => React.ReactNode);
+  label: string;
+  description: string | null;
+  onClick: () => void;
+  keyPrefix: string;
+}
+
+function CapabilityItem({
+  id,
+  icon,
+  label,
+  description,
+  onClick,
+  keyPrefix,
+}: CapabilityItemProps) {
+  return (
+    <DropdownMenuItem
+      key={`${keyPrefix}-${id}`}
+      icon={icon}
+      label={label}
+      description={description ?? undefined}
+      truncateText
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClick();
+      }}
+    />
+  );
+}
+
 interface ToolsPickerProps {
   owner: WorkspaceType;
   selectedMCPServerViews: MCPServerViewType[];
@@ -325,15 +358,14 @@ export function ToolsPicker({
                 Skills
               </div>
               {filteredSkillsUnselected.map((skill) => (
-                <DropdownMenuItem
+                <CapabilityItem
                   key={`skills-picker-${skill.sId}`}
+                  id={skill.sId}
                   icon={SKILL_ICON}
                   label={skill.name}
                   description={skill.userFacingDescription}
-                  truncateText
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
+                  keyPrefix="skills-picker"
+                  onClick={() => {
                     trackEvent({
                       area: TRACKING_AREAS.TOOLS,
                       object: "skill_select",
@@ -356,32 +388,29 @@ export function ToolsPicker({
               <div className="text-element-700 px-4 py-2 text-xs font-semibold">
                 Tools
               </div>
-              {filteredServerViewsUnselected.map((v) => {
-                return (
-                  <DropdownMenuItem
-                    key={`tools-picker-${v.sId}`}
-                    icon={() => getAvatar(v.server)}
-                    label={getMcpServerViewDisplayName(v)}
-                    description={getMcpServerViewDescription(v)}
-                    truncateText
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "tool_select",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          tool_id: v.sId,
-                          tool_name: v.server.name,
-                        },
-                      });
-                      onSelect(v);
-                      setIsOpen(false);
-                    }}
-                  />
-                );
-              })}
+              {filteredServerViewsUnselected.map((v) => (
+                <CapabilityItem
+                  key={`tools-picker-${v.sId}`}
+                  id={v.sId}
+                  icon={() => getAvatar(v.server)}
+                  label={getMcpServerViewDisplayName(v)}
+                  description={getMcpServerViewDescription(v)}
+                  keyPrefix="tools-picker"
+                  onClick={() => {
+                    trackEvent({
+                      area: TRACKING_AREAS.TOOLS,
+                      object: "tool_select",
+                      action: TRACKING_ACTIONS.SELECT,
+                      extra: {
+                        tool_id: v.sId,
+                        tool_name: v.server.name,
+                      },
+                    });
+                    onSelect(v);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
             </>
           )}
 
