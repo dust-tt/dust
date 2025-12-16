@@ -47,7 +47,6 @@ export const shouldSendNotificationForAgentAnswer = (
     case "cli_programmatic":
     case "email":
     case "excel":
-    case "github-copilot-chat":
     case "gsheet":
     case "make":
     case "n8n":

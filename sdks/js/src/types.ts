@@ -305,7 +305,6 @@ const UserMessageOriginSchema = z
     "email",
     "excel",
     "extension",
-    "github-copilot-chat",
     "gsheet",
     "make",
     "n8n",

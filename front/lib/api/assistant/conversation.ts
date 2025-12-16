@@ -1,4 +1,5 @@
 import assert from "assert";
+import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
@@ -69,7 +70,6 @@ import type {
   ModelId,
   Result,
   UserMessageContext,
-  UserMessageOrigin,
   UserMessageType,
 } from "@app/types";
 import {
@@ -86,31 +86,6 @@ import {
   removeNulls,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
-
-const ALLOWED_API_KEY_ORIGINS: UserMessageOrigin[] = [
-  "api",
-  "excel",
-  "github-copilot-chat", // TODO: find out how it's used
-  "gsheet",
-  "make",
-  "n8n",
-  "powerpoint",
-  "zapier",
-  "zendesk",
-  "slack", // TODO: should not be allowed for API key usage
-  "web", // TODO: should not be allowed for API key usage
-];
-
-const ALLOWED_OAUTH_ORIGINS: UserMessageOrigin[] = [
-  "api",
-  "cli",
-  "cli_programmatic",
-  "extension",
-  "github-copilot-chat", // TODO: find out how it's used
-  "raycast",
-  "teams",
-  "web", // TODO: should not be allowed for OAuth usage
-];
 
 /**
  * Conversation Creation, update and deletion
@@ -454,45 +429,57 @@ export function getRelatedContentFragments(
   return relatedContentFragments;
 }
 
-export function validateUserMessageContext(
+export function isUserMessageContextValid(
   auth: Authenticator,
+  req: NextApiRequest,
   context: UserMessageContext
-): Result<void, APIErrorWithStatusCode> {
+): boolean {
   const authMethod = auth.authMethod();
-  switch (authMethod) {
-    case "api_key":
-      if (!ALLOWED_API_KEY_ORIGINS.includes(context.origin)) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "This origin is not allowed when using a custom API key. See documentation to fix to an allowed origin.",
-          },
-        });
-      }
-      break;
-    case "oauth":
-      if (!ALLOWED_OAUTH_ORIGINS.includes(context.origin)) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "This origin is not allowed when using OAuth for authentication. See documentation to fix to an allowed origin.",
-          },
-        });
-      }
-      break;
-    case "session":
-    case "internal":
-    case "system_api_key":
-      break;
-    default:
-      assertNever(authMethod);
+
+  if (authMethod === "system_api_key") {
+    return true;
   }
 
-  return new Ok(undefined);
+  const {
+    "user-agent": userAgent,
+    "x-dust-extension-version": extensionVersion,
+    "x-zendesk-app-id": zendeskAppId,
+  } = req.headers;
+
+  switch (context.origin) {
+    case "api":
+    case "slack": // TODO: should not be allowed
+    case "web": // TODO: should not be allowed
+      return true;
+    case "excel":
+    case "gsheet":
+    case "make":
+    case "n8n":
+    case "powerpoint":
+    case "zapier":
+      return authMethod === "api_key";
+    case "zendesk": // TODO: switch to OAuth
+      return (
+        (authMethod === "api_key" || authMethod === "oauth") && !!zendeskAppId
+      );
+    case "cli":
+    case "cli_programmatic":
+      return authMethod === "oauth" && userAgent === "Dust CLI";
+    case "extension":
+      return authMethod === "oauth" && !!extensionVersion;
+    case "raycast":
+      return authMethod === "oauth" && userAgent === "undici";
+    case "email":
+    case "slack_workflow":
+    case "teams":
+    case "transcript":
+    case "triggered":
+    case "triggered_programmatic":
+    case "onboarding_conversation":
+      return false;
+    default:
+      assertNever(context.origin);
+  }
 }
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -524,14 +511,6 @@ export async function postUserMessage(
     APIErrorWithStatusCode
   >
 > {
-  const validateUserMessageContextRes = validateUserMessageContext(
-    auth,
-    context
-  );
-  if (validateUserMessageContextRes.isErr()) {
-    return validateUserMessageContextRes;
-  }
-
   const user = auth.user();
   const owner = auth.workspace();
   const subscription = auth.subscription();

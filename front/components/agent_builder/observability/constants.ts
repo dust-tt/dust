@@ -71,10 +71,6 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   UserMessageOrigin,
   { label: string; color: string }
 > = {
-  "github-copilot-chat": {
-    label: "GitHub Copilot Chat",
-    color: "text-blue-500 dark:text-blue-500-night",
-  },
   api: { label: "API", color: "text-blue-300 dark:text-blue-300-night" },
   cli: { label: "CLI", color: "text-gray-500 dark:text-gray-500-night" },
   cli_programmatic: {

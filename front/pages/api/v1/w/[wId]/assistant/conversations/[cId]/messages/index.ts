@@ -4,7 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import {
+  isUserMessageContextValid,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   apiErrorForConversation,
@@ -216,6 +219,22 @@ async function handler(
         timezone: context.timezone,
         username: context.username,
       };
+
+      const validateUserMessageContextRes = isUserMessageContextValid(
+        auth,
+        req,
+        ctx
+      );
+      if (!validateUserMessageContextRes) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This origin is not allowed. See documentation to fix to an allowed origin.",
+          },
+        });
+      }
 
       const messageRes =
         blocking === true
