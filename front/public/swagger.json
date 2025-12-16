@@ -848,6 +848,15 @@
                 ]
               }
             }
+          },
+          {
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "description": "Whether to include the current user in the suggestions.",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "security": [
@@ -1629,6 +1638,15 @@
                   "users"
                 ]
               }
+            }
+          },
+          {
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "description": "Whether to include the current user in the suggestions.",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],

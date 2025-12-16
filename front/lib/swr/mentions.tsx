@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { useUser } from "@app/lib/swr/user";
 import { debounce } from "@app/lib/utils/debounce";
 import type { RichMention } from "@app/types";
 
