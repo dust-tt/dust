@@ -153,6 +153,8 @@ const {
   },
 });
 
+const PATCH_NAME = "finalize-activity-consolidation";
+
 export async function agentLoopConversationTitleWorkflow({
   authType,
   agentLoopArgs,
@@ -279,7 +281,7 @@ export async function agentLoopWorkflow({
 
       // Ensure analytics runs even if workflow is cancelled
       await CancellationScope.nonCancellable(async () => {
-        if (patched("finalize-activity-consolidation")) {
+        if (patched(PATCH_NAME)) {
           await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
         } else {
           await Promise.all([
@@ -302,7 +304,7 @@ export async function agentLoopWorkflow({
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
         // Ensure analytics runs even when workflow is cancelled
-        if (patched("finalize-activity-consolidation")) {
+        if (patched(PATCH_NAME)) {
           await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
         } else {
           await Promise.all([
@@ -314,7 +316,7 @@ export async function agentLoopWorkflow({
         return;
       } else {
         // Ensure analytics runs even when workflow errors
-        if (patched("finalize-activity-consolidation")) {
+        if (patched(PATCH_NAME)) {
           await finalizeErroredAgentLoopActivity(
             authType,
             agentLoopArgs,
