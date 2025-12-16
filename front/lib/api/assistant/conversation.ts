@@ -402,6 +402,7 @@ export function isUserMessageContextValid(
     case "n8n":
     case "powerpoint":
     case "zapier":
+      return authMethod === "api_key";
     case "zendesk": // TODO: switch to OAuth
       return (
         (authMethod === "api_key" || authMethod === "oauth") && !!zendeskAppId
