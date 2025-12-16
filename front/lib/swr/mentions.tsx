@@ -50,6 +50,9 @@ export function useMentionSuggestions({
   if (select.users) {
     searchParams.append("select", "users");
   }
+  if (includeCurrentUser) {
+    searchParams.append("current", "true");
+  }
 
   const url =
     (conversationId
@@ -69,12 +72,8 @@ export function useMentionSuggestions({
     disabled,
   });
 
-  const suggestions = includeCurrentUser
-    ? (data?.suggestions ?? [])
-    : (data?.suggestions.filter((s) => s.id !== user?.sId) ?? []);
-
   return {
-    suggestions,
+    suggestions: data?.suggestions ?? [],
     isLoading: !error && !data,
     isError: !!error,
     mutate,

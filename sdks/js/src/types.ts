@@ -3370,6 +3370,7 @@ export const GetMentionSuggestionsRequestQuerySchema = z.object({
   select: z
     .union([z.array(z.enum(["agents", "users"])), z.enum(["agents", "users"])])
     .optional(),
+  current: z.boolean().optional(),
 });
 
 export const GetMentionSuggestionsResponseBodySchema = z.object({
