@@ -387,7 +387,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills for a conversation, returning both enabled and equipped (not yet enabled) skills.
+   * List skills for a conversation, returning both enabled and equipped skills.
    */
   static async listForConversation(
     auth: Authenticator,
