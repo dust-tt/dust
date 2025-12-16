@@ -28,7 +28,6 @@ export function useMentionSuggestions({
   disabled?: boolean;
   includeCurrentUser?: boolean;
 }) {
-  const { user } = useUser();
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
