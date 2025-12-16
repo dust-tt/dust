@@ -16,12 +16,12 @@ export type SkillsSheetMode =
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.INFO;
-      skillConfiguration: SkillType;
+      skill: SkillType;
       previousMode: SelectionMode;
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION;
-      skillConfiguration: SkillType & { relations: SkillRelations };
+      skillConfiguration: SkillType;
       previousMode: SelectionMode;
     };
 

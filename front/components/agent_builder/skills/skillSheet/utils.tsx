@@ -20,8 +20,6 @@ export function getPageAndFooter(props: PageContentProps): {
     onModeChange,
     onClose,
     handleSave,
-    owner,
-    user,
     alreadyRequestedSpaceIds,
     localAdditionalSpaces,
   } = props;
@@ -58,15 +56,15 @@ export function getPageAndFooter(props: PageContentProps): {
     case SKILLS_SHEET_PAGE_IDS.INFO:
       return {
         page: {
-          title: mode.skillConfiguration.name,
-          description: mode.skillConfiguration.userFacingDescription,
-          id: mode.type,
+          title: mode.skill.name,
+          description: mode.skill.userFacingDescription,
+          id: props.mode.type,
           icon: SKILL_ICON,
           content: (
             <SkillDetailsSheetContent
-              skillConfiguration={mode.skillConfiguration}
-              owner={owner}
-              user={user}
+              skillConfiguration={mode.skill}
+              owner={props.owner}
+              user={props.user}
             />
           ),
         },

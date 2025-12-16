@@ -68,7 +68,7 @@ export function SelectionPageContent({
               onMoreInfoClick={() => {
                 onModeChange({
                   type: SKILLS_SHEET_PAGE_IDS.INFO,
-                  skillConfiguration: skill,
+                  skill,
                   previousMode: mode,
                 });
               }}
