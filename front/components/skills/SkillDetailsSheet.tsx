@@ -21,7 +21,7 @@ import { useState } from "react";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { SKILL_ICON } from "@app/lib/skill";
+import { hasRelations, SKILL_ICON } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
@@ -74,7 +74,7 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skillConfiguration: SkillType & { relations?: SkillRelations };
   owner: WorkspaceType;
   user: UserType;
 };
@@ -110,11 +110,13 @@ export function SkillDetailsSheetContent({
             <SkillInfoTab skillConfiguration={skillConfiguration} />
           </TabsContent>
           <TabsContent value="editors">
-            <SkillEditorsTab
-              skillConfiguration={skillConfiguration}
-              owner={owner}
-              user={user}
-            />
+            {hasRelations(skillConfiguration) && (
+              <SkillEditorsTab
+                skillConfiguration={skillConfiguration}
+                owner={owner}
+                user={user}
+              />
+            )}
           </TabsContent>
         </div>
       </Tabs>
