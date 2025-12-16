@@ -5,6 +5,7 @@ import type {
 
 const GITHUB_MAX_SEARCH_QUERY_LENGTH = 256;
 const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
+const GITHUB_BOOLEAN_OPERATORS = "(?:AND|OR|NOT)";
 
 /**
  * Truncates a GitHub search query to respect both the 256 character limit
@@ -12,8 +13,8 @@ const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
  * https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#limitations-on-query-length
  */
 export function truncateGitHubQuery(query: string): string {
-  // First, check operator count
-  const operatorRegex = /\b(AND|OR|NOT)\b/gi;
+  // First, check boolean operator count
+  const operatorRegex = new RegExp(`\\b${GITHUB_BOOLEAN_OPERATORS}\\b`, "gi");
   const operators = query.match(operatorRegex) ?? [];
 
   let truncated = query;
@@ -21,14 +22,19 @@ export function truncateGitHubQuery(query: string): string {
   // If too many operators, truncate by removing complete clauses from the end
   if (operators.length > GITHUB_MAX_BOOLEAN_OPERATORS) {
     // Split by operators while keeping them
-    const parts = query.split(/(\s+(?:AND|OR|NOT)\s+)/gi);
+    const parts = query.split(
+      new RegExp(`(\\s+${GITHUB_BOOLEAN_OPERATORS}\\s+)`, "gi")
+    );
 
     let operatorCount = 0;
     let validLength = 0;
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      const isOperator = /^\s*(?:AND|OR|NOT)\s*$/i.test(part);
+      const isOperator = new RegExp(
+        `^\\s*${GITHUB_BOOLEAN_OPERATORS}\\s*$`,
+        "i"
+      ).test(part);
 
       if (isOperator) {
         operatorCount++;
