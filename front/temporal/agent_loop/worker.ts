@@ -90,7 +90,7 @@ export async function runAgentLoopWorker() {
         }),
       ],
     },
-    sinks: spanExporter && {
+    sinks: {
       // @ts-expect-error InMemorySpanExporter type mismatch.
       exporter: makeWorkflowExporter(spanExporter, resource),
     },
