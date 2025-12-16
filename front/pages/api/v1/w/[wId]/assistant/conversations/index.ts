@@ -421,14 +421,14 @@ async function handler(
           ctx
         );
         if (!validateUserMessageContextRes) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "This origin is not allowed. See documentation to fix to an allowed origin.",
+          logger.warn(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              authMethod: auth.authMethod(),
+              origin: ctx.origin,
             },
-          });
+            "This origin is not allowed. See documentation to fix to an allowed origin."
+          );
         }
 
         // If a message was provided we do await for the message to be created before returning the
