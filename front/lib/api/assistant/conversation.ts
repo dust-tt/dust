@@ -353,10 +353,10 @@ export async function getLastUserMessageMentions(
   }
 
   const mentions: string[] = removeNulls(
-    message.mentions?.map(
+    (message as any).mentions.map(
       (mention: MentionModel) =>
         mention.agentConfigurationId ?? mention.user?.sId
-    ) ?? []
+    )
   );
   return new Ok(mentions);
 }
