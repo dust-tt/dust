@@ -4,6 +4,10 @@ import {
   downloadAndProcessMicrosoftFile,
   searchMicrosoftDriveItems,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import {
+  PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
+  PROVIDER_SEARCH_MAX_PAGE_SIZE,
+} from "@app/lib/providers/constants";
 import type {
   ToolDownloadParams,
   ToolDownloadResult,
@@ -12,8 +16,6 @@ import type {
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import type { ContentNodeType } from "@app/types/core/content_node";
-
-import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
 
 // Supported MIME types for Microsoft files
 const SUPPORTED_MIMETYPES = [
@@ -82,7 +84,7 @@ export async function search({
     const response = await searchMicrosoftDriveItems({
       client,
       query: "FileName: " + query,
-      pageSize: Math.min(pageSize, 100),
+      pageSize: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     });
 
     // Parse response structure

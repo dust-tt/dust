@@ -5,6 +5,10 @@ import type {
   PartialBlockObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
+import {
+  PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
+  PROVIDER_SEARCH_MAX_PAGE_SIZE,
+} from "@app/lib/providers/constants";
 import { getNotionClient } from "@app/lib/providers/notion/utils";
 import type {
   ToolDownloadParams,
@@ -13,8 +17,6 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
-
-import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
 
 // Maximum time to spend extracting content (in milliseconds)
 const MAX_EXTRACTION_TIME_MS = 5000;
@@ -38,7 +40,7 @@ export async function search({
 
   const response = await notion.search({
     query,
-    page_size: Math.min(pageSize, 100),
+    page_size: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     filter: {
       property: "object",
       // We only support pages, as databases would require getting too much data

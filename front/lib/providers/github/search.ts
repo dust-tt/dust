@@ -1,4 +1,5 @@
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "@app/lib/providers/constants";
 import {
   fetchGitHubGraphQLNode,
   searchGitHubIssues,
@@ -13,8 +14,6 @@ import type {
   ToolSearchParams,
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
-
-import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
 
 const PULL_REQUEST_MIME_TYPE = "application/vnd.github.pull-request";
 const ISSUE_MIME_TYPE = "application/vnd.github.issue";

@@ -1,5 +1,6 @@
 import { Octokit } from "@octokit/core";
 
+import { PROVIDER_SEARCH_MAX_PAGE_SIZE } from "@app/lib/providers/constants";
 import { GITHUB_NODE_QUERY } from "@app/lib/providers/github/graphql";
 import type {
   GitHubGraphQLNodeParams,
@@ -30,11 +31,11 @@ export async function searchGitHubIssues({
     // GitHub's default "best match" search balances relevance and recency
     const response = await github.request("GET /search/issues", {
       q: query,
-      per_page: Math.min(pageSize, 100),
+      per_page: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     });
     return new Ok(response.data);
   } catch (error) {
-    return new Err(new Error(normalizeError(error).message));
+    return new Err(normalizeError(error));
   }
 }
 

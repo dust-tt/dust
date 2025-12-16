@@ -21,7 +21,7 @@ export function buildContentSummaryForIssue(node: GitHubIssueNode): string {
   if (node.comments.nodes.length > 0) {
     content += `## Comments (${node.comments.nodes.length})\n\n`;
     for (const comment of node.comments.nodes) {
-      content += `### @${comment.author.login} (${comment.createdAt})\n\n`;
+      content += `>> @${comment.author.login}:\n\n`;
       content += `${comment.body}\n\n`;
     }
   }
@@ -57,7 +57,7 @@ export function buildContentSummaryForPullRequest(
   if (node.reviews.nodes.length > 0) {
     content += `## Reviews (${node.reviews.nodes.length})\n\n`;
     for (const review of node.reviews.nodes) {
-      content += `### @${review.author.login} - ${review.state} (${review.createdAt})\n\n`;
+      content += `>> @${review.author.login} - ${review.state}\n\n`;
       if (review.body) {
         content += `${review.body}\n\n`;
       }

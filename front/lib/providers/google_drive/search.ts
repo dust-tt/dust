@@ -1,6 +1,10 @@
 import TurndownService from "turndown";
 
 import {
+  PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
+  PROVIDER_SEARCH_MAX_PAGE_SIZE,
+} from "@app/lib/providers/constants";
+import {
   getGoogleDriveClient,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/providers/google_drive/utils";
@@ -11,8 +15,6 @@ import type {
   ToolSearchRawResult,
 } from "@app/lib/search/tools/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
-
-import { PROVIDER_DOWNLOAD_MAX_FILE_SIZE } from "../constants";
 
 const turndownService = new TurndownService({
   headingStyle: "atx",
@@ -45,7 +47,7 @@ export async function search({
 
   const res = await drive.files.list({
     q: searchQuery,
-    pageSize: Math.min(pageSize, 100),
+    pageSize: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     fields: "files(id, name, mimeType, webViewLink)",
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
