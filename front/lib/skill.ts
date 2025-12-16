@@ -3,7 +3,6 @@ import { PuzzleIcon } from "lucide-react";
 import React from "react";
 
 import {
-  getAvatarFromIcon,
   getIcon,
   isCustomResourceIconType,
   isInternalAllowedIcon,
@@ -14,15 +13,18 @@ export const SKILL_ICON = PuzzleIcon;
 
 export function getSkillAvatarIcon(
   iconString: string | null
-): () => React.ReactNode {
+): React.ComponentType<{ className?: string }> {
   if (
     iconString &&
     (isCustomResourceIconType(iconString) || isInternalAllowedIcon(iconString))
   ) {
-    return () => getAvatarFromIcon(iconString);
+    const icon = getIcon(iconString);
+    return (props) =>
+      React.createElement(Avatar, { icon, size: "sm", ...props });
   }
 
-  return () => React.createElement(Avatar, { icon: SKILL_ICON, size: "sm" });
+  return (props) =>
+    React.createElement(Avatar, { icon: SKILL_ICON, size: "sm", ...props });
 }
 
 export function getSkillIcon(

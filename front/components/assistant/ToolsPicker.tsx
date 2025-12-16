@@ -62,7 +62,7 @@ function ToolsPickerLoading({ count = 5 }: { count?: number }) {
 
 interface CapabilityItemProps {
   id: string;
-  icon: React.ComponentType<{ className?: string }> | (() => React.ReactNode);
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   description: string | null;
   onClick?: () => void;
