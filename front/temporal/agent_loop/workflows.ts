@@ -143,7 +143,7 @@ const { trackProgrammaticUsageActivity } = proxyActivities<
 });
 
 const {
-  finalizeAgentLoopActivity,
+  finalizeSuccessfulAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({

@@ -9,11 +9,7 @@ import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop
 import { trackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-/**
- * Consolidated activity that runs all finalization tasks at the end of a successful agent loop.
- * This replaces the previous pattern of running 4 separate activities in Promise.all.
- */
-export async function finalizeAgentLoopActivity(
+export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
@@ -25,9 +21,6 @@ export async function finalizeAgentLoopActivity(
   ]);
 }
 
-/**
- * Consolidated activity that runs finalization tasks when an agent loop is cancelled.
- */
 export async function finalizeCancelledAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
@@ -39,9 +32,6 @@ export async function finalizeCancelledAgentLoopActivity(
   ]);
 }
 
-/**
- * Consolidated activity that runs finalization tasks when an agent loop errors.
- */
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
