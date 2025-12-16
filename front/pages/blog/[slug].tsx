@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { TableOfContents } from "@app/components/blog/TableOfContents";
+import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -218,9 +219,18 @@ export default function BlogPost({
                           alt={author.name}
                           width={24}
                           height={24}
+                          loader={contentfulImageLoader}
+                          sizes="24px"
                           className="rounded-full"
                         />
-                      ) : null
+                      ) : (
+                        <div
+                          key={author.name}
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600"
+                        >
+                          {author.name.charAt(0).toUpperCase()}
+                        </div>
+                      )
                     )}
                     <span>{post.authors.map((a) => a.name).join(", ")}</span>
                   </div>
@@ -244,7 +254,9 @@ export default function BlogPost({
                   alt={post.image.alt}
                   width={post.image.width}
                   height={post.image.height}
+                  loader={contentfulImageLoader}
                   className="h-full w-full object-cover"
+                  sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
                   priority
                 />
               </div>
@@ -279,10 +291,12 @@ export default function BlogPost({
               )}
             >
               {relatedPosts.map((relatedPost) => (
-                <Link
+                <BlogBlock
                   key={relatedPost.id}
+                  title={relatedPost.title}
+                  content={relatedPost.description ?? ""}
                   href={`/blog/${relatedPost.slug}`}
-                  className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white"
+                  tags={relatedPost.tags}
                 >
                   {relatedPost.image && (
                     <Image
@@ -295,28 +309,7 @@ export default function BlogPost({
                       className="aspect-video w-full object-cover"
                     />
                   )}
-                  <div className="flex h-full flex-col gap-3 px-6 py-6">
-                    <span className="text-sm text-muted-foreground">
-                      {formatTimestampToFriendlyDate(
-                        new Date(relatedPost.createdAt).getTime(),
-                        "short"
-                      )}
-                    </span>
-                    <h3 className="text-xl font-semibold text-foreground">
-                      {relatedPost.title}
-                    </h3>
-                    {relatedPost.description && (
-                      <p className="text-base text-muted-foreground">
-                        {relatedPost.description}
-                      </p>
-                    )}
-                    <div className="mt-auto flex flex-wrap gap-2">
-                      {relatedPost.tags.map((tag) => (
-                        <Chip key={tag} label={tag} size="xs" color="primary" />
-                      ))}
-                    </div>
-                  </div>
-                </Link>
+                </BlogBlock>
               ))}
             </div>
           </Grid>

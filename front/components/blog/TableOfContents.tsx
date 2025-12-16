@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import { classNames } from "@app/lib/utils";
 
-const HEADER_OFFSET = 96;
+const HEADER_OFFSET = 80;
 const SCROLL_DEBOUNCE_MS = 100;
 
 interface TableOfContentsProps {
@@ -41,7 +41,7 @@ function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
   return result;
 }
 
-function findActiveHeadingId(items: TocItem[]): string {
+function findActiveHeadingId(items: Array<{ id: string }>): string {
   const scrollPosition = window.scrollY + HEADER_OFFSET + 50;
 
   const headings = items
@@ -67,6 +67,62 @@ function findActiveHeadingId(items: TocItem[]): string {
   }
 
   return activeId;
+}
+
+export function useScrollSpy(items: Array<{ id: string }>) {
+  const [activeId, setActiveId] = useState<string>("");
+
+  useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const handleScroll = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        const newActiveId = findActiveHeadingId(items);
+        setActiveId((prev) => (prev !== newActiveId ? newActiveId : prev));
+      }, SCROLL_DEBOUNCE_MS);
+    };
+
+    setActiveId(findActiveHeadingId(items));
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [items]);
+
+  const handleClick = useCallback(
+    (itemId: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      const element = document.getElementById(itemId);
+      if (!element) {
+        return;
+      }
+
+      setActiveId(itemId);
+
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition =
+        elementPosition + window.pageYOffset - HEADER_OFFSET;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    },
+    []
+  );
+
+  return { activeId, handleClick };
 }
 
 interface TocItemComponentProps {
@@ -132,59 +188,8 @@ function TocItemComponent({
 }
 
 export function TableOfContents({ items, className }: TableOfContentsProps) {
-  const [activeId, setActiveId] = useState<string>("");
-
+  const { activeId, handleClick } = useScrollSpy(items);
   const hierarchy = useMemo(() => buildHierarchy(items), [items]);
-
-  useEffect(() => {
-    if (items.length === 0) {
-      return;
-    }
-
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const handleScroll = () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(() => {
-        const newActiveId = findActiveHeadingId(items);
-        setActiveId((prev) => (prev !== newActiveId ? newActiveId : prev));
-      }, SCROLL_DEBOUNCE_MS);
-    };
-
-    setActiveId(findActiveHeadingId(items));
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [items]);
-
-  const handleClick = useCallback(
-    (itemId: string, e: React.MouseEvent<HTMLAnchorElement>) => {
-      e.preventDefault();
-      const element = document.getElementById(itemId);
-      if (!element) {
-        return;
-      }
-
-      setActiveId(itemId);
-
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition =
-        elementPosition + window.pageYOffset - HEADER_OFFSET;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-    },
-    []
-  );
 
   if (items.length === 0) {
     return null;

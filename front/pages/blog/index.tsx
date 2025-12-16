@@ -18,6 +18,7 @@ import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 
 const GRID_PAGE_SIZE = 12;
 
@@ -51,32 +52,22 @@ export const getStaticProps: GetStaticProps<
 
 export default function BlogListing({ posts }: BlogListingPageProps) {
   const router = useRouter();
-  const initialTag =
-    typeof router.query.tag === "string" ? router.query.tag : null;
+  const initialTag = isString(router.query.tag) ? router.query.tag : null;
   const initialPage = useMemo(() => {
-    const queryPage = Array.isArray(router.query.page)
-      ? router.query.page[0]
-      : router.query.page;
-   const parsed = parseInt(queryPage || "1", 10);
-   return parsed > 0 ? parsed : 1;
+    const queryPage = isString(router.query.page)
+      ? router.query.page
+      : undefined;
+    const parsed = parseInt(queryPage ?? "1", 10);
+    return parsed > 0 ? parsed : 1;
   }, [router.query.page]);
 
   const [selectedTag, setSelectedTag] = useState<string | null>(initialTag);
   const [page, setPage] = useState<number>(initialPage);
 
   useEffect(() => {
-    const queryTag =
-      typeof router.query.tag === "string" ? router.query.tag : null;
+    const queryTag = isString(router.query.tag) ? router.query.tag : null;
     setSelectedTag(queryTag);
   }, [router.query.tag]);
-
-  useEffect(() => {
-    const queryPage = Array.isArray(router.query.page)
-      ? router.query.page[0]
-      : router.query.page;
-    const parsed = queryPage ? parseInt(queryPage, 10) : 1;
-    setPage(Number.isNaN(parsed) || parsed < 1 ? 1 : parsed);
-  }, [router.query.page]);
 
   const buildUrl = useCallback((tag: string | null, pageNumber: number) => {
     const params = new URLSearchParams();
@@ -119,9 +110,6 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     return Array.from(tagSet).sort();
   }, [posts]);
 
-  const defaultCategories = ["News", "Product", "Events", "Joining Dust"];
-  const categories = allTags.length > 0 ? allTags : defaultCategories;
-
   const filteredPosts = useMemo(() => {
     if (!selectedTag) {
       return posts;
@@ -131,7 +119,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
 
   const hasFeaturedCandidate = !selectedTag && filteredPosts.length > 0;
   const remainingPool = hasFeaturedCandidate
-    ? filteredPosts.slice(1) // exclude hero from grid counting
+    ? filteredPosts.slice(1)
     : filteredPosts;
 
   const totalPages = Math.max(
@@ -178,12 +166,12 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
           />
           <H1 className="text-5xl">Blog</H1>
           <P className="max-w-2xl text-center text-muted-foreground">
-            Learn more about Dust, get product updates, customer insights and
-            more.
+            Learn more about Dust, get product updates, AI agents best practices
+            and more.
           </P>
         </div>
 
-        {categories.length > 0 && (
+        {allTags.length > 0 && (
           <div className="col-span-12 flex flex-wrap justify-center gap-2 pt-0">
             <Button
               label="All"
@@ -191,7 +179,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
               size="sm"
               onClick={() => handleSelectTag(null)}
             />
-            {categories.map((tag) => (
+            {allTags.map((tag) => (
               <Button
                 key={tag}
                 label={tag}

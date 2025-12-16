@@ -230,6 +230,7 @@ export default function CustomerStoryPage({
                   width={story.heroImage.width}
                   height={story.heroImage.height}
                   loader={contentfulImageLoader}
+                  sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
                   className="h-full w-full object-cover"
                   priority
                 />
@@ -246,6 +247,8 @@ export default function CustomerStoryPage({
                     alt={story.companyLogo.alt}
                     width={320}
                     height={160}
+                    loader={contentfulImageLoader}
+                    sizes="320px"
                     className="max-h-32 w-auto object-contain"
                   />
                 </div>
@@ -331,6 +334,8 @@ export default function CustomerStoryPage({
                         alt={story.contactPhoto.alt}
                         width={56}
                         height={56}
+                        loader={contentfulImageLoader}
+                        sizes="56px"
                         className="h-14 w-14 rounded-full object-cover"
                       />
                     )}
@@ -373,10 +378,8 @@ export default function CustomerStoryPage({
                   </div>
                 )}
 
-                {/* Rich text body */}
                 {renderRichTextFromContentful(story.body)}
 
-                {/* Gallery */}
                 {story.gallery.length > 0 && (
                   <div className="mt-12">
                     <H2 className="mb-6">Gallery</H2>
@@ -388,6 +391,8 @@ export default function CustomerStoryPage({
                           alt={image.alt}
                           width={image.width}
                           height={image.height}
+                          loader={contentfulImageLoader}
+                          sizes="(max-width: 640px) 100vw, 50vw"
                           className="rounded-lg"
                         />
                       ))}
@@ -429,6 +434,8 @@ export default function CustomerStoryPage({
                         src={relatedStory.heroImage.url}
                         alt={relatedStory.heroImage.alt}
                         fill
+                        loader={contentfulImageLoader}
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover"
                       />
                     ) : relatedStory.companyLogo ? (
@@ -438,6 +445,8 @@ export default function CustomerStoryPage({
                           alt={relatedStory.companyLogo.alt}
                           width={120}
                           height={60}
+                          loader={contentfulImageLoader}
+                          sizes="120px"
                           className="max-h-12 w-auto object-contain"
                         />
                       </div>

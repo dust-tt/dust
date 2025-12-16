@@ -21,6 +21,7 @@ import type {
   CustomerStorySummary,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 
 const GRID_PAGE_SIZE = 12;
 
@@ -179,11 +180,11 @@ export default function CustomerStoriesListing({
 }: CustomerStoryListingPageProps) {
   const router = useRouter();
   const initialPage = useMemo(() => {
-    const queryPage = Array.isArray(router.query.page)
-      ? router.query.page[0]
-      : router.query.page;
-    const parsed = queryPage ? parseInt(queryPage, 10) : 1;
-    return Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+    const queryPage = isString(router.query.page)
+      ? router.query.page
+      : undefined;
+    const parsed = parseInt(queryPage ?? "1", 10);
+    return parsed > 0 ? parsed : 1;
   }, [router.query.page]);
 
   const [page, setPage] = useState<number>(initialPage);
@@ -229,30 +230,6 @@ export default function CustomerStoriesListing({
     selectedRegions,
   ]);
 
-  useEffect(() => {
-    const queryPage = Array.isArray(router.query.page)
-      ? router.query.page[0]
-      : router.query.page;
-    const parsed = queryPage ? parseInt(queryPage, 10) : 1;
-    setPage(Number.isNaN(parsed) || parsed < 1 ? 1 : parsed);
-  }, [router.query.page]);
-
-  const buildQuery = useCallback(
-    (
-      query: Record<string, string | string[] | undefined>,
-      pageNumber: number
-    ): Record<string, string | string[] | undefined> => {
-      const nextQuery = { ...query };
-      if (pageNumber > 1) {
-        nextQuery.page = pageNumber.toString();
-      } else {
-        delete nextQuery.page;
-      }
-      return nextQuery;
-    },
-    []
-  );
-
   const updateFilters = useCallback(
     (key: string, values: string[]) => {
       const newQuery = { ...router.query };
@@ -261,10 +238,10 @@ export default function CustomerStoriesListing({
       } else {
         delete newQuery[key];
       }
-      const finalQuery = buildQuery(newQuery, 1);
+      delete newQuery.page;
       setPage(1);
       void router.push(
-        { pathname: router.pathname, query: finalQuery },
+        { pathname: router.pathname, query: newQuery },
         undefined,
         {
           shallow: true,
@@ -272,7 +249,7 @@ export default function CustomerStoriesListing({
         }
       );
     },
-    [buildQuery, router]
+    [router]
   );
 
   const filteredStories = useMemo(() => {
@@ -338,7 +315,12 @@ export default function CustomerStoriesListing({
   const handlePageChange = useCallback(
     (pageNumber: number) => {
       setPage(pageNumber);
-      const nextQuery = buildQuery(router.query, pageNumber);
+      const nextQuery = { ...router.query };
+      if (pageNumber > 1) {
+        nextQuery.page = pageNumber.toString();
+      } else {
+        delete nextQuery.page;
+      }
       void router.push(
         { pathname: router.pathname, query: nextQuery },
         undefined,
@@ -348,7 +330,7 @@ export default function CustomerStoriesListing({
         }
       );
     },
-    [buildQuery, router]
+    [router]
   );
 
   return (
@@ -378,9 +360,7 @@ export default function CustomerStoriesListing({
           </P>
         </div>
 
-        {/* Main content area */}
         <div className="col-span-12 mt-8 flex flex-col gap-8 lg:flex-row">
-          {/* Filters sidebar */}
           <aside className="w-full shrink-0 lg:w-64">
             <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-6">
               <div className="mb-4 flex items-center justify-between">
@@ -426,7 +406,6 @@ export default function CustomerStoriesListing({
             </div>
           </aside>
 
-          {/* Stories grid */}
           <div className="flex-1">
             {filteredStories.length > 0 ? (
               <>
@@ -437,7 +416,6 @@ export default function CustomerStoriesListing({
                       href={`/customers/${story.slug}`}
                       className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white transition-colors"
                     >
-                      {/* Hero image or logo */}
                       <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
                         {story.heroImage ? (
                           <Image
