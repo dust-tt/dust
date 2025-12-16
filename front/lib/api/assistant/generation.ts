@@ -197,14 +197,14 @@ function constructSkillsSection({
 function constructAttachmentsSection(): string {
   return (
     "# ATTACHMENTS\n" +
-    "The conversation history may contain file attachments, indicated by <attachment> tags. " +
+    'The conversation history may contain file attachments, indicated by attachment tags of the form <attachment id="{FILE_ID}" type="{MIME_TYPE}" title="{TITLE}" version="{VERSION}" isIncludable="{IS_INCLUDABLE}" isQueryable="{IS_QUERYABLE}" isSearchable="{IS_SEARCHABLE}" sourceUrl="{SOURCE_URL}"> . ' +
     "Attachments may originate from the user directly or from tool outputs. " +
-    "These tags indicate when the file was attached but do not always contain the full contents (it may contain a small snippet or description of the file).\n" +
-    "Each file attachment has a specific content type and status (includable, queryable, searchable):\n\n" +
-    `// includable: content can be retrieved using \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`\n` +
-    `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
-    `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
-    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n"
+    "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
+    "Three flags indicate how an attachment can be used:\n\n" +
+    `- isIncludable: includable content, that can be retrieved using conversation files tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`\n` +
+    `- isQueryable: queryable content, representing tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
+    `- isSearchable: searchable content, that can be searched alongside other searchable conversation files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
+    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
 }
 
