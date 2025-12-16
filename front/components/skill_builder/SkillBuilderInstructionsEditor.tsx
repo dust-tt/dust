@@ -12,7 +12,7 @@ import { useController } from "react-hook-form";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -46,7 +46,7 @@ const editorVariants = cva(
 );
 
 interface SkillBuilderInstructionsEditorProps {
-  compareVersion?: SkillConfigurationType | null;
+  compareVersion?: SkillType | null;
   isInstructionDiffMode?: boolean;
 }
 
