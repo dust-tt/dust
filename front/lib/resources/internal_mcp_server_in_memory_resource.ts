@@ -5,7 +5,6 @@ import {
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerById,
@@ -16,6 +15,7 @@ import {
   isAutoInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
