@@ -48,6 +48,12 @@ import type { WithAPIErrorResponse } from "@app/types";
  *             enum:
  *               - agents
  *               - users
+ *       - in: query
+ *         name: current
+ *         required: false
+ *         description: Whether to include the current user in the suggestions.
+ *         schema:
+ *           type: boolean
  *     security:
  *       - BearerAuth: []
  *     responses:
