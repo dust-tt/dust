@@ -23,6 +23,10 @@ export type GetSkillConfigurationsResponseBody = {
   skillConfigurations: SkillType[];
 };
 
+export type GetSkillWithRelationsResponseBody = {
+  skill: SkillType & { relations: SkillRelations };
+};
+
 export type GetSkillConfigurationsWithRelationsResponseBody = {
   skillConfigurations: (SkillType & { relations: SkillRelations })[];
 };
