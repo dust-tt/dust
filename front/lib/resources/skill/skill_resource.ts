@@ -737,11 +737,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource> {
     // Fetch MCP server configurations if the global skill has an internal MCP server.
     let mcpServerViews: MCPServerViewResource[] = [];
-    const requestedSpaceIds = context?.agentConfiguration?.requestedSpaceIds
-      ? removeNulls(
-          context.agentConfiguration.requestedSpaceIds.map(getResourceIdFromSId)
-        )
-      : [];
+    const requestedSpaceIds =
+      context?.agentConfiguration?.requestedSpaceIds ?? [];
+    const requestedSpaceModelIds = removeNulls(
+      requestedSpaceIds.map(getResourceIdFromSId)
+    );
 
     if (def.internalMCPServerNames) {
       const mcpServerViewsByName = await concurrentExecutor(
@@ -750,12 +750,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           MCPServerViewResource.listMCPServerViewsAutoInternalForSpaces(
             auth,
             name,
-            requestedSpaceIds
+            requestedSpaceModelIds
           ),
         { concurrency: 5 }
       );
       mcpServerViews = mcpServerViewsByName.flat();
     }
+
+    const instructions = def.fetchInstructions
+      ? await def.fetchInstructions(auth, requestedSpaceIds)
+      : def.instructions;
 
     return new SkillResource(
       this.model,
@@ -766,9 +770,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         userFacingDescription: def.userFacingDescription,
         // We fake the id here. We should rely exclusively on sId for global skills.
         id: -1,
-        instructions: def.instructions,
+        instructions,
         name: def.name,
-        requestedSpaceIds,
+        requestedSpaceIds: requestedSpaceModelIds,
         status: "active",
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
