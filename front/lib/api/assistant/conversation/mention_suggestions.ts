@@ -128,7 +128,6 @@ export const suggestionsOfMentions = async (
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
-  const currentUserSId = auth.getNonNullableUser().sId;
 
   // Id of the last user or agent mentioned by the current user in the conversation
   let lastMentionedId: string | null = null;
@@ -157,17 +156,15 @@ export const suggestionsOfMentions = async (
         const participants = participantsRes.value;
 
         // Convert participants to RichMention format
-        participantUsers = participants.users
-          .filter((u) => u.sId !== currentUserSId)
-          .map((u) => ({
-            type: "user" as const,
-            id: u.sId,
-            label: u.fullName ?? u.username,
-            pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
-            description: u.username,
-            lastActivityAt: u.lastActivityAt,
-            isParticipant: true,
-          }));
+        participantUsers = participants.users.map((u) => ({
+          type: "user" as const,
+          id: u.sId,
+          label: u.fullName ?? u.username,
+          pictureUrl: u.pictureUrl ?? "/static/humanavatar/anonymous.png",
+          description: u.username,
+          lastActivityAt: u.lastActivityAt,
+          isParticipant: true,
+        }));
 
         participantAgents = participants.agents.map((a) => ({
           type: "agent" as const,
@@ -229,14 +226,12 @@ export const suggestionsOfMentions = async (
     if (res.isOk()) {
       const { users } = res.value;
 
-      const filteredUsers: RichUserMentionInConversation[] = users
-        .filter((u) => u.sId !== currentUserSId)
-        .map((u) => ({
-          ...toRichUserMentionType(u.toJSON()),
-          isParticipant: participantUsers.some((pu) => pu.id === u.sId),
-          lastActivityAt:
-            participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
-        }));
+      const filteredUsers: RichUserMentionInConversation[] = users.map((u) => ({
+        ...toRichUserMentionType(u.toJSON()),
+        isParticipant: participantUsers.some((pu) => pu.id === u.sId),
+        lastActivityAt:
+          participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
+      }));
       const sortedUsers = sortEditorSuggestionUsers(filteredUsers);
       if (!normalizedQuery) {
         // It's a special case when there's no query: all the conversation participants may not be in the users list (as it's limited).

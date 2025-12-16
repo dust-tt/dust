@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useUser } from "@app/lib/swr/user";
 import { debounce } from "@app/lib/utils/debounce";
 import type { RichMention } from "@app/types";
 
@@ -15,6 +16,7 @@ export function useMentionSuggestions({
   query = "",
   select,
   disabled = false,
+  includeCurrentUser = false,
 }: {
   workspaceId: string;
   conversationId: string | null;
@@ -24,7 +26,9 @@ export function useMentionSuggestions({
     users: boolean;
   };
   disabled?: boolean;
+  includeCurrentUser?: boolean;
 }) {
+  const { user } = useUser();
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -65,8 +69,12 @@ export function useMentionSuggestions({
     disabled,
   });
 
+  const suggestions = includeCurrentUser
+    ? (data?.suggestions ?? [])
+    : (data?.suggestions.filter((s) => s.id !== user?.sId) ?? []);
+
   return {
-    suggestions: data?.suggestions ?? [],
+    suggestions,
     isLoading: !error && !data,
     isError: !!error,
     mutate,
