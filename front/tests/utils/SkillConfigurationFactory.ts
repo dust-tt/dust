@@ -3,7 +3,7 @@ import assert from "assert";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { LightAgentConfigurationType, ModelId } from "@app/types";
+import type { ModelId } from "@app/types";
 
 export class SkillConfigurationFactory {
   static async create(
@@ -42,10 +42,10 @@ export class SkillConfigurationFactory {
     auth: Authenticator,
     {
       skillId,
-      agentConfiguration,
+      agentConfigurationId,
     }: {
       skillId: ModelId;
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfigurationId: ModelId;
     }
   ): Promise<AgentSkillModel> {
     const workspace = auth.getNonNullableWorkspace();
@@ -54,7 +54,7 @@ export class SkillConfigurationFactory {
       workspaceId: workspace.id,
       customSkillId: skillId,
       globalSkillId: null,
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId,
     });
 
     return agentSkill;
@@ -64,10 +64,10 @@ export class SkillConfigurationFactory {
     auth: Authenticator,
     {
       globalSkillId,
-      agentConfiguration,
+      agentConfigurationId,
     }: {
       globalSkillId: string;
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfigurationId: ModelId;
     }
   ): Promise<AgentSkillModel> {
     const workspace = auth.getNonNullableWorkspace();
@@ -76,7 +76,7 @@ export class SkillConfigurationFactory {
       workspaceId: workspace.id,
       customSkillId: null,
       globalSkillId,
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId,
     });
 
     return agentSkill;
