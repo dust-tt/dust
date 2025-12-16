@@ -13,12 +13,13 @@ import type {
   GetSkillConfigurationsResponseBody,
   GetSkillConfigurationsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
 import type {
-  SkillConfigurationType,
   SkillStatus,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 export function useSkillConfigurations({
@@ -97,7 +98,7 @@ export function useArchiveSkillConfiguration({
   skillConfiguration,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
@@ -153,7 +154,7 @@ export function useRestoreSkillConfiguration({
   skillConfiguration,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillConfigurationType;
+  skillConfiguration: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
@@ -202,4 +203,35 @@ export function useRestoreSkillConfiguration({
   };
 
   return doRestore;
+}
+
+export function useSkillConfigurationHistory({
+  owner,
+  skillConfiguration,
+  limit,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  skillConfiguration?: SkillType;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const skillConfigurationHistoryFetcher: Fetcher<GetSkillConfigurationsHistoryResponseBody> =
+    fetcher;
+
+  const queryParams = limit ? `?limit=${limit}` : "";
+  const { data, error, mutate } = useSWRWithDefaults(
+    skillConfiguration
+      ? `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/history${queryParams}`
+      : null,
+    skillConfigurationHistoryFetcher,
+    { disabled }
+  );
+
+  return {
+    skillConfigurationHistory: data?.history,
+    isSkillConfigurationHistoryLoading: !error && !data && !disabled,
+    isSkillConfigurationHistoryError: error,
+    mutateSkillConfigurationHistory: mutate,
+  };
 }

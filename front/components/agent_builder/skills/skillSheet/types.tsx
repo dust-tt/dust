@@ -1,8 +1,8 @@
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
-  SkillConfigurationRelations,
-  SkillConfigurationType,
+  SkillRelations,
+  SkillType,
 } from "@app/types/assistant/skill_configuration";
 
 export const SKILLS_SHEET_PAGE_IDS = {
@@ -17,7 +17,7 @@ export type SkillsSheetMode =
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.INFO;
-      skillConfiguration: SkillConfigurationType & SkillConfigurationRelations;
+      skillConfiguration: SkillType & { relations: SkillRelations };
       previousMode: SelectionMode;
     };
 

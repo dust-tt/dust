@@ -29,6 +29,16 @@ export function extractFileIds(code: string): string[] {
           }
         }
       },
+      // Extract file IDs from JSX props like fileId="fil_xxx".
+      JSXAttribute(path) {
+        if (
+          path.node.name.type === "JSXIdentifier" &&
+          path.node.name.name === "fileId" &&
+          path.node.value?.type === "StringLiteral"
+        ) {
+          fileIds.add(path.node.value.value);
+        }
+      },
     });
   } catch (err) {
     // If parsing fails, return empty (fail gracefully).

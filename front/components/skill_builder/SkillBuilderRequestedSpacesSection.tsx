@@ -4,16 +4,25 @@ import { useFormContext } from "react-hook-form";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
+import type { SpaceType } from "@app/types";
 
 export function SkillBuilderRequestedSpacesSection() {
-  const { watch } = useFormContext<SkillBuilderFormData>();
+  const { watch, setValue } = useFormContext<SkillBuilderFormData>();
+
   const tools = watch("tools");
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { spaces } = useSpacesContext();
+
+  const confirmRemoveSpace = useRemoveSpaceConfirm({
+    entityName: "skill",
+    mcpServerViews,
+  });
 
   const spaceIdToActions = useMemo(() => {
     return getSpaceIdToActionsMap(tools, mcpServerViews);
@@ -24,6 +33,24 @@ export function SkillBuilderRequestedSpacesSection() {
       (s) => s.kind !== "global" && spaceIdToActions[s.sId]?.length > 0
     );
   }, [spaceIdToActions, spaces]);
+
+  const handleRemoveSpace = async (space: SpaceType) => {
+    const actionsToRemove = (spaceIdToActions[space.sId] || []).filter(
+      (action): action is BuilderAction => action.type === "MCP"
+    );
+
+    const confirmed = await confirmRemoveSpace(space, actionsToRemove);
+
+    if (!confirmed) {
+      return;
+    }
+
+    const actionIdsToRemove = new Set(actionsToRemove.map((a) => a.id));
+
+    // Filter out the tools to remove and set the new value
+    const newTools = tools.filter((t) => !actionIdsToRemove.has(t.id));
+    setValue("tools", newTools, { shouldDirty: true });
+  };
 
   if (nonGlobalSpacesUsedInActions.length === 0) {
     return null;
@@ -45,6 +72,7 @@ export function SkillBuilderRequestedSpacesSection() {
             key={space.sId}
             label={getSpaceName(space)}
             icon={getSpaceIcon(space)}
+            onRemove={() => handleRemoveSpace(space)}
           />
         ))}
       </div>

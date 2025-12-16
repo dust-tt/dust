@@ -97,6 +97,9 @@ async function buildBundles() {
 
       const { code } = await bundleWorkflowCode({
         workflowsPath: require.resolve(workflowsPath),
+        workflowInterceptorModules: [
+          "@temporalio/interceptors-opentelemetry/lib/workflow",
+        ],
         webpackConfigHook: (config) => {
           const plugins = config.resolve?.plugins ?? [];
           config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];

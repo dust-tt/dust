@@ -88,6 +88,7 @@ export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
   declare mcpServerConfigurationIds: number[];
+  declare version: number;
 }
 
 SkillVersionModel.init(

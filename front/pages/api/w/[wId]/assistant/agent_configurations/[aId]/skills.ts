@@ -8,10 +8,10 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isGlobalAgentId, isString } from "@app/types";
-import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export interface GetAgentSkillsResponseBody {
-  skills: SkillConfigurationType[];
+  skills: SkillType[];
 }
 
 async function handler(

@@ -82,6 +82,8 @@ export interface InputBarContainerProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   selectedMCPServerViews: MCPServerViewType[];
+  saveDraft: (markdown: string) => void;
+  getDraft: () => { text: string } | null;
 }
 
 const InputBarContainer = ({
@@ -102,6 +104,8 @@ const InputBarContainer = ({
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  saveDraft,
+  getDraft,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -275,7 +279,6 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     owner,
     conversationId,
-    preferredAgentId: selectedAgent?.id ?? null,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -376,6 +379,10 @@ const InputBarContainer = ({
   useEffect(() => {
     const handleUpdate = () => {
       setIsEmpty(editorService.isEmpty());
+
+      // Auto-save draft when content changes.
+      const { markdown } = editorService.getMarkdownAndMentions();
+      saveDraft(markdown);
     };
 
     if (editorRef.current) {
@@ -392,7 +399,7 @@ const InputBarContainer = ({
         editor.off("update", handleUpdate);
       }
     };
-  }, [editor, editorService]);
+  }, [editor, editorService, saveDraft]);
 
   const disableTextInput = isSubmitting || disableInput;
 
@@ -428,8 +435,7 @@ const InputBarContainer = ({
         }
       : {
           // TextSearchParams
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          search: nodeOrUrlCandidate?.url || "",
+          search: nodeOrUrlCandidate?.url ?? "",
           searchSourceUrls: true,
           includeDataSources: false,
           owner,
@@ -507,6 +513,19 @@ const InputBarContainer = ({
       queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
+
+  // Restore draft when switching conversations (including new conversations).
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const draft = getDraft();
+    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
+    if (draft && editorService.isEmpty()) {
+      editorService.setContent(draft.text);
+    }
+  }, [conversationId, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,

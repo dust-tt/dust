@@ -12,6 +12,15 @@ permissions:
   pull-requests: write
 
 jobs:
+  check-package-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+      - name: Check package.json and package-lock.json sync
+        run: ./scripts/check-package-lock-sync.sh extension sdks/js
   check-eslint:
     runs-on: ubuntu-latest
     steps:

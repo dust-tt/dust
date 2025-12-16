@@ -27,7 +27,7 @@ async function handler(
     });
   }
 
-  const { select: selectParam } = req.query;
+  const { select: selectParam, current } = req.query;
 
   const { query: queryParam } = req.query;
   const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
@@ -52,6 +52,7 @@ async function handler(
   const suggestions = await suggestionsOfMentions(auth, {
     query,
     select,
+    current: current === "true",
   });
 
   return res.status(200).json({ suggestions });

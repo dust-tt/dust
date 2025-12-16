@@ -20,6 +20,7 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -142,6 +143,7 @@ export function AgentBuilderInstructionsEditor({
           class: "mt-4 mb-3",
         },
       }),
+      EmojiExtension,
     ];
 
     if (mentionsV2) {
@@ -152,7 +154,11 @@ export function AgentBuilderInstructionsEditor({
             class:
               "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
           },
-          suggestion: createMentionSuggestion({ owner, conversationId: null }),
+          suggestion: createMentionSuggestion({
+            owner,
+            conversationId: null,
+            includeCurrentUser: true,
+          }),
         })
       );
     }

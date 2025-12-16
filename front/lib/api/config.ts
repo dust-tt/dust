@@ -1,4 +1,5 @@
-import { EnvironmentConfig, isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 

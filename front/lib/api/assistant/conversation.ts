@@ -32,6 +32,7 @@ import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
   ConversationModel,
+  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -42,6 +43,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -330,6 +332,59 @@ export async function getLastUserMessage(
     );
   }
   return new Ok(content);
+}
+
+/**
+ * Get the mentions from the last user message in a conversation
+ */
+export async function getLastUserMessageMentions(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<string[], Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await MessageModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+      {
+        model: MentionModel,
+        as: "mentions",
+        required: false,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: false,
+            attributes: ["sId"],
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!message) {
+    return new Ok([]);
+  }
+
+  const mentions: string[] = removeNulls(
+    (message as any).mentions.map(
+      (mention: MentionModel) =>
+        mention.agentConfigurationId ?? mention.user?.sId
+    )
+  );
+  return new Ok(mentions);
 }
 
 /**

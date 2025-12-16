@@ -3,11 +3,12 @@ import type { UserType } from "@app/types/user";
 
 export type SkillStatus = "active" | "archived";
 
-export type SkillConfigurationType = {
+export type SkillType = {
   id: number;
   sId: string;
   createdAt: number | null;
   updatedAt: number | null;
+  versionAuthorId: number | null;
   status: SkillStatus;
   name: string;
   agentFacingDescription: string;
@@ -19,7 +20,7 @@ export type SkillConfigurationType = {
   canWrite: boolean;
 };
 
-export type SkillConfigurationRelations = {
+export type SkillRelations = {
   usage: AgentsUsageType;
   editors: UserType[] | null;
 };
