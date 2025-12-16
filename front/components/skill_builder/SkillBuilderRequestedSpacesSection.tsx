@@ -76,7 +76,6 @@ export function SkillBuilderRequestedSpacesSection() {
           />
         ))}
       </div>
-
     </div>
   );
 }
