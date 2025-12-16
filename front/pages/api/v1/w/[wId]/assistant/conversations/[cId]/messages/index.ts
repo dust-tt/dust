@@ -226,14 +226,14 @@ async function handler(
         ctx
       );
       if (!validateUserMessageContextRes) {
-        logger.warn(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            authMethod: auth.authMethod(),
-            origin: ctx.origin,
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This origin is not allowed. See documentation to fix to an allowed origin.",
           },
-          "This origin is not allowed. See documentation to fix to an allowed origin."
-        );
+        });
       }
 
       const messageRes =
