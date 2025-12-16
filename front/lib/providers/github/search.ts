@@ -7,6 +7,7 @@ import {
 import {
   buildContentSummaryForIssue,
   buildContentSummaryForPullRequest,
+  truncateGitHubQuery,
 } from "@app/lib/providers/github/utils";
 import type {
   ToolDownloadParams,
@@ -25,9 +26,10 @@ export async function search({
   query,
   pageSize,
 }: ToolSearchParams): Promise<ToolSearchRawResult[]> {
+  const truncatedQuery = truncateGitHubQuery(query);
   const result = await searchGitHubIssues({
     accessToken,
-    query,
+    query: truncatedQuery,
     pageSize,
   });
 

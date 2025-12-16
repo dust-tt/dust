@@ -3,6 +3,58 @@ import type {
   GitHubPullRequestNode,
 } from "@app/lib/providers/github/types";
 
+const GITHUB_MAX_SEARCH_QUERY_LENGTH = 256;
+const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
+
+/**
+ * Truncates a GitHub search query to respect both the 256 character limit
+ * and the maximum of 5 AND/OR/NOT operators.
+ */
+export function truncateGitHubQuery(query: string): string {
+  // First, check operator count
+  const operatorRegex = /\b(AND|OR|NOT)\b/gi;
+  const operators = query.match(operatorRegex) ?? [];
+
+  let truncated = query;
+
+  // If too many operators, truncate by removing complete clauses from the end
+  if (operators.length > GITHUB_MAX_BOOLEAN_OPERATORS) {
+    // Split by operators while keeping them
+    const parts = query.split(/(\s+(?:AND|OR|NOT)\s+)/gi);
+
+    let operatorCount = 0;
+    let validLength = 0;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isOperator = /^\s*(?:AND|OR|NOT)\s*$/i.test(part);
+
+      if (isOperator) {
+        operatorCount++;
+        if (operatorCount > GITHUB_MAX_BOOLEAN_OPERATORS) {
+          break;
+        }
+      }
+
+      validLength += part.length;
+    }
+
+    truncated = query.slice(0, validLength).trim();
+  }
+
+  // Then, check character limit and truncate at word boundary if needed
+  if (truncated.length > GITHUB_MAX_SEARCH_QUERY_LENGTH) {
+    truncated = truncated.slice(0, GITHUB_MAX_SEARCH_QUERY_LENGTH);
+    // Truncate at last complete word to avoid cutting mid-word
+    const lastSpace = truncated.lastIndexOf(" ");
+    if (lastSpace > 0) {
+      truncated = truncated.slice(0, lastSpace);
+    }
+  }
+
+  return truncated.trim();
+}
+
 export function buildContentSummaryForIssue(node: GitHubIssueNode): string {
   const owner = node.repository.owner.login;
   const repo = node.repository.name;
