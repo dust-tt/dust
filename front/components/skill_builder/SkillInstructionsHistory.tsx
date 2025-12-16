@@ -15,7 +15,8 @@ import { format } from "date-fns/format";
 import React, { useCallback, useMemo } from "react";
 
 import { useMembersLookup } from "@app/lib/swr/memberships";
-import type { LightWorkspaceType, SkillConfigurationType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 interface SkillInstructionsHistoryProps {
   history: SkillConfigurationType[];
