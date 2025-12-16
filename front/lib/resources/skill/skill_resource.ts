@@ -884,6 +884,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
+  static async snapshotConversationSkillsForMessage(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      agentMessageId,
+      conversationId,
+    }: {
+      agentConfigurationId: string;
+      agentMessageId: ModelId;
+      conversationId: ModelId;
+    }
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId,
+        agentConfigurationId,
+      },
+    });
+
+    await AgentMessageSkillModel.bulkCreate(
+      conversationSkills.map((cs) => ({
+        workspaceId: workspace.id,
+        agentConfigurationId: cs.agentConfigurationId,
+        customSkillId: cs.customSkillId,
+        globalSkillId: cs.globalSkillId,
+        agentMessageId,
+        conversationId: cs.conversationId,
+        source: cs.source,
+        addedByUserId: cs.addedByUserId,
+      }))
+    );
+  }
+
   toJSON(auth: Authenticator): SkillType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
