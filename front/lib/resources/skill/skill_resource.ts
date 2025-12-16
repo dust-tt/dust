@@ -599,6 +599,65 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
+  async listVersions(auth: Authenticator): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch all historical versions from skill_versions table
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: this.id,
+    };
+
+    const versionModels = await SkillVersionModel.findAll({
+      where,
+    });
+
+    // Sort application-side
+    const sortedVersionModels = versionModels.sort(
+      (a, b) => b.version - a.version
+    );
+
+    // Convert version models to SkillResource instances
+    const historicalVersions: SkillResource[] = sortedVersionModels.map(
+      (versionModel) => {
+        const mcpServerConfigurations =
+          versionModel.mcpServerConfigurationIds.map((mcpServerId) => ({
+            id: -1,
+            workspaceId: workspace.id,
+            skillConfigurationId: this.id,
+            mcpServerViewId: mcpServerId,
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
+          }));
+
+        return new SkillResource(
+          this.model,
+          {
+            id: this.id,
+            workspaceId: workspace.id,
+            authorId: versionModel.authorId,
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
+            status: versionModel.status,
+            name: versionModel.name,
+            agentFacingDescription: versionModel.agentFacingDescription,
+            userFacingDescription: versionModel.userFacingDescription,
+            instructions: versionModel.instructions,
+            icon: versionModel.icon,
+            requestedSpaceIds: versionModel.requestedSpaceIds,
+          },
+          {
+            editorGroup: this.editorGroup ?? undefined,
+            mcpServerConfigurations,
+          }
+        );
+      }
+    );
+
+    // Return current version + all historical versions
+    return [this, ...historicalVersions];
+  }
+
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
@@ -839,6 +898,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sId: this.sId,
       createdAt: this.globalSId ? null : this.createdAt.getTime(),
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
+      versionAuthorId: this.globalSId ? null : this.authorId,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,

@@ -8,6 +8,7 @@ export type SkillConfigurationType = {
   sId: string;
   createdAt: number | null;
   updatedAt: number | null;
+  versionAuthorId: number | null;
   status: SkillStatus;
   name: string;
   agentFacingDescription: string;
