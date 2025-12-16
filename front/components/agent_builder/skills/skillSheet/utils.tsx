@@ -17,6 +17,7 @@ export function getPageAndFooter(props: PageContentProps): {
   const mode = props.mode;
   switch (mode.type) {
     case SKILLS_SHEET_PAGE_IDS.SELECTION:
+      // TODO(skills 2025-12-16): Move handleSave in mode
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const { handleSave, ...restOfUtils } = useLocalSelectedSkills({
         mode,
