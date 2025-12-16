@@ -37,7 +37,7 @@ async function handler(
   // Check that user has access to this skill
   const skill = await SkillResource.fetchById(auth, sId);
 
-  if (!skill || (!skill.canWrite(auth) && !auth.isAdmin())) {
+  if (!skill || !skill.canWrite(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
