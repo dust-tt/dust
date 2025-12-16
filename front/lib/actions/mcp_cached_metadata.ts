@@ -18,7 +18,6 @@ const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 // In any case, when actually running the action, the metadata will be fetched from the MCP server.
 export const getCachedMetadata = cacheWithRedis(
   async (auth: Authenticator, id: string) => {
-    console.log(">> getCachedMetadata for MCP Server ID:", id);
     const s = await connectToMCPServer(auth, {
       params: {
         type: "mcpServerId",
