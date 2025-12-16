@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { CoreAPI } from "@app/types";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./index";
 
@@ -110,20 +111,17 @@ const CORE_SEARCH_NODES_FAKE_RESPONSE = [
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables", () => {
   it("returns 404 when user cannot read or administrate", async () => {
-    const { req, res, workspace, globalSpace } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      globalSpace
-    );
+    const space = await SpaceFactory.regular(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query = {
       ...req.query,
-      spaceId: globalSpace.sId,
+      spaceId: space.sId,
       dsvId: dataSourceView.sId,
     };
 
