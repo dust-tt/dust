@@ -780,6 +780,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(updated);
   }
 
+  async listMCPServerViews(
+    auth: Authenticator
+  ): Promise<MCPServerViewResource[]> {
+    const mcpServerViewIds = this.mcpServerConfigurations.map(
+      (config) => config.mcpServerViewId
+    );
+
+    if (mcpServerViewIds.length === 0) {
+      return [];
+    }
+
+    const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+      auth,
+      mcpServerViewIds
+    );
+
+    return mcpServerViews;
+  }
+
   async updateTools(
     auth: Authenticator,
     {
