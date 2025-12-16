@@ -22,6 +22,11 @@ import {
 } from "@app/temporal/agent_loop/activities/common";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
+  finalizeAgentLoopActivity,
+  finalizeCancelledAgentLoopActivity,
+  finalizeErroredAgentLoopActivity,
+} from "@app/temporal/agent_loop/activities/finalize";
+import {
   logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
@@ -55,6 +60,9 @@ export async function runAgentLoopWorker() {
     activities: {
       conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
+      finalizeAgentLoopActivity,
+      finalizeCancelledAgentLoopActivity,
+      finalizeErroredAgentLoopActivity,
       finalizeCancellationActivity,
       handleMentionsActivity,
       launchAgentMessageAnalyticsActivity,

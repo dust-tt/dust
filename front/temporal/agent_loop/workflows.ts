@@ -5,6 +5,7 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
+  patched,
   proxyActivities,
   setHandler,
   startChild,
@@ -19,6 +20,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import type * as analyticsActivities from "@app/temporal/agent_loop/activities/analytics";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
+import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as mentionsActivities from "@app/temporal/agent_loop/activities/mentions";
 import type * as notificationActivities from "@app/temporal/agent_loop/activities/notification";
@@ -135,6 +137,17 @@ const { trackProgrammaticUsageActivity } = proxyActivities<
   typeof usageTrackingActivities
 >({
   startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 5,
+  },
+});
+
+const {
+  finalizeAgentLoopActivity,
+  finalizeCancelledAgentLoopActivity,
+  finalizeErroredAgentLoopActivity,
+} = proxyActivities<typeof finalizeActivities>({
+  startToCloseTimeout: "5 minutes",
   retry: {
     maximumAttempts: 5,
   },
@@ -266,12 +279,16 @@ export async function agentLoopWorkflow({
 
       // Ensure analytics runs even if workflow is cancelled
       await CancellationScope.nonCancellable(async () => {
-        await Promise.all([
-          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
-          conversationUnreadNotificationActivity(authType, agentLoopArgs),
-          handleMentionsActivity(authType, agentLoopArgs),
-        ]);
+        if (patched("finalize-activity-consolidation")) {
+          await finalizeAgentLoopActivity(authType, agentLoopArgs);
+        } else {
+          await Promise.all([
+            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+            trackProgrammaticUsageActivity(authType, agentLoopArgs),
+            conversationUnreadNotificationActivity(authType, agentLoopArgs),
+            handleMentionsActivity(authType, agentLoopArgs),
+          ]);
+        }
       });
     });
 
@@ -285,24 +302,36 @@ export async function agentLoopWorkflow({
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
         // Ensure analytics runs even when workflow is cancelled
-        await Promise.all([
-          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
-          finalizeCancellationActivity(authType, agentLoopArgs),
-        ]);
+        if (patched("finalize-activity-consolidation")) {
+          await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
+        } else {
+          await Promise.all([
+            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+            trackProgrammaticUsageActivity(authType, agentLoopArgs),
+            finalizeCancellationActivity(authType, agentLoopArgs),
+          ]);
+        }
         return;
       } else {
         // Ensure analytics runs even when workflow errors
-        await Promise.all([
-          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
-          notifyWorkflowError(authType, {
-            conversationId: agentLoopArgs.conversationId,
-            agentMessageId: agentLoopArgs.agentMessageId,
-            agentMessageVersion: agentLoopArgs.agentMessageVersion,
-            error: workflowError,
-          }),
-        ]);
+        if (patched("finalize-activity-consolidation")) {
+          await finalizeErroredAgentLoopActivity(
+            authType,
+            agentLoopArgs,
+            workflowError
+          );
+        } else {
+          await Promise.all([
+            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+            trackProgrammaticUsageActivity(authType, agentLoopArgs),
+            notifyWorkflowError(authType, {
+              conversationId: agentLoopArgs.conversationId,
+              agentMessageId: agentLoopArgs.agentMessageId,
+              agentMessageVersion: agentLoopArgs.agentMessageVersion,
+              error: workflowError,
+            }),
+          ]);
+        }
       }
       throw err;
     });
