@@ -34,7 +34,7 @@ async function handler(
 
   const { sId } = req.query;
 
-  // Fetch the skill - if not found or no permission, return 404
+  // Check that user has access to this skill
   const skill = await SkillResource.fetchById(auth, sId);
 
   if (!skill || !skill.canWrite(auth)) {

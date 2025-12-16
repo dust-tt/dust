@@ -1,27 +1,121 @@
-import { TextArea } from "@dust-tt/sparkle";
+import {
+  ArrowPathIcon,
+  Button,
+  Label,
+  Separator,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { format } from "date-fns/format";
+import { useState } from "react";
+import { useFormContext } from "react-hook-form";
 
-import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
+import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
+import { useSkillConfigurationHistory } from "@app/lib/swr/skill_configurations";
+import type { SkillConfigurationType } from "@app/types/assistant/skill_configuration";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
-export function SkillBuilderInstructionsSection() {
-  return (
-    <BaseFormFieldSection
-      title="How should this skill behave?"
-      triggerValidationOnChange={false}
-      fieldName={INSTRUCTIONS_FIELD_NAME}
-    >
-      {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
-        <TextArea
-          ref={registerRef}
-          placeholder="What does this skill do? How should it behave?"
-          className="min-h-40"
-          onChange={onChange}
-          error={hasError ? errorMessage : undefined}
-          showErrorLabel={hasError}
-          {...registerProps}
+interface SkillBuilderInstructionsSectionProps {
+  skillConfiguration?: SkillConfigurationType;
+}
+
+export function SkillBuilderInstructionsSection({
+  skillConfiguration,
+}: SkillBuilderInstructionsSectionProps) {
+  const { owner } = useSkillBuilderContext();
+  const { setValue } = useFormContext<SkillBuilderFormData>();
+  const [compareVersion, setCompareVersion] =
+    useState<SkillConfigurationType | null>(null);
+  const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
+
+  const { skillConfigurationHistory } = useSkillConfigurationHistory({
+    owner,
+    skillConfiguration,
+    disabled: !skillConfiguration,
+    limit: 30,
+  });
+
+  const restoreVersion = () => {
+    const text = compareVersion?.instructions;
+    if (!text) {
+      return;
+    }
+
+    setValue(INSTRUCTIONS_FIELD_NAME, text, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setCompareVersion(null);
+    setIsInstructionDiffMode(false);
+  };
+
+  const headerActions = (
+    <>
+      {skillConfigurationHistory && skillConfigurationHistory.length > 1 && (
+        <SkillInstructionsHistory
+          history={skillConfigurationHistory}
+          selectedConfig={compareVersion}
+          onSelect={(config) => {
+            setCompareVersion(config);
+            setIsInstructionDiffMode(true);
+          }}
+          owner={owner}
         />
       )}
-    </BaseFormFieldSection>
+    </>
+  );
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
+        <div>
+          <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+            How should this skill behave?
+          </h3>
+        </div>
+        {headerActions && (
+          <div className="flex w-full flex-col gap-2 sm:w-auto">
+            <div className="flex items-center gap-2">{headerActions}</div>
+          </div>
+        )}
+      </div>
+      {isInstructionDiffMode && compareVersion && (
+        <>
+          <Separator />
+          {compareVersion?.createdAt && (
+            <Label>
+              Comparing current version with{" "}
+              {format(compareVersion.createdAt, "Pp")}
+            </Label>
+          )}
+          <div className="flex gap-2">
+            <Button
+              icon={XMarkIcon}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsInstructionDiffMode(false);
+                setCompareVersion(null);
+              }}
+              label="Leave comparison mode"
+            />
+            <Button
+              variant="warning"
+              size="sm"
+              icon={ArrowPathIcon}
+              onClick={restoreVersion}
+              label="Restore this version"
+            />
+          </div>
+        </>
+      )}
+      <SkillBuilderInstructionsEditor
+        compareVersion={compareVersion}
+        isInstructionDiffMode={isInstructionDiffMode}
+      />
+    </section>
   );
 }

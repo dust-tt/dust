@@ -179,7 +179,9 @@ export default function SkillBuilder({
                 </div>
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
-                <SkillBuilderInstructionsSection />
+                <SkillBuilderInstructionsSection
+                  skillConfiguration={skillConfiguration}
+                />
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />
               </div>
