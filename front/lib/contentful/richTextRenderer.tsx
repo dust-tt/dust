@@ -13,14 +13,19 @@ import { isString } from "@app/types";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 function getYouTubeVideoId(text: string): string | null {
-  const patterns = [
-    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
-    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?]+)/,
-    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^?]+)/,
+  const normalizedText = text.trim();
+  const patterns: RegExp[] = [
+    /^(?:https?:\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/watch\?(?:.*&)?v=([^&\s]+)/,
+    /^(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?\s]+)/,
+    /^(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/embed\/([^?\s]+)/,
+    /^(?:https?:\/\/)?(?:www\.)?youtube-nocookie\.com\/embed\/([^?\s]+)/,
+    /^(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/shorts\/([^?\s/]+)/,
+    /^(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/live\/([^?\s/]+)/,
+    /^(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/v\/([^?\s/]+)/,
   ];
 
   for (const pattern of patterns) {
-    const match = text.match(pattern);
+    const match = normalizedText.match(pattern);
     if (match) {
       return match[1];
     }
