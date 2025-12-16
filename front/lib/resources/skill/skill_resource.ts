@@ -604,18 +604,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             workspaceId: workspace.id,
             skillConfigurationId: this.id,
             mcpServerViewId: mcpServerId,
-            createdAt: versionModel.createdAt ?? new Date(),
-            updatedAt: versionModel.updatedAt ?? new Date(),
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
           }));
 
         return new SkillResource(
-          SkillResource.model,
+          this.model,
           {
             id: this.id,
             workspaceId: workspace.id,
             authorId: versionModel.authorId,
-            createdAt: versionModel.createdAt ?? new Date(),
-            updatedAt: versionModel.updatedAt ?? new Date(),
+            createdAt: versionModel.createdAt,
+            updatedAt: versionModel.updatedAt,
             status: versionModel.status,
             name: versionModel.name,
             agentFacingDescription: versionModel.agentFacingDescription,
