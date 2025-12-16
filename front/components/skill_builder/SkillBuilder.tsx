@@ -180,7 +180,7 @@ export default function SkillBuilder({
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection
-                  skillConfigurationId={skillConfiguration?.sId ?? null}
+                  skillConfiguration={skillConfiguration}
                 />
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />

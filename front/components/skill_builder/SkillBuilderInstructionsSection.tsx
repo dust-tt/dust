@@ -19,11 +19,11 @@ import type { SkillConfigurationType } from "@app/types/assistant/skill_configur
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
 interface SkillBuilderInstructionsSectionProps {
-  skillConfigurationId?: string | null;
+  skillConfiguration?: SkillConfigurationType;
 }
 
 export function SkillBuilderInstructionsSection({
-  skillConfigurationId,
+  skillConfiguration,
 }: SkillBuilderInstructionsSectionProps) {
   const { owner } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
@@ -33,8 +33,8 @@ export function SkillBuilderInstructionsSection({
 
   const { skillConfigurationHistory } = useSkillConfigurationHistory({
     owner,
-    skillConfigurationId: skillConfigurationId ?? null,
-    disabled: !skillConfigurationId,
+    skillConfiguration,
+    disabled: !skillConfiguration,
     limit: 30,
   });
 
