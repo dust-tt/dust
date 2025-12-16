@@ -3,6 +3,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { EmojiItem } from "@tiptap/extension-emoji";
 import { emojis } from "@tiptap/extension-emoji";
 import shuffle from "lodash/shuffle";
 import React, {
@@ -48,7 +49,7 @@ const EMOJIS_MAP = new Map(emojis.map((emoji) => [emoji.name, emoji]));
 
 const POPULAR_EMOJIS = POPULAR_EMOJI_NAMES.map((name) =>
   EMOJIS_MAP.get(name)
-).filter((emoji) => emoji !== undefined);
+).filter((emoji): emoji is EmojiItem => emoji !== undefined);
 
 export const EmojiDropdown = forwardRef<
   EmojiDropdownOnKeyDown,
@@ -74,8 +75,8 @@ export const EmojiDropdown = forwardRef<
       .filter((emoji) => {
         // Search in shortcodes and tags
         return (
-          emoji.shortcodes?.some((code) => code.includes(lowerQuery)) ||
-          emoji.tags?.some((tag) => tag.includes(lowerQuery))
+          emoji.shortcodes.some((code) => code.includes(lowerQuery)) ||
+          emoji.tags.some((tag) => tag.includes(lowerQuery))
         );
       })
       .slice(0, 20); // Limit to 20 results
