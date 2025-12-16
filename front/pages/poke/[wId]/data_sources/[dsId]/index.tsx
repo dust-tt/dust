@@ -54,6 +54,7 @@ import {
   ConnectorsAPI,
   CoreAPI,
   isSlackAutoReadPatterns,
+  normalizeError,
   safeParseJSON,
 } from "@app/types";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
@@ -878,10 +879,12 @@ function NotionUrlCheckOrFind({
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
   >(null);
-  const [command, setCommand] = useState<"check-url" | "find-url" | "parent-chain" | null>(
-    "check-url"
+  const [command, setCommand] = useState<
+    "check-url" | "find-url" | "parent-chain" | null
+  >("check-url");
+  const [parentChainResult, setParentChainResult] = useState<string | null>(
+    null
   );
-  const [parentChainResult, setParentChainResult] = useState<string | null>(null);
   const [isLoadingParentChain, setIsLoadingParentChain] = useState(false);
 
   const handleParentChain = async () => {
@@ -923,13 +926,19 @@ function NotionUrlCheckOrFind({
 
       const chain: string[] = [];
       let currentId = formattedId;
-      let currentType: "page_id" | "database_id" | "block_id" | null = "block_id";
+      let currentType: "page_id" | "database_id" | "block_id" | null =
+        "block_id";
       let reachedWorkspace = false;
 
       // Start with trying pages, then databases
       while (!reachedWorkspace && chain.length < 20) {
         try {
-          const apiType = currentType === "page_id" ? "pages" : currentType === "database_id" ? "databases" : "blocks";
+          const apiType =
+            currentType === "page_id"
+              ? "pages"
+              : currentType === "database_id"
+                ? "databases"
+                : "blocks";
 
           const res = await clientFetch(`/api/poke/admin`, {
             method: "POST",
@@ -958,9 +967,8 @@ function NotionUrlCheckOrFind({
           let title = "";
 
           if (result.status !== 200) {
-           chain.push(`${currentId} error: ${responseData.message}`);
-          }
-          else if (apiType === "pages") {
+            chain.push(`${currentId} error: ${responseData.message}`);
+          } else if (apiType === "pages") {
             // Find the first property with type "title"
             const properties = responseData.properties ?? {};
             let titleProp = null;
@@ -999,7 +1007,7 @@ function NotionUrlCheckOrFind({
             break;
           }
         } catch (err) {
-          chain.push(`${currentId} error: ${err instanceof Error ? err.message : "Unknown error"}`);
+          chain.push(`${currentId} error: ${normalizeError(err).message}`);
           break;
         }
       }
@@ -1013,7 +1021,7 @@ function NotionUrlCheckOrFind({
 
       setParentChainResult(indentedChain.join("\n"));
     } catch (err) {
-      setParentChainResult(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setParentChainResult(`Error: ${normalizeError(err).message}`);
     } finally {
       setIsLoadingParentChain(false);
     }
