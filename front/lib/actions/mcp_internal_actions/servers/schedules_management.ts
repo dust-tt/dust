@@ -263,7 +263,7 @@ function createServer(
 
   server.tool(
     "get_schedule",
-    "Get details of a specific schedule by ID. Returns name, timing, prompt, and enabled state.",
+    "Get details of a specific schedule trigger by ID. Returns name, schedule, prompt, and status.",
     {
       scheduleId: z
         .string()
