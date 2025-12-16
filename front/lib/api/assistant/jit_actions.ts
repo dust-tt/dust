@@ -26,6 +26,7 @@ import {
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -41,6 +42,40 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types";
 import { CoreAPI } from "@app/types";
+
+function makeJITServerSideMCPServerConfiguration({
+  name,
+  description,
+  mcpServerView,
+  dataSources = null,
+  tables = null,
+}: {
+  name: string;
+  description: string;
+  mcpServerView: MCPServerViewType;
+  dataSources?: DataSourceConfiguration[] | null;
+  tables?: TableDataSourceConfiguration[] | null;
+}): ServerSideMCPServerConfigurationType {
+  return {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name,
+    description,
+    dataSources,
+    tables,
+    childAgentId: null,
+    reasoningModel: null,
+    timeFrame: null,
+    jsonSchema: null,
+    secretName: null,
+    additionalConfiguration: {},
+    mcpServerViewId: mcpServerView.sId,
+    dustAppConfiguration: null,
+    internalMCPServerId:
+      mcpServerView.serverType === "internal" ? mcpServerView.server.sId : null,
+  };
+}
 
 export async function getJITServers(
   auth: Authenticator,
@@ -78,30 +113,14 @@ export async function getJITServers(
 
     const mcpServerView = mcpServerViewResource.toJSON();
 
-    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: mcpServerView.name ?? mcpServerView.server.name,
-      description:
-        mcpServerView.description ?? mcpServerView.server.description,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: mcpServerView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId:
-        mcpServerView.serverType === "internal"
-          ? mcpServerView.server.sId
-          : null,
-    };
-
-    jitServers.push(conversationFilesServer);
+    jitServers.push(
+      makeJITServerSideMCPServerConfiguration({
+        name: mcpServerView.name ?? mcpServerView.server.name,
+        description:
+          mcpServerView.description ?? mcpServerView.server.description,
+        mcpServerView,
+      })
+    );
   }
 
   if (!commonUtilitiesView) {
@@ -114,32 +133,19 @@ export async function getJITServers(
     );
   } else {
     const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
-    const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name:
-        commonUtilitiesViewJSON.name ??
-        commonUtilitiesViewJSON.server.name ??
-        "common_utilities",
-      description:
-        commonUtilitiesViewJSON.description ??
-        commonUtilitiesViewJSON.server.description ??
-        "Common utilities such as random numbers and timers.",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: commonUtilitiesViewJSON.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: commonUtilitiesView.mcpServerId,
-    };
-
-    jitServers.push(commonUtilitiesServer);
+    jitServers.push(
+      makeJITServerSideMCPServerConfiguration({
+        name:
+          commonUtilitiesViewJSON.name ??
+          commonUtilitiesViewJSON.server.name ??
+          "common_utilities",
+        description:
+          commonUtilitiesViewJSON.description ??
+          commonUtilitiesViewJSON.server.description ??
+          "Common utilities such as random numbers and timers.",
+        mcpServerView: commonUtilitiesViewJSON,
+      })
+    );
   }
 
   // Add skill_management MCP server if the agent has any skills configured
@@ -171,26 +177,13 @@ export async function getJITServers(
           "MCP server view not found for skill_management. Ensure auto tools are created."
         );
       } else {
-        const skillManagementServer: ServerSideMCPServerConfigurationType = {
-          id: -1,
-          sId: generateRandomModelSId(),
-          type: "mcp_server_configuration",
-          name: SKILL_MANAGEMENT_SERVER_NAME,
-          description: "Enable skills for the conversation.",
-          dataSources: null,
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          jsonSchema: null,
-          secretName: null,
-          additionalConfiguration: {},
-          mcpServerViewId: skillManagementView.sId,
-          dustAppConfiguration: null,
-          internalMCPServerId: skillManagementView.mcpServerId,
-        };
-
-        jitServers.push(skillManagementServer);
+        jitServers.push(
+          makeJITServerSideMCPServerConfiguration({
+            name: SKILL_MANAGEMENT_SERVER_NAME,
+            description: "Enable skills for the conversation.",
+            mcpServerView: skillManagementView.toJSON(),
+          })
+        );
       }
     }
   }
@@ -211,26 +204,13 @@ export async function getJITServers(
     "MCP server view not found for conversation_files. Ensure auto tools are created."
   );
 
-  const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-    id: -1,
-    sId: generateRandomModelSId(),
-    type: "mcp_server_configuration",
-    name: "conversation_files",
-    description: "Access and include files from the conversation",
-    dataSources: null,
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    timeFrame: null,
-    jsonSchema: null,
-    secretName: null,
-    additionalConfiguration: {},
-    mcpServerViewId: conversationFilesView.sId,
-    dustAppConfiguration: null,
-    internalMCPServerId: conversationFilesView.mcpServerId,
-  };
-
-  jitServers.push(conversationFilesServer);
+  jitServers.push(
+    makeJITServerSideMCPServerConfiguration({
+      name: "conversation_files",
+      description: "Access and include files from the conversation",
+      mcpServerView: conversationFilesView.toJSON(),
+    })
+  );
 
   // Check tables for the table query action.
   const filesUsableAsTableQuery = attachments.filter((f) => f.isQueryable);
@@ -321,25 +301,14 @@ export async function getJITServers(
       }
     }
 
-    const tablesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-      description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
-      dataSources: null,
-      tables,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: queryTablesView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: queryTablesView.mcpServerId,
-    };
-    jitServers.push(tablesServer);
+    jitServers.push(
+      makeJITServerSideMCPServerConfiguration({
+        name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+        description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
+        mcpServerView: queryTablesView.toJSON(),
+        tables,
+      })
+    );
   }
 
   // Get the retrieval view once - we'll need it for search functionality
@@ -390,25 +359,14 @@ export async function getJITServers(
       });
     }
 
-    const retrievalServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-      description: "Semantic search over all files from the conversation",
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: retrievalView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: retrievalView.mcpServerId,
-    };
-    jitServers.push(retrievalServer);
+    jitServers.push(
+      makeJITServerSideMCPServerConfiguration({
+        name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+        description: "Semantic search over all files from the conversation",
+        mcpServerView: retrievalView.toJSON(),
+        dataSources,
+      })
+    );
   }
 
   const searchableFolders: ContentNodeAttachmentType[] = [];
@@ -438,26 +396,14 @@ export async function getJITServers(
       },
     ];
 
-    // add search server for the folder
-    const folderSearchServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: `search_folder_${i}`,
-      description: `Search content within the documents inside "${folder.title}"`,
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: retrievalView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: retrievalView.mcpServerId,
-    };
-    jitServers.push(folderSearchServer);
+    jitServers.push(
+      makeJITServerSideMCPServerConfiguration({
+        name: `search_folder_${i}`,
+        description: `Search content within the documents inside "${folder.title}"`,
+        mcpServerView: retrievalView.toJSON(),
+        dataSources,
+      })
+    );
   }
 
   return jitServers;
