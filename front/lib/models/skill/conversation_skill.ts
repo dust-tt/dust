@@ -1,12 +1,6 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  ModelAttributes,
-  NonAttribute,
-} from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -29,12 +23,8 @@ const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
     defaultValue: DataTypes.NOW,
   },
   agentConfigurationId: {
-    type: DataTypes.BIGINT,
+    type: DataTypes.STRING,
     allowNull: false,
-    references: {
-      model: AgentConfigurationModel,
-      key: "id",
-    },
   },
   customSkillId: {
     type: DataTypes.BIGINT,
@@ -91,10 +81,8 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
-  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
+  declare agentConfigurationId: string;
 
-  declare customSkill: NonAttribute<SkillConfigurationModel> | null;
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
@@ -111,16 +99,6 @@ ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
   validate: {
     eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
   },
-});
-
-// ConversationSkillModel <> AgentConfiguration
-AgentConfigurationModel.hasMany(ConversationSkillModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-ConversationSkillModel.belongsTo(AgentConfigurationModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  as: "agentConfiguration",
 });
 
 // ConversationSkillModel <> SkillConfiguration (custom skill)
@@ -178,16 +156,6 @@ AgentMessageSkillModel.init(
     },
   }
 );
-
-// AgentMessageSkill <> AgentConfiguration
-AgentConfigurationModel.hasMany(AgentMessageSkillModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-AgentMessageSkillModel.belongsTo(AgentConfigurationModel, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  as: "agentConfiguration",
-});
 
 // AgentMessageSkill <> SkillConfiguration (custom skill)
 SkillConfigurationModel.hasMany(AgentMessageSkillModel, {
