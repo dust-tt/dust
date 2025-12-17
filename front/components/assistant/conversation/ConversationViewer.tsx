@@ -299,8 +299,8 @@ export const ConversationViewer = ({
                 }
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
-                // We only update if the version is greater than the existing version.
-                if (exists.version < event.message.version) {
+                // We only update if the version is greater or equals than the existing version.
+                if (exists.version <= event.message.version) {
                   ref.current.data.map((m) =>
                     m.rank === userMessage.rank ? userMessage : m
                   );

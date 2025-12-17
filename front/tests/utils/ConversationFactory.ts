@@ -13,6 +13,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import type {
+  ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
   ModelId,
@@ -40,7 +41,7 @@ export class ConversationFactory {
       visibility?: ConversationVisibility;
       t?: Transaction;
     }
-  ): Promise<ConversationWithoutContentType> {
+  ): Promise<ConversationType> {
     const user = auth.user();
     const workspace = auth.getNonNullableWorkspace();
 

@@ -29,7 +29,7 @@ import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
+import { extractFromString } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -57,6 +57,7 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgenticMessageData,
   AgentMessageType,
+  AgentMessageTypeWithoutMentions,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
   ContentFragmentInputWithContentNode,
@@ -69,6 +70,7 @@ import type {
   MentionType,
   ModelId,
   Result,
+  RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
 } from "@app/types";
@@ -80,6 +82,7 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
+  isUserMention,
   isUserMessageType,
   md5,
   Ok,
@@ -150,6 +153,7 @@ export async function createConversation(
     visibility: conversation.visibility,
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
+    triggerId: conversation.triggerSId,
   };
 }
 
@@ -666,7 +670,7 @@ export async function postUserMessage(
 
     const richMentions = await createUserMentions(auth, {
       mentions,
-      messageId: userMessageWithoutMentions.id,
+      message: userMessageWithoutMentions,
       conversation,
       transaction: t,
     });
@@ -936,7 +940,7 @@ export async function editUserMessage(
 
       const richMentions = await createUserMentions(auth, {
         mentions,
-        messageId: userMessageWithoutMentions.id,
+        message: userMessageWithoutMentions,
         conversation,
         transaction: t,
       });
@@ -1048,8 +1052,8 @@ export async function handleAgentMessage(
     conversation,
     agentMessage,
   }: {
-    conversation: ConversationWithoutContentType;
-    agentMessage: AgentMessageType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageTypeWithoutMentions;
   }
 ) {
   if (!agentMessage.content) {
@@ -1061,21 +1065,27 @@ export async function handleAgentMessage(
       },
     });
   }
-  const userMentions = [
-    ...agentMessage.content.matchAll(USER_MENTION_REGEX),
-  ].map((match) => ({ name: match[1], sId: match[2] }));
+  const userMentions = extractFromString(agentMessage.content).filter(
+    isUserMention
+  );
 
+  const richMentions: RichMentionWithStatus[] = [];
   if (userMentions.length > 0) {
     await withTransaction(async (t) => {
-      for (const m of userMentions) {
-        await createUserMentions(auth, {
-          mentions: [{ type: "user", userId: m.sId }],
-          messageId: agentMessage.id,
+      richMentions.push(
+        ...(await createUserMentions(auth, {
+          mentions: userMentions,
+          message: agentMessage,
           conversation,
           transaction: t,
-        });
-      }
+        }))
+      );
     });
+
+    // Publish the new agent message event to all open tabs to maintain state synchronization.
+    await publishAgentMessagesEvents(conversation, [
+      { ...agentMessage, richMentions },
+    ]);
   }
 }
 

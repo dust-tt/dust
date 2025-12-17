@@ -120,6 +120,7 @@ function createMockConversation(
       name: "Test Workspace",
     } as any,
     content,
+    triggerId: null,
   };
 }
 
