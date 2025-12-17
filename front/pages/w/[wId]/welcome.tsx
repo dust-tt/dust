@@ -29,6 +29,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { usePatchUser } from "@app/lib/swr/user";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
@@ -56,6 +57,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
+  isFirstAdmin: boolean;
   conversationId: string | null;
   baseUrl: string;
   emailProvider: EmailProviderType;
@@ -75,6 +77,13 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   const conversationId =
     typeof context.query.cId === "string" ? context.query.cId : null;
 
+  // Check if this is the first admin (only one member in the workspace).
+  const { total: membersTotal } =
+    await MembershipResource.getMembershipsForWorkspace({
+      workspace: owner,
+    });
+  const isFirstAdmin = isAdmin && membersTotal === 1;
+
   const userJson = user.toJSON();
   const emailProvider = await detectEmailProvider(
     userJson.email,
@@ -86,6 +95,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       user: userJson,
       owner,
       isAdmin,
+      isFirstAdmin,
       conversationId,
       baseUrl: config.getClientFacingUrl(),
       emailProvider,
@@ -333,11 +343,14 @@ export default function Welcome({
   user,
   owner,
   isAdmin,
+  isFirstAdmin,
   conversationId,
   emailProvider,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const { patchUser } = usePatchUser();
+
+  const showFavoritePlatformsStep = isFirstAdmin;
 
   const [step, setStep] = useState<1 | 2>(1);
   const [formData, setFormData] = useState<FormData>({
@@ -377,7 +390,11 @@ export default function Welcome({
     if (Object.keys(errors).length > 0) {
       return;
     }
-    setStep(2);
+    if (showFavoritePlatformsStep) {
+      setStep(2);
+    } else {
+      void submit();
+    }
   };
 
   const togglePlatform = (platform: FavoritePlatform) => {
@@ -399,8 +416,9 @@ export default function Welcome({
       false,
       formData.jobType ?? undefined,
       undefined,
-      Array.from(selectedPlatforms),
-      emailProvider
+      showFavoritePlatformsStep ? Array.from(selectedPlatforms) : undefined,
+      emailProvider,
+      owner.sId
     );
 
     if (typeof window !== "undefined") {

@@ -110,7 +110,8 @@ export function usePatchUser() {
     jobType?: JobType,
     imageUrl?: string | null,
     favoritePlatforms?: FavoritePlatform[],
-    emailProvider?: EmailProviderType
+    emailProvider?: EmailProviderType,
+    workspaceId?: string
   ) => {
     const res = await clientFetch("/api/user", {
       method: "PATCH",
@@ -124,6 +125,7 @@ export function usePatchUser() {
         imageUrl,
         favoritePlatforms,
         emailProvider,
+        workspaceId,
       }),
     });
 

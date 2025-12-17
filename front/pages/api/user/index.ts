@@ -28,6 +28,7 @@ const PatchUserBodySchema = t.type({
   imageUrl: t.union([t.string, t.null, t.undefined]),
   favoritePlatforms: t.union([t.array(t.string), t.undefined]),
   emailProvider: t.union([t.string, t.undefined]),
+  workspaceId: t.union([t.string, t.undefined]),
 });
 
 export type GetUserResponseBody = {
@@ -113,6 +114,7 @@ async function handler(
       const imageUrl = bodyValidation.right.imageUrl;
       const favoritePlatforms = bodyValidation.right.favoritePlatforms;
       const emailProvider = bodyValidation.right.emailProvider;
+      const workspaceId = bodyValidation.right.workspaceId;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {
@@ -169,19 +171,23 @@ async function handler(
         }
       }
 
-      const metadata: Record<string, string | undefined> = {
+      const userMetadata: Record<string, string | undefined> = {
         job_type: jobType,
-        favorite_platforms:
-          favoritePlatforms !== undefined
-            ? JSON.stringify(favoritePlatforms)
-            : undefined,
         "onboarding:email_provider": emailProvider,
       };
 
-      for (const [key, value] of Object.entries(metadata)) {
+      for (const [key, value] of Object.entries(userMetadata)) {
         if (value !== undefined) {
           await u.setMetadata(key, String(value));
         }
+      }
+
+      // Workspace-scoped metadata (requires workspaceId).
+      if (workspaceId && favoritePlatforms !== undefined) {
+        await u.setMetadata(
+          `workspace:${workspaceId}:favorite_platforms`,
+          JSON.stringify(favoritePlatforms)
+        );
       }
 
       await ServerSideTracking.trackUpdateUser({

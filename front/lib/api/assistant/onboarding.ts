@@ -470,6 +470,9 @@ export async function createOnboardingConversationIfNeeded(
 
   const userJson = user.toJSON();
 
+  const workspaceMetadataPrefix = `workspace:${owner.sId}:`;
+
+  // Email provider is user-scoped (same email across all workspaces).
   const emailProviderMetadata = await user.getMetadata(
     "onboarding:email_provider"
   );
@@ -483,12 +486,15 @@ export async function createOnboardingConversationIfNeeded(
     emailProvider = emailProviderMetadata.value;
   }
 
-  // Fetch the user's job type for personalization.
+  // Job type is user-scoped (not workspace-specific).
   const jobTypeMetadata = await user.getMetadata("job_type");
   const userJobType = jobTypeMetadata?.value ?? null;
 
-  const favoritePlatformsMetadata =
-    await user.getMetadata("favorite_platforms");
+  // Favorite platforms is workspace-scoped.
+  const favoritePlatformsMetadata = await user.getMetadata(
+    `${workspaceMetadataPrefix}favorite_platforms`
+  );
+
   let favoritePlatforms: FavoritePlatform[] = [];
   if (favoritePlatformsMetadata?.value) {
     favoritePlatforms = JSON.parse(
