@@ -293,7 +293,10 @@ export function VisualizationWrapper({
                   react: reactAll,
                   recharts: rechartsAll,
                   shadcn: shadcnAll,
+                  // Legacy support for utils from previous versions.
                   utils: utilsAll,
+                  // New location for utils.
+                  "@viz/lib/utils": utilsAll,
                   "lucide-react": lucideAll,
                   "@dust/slideshow/v1": dustSlideshowV1,
                   "@dust/react-hooks": {
