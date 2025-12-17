@@ -1,7 +1,6 @@
 import type {
   CreationOptional,
   ForeignKey,
-  Model,
   ModelAttributes,
   NonAttribute,
 } from "sequelize";
@@ -69,7 +68,7 @@ const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
       key: "id",
     },
   },
-} as const satisfies ModelAttributes<Model>;
+} as const satisfies ModelAttributes;
 
 /**
  * Shared validation for skill in conversation models.
