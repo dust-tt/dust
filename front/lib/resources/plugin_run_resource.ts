@@ -168,11 +168,15 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     );
   }
 
-  async recordResult(result: PluginResponse) {
+  async recordResult(result: PluginResponse, plugin?: AllPlugins) {
+    const resultToStore = plugin?.manifest?.redactResult
+      ? "REDACTED"
+      : trimPluginRunResultOrError(result);
+
     await this.model.update(
       {
         status: "success",
-        result: trimPluginRunResultOrError(result),
+        result: resultToStore,
       },
       {
         where: {
