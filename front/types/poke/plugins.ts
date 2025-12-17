@@ -57,6 +57,7 @@ interface StringArgDefinition extends BaseArgDefinition {
 interface NumberArgDefinition extends BaseArgDefinition {
   type: "number";
   values?: never;
+  variant?: "input" | "ticker";
 }
 
 interface TextArgDefinition extends BaseArgDefinition {
