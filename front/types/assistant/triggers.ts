@@ -42,6 +42,7 @@ export type TriggerType = {
   enabled: boolean;
   createdAt: number;
   naturalLanguageDescription: string | null;
+  origin: TriggerOrigin;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
@@ -51,6 +52,12 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
 }
 
 export type TriggerExecutionMode = "fair_use" | "programmatic";
+
+export type TriggerOrigin = "user" | "agent";
+
+export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
+  return ["user", "agent"].includes(origin);
+}
 
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";

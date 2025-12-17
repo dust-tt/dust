@@ -36,6 +36,7 @@ export const MentionDropdown = forwardRef<
       owner,
       conversationId,
       includeCurrentUser,
+      select,
     },
     ref
   ) => {
@@ -54,7 +55,7 @@ export const MentionDropdown = forwardRef<
       workspaceId: owner.sId,
       conversationId,
       query,
-      select: { agents: true, users: true },
+      select,
       includeCurrentUser,
     });
 

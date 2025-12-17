@@ -149,7 +149,7 @@ async function handler(
 
       // Batch delete triggers
       for (const triggerId of triggerIds) {
-        const triggerToDelete = userTriggers.find((t) => t.sId() === triggerId);
+        const triggerToDelete = userTriggers.find((t) => t.sId === triggerId);
 
         if (!triggerToDelete) {
           // Skip triggers that the user cannot delete
@@ -210,7 +210,7 @@ async function handler(
       // Batch update triggers
       for (const triggerData of triggers) {
         const triggerToUpdate = userTriggers.find(
-          (t) => t.sId() === triggerData.sId
+          (t) => t.sId === triggerData.sId
         );
 
         if (!triggerToUpdate) {
@@ -345,6 +345,7 @@ async function handler(
           executionPerDayLimitOverride: executionPerDay,
           executionMode:
             validatedTrigger.kind === "webhook" ? "fair_use" : null,
+          origin: "user",
         });
 
         if (newTrigger.isErr()) {

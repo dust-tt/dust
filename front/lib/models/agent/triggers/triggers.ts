@@ -10,6 +10,7 @@ import type {
   TriggerConfigurationType,
   TriggerExecutionMode,
   TriggerKind,
+  TriggerOrigin,
 } from "@app/types/assistant/triggers";
 import { isValidTriggerKind } from "@app/types/assistant/triggers";
 
@@ -24,6 +25,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare kind: TriggerKind;
   declare configuration: TriggerConfigurationType;
   declare naturalLanguageDescription: string | null;
+  declare origin: TriggerOrigin;
 
   /**
    * Webhooks specifics
@@ -81,6 +83,10 @@ TriggerModel.init(
     },
     configuration: {
       type: DataTypes.JSONB,
+      allowNull: false,
+    },
+    origin: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     webhookSourceViewId: {

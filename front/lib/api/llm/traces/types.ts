@@ -21,6 +21,7 @@ export interface LLMTraceContext {
     | "conversation_title_suggestion"
     | "process_data_sources"
     | "process_schema_generator"
+    | "skill_builder_description_suggestion"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"

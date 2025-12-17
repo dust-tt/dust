@@ -57,7 +57,7 @@ makeScript({}, async ({ execute }, logger) => {
         if (result.isErr()) {
           logger.error(
             {
-              triggerId: t.sId(),
+              triggerId: t.sId,
               triggerName: t.name,
               error: result.error.message,
             },
@@ -66,7 +66,7 @@ makeScript({}, async ({ execute }, logger) => {
           errorCount++;
         } else {
           logger.info(
-            { triggerId: t.sId(), triggerName: t.name },
+            { triggerId: t.sId, triggerName: t.name },
             "Temporal workflow removed successfully."
           );
           affectedTriggersCount++;
@@ -76,7 +76,7 @@ makeScript({}, async ({ execute }, logger) => {
         );
       } else {
         logger.info(
-          { triggerId: t.sId(), triggerName: t.name },
+          { triggerId: t.sId, triggerName: t.name },
           "Would remove temporal workflow (dry run)"
         );
         logger.info(

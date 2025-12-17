@@ -16,8 +16,10 @@ import {
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
-import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
+import {
+  AgentMessageSkillModel,
+  ConversationSkillModel,
+} from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -74,6 +76,11 @@ type SkillVersionCreationAttributes =
     skillConfigurationId: number;
     version: number;
     mcpServerConfigurationIds: number[];
+  };
+
+type AgentMessageSkillCreationAttributes =
+  CreationAttributes<ConversationSkillModel> & {
+    agentMessageId: number;
   };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -461,7 +468,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agentConfiguration.sId,
       },
     });
 
@@ -882,26 +889,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    await AgentMessageSkillModel.create({
+    const conversationSkillBlob = {
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
+      agentConfigurationId: agentConfiguration.sId,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
       agentMessageId: agentMessage.agentMessageId,
       conversationId: conversation.id,
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
-    });
+    };
 
-    await ConversationSkillModel.create({
-      workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
-      customSkillId: this.isGlobal ? null : this.id,
-      globalSkillId: this.isGlobal ? this.globalSId : null,
-      conversationId: conversation.id,
-      source,
-      addedByUserId: user && source === "conversation" ? user.id : null,
-    });
+    const agentMessageSkillBlob: AgentMessageSkillCreationAttributes = {
+      ...conversationSkillBlob,
+      agentMessageId: agentMessage.agentMessageId,
+    };
+
+    await AgentMessageSkillModel.create(agentMessageSkillBlob);
+
+    await ConversationSkillModel.create(conversationSkillBlob);
 
     return new Ok(undefined);
   }

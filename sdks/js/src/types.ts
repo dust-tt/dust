@@ -305,7 +305,6 @@ const UserMessageOriginSchema = z
     "email",
     "excel",
     "extension",
-    "github-copilot-chat",
     "gsheet",
     "make",
     "n8n",
@@ -691,6 +690,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
+  | "schedules_management"
   | "usage_data_api"
   | "vanta_tool"
   | "web_summarization"

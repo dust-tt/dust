@@ -8,6 +8,8 @@ import logger from "@app/logger/logger";
 
 type EventCallback = (event: EventPayload | "close") => void;
 
+const HISTORY_FETCH_COUNT = 256;
+
 export type EventPayload = {
   id: string;
   message: {
@@ -252,7 +254,10 @@ class RedisHybridManager {
     callback: EventCallback,
     lastEventId: string | null = null,
     origin: string
-  ): Promise<{ history: EventPayload[]; unsubscribe: () => void }> {
+  ): Promise<{
+    history: EventPayload[];
+    unsubscribe: () => void;
+  }> {
     const subscriptionClient = await this.getSubscriptionClient();
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channelName);
@@ -279,7 +284,7 @@ class RedisHybridManager {
       .get(pubSubChannelName)!
       .add(eventsDuringHistoryFetchCallback);
 
-    const history: EventPayload[] = await this.getHistory(
+    const { events: history, hasMore: historyHasMore } = await this.getHistory(
       streamClient,
       streamName,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -306,6 +311,11 @@ class RedisHybridManager {
       }
       // Sort the history just in case
       history.sort((a, b) => a.id.localeCompare(b.id));
+    }
+
+    if (historyHasMore) {
+      // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
+      callback("close");
     }
 
     return {
@@ -346,16 +356,23 @@ class RedisHybridManager {
   ): Promise<void> {
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channel);
-    const history: EventPayload[] = await this.getHistory(
-      streamClient,
-      streamName
-    );
+    let historyHasMore = true;
+    let lastEventId: string | undefined = undefined;
+    while (historyHasMore) {
+      const { events: history, hasMore } = await this.getHistory(
+        streamClient,
+        streamName,
+        lastEventId
+      );
 
-    for (const event of history) {
-      if (predicate(event)) {
-        await streamClient.xDel(streamName, event.id);
-        logger.debug({ channel }, "Deleted event from Redis stream");
+      for (const event of history) {
+        if (predicate(event)) {
+          await streamClient.xDel(streamName, event.id);
+          logger.debug({ channel }, "Deleted event from Redis stream");
+        }
       }
+      historyHasMore = hasMore;
+      lastEventId = history.at(-1)?.id ?? lastEventId;
     }
   }
 
@@ -363,20 +380,27 @@ class RedisHybridManager {
     streamClient: RedisClientType,
     streamName: string,
     lastEventId: string = "0-0"
-  ): Promise<EventPayload[]> {
+  ): Promise<{ events: EventPayload[]; hasMore: boolean }> {
     try {
       return await streamClient
-        .xRead({ key: streamName, id: lastEventId }, { COUNT: 100 })
+        .xRead(
+          { key: streamName, id: lastEventId },
+          { COUNT: HISTORY_FETCH_COUNT }
+        )
         .then((events) => {
           if (events) {
-            return events.flatMap((event) =>
+            const finalEvents = events.flatMap((event) =>
               event.messages.map((message) => ({
                 id: message.id,
                 message: { payload: message.message["payload"] },
               }))
             );
+            return {
+              events: finalEvents,
+              hasMore: finalEvents.length >= HISTORY_FETCH_COUNT,
+            };
           }
-          return [];
+          return { events: [], hasMore: false };
         });
     } catch (error) {
       logger.error(
@@ -387,7 +411,7 @@ class RedisHybridManager {
         },
         "Error fetching history from stream"
       );
-      return Promise.resolve([]);
+      return Promise.resolve({ events: [], hasMore: false });
     }
   }
 

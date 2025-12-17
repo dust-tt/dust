@@ -46,13 +46,10 @@ function MentionTrigger({
   return (
     <span
       className={cn(
-        "inline-block cursor-pointer font-light",
-        !userMentionsEnabled || mention.type === "agent"
-          ? "text-highlight-500"
-          : "text-green-700",
+        "inline-block cursor-pointer font-light text-highlight-500 dark:text-highlight-500-night",
         userMentionsEnabled &&
           isCurrentUserMentioned &&
-          "bg-green-200 text-green-700"
+          "bg-golden-100 dark:bg-golden-100-night"
       )}
     >
       @{mention.label}
