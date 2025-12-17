@@ -85,9 +85,9 @@ export function InAppBanner({ owner }: InAppBannerProps) {
           label="Open your holiday recap"
         />
         <Button
-          variant="ghost"
+          variant="outline"
           icon={XMarkIcon}
-          className="absolute right-1 top-1 opacity-50"
+          className="absolute right-1 top-1 opacity-80"
           onClick={onDismiss}
         />
       </div>
