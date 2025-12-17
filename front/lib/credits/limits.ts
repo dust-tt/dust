@@ -7,6 +7,8 @@ import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 
+// Minimum purchase amount: $10.
+export const MIN_CREDIT_PURCHASE_MICRO_USD = 10_000_000;
 // $50 per user per month for Pro subscriptions.
 const MAX_PRO_CREDIT_PER_USER_MICRO_USD = 50_000_000;
 // $1000 absolute cap for Pro subscriptions.

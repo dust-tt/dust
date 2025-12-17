@@ -10,7 +10,10 @@ import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
 } from "@app/lib/credits/committed";
-import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
+import {
+  getCreditPurchaseLimits,
+  MIN_CREDIT_PURCHASE_MICRO_USD,
+} from "@app/lib/credits/limits";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -89,6 +92,21 @@ async function handler(
         });
       }
 
+      // Convert dollars to micro USD for internal storage.
+      const amountMicroUsd = Math.round(amountDollars * 1_000_000);
+
+      // Validate minimum purchase amount ($10).
+      if (amountMicroUsd < MIN_CREDIT_PURCHASE_MICRO_USD) {
+        const minDollars = MIN_CREDIT_PURCHASE_MICRO_USD / 1_000_000;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Minimum purchase amount is $${minDollars}.`,
+          },
+        });
+      }
+
       // Get Stripe subscription and determine if Enterprise.
       const stripeSubscription = await getStripeSubscription(
         subscription.stripeSubscriptionId
@@ -110,8 +128,6 @@ async function handler(
           },
         });
       }
-      // Convert dollars to micro USD for internal storage.
-      const amountMicroUsd = Math.round(amountDollars * 1_000_000);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
       // Validate against purchase limits.
