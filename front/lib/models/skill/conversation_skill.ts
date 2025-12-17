@@ -18,9 +18,6 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 
-/**
- * Shared attributes between ConversationSkillModel and AgentMessageSkillModel.
- */
 const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
   createdAt: {
     type: DataTypes.DATE,
@@ -77,19 +74,19 @@ const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
 /**
  * Shared validation for skill in conversation models.
  * Ensures exactly one of customSkillId or globalSkillId is set.
- * Used in Sequelize's validate option where `this` is the model instance.
  */
-function eitherGlobalOrCustomSkillValidation(
-  this: { customSkillId: unknown; globalSkillId: unknown }
-) {
+function eitherGlobalOrCustomSkillValidation(this: {
+  customSkillId: unknown;
+  globalSkillId: unknown;
+}) {
   const hasCustomSkill = this.customSkillId !== null;
   const hasGlobalSkill = this.globalSkillId !== null;
   if (hasCustomSkill === hasGlobalSkill) {
-    throw new Error("Exactly one of customSkillId or globalSkillId must be set");
+    throw new Error(
+      "Exactly one of customSkillId or globalSkillId must be set"
+    );
   }
 }
-
-// ConversationSkillModel
 
 export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkillModel> {
   declare createdAt: CreationOptional<Date>;
@@ -157,24 +154,8 @@ ConversationSkillModel.belongsTo(UserModel, {
   as: "addedByUser",
 });
 
-// AgentMessageSkillModel
-
-export class AgentMessageSkillModel extends WorkspaceAwareModel<AgentMessageSkillModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
-  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
-
-  declare customSkill: NonAttribute<SkillConfigurationModel> | null;
-  declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
-  declare globalSkillId: string | null;
-
+export class AgentMessageSkillModel extends ConversationSkillModel {
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
-  declare conversationId: ForeignKey<ConversationModel["id"]>;
-
-  declare source: ConversationSkillOrigin;
-  declare addedByUserId: ForeignKey<UserModel["id"]> | null;
 }
 
 AgentMessageSkillModel.init(
