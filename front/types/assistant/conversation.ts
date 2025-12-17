@@ -1,5 +1,6 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import type {
   AllSupportedWithDustSpecificFileContentType,
   ContentFragmentType,
@@ -114,6 +115,8 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
+export type RichMentionWithStatus = RichMention & { status: MentionStatusType };
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -124,7 +127,7 @@ export type UserMessageType = {
   rank: number;
   user: UserType | null;
   mentions: MentionType[];
-  richMentions: RichMention[];
+  richMentions: RichMentionWithStatus[];
   content: string;
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
@@ -184,7 +187,7 @@ export type BaseAgentMessageType = {
   chainOfThought: string | null;
   error: GenericErrorContent | null;
   visibility: MessageVisibility;
-  richMentions: RichMention[];
+  richMentions: RichMentionWithStatus[];
 };
 
 export type ParsedContentItem =

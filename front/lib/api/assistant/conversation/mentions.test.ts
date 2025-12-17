@@ -924,7 +924,7 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: userMessage,
+      messageId: userMessage.id,
       conversation,
     });
 
@@ -978,7 +978,7 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: userMessage,
+      messageId: userMessage.id,
       conversation,
     });
 
@@ -1034,7 +1034,7 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: userMessage,
+      messageId: userMessage.id,
       conversation,
     });
 
@@ -1081,7 +1081,7 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: userMessage,
+      messageId: userMessage.id,
       conversation,
     });
 
@@ -1127,7 +1127,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello, this is a test message";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1143,7 +1142,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1160,7 +1158,6 @@ describe("createUserMessage", () => {
     expect(userMessage.rank).toBe(rank);
     expect(userMessage.version).toBe(0);
     expect(userMessage.user).toEqual(userJson);
-    expect(userMessage.mentions).toEqual(mentions);
     expect(userMessage.context).toEqual(context);
     expect(userMessage.agenticMessageData).toBeUndefined();
 
@@ -1187,7 +1184,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello, this is a test message";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1203,7 +1199,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: null, // User should be attributed from email
@@ -1222,7 +1217,6 @@ describe("createUserMessage", () => {
   it("should create a user message with agenticMessageData and originMessage lookup", async () => {
     const user = auth.getNonNullableUser();
     const content = "Hello, this is an agentic message";
-    const mentions: MentionType[] = [];
 
     // Create an origin message first with rank 0
     const originMessage = await withTransaction(async (transaction) => {
@@ -1269,7 +1263,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1297,7 +1290,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello, this is an agentic message";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1318,7 +1310,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1348,7 +1339,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const originalContent = "Original message";
     const editedContent = "Edited message";
-    const mentions: MentionType[] = [];
 
     // Create original message
     const userJson = user.toJSON();
@@ -1356,7 +1346,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: originalContent,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1379,10 +1368,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
-        mentions,
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1405,65 +1393,6 @@ describe("createUserMessage", () => {
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.content).toBe(editedContent);
-  });
-
-  it("should edit a user message with different mentions", async () => {
-    const user = auth.getNonNullableUser();
-    const userJson = user.toJSON();
-    const originalContent = "Original message";
-    const editedContent = "Edited message with mentions";
-    const originalMentions: MentionType[] = [];
-    const editedMentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } satisfies AgentMention,
-    ];
-
-    // Create original message
-    const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage(auth, {
-        conversation,
-        content: originalContent,
-        mentions: originalMentions,
-        metadata: {
-          type: "create",
-          user: userJson,
-          rank: 0,
-          context: {
-            username: userJson.username,
-            timezone: "UTC",
-            fullName: userJson.fullName,
-            email: userJson.email,
-            profilePictureUrl: userJson.image,
-            origin: "web",
-          },
-        },
-        transaction,
-      });
-    });
-
-    // Edit the message with new mentions
-    const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage(auth, {
-        conversation,
-        content: editedContent,
-        mentions: editedMentions,
-        metadata: {
-          type: "edit",
-          message: originalMessage,
-        },
-        transaction,
-      });
-    });
-
-    expect(editedMessage).toBeDefined();
-    expect(editedMessage.content).toBe(editedContent);
-    expect(editedMessage.mentions).toEqual(editedMentions);
-    expect(editedMessage.mentions).toHaveLength(1);
-    expect(editedMessage.version).toBe(originalMessage.version + 1);
-    expect(editedMessage.rank).toBe(originalMessage.rank);
-    expect(editedMessage.user).toEqual(originalMessage.user);
-    expect(editedMessage.context).toEqual(originalMessage.context);
   });
 
   it("should preserve agenticMessageData when editing", async () => {
@@ -1504,7 +1433,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Original agentic message",
-        mentions: [],
         metadata: {
           type: "create",
           user: userJson,
@@ -1530,10 +1458,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Edited agentic message",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1575,7 +1502,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Original message",
-        mentions: [],
         metadata: {
           type: "create",
           user: userJson,
@@ -1591,10 +1517,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Edited message",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1643,7 +1568,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Original message",
-        mentions: [],
         metadata: {
           type: "create",
           user: userJson,
@@ -1668,10 +1592,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "First edit",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1689,10 +1612,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Second edit",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: firstEdit,
+          message: { ...firstEdit, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1710,10 +1632,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Third edit",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: secondEdit,
+          message: { ...secondEdit, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1730,14 +1651,12 @@ describe("createUserMessage", () => {
   it("should preserve null user when editing", async () => {
     const content = "Original anonymous message";
     const editedContent = "Edited anonymous message";
-    const mentions: MentionType[] = [];
 
     // Create original message with null user
     const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: null,
@@ -1762,10 +1681,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
-        mentions,
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1790,14 +1708,12 @@ describe("createUserMessage", () => {
     const userJson = user.toJSON();
     const originalContent = "Original message";
     const editedContent = "Edited message";
-    const mentions: MentionType[] = [];
 
     // Create original message
     const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: originalContent,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1820,10 +1736,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
-        mentions,
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1843,51 +1758,10 @@ describe("createUserMessage", () => {
     expect(userMessageInDb?.userId).toBe(userJson.id);
   });
 
-  it("should create a user message with mentions", async () => {
-    const user = auth.getNonNullableUser();
-    const userJson = user.toJSON();
-    const content = "Hello @agent";
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } satisfies AgentMention,
-    ];
-    const rank = 0;
-
-    const context: UserMessageContext = {
-      username: userJson.username,
-      timezone: "UTC",
-      fullName: userJson.fullName,
-      email: userJson.email,
-      profilePictureUrl: userJson.image,
-      origin: "web",
-    };
-
-    const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage(auth, {
-        conversation,
-        content,
-        mentions,
-        metadata: {
-          type: "create",
-          user: userJson,
-          rank,
-          context,
-        },
-        transaction,
-      });
-    });
-
-    expect(userMessage).toBeDefined();
-    expect(userMessage.mentions).toEqual(mentions);
-    expect(userMessage.mentions).toHaveLength(1);
-  });
-
   it("should handle context with all optional fields", async () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello with full context";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1906,7 +1780,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1941,7 +1814,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello with minimal context";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1957,7 +1829,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1986,7 +1857,6 @@ describe("createUserMessage", () => {
   it("should create multiple user messages with correct ranks", async () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
-    const mentions: MentionType[] = [];
 
     const context: UserMessageContext = {
       username: userJson.username,
@@ -2001,7 +1871,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "First message",
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -2016,7 +1885,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Second message",
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -2035,7 +1903,6 @@ describe("createUserMessage", () => {
 
   it("should handle user message with null user", async () => {
     const content = "Hello from anonymous user";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -2051,7 +1918,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: null,

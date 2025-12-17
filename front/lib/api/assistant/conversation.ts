@@ -84,6 +84,7 @@ import {
   md5,
   Ok,
   removeNulls,
+  toMentionType,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 
@@ -648,10 +649,11 @@ export async function postUserMessage(
         transaction: t,
       })) ?? -1) + 1;
 
-    const userMessage = await createUserMessage(auth, {
+    // Return the user message without mentions.
+    // This way typescript forces us to create the mentions after the user message is created.
+    const userMessageWithoutMentions = await createUserMessage(auth, {
       conversation,
       content,
-      mentions,
       metadata: {
         type: "create",
         user: user?.toJSON() ?? null,
@@ -662,12 +664,18 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    await createUserMentions(auth, {
+    const richMentions = await createUserMentions(auth, {
       mentions,
-      message: userMessage,
+      messageId: userMessageWithoutMentions.id,
       conversation,
       transaction: t,
     });
+
+    const userMessage = {
+      ...userMessageWithoutMentions,
+      richMentions: richMentions,
+      mentions: richMentions.map(toMentionType),
+    };
 
     // Mark the conversation as unread for all participants except the user.
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
@@ -909,10 +917,10 @@ export async function editUserMessage(
         );
       }
 
-      const userMessage = await createUserMessage(auth, {
+      const userMessageWithoutMentions = await createUserMessage(auth, {
         conversation,
         content,
-        mentions,
+
         metadata: {
           type: "edit",
           message,
@@ -926,12 +934,18 @@ export async function editUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      await createUserMentions(auth, {
+      const richMentions = await createUserMentions(auth, {
         mentions,
-        message: userMessage,
+        messageId: userMessageWithoutMentions.id,
         conversation,
         transaction: t,
       });
+
+      const userMessage = {
+        ...userMessageWithoutMentions,
+        richMentions: richMentions,
+        mentions: richMentions.map(toMentionType),
+      };
 
       const hasAgentMentions = mentions.some(isAgentMention);
 
@@ -1056,7 +1070,7 @@ export async function handleAgentMessage(
       for (const m of userMentions) {
         await createUserMentions(auth, {
           mentions: [{ type: "user", userId: m.sId }],
-          message: agentMessage,
+          messageId: agentMessage.id,
           conversation,
           transaction: t,
         });
@@ -1371,7 +1385,6 @@ export async function softDeleteUserMessage(
     const userMessage = await createUserMessage(auth, {
       conversation,
       content: "deleted",
-      mentions: [],
       metadata: {
         type: "delete",
         message,
@@ -1403,7 +1416,7 @@ export async function softDeleteUserMessage(
 
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
-    { ...userMessage, contentFragments: [] },
+    { ...userMessage, contentFragments: [], mentions: [], richMentions: [] },
     []
   );
 

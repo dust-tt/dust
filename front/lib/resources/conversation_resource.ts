@@ -842,16 +842,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  static async isConversationParticipant(
+    auth: Authenticator,
+    {
+      conversation,
+      user,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      user: UserType;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const count = await ConversationParticipantModel.count({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+      },
+      transaction,
+    });
+    return count > 0;
+  }
+
   static async upsertParticipation(
     auth: Authenticator,
     {
       conversation,
       action,
       user,
+      transaction,
     }: {
       conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
       user: UserType | null;
+      transaction?: Transaction;
     }
   ): Promise<"added" | "updated" | "none"> {
     if (!user) {
@@ -900,7 +925,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         );
         status = "added";
       }
-    });
+    }, transaction);
 
     return status;
   }
@@ -1387,18 +1412,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...userResource.toJSON(),
       unread: unreadMap.get(userResource.id) ?? false,
     }));
-  }
-
-  async isConversationParticipant(user: UserResource): Promise<boolean> {
-    const count = await ConversationParticipantModel.count({
-      where: {
-        conversationId: this.id,
-        userId: user.id,
-        workspaceId: this.workspaceId,
-      },
-    });
-
-    return count > 0;
   }
 
   async delete(
