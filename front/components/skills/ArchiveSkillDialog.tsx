@@ -11,6 +11,7 @@ import { useState } from "react";
 
 import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types";
+import { pluralize } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface DeleteSkillDialogProps {
@@ -47,9 +48,7 @@ export function ArchiveSkillDialog({
               <span className="font-bold">{skillConfiguration?.name}</span>{" "}
               {skillConfiguration.relations.usage.count === 0
                 ? "for everyone."
-                : skillConfiguration.relations.usage.count === 1
-                  ? "used by 1 agent."
-                  : `used by ${skillConfiguration.relations.usage.count} agents.`}
+                : `used by ${skillConfiguration.relations.usage.count} agent${pluralize(skillConfiguration.relations.usage.count)}.`}
             </div>
           </DialogDescription>
         </DialogHeader>
