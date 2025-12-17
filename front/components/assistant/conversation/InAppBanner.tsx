@@ -22,7 +22,9 @@ const MENTION_BANNER_LOCAL_STORAGE_KEY = "mention-banner-dismissed";
 const MENTION_BANNER_URL = "https://docs.dust.tt/docs/collaboration";
 
 const EXIT_ANIMATION_CLASSNAME =
-  "translate-y-[-150%] opacity-0 transition-opacity transition-transform duration-300";
+  "transition-opacity transition-transform duration-300";
+
+const AFTER_EXIT_CLASSNAME = "translate-y-[170%] opacity-30";
 
 interface InAppBannerProps {
   owner: WorkspaceType;
@@ -74,11 +76,12 @@ export function InAppBanner({ owner, showMentionBanner }: InAppBannerProps) {
         "rounded-2xl shadow-sm",
         "border border-border/0 dark:border-border-night/0",
         "mx-2 mb-2",
+        "opacity-100",
+        EXIT_ANIMATION_CLASSNAME,
         showMentionBanner
           ? "translate-y-[-20%] scale-95"
-          : "translate-y-none scale-100",
-        "transition-transform",
-        !showInAppBanner && EXIT_ANIMATION_CLASSNAME
+          : "translate-y-0 scale-100 opacity-100",
+        !showInAppBanner && AFTER_EXIT_CLASSNAME
       )}
       style={BACKGROUND_IMAGE_STYLE_PROPS}
     >
@@ -136,9 +139,10 @@ export function MentionBanner({
         "border border-border/0 dark:border-border-night/0",
         "mx-2 mb-2",
         "relative z-10",
+        EXIT_ANIMATION_CLASSNAME,
         showMentionBanner
-          ? "opacity-1 translate-y-[100%]"
-          : EXIT_ANIMATION_CLASSNAME
+          ? "translate-y-[100%] opacity-100"
+          : AFTER_EXIT_CLASSNAME
       )}
     >
       <div className="relative p-4">
