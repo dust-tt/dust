@@ -1,14 +1,7 @@
-import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import {
-  shouldSendNotificationForAgentAnswer,
-  triggerConversationUnreadNotifications,
-} from "@app/lib/notifications/workflows/conversation-unread";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { NOTIFICATION_DELAY_MS } from "@app/temporal/agent_loop/workflows";
-import { isDevelopment } from "@app/types";
+import { launchConversationUnreadNotificationWorkflow } from "@app/temporal/notifications_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
@@ -18,64 +11,29 @@ export async function conversationUnreadNotificationActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  // Contruct back an authenticator from the auth type.
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.error(
-      { authType, error: authResult.error },
-      "Failed to construct authenticator from auth type"
-    );
-    return;
-  }
-  const auth = authResult.value;
-  if (!isUserMessageOrigin(agentLoopArgs.userMessageOrigin)) {
-    logger.info(
-      { userMessageOrigin: agentLoopArgs.userMessageOrigin },
-      "User message origin is not a valid origin."
-    );
-    return;
-  }
-
-  // Check if the user message origin is valid for sending notifications.
-  if (!shouldSendNotificationForAgentAnswer(agentLoopArgs.userMessageOrigin)) {
-    return;
-  }
-
-  // Check if the workspace has notifications enabled.
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("notifications")) {
-    return;
-  }
-
-  // Wait 30 seconds before triggering the notification.
-  await new Promise((resolve) =>
-    setTimeout(resolve, isDevelopment() ? 3000 : NOTIFICATION_DELAY_MS)
-  );
-
-  // Get conversation participants
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    agentLoopArgs.conversationId
-  );
-
-  if (!conversation) {
+  // Use `getWorkspaceInfos` for lightweight workspace info.
+  const owner = await getWorkspaceInfos(authType.workspaceId);
+  if (!owner) {
     logger.warn(
-      { conversationId: agentLoopArgs.conversationId },
-      "Conversation not found after delay"
+      { workspaceId: authType.workspaceId },
+      "Failed to fetch workspace infos for conversation unread notification"
     );
     return;
   }
 
-  const r = await triggerConversationUnreadNotifications(auth, {
-    conversation,
-    messageId: agentLoopArgs.agentMessageId,
+  const result = await launchConversationUnreadNotificationWorkflow({
+    authType,
+    agentLoopArgs,
   });
 
-  if (r.isErr()) {
-    logger.error(
-      { error: r.error },
-      "Failed to trigger conversation unread notification"
+  if (result.isErr()) {
+    logger.warn(
+      {
+        agentMessageId: agentLoopArgs.agentMessageId,
+        error: result.error,
+        workspaceId: authType.workspaceId,
+      },
+      "Failed to launch conversation unread notification workflow"
     );
-    return;
   }
 }
