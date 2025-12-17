@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions, Result } from "@app/types";
-import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
+import { Err, getLargeWhitelistedModel, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestion";
 
@@ -38,21 +38,19 @@ function getConversationContext(
 
   if (inputs.agentFacingDescription) {
     parts.push(
-      "Skill purpose (when to use):\n======\n" + inputs.agentFacingDescription
+      `## Skill purpose (when to use)\n\n${inputs.agentFacingDescription}`
     );
   }
 
   if (inputs.instructions) {
-    parts.push(
-      "Skill instructions (how to use):\n======\n" + inputs.instructions
-    );
+    parts.push(`## Skill instructions (how to use)\n\n${inputs.instructions}`);
   }
 
   if (inputs.tools.length > 0) {
     const toolsText = inputs.tools
-      .map((t) => `- ${t.name}: ${t.description}`)
+      .map((t) => `- **${t.name}**: ${t.description}`)
       .join("\n");
-    parts.push("Available tools (what to use):\n======\n" + toolsText);
+    parts.push(`## Available tools (what to use)\n\n${toolsText}`);
   }
 
   return {
@@ -71,7 +69,7 @@ export async function getSkillDescriptionSuggestion(
   inputs: SkillDescriptionSuggestionInputs
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const model = getSmallWhitelistedModel(owner);
+  const model = getLargeWhitelistedModel(owner);
 
   if (!model) {
     return new Err(
