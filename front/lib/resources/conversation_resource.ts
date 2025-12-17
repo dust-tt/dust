@@ -1274,7 +1274,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     if (!agentConfiguration) {
-      return new Err(new Error("Agent configuration not found"));
+      console.error("Agent configuration not found:", {
+        sId: agentConfigurationId,
+        workspaceId: workspace.id,
+      });
+      return new Err(
+        new Error(
+          `Agent configuration not found: sId=${agentConfigurationId}, workspaceId=${workspace.id}`
+        )
+      );
     }
 
     const existingConversationSkills = await this.fetchSkills(

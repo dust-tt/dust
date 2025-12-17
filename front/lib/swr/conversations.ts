@@ -22,6 +22,9 @@ import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/a
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
+  ConversationSkillActionRequest,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/skills";
+import type {
   ConversationToolActionRequest,
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
@@ -423,6 +426,96 @@ export function useAddDeleteConversationTool({
   );
 
   return { addTool, deleteTool };
+}
+
+export function useAddDeleteConversationSkill({
+  conversationId,
+  workspaceId,
+  agentConfigurationId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  agentConfigurationId: string | null;
+}) {
+  const addSkill = useCallback(
+    async (skillId: string): Promise<boolean> => {
+      console.log("addSkill called", {
+        skillId,
+        conversationId,
+        agentConfigurationId,
+      });
+      if (!conversationId || !agentConfigurationId) {
+        console.log("addSkill: missing conversationId or agentConfigurationId");
+        return false;
+      }
+
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "add",
+              skill_id: skillId,
+              agent_configuration_id: agentConfigurationId,
+            } as ConversationSkillActionRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to add skill to conversation");
+        }
+
+        const result = await response.json();
+        return result.success === true;
+      } catch (error) {
+        console.error("Error adding skill to conversation:", error);
+        return false;
+      }
+    },
+    [conversationId, workspaceId, agentConfigurationId]
+  );
+
+  const deleteSkill = useCallback(
+    async (skillId: string): Promise<boolean> => {
+      if (!conversationId || !agentConfigurationId) {
+        return false;
+      }
+
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "delete",
+              skill_id: skillId,
+              agent_configuration_id: agentConfigurationId,
+            } as ConversationSkillActionRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to remove skill from conversation");
+        }
+
+        const result = await response.json();
+        return result.success === true;
+      } catch (error) {
+        console.error("Error removing skill from conversation:", error);
+        return false;
+      }
+    },
+    [conversationId, workspaceId, agentConfigurationId]
+  );
+
+  return { addSkill, deleteSkill };
 }
 
 export function useVisualizationRevert({

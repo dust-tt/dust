@@ -14,6 +14,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
+  useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
   useConversationTools,
 } from "@app/lib/swr/conversations";
@@ -169,6 +170,18 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
+  // Get agent configuration ID from sticky mentions (first agent mention)
+  const agentConfigurationId = useMemo(() => {
+    const agentMention = stickyMentions?.find((m) => m.type === "agent");
+    return agentMention?.id ?? null;
+  }, [stickyMentions]);
+
+  const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
+    conversationId,
+    workspaceId: owner.sId,
+    agentConfigurationId,
+  });
+
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
     setSelectedMCPServerViews((prev) => [...prev, serverView]);
@@ -185,12 +198,12 @@ export const InputBar = React.memo(function InputBar({
 
   const handleSkillSelect = (skill: SkillType) => {
     setSelectedSkills((prev) => [...prev, skill]);
-    // TODO: Handle enabled skill in conversation
+    void addSkill(skill.sId);
   };
 
   const handleSkillDeselect = (skill: SkillType) => {
     setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
-    // TODO: Disabled skill in conversation
+    void deleteSkill(skill.sId);
   };
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
