@@ -209,10 +209,7 @@ export async function getJITServers(
         );
 
       // Only add if the view exists (workspace has schedules_management feature flag)
-      if (
-        schedulesManagementView &&
-        !agentMcpServerViewIds.includes(schedulesManagementView.sId)
-      ) {
+      if (schedulesManagementView) {
         const schedulesManagementViewJSON = schedulesManagementView.toJSON();
         const schedulesManagementServer: ServerSideMCPServerConfigurationType =
           {
