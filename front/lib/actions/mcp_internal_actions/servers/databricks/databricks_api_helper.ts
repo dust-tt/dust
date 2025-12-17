@@ -133,12 +133,5 @@ export const withAuth = async ({
     );
   }
 
-  try {
-    return await action(accessToken, workspaceUrl);
-  } catch (error: unknown) {
-    logger.error("Error in withAuth", { error });
-    return new Err(
-      new MCPError(`Authentication error: ${normalizeError(error).message}`)
-    );
-  }
+  return action(accessToken, workspaceUrl);
 };
