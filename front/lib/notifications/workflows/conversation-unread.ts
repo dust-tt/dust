@@ -37,22 +37,21 @@ export const shouldSendNotificationForAgentAnswer = (
 ): boolean => {
   switch (userMessageOrigin) {
     case "web":
-    case "agent_handover":
     case "extension":
       return true;
     case "onboarding_conversation":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
+    case "cli":
+    case "cli_programmatic":
     case "email":
     case "excel":
-    case "github-copilot-chat":
     case "gsheet":
     case "make":
     case "n8n":
     case "powerpoint":
     case "raycast":
-    case "run_agent":
     case "slack":
     case "slack_workflow":
     case "teams":

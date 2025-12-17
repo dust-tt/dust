@@ -29,7 +29,6 @@ export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
   }, [toggleFavorite, url, title]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setHasMounted(true);
   }, []);
 
@@ -72,7 +71,6 @@ export function PokeFavoritesList() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true);
   }, []);
 

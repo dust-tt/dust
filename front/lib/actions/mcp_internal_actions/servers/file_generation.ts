@@ -114,6 +114,7 @@ function createServer(
       async ({ output_format }) => {
         const formats = await cacheWithRedis(
           async () => {
+            // eslint-disable-next-line no-restricted-globals
             const r = await fetch(
               `https://v2.convertapi.com/info/*/to/${output_format}`
             );
@@ -393,6 +394,7 @@ ${file_content
 
             if (result.files.length > 0) {
               const file = result.files[0];
+              // eslint-disable-next-line no-restricted-globals
               const response = await fetch(file.url);
               const buffer = await response.arrayBuffer();
               const base64 = Buffer.from(buffer).toString("base64");

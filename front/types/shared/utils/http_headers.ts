@@ -16,18 +16,14 @@ export function sanitizeHeadersArray(rows: HeaderRow[]): HeaderRow[] {
 }
 
 export function headersArrayToRecord(
-  rows: HeaderRow[] | null | undefined,
-  opts?: { stripAuthorization?: boolean }
+  rows: HeaderRow[] | null | undefined
 ): Record<string, string> {
   if (!rows) {
     return Object.fromEntries([]);
   }
 
   const sanitized = sanitizeHeadersArray(rows);
-  let entries = sanitized.map(({ key, value }) => [key, value]);
+  const entries = sanitized.map(({ key, value }) => [key, value]);
 
-  if (opts?.stripAuthorization) {
-    entries = entries.filter(([k]) => k.toLowerCase() !== "authorization");
-  }
   return Object.fromEntries(entries);
 }

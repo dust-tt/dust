@@ -716,6 +716,7 @@ export class ConnectorsAPI {
   > {
     const now = Date.now();
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(url, init);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {

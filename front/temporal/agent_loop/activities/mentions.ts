@@ -15,14 +15,15 @@ export async function handleMentionsActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   // Contruct back an authenticator from the auth type.
-  const auth = await Authenticator.fromJSON(authType);
-  if (!auth) {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
     logger.error(
-      { authType },
+      { authType, error: authResult.error },
       "Failed to construct authenticator from auth type"
     );
     return;
   }
+  const auth = authResult.value;
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   if (!featureFlags.includes("mentions_v2")) {

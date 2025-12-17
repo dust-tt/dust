@@ -945,7 +945,9 @@ function createServer(
         .min(1)
         .max(100)
         .optional()
-        .describe("Results per page. Defaults to 30, max 100."),
+        .describe("Results per page. Defaults to 50, max 100."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
     },
     withToolLogging(
       auth,
@@ -958,7 +960,9 @@ function createServer(
           labels,
           sort = "CREATED_AT",
           direction = "DESC",
-          perPage = 30,
+          perPage = 50,
+          after,
+          before,
         },
         { authInfo }
       ) => {
@@ -968,9 +972,15 @@ function createServer(
 
         try {
           const query = `
-          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [IssueState!], $labels: [String!]) {
+          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [IssueState!], $labels: [String!], $after: String, $before: String) {
             repository(owner: $owner, name: $repo) {
-              issues(first: $first, orderBy: $orderBy, states: $states, labels: $labels) {
+              issues(first: $first, orderBy: $orderBy, states: $states, labels: $labels, after: $after, before: $before) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                  startCursor
+                  hasPreviousPage
+                }
                 nodes {
                   number
                   title
@@ -1003,6 +1013,8 @@ function createServer(
             owner,
             repo,
             first: perPage,
+            after: after,
+            before: before,
             orderBy: {
               field: sort,
               direction: direction,
@@ -1012,6 +1024,12 @@ function createServer(
           })) as {
             repository: {
               issues: {
+                pageInfo: {
+                  hasNextPage: boolean;
+                  endCursor: string | null;
+                  startCursor: string | null;
+                  hasPreviousPage: boolean;
+                };
                 nodes: {
                   number: number;
                   title: string;
@@ -1052,9 +1070,7 @@ function createServer(
                 name: label.name,
                 color: label.color,
               })),
-              assignees: issue.assignees.nodes.map(
-                (assignee) => assignee.login
-              ),
+              assignees: issue.assignees.nodes.map((a) => a.login),
               commentCount: issue.comments.totalCount,
             })
           );
@@ -1066,13 +1082,334 @@ function createServer(
             },
             {
               type: "text" as const,
-              text: JSON.stringify(formattedIssues, null, 2),
+              text: JSON.stringify(
+                {
+                  issues: formattedIssues,
+                  pageInfo: issues.repository.issues.pageInfo,
+                },
+                null,
+                2
+              ),
             },
           ]);
         } catch (e) {
           return new Err(
             new MCPError(
               `Error listing GitHub issues: ${normalizeError(e).message}`
+            )
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "search_advanced",
+    "Search issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested searches. " +
+      "Supports advanced query syntax like 'is:issue AND assignee:@me AND (label:support OR comments:>5)' or 'is:pr AND assignee:@me'. " +
+      "Use 'is:issue' to search for issues, 'is:pr' to search for pull requests, or omit to search both. ",
+    {
+      query: z
+        .string()
+        .describe(
+          "The advanced search query string. Supports AND/OR operators and nested searches. " +
+            "Examples: 'is:issue AND assignee:username AND (label:bug OR comments:>5)', 'is:pr AND assignee:@me', or 'assignee:username' to search both. " +
+            "Note: Spaces between multiple repo/org/user filters are treated as AND operators."
+        ),
+      first: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Number of results to return. Defaults to 30, max 100."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github", agentLoopContext },
+      async ({ query, first = 30, after, before }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
+
+        try {
+          const searchQuery = `
+          query($searchQuery: String!, $first: Int!, $after: String, $before: String) {
+            search(query: $searchQuery, type: ISSUE_ADVANCED, first: $first, after: $after, before: $before) {
+              issueCount
+              pageInfo {
+                hasNextPage
+                endCursor
+                startCursor
+                hasPreviousPage
+              }
+              nodes {
+                ... on Issue {
+                  __typename
+                  number
+                  title
+                  body
+                  state
+                  createdAt
+                  updatedAt
+                  closedAt
+                  url
+                  repository {
+                    owner {
+                      login
+                    }
+                    name
+                  }
+                  author {
+                    login
+                  }
+                  labels(first: 10) {
+                    nodes {
+                      name
+                      color
+                    }
+                  }
+                  assignees(first: 10) {
+                    nodes {
+                      login
+                    }
+                  }
+                  comments {
+                    totalCount
+                  }
+                }
+                ... on PullRequest {
+                  __typename
+                  number
+                  title
+                  body
+                  state
+                  createdAt
+                  updatedAt
+                  mergedAt
+                  closedAt
+                  url
+                  repository {
+                    owner {
+                      login
+                    }
+                    name
+                  }
+                  author {
+                    login
+                  }
+                  baseRefName
+                  headRefName
+                  additions
+                  deletions
+                  changedFiles
+                  labels(first: 10) {
+                    nodes {
+                      name
+                      color
+                    }
+                  }
+                  assignees(first: 10) {
+                    nodes {
+                      login
+                    }
+                  }
+                  reviewRequests(first: 10) {
+                    nodes {
+                      requestedReviewer {
+                        ... on User {
+                          login
+                        }
+                      }
+                    }
+                  }
+                  comments {
+                    totalCount
+                  }
+                  reviews {
+                    totalCount
+                  }
+                }
+              }
+            }
+          }`;
+
+          const results = (await octokit.graphql(searchQuery, {
+            searchQuery: query,
+            first,
+            after,
+            before,
+          })) as {
+            search: {
+              issueCount: number;
+              pageInfo: {
+                hasNextPage: boolean;
+                endCursor: string | null;
+                startCursor: string | null;
+                hasPreviousPage: boolean;
+              };
+              nodes: Array<
+                | {
+                    __typename: "Issue";
+                    number: number;
+                    title: string;
+                    body: string;
+                    state: string;
+                    createdAt: string;
+                    updatedAt: string;
+                    closedAt: string | null;
+                    url: string;
+                    repository: {
+                      owner: {
+                        login: string;
+                      };
+                      name: string;
+                    };
+                    author: {
+                      login: string;
+                    };
+                    labels: {
+                      nodes: Array<{
+                        name: string;
+                        color: string;
+                      }>;
+                    };
+                    assignees: {
+                      nodes: Array<{
+                        login: string;
+                      }>;
+                    };
+                    comments: {
+                      totalCount: number;
+                    };
+                  }
+                | {
+                    __typename: "PullRequest";
+                    number: number;
+                    title: string;
+                    body: string;
+                    state: string;
+                    createdAt: string;
+                    updatedAt: string;
+                    mergedAt: string | null;
+                    closedAt: string | null;
+                    url: string;
+                    repository: {
+                      owner: {
+                        login: string;
+                      };
+                      name: string;
+                    };
+                    author: {
+                      login: string;
+                    };
+                    baseRefName: string;
+                    headRefName: string;
+                    additions: number;
+                    deletions: number;
+                    changedFiles: number;
+                    labels: {
+                      nodes: Array<{
+                        name: string;
+                        color: string;
+                      }>;
+                    };
+                    assignees: {
+                      nodes: Array<{
+                        login: string;
+                      }>;
+                    };
+                    reviewRequests: {
+                      nodes: Array<{
+                        requestedReviewer: {
+                          login: string;
+                        };
+                      }>;
+                    };
+                    comments: {
+                      totalCount: number;
+                    };
+                    reviews: {
+                      totalCount: number;
+                    };
+                  }
+              >;
+            };
+          };
+
+          const formattedResults = results.search.nodes.map((node) => {
+            const base = {
+              number: node.number,
+              title: node.title,
+              body: node.body,
+              state: node.state,
+              createdAt: node.createdAt,
+              updatedAt: node.updatedAt,
+              closedAt: node.closedAt,
+              url: node.url,
+              repository: `${node.repository.owner.login}/${node.repository.name}`,
+              author: node.author.login,
+              labels: node.labels.nodes.map((label) => ({
+                name: label.name,
+                color: label.color,
+              })),
+              assignees: node.assignees.nodes.map((a) => a.login),
+              commentCount: node.comments.totalCount,
+            };
+
+            if (node.__typename === "PullRequest") {
+              return {
+                ...base,
+                type: "pull_request" as const,
+                mergedAt: node.mergedAt,
+                baseRefName: node.baseRefName,
+                headRefName: node.headRefName,
+                additions: node.additions,
+                deletions: node.deletions,
+                changedFiles: node.changedFiles,
+                reviewRequests: node.reviewRequests.nodes.map(
+                  (request) => request.requestedReviewer.login
+                ),
+                reviewCount: node.reviews.totalCount,
+              };
+            } else {
+              return {
+                ...base,
+                type: "issue" as const,
+              };
+            }
+          });
+
+          const issues = formattedResults.filter((r) => r.type === "issue");
+          const pullRequests = formattedResults.filter(
+            (r) => r.type === "pull_request"
+          );
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Found ${results.search.issueCount} total results (${issues.length} issues, ${pullRequests.length} pull requests), retrieved ${formattedResults.length} results`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  totalCount: results.search.issueCount,
+                  issues,
+                  pullRequests,
+                  results: formattedResults,
+                  pageInfo: results.search.pageInfo,
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error searching GitHub issues and pull requests: ${normalizeError(e).message}`
             )
           );
         }

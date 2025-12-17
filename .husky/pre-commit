@@ -12,13 +12,27 @@ fi
 
 if [ -z "$ENABLE_GGSHIELD_ON_COMMIT" ]
 then
-  echo "You can enable secret check by setting ENABLE_GGSHIELD_ON_COMMIT and installing ggshield"
+    echo "You can enable secret check by setting ENABLE_GGSHIELD_ON_COMMIT and installing ggshield"
 else
-  if command -v ggshield 2>&1 >/dev/null;  then
-    ggshield secret scan pre-commit "$@"
-  else
-    echo "ggshield is not installed. Please install ggshield to enable secret check"
-  fi
+    if command -v ggshield 2>&1 >/dev/null;  then
+        ggshield secret scan pre-commit "$@"
+    else
+        echo "ggshield is not installed. Please install ggshield to enable secret check"
+    fi
+fi
+
+# Get the root path of the git repository
+root_path=$(git rev-parse --show-toplevel)
+
+if [ -z "$PACKAGE_CHECK_ON_COMMIT" ]; 
+then
+    echo "You can enable package-lock.json check by enabling PACKAGE_CHECK_ON_COMMIT"
+else
+    # Check if package.json and package-lock.json are in sync
+    if ! "$root_path"/scripts/check-package-lock-sync.sh; then
+        echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
+        exit 1
+    fi
 fi
 
 # If env var DUST_LINT_ON_COMMIT = 1, run the linter
@@ -27,9 +41,6 @@ if [ -z "$DUST_LINT_ON_COMMIT" ]; then
     exit 0
 fi
 
-# Get the root path of the git repository
-root_path=$(git rev-parse --show-toplevel)
-
 # List the directories to check for changes
 directories=("front" "connectors")
 
@@ -37,24 +48,24 @@ directories=("front" "connectors")
 for directory in "${directories[@]}"; do
     if git diff --cached --name-only | grep -qE "^$directory/"; then
         # Run the linter on root_path concatenated with the directory
-        if ! npm run lint:test-filenames --if-present --prefix $root_path/$directory; then
+        if ! npm run lint:test-filenames --if-present --prefix "$root_path"/"$directory"; then
             echo "Linting test-filenames failed. Please fix the issues before committing."
             exit 1
         fi
-        if ! npm run tsgo --if-present --prefix $root_path/$directory; then
+        if ! npm run tsgo --if-present --prefix "$root_path"/"$directory"; then
             echo "Type checking failed. Please fix the issues before committing."
             exit 1
         fi
 
         if [ "$directory" = "front" ]; then
-            if ! npm run lint:circular --if-present --prefix $root_path/$directory; then
+            if ! npm run lint:circular --if-present --prefix "$root_path"/"$directory"; then
                 echo "Circular dependency check failed. Please fix the issues before committing."
                 exit 1
             fi
 
             # Check for changes in front/pages/api/v1/ only when processing the front/ directory
             if git diff --cached --name-only | grep -qE "^front/pages/api/v1/"; then
-                if ! npm run docs:check --if-present --prefix $root_path/$directory; then
+                if ! npm run docs:check --if-present --prefix "$root_path"/"$directory"; then
                     echo "Documentation check failed. Please fix the issues before committing."
                     exit 1
                 fi

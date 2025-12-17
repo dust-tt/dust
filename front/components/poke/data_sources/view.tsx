@@ -2,8 +2,6 @@ import {
   BracesIcon,
   Button,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
   ContentMessage,
   ContextItem,
   Dialog,
@@ -18,7 +16,6 @@ import {
   ScrollBar,
   Spinner,
   Tooltip,
-  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
@@ -126,16 +123,6 @@ export function ViewDataSourceTable({
                     content={systemView?.sId ?? "N/A"}
                   />
                 </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Access token</PokeTableCell>
-                  <PokeTableCell>
-                    {connector ? (
-                      <CopyTokenButton owner={owner} dsId={dataSource.sId} />
-                    ) : (
-                      "N/A"
-                    )}
-                  </PokeTableCell>
-                </PokeTableRow>
 
                 <PokeTableRow>
                   <PokeTableCell>Created at</PokeTableCell>
@@ -162,6 +149,14 @@ export function ViewDataSourceTable({
                 <PokeTableRow>
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
+                    <Link
+                      href={`https://app.datadoghq.eu/logs?query=%40connectorId%3A${dataSource.connectorId}`}
+                      target="_blank"
+                      className="text-sm text-highlight-400"
+                    >
+                      Datadog(connector)
+                    </Link>{" "}
+                    /{" "}
                     <Link
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/${
                         isScheduleBased ? "schedules" : "workflows"
@@ -314,76 +309,6 @@ export function ViewDataSourceTable({
         </div>
       </div>
     </>
-  );
-}
-
-interface CopyTokenButtonProps {
-  owner: WorkspaceType;
-  dsId: string;
-}
-function CopyTokenButton({ owner, dsId }: CopyTokenButtonProps) {
-  const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCopy = async () => {
-    if (
-      !window.confirm(
-        "⚠️ WARNING: Access tokens are sensitive credentials. Only fetch and copy this token if you understand the security implications. The token will be copied to your clipboard."
-      )
-    ) {
-      return;
-    }
-
-    // Need to focus and wait after confirmation modal, for copyToClipboard to work
-    window.focus();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    setIsLoading(true);
-    setError(null);
-    const res = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/token`
-    );
-    if (!res.ok) {
-      const err = await res.json();
-      setError(err.error?.message ?? "Failed to fetch access token");
-      return;
-    }
-    const data = await res.json();
-    if (data.token) {
-      await copyToClipboard(
-        new ClipboardItem({
-          "text/plain": new Blob([data.token], { type: "text/plain" }),
-        })
-      );
-    } else {
-      setError("No token available");
-    }
-    setIsLoading(false);
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        icon={
-          isLoading ? Spinner : isCopied ? ClipboardCheckIcon : ClipboardIcon
-        }
-        variant="outline"
-        size="xs"
-        label={
-          isLoading
-            ? "Loading..."
-            : isCopied
-              ? "Copied!"
-              : error
-                ? "Error"
-                : "Get access token"
-        }
-        onClick={handleCopy}
-        disabled={isLoading}
-        tooltip={error ?? undefined}
-      />
-    </div>
   );
 }
 

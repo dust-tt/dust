@@ -84,7 +84,7 @@ const ChromeExtensionWrapper = () => {
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
           <div className="flex flex-col items-center text-center gap-4">
-            <DustLogo className="h-12 w-48" />
+            <DustLogo width={256} height={64} />
             <Page.Header title="New version ready" />
             <Page.P>
               Install the latest version to keep using Dust. <br />

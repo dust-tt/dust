@@ -2,7 +2,7 @@ import type { Logger } from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { workspaceIdFromConnectionId } from "@connectors/connectors/notion";
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { concurrentExecutor } from "@connectors/types";
 
@@ -11,7 +11,7 @@ async function updateConnector(
   logger: Logger,
   execute: boolean
 ) {
-  const notionState = await NotionConnectorState.findOne({
+  const notionState = await NotionConnectorStateModel.findOne({
     where: { connectorId: connector.id },
   });
   if (!notionState) {
@@ -56,7 +56,7 @@ async function updateConnector(
     return;
   }
 
-  await NotionConnectorState.update(
+  await NotionConnectorStateModel.update(
     {
       notionWorkspaceId: workspaceIdRes.value,
     },

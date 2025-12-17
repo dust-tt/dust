@@ -40,6 +40,7 @@ export default async function handler(
     }
 
     const token = config.getIPInfoApiToken();
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.ipinfo.io/lite/${ip}?token=${token}`
     );

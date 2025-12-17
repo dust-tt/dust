@@ -42,7 +42,6 @@ export function RequestDataSourceModal({
 
   useEffect(() => {
     if (dataSources.length === 1) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedDataSource(dataSources[0]);
     }
   }, [dataSources]);

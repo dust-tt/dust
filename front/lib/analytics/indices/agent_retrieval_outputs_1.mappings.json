@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "message_id": {
+      "type": "keyword"
+    },
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "conversation_id": {
+      "type": "keyword"
+    },
+    "agent_id": {
+      "type": "keyword"
+    },
+    "agent_version": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
+    },
+    "mcp_server_configuration_id": {
+      "type": "keyword"
+    },
+    "data_source_view_id": {
+      "type": "keyword"
+    },
+    "data_source_id": {
+      "type": "keyword"
+    },
+    "data_source_name": {
+      "type": "keyword"
+    },
+    "document_id": {
+      "type": "keyword"
+    }
+  }
+}

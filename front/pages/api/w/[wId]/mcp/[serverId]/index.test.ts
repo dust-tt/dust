@@ -7,7 +7,6 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./index";
 
@@ -15,19 +14,17 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
+  const { req, res, workspace, authenticator, systemSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  const space = await SpaceFactory.system(workspace);
-
   // Set up common query parameters
   req.query.wId = workspace.sId;
-  req.query.spaceId = space.sId;
+  req.query.spaceId = systemSpace.sId;
 
-  return { req, res, workspace, space, auth: authenticator };
+  return { req, res, workspace, space: systemSpace, auth: authenticator };
 }
 
 describe("GET /api/w/[wId]/mcp/[serverId]", () => {

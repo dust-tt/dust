@@ -32,7 +32,9 @@ export class XaiLLM extends LLM {
 
     const { XAI_API_KEY } = dustManagedCredentials();
     if (!XAI_API_KEY) {
-      throw new Error("XAI_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_XAI_API_KEY environment variable is required"
+      );
     }
     this.client = new OpenAI({
       apiKey: XAI_API_KEY,

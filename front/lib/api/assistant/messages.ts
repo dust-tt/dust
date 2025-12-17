@@ -29,7 +29,9 @@ import type {
   LightAgentMessageType,
   MessageType,
   Result,
+  RichMention,
   UserMessageType,
+  UserType,
 } from "@app/types";
 import {
   ConversationError,
@@ -58,6 +60,39 @@ import type {
   ParsedContentItem,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+
+function getRichMentionsForMessage(
+  message: MessageModel,
+  mentionRows: MentionModel[],
+  usersById: Map<number, UserType>,
+  agentConfigurationsById: Map<string, LightAgentConfigurationType>
+): RichMention[] {
+  return removeNulls(
+    mentionRows
+      // Keep only the mentions for the current message.
+      .filter((m) => m.messageId === message.id)
+      // Map the mentions to rich mentions.
+      .map((m) => {
+        if (m.agentConfigurationId) {
+          const agentConfiguration = agentConfigurationsById.get(
+            m.agentConfigurationId
+          );
+          if (agentConfiguration) {
+            return toRichAgentMentionType(agentConfiguration);
+          }
+        } else if (m.userId) {
+          const mentionnedUser = usersById.get(m.userId);
+          if (mentionnedUser) {
+            return toRichUserMentionType(mentionnedUser);
+          }
+        } else {
+          throw new Error(
+            "Unreachable: Mention type not supported, it must either be an agent mention or a user mention"
+          );
+        }
+      })
+  );
+}
 
 export async function generateParsedContents(
   actions: AgentMCPActionWithOutputType[],
@@ -192,32 +227,38 @@ async function batchRenderUserMessages(
       );
     }
     const userMessage = message.userMessage;
-    const messageMentions = mentionRows.filter(
-      (m) => m.messageId === message.id
-    );
     const user = userMessage.userId ? usersById.get(userMessage.userId) : null;
 
-    const richMentions = removeNulls(
-      messageMentions.map((m) => {
-        if (m.agentConfigurationId) {
-          const agentConfiguration = agentConfigurationsById.get(
-            m.agentConfigurationId
-          );
-          if (agentConfiguration) {
-            return toRichAgentMentionType(agentConfiguration);
-          }
-        } else if (m.userId) {
-          const mentionnedUser = usersById.get(m.userId);
-          if (mentionnedUser) {
-            return toRichUserMentionType(mentionnedUser);
-          }
-        } else {
-          throw new Error(
-            "Unreachable: Mention type not supported, it must either be an agent mention or a user mention"
-          );
-        }
-      })
+    const richMentions = getRichMentionsForMessage(
+      message,
+      mentionRows,
+      usersById,
+      agentConfigurationsById
     );
+    let username = userMessage.userContextUsername;
+    let fullName = userMessage.userContextFullName;
+    let email = userMessage.userContextEmail;
+    let profilePictureUrl = userMessage.userContextProfilePictureUrl;
+
+    // We have a linked user and this is not an agentic message, so we can override the user context with the latest user data.
+    if (userMessage.userId !== null && !userMessage.agenticMessageType) {
+      const user = usersById.get(userMessage.userId);
+      if (user) {
+        username = user.username;
+        fullName = user.fullName;
+        email = user.email;
+        profilePictureUrl = user.image;
+      } else {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            userId: userMessage.userId,
+          },
+          "User not found for user message while it should have been fetched before. Falling back to user context."
+        );
+      }
+    }
 
     const mentions = richMentions.map(toMentionType);
     return {
@@ -233,11 +274,11 @@ async function batchRenderUserMessages(
       richMentions,
       content: userMessage.content,
       context: {
-        username: userMessage.userContextUsername,
+        username,
         timezone: userMessage.userContextTimezone,
-        fullName: userMessage.userContextFullName,
-        email: userMessage.userContextEmail,
-        profilePictureUrl: userMessage.userContextProfilePictureUrl,
+        fullName,
+        email,
+        profilePictureUrl,
         origin: userMessage.userContextOrigin,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
@@ -266,21 +307,47 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 > {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
   const agentMessageIds = removeNulls(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    agentMessages.map((m) => m.agentMessageId || null)
+    agentMessages.map((m) => m.agentMessageId ?? null)
   );
-  // Get all unique pairs id-version for the agent configurations
-  const agentConfigurationIds = agentMessages.reduce((acc, m) => {
-    if (m.agentMessage) {
-      acc.add(m.agentMessage.agentConfigurationId);
-    }
-    return acc;
-  }, new Set<string>());
 
-  const agentConfigurations = await getAgentConfigurations(auth, {
-    agentIds: [...agentConfigurationIds],
-    variant: "extra_light",
+  const mentionRows = await MentionModel.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      messageId: agentMessages.map((m) => m.id),
+    },
   });
+
+  const userIds = [
+    ...new Set(removeNulls([...mentionRows.map((m) => m.userId)])),
+  ];
+
+  // Get all unique pairs id-version for the agent configurations
+  const agentConfigurationIds = [
+    ...new Set(
+      removeNulls([...mentionRows.map((m) => m.agentConfigurationId)])
+    ),
+    ...agentMessages.reduce((acc, m) => {
+      if (m.agentMessage) {
+        acc.add(m.agentMessage.agentConfigurationId);
+      }
+      return acc;
+    }, new Set<string>()),
+  ];
+
+  const [users, agentConfigurations] = await Promise.all([
+    userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
+    agentConfigurationIds.length > 0
+      ? getAgentConfigurations(auth, {
+          agentIds: [...agentConfigurationIds],
+          variant: "extra_light",
+        })
+      : [],
+  ]);
+
+  const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
+  const agentConfigurationsById = new Map(
+    agentConfigurations.map((a) => [a.sId, a])
+  );
 
   const stepContents = await AgentStepContentResource.fetchByAgentMessages(
     auth,
@@ -340,8 +407,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
-      const agentConfiguration = agentConfigurations.find(
-        (a) => a.sId === agentMessage.agentConfigurationId
+      const agentConfiguration = agentConfigurationsById.get(
+        agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {
         logger.error(
@@ -422,7 +489,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
         if (reasoningContents.length > 0) {
           return {
-            content: textFragments.join(""),
+            content:
+              // For mutliple steps outputing text content, we want to display only the last one as the final answer.
+              textFragments.length > 0
+                ? textFragments[textFragments.length - 1]
+                : "",
             chainOfThought: reasoningContents
               .map((sc) => sc.content.value.reasoning)
               .filter((r) => !!r)
@@ -480,16 +551,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       let parentAgentMessage: MessageModel | null = null;
 
-      // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
-      if (
-        userMessage.userContextOrigin === "agent_handover" &&
-        userMessage.userContextOriginMessageId
-      ) {
-        parentAgentMessage =
-          messagesBySId.get(userMessage.userContextOriginMessageId) ?? null;
-      }
-      // END TODO
-
       if (
         userMessage.agenticMessageType === "agent_handover" &&
         userMessage.agenticOriginMessageId
@@ -497,6 +558,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         parentAgentMessage =
           messagesBySId.get(userMessage.agenticOriginMessageId) ?? null;
       }
+
+      const richMentions = getRichMentionsForMessage(
+        message,
+        mentionRows,
+        usersById,
+        agentConfigurationsById
+      );
 
       const m = {
         id: message.id,
@@ -524,6 +592,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
         modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
+        richMentions,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {

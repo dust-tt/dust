@@ -1,3 +1,4 @@
+import type { RegionType } from "@app/lib/api/regions/config";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type {
   AgentModelConfigurationType,
@@ -7,7 +8,11 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { isProviderWhitelisted, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  GPT_5_2_MODEL_ID,
+  isProviderWhitelisted,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 export function isLargeModel(model: unknown): model is SupportedModel {
   const maybeSupportedModel = model as SupportedModel;
@@ -38,7 +43,8 @@ export function canUseModel(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  region: RegionType
 ) {
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
@@ -52,6 +58,11 @@ export function canUseModel(
   }
 
   if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
+  // GPT 5.2 is not available in EU region
+  if (m.modelId === GPT_5_2_MODEL_ID && region === "europe-west1") {
     return false;
   }
 

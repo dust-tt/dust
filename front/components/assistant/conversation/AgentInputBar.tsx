@@ -21,7 +21,7 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  isHiddenMessage,
+  isHandoverUserMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -29,7 +29,7 @@ import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { RichMention } from "@app/types";
-import { conjugate, pluralize, toRichAgentMentionType } from "@app/types";
+import { pluralize, toRichAgentMentionType } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -66,12 +66,12 @@ export const AgentInputBar = ({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const lastUserMessage = methods.data
     .get()
+    .filter(isUserMessage)
     .findLast(
       (m) =>
-        isUserMessage(m) &&
+        !isHandoverUserMessage(m) &&
         m.user?.id === context.user.id &&
-        m.visibility !== "deleted" &&
-        !isHiddenMessage(m)
+        m.visibility !== "deleted"
     );
 
   const draftAgent = context.agentBuilderContext?.draftAgent;
@@ -82,11 +82,7 @@ export const AgentInputBar = ({
     if (draftAgent) {
       return [toRichAgentMentionType(draftAgent)];
     }
-    if (
-      !lastUserMessage ||
-      !isUserMessage(lastUserMessage) ||
-      lastUserMessage.richMentions.length > 1
-    ) {
+    if (!lastUserMessage || lastUserMessage.richMentions.length > 1) {
       return emptyArray<RichMention>();
     }
 
@@ -141,7 +137,6 @@ export const AgentInputBar = ({
         (m) => m.conversationId === context.conversationId
       )
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsStopping(false);
     }
   }, [
@@ -197,14 +192,14 @@ export const AgentInputBar = ({
           className="max-h-dvh mb-5 flex w-full"
         >
           <span className="font-bold">
-            {blockedActions.length} action
+            {blockedActions.length} manual action
             {pluralize(blockedActions.length)}
           </span>{" "}
-          require{conjugate(blockedActions.length)} a manual action
+          required
           {/* If there are pending validations, we show a button allowing to cycle through the blocked actions messages. */}
           {hasPendingValidations(context.user.sId) && (
             <ContentMessageAction
-              label="Review actions"
+              label="Review"
               variant="outline"
               size="xs"
               onClick={() => {
@@ -233,6 +228,7 @@ export const AgentInputBar = ({
       )}
       <InputBar
         owner={context.owner}
+        user={context.user}
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
         conversationId={context.conversationId}

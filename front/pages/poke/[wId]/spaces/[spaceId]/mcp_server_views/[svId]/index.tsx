@@ -1,8 +1,8 @@
-import { Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -31,7 +31,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView);
+  const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView, auth);
 
   return {
     props: {
@@ -60,10 +60,17 @@ export default function MCPServerViewPage({
           {owner.name}
         </a>
       </h3>
-      <div className="mt-4">
-        <Page.Vertical align="stretch">
-          <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
-        </Page.Vertical>
+      <div className="flex flex-row gap-x-6">
+        <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
+        <div className="mt-4 flex grow flex-col gap-y-4">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: mcpServerView.sId,
+              resourceType: "mcp_server_views",
+              workspace: owner,
+            }}
+          />
+        </div>
       </div>
     </>
   );

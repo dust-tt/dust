@@ -4,7 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import {
+  isUserMessageContextValid,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   apiErrorForConversation,
@@ -18,6 +21,7 @@ import {
 } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
 import { isEmptyString } from "@app/types";
@@ -115,6 +119,22 @@ async function handler(
         agenticMessageData,
       } = r.data;
 
+      if (
+        req.body.context?.origin &&
+        context?.origin &&
+        req.body.context.origin !== context.origin
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            authMethod: auth.authMethod(),
+            originProvided: req.body.context.origin,
+            originUsed: context.origin,
+          },
+          "Invalid origin used, fallbacking to default value"
+        );
+      }
+
       const origin = context.origin ?? "api";
 
       const hasReachedLimits = isProgrammaticUsage(auth, {
@@ -190,30 +210,31 @@ async function handler(
         });
       }
 
-      if (
-        context.origin === "agent_handover" ||
-        context.origin === "run_agent" ||
-        context.originMessageId
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "use agenticMessageData instead of origin.",
-          },
-        });
-      }
-
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
         origin,
-        originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,
         username: context.username,
       };
+
+      const validateUserMessageContextRes = isUserMessageContextValid(
+        auth,
+        req,
+        ctx
+      );
+      if (!validateUserMessageContextRes) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This origin is not allowed. See documentation to fix to an allowed origin.",
+          },
+        });
+      }
 
       const messageRes =
         blocking === true

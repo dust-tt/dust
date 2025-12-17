@@ -5,7 +5,7 @@ import { getLocalParents } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -26,7 +26,7 @@ async function upsertFoldersForConnector(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const spreadsheetMimeType = "application/vnd.google-apps.spreadsheet";
   // The 5 connectors with the most spreadsheets: 35k, 20k, 13k, 8k, 7k -> no need for batching
-  const spreadsheets = await GoogleDriveFiles.findAll({
+  const spreadsheets = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connector.id,
       mimeType: spreadsheetMimeType,

@@ -42,7 +42,6 @@ export function ZendeskRateLimitConfig({
   // Initialize input state based on current config
   useEffect(() => {
     if (rateLimitTransactionsPerSecond) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRateLimitInput(rateLimitTransactionsPerSecond);
     } else {
       setRateLimitInput("");

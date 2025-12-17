@@ -1,7 +1,11 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
-import type { ChildWorkflowHandle } from "@temporalio/workflow";
+import type {
+  ChildWorkflowHandle,
+  WorkflowInterceptorsFactory,
+} from "@temporalio/workflow";
 import {
   CancellationScope,
+  patched,
   proxyActivities,
   setHandler,
   startChild,
@@ -16,6 +20,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import type * as analyticsActivities from "@app/temporal/agent_loop/activities/analytics";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
+import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as mentionsActivities from "@app/temporal/agent_loop/activities/mentions";
 import type * as notificationActivities from "@app/temporal/agent_loop/activities/notification";
@@ -34,6 +39,19 @@ import type {
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
 export const NOTIFICATION_DELAY_MS = 30000;
+
+import {
+  OpenTelemetryInboundInterceptor,
+  OpenTelemetryInternalsInterceptor,
+  OpenTelemetryOutboundInterceptor,
+} from "@temporalio/interceptors-opentelemetry/lib/workflow";
+
+// Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
+export const interceptors: WorkflowInterceptorsFactory = () => ({
+  inbound: [new OpenTelemetryInboundInterceptor()],
+  outbound: [new OpenTelemetryOutboundInterceptor()],
+  internals: [new OpenTelemetryInternalsInterceptor()],
+});
 
 const { runModelAndCreateActionsActivity } = proxyActivities<
   typeof runModelAndCreateWrapperActivities
@@ -123,6 +141,19 @@ const { trackProgrammaticUsageActivity } = proxyActivities<
     maximumAttempts: 5,
   },
 });
+
+const {
+  finalizeSuccessfulAgentLoopActivity,
+  finalizeCancelledAgentLoopActivity,
+  finalizeErroredAgentLoopActivity,
+} = proxyActivities<typeof finalizeActivities>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    maximumAttempts: 5,
+  },
+});
+
+const PATCH_NAME = "finalize-activity-consolidation";
 
 export async function agentLoopConversationTitleWorkflow({
   authType,
@@ -250,12 +281,16 @@ export async function agentLoopWorkflow({
 
       // Ensure analytics runs even if workflow is cancelled
       await CancellationScope.nonCancellable(async () => {
-        await Promise.all([
-          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
-          conversationUnreadNotificationActivity(authType, agentLoopArgs),
-          handleMentionsActivity(authType, agentLoopArgs),
-        ]);
+        if (patched(PATCH_NAME)) {
+          await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
+        } else {
+          await Promise.all([
+            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+            trackProgrammaticUsageActivity(authType, agentLoopArgs),
+            conversationUnreadNotificationActivity(authType, agentLoopArgs),
+            handleMentionsActivity(authType, agentLoopArgs),
+          ]);
+        }
       });
     });
 
@@ -269,24 +304,36 @@ export async function agentLoopWorkflow({
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
         // Ensure analytics runs even when workflow is cancelled
-        await Promise.all([
-          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
-          finalizeCancellationActivity(authType, agentLoopArgs),
-        ]);
+        if (patched(PATCH_NAME)) {
+          await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
+        } else {
+          await Promise.all([
+            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+            trackProgrammaticUsageActivity(authType, agentLoopArgs),
+            finalizeCancellationActivity(authType, agentLoopArgs),
+          ]);
+        }
         return;
       } else {
         // Ensure analytics runs even when workflow errors
-        await Promise.all([
-          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
-          notifyWorkflowError(authType, {
-            conversationId: agentLoopArgs.conversationId,
-            agentMessageId: agentLoopArgs.agentMessageId,
-            agentMessageVersion: agentLoopArgs.agentMessageVersion,
-            error: workflowError,
-          }),
-        ]);
+        if (patched(PATCH_NAME)) {
+          await finalizeErroredAgentLoopActivity(
+            authType,
+            agentLoopArgs,
+            workflowError
+          );
+        } else {
+          await Promise.all([
+            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+            trackProgrammaticUsageActivity(authType, agentLoopArgs),
+            notifyWorkflowError(authType, {
+              conversationId: agentLoopArgs.conversationId,
+              agentMessageId: agentLoopArgs.agentMessageId,
+              agentMessageVersion: agentLoopArgs.agentMessageVersion,
+              error: workflowError,
+            }),
+          ]);
+        }
       }
       throw err;
     });

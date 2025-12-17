@@ -23,8 +23,8 @@ import {
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
-import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import type { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
+import { GoogleDriveSheetModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -53,7 +53,7 @@ async function upsertSheetInDb(
   sheet: Sheet,
   upsertError: TablesError | null
 ) {
-  await GoogleDriveSheet.upsert({
+  await GoogleDriveSheetModel.upsert({
     connectorId: connector.id,
     driveFileId: sheet.spreadsheet.id,
     driveSheetId: sheet.id,
@@ -394,7 +394,8 @@ export async function syncSpreadSheet(
   oauth2client: OAuth2Client,
   connectorId: ModelId,
   file: GoogleDriveObjectType,
-  startSyncTs: number
+  startSyncTs: number,
+  logger: Logger
 ): Promise<
   | {
       isSupported: false;
@@ -418,7 +419,7 @@ export async function syncSpreadSheet(
         throw new Error("Connector not found.");
       }
 
-      const localLogger = getActivityLogger(connector).child({
+      const localLogger = logger.child({
         spreadsheet: {
           id: file.id,
           size: file.size,
@@ -503,7 +504,7 @@ export async function syncSpreadSheet(
       );
 
       // List synced sheets.
-      const syncedSheets = await GoogleDriveSheet.findAll({
+      const syncedSheets = await GoogleDriveSheetModel.findAll({
         where: {
           connectorId: connector.id,
           driveFileId: file.id,
@@ -565,7 +566,7 @@ export async function syncSpreadSheet(
 
 async function deleteSheetForSpreadsheet(
   connector: ConnectorResource,
-  sheet: GoogleDriveSheet,
+  sheet: GoogleDriveSheetModel,
   spreadsheetFileId: string
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -598,7 +599,7 @@ async function deleteSheetForSpreadsheet(
 
 async function deleteAllSheets(
   connector: ConnectorResource,
-  sheetsToDelete: GoogleDriveSheet[],
+  sheetsToDelete: GoogleDriveSheetModel[],
   spreadsheetFile: { driveFileId: string }
 ) {
   await concurrentExecutor(
@@ -613,9 +614,9 @@ async function deleteAllSheets(
 
 export async function deleteSpreadsheet(
   connector: ConnectorResource,
-  file: GoogleDriveFiles
+  file: GoogleDriveFilesModel
 ) {
-  const sheetsInSpreadsheet = await GoogleDriveSheet.findAll({
+  const sheetsInSpreadsheet = await GoogleDriveSheetModel.findAll({
     where: {
       driveFileId: file.driveFileId,
       connectorId: connector.id,

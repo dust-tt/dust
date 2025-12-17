@@ -50,7 +50,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["codeBlock"],
         attributes: {
           class: {
-            default: markdownStyles.code(),
+            default: markdownStyles.codeBlock(),
           },
         },
       },

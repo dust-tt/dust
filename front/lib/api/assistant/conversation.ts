@@ -1,4 +1,5 @@
 import assert from "assert";
+import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
@@ -13,6 +14,7 @@ import {
   createUserMessage,
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/mentions";
+import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -31,6 +33,7 @@ import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
   ConversationModel,
+  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -41,6 +44,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -306,6 +310,59 @@ export async function getLastUserMessage(
 }
 
 /**
+ * Get the mentions from the last user message in a conversation
+ */
+export async function getLastUserMessageMentions(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<string[], Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await MessageModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+      {
+        model: MentionModel,
+        as: "mentions",
+        required: false,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: false,
+            attributes: ["sId"],
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!message) {
+    return new Ok([]);
+  }
+
+  const mentions: string[] = removeNulls(
+    (message as any).mentions.map(
+      (mention: MentionModel) =>
+        mention.agentConfigurationId ?? mention.user?.sId
+    )
+  );
+  return new Ok(mentions);
+}
+
+/**
  * Conversation API
  */
 
@@ -370,6 +427,69 @@ export function getRelatedContentFragments(
   }
 
   return relatedContentFragments;
+}
+
+export function isUserMessageContextValid(
+  auth: Authenticator,
+  req: NextApiRequest,
+  context: UserMessageContext
+): boolean {
+  const authMethod = auth.authMethod();
+
+  if (authMethod === "system_api_key") {
+    return true;
+  }
+
+  const {
+    "user-agent": userAgent,
+    origin: origin,
+    "x-dust-extension-version": extensionVersion,
+    "x-zendesk-app-id": zendeskAppId,
+    "x-zendesk-request-id": zendeskReqId,
+    "x-zendesk-user-id": zendeskUserId,
+  } = req.headers;
+
+  switch (context.origin) {
+    case "api":
+    case "slack": // TODO: should not be allowed
+    case "web": // TODO: should not be allowed
+      return true;
+    case "excel":
+    case "gsheet":
+    case "make":
+    case "n8n":
+    case "powerpoint":
+    case "zapier":
+      return authMethod === "api_key";
+    case "zendesk": // TODO: switch to OAuth
+      logger.info(
+        {
+          zendeskAppId,
+          zendeskReqId,
+          zendeskUserId,
+          origin,
+        },
+        "Zendesk request headers"
+      );
+      return authMethod === "api_key" || authMethod === "oauth";
+    case "cli":
+    case "cli_programmatic":
+      return authMethod === "oauth" && userAgent === "Dust CLI";
+    case "extension":
+      return authMethod === "oauth" && !!extensionVersion;
+    case "raycast":
+      return authMethod === "oauth" && userAgent === "undici";
+    case "email":
+    case "slack_workflow":
+    case "teams":
+    case "transcript":
+    case "triggered":
+    case "triggered_programmatic":
+    case "onboarding_conversation":
+      return false;
+    default:
+      assertNever(context.origin);
+  }
 }
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -600,17 +720,24 @@ export async function postUserMessage(
     agentMessages,
   });
 
-  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
-  // conversation state synchronization in multiplex mode. This is a temporary solution -
-  // we should move this to a dedicated real-time sync mechanism.
-  await publishMessageEventsOnMessagePostOrEdit(
-    conversation,
-    {
-      ...userMessage,
-      contentFragments: getRelatedContentFragments(conversation, userMessage),
-    },
-    agentMessages
-  );
+  await Promise.all([
+    publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...userMessage,
+        contentFragments: getRelatedContentFragments(conversation, userMessage),
+      },
+      agentMessages
+    ),
+    // If the conversation did not have any agent messages yet, we might not have a title, this ensure we generate one.
+    // Doing after 3 messages to avoid generating a title too early.
+    userMessage.rank >= 3
+      ? ensureConversationTitle(auth, {
+          conversation,
+          userMessage,
+        })
+      : Promise.resolve(undefined),
+  ]);
 
   return new Ok({
     userMessage,
@@ -1282,8 +1409,8 @@ export async function softDeleteUserMessage(
 
   auditLog(
     {
+      author: user.toJSON(),
       workspaceId: owner.sId,
-      userId: user.sId,
       conversationId: conversation.sId,
       messageId: message.sId,
     },
@@ -1353,8 +1480,8 @@ export async function softDeleteAgentMessage(
 
   auditLog(
     {
+      author: user.toJSON(),
       workspaceId: owner.sId,
-      userId: user.sId,
       conversationId: conversation.sId,
       messageId: message.sId,
     },

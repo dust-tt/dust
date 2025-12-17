@@ -6,7 +6,6 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
 describe("MCPServerConnectionResource", () => {
@@ -17,7 +16,6 @@ describe("MCPServerConnectionResource", () => {
         await createPrivateApiMockRequest({
           method: "GET",
         });
-      await SpaceFactory.system(workspace1);
       const remoteServer1 = await RemoteMCPServerFactory.create(workspace1);
       await MCPServerConnectionFactory.remote(
         authenticator1,
@@ -26,11 +24,10 @@ describe("MCPServerConnectionResource", () => {
       );
 
       // Create second workspace and try to access connection1
-      const { workspace: workspace2, authenticator: authenticator2 } =
+      const { authenticator: authenticator2 } =
         await createPrivateApiMockRequest({
           method: "GET",
         });
-      await SpaceFactory.system(workspace2);
 
       const result = await MCPServerConnectionResource.findByMCPServer(
         authenticator2,
@@ -52,7 +49,6 @@ describe("MCPServerConnectionResource", () => {
           method: "GET",
           role: "admin",
         });
-      await SpaceFactory.system(workspace);
       const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
       // Create workspace connection as admin
@@ -93,7 +89,6 @@ describe("MCPServerConnectionResource", () => {
         await createPrivateApiMockRequest({
           method: "GET",
         });
-      await SpaceFactory.system(workspace);
       const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
       // Create personal connection for first user

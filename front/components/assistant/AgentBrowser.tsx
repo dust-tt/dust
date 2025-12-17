@@ -136,7 +136,6 @@ export const AgentGrid = ({
       entry != previousEntry.current
     ) {
       previousEntry.current = entry;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       nextPage();
     }
   }, [inView, nextPage, entry, agentConfigurations.length, itemsPage]);
@@ -354,7 +353,6 @@ export function AgentBrowser({
       persistedSelectedTagId && validTagIds.has(persistedSelectedTagId);
 
     if (persistedValid) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedTag(persistedSelectedTagId);
     } else {
       setSelectedTag(MOST_POPULAR_TAG.sId);

@@ -12,10 +12,9 @@ import {
 } from "@dust-tt/sparkle";
 import { compareDesc } from "date-fns";
 import { format } from "date-fns/format";
-import { useCallback, useMemo } from "react";
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 
-import { useEditors } from "@app/lib/swr/editors";
+import { useMembersLookup } from "@app/lib/swr/memberships";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -26,7 +25,6 @@ interface AgentInstructionsHistoryProps {
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
 }
 
 export function AgentInstructionsHistory({
@@ -34,21 +32,32 @@ export function AgentInstructionsHistory({
   onSelect,
   selectedConfig,
   owner,
-  agentConfigurationId,
 }: AgentInstructionsHistoryProps) {
-  const { editors, isEditorsLoading } = useEditors({
-    owner,
-    agentConfigurationId,
-    disabled: !agentConfigurationId,
-  });
+  const authorIdsToLookup = useMemo(() => {
+    const ids = new Set<number>();
+    history.forEach((config) => {
+      if (config.versionAuthorId) {
+        ids.add(Number(config.versionAuthorId));
+      }
+    });
+
+    return Array.from(ids);
+  }, [history]);
+
+  const { members: authorLookupMembers, isMembersLookupLoading } =
+    useMembersLookup({
+      workspaceId: owner.sId,
+      memberIds: authorIdsToLookup,
+      disabled: authorIdsToLookup.length === 0,
+    });
 
   const authorMap = useMemo(() => {
     const map: Record<string, string> = {};
-    editors.forEach((editor) => {
-      map[editor.id] = editor.fullName || editor.firstName;
+    authorLookupMembers.forEach((user) => {
+      map[user.id.toString()] = user.fullName || user.firstName || "Unknown";
     });
     return map;
-  }, [editors]);
+  }, [authorLookupMembers]);
 
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
@@ -64,7 +73,7 @@ export function AgentInstructionsHistory({
       if (!config.versionAuthorId) {
         return "System";
       }
-      return authorMap[config.versionAuthorId] || "Unknown";
+      return authorMap[config.versionAuthorId.toString()] || "Unknown";
     },
     [authorMap]
   );
@@ -138,7 +147,7 @@ export function AgentInstructionsHistory({
           </>
         }
       >
-        {isEditorsLoading ? (
+        {isMembersLookupLoading ? (
           <div className="flex h-full w-full items-center justify-center">
             <Spinner />
           </div>

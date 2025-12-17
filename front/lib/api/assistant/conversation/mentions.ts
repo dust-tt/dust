@@ -80,6 +80,7 @@ export const createUserMentions = async (
             messageId: message.id,
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
+            status: "approved",
           },
           { transaction }
         );
@@ -544,6 +545,7 @@ export const createAgentMessages = async (
                 messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
                 workspaceId: owner.id,
+                status: "approved",
               },
               { transaction }
             );
@@ -630,6 +632,7 @@ export const createAgentMessages = async (
       contents: [],
       parsedContents: {},
       modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
+      richMentions: [],
     })
   );
 

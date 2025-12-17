@@ -1,12 +1,15 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { Err, INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
 import assert from "assert";
-import type { Readable } from "stream";
 
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
+import type { TarballStreamProvider } from "@connectors/connectors/github/lib/code/tar_extraction";
+import {
+  extractGitHubTarballToGCS,
+  TarballNotFoundError,
+} from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   isGithubRequestErrorNotFound,
   RepositoryAccessBlockedError,
@@ -29,13 +32,14 @@ import {
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  GithubCodeRepository,
-  GithubConnectorState,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
+import { readableStreamToReadable } from "@connectors/types/shared/utils/streams";
 
 // Files are uploaded asynchronously, so we can use a high number of parallel uploads.
 const PARALLEL_FILE_UPLOADS = 128;
@@ -91,7 +95,7 @@ export async function githubExtractToGcsActivity({
     });
 
     // Finally delete the repository object if it exists.
-    await GithubCodeRepository.destroy({
+    await GithubCodeRepositoryModel.destroy({
       where: {
         connectorId: connector.id,
         repoId: repoId.toString(),
@@ -119,50 +123,62 @@ export async function githubExtractToGcsActivity({
     return null;
   }
 
-  octokit.request.defaults({
-    request: {
-      parseSuccessResponseBody: false,
-    },
-  });
+  logger.info("Setting up tarball stream provider for extraction");
 
-  logger.info("Fetching GitHub repository tarball");
+  // Create a stream provider that can fetch a fresh tarball stream on each attempt.
+  // This is necessary because streams can only be consumed once, so retries need fresh streams.
+  const tarballStreamProvider: TarballStreamProvider = {
+    getStream: async () => {
+      logger.info("Fetching GitHub repository tarball");
 
-  // Get tarball stream from GitHub.
-  let tarballResponse;
-  try {
-    tarballResponse = await octokit.request(
-      "GET /repos/{owner}/{repo}/tarball/{ref}",
-      {
-        owner: repoLogin,
-        repo: repoName,
-        ref: repoInfo.default_branch,
-        request: {
-          parseSuccessResponseBody: false,
-          timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
-        },
+      try {
+        const response = await octokit.request(
+          "GET /repos/{owner}/{repo}/tarball/{ref}",
+          {
+            owner: repoLogin,
+            repo: repoName,
+            ref: repoInfo.default_branch,
+            request: {
+              parseSuccessResponseBody: false,
+              timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
+            },
+          }
+        );
+
+        // Extract content-length from headers if available.
+        const headers = response.headers;
+        const contentLength = headers["content-length"] ?? null;
+
+        logger.info(
+          { contentLength },
+          "Tarball stream obtained from GitHub API"
+        );
+
+        return new Ok({
+          stream: readableStreamToReadable(response.data as ReadableStream),
+          contentLength,
+        });
+      } catch (error) {
+        if (isGithubRequestErrorNotFound(error)) {
+          logger.info(
+            { err: error, repoLogin, repoName, repoId },
+            "Repository tarball not found (404): Garbage collecting repo."
+          );
+
+          await cleanupMissingRepository("garbageCollectRepoNotFound");
+
+          return new Err(new TarballNotFoundError());
+        }
+
+        throw error;
       }
-    );
-  } catch (error) {
-    if (isGithubRequestErrorNotFound(error)) {
-      logger.info(
-        { err: error, repoLogin, repoName, repoId },
-        "Repository tarball not found (404): Garbage collecting repo."
-      );
-
-      await cleanupMissingRepository("garbageCollectRepoNotFound");
-
-      return null;
-    }
-
-    throw error;
-  }
-
-  const tarballStream = (tarballResponse as { data: Readable }).data;
+    },
+  };
 
   logger.info("Extracting GitHub repository tarball to GCS");
 
   const extractResult = await extractGitHubTarballToGCS(
-    tarballStream,
+    tarballStreamProvider,
     {
       repoId,
       connectorId,
@@ -171,6 +187,10 @@ export async function githubExtractToGcsActivity({
   );
 
   if (extractResult.isErr()) {
+    if (extractResult.error instanceof TarballNotFoundError) {
+      return null;
+    }
+
     if (
       extractResult.error instanceof ExternalOAuthTokenError ||
       extractResult.error instanceof RepositoryAccessBlockedError
@@ -400,7 +420,7 @@ export async function githubCleanupCodeSyncActivity({
 
   // No need to delete the GCS repository, it will be deleted by the bucket lifecycle policy.
 
-  const githubCodeRepository = await GithubCodeRepository.findOne({
+  const githubCodeRepository = await GithubCodeRepositoryModel.findOne({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -445,7 +465,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     activityName: "githubEnsureCodeSyncEnabledActivity",
   });
 
-  const connectorState = await GithubConnectorState.findOne({
+  const connectorState = await GithubConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -476,7 +496,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     });
 
     // Finally delete the repository object if it exists.
-    await GithubCodeRepository.destroy({
+    await GithubCodeRepositoryModel.destroy({
       where: {
         connectorId: connector.id,
         repoId: repoId.toString(),
@@ -486,7 +506,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     return false;
   }
 
-  let githubCodeRepository = await GithubCodeRepository.findOne({
+  let githubCodeRepository = await GithubCodeRepositoryModel.findOne({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -516,7 +536,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
   });
 
   if (!githubCodeRepository) {
-    githubCodeRepository = await GithubCodeRepository.create({
+    githubCodeRepository = await GithubCodeRepositoryModel.create({
       connectorId: connector.id,
       repoId: repoId.toString(),
       repoLogin,

@@ -42,12 +42,13 @@ import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
-import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
+import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
+import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
@@ -147,8 +148,6 @@ export async function getInternalMCPServer(
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
       return runAgentServer(auth, agentLoopContext);
-    case "reasoning":
-      return reasoningServer(auth, agentLoopContext);
     case "run_dust_app":
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":
@@ -217,6 +216,10 @@ export async function getInternalMCPServer(
       return frontServer(auth, agentLoopContext);
     case "zendesk":
       return zendeskServer(auth, agentLoopContext);
+    case "skill_management":
+      return skillManagementServer(auth, agentLoopContext);
+    case "schedules_management":
+      return schedulesManagementServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

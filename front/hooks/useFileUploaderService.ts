@@ -36,6 +36,7 @@ export interface FileBlob {
   size: number;
   publicUrl?: string;
   iconName?: string;
+  provider?: string;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
@@ -331,6 +332,7 @@ export function useFileUploaderService({
 
       // Delete from server if file has been uploaded
       if (fileBlob.fileId) {
+        // eslint-disable-next-line no-restricted-globals
         void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
           method: "DELETE",
           headers: {
@@ -379,6 +381,7 @@ export function useFileUploaderService({
     id?: string;
     sourceUrl?: string;
     iconName?: string;
+    provider?: string;
   }) => {
     const blob: FileBlob = {
       contentType: fileData.contentType,
@@ -390,6 +393,7 @@ export function useFileUploaderService({
       size: fileData.size,
       sourceUrl: fileData.sourceUrl,
       iconName: fileData.iconName,
+      provider: fileData.provider,
     };
 
     setFileBlobs((prevFiles) => [...prevFiles, blob]);

@@ -1,27 +1,47 @@
-import { DataTable } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  DataTable,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useRouter } from "next/router";
+import { useMemo, useState } from "react";
 
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { UserType } from "@app/types";
-import type { SkillConfigurationWithAuthorType } from "@app/types/skill_configuration";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { LightWorkspaceType, UserType } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import type {
+  SkillRelations,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 
 type RowData = {
-  sId: string;
   name: string;
+  icon: string | null;
   description: string;
-  author: SkillConfigurationWithAuthorType["author"];
-  updatedAt: Date;
-  onClick?: () => void;
+  editors: UserType[] | null;
+  usage: AgentsUsageType;
+  updatedAt: number | null;
+  onClick: () => void;
+  menuItems: MenuItem[];
 };
 
-const getTableColumns = () => {
+const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   /**
    * Columns order:
    * - Name (always)
-   * - Author (hidden on mobile)
+   * - Editors (hidden on mobile)
+   * - Used by (hidden on mobile)
    * - Last Edited (hidden on mobile)
+   * - Actions (always)
    */
 
   return [
@@ -30,12 +50,17 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
-          <div className="flex min-w-0 grow flex-col py-3">
-            <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-              {info.row.original.name}
+          <div className="flex flex-row items-center gap-2 py-3">
+            <div>
+              <Avatar visual={info.row.original.icon} size="sm" />
             </div>
-            <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.description}
+            <div className="flex min-w-0 grow flex-col">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+                {info.getValue()}
+              </div>
+              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {info.row.original.description}
+              </div>
             </div>
           </div>
         </DataTable.CellContent>
@@ -45,22 +70,24 @@ const getTableColumns = () => {
       },
     },
     {
-      header: "Author",
-      accessorKey: "author",
-      cell: (info: CellContext<RowData, UserType>) => {
-        const author = info.getValue();
-
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, UserType[]>) => {
+        const editors = info.getValue();
+        const items = editors
+          ? editors.map((editor) => ({
+              name: editor.fullName,
+              visual: editor.image,
+            }))
+          : // Only dust managed skills should have no editors
+            [
+              {
+                name: "Dust",
+                visual: DUST_AVATAR_URL,
+              },
+            ];
         return (
-          <DataTable.CellContent
-            avatarStack={{
-              items: [
-                {
-                  name: author.fullName,
-                  visual: author.image,
-                },
-              ],
-            }}
-          />
+          <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
         );
       },
       meta: {
@@ -68,39 +95,113 @@ const getTableColumns = () => {
       },
     },
     {
+      header: "Used by",
+      accessorKey: "usage",
+      cell: (info: CellContext<RowData, AgentsUsageType>) => (
+        <DataTable.CellContent>
+          <UsedByButton usage={info.getValue()} onItemClick={onAgentClick} />
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "hidden @sm:w-24 @sm:table-cell",
+      },
+    },
+    {
       header: "Last Edited",
       accessorKey: "updatedAt",
-      cell: (info: CellContext<RowData, number>) => (
-        <DataTable.BasicCellContent
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
-          label={
-            info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, number | null>) => {
+        const value = info.getValue();
+        return (
+          <DataTable.BasicCellContent
+            tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
+            label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
+          />
+        );
+      },
       meta: { className: "hidden @sm:w-32 @sm:table-cell" },
+    },
+    {
+      header: "",
+      accessorKey: "menuItems",
+      cell: (info: CellContext<RowData, MenuItem[]>) => {
+        return <DataTable.MoreButton menuItems={info.getValue()} />;
+      },
+      meta: {
+        className: "w-14",
+      },
     },
   ];
 };
 
 type SkillsTableProps = {
-  skillsConfigurations: SkillConfigurationWithAuthorType[];
+  skills: (SkillType & { relations: SkillRelations })[];
+  owner: LightWorkspaceType;
+  onSkillClick: (skill: SkillType & { relations: SkillRelations }) => void;
+  onAgentClick: (agentId: string) => void;
 };
 
-export function SkillsTable({ skillsConfigurations }: SkillsTableProps) {
+export function SkillsTable({
+  skills,
+  owner,
+  onSkillClick,
+  onAgentClick,
+}: SkillsTableProps) {
+  const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
+  const [skillToArchive, setSkillToArchive] = useState<SkillType | null>(null);
 
   const rows: RowData[] = useMemo(
     () =>
-      skillsConfigurations.map((skillConfiguration) => {
-        return {
-          ...skillConfiguration,
-          onClick: () => {},
-        };
-      }),
-    [skillsConfigurations]
+      skills.map((skill) => ({
+        name: skill.name,
+        icon: skill.icon,
+        description: skill.userFacingDescription,
+        editors: skill.relations.editors,
+        usage: skill.relations.usage,
+        updatedAt: skill.updatedAt,
+        onClick: () => {
+          onSkillClick(skill);
+        },
+        menuItems:
+          skill.status !== "archived"
+            ? [
+                {
+                  label: "Edit",
+                  icon: PencilSquareIcon,
+                  disabled: !skill.canWrite,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    void router.push(
+                      getSkillBuilderRoute(owner.sId, skill.sId)
+                    );
+                  },
+                  kind: "item" as const,
+                },
+                {
+                  label: "More info",
+                  icon: EyeIcon,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    onSkillClick(skill);
+                  },
+                  kind: "item" as const,
+                },
+                {
+                  label: "Archive",
+                  icon: TrashIcon,
+                  disabled: !skill.canWrite,
+                  variant: "warning" as const,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setSkillToArchive(skill);
+                  },
+                  kind: "item" as const,
+                },
+              ].filter((item) => !item.disabled)
+            : [],
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
+    [skills, onSkillClick, owner.sId]
   );
 
   if (rows.length === 0) {
@@ -108,12 +209,24 @@ export function SkillsTable({ skillsConfigurations }: SkillsTableProps) {
   }
 
   return (
-    <DataTable
-      className="relative"
-      data={rows}
-      columns={getTableColumns()}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
+    <>
+      {skillToArchive && (
+        <ArchiveSkillDialog
+          owner={owner}
+          isOpen={true}
+          skillConfiguration={skillToArchive}
+          onClose={() => {
+            setSkillToArchive(null);
+          }}
+        />
+      )}
+      <DataTable
+        className="relative"
+        data={rows}
+        columns={getTableColumns(onAgentClick)}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+    </>
   );
 }

@@ -1,6 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type {
@@ -168,11 +168,15 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     );
   }
 
-  async recordResult(result: PluginResponse) {
+  async recordResult(result: PluginResponse, plugin?: AllPlugins) {
+    const resultToStore = plugin?.manifest?.redactResult
+      ? "REDACTED"
+      : trimPluginRunResultOrError(result);
+
     await this.model.update(
       {
         status: "success",
-        result: trimPluginRunResultOrError(result),
+        result: resultToStore,
       },
       {
         where: {

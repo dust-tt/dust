@@ -33,7 +33,7 @@ const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -280,77 +280,6 @@ export class UserResource extends BaseResource<UserModel> {
       .filter((user): user is UserResource => user !== undefined);
 
     return new Ok({ users: orderedUsers, total });
-  }
-
-  static async listUsersWithEmailPredicat(
-    owner: LightWorkspaceType,
-    options: {
-      email?: string;
-    },
-    paginationParams: SearchMembersPaginationParams
-  ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: WhereOptions<UserModel> = {};
-    if (options.email) {
-      userWhereClause.email = {
-        [Op.iLike]: `%${options.email}%`,
-      };
-    }
-
-    const memberships = await MembershipModel.findAll({
-      where: {
-        workspaceId: owner.id,
-        startAt: { [Op.lte]: new Date() },
-        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-      },
-    });
-    userWhereClause.id = {
-      [Op.in]: memberships.map((m) => m.userId),
-    };
-
-    // Create a map of userId to membership for consistent lookup.
-    const membershipsByUserId = new Map<number, MembershipModel>();
-    memberships.forEach((membership) => {
-      if (!membershipsByUserId.has(membership.userId)) {
-        membershipsByUserId.set(membership.userId, membership);
-      }
-    });
-
-    const { count, rows: users } = await UserModel.findAndCountAll({
-      where: userWhereClause,
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            id: {
-              [Op.in]: memberships.map((m) => m.id),
-            },
-          },
-        },
-      ],
-      limit: paginationParams.limit,
-      offset: paginationParams.offset,
-    });
-
-    users.sort((a, b) => {
-      const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-      const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-    return {
-      users: users.map((u) => {
-        const userBlob = u.get();
-        const membership = membershipsByUserId.get(u.id);
-
-        // Augment user with their membership in the workspace.
-        return new UserResource(UserModel, {
-          ...userBlob,
-          ...(membership && { memberships: [membership] }),
-        });
-      }),
-      total: count,
-    };
   }
 
   async updateName(firstName: string, lastName: string | null) {

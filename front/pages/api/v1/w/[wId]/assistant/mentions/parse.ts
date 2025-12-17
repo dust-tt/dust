@@ -140,7 +140,6 @@ async function handler(
     const needle = `@${mention.label}`.toLowerCase();
     let searchIndex = 0;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const pos = lowerText.indexOf(needle, searchIndex);
       if (pos === -1) {

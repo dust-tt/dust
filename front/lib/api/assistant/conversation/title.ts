@@ -13,6 +13,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
   Result,
+  UserMessageType,
 } from "@app/types";
 import {
   ConversationError,
@@ -26,7 +27,7 @@ import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 const MIN_GENERATION_TOKENS = 1024;
 
-export async function ensureConversationTitle(
+export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<string | null> {
@@ -44,11 +45,28 @@ export async function ensureConversationTitle(
 
   const { conversation, userMessage } = runAgentDataRes.value;
 
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
+
+  return ensureConversationTitle(auth, { conversation, userMessage });
+}
+
+export async function ensureConversationTitle(
+  auth: Authenticator,
+  {
+    conversation,
+    userMessage,
+  }: { conversation: ConversationType; userMessage: UserMessageType }
+): Promise<string | null> {
   // If the conversation has a title, return early.
   if (conversation.title) {
     return conversation.title;
   }
-  const auth = await Authenticator.fromJSON(authType);
 
   // If the last message is a function call without tool output,
   // We strip it for title generation otherwise the model will throw.

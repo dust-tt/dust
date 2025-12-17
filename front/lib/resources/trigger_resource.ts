@@ -42,7 +42,7 @@ import type {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TriggerResource extends BaseResource<TriggerModel> {
@@ -74,6 +74,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     return new Ok(resource);
+  }
+
+  get sId(): string {
+    return TriggerResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 
   private static async baseFetch(
@@ -711,17 +718,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  sId(): string {
-    return TriggerResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
   toJSON(): TriggerType {
     const base = {
       id: this.id,
-      sId: this.sId(),
+      sId: this.sId,
       name: this.name,
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
@@ -729,6 +729,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       enabled: this.enabled,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
+      origin: this.origin,
     };
 
     if (this.kind === "webhook") {

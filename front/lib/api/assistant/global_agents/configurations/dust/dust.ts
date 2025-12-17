@@ -41,9 +41,11 @@ import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  GPT_5_2_MODEL_CONFIG,
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 const INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
@@ -350,7 +352,7 @@ function _getDustLikeGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const description = "An agent with context on your company data.";
-  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+  const pictureUrl = DUST_AVATAR_URL;
 
   let isPreferredModel = false;
 
@@ -437,7 +439,6 @@ function _getDustLikeGlobalAgent(
   };
 
   if (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (settings && settings.status === "disabled_by_admin") ||
     !modelConfiguration
   ) {
@@ -512,7 +513,6 @@ function _getDustLikeGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -533,7 +533,6 @@ function _getDustLikeGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -632,6 +631,31 @@ export function _getDustQuickGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
     name: "dust-quick",
     preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustOaiGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettingsModel | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI,
+    name: "dust-oai",
+    preferredModelConfiguration: GPT_5_2_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }

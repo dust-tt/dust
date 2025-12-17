@@ -118,20 +118,19 @@
  *           type: string
  *           description: URL of the user's profile picture
  *           example: "https://example.com/profiles/johndoe123.jpg"
- *         origin:
- *           type: string
- *           description: Origin of the context (contact us to add more at support@dust.tt)
- *           enum:
- *             - api
- *             - slack
- *             - gsheet
- *             - zapier
- *             - make
- *             - zendesk
- *             - raycast
- *             - github-copilot-chat
- *             - extension
- *             - email
+ *         agenticMessageData:
+ *           type: object
+ *           properties:
+ *             type:
+ *               type: string
+ *               enum:
+ *                 - run_agent
+ *                 - agent_handover
+ *               description: Type of the agentic message
+ *             originMessageId:
+ *               type: string
+ *               description: ID of the origin message
+ *               example: "2b8e4f6a0c"
  *     AgentConfiguration:
  *       type: object
  *       properties:

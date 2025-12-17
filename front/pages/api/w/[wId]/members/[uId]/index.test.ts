@@ -228,6 +228,8 @@ describe("POST /api/w/[wId]/members/[uId]", () => {
       "image",
       "revoked",
       "role",
+      "startAt",
+      "endAt",
     ]);
 
     it("should return 200 when admin requests own data", async () => {

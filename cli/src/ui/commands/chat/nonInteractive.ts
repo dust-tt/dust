@@ -75,7 +75,7 @@ export async function sendNonInteractiveMessage(
             username: me.username,
             fullName: me.fullName,
             email: me.email,
-            origin: "api",
+            origin: "cli_programmatic",
           },
         },
       });
@@ -117,7 +117,7 @@ export async function sendNonInteractiveMessage(
             username: me.username,
             fullName: me.fullName,
             email: me.email,
-            origin: "api",
+            origin: "cli_programmatic",
           },
         },
         contentFragment: undefined,

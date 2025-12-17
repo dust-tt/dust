@@ -74,12 +74,12 @@ import {
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import {
-  NotionConnectorBlockCacheEntry,
-  NotionConnectorPageCacheEntry,
-  NotionConnectorResourcesToCheckCacheEntry,
-  NotionConnectorState,
-  NotionDatabase,
-  NotionPage,
+  NotionConnectorBlockCacheEntryModel,
+  NotionConnectorPageCacheEntryModel,
+  NotionConnectorResourcesToCheckCacheEntryModel,
+  NotionConnectorStateModel,
+  NotionDatabaseModel,
+  NotionPageModel,
 } from "@connectors/lib/models/notion";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -162,7 +162,7 @@ export async function fetchDatabaseChildPages({
     throw new Error("Could not find connector");
   }
 
-  const notionDbModel = await NotionDatabase.findOne({
+  const notionDbModel = await NotionDatabaseModel.findOne({
     where: {
       connectorId: connector.id,
       notionDatabaseId: databaseId,
@@ -248,7 +248,7 @@ export async function fetchDatabaseChildPages({
 
   // We exclude pages that we have already seen since their lastEditedTs we recieved from
   // getPagesEditedSince.
-  const existingPages = await NotionPage.findAll({
+  const existingPages = await NotionPageModel.findAll({
     where: {
       notionPageId: pages.map((p) => p.id),
       connectorId: connector.id,
@@ -322,7 +322,7 @@ export async function getPagesAndDatabasesToSync({
 
   const accessToken = await getNotionAccessToken(connector.id);
 
-  const skippedDatabases = await NotionDatabase.findAll({
+  const skippedDatabases = await NotionDatabaseModel.findAll({
     where: {
       connectorId: connector.id,
       skipReason: {
@@ -402,7 +402,7 @@ export async function getPagesAndDatabasesToSync({
 
   // We exclude pages that we have already seen since their lastEditedTs we received from
   // getPagesEditedSince.
-  const existingPages = await NotionPage.findAll({
+  const existingPages = await NotionPageModel.findAll({
     where: {
       notionPageId: pages.map((p) => p.id),
       connectorId: connector.id,
@@ -434,7 +434,7 @@ export async function getPagesAndDatabasesToSync({
   );
 
   // We do the same for databases.
-  const existingDatabases = await NotionDatabase.findAll({
+  const existingDatabases = await NotionDatabaseModel.findAll({
     where: {
       notionDatabaseId: dbs.map((d) => d.id),
       connectorId: connector.id,
@@ -532,7 +532,7 @@ export async function upsertDatabaseInConnectorsDb({
     }
   );
 
-  let parentType: NotionConnectorPageCacheEntry["parentType"] | undefined =
+  let parentType: NotionConnectorPageCacheEntryModel["parentType"] | undefined =
     parsedDb?.parentType;
   let parentId = parsedDb?.parentId;
 
@@ -623,7 +623,7 @@ export async function isFullSyncPendingOrOngoing({
     throw new Error("Could not find connector");
   }
 
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -683,7 +683,7 @@ export async function garbageCollectorMarkAsSeenAndReturnNewEntities({
 
   const existingPageIds = new Set(
     (
-      await NotionPage.findAll({
+      await NotionPageModel.findAll({
         where: {
           notionPageId: pageIds,
           connectorId: connector.id,
@@ -706,7 +706,7 @@ export async function garbageCollectorMarkAsSeenAndReturnNewEntities({
 
   const existingDatabaseIds = new Set(
     (
-      await NotionDatabase.findAll({
+      await NotionDatabaseModel.findAll({
         where: {
           notionDatabaseId: databaseIds,
           connectorId: connector.id,
@@ -767,14 +767,14 @@ export async function deletePage({
     "deletePage: Deleted page"
   );
 
-  const notionPage = await NotionPage.findOne({
+  const notionPage = await NotionPageModel.findOne({
     where: {
       connectorId,
       notionPageId: pageId,
     },
   });
   if (notionPage?.parentType === "database" && notionPage.parentId) {
-    const parentDatabase = await NotionDatabase.findOne({
+    const parentDatabase = await NotionDatabaseModel.findOne({
       where: {
         connectorId,
         notionDatabaseId: notionPage.parentId,
@@ -837,7 +837,7 @@ export async function deleteDatabase({
     dataSourceConfig,
     `notion-database-${databaseId}`
   );
-  const notionDatabase = await NotionDatabase.findOne({
+  const notionDatabase = await NotionDatabaseModel.findOne({
     where: {
       connectorId,
       notionDatabaseId: databaseId,
@@ -847,7 +847,7 @@ export async function deleteDatabase({
     const tableId = `notion-${notionDatabase.notionDatabaseId}`;
     await deleteDataSourceTable({ dataSourceConfig, tableId });
   }
-  await NotionDatabase.destroy({
+  await NotionDatabaseModel.destroy({
     where: {
       connectorId,
       notionDatabaseId: databaseId,
@@ -879,7 +879,7 @@ export async function garbageCollectBatch({
     workspaceId: connector.workspaceId,
   });
 
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -961,7 +961,7 @@ export async function garbageCollectBatch({
     if (resourceIsAccessible) {
       // Mark the resource as seen, so it is lower priority if we run into it again in a future GC run.
       if (x.type === "page") {
-        await NotionPage.update(
+        await NotionPageModel.update(
           {
             lastSeenTs: new Date(runTimestamp),
           },
@@ -974,7 +974,7 @@ export async function garbageCollectBatch({
         );
         stillAccessiblePagesCount++;
       } else if (x.type === "database") {
-        await NotionDatabase.update(
+        await NotionDatabaseModel.update(
           {
             lastSeenTs: new Date(runTimestamp),
           },
@@ -1032,7 +1032,7 @@ export async function completeGarbageCollectionRun(
     throw new Error("Could not find connector");
   }
 
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -1191,7 +1191,7 @@ export async function deletePageOrDatabaseIfArchived({
   });
 
   if (objectType === "page") {
-    const notionPageModel = await NotionPage.findOne({
+    const notionPageModel = await NotionPageModel.findOne({
       where: {
         connectorId,
         notionPageId: objectId,
@@ -1203,7 +1203,7 @@ export async function deletePageOrDatabaseIfArchived({
     }
   }
   if (objectType === "database") {
-    const notionDatabaseModel = await NotionDatabase.findOne({
+    const notionDatabaseModel = await NotionDatabaseModel.findOne({
       where: {
         connectorId: connector.id,
         notionDatabaseId: objectId,
@@ -1274,7 +1274,7 @@ export async function createResourcesNotSeenInGarbageCollectionRunBatches({
   const databaseIdsSeenInRun = new Set(databaseIdsSeenInRunRaw);
 
   const pagesNotSeenInGarbageCollectionRun = (
-    await NotionPage.findAll({
+    await NotionPageModel.findAll({
       where: {
         connectorId,
         skipReason: {
@@ -1292,7 +1292,7 @@ export async function createResourcesNotSeenInGarbageCollectionRunBatches({
     }));
 
   const databasesNotSeenInGarbageCollectionRun = (
-    await NotionDatabase.findAll({
+    await NotionDatabaseModel.findAll({
       where: {
         connectorId,
         skipReason: {
@@ -1379,7 +1379,7 @@ export async function updateParentsFields({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -1427,7 +1427,7 @@ export async function updateParentsFields({
   const notionPageIds =
     cursors?.pageCursor !== null
       ? (
-          await NotionPage.findAll({
+          await NotionPageModel.findAll({
             where: pageWhereClause,
             order: [["notionPageId", "ASC"]],
             limit: PARENTS_UPDATE_BATCH_SIZE,
@@ -1440,7 +1440,7 @@ export async function updateParentsFields({
   const notionDatabaseIds =
     cursors?.databaseCursor !== null
       ? (
-          await NotionDatabase.findAll({
+          await NotionDatabaseModel.findAll({
             where: databaseWhereClause,
             order: [["notionDatabaseId", "ASC"]],
             limit: PARENTS_UPDATE_BATCH_SIZE,
@@ -1494,7 +1494,7 @@ export async function drainDocumentUpsertQueue({
     throw new Error("Could not find connector");
   }
 
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: { connectorId: connector.id },
   });
   if (!notionConnectorState) {
@@ -1511,13 +1511,13 @@ export async function drainDocumentUpsertQueue({
     },
   };
 
-  const pageNeedingUpdating = await NotionPage.findOne({
+  const pageNeedingUpdating = await NotionPageModel.findOne({
     where: whereClause,
     attributes: ["id"],
   });
 
   if (!pageNeedingUpdating) {
-    const dbNeedingUpdating = await NotionDatabase.findOne({
+    const dbNeedingUpdating = await NotionDatabaseModel.findOne({
       where: whereClause,
       attributes: ["id"],
     });
@@ -1565,7 +1565,7 @@ export async function markParentsAsUpdated({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId: connector.id,
     },
@@ -1597,8 +1597,8 @@ export async function getAllOrphanedResources({
 }> {
   const pages =
     cursor && !cursor.pageCursor
-      ? ([] as NotionPage[])
-      : await NotionPage.findAll({
+      ? ([] as NotionPageModel[])
+      : await NotionPageModel.findAll({
           where: {
             connectorId,
             parentType: "unknown",
@@ -1613,8 +1613,8 @@ export async function getAllOrphanedResources({
 
   const databases =
     cursor && !cursor.databaseCursor
-      ? ([] as NotionDatabase[])
-      : await NotionDatabase.findAll({
+      ? ([] as NotionDatabaseModel[])
+      : await NotionDatabaseModel.findAll({
           where: {
             connectorId,
             parentType: "unknown",
@@ -1700,7 +1700,7 @@ export async function cachePage({
   localLogger.info(
     "notionRetrievePageActivity: Checking if page is already in cache."
   );
-  const pageInCache = await NotionConnectorPageCacheEntry.findOne({
+  const pageInCache = await NotionConnectorPageCacheEntryModel.findOne({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
@@ -1738,7 +1738,7 @@ export async function cachePage({
 
   const parent = getPageOrBlockParent(notionPage);
 
-  await NotionConnectorPageCacheEntry.upsert({
+  await NotionConnectorPageCacheEntryModel.upsert({
     notionPageId: pageId,
     connectorId: connector.id,
     pageProperties: {},
@@ -1784,7 +1784,7 @@ export async function cacheBlockChildren({
     throw new Error("Could not find connector");
   }
 
-  const notionPageModel = await NotionPage.findOne({
+  const notionPageModel = await NotionPageModel.findOne({
     where: {
       connectorId: connector.id,
       notionPageId: pageId,
@@ -1864,7 +1864,7 @@ export async function cacheBlockChildren({
   if (blockId) {
     // remove blocks that are already in the cache, as Notion data structure can
     // have cycles and we don't want to loop forever.
-    const existingBlocks = await NotionConnectorBlockCacheEntry.findAll({
+    const existingBlocks = await NotionConnectorBlockCacheEntryModel.findAll({
       where: {
         notionPageId: pageId,
         notionBlockId: parsedBlocks.map((b) => b.id),
@@ -1905,7 +1905,7 @@ export async function cacheBlockChildren({
   await concurrentExecutor(
     parsedBlocks,
     async (block, idx) => {
-      await NotionConnectorBlockCacheEntry.upsert({
+      await NotionConnectorBlockCacheEntryModel.upsert({
         notionPageId: pageId,
         notionBlockId: block.id,
         blockType: block.type,
@@ -1951,7 +1951,7 @@ async function cacheDatabaseChildPages({
     dataSourceId: connector.dataSourceId,
   });
 
-  const notionDatabaseModel = await NotionDatabase.findOne({
+  const notionDatabaseModel = await NotionDatabaseModel.findOne({
     where: {
       connectorId: connector.id,
       notionDatabaseId: databaseId,
@@ -1967,7 +1967,7 @@ async function cacheDatabaseChildPages({
   }
 
   // exclude pages that are already in the cache
-  const existingPages = await NotionConnectorPageCacheEntry.findAll({
+  const existingPages = await NotionConnectorPageCacheEntryModel.findAll({
     where: {
       notionPageId: pages.map((p) => p.id),
       connectorId: connector.id,
@@ -1994,7 +1994,7 @@ async function cacheDatabaseChildPages({
   await concurrentExecutor(
     pages,
     async (page) =>
-      NotionConnectorPageCacheEntry.upsert({
+      NotionConnectorPageCacheEntryModel.upsert({
         notionPageId: page.id,
         connectorId: connector.id,
         pageProperties: {},
@@ -2022,7 +2022,7 @@ async function maybeAddParentToResourcesToCheck({
 }: {
   connectorId: ModelId;
   parentId: string;
-  parentType: NotionConnectorPageCacheEntry["parentType"];
+  parentType: NotionConnectorPageCacheEntryModel["parentType"];
   pageOrDbId: string;
   topLevelWorkflowId: string;
   loggerArgs: Record<string, string | number>;
@@ -2043,7 +2043,7 @@ async function maybeAddParentToResourcesToCheck({
 
     let notionId: string | null = null;
     if (parentType === "page") {
-      const existingParentPage = await NotionPage.findOne({
+      const existingParentPage = await NotionPageModel.findOne({
         where: {
           notionPageId: parentId,
           connectorId,
@@ -2056,7 +2056,7 @@ async function maybeAddParentToResourcesToCheck({
         notionId = parentId;
       }
     } else if (parentType === "database") {
-      const existingParentDatabase = await NotionDatabase.findOne({
+      const existingParentDatabase = await NotionDatabaseModel.findOne({
         where: {
           notionDatabaseId: parentId,
           connectorId,
@@ -2073,7 +2073,7 @@ async function maybeAddParentToResourcesToCheck({
     }
 
     if (notionId) {
-      await NotionConnectorResourcesToCheckCacheEntry.upsert({
+      await NotionConnectorResourcesToCheckCacheEntryModel.upsert({
         notionId,
         connectorId,
         resourceType: parentType,
@@ -2091,13 +2091,13 @@ export async function resolveResourceParent({
   loggerArgs,
 }: {
   parentId: string;
-  parentType: NotionConnectorPageCacheEntry["parentType"];
+  parentType: NotionConnectorPageCacheEntryModel["parentType"];
   pageOrDbId: string;
   accessToken: string;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
   parentId: string;
-  parentType: NotionConnectorPageCacheEntry["parentType"];
+  parentType: NotionConnectorPageCacheEntryModel["parentType"];
 }> {
   const localLogger = logger.child({
     ...loggerArgs,
@@ -2203,7 +2203,7 @@ export async function renderAndUpsertPageFromCache({
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving page from cache."
   );
-  const pageCacheEntry = await NotionConnectorPageCacheEntry.findOne({
+  const pageCacheEntry = await NotionConnectorPageCacheEntryModel.findOne({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
@@ -2217,7 +2217,7 @@ export async function renderAndUpsertPageFromCache({
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
   );
-  const blockCacheEntries = await NotionConnectorBlockCacheEntry.findAll({
+  const blockCacheEntries = await NotionConnectorBlockCacheEntryModel.findAll({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
@@ -2225,7 +2225,10 @@ export async function renderAndUpsertPageFromCache({
     },
   });
 
-  const blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]> = {};
+  const blocksByParentId: Record<
+    string,
+    NotionConnectorBlockCacheEntryModel[]
+  > = {};
   for (const blockCacheEntry of blockCacheEntries) {
     blocksByParentId[blockCacheEntry.parentBlockId || "root"] = [
       ...(blocksByParentId[blockCacheEntry.parentBlockId || "root"] ?? []),
@@ -2455,7 +2458,7 @@ export async function renderAndUpsertPageFromCache({
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
     );
-    const parentDb = await NotionDatabase.findOne({
+    const parentDb = await NotionDatabaseModel.findOne({
       where: {
         connectorId: connector.id,
         notionDatabaseId: parentId,
@@ -2531,7 +2534,7 @@ export async function renderAndUpsertPageFromCache({
 
   const childDatabaseIdsInDb = new Set(
     (
-      await NotionConnectorResourcesToCheckCacheEntry.findAll({
+      await NotionConnectorResourcesToCheckCacheEntryModel.findAll({
         where: {
           notionId: childDatabaseIdsToCheck,
           resourceType: "database",
@@ -2544,7 +2547,7 @@ export async function renderAndUpsertPageFromCache({
   );
   const childPageIdsInDb = new Set(
     (
-      await NotionConnectorResourcesToCheckCacheEntry.findAll({
+      await NotionConnectorResourcesToCheckCacheEntryModel.findAll({
         where: {
           notionId: childPageIdsToCheck,
           resourceType: "page",
@@ -2565,7 +2568,7 @@ export async function renderAndUpsertPageFromCache({
 
   await Promise.all([
     ...databaseEntriesToCreate.map((id) =>
-      NotionConnectorResourcesToCheckCacheEntry.upsert({
+      NotionConnectorResourcesToCheckCacheEntryModel.upsert({
         notionId: id,
         resourceType: "database",
         connectorId: connector.id,
@@ -2573,7 +2576,7 @@ export async function renderAndUpsertPageFromCache({
       })
     ),
     ...pageEntriesToCreate.map((id) =>
-      NotionConnectorResourcesToCheckCacheEntry.upsert({
+      NotionConnectorResourcesToCheckCacheEntryModel.upsert({
         notionId: id,
         resourceType: "page",
         connectorId: connector.id,
@@ -2607,19 +2610,19 @@ export async function clearWorkflowCache({
     },
     "notionClearConnectorCacheActivity: Clearing cache."
   );
-  await NotionConnectorResourcesToCheckCacheEntry.destroy({
+  await NotionConnectorResourcesToCheckCacheEntryModel.destroy({
     where: {
       connectorId: connector.id,
       workflowId: topLevelWorkflowId,
     },
   });
-  await NotionConnectorPageCacheEntry.destroy({
+  await NotionConnectorPageCacheEntryModel.destroy({
     where: {
       connectorId: connector.id,
       workflowId: topLevelWorkflowId,
     },
   });
-  await NotionConnectorBlockCacheEntry.destroy({
+  await NotionConnectorBlockCacheEntryModel.destroy({
     where: {
       connectorId: connector.id,
       workflowId: topLevelWorkflowId,
@@ -2650,7 +2653,7 @@ export async function getDiscoveredResourcesFromCache({
   );
 
   const resourcesToCheck =
-    await NotionConnectorResourcesToCheckCacheEntry.findAll({
+    await NotionConnectorResourcesToCheckCacheEntryModel.findAll({
       where: {
         connectorId: connector.id,
         workflowId: topLevelWorkflowId,
@@ -2666,7 +2669,7 @@ export async function getDiscoveredResourcesFromCache({
 
   const pageIdsAlreadySeen = new Set(
     (
-      await NotionPage.findAll({
+      await NotionPageModel.findAll({
         where: {
           connectorId: connector.id,
           notionPageId: pageIdsToCheck,
@@ -2678,7 +2681,7 @@ export async function getDiscoveredResourcesFromCache({
 
   const databaseIdsAlreadySeen = new Set(
     (
-      await NotionDatabase.findAll({
+      await NotionDatabaseModel.findAll({
         where: {
           connectorId: connector.id,
           notionDatabaseId: databaseIdsToCheck,
@@ -2709,7 +2712,7 @@ export async function getDiscoveredResourcesFromCache({
   );
 
   // Since we're about to process these resources, clear them from the cache
-  await NotionConnectorResourcesToCheckCacheEntry.destroy({
+  await NotionConnectorResourcesToCheckCacheEntryModel.destroy({
     where: {
       connectorId: connector.id,
       workflowId: topLevelWorkflowId,
@@ -2738,7 +2741,7 @@ async function renderPageSection({
   localLogger,
 }: {
   dsConfig: DataSourceConfig;
-  blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
+  blocksByParentId: Record<string, NotionConnectorBlockCacheEntryModel[]>;
   localLogger: Logger;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
@@ -2784,14 +2787,14 @@ async function renderPageSection({
 
   const adaptedBlocksByParentId: Record<
     string,
-    NotionConnectorBlockCacheEntry[]
+    NotionConnectorBlockCacheEntryModel[]
   > = {};
   let now = Date.now();
 
   for (const parentId of orderedParentIds) {
     const blocks = blocksByParentId[
       parentId
-    ] as NotionConnectorBlockCacheEntry[];
+    ] as NotionConnectorBlockCacheEntryModel[];
     blocks.sort((a, b) => a.indexInParent - b.indexInParent);
     const currentHeadings: {
       h1: string | null;
@@ -2852,7 +2855,7 @@ async function renderPageSection({
   const renderingStack = new Set<string>();
 
   const renderBlockSection = async (
-    b: NotionConnectorBlockCacheEntry,
+    b: NotionConnectorBlockCacheEntryModel,
     depth: number,
     indent = ""
   ): Promise<CoreAPIDataSourceDocumentSection> => {
@@ -2984,7 +2987,7 @@ export async function upsertDatabaseStructuredDataFromCache({
 
   localLogger.info("Start upserting Notion Database.");
 
-  const dbModel = await NotionDatabase.findOne({
+  const dbModel = await NotionDatabaseModel.findOne({
     where: {
       connectorId,
       notionDatabaseId: databaseId,
@@ -2996,7 +2999,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     return;
   }
 
-  const pageCacheEntriesCount = await NotionConnectorPageCacheEntry.count({
+  const pageCacheEntriesCount = await NotionConnectorPageCacheEntryModel.count({
     where: {
       parentId: databaseId,
       connectorId,
@@ -3019,7 +3022,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     const pageCacheEntries: {
       notionPageId: string;
       pagePropertiesText: string;
-    }[] = await NotionConnectorPageCacheEntry.findAll({
+    }[] = await NotionConnectorPageCacheEntryModel.findAll({
       attributes: ["notionPageId", "pagePropertiesText"],
       raw: true,
       where: {
@@ -3201,7 +3204,7 @@ export async function logMaxSearchPageIndexReached({
   localLogger.info("Max search page index reached.");
 }
 
-function getTableInfoFromDatabase(database: NotionDatabase): {
+function getTableInfoFromDatabase(database: NotionDatabaseModel): {
   databaseName: string;
   tableId: string;
   tableName: string;
@@ -3421,14 +3424,14 @@ export async function maybeUpdateOrphaneResourcesParents({
     };
 
     if (resource.type === "page") {
-      await NotionPage.update(updateParams, {
+      await NotionPageModel.update(updateParams, {
         where: {
           notionPageId: resource.notionId,
           connectorId,
         },
       });
     } else if (resource.type === "database") {
-      await NotionDatabase.update(updateParams, {
+      await NotionDatabaseModel.update(updateParams, {
         where: {
           notionDatabaseId: resource.notionId,
           connectorId,
@@ -3446,7 +3449,7 @@ export async function clearParentsLastUpdatedAt({
   connectorId: ModelId;
 }): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
-  const notionConnectorState = await NotionConnectorState.findOne({
+  const notionConnectorState = await NotionConnectorStateModel.findOne({
     where: {
       connectorId,
     },
@@ -3483,7 +3486,7 @@ export async function getNextDatabaseToUpsert({
 
   // Look if we have notion DBs that were never upserted.
   // If so, return the oldest one.
-  let notionDatabases = await NotionDatabase.findAll({
+  let notionDatabases = await NotionDatabaseModel.findAll({
     where: {
       connectorId,
       lastUpsertedRunTs: {
@@ -3506,7 +3509,7 @@ export async function getNextDatabaseToUpsert({
 
   // Otherwise, look if we have notion DBs that were upserted more than DATABASE_PROCESSING_INTERVAL_MS ago.
   // If so, return the oldest one.
-  notionDatabases = await NotionDatabase.findAll({
+  notionDatabases = await NotionDatabaseModel.findAll({
     where: {
       connectorId,
       lastUpsertedRunTs: {
@@ -3551,7 +3554,7 @@ export async function markDatabasesAsUpserted({
   databaseIds: string[];
   runTimestamp: number;
 }): Promise<{ isNewDatabase: boolean; isMissing: boolean }> {
-  const db = await NotionDatabase.findOne({
+  const db = await NotionDatabaseModel.findOne({
     where: {
       connectorId,
       notionDatabaseId: {
@@ -3564,7 +3567,7 @@ export async function markDatabasesAsUpserted({
     return { isNewDatabase: false, isMissing: true };
   }
 
-  await NotionDatabase.update(
+  await NotionDatabaseModel.update(
     {
       lastUpsertedRunTs: new Date(runTimestamp),
     },
@@ -3787,7 +3790,7 @@ export async function checkResourceAndDiscoverRelated({
     );
 
     // Add to cache (will be batch deleted later)
-    await NotionConnectorResourcesToCheckCacheEntry.upsert({
+    await NotionConnectorResourcesToCheckCacheEntryModel.upsert({
       notionId: resourceId,
       resourceType,
       connectorId,
@@ -3858,7 +3861,7 @@ export async function getResourcesToDeleteFromCache({
   connectorId: ModelId;
   workflowId: string;
 }): Promise<{ pageIds: string[]; databaseIds: string[] }> {
-  const entries = await NotionConnectorResourcesToCheckCacheEntry.findAll({
+  const entries = await NotionConnectorResourcesToCheckCacheEntryModel.findAll({
     where: {
       connectorId,
       workflowId,
@@ -3917,7 +3920,7 @@ export async function batchDeleteResources({
       pageId,
       logger: localLogger,
     });
-    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+    await NotionConnectorResourcesToCheckCacheEntryModel.destroy({
       where: {
         resourceType: "page",
         notionId: pageId,
@@ -3935,7 +3938,7 @@ export async function batchDeleteResources({
       databaseId,
       logger: localLogger,
     });
-    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+    await NotionConnectorResourcesToCheckCacheEntryModel.destroy({
       where: {
         resourceType: "database",
         notionId: databaseId,

@@ -8,17 +8,21 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo, useState } from "react";
+import type Stripe from "stripe";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
-import { CreditsList } from "@app/components/workspace/CreditsList";
+import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
+import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import {
   getBillingCycle,
   getPriceAsString,
 } from "@app/lib/client/subscription";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   getCreditPurchasePriceId,
@@ -41,6 +45,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   currency: string;
   discountPercent: number;
   creditPricing: StripePricingData | null;
+  creditPurchaseLimits: CreditPurchaseLimits | null;
+  stripeSubscription: Stripe.Subscription | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -51,8 +57,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   let isEnterprise = false;
   let currency = "usd";
+  let creditPurchaseLimits: CreditPurchaseLimits | null = null;
+
+  let stripeSubscription: Stripe.Subscription | null = null;
   if (subscription.stripeSubscriptionId) {
-    const stripeSubscription = await getStripeSubscription(
+    stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
@@ -60,6 +69,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       currency = isSupportedCurrency(stripeSubscription.currency)
         ? stripeSubscription.currency
         : "usd";
+      creditPurchaseLimits = await getCreditPurchaseLimits(
+        auth,
+        stripeSubscription
+      );
     }
   }
 
@@ -77,6 +90,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       currency,
       discountPercent,
       creditPricing,
+      creditPurchaseLimits,
+      stripeSubscription,
     },
   };
 });
@@ -174,6 +189,30 @@ interface UsageSectionProps {
   setShowBuyCreditDialog: (show: boolean) => void;
 }
 
+function formatDateShort(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatExpirationDate(timestamp: number | null): string | null {
+  if (!timestamp) {
+    return null;
+  }
+  const date = new Date(timestamp);
+  return `Expires ${formatDateShort(date)}`;
+}
+
+function formatRenewalDate(timestamp: number | null): string | null {
+  if (!timestamp) {
+    return null;
+  }
+  const date = new Date(timestamp);
+  return `Renews ${formatDateShort(date)}`;
+}
+
 function UsageSection({
   subscription,
   isEnterprise,
@@ -183,40 +222,12 @@ function UsageSection({
   isLoading,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
-  const billingCycle = useMemo(
-    () => getBillingCycle(subscription.startDate),
-    [subscription.startDate]
-  );
-
-  const formatDateShort = (date: Date) => {
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatExpirationDate = (timestamp: number | null) => {
-    if (!timestamp) {
+  const billingCycle = useMemo(() => {
+    if (!subscription.startDate) {
       return null;
     }
-    return `Expires on ${new Date(timestamp).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })}`;
-  };
-
-  const formatRenewalDate = (timestamp: number | null) => {
-    if (!timestamp) {
-      return null;
-    }
-    return `Renews on ${new Date(timestamp).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })}`;
-  };
+    return getBillingCycle(subscription.startDate);
+  }, [subscription.startDate]);
 
   if (isLoading) {
     return (
@@ -231,6 +242,7 @@ function UsageSection({
     currency: "usd",
     priceInMicroUsd: totalConsumed,
   });
+
   const totalCreditsFormatted = getPriceAsString({
     currency: "usd",
     priceInMicroUsd: totalCredits,
@@ -240,9 +252,7 @@ function UsageSection({
     <div className="flex flex-col gap-6">
       {/* Usage Header */}
       <div className="flex items-center justify-between">
-        <Page.Vertical gap="xs">
-          <Page.H variant="h5">Available credits</Page.H>
-        </Page.Vertical>
+        <Page.H variant="h5">Available credits</Page.H>
         {billingCycle && (
           <Page.P variant="secondary">
             {formatDateShort(billingCycle.cycleStart)} →{" "}
@@ -268,10 +278,12 @@ function UsageSection({
       {/* Credit Categories */}
       <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
         <CreditCategoryBar
-          title="Monthly included credits"
+          title="Free credits"
           consumed={creditsByType.free.consumed}
           total={creditsByType.free.total}
-          renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
+          renewalDate={formatRenewalDate(
+            billingCycle?.cycleEnd.getTime() ?? null
+          )}
         />
         <CreditCategoryBar
           title="Purchased credits"
@@ -312,6 +324,8 @@ export default function CreditsUsagePage({
   currency,
   discountPercent,
   creditPricing,
+  creditPurchaseLimits,
+  stripeSubscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { featureFlags } = useFeatureFlags({
@@ -321,10 +335,17 @@ export default function CreditsUsagePage({
     workspaceId: owner.sId,
   });
 
-  // Get the billing cycle start day from the subscription start date
-  const billingCycleStartDay = subscription.startDate
-    ? new Date(subscription.startDate).getDate()
-    : null;
+  // Get the billing cycle start day from Stripe subscription, fallback to Dust subscription
+  const getBillingCycleStartDay = (): number | null => {
+    if (stripeSubscription?.current_period_start) {
+      return new Date(stripeSubscription.current_period_start * 1000).getDate();
+    }
+    if (subscription.startDate) {
+      return new Date(subscription.startDate).getDate();
+    }
+    return null;
+  };
+  const billingCycleStartDay = getBillingCycleStartDay();
 
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => isActive(c));
@@ -370,15 +391,32 @@ export default function CreditsUsagePage({
     );
   }, [creditsByType]);
 
-  const shouldShowLowCreditsWarning =
-    !isCreditsLoading &&
-    totalCredits > 0 &&
-    totalConsumed >= totalCredits * 0.8;
+  const shouldShowLowCreditsWarning = useMemo(() => {
+    if (totalCredits === 0) {
+      return false;
+    }
+    const percentUsed = (totalConsumed / totalCredits) * 100;
+    return percentUsed >= 80;
+  }, [totalConsumed, totalCredits]);
+
+  const [activeCredits, expiredCredits] = useMemo(() => {
+    return credits.reduce<[CreditDisplayData[], CreditDisplayData[]]>(
+      ([active, expired], current) => {
+        if (!isExpired(current)) {
+          active.push(current);
+        } else {
+          expired.push(current);
+        }
+        return [active, expired];
+      },
+      [[], []]
+    );
+  }, [credits]);
 
   return (
     <AppCenteredLayout
-      subscription={subscription}
       owner={owner}
+      subscription={subscription}
       subNavigation={subNavigationAdmin({
         owner,
         current: "credits_usage",
@@ -393,13 +431,38 @@ export default function CreditsUsagePage({
         currency={currency}
         discountPercent={discountPercent}
         creditPricing={creditPricing}
+        creditPurchaseLimits={creditPurchaseLimits}
       />
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Programmatic Usage"
           icon={CardIcon}
-          description="Monitor usage and credits for your API keys and automated workflows."
+          description={
+            <div>
+              <p>
+                Monitor usage and credits for programmatic usage (API keys,
+                automated workflows, etc.). Usage cost is based on token
+                consumption, according to our{" "}
+                <a
+                  href="https://dust-tt.notion.site/API-Pricing-12928599d941805a89dedeed342aacd5"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary-dark"
+                >
+                  pricing page
+                </a>
+                . Learn more in the{" "}
+                <a
+                  href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e?pvs=74"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary-dark"
+                >
+                  programmatic usage documentation
+                </a>
+                .
+              </p>
+            </div>
+          }
         />
 
         {shouldShowLowCreditsWarning && (
@@ -421,13 +484,24 @@ export default function CreditsUsagePage({
         )}
 
         {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
-        {subscription.trialing && (
-          <ContentMessage title="Available after trial" variant="info">
-            Credit purchases are available once you upgrade to a paid plan. If
-            you would like to purchase credits before upgrading, please contact
-            support.
-          </ContentMessage>
-        )}
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "trialing" && (
+            <ContentMessage title="Available after trial" variant="info">
+              Credit purchases are available once you upgrade to a paid plan. If
+              you would like to purchase credits before upgrading, please
+              contact support.
+            </ContentMessage>
+          )}
+
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "payment_issue" && (
+            <ContentMessage title="Subscription issue" variant="warning">
+              Credit purchases require an active subscription. Please ensure
+              your payment method is up to date.
+            </ContentMessage>
+          )}
 
         {/* Usage Section */}
         <UsageSection
@@ -440,16 +514,24 @@ export default function CreditsUsagePage({
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
-        {/* History Section */}
-        <Page.Vertical>
-          <Page.Vertical gap="sm">
-            <Page.H variant="h5">Credit history</Page.H>
-            <Page.P variant="secondary">
-              Credit history for programmatic usage. Credits invoices are sent
-              by email at time of purchase.
-            </Page.P>
-          </Page.Vertical>
-          <CreditsList credits={credits} isLoading={isCreditsLoading} />
+        {/* Current Credits Section */}
+        <Page.Vertical sizing="grow">
+          <div className="flex w-full items-start justify-between">
+            <Page.Vertical gap="sm" sizing="grow">
+              <div className="flex w-full items-center justify-between">
+                <Page.H variant="h5">Current credits</Page.H>
+                <CreditHistorySheet
+                  credits={expiredCredits}
+                  isLoading={isCreditsLoading}
+                />
+              </div>
+              <Page.P variant="secondary">
+                Active credits for programmatic usage. Credits invoices are sent
+                by email at time of purchase.
+              </Page.P>
+            </Page.Vertical>
+          </div>
+          <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
         {/* Usage Graph */}

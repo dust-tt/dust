@@ -63,8 +63,10 @@ const _webhookSlackBotAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations =
-      await SlackConfigurationResource.listForTeamId(teamId);
+    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+      teamId,
+      "slack_bot"
+    );
     if (slackConfigurations.length === 0) {
       const error: {
         type: "connector_configuration_not_found";

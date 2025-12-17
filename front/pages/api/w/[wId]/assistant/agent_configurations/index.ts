@@ -22,10 +22,12 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -43,6 +45,7 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  removeNulls,
 } from "@app/types";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -318,6 +321,66 @@ export async function createOrUpgradeAgentConfiguration({
     }
   );
 
+  let allRequestedSpaceIds = requirements.requestedSpaceIds;
+
+  // Collect requestedSpaceIds from skills (only when feature flag is enabled)
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("skills")) {
+    const skillResources = await SkillResource.fetchByIds(
+      auth,
+      (assistant.skills ?? []).map((s) => s.sId)
+    );
+
+    const skillRequestedSpaceIds = new Set<number>();
+    for (const skillResource of skillResources) {
+      for (const spaceId of skillResource.requestedSpaceIds) {
+        skillRequestedSpaceIds.add(spaceId);
+      }
+    }
+
+    // Merge action and skill requestedSpaceIds
+    allRequestedSpaceIds = [
+      ...new Set([
+        ...requirements.requestedSpaceIds,
+        ...skillRequestedSpaceIds,
+      ]),
+    ];
+  }
+
+  // Collect additional requestedSpaceIds
+  if (
+    assistant.additionalRequestedSpaceIds &&
+    assistant.additionalRequestedSpaceIds.length > 0
+  ) {
+    const additionalSpaces = await SpaceResource.fetchByIds(
+      auth,
+      assistant.additionalRequestedSpaceIds
+    );
+
+    // Validate that all requested spaces were found and user can read them
+    const readableSpaceIds = new Set(
+      additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
+    );
+    const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
+      (sId) => !readableSpaceIds.has(sId)
+    );
+    if (inaccessibleSpaces.length > 0) {
+      return new Err(
+        new Error(
+          `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
+        )
+      );
+    }
+
+    const additionalSpaceModelIds = removeNulls(
+      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
+    );
+
+    allRequestedSpaceIds = [
+      ...new Set([...allRequestedSpaceIds, ...additionalSpaceModelIds]),
+    ];
+  }
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -328,7 +391,7 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedSpaceIds: requirements.requestedSpaceIds,
+    requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
     editors,
   });
@@ -349,7 +412,6 @@ export async function createOrUpgradeAgentConfiguration({
         mcpServerViewId: action.mcpServerViewId,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         dataSources: action.dataSources || null,
-        reasoningModel: action.reasoningModel,
         tables: action.tables,
         childAgentId: action.childAgentId,
         additionalConfiguration: action.additionalConfiguration,
@@ -416,13 +478,10 @@ export async function createOrUpgradeAgentConfiguration({
   // Create skill associations
   const owner = auth.getNonNullableWorkspace();
   await concurrentExecutor(
-    assistant.skills,
+    assistant.skills ?? [],
     async (skill) => {
       // Validate the skill exists and belongs to this workspace
-      const skillResource = await SkillConfigurationResource.fetchBySId(
-        auth,
-        skill.sId
-      );
+      const skillResource = await SkillResource.fetchById(auth, skill.sId);
       if (!skillResource) {
         logger.warn(
           {
@@ -435,12 +494,7 @@ export async function createOrUpgradeAgentConfiguration({
         return;
       }
 
-      await AgentSkillModel.create({
-        workspaceId: owner.id,
-        agentConfigurationId: agentConfigurationRes.value.id,
-        customSkillId: skillResource.id,
-        globalSkillId: null,
-      });
+      await skillResource.addToAgent(auth, agentConfigurationRes.value);
     },
     { concurrency: 10 }
   );

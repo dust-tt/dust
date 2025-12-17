@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
@@ -35,6 +36,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -194,6 +196,18 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
+  const { enabledSkills, equippedSkills } =
+    await SkillResource.listForConversation(auth, {
+      agentConfiguration,
+      conversation,
+    });
+
+  // Fetch MCP server configurations from enabled skills.
+  const skillServers = await fetchSkillMCPServerConfigurations(
+    auth,
+    enabledSkills
+  );
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
@@ -205,7 +219,10 @@ export async function runModelActivity(
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers
+    {
+      jitServers,
+      skillServers,
+    }
   );
 
   if (mcpToolsListingError) {
@@ -252,6 +269,8 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
+    enabledSkills,
+    equippedSkills,
     featureFlags,
   });
 
@@ -705,7 +724,6 @@ export async function runModelActivity(
         dataSources: null,
         tables: null,
         childAgentId: null,
-        reasoningModel: null,
         timeFrame: null,
         jsonSchema: null,
         secretName: null,

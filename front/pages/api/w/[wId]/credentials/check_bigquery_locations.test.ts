@@ -87,12 +87,11 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
       },
     ];
 
-    vi.mocked(BigQuery).mockImplementation(
-      () =>
-        ({
-          getDatasets: vi.fn().mockResolvedValue([mockDatasets]),
-        }) as any
-    );
+    vi.mocked(BigQuery).mockImplementation(function () {
+      return {
+        getDatasets: vi.fn().mockResolvedValue([mockDatasets]),
+      } as any;
+    });
 
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
@@ -133,12 +132,11 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
   });
 
   it("returns 400 when BigQuery client throws an error", async () => {
-    vi.mocked(BigQuery).mockImplementation(
-      () =>
-        ({
-          getDatasets: vi.fn().mockRejectedValue(new Error("BigQuery error")),
-        }) as any
-    );
+    vi.mocked(BigQuery).mockImplementation(function () {
+      return {
+        getDatasets: vi.fn().mockRejectedValue(new Error("BigQuery error")),
+      } as any;
+    });
 
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",

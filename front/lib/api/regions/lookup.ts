@@ -56,7 +56,7 @@ export async function hasEmailLocalRegionAffinity(
   }
 
   // Return true if there is either a valid pending invite or workspace with verified domain
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
   return Boolean(pendingInvites.length > 0 || workspaceWithVerifiedDomain);
 }
 
@@ -92,6 +92,7 @@ async function lookupInOtherRegion(
   };
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const otherRegionResponse = await fetch(`${url}/api/lookup/user`, {
       method: "POST",
       headers: {

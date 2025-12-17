@@ -9,7 +9,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -27,6 +27,8 @@ import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conve
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -54,13 +56,6 @@ export async function getJITServers(
 ): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
-  // Get the list of tools from the agent configuration to avoid duplicates.
-  const agentMcpServerViewIds = agentConfiguration.actions
-    .map((action) =>
-      isServerSideMCPServerConfiguration(action) ? action.mcpServerViewId : null
-    )
-    .filter((mcpServerViewId) => mcpServerViewId !== null);
-
   // Get the conversation MCP server views (aka Tools)
   const conversationMCPServerViews =
     await ConversationResource.fetchMCPServerViews(auth, conversation, true);
@@ -77,10 +72,7 @@ export async function getJITServers(
       conversationMCPServerView.mcpServerViewId
     );
 
-    if (
-      !mcpServerViewResource ||
-      agentMcpServerViewIds.includes(mcpServerViewResource.sId)
-    ) {
+    if (!mcpServerViewResource) {
       continue;
     }
 
@@ -96,7 +88,6 @@ export async function getJITServers(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -120,7 +111,7 @@ export async function getJITServers(
       },
       "MCP server view not found for common_utilities. Ensure auto tools are created."
     );
-  } else if (!agentMcpServerViewIds.includes(commonUtilitiesView.sId)) {
+  } else {
     const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
     const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
       id: -1,
@@ -137,7 +128,6 @@ export async function getJITServers(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -148,6 +138,111 @@ export async function getJITServers(
     };
 
     jitServers.push(commonUtilitiesServer);
+  }
+
+  // Add skill_management MCP server if the agent has any skills configured
+  const owner = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(owner);
+  if (featureFlags.includes("skills")) {
+    // TODO(resources): Add a countSkills method to the future AgentConfigurationResource
+    // and use that instead of querying the model directly.
+    const skillCount = await AgentSkillModel.count({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+      },
+    });
+
+    if (skillCount > 0) {
+      const skillManagementView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          SKILL_MANAGEMENT_SERVER_NAME
+        );
+
+      if (!skillManagementView) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+          },
+          "MCP server view not found for skill_management. Ensure auto tools are created."
+        );
+      } else {
+        const skillManagementServer: ServerSideMCPServerConfigurationType = {
+          id: -1,
+          sId: generateRandomModelSId(),
+          type: "mcp_server_configuration",
+          name: SKILL_MANAGEMENT_SERVER_NAME,
+          description: "Enable skills for the conversation.",
+          dataSources: null,
+          tables: null,
+          childAgentId: null,
+          timeFrame: null,
+          jsonSchema: null,
+          secretName: null,
+          additionalConfiguration: {},
+          mcpServerViewId: skillManagementView.sId,
+          dustAppConfiguration: null,
+          internalMCPServerId: skillManagementView.mcpServerId,
+        };
+
+        jitServers.push(skillManagementServer);
+      }
+    }
+  }
+
+  // Add schedules_management MCP server if this is an onboarding conversation
+  // user is not always defined (API triggered agent loop)
+  const userResource = auth.user();
+  if (userResource) {
+    const onboardingMetadata = await userResource.getMetadata(
+      "onboarding:conversation"
+    );
+    if (onboardingMetadata?.value === conversation.sId) {
+      const schedulesManagementView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "schedules_management"
+        );
+      if (!schedulesManagementView) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+          },
+          "MCP server view not found for schedules_management. Ensure auto tools are created."
+        );
+      } else {
+        const schedulesManagementViewJSON = schedulesManagementView.toJSON();
+        const schedulesManagementServer: ServerSideMCPServerConfigurationType =
+          {
+            id: -1,
+            sId: generateRandomModelSId(),
+            type: "mcp_server_configuration",
+            name:
+              schedulesManagementViewJSON.name ??
+              schedulesManagementViewJSON.server.name ??
+              "schedules_management",
+            description:
+              schedulesManagementViewJSON.description ??
+              schedulesManagementViewJSON.server.description ??
+              "Create schedules to automate recurring tasks.",
+            dataSources: null,
+            tables: null,
+            childAgentId: null,
+            timeFrame: null,
+            jsonSchema: null,
+            secretName: null,
+            additionalConfiguration: {},
+            mcpServerViewId: schedulesManagementViewJSON.sId,
+            dustAppConfiguration: null,
+            internalMCPServerId: schedulesManagementView.mcpServerId,
+          };
+
+        jitServers.push(schedulesManagementServer);
+      }
+    }
   }
 
   if (attachments.length === 0) {
@@ -175,7 +270,6 @@ export async function getJITServers(
     dataSources: null,
     tables: null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
@@ -285,7 +379,6 @@ export async function getJITServers(
       dataSources: null,
       tables,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -354,7 +447,6 @@ export async function getJITServers(
       dataSources,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -403,7 +495,6 @@ export async function getJITServers(
       dataSources,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,

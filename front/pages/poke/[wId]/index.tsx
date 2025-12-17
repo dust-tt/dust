@@ -20,6 +20,7 @@ import keyBy from "lodash/keyBy";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import type Stripe from "stripe";
 
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
@@ -51,12 +52,15 @@ import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import type {
   ExtensionConfigurationType,
+  ProgrammaticUsageConfigurationType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceDomain,
@@ -70,7 +74,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
   owner: WorkspaceType;
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   registry: ActionRegistry;
+  stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -112,16 +118,28 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const extensionConfig =
     await ExtensionConfigurationResource.fetchForWorkspace(auth);
 
+  const programmaticUsageConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  let stripeSubscription: Stripe.Subscription | null = null;
+  if (activeSubscription.stripeSubscriptionId) {
+    stripeSubscription = await getStripeSubscription(
+      activeSubscription.stripeSubscriptionId
+    );
+  }
+
   return {
     props: {
       owner,
       activeSubscription,
+      stripeSubscription,
       subscriptions,
       whitelistableFeatures: WHITELISTABLE_FEATURES,
       registry: getDustProdActionRegistry(),
       workspaceVerifiedDomains,
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
+      programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
       workosEnvironmentId: config.getWorkOSEnvironmentId(),
     },
@@ -131,12 +149,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 const WorkspacePage = ({
   owner,
   activeSubscription,
+  stripeSubscription,
   subscriptions,
   whitelistableFeatures,
   registry,
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
+  programmaticUsageConfig,
   baseUrl,
   workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -267,6 +287,7 @@ const WorkspacePage = ({
                   owner={owner}
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
+                  programmaticUsageConfig={programmaticUsageConfig}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
@@ -343,6 +364,7 @@ const WorkspacePage = ({
               <CreditsDataTable
                 owner={owner}
                 subscription={activeSubscription}
+                stripeSubscription={stripeSubscription}
                 loadOnInit
               />
             </TabsContent>

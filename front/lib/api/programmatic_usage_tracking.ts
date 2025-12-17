@@ -11,31 +11,32 @@ import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
+  AgentMessageStatus,
   LightWorkspaceType,
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
-import { isString } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
   "programmatic" | "user"
 > = {
-  agent_handover: "user",
   api: "programmatic",
+  cli: "user",
+  cli_programmatic: "programmatic",
   email: "user",
   excel: "programmatic",
   extension: "user",
-  "github-copilot-chat": "user",
   gsheet: "programmatic",
   make: "programmatic",
   n8n: "programmatic",
   powerpoint: "programmatic",
   raycast: "user",
-  run_agent: "user",
   slack: "user",
   slack_workflow: "programmatic",
   teams: "user",
@@ -49,6 +50,11 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
 };
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
+
+export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  "succeeded",
+  "cancelled",
+];
 
 export const USER_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
@@ -76,6 +82,13 @@ export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin }
 ): boolean {
+  // TODO(PPUL): this is a temporary fix to allow zendesk to not be tracked as
+  // programmatic usage, despite it relying on a custom API key. This should be
+  // removed once we have a proper solution for zendesk.
+  if (userMessageOrigin === "zendesk") {
+    return false;
+  }
+
   if (
     auth.authMethod() === "api_key" ||
     USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
@@ -94,7 +107,12 @@ export function getShouldTrackTokenUsageCostsESFilter(
   // Track for API keys, listed programmatic origins or unspecified user message origins.
   // This must be in sync with the shouldTrackTokenUsageCosts function.
   const shouldClauses: estypes.QueryDslQueryContainer[] = [
-    { term: { auth_method: "api_key" } },
+    {
+      bool: {
+        must: [{ term: { auth_method: "api_key" } }],
+        must_not: [{ term: { context_origin: "zendesk" } }],
+      },
+    },
     { bool: { must_not: { exists: { field: "context_origin" } } } },
     { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
   ];
@@ -103,6 +121,7 @@ export function getShouldTrackTokenUsageCostsESFilter(
     bool: {
       filter: [
         { term: { workspace_id: workspace.sId } },
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
         {
           bool: {
             should: shouldClauses,
@@ -168,8 +187,20 @@ async function decreaseProgrammaticCredits(
 // for tracking but do not take any other action.
 export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
-  { amountMicroUsd }: { amountMicroUsd: number }
-): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
+  {
+    amountMicroUsd,
+    userMessageOrigin,
+  }: {
+    amountMicroUsd: number;
+    userMessageOrigin: UserMessageOrigin;
+  },
+  parentLogger?: Logger
+): Promise<{
+  totalConsumedMicroUsd: number;
+  totalInitialMicroUsd: number;
+  activeCredits: CreditResource[];
+}> {
+  const localLogger = parentLogger ?? logger;
   const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
 
@@ -191,14 +222,17 @@ export async function decreaseProgrammaticCreditsV2(
     const credit = sortedCredits.shift();
     if (!credit) {
       // A simple warn suffices; tokens have already been consumed.
-      logger.warn(
+      localLogger.warn(
         {
           initialAmountMicroUsd: amountMicroUsd,
           remainingAmountMicroUsd,
-          workspaceId: workspace.sId,
         },
-        "No more credits available for this message cost."
+        "[Programmatic Usage Tracking] No more credits available for this message cost."
       );
+      statsDClient.increment("credits.consumption.blocked", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
       break;
     }
     const amountToConsumeMicroUsd = Math.min(
@@ -210,10 +244,11 @@ export async function decreaseProgrammaticCreditsV2(
       amountInMicroUsd: amountToConsumeMicroUsd,
     });
     if (result.isErr()) {
-      logger.error(
+      localLogger.error(
         {
-          amountToConsumeInMicroUsd: amountToConsumeMicroUsd,
-          workspaceId: workspace.sId,
+          amountToConsumeMicroUsd,
+          consumedAmountMicroUsd,
+          remainingAmountMicroUsd,
           // For eng on-call: this error should be investigated since it likely
           // reveals an underlying issue in our billing / credit logic. The only
           // legitimate case this error could happen would be a race condition
@@ -223,18 +258,35 @@ export async function decreaseProgrammaticCreditsV2(
           panic: true,
           error: result.error,
         },
-        "Error consuming credit."
+        "[Programmatic Usage Tracking] Error consuming credit."
       );
+      statsDClient.increment("credits.consumption.error", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
       break;
     }
-
     consumedAmountMicroUsd += amountToConsumeMicroUsd;
     remainingAmountMicroUsd -= amountToConsumeMicroUsd;
+
+    localLogger.info(
+      {
+        amountToConsumeMicroUsd,
+        consumedAmountMicroUsd,
+        remainingAmountMicroUsd,
+      },
+      "[Programmatic Usage Tracking] Consumed credits"
+    );
   }
 
+  statsDClient.increment("credits.consumption.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    `origin:${userMessageOrigin}`,
+  ]);
   return {
     totalConsumedMicroUsd: totalConsumedBeforeMicroUsd + consumedAmountMicroUsd,
     totalInitialMicroUsd: totalInitialMicroUsd,
+    activeCredits,
   };
 }
 
@@ -269,13 +321,51 @@ async function initializeCredits(
   await redis.expire(key, secondsUntilEnd);
 }
 
+/**
+ * Returns a key used to construct a workflowId for credit alerts
+ * We use temporal's strong guarantees on idempotency - only one succeed workflow per workflow id
+ * How do we construct this key ?
+ * We "fingerprint" your pool of available credits by taking the ids of the most recent committed and free by credit started date
+ * Which means that when a new credit is started, the key will change, which means a new email will be triggered if consumption crosses 80% threshold.
+ * Otherwise, the key will be invariant.
+ *
+ **/
+export function computeCreditAlertThresholdKey(
+  activeCredits: Pick<CreditResource, "type" | "startDate" | "sId">[],
+  thresholdPercent: number
+): string {
+  const sortByStartDateDesc = (
+    a: Pick<CreditResource, "startDate">,
+    b: Pick<CreditResource, "startDate">
+  ) => (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0);
+
+  const firstFreeCredit = activeCredits
+    .filter((c) => c.type === "free")
+    .sort(sortByStartDateDesc)[0];
+
+  const firstCommittedCredit = activeCredits
+    .filter((c) => c.type === "committed")
+    .sort(sortByStartDateDesc)[0];
+
+  const freeId = firstFreeCredit?.sId;
+  const committedId = firstCommittedCredit?.sId;
+
+  return `${freeId}-${committedId}-${thresholdPercent}`;
+}
+
 export async function trackProgrammaticCost(
   auth: Authenticator,
   {
     dustRunIds,
     userMessageOrigin,
-  }: { dustRunIds: string[]; userMessageOrigin: UserMessageOrigin }
+  }: {
+    dustRunIds: string[];
+    userMessageOrigin: UserMessageOrigin;
+  },
+  parentLogger?: Logger
 ) {
+  const localLogger = parentLogger ?? logger;
+
   if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
     return;
   }
@@ -309,10 +399,15 @@ export async function trackProgrammaticCost(
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
-  const { totalConsumedMicroUsd, totalInitialMicroUsd } =
-    await decreaseProgrammaticCreditsV2(auth, {
-      amountMicroUsd: costWithMarkupMicroUsd,
-    });
+  const { totalConsumedMicroUsd, totalInitialMicroUsd, activeCredits } =
+    await decreaseProgrammaticCreditsV2(
+      auth,
+      {
+        amountMicroUsd: costWithMarkupMicroUsd,
+        userMessageOrigin,
+      },
+      localLogger
+    );
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(
@@ -320,19 +415,17 @@ export async function trackProgrammaticCost(
     );
     if (totalConsumedMicroUsd >= thresholdMicroUsd) {
       const workspace = auth.getNonNullableWorkspace();
-      const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
-      // For eng-oncall:
-      // If you get this, you can defer to programmatic usage owners right away
-      // Every workspace should have this key defined
-      // If not, it means they will not get alerted
-      // when they reached their usage threshold
-      assert(
-        isString(idempotencyKey),
-        "creditAlertThresholdId must be set when credits exist"
+      statsDClient.increment("credits.consumption.alert", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
+      const creditAlertThresholdKey = computeCreditAlertThresholdKey(
+        activeCredits,
+        CREDIT_ALERT_THRESHOLD_PERCENT
       );
-      void launchCreditAlertWorkflow({
+      await launchCreditAlertWorkflow({
         workspaceId: workspace.sId,
-        idempotencyKey: idempotencyKey,
+        creditAlertThresholdKey,
         totalInitialMicroUsd,
         totalConsumedMicroUsd,
       });
@@ -340,43 +433,10 @@ export async function trackProgrammaticCost(
   }
 }
 
-export async function resetCredits(
-  workspace: LightWorkspaceType,
-  { newCredits }: { newCredits?: number } = {}
-): Promise<void> {
-  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
-    if (newCredits) {
-      await initializeCredits(redis, workspace, newCredits);
-    } else {
-      const key = getRedisKey(workspace);
-
-      await redis.del(key);
-    }
-  });
-}
-
-export async function getRemainingCredits(
-  workspace: LightWorkspaceType
-): Promise<{ expiresInSeconds: number; remainingCredits: number } | null> {
-  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
-    const key = getRedisKey(workspace);
-    const remainingCredits = await redis.get(key);
-    if (remainingCredits === null) {
-      return null;
-    }
-
-    const expiresInSeconds = await redis.ttl(key);
-
-    return {
-      expiresInSeconds,
-      remainingCredits: parseFloat(remainingCredits),
-    };
-  });
-}
 // First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).
 export function compareCreditsForConsumption(
-  a: CreditResource,
-  b: CreditResource
+  a: Pick<CreditResource, "type" | "expirationDate">,
+  b: Pick<CreditResource, "type" | "expirationDate">
 ): number {
   if (a.type === "free" && b.type !== "free") {
     return -1;

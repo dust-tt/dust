@@ -5,7 +5,10 @@ import * as t from "io-ts";
 import type { Logger } from "pino";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 
 // Define the type codec for the Notion OAuth response
 export const NotionOAuthResponse = t.type({
@@ -71,10 +74,10 @@ export async function buildNotionBreadcrumbs(
 
   const current =
     resourceType === "page"
-      ? await NotionPage.findOne({
+      ? await NotionPageModel.findOne({
           where: { notionPageId: pageOrDbId, connectorId },
         })
-      : await NotionDatabase.findOne({
+      : await NotionDatabaseModel.findOne({
           where: { notionDatabaseId: pageOrDbId, connectorId },
         });
 
@@ -87,7 +90,7 @@ export async function buildNotionBreadcrumbs(
   }
 
   for (const parentId of breadcrumbIds) {
-    const page = await NotionPage.findOne({
+    const page = await NotionPageModel.findOne({
       where: { notionPageId: parentId, connectorId },
     });
 
@@ -100,7 +103,7 @@ export async function buildNotionBreadcrumbs(
       continue;
     }
 
-    const db = await NotionDatabase.findOne({
+    const db = await NotionDatabaseModel.findOne({
       where: { notionDatabaseId: parentId, connectorId },
     });
 
@@ -122,10 +125,10 @@ export async function buildNotionBreadcrumbs(
   } else if (breadcrumbs.length > 1) {
     const firstParentId = breadcrumbIds[breadcrumbIds.length - 1];
     const firstParent =
-      (await NotionPage.findOne({
+      (await NotionPageModel.findOne({
         where: { notionPageId: firstParentId, connectorId },
       })) ||
-      (await NotionDatabase.findOne({
+      (await NotionDatabaseModel.findOne({
         where: { notionDatabaseId: firstParentId, connectorId },
       }));
 

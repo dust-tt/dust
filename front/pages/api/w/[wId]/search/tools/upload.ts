@@ -71,13 +71,14 @@ async function handler(
     });
   }
 
-  const { tool, accessToken } = tokenResult.value;
+  const { tool, accessToken, metadata } = tokenResult.value;
   const result = await downloadAndUploadToolFile({
     auth,
     tool,
     accessToken,
     externalId,
     conversationId,
+    metadata,
   });
 
   if (result.isErr()) {

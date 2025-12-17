@@ -30,8 +30,6 @@ import type {
 import {
   areSameRank,
   getMessageRank,
-  hasHumansInteracting,
-  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -71,7 +69,7 @@ import {
   isUserMessageTypeWithContentFragments,
   toMentionType,
 } from "@app/types";
-import { Err, isUserMessageType, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -187,13 +185,10 @@ export const ConversationViewer = ({
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
     if (!initialListData && messages.length > 0 && !isValidating) {
-      const raw = messages
-        .flatMap((m) => m.messages)
-        .filter((m) => (isUserMessageType(m) ? !isHiddenMessage(m) : true));
+      const raw = messages.flatMap((m) => m.messages);
 
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialListData(messagesToRender);
     }
   }, [initialListData, messages, setInitialListData, isValidating]);
@@ -217,11 +212,8 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
-      const filtered = olderMessagesFromBackend.filter((m) =>
-        isUserMessageType(m) ? !isHiddenMessage(m) : true
-      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(filtered)
+        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
       );
     }
 
@@ -288,9 +280,6 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
-              if (isHiddenMessage(event.message)) {
-                break;
-              }
               const userMessage = event.message;
               const predicate = (m: VirtuosoMessage) =>
                 isUserMessage(m) && areSameRank(m, userMessage);
@@ -301,7 +290,16 @@ export const ConversationViewer = ({
                 // Do not scroll if the message is from the current user.
                 // Can happen with fake user messages (like handover messages).
                 const scroll = userMessage.user?.sId !== user.sId;
-                ref.current.data.append([userMessage], scroll);
+
+                // Find the first message with a rank greater than the user message to insert the new message at the correct position.
+                const offset = ref.current.data.findIndex(
+                  (m) => getMessageRank(m) > getMessageRank(userMessage)
+                );
+                if (offset !== -1) {
+                  ref.current.data.insert([userMessage], offset, scroll);
+                } else {
+                  ref.current.data.append([userMessage], scroll);
+                }
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
                 // We only update if the version is greater than the existing version.
@@ -356,7 +354,15 @@ export const ConversationViewer = ({
                   predicate(m) ? messageStreamState : m
                 );
               } else {
-                ref.current.data.append([messageStreamState]);
+                // Find the first message with a rank greater than the agent message to insert the new message at the correct position.
+                const offset = ref.current.data.findIndex(
+                  (m) => getMessageRank(m) > getMessageRank(messageStreamState)
+                );
+                if (offset !== -1) {
+                  ref.current.data.insert([messageStreamState], offset);
+                } else {
+                  ref.current.data.append([messageStreamState]);
+                }
               }
 
               void mutateConversationParticipants(async (participants) =>
@@ -511,13 +517,9 @@ export const ConversationViewer = ({
         }
       }
 
-      // Objective is to dermine if an agent is going to answer immediately to change the scroll behavior.
-      const isMentioningAgent =
-        //TODO(mentions v2) if dust agent is disabled at the workspace level, hasMoreThan2HumansInteracting might say false but we wouldn't have an auto mention of dust.
-        (mentions.length === 0 &&
-          !hasHumansInteracting(ref.current.data.get())) ||
-        // An agent is mentioned manually.
-        mentions.some(isRichAgentMention);
+      // An agent will answer immediately only if it is explicitely mentioned.
+      // In that case, we want to scroll to put the user message at the top.
+      const isMentioningAgent = mentions.some(isRichAgentMention);
 
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(

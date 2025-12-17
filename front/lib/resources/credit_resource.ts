@@ -12,9 +12,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateRandomModelSId, makeSId } from "@app/lib/resources/string_ids";
+import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
@@ -25,7 +24,6 @@ import {
   isCreditType,
 } from "@app/types/credits";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -182,6 +180,39 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   /**
+   * Returns the total amount of committed credits purchased in the given period.
+   * Used to enforce per-billing-cycle purchase limits.
+   */
+  static async sumCommittedCreditsPurchasedInPeriod(
+    auth: Authenticator,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<number> {
+    const result = await this.model.findOne({
+      attributes: [
+        [
+          Sequelize.fn(
+            "COALESCE",
+            Sequelize.fn("SUM", Sequelize.col("initialAmountMicroUsd")),
+            0
+          ),
+          "total",
+        ],
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        type: "committed",
+        createdAt: {
+          [Op.gte]: periodStart,
+          [Op.lt]: periodEnd,
+        },
+      },
+      raw: true,
+    });
+    return parseInt((result as unknown as { total: string })?.total ?? "0", 10);
+  }
+
+  /**
    * Consume a given amount of credits, allowing for over-consumption.
    * This is because users consume credits after Dust has spent the tokens,
    * so it's not possible to preemptively block consumption.
@@ -244,19 +275,6 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
   }
 
-  private async updateCreditAlertIdempotencyKey(
-    auth: Authenticator
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-    const idempotencyKey = generateRandomModelSId("cra");
-    const previousMetadata = workspace.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      creditAlertIdempotencyKey: idempotencyKey,
-    };
-    await WorkspaceResource.updateMetadata(workspace.id, newMetadata);
-  }
-
   async start(
     auth: Authenticator,
     {
@@ -294,7 +312,6 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Credit already started"));
     }
 
-    await this.updateCreditAlertIdempotencyKey(auth);
     return new Ok(undefined);
   }
 
@@ -320,7 +337,6 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Credit not found or already frozen"));
     }
 
-    await this.updateCreditAlertIdempotencyKey(auth);
     return new Ok(undefined);
   }
 
@@ -385,7 +401,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     };
   }
 
-  toPokeJSON(): PokeCreditType {
+  toJSONForAdmin(): PokeCreditType {
     return {
       id: this.id,
       createdAt: this.createdAt.toISOString(),

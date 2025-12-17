@@ -1,4 +1,3 @@
-import assert from "assert";
 import { parseExpression } from "cron-parser";
 import _ from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
@@ -44,7 +43,7 @@ export type TrackerMaintainedScopeType = Array<{
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TrackerConfigurationResource
   extends ReadonlyAttributesType<TrackerConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -178,85 +177,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   }
 
   // Update.
-
-  async updateConfig(
-    auth: Authenticator,
-    blob: Partial<CreationAttributes<TrackerConfigurationModel>>,
-    maintainedDataSources: TrackerDataSourceConfigurationType[],
-    watchedDataSources: TrackerDataSourceConfigurationType[]
-  ): Promise<Result<TrackerConfigurationResource, Error>> {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
-
-    return withTransaction(async (transaction) => {
-      await this.update(blob);
-
-      await TrackerDataSourceConfigurationModel.destroy({
-        where: {
-          trackerConfigurationId: this.id,
-        },
-        hardDelete: true,
-        transaction,
-      });
-
-      for (const m of maintainedDataSources) {
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          m.dataSourceViewId
-        );
-        if (!dataSourceView) {
-          return new Err(
-            new Error(`Data source view not found: ${m.dataSourceViewId}`)
-          );
-        }
-        await TrackerDataSourceConfigurationModel.create(
-          {
-            scope: "maintained",
-            parentsIn: m.filter.parents?.in ?? null,
-            parentsNotIn: m.filter.parents?.not ?? null,
-            trackerConfigurationId: this.id,
-            dataSourceViewId: dataSourceView.id,
-            dataSourceId: dataSourceView.dataSourceId,
-            workspaceId: this.workspaceId,
-          },
-          { transaction }
-        );
-      }
-
-      for (const w of watchedDataSources) {
-        const dataSourceView = await DataSourceViewResource.fetchById(
-          auth,
-          w.dataSourceViewId
-        );
-        if (!dataSourceView) {
-          return new Err(
-            new Error(`Data source view not found: ${w.dataSourceViewId}`)
-          );
-        }
-        await TrackerDataSourceConfigurationModel.create(
-          {
-            scope: "watched",
-            parentsIn: w.filter.parents?.in ?? null,
-            parentsNotIn: w.filter.parents?.not ?? null,
-            trackerConfigurationId: this.id,
-            dataSourceViewId: dataSourceView.id,
-            dataSourceId: dataSourceView.dataSourceId,
-            workspaceId: this.workspaceId,
-          },
-          { transaction }
-        );
-      }
-
-      const updatedTracker = await TrackerConfigurationResource.fetchById(
-        auth,
-        this.sId
-      );
-      if (updatedTracker) {
-        return new Ok(updatedTracker);
-      }
-      return new Err(new Error("Failed to update tracker."));
-    });
-  }
-
   async addGeneration({
     generation,
     thinking,
@@ -362,7 +282,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         workspaceId: this.workspaceId,
       }),
       filter:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         m.parentsIn || m.parentsNotIn
           ? {
               parents: {

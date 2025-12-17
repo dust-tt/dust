@@ -27,6 +27,7 @@ export default defineConfig(
       "**/build/**",
       "**migrations/**",
       "**mailing/**",
+      ".yalc/**",
       // Specific problematic binary files
       "**/node_modules/**/character-reference-invalid/index.js",
     ],
@@ -38,9 +39,8 @@ export default defineConfig(
 
   // Global settings
   {
-    // to enable
     linterOptions: {
-      reportUnusedDisableDirectives: "off",
+      reportUnusedDisableDirectives: "error",
     },
     languageOptions: {
       parserOptions: {
@@ -93,6 +93,9 @@ export default defineConfig(
       jsdoc: jsdocPlugin,
     },
   },
+
+  // react rules
+  reactHooks.configs.flat.recommended,
 
   // Main rules
   {
@@ -153,6 +156,8 @@ export default defineConfig(
       "@typescript-eslint/return-await": ["error", "in-try-catch"],
       // Disable rule that causes stack overflow on complex types
       "@typescript-eslint/no-redundant-type-constituents": "off",
+      // we don't think it's usefull
+      "react-hooks/set-state-in-effect": "off",
       // To activate
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
@@ -183,7 +188,7 @@ export default defineConfig(
       "jsx-a11y/alt-text": "off",
       "no-unused-expressions": "error",
       "no-restricted-globals": [
-        "warn",
+        "error",
         {
           name: "fetch",
           message:
@@ -208,8 +213,6 @@ export default defineConfig(
       "dust/enforce-client-types-in-public-api": "error",
     },
   },
-  // react rules
-  reactHooks.configs.flat.recommended,
 
   // Public API endpoints - require Swagger docs
   {

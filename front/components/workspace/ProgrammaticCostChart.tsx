@@ -184,6 +184,7 @@ export function BaseProgrammaticCostChart({
     Partial<Record<GroupByType, Record<string, string>>>
   >({});
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const now = new Date();
   // selectedPeriod is "YYYY-MM", so we parse it and create a UTC date.
   // To get the correct billing cycle, we need a date within that cycle, so we set
@@ -296,7 +297,7 @@ export function BaseProgrammaticCostChart({
       for (const group of availableGroupsArray) {
         newLabels[group.groupKey] = group.groupLabel;
       }
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setLabelCache((prev) => ({
         ...prev,
         [groupBy]: { ...prev[groupBy], ...newLabels },
@@ -306,6 +307,7 @@ export function BaseProgrammaticCostChart({
 
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const points = programmaticCostData?.points ?? [];
   points.forEach((point) => {
     point.groups.forEach((g) => {
@@ -359,8 +361,8 @@ export function BaseProgrammaticCostChart({
     return programmaticCostData?.points.reduce((max, point) => {
       return Math.max(
         max,
-        point.groups.reduce((max, group) => {
-          return Math.max(max, group.cumulatedCostMicroUsd ?? 0);
+        point.groups.reduce((sum, group) => {
+          return sum + (group.cumulatedCostMicroUsd ?? 0);
         }, 0)
       );
     }, 0);
@@ -393,22 +395,17 @@ export function BaseProgrammaticCostChart({
     });
   }
 
-  // Transform points into chart data using labels from availableGroups
   const chartData = points.map((point) => {
     const dataPoint: ChartDataPoint = {
       timestamp: point.timestamp,
     };
 
-    // Compute total credits as cumulative cost + remaining credits.
+    // Compute total credits as present cumulative cost + remaining credits at that timestamp.
     // This avoids showing a total credits line below cumulative cost when credits expire
     // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
-    // usage is still in cumulative cost).
-    const cumulativeCost = point.groups.reduce(
-      (acc, g) => acc + (g.cumulatedCostMicroUsd ?? 0),
-      0
-    );
+    // usage is still in cumulative cost)--and vice versa in the past when credits are created.
     dataPoint.totalCreditsMicroUsd =
-      cumulativeCost + point.totalRemainingCreditsMicroUsd;
+      (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
 
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
@@ -483,7 +480,7 @@ export function BaseProgrammaticCostChart({
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Usage Graph</span>
+          <span>Usage cost graph</span>
           <Button
             icon={ChevronLeftIcon}
             size="xs"
@@ -506,7 +503,7 @@ export function BaseProgrammaticCostChart({
           )}
         </div>
       }
-      description="Total cost accumulated. Filter by clicking on legend items."
+      description={groupBy ? "Filter by clicking on legend items." : undefined}
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError

@@ -11,8 +11,8 @@ import {
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
@@ -172,10 +172,7 @@ async function handler(
 
         // Merge custom headers (if any) with Authorization when probing the server.
         // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
-        const sanitizedCustomHeaders = headersArrayToRecord(
-          body.customHeaders,
-          { stripAuthorization: false }
-        );
+        const sanitizedCustomHeaders = headersArrayToRecord(body.customHeaders);
 
         const headers = bearerToken
           ? {
@@ -218,12 +215,9 @@ async function handler(
               ? metadata.icon
               : DEFAULT_MCP_SERVER_ICON),
           version: metadata.version,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          sharedSecret: sharedSecret || null,
-          // Persist only user-provided custom headers (exclude Authorization)
-          customHeaders: headersArrayToRecord(body.customHeaders, {
-            stripAuthorization: true,
-          }),
+          sharedSecret: sharedSecret ?? null,
+          // Persist only user-provided custom headers
+          customHeaders: headersArrayToRecord(body.customHeaders),
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });
@@ -354,9 +348,7 @@ async function handler(
           requiresBearerTokenConfiguration(newInternalMCPServer.toJSON()) &&
           (body.sharedSecret !== undefined || body.customHeaders !== undefined)
         ) {
-          const sanitizedRecord = headersArrayToRecord(body.customHeaders, {
-            stripAuthorization: true,
-          });
+          const sanitizedRecord = headersArrayToRecord(body.customHeaders);
           const customHeaders =
             Object.keys(sanitizedRecord).length > 0 ? sanitizedRecord : null;
 

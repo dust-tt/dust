@@ -86,6 +86,7 @@ const serpapiSearch = async (
 
   logger.debug({ prm }, "URL params");
 
+  // eslint-disable-next-line no-restricted-globals
   const res = await fetch(
     `${SERPAPI_BASE_URL}/search?${urlParams.toString()}`,
     {
@@ -135,6 +136,7 @@ const serperSearch = async (
     return new Err(new Error("DUST_MANAGED_SERP_API_KEY is missing"));
   }
 
+  // eslint-disable-next-line no-restricted-globals
   const res = await fetch(`${SERPER_BASE_URL}/search`, {
     method: "POST",
     headers: {

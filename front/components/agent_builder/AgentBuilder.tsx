@@ -27,6 +27,7 @@ import {
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
@@ -36,11 +37,12 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useEditors } from "@app/lib/swr/agent_editors";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
-import { useEditors } from "@app/lib/swr/editors";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, normalizeError, removeNulls } from "@app/types";
@@ -90,6 +92,7 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useRouter();
   const sendNotification = useSendNotification(true);
@@ -110,7 +113,7 @@ export default function AgentBuilder({
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationSId: agentConfigurationSIdForSkills ?? "",
-    disabled: !agentConfigurationSIdForSkills,
+    disabled: !hasFeature("skills") || !agentConfigurationSIdForSkills,
   });
 
   const { editors } = useEditors({
@@ -146,7 +149,7 @@ export default function AgentBuilder({
     return skills.map((skill) => ({
       sId: skill.sId,
       name: skill.name,
-      description: skill.description,
+      description: skill.userFacingDescription,
     }));
   }, [skills]);
 
@@ -165,6 +168,31 @@ export default function AgentBuilder({
         autoRespondWithoutMention: channel.autoRespondWithoutMention,
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
+
+  // Additional spaces = total - actions - skills
+  const computedAdditionalSpaces = useMemo(() => {
+    if (!agentConfiguration || !agentConfiguration.requestedSpaceIds) {
+      return [];
+    }
+
+    const agentRequestedSpaceIds = new Set(
+      agentConfiguration.requestedSpaceIds
+    );
+
+    const spaceIdToActions = getSpaceIdToActionsMap(
+      processedActions,
+      mcpServerViews
+    );
+    const actionSpaceIds = new Set(Object.keys(spaceIdToActions));
+
+    const skillSpaceIds = new Set(
+      skills.flatMap((skill) => skill.requestedSpaceIds)
+    );
+
+    return [...agentRequestedSpaceIds].filter(
+      (spaceId) => !actionSpaceIds.has(spaceId) && !skillSpaceIds.has(spaceId)
+    );
+  }, [agentConfiguration, processedActions, mcpServerViews, skills]);
 
   // This defaultValues should be computed only with data from backend.
   // Any other values we are fetching on client side should be updated inside
@@ -205,6 +233,7 @@ export default function AgentBuilder({
       ...currentValues,
       actions: processedActions,
       skills: processedSkills,
+      additionalSpaces: computedAdditionalSpaces,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
@@ -218,8 +247,7 @@ export default function AgentBuilder({
         slackProvider,
         editors: duplicateAgentId
           ? [user]
-          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            agentConfiguration || editors.length > 0
+          : agentConfiguration || editors.length > 0
             ? editors
             : [user],
         slackChannels: agentSlackChannels,
@@ -232,6 +260,7 @@ export default function AgentBuilder({
     isSkillsLoading,
     processedActions,
     processedSkills,
+    computedAdditionalSpaces,
     form,
     duplicateAgentId,
     user,

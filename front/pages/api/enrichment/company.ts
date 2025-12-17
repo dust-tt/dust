@@ -3,9 +3,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { promisify } from "util";
 
 import config from "@app/lib/api/config";
+import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
@@ -39,11 +39,6 @@ interface EnrichmentResponse {
 function extractDomain(email: string): string | null {
   const match = email.match(/@([^@]+)$/);
   return match ? match[1].toLowerCase() : null;
-}
-
-async function checkExistingUser(email: string): Promise<boolean> {
-  const user = await UserResource.fetchByEmail(email);
-  return user !== null;
 }
 
 async function checkAutoJoinDomain(domain: string): Promise<boolean> {
@@ -457,8 +452,9 @@ export default async function handler(
 
   const encodedEmail = encodeURIComponent(email);
 
-  const isExistingUser = await checkExistingUser(email);
-  if (isExistingUser) {
+  // Check if user already exists in WorkOS - if so, redirect to login.
+  const existingUsers = await fetchUsersFromWorkOSWithEmails([email]);
+  if (existingUsers.length > 0) {
     return res.status(200).json({
       success: true,
       redirectUrl: `/api/workos/login?loginHint=${encodedEmail}`,

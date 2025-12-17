@@ -4,13 +4,13 @@ import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
-import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
@@ -26,7 +26,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok, toMentionType, toRichAgentMentionType } from "@app/types";
-
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -38,7 +37,7 @@ export function ConversationContainerVirtuoso({
   subscription,
   user,
 }: ConversationContainerProps) {
-  const { activeConversationId } = useConversationsNavigation();
+  const activeConversationId = useActiveConversationId();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
@@ -168,6 +167,7 @@ export function ConversationContainerVirtuoso({
           >
             <InputBar
               owner={owner}
+              user={user}
               onSubmit={handleConversationCreation}
               conversationId={null}
               disableAutoFocus={false}

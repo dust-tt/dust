@@ -60,7 +60,7 @@ export function useQueryParams<T extends string[]>(
             return [{ ...currentQuery, [paramName]: newValue }, true];
           } else {
             // Remove param when value is undefined
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
             const { [paramName]: _, ...restQuery } = currentQuery;
             return [restQuery, true];
           }

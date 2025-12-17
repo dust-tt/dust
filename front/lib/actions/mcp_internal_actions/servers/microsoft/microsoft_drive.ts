@@ -1,13 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type AdmZip from "adm-zip";
-import { Readable } from "stream";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
-  extractTextFromDocx,
+  downloadAndProcessMicrosoftFile,
   getDriveItemEndpoint,
   getGraphClient,
+  searchMicrosoftDriveItems,
   validateDocumentXml,
   validateZipFile,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
@@ -18,16 +18,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
-import logger from "@app/logger/logger";
-import {
-  Err,
-  isTextExtractionSupportedContentType,
-  Ok,
-  TextExtraction,
-} from "@app/types";
+import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
@@ -90,7 +83,6 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to search files"
             )
           );
@@ -121,20 +113,10 @@ function createServer(
         }
 
         try {
-          const endpoint = `/search/query`;
-
-          const requestBody = {
-            requests: [
-              {
-                entityTypes: ["driveItem"],
-                query: {
-                  queryString: query,
-                },
-              },
-            ],
-          };
-
-          const response = await client.api(endpoint).post(requestBody);
+          const response = await searchMicrosoftDriveItems({
+            client,
+            query,
+          });
 
           return new Ok([
             {
@@ -145,7 +127,6 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to search drive items"
             )
           );
@@ -255,7 +236,6 @@ function createServer(
           ]);
         } catch (err) {
           const originalError =
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             normalizeError(err).message || "Failed to update document";
           let errorMessage = originalError;
 
@@ -334,60 +314,20 @@ function createServer(
           const downloadUrl = response["@microsoft.graph.downloadUrl"];
           const mimeType = response.file.mimeType;
 
-          const docResponse = await untrustedFetch(downloadUrl);
-          const buffer = Buffer.from(await docResponse.arrayBuffer());
-
-          // Convert buffer to string based on mime type
           let content: string = "";
-
-          if (mimeType.startsWith("text/")) {
-            content = buffer.toString("utf-8");
-          } else if (
-            mimeType ===
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document" &&
-            getAsXml === true
-          ) {
-            // Handle .docx files by unzipping and extracting document.xml
-            try {
-              content = extractTextFromDocx(buffer);
-            } catch (error) {
-              return new Err(
-                new MCPError(
-                  `Failed to extract text from docx: ${normalizeError(error).message}`
-                )
-              );
-            }
-          } else if (isTextExtractionSupportedContentType(mimeType)) {
-            try {
-              const textExtraction = new TextExtraction(
-                config.getTextExtractionUrl(),
-                {
-                  enableOcr: true,
-                  logger,
-                }
-              );
-
-              const bufferStream = Readable.from(buffer);
-              const textStream = await textExtraction.fromStream(
-                bufferStream,
-                mimeType as Parameters<typeof textExtraction.fromStream>[1]
-              );
-
-              const chunks: string[] = [];
-              for await (const chunk of textStream) {
-                chunks.push(chunk.toString());
-              }
-
-              content = chunks.join("");
-            } catch (error) {
-              return new Err(
-                new MCPError(
-                  `Failed to extract text: ${normalizeError(error).message}`
-                )
-              );
-            }
-          } else {
-            return new Err(new MCPError(`Unsupported mime type: ${mimeType}`));
+          try {
+            content = await downloadAndProcessMicrosoftFile({
+              downloadUrl,
+              mimeType,
+              fileName: response.name,
+              extractAsXml: getAsXml,
+            });
+          } catch (error) {
+            return new Err(
+              new MCPError(
+                `Failed to process file: ${normalizeError(error).message}`
+              )
+            );
           }
 
           // Apply offset and limit
@@ -424,7 +364,6 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to retrieve file content"
             )
           );
@@ -537,7 +476,6 @@ function createServer(
               } catch (err) {
                 const error = normalizeError(err);
                 const isNotFound =
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   error.message.toLowerCase().includes("could not be found") ||
                   error.message.toLowerCase().includes("not found");
 
@@ -616,7 +554,7 @@ function createServer(
           ]);
         } catch (err) {
           const error = normalizeError(err);
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
           const errorMessage = error.message || "Failed to upload file";
           return new Err(new MCPError(errorMessage));
         }

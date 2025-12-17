@@ -21,6 +21,8 @@ type Metrics = {
   conversations: number;
   activeUsers: number;
   costMicroUsd: number;
+  avgCostMicroUsd: number;
+  p95CostMicroUsd: number;
   avgLatencyMs: number;
   percentilesLatencyMs: number;
   failedMessages: number;
@@ -48,6 +50,8 @@ export type MetricsBucket = {
   unique_conversations?: estypes.AggregationsCardinalityAggregate;
   active_users?: estypes.AggregationsCardinalityAggregate;
   cost_micro_usd?: estypes.AggregationsSumAggregate;
+  avg_cost_micro_usd?: estypes.AggregationsAvgAggregate;
+  percentiles_cost_micro_usd?: KeyedTDigestPercentiles;
   avg_latency_ms?: estypes.AggregationsCardinalityAggregate;
   percentiles_latency_ms?: KeyedTDigestPercentiles;
   failed_messages?: estypes.AggregationsFilterAggregate;

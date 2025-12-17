@@ -198,7 +198,6 @@ function makeServerSideMCPToolConfigurations(
     tables: config.tables,
     availability: tool.availability,
     childAgentId: config.childAgentId,
-    reasoningModel: config.reasoningModel,
     timeFrame: config.timeFrame,
     jsonSchema: config.jsonSchema,
     additionalConfiguration: config.additionalConfiguration,
@@ -644,25 +643,68 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 >;
 
 /**
+ * Deduplicates MCP server configurations by view ID and name.
+ * Priority order: agent actions > client-side > skill servers > JIT servers.
+ */
+function deduplicateMCPServerConfigurations({
+  agentActions,
+  clientSideActions,
+  skillServers,
+  jitServers,
+}: {
+  agentActions: MCPServerConfigurationType[];
+  clientSideActions: MCPServerConfigurationType[];
+  skillServers: MCPServerConfigurationType[];
+  jitServers: MCPServerConfigurationType[];
+}): MCPServerConfigurationType[] {
+  const seen = new Set<string>();
+  return [
+    ...agentActions,
+    ...clientSideActions,
+    ...skillServers,
+    ...jitServers,
+  ].filter((config) => {
+    const viewId = isServerSideMCPServerConfiguration(config)
+      ? config.mcpServerViewId
+      : config.clientSideMcpServerId;
+    const key = `${viewId}:${config.name}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
  * List the MCP tools for the given agent actions.
  * Returns MCP tools by connecting to the specified MCP servers.
  */
 export async function tryListMCPTools(
   auth: Authenticator,
   agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
-  jitServers?: MCPServerConfigurationType[]
+  {
+    jitServers,
+    skillServers,
+  }: {
+    jitServers: MCPServerConfigurationType[];
+    skillServers: MCPServerConfigurationType[];
+  }
 ): Promise<{
   serverToolsAndInstructions: ServerToolsAndInstructions[];
   error?: string;
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Filter for MCP server configurations.
-  const mcpServerActions = [
-    ...agentLoopListToolsContext.agentConfiguration.actions,
-    ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
-    ...(jitServers ?? []),
-  ];
+  const mcpServerActions = deduplicateMCPServerConfigurations({
+    agentActions: agentLoopListToolsContext.agentConfiguration.actions,
+    clientSideActions:
+      agentLoopListToolsContext.clientSideActionConfigurations ?? [],
+    skillServers,
+    jitServers,
+  });
 
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(

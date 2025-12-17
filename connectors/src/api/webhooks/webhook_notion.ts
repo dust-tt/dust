@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import type { NotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
 import { processNotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -41,19 +41,13 @@ const _webhookNotionAPIHandler = async (
 ) => {
   const payload = req.body;
 
-  // Handle verification token (one-time setup event)
-  // TODO: need a cleaner way of doing the initial verification handshake with Notion
+  // Note that Notion signature verification is handled in Firebase, before reaching this code.
+
+  // We should not normally receive these, as they are handled in Firebase.
   if ("verification_token" in payload) {
-    logger.info(
-      {
-        verification_token: payload.verification_token,
-      },
-      "Received Notion webhook verification token"
-    );
+    logger.warn("Received unexpected Notion webhook verification token");
     return res.status(200).end();
   }
-
-  // TODO: we need to add signature verification. We'll need to store the verification token somewhere.
 
   const notionWorkspaceId = payload.workspace_id;
   if (!notionWorkspaceId) {
@@ -71,12 +65,12 @@ const _webhookNotionAPIHandler = async (
     });
   }
 
-  // Find the connector state from the Notion workspace ID
-  const notionConnectorState = await NotionConnectorState.findOne({
+  // Find all connector states from the Notion workspace ID
+  const notionConnectorStates = await NotionConnectorStateModel.findAll({
     where: { notionWorkspaceId },
   });
 
-  if (!notionConnectorState) {
+  if (notionConnectorStates.length === 0) {
     logger.warn(
       { notionWorkspaceId },
       "Received Notion webhook for unknown Notion workspace"
@@ -84,43 +78,10 @@ const _webhookNotionAPIHandler = async (
     return res.status(200).end();
   }
 
-  // Now get the actual connector
-  const connector = await ConnectorResource.fetchById(
-    notionConnectorState.connectorId
-  );
-
-  if (!connector || connector.type !== "notion") {
-    logger.warn(
-      {
-        connectorId: notionConnectorState.connectorId,
-        notionWorkspaceId,
-      },
-      "Received Notion webhook for unknown or invalid connector"
-    );
-    return res.status(200).end();
-  }
-
-  if (connector.isPaused()) {
-    logger.info(
-      { connectorId: connector.id },
-      "Received Notion webhook for paused connector, skipping."
-    );
-    return res.status(200).end();
-  }
-
-  logger.info(
-    {
-      connectorId: connector.id,
-      type: payload.type,
-      entity: payload.entity?.id,
-    },
-    "Received Notion webhook event"
-  );
-
   if (payload.entity == null) {
     logger.warn(
       {
-        connectorId: connector.id,
+        notionWorkspaceId,
         payload,
       },
       "Received Notion webhook event with no entity, skipping."
@@ -128,24 +89,67 @@ const _webhookNotionAPIHandler = async (
     return res.status(200).end();
   }
 
-  // Process the webhook event
-  try {
-    await processNotionWebhookEvent({
-      connectorId: connector.id,
-      event: {
-        type: payload.type,
-        entity_id: payload.entity?.id,
-      },
-    });
-  } catch (err) {
-    logger.error(
-      {
-        err: normalizeError(err),
+  logger.info(
+    {
+      notionWorkspaceId,
+      connectorCount: notionConnectorStates.length,
+      notionConnectorStates: notionConnectorStates.map((n) => n.connectorId),
+      type: payload.type,
+      entity: payload.entity?.id,
+    },
+    "Received Notion webhook event"
+  );
+
+  // Process the webhook event for all matching connectors sequentially
+  let hasFailure = false;
+  for (const notionConnectorState of notionConnectorStates) {
+    try {
+      // Get the actual connector
+      const connector = await ConnectorResource.fetchById(
+        notionConnectorState.connectorId
+      );
+
+      if (!connector || connector.type !== "notion") {
+        logger.warn(
+          {
+            connectorId: notionConnectorState.connectorId,
+            notionWorkspaceId,
+          },
+          "Received Notion webhook for unknown or invalid connector"
+        );
+        continue;
+      }
+
+      if (connector.isPaused()) {
+        logger.info(
+          { connectorId: connector.id },
+          "Received Notion webhook for paused connector, skipping."
+        );
+        continue;
+      }
+
+      // Process the webhook event
+      await processNotionWebhookEvent({
         connectorId: connector.id,
-        notionWorkspaceId,
-      },
-      "Failed to process Notion webhook event"
-    );
+        event: {
+          type: payload.type,
+          entity_id: payload.entity?.id,
+        },
+      });
+    } catch (err) {
+      hasFailure = true;
+      logger.error(
+        {
+          err: normalizeError(err),
+          connectorId: notionConnectorState.connectorId,
+          notionWorkspaceId,
+        },
+        "Failed to process Notion webhook event"
+      );
+    }
+  }
+
+  if (hasFailure) {
     return res.status(500).end();
   }
 

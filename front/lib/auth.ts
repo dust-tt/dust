@@ -68,7 +68,7 @@ export const isOAuthToken = (token: string): boolean => {
 };
 
 export interface AuthenticatorType {
-  authMethod?: AuthMethodType;
+  authMethod: AuthMethodType;
   workspaceId: string;
   userId: string | null;
   role: RoleType;
@@ -91,7 +91,7 @@ export class Authenticator {
   _user: UserResource | null;
   _groups: GroupResource[];
   _workspace: WorkspaceResource | null;
-  _authMethod?: AuthMethodType;
+  _authMethod: AuthMethodType;
 
   // Should only be called from the static methods below.
   constructor({
@@ -107,7 +107,7 @@ export class Authenticator {
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
-    authMethod?: AuthMethodType;
+    authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
   }) {
@@ -697,7 +697,7 @@ export class Authenticator {
     return !!this._key;
   }
 
-  authMethod(): AuthMethodType | undefined {
+  authMethod(): AuthMethodType {
     return this._authMethod;
   }
 
@@ -924,7 +924,9 @@ export class Authenticator {
     };
   }
 
-  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
+  static async fromJSON(
+    authType: AuthenticatorType
+  ): Promise<Result<Authenticator, { code: "subscription_mismatch" }>> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
         ? WorkspaceResource.fetchById(authType.workspaceId)
@@ -941,12 +943,13 @@ export class Authenticator {
         ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
         : null;
 
-    assert(
-      !authType.subscriptionId ||
-        !subscription ||
-        subscription.sId === authType.subscriptionId,
-      `Subscription mismatch: expected ${authType.subscriptionId} but got ${subscription?.sId}`
-    );
+    if (
+      authType.subscriptionId &&
+      subscription &&
+      subscription.sId !== authType.subscriptionId
+    ) {
+      return new Err({ code: "subscription_mismatch" });
+    }
 
     let groups: GroupResource[] = [];
     if (authType.groupIds.length > 0 && workspace) {
@@ -985,15 +988,17 @@ export class Authenticator {
       }
     }
 
-    return new Authenticator({
-      authMethod: authType.authMethod,
-      workspace,
-      user,
-      role: authType.role,
-      groups,
-      subscription,
-      key: authType.key,
-    });
+    return new Ok(
+      new Authenticator({
+        authMethod: authType.authMethod,
+        workspace,
+        user,
+        role: authType.role,
+        groups,
+        subscription,
+        key: authType.key,
+      })
+    );
   }
 }
 

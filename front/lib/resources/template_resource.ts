@@ -11,7 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
-  isResourceSId,
   makeSId,
 } from "@app/lib/resources//string_ids";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -22,7 +21,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TemplateResource
   extends ReadonlyAttributesType<TemplateModel> {}
@@ -129,10 +128,6 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       id,
       workspaceId: CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
     });
-  }
-
-  static isTemplateSId(sId: string): boolean {
-    return isResourceSId("template", sId);
   }
 
   async delete(

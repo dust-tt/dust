@@ -11,9 +11,9 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
+  GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -33,13 +33,13 @@ async function migrateConnector(
   const logger = parentLogger.child({ connectorId: connector.id });
   logger.info("Starting migration");
 
-  const files = await GoogleDriveFiles.findAll({
+  const files = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connector.id,
     },
   });
 
-  const roots = await GoogleDriveFolders.findAll({
+  const roots = await GoogleDriveFoldersModel.findAll({
     where: {
       connectorId: connector.id,
     },
@@ -79,7 +79,7 @@ async function migrateConnector(
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   logger.info({ totalProcessed }, "Files: total processed");
-  const sheets = await GoogleDriveSheet.findAll({
+  const sheets = await GoogleDriveSheetModel.findAll({
     where: {
       connectorId: connector.id,
     },
@@ -116,7 +116,7 @@ async function processFilesBatch({
 }: {
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
-  files: GoogleDriveFiles[];
+  files: GoogleDriveFilesModel[];
   execute: boolean;
   startTimeTs: number;
   driveRoots: string[];
@@ -185,7 +185,7 @@ async function processSheetsBatch({
 }: {
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
-  sheets: GoogleDriveSheet[];
+  sheets: GoogleDriveSheetModel[];
   execute: boolean;
   startTimeTs: number;
   driveRoots: string[];

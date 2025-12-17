@@ -19,14 +19,15 @@ export async function conversationUnreadNotificationActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   // Contruct back an authenticator from the auth type.
-  const auth = await Authenticator.fromJSON(authType);
-  if (!auth) {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
     logger.error(
-      { authType },
+      { authType, error: authResult.error },
       "Failed to construct authenticator from auth type"
     );
     return;
   }
+  const auth = authResult.value;
   if (!isUserMessageOrigin(agentLoopArgs.userMessageOrigin)) {
     logger.info(
       { userMessageOrigin: agentLoopArgs.userMessageOrigin },

@@ -33,6 +33,7 @@ function createServer(
       }
     });
 
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: {

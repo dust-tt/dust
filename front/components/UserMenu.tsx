@@ -1,6 +1,7 @@
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
+  ChatBubbleBottomCenterPlusIcon,
   ChevronDownIcon,
   ChromeLogo,
   cn,
@@ -26,10 +27,15 @@ import {
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import { forceUserRole, showDebugTools } from "@app/lib/development";
+import {
+  forceUserRole,
+  sendOnboardingConversation,
+  showDebugTools,
+} from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
@@ -54,6 +60,11 @@ export function UserMenu({
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();
+  const { clearAllDraftsFromUser } = useConversationDrafts({
+    workspaceId: owner.sId,
+    userId: user.sId,
+    conversationId: null,
+  });
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -76,6 +87,31 @@ export function UserMenu({
       }
     },
     [owner, sendNotification, user, featureFlags]
+  );
+
+  const handleSendOnboarding = useMemo(
+    () => async () => {
+      const result = await sendOnboardingConversation(owner, featureFlags);
+      if (result.isOk) {
+        sendNotification({
+          title: "Success !",
+          description: "Onboarding conversation created (redirecting...)",
+          type: "success",
+        });
+        setTimeout(() => {
+          void router.push(
+            `/w/${owner.sId}/conversation/${result.conversationSId}`
+          );
+        }, 1000);
+      } else {
+        sendNotification({
+          title: "Error !",
+          description: result.error,
+          type: "error",
+        });
+      }
+    },
+    [owner, sendNotification, featureFlags, router]
   );
 
   // Check if user has multiple workspaces
@@ -161,6 +197,9 @@ export function UserMenu({
           label="Sign&nbsp;out"
           icon={LogoutIcon}
           onClick={() => {
+            // Clear all conversation drafts for this user.
+            clearAllDraftsFromUser();
+
             datadogLogs.clearUser();
             window.DD_RUM.onReady(() => {
               window.DD_RUM.clearUser();
@@ -220,6 +259,13 @@ export function UserMenu({
                     onClick={privacyMask.toggle}
                     icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                   />
+                  {owner.role === "admin" && (
+                    <DropdownMenuItem
+                      label="Send onboarding conversation"
+                      onClick={handleSendOnboarding}
+                      icon={ChatBubbleBottomCenterPlusIcon}
+                    />
+                  )}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>

@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
@@ -18,6 +19,7 @@ export type ResourceTypeMap = {
   apps: AppResource;
   workspaces: LightWorkspaceType;
   data_sources: DataSourceResource;
+  mcp_server_views: MCPServerViewResource;
   spaces: SpaceResource;
   data_source_views: DataSourceViewResource;
   triggers: TriggerResource;
@@ -49,6 +51,9 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       break;
     case "data_source_views":
       result = await DataSourceViewResource.fetchById(auth, resourceId);
+      break;
+    case "mcp_server_views":
+      result = await MCPServerViewResource.fetchById(auth, resourceId);
       break;
     case "spaces":
       result = await SpaceResource.fetchById(auth, resourceId);

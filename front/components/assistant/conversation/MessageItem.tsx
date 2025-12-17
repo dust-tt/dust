@@ -13,7 +13,7 @@ import type {
 import {
   getMessageDate,
   getMessageSId,
-  isHandoverUserMessage,
+  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -127,7 +127,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
-    if (isHandoverUserMessage(data)) {
+    if (isHiddenMessage(data)) {
       // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
       // because it has no value to display.
       return null;

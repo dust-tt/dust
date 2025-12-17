@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -14,6 +15,7 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { apiError } from "@app/logger/withlogging";
@@ -23,7 +25,7 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { isUserMessageType } from "@app/types";
+import { isString, isUserMessageType } from "@app/types";
 
 export type PostRenderConversationRequestBody = {
   agentId: string;
@@ -48,8 +50,8 @@ async function handler(
   >,
   session: SessionWithUser
 ): Promise<void> {
-  const { wId, cId } = req.query as { wId?: string; cId?: string };
-  if (!wId || typeof wId !== "string") {
+  const { wId, cId } = req.query;
+  if (!isString(wId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -58,7 +60,7 @@ async function handler(
       },
     });
   }
-  if (!cId || typeof cId !== "string") {
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -89,7 +91,7 @@ async function handler(
         onMissingAction,
       } = req.body as PostRenderConversationRequestBody;
 
-      if (!agentId || typeof agentId !== "string") {
+      if (!isString(agentId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -161,6 +163,18 @@ async function handler(
         attachments,
       });
 
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listForConversation(auth, {
+          agentConfiguration,
+          conversation,
+        });
+
+      // Fetch MCP server configurations from enabled skills.
+      const skillServers = await fetchSkillMCPServerConfigurations(
+        auth,
+        enabledSkills
+      );
+
       const clientSideMCPActionConfigurations =
         await createClientSideMCPServerConfigurations(
           auth,
@@ -193,6 +207,7 @@ async function handler(
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        richMentions: [],
       };
 
       const { serverToolsAndInstructions, error: mcpToolsListingError } =
@@ -204,7 +219,10 @@ async function handler(
             agentMessage: placeholderAgentMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
-          jitServers
+          {
+            jitServers,
+            skillServers,
+          }
         );
 
       const availableActions = serverToolsAndInstructions.flatMap(
@@ -242,6 +260,8 @@ async function handler(
         agentsList,
         conversationId: conversation.sId,
         serverToolsAndInstructions,
+        enabledSkills,
+        equippedSkills,
         featureFlags,
       });
 

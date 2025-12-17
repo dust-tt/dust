@@ -165,11 +165,32 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
             return false;
           }
 
+          const { state } = view;
+          const { $from } = state.selection;
+
+          // Check if we're inside a code block
+          const isInCodeBlock = $from.parent.type.name === "codeBlock";
+
+          // If we're in a code block, let the default paste behavior handle it
+          if (isInCodeBlock) {
+            return false;
+          }
+
+          // Check if we're inside inline code
+          const codeMark = state.schema.marks.code;
+          const isInInlineCode = codeMark && !!codeMark.isInSet($from.marks());
+
           // Prevent default and handle manually.
           event.preventDefault();
 
-          const { state } = view;
           const { from, to } = state.selection;
+
+          // If we're in inline code, just paste as plain text with the code mark
+          if (isInInlineCode) {
+            const transaction = state.tr.insertText(text, from, to);
+            view.dispatch(transaction);
+            return true;
+          }
 
           // Create a temporary document node to wrap the fragment and convert to JSON.
           const tempDoc = state.schema.topNodeType.create(null, slice.content);

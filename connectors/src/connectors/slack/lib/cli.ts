@@ -22,7 +22,10 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
+import {
+  SlackChannelModel,
+  SlackMessagesModel,
+} from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -43,7 +46,7 @@ export async function maybeLaunchSlackSyncWorkflowForChannelId(
   connectorId: number,
   slackChannelId: string
 ) {
-  const channelId = await SlackChannel.findOne({
+  const channelId = await SlackChannelModel.findOne({
     attributes: ["id"],
     where: {
       connectorId,
@@ -144,7 +147,7 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const thread = await SlackMessages.findOne({
+      const thread = await SlackMessagesModel.findOne({
         where: {
           connectorId: connector.id,
           channelId: args.channelId,
@@ -192,7 +195,7 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const existingMessage = await SlackMessages.findOne({
+      const existingMessage = await SlackMessagesModel.findOne({
         where: {
           connectorId: connector.id,
           channelId: args.channelId,
@@ -574,7 +577,7 @@ export const slack = async ({
         );
       }
 
-      const channel = await SlackChannel.findOne({
+      const channel = await SlackChannelModel.findOne({
         where: {
           connectorId: connector.id,
           slackChannelId: args.channelId,
@@ -649,7 +652,7 @@ export const slack = async ({
         channel.permission !== "read" &&
         channel.permission !== "read_write"
       ) {
-        const existing = await SlackChannel.findOne({
+        const existing = await SlackChannelModel.findOne({
           where: {
             connectorId: connector.id,
             slackChannelId: args.channelId,
@@ -693,7 +696,7 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const channel = await SlackChannel.findOne({
+      const channel = await SlackChannelModel.findOne({
         where: {
           connectorId: connector.id,
           slackChannelId: args.channelId,
@@ -745,7 +748,7 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      const channel = await SlackChannel.findOne({
+      const channel = await SlackChannelModel.findOne({
         where: {
           connectorId: connector.id,
           slackChannelId: args.channelId,

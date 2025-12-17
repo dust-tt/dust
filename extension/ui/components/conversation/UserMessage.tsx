@@ -12,9 +12,13 @@ import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/ui/components/markdown/ContentNodeMentionBlock";
+import {
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/ui/components/markdown/UserMentionBlock";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -38,6 +42,7 @@ export function UserMessage({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: AgentMentionBlock,
+      mention_user: getUserMentionPlugin(),
       content_node_mention: ContentNodeMentionBlock,
     }),
     []
@@ -47,6 +52,7 @@ export function UserMessage({
     () => [
       getCiteDirective(),
       agentMentionDirective,
+      userMentionDirective,
       contentNodeMentionDirective,
     ],
     []
@@ -71,6 +77,8 @@ export function UserMessage({
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
+                compactSpacing
+                canCopyQuotes={false}
               />
             </div>
             {message.mentions.length === 0 && isLastMessage && (

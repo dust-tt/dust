@@ -13,7 +13,6 @@ import {
   AgentChildAgentConfigurationModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
@@ -59,6 +58,9 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -232,14 +234,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentTablesQueryConfigurationTableModel.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
-
-    await AgentReasoningConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
@@ -492,6 +486,23 @@ export async function deleteMembersActivity({
   }
 }
 
+export async function deleteWebhookSourcesActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  const webhookSources = await WebhookSourceResource.listByWorkspace(auth);
+  for (const webhookSource of webhookSources) {
+    await WebhookRequestResource.deleteByWebhookSourceId(
+      auth,
+      webhookSource.id
+    );
+    await webhookSource.delete(auth);
+  }
+}
+
 export async function deleteSpacesActivity({
   workspaceId,
 }: {
@@ -559,6 +570,18 @@ export async function deleteSpacesActivity({
     );
     for (const mcpServerView of mcpServerViews) {
       await mcpServerView.delete(auth, { hardDelete: false });
+    }
+
+    // Delete all the webhook source views of the space.
+    const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+      auth,
+      space,
+      {
+        includeDeleted: true,
+      }
+    );
+    for (const webhookSourceView of webhookSourceViews) {
+      await webhookSourceView.hardDelete(auth);
     }
 
     await scrubSpaceActivity({

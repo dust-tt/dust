@@ -13,7 +13,6 @@ import {
   getServerTypeAndIdFromSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type {
   AutoInternalMCPServerNameType,
   MCPServerAvailability,
@@ -25,6 +24,7 @@ import {
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -54,7 +54,7 @@ import {
 } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerViewResource
   extends ReadonlyAttributesType<MCPServerViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -377,21 +377,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     return this.listBySpace(auth, systemSpace, options);
-  }
-
-  static async countBySpace(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<number> {
-    if (space.canRead(auth)) {
-      return this.model.count({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: space.id,
-        },
-      });
-    }
-    return 0;
   }
 
   static async listByMCPServer(
@@ -761,13 +746,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return makeSId("mcp_server_view", {
       id,
       workspaceId,
-    });
-  }
-
-  async setEditedBy(auth: Authenticator) {
-    await this.update({
-      editedByUserId: auth.user()?.id ?? null,
-      editedAt: new Date(),
     });
   }
 

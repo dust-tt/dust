@@ -44,11 +44,30 @@ import {
 const localLogger = logger.child({ module: "mcp_slack_personal" });
 
 export type SlackSearchMatch = {
+  author_id?: string;
   author_name?: string;
+  channel_id?: string;
   channel_name?: string;
   message_ts?: string;
   content?: string;
   permalink?: string;
+};
+
+type SlackSearchResponse = {
+  ok: boolean;
+  error?: string;
+  results: {
+    messages: Array<{
+      author_id?: string;
+      author_user_id?: string;
+      author_name?: string;
+      channel_id?: string;
+      channel_name?: string;
+      message_ts?: string;
+      content?: string;
+      permalink?: string;
+    }>;
+  };
 };
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
@@ -65,8 +84,10 @@ export const slackSearch = async (
       sort: "score",
       sort_dir: "desc",
       limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+      channel_types: "public_channel,private_channel,mpim,im",
     });
 
+    // eslint-disable-next-line no-restricted-globals
     const resp = await fetch(
       `https://slack.com/api/assistant.search.context?${params.toString()}`,
       {
@@ -81,23 +102,25 @@ export const slackSearch = async (
       throw new Error(`HTTP ${resp.status}`);
     }
 
-    type SlackSearchResponse = {
-      ok: boolean;
-      error?: string;
-      results: {
-        messages: SlackSearchMatch[];
-      };
-    };
-
     const data: SlackSearchResponse =
       (await resp.json()) as SlackSearchResponse;
     if (!data.ok) {
       // If invalid_action_token or other errors, throw to trigger fallback.
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      throw new Error(data.error || "unknown_error");
+      throw new Error(data.error ?? "unknown_error");
     }
 
-    const rawMatches: SlackSearchMatch[] = data.results.messages;
+    // Transform API response to match SlackSearchMatch format.
+    const rawMatches: SlackSearchMatch[] = (data.results.messages ?? []).map(
+      (msg) => ({
+        author_id: msg.author_id ?? msg.author_user_id,
+        author_name: msg.author_name,
+        channel_id: msg.channel_id,
+        channel_name: msg.channel_name,
+        message_ts: msg.message_ts,
+        content: msg.content,
+        permalink: msg.permalink,
+      })
+    );
 
     // Filter out matches that don't have a text.
     const matchesWithText = rawMatches.filter((match) => !!match.content);
@@ -131,7 +154,9 @@ export const slackSearch = async (
 
     // Transform to match expected format.
     const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
+      author_id: match.user,
       author_name: match.username,
+      channel_id: match.channel?.id,
       channel_name: match.channel?.name,
       message_ts: match.ts,
       content: match.text,
@@ -145,6 +170,37 @@ export const slackSearch = async (
     return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
   }
 };
+
+// Helper function to format a Slack message match for display in the UI.
+// Cleans up Slack-specific formatting and returns a human-readable string.
+function formatSlackMessageForDisplay(match: SlackSearchMatch): string {
+  const author = match.author_name
+    ? match.author_id
+      ? `${match.author_name} (${match.author_id})`
+      : match.author_name
+    : (match.author_id ?? "");
+
+  const channel = match.channel_name
+    ? match.channel_id
+      ? `${match.channel_name} (${match.channel_id})`
+      : match.channel_name
+    : (match.channel_id ?? "");
+
+  let content = match.content ?? "";
+
+  // assistant.search.context wraps search words in \uE000 and \uE001.
+  // which display as squares in the UI, so we strip them out.
+  // Ideally, there would be a way to disable this behavior in the Slack API.
+  content = content.replace(/[\uE000\uE001]/g, "");
+
+  // Replace mention <@U050CALAKFD|someone> with just @someone in content.
+  content = content.replace(
+    /<@([A-Z0-9]+)\|([^>]+)>/g,
+    (_m, _id, username) => `@${username}`
+  );
+
+  return `From ${author} in #${channel}:\n${content}`;
+}
 
 // Helper function to format date as YYYY-MM-DD with zero-padding.
 function formatDateForSlackQuery(date: Date): string {
@@ -292,6 +348,7 @@ async function getSlackAIEnablementStatus({
   try {
     // Use assistant.search.info to detect if Slack AI is enabled at workspace level
     // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean
+    // eslint-disable-next-line no-restricted-globals
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -317,8 +374,7 @@ async function getSlackAIEnablementStatus({
     const status = data.is_ai_search_enabled ? "enabled" : "disabled";
 
     return status;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (e) {
+  } catch {
     return "disconnected";
   }
 }
@@ -353,7 +409,7 @@ async function createServer(
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
       "search_messages",
-      "Search messages across all channels and DMs for the current user",
+      "Search messages across public channels, private channels, DMs, and group DMs where the current user is a member",
       {
         keywords: z
           .string()
@@ -456,8 +512,7 @@ async function createServer(
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) =>
-                    `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
+                  text: (match) => formatSlackMessageForDisplay(match),
                   id: (match) => match.message_ts ?? "",
                   content: (match) => match.content ?? "",
                 }
@@ -485,7 +540,7 @@ async function createServer(
   if (slackAIStatus === "enabled") {
     server.tool(
       "semantic_search_messages",
-      "Use semantic search to find messages across all channels and DMs for the current user",
+      "Use semantic search to find messages across public channels, private channels, DMs, and group DMs where the current user is a member",
       {
         query: z
           .string()
@@ -548,34 +603,12 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const getTextFromMatch = (match: SlackSearchMatch) => {
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const author = match.author_name || "Unknown";
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const channel = match.channel_name || "Unknown";
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                let content = match.content || "";
-
-                // assistant.search.context wraps search words in \uE000 and \uE001.
-                // which display as squares in the UI, so we strip them out.
-                // Ideally, there would be a way to disable this behavior in the Slack API.
-                content = content.replace(/[\uE000\uE001]/g, "");
-
-                // Replace <@U050CALAKFD|someone> with just @someone.
-                content = content.replace(
-                  /<@([A-Z0-9]+)\|([^>]+)>/g,
-                  (_m, _id, username) => `@${username}`
-                );
-
-                return `From ${author} in #${channel}: ${content}`;
-              };
-
               const results = buildSearchResults<SlackSearchMatch>(
                 matches,
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) => getTextFromMatch(match),
+                  text: (match) => formatSlackMessageForDisplay(match),
                   id: (match) => match.message_ts ?? "",
                   content: (match) => match.content ?? "",
                 }
@@ -613,7 +646,9 @@ async function createServer(
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules."
+          "The message to post, must follow the Slack message formatting rules. " +
+            "To mention a user, use <@user_id> (use the user's id field, not name). " +
+            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
       threadTs: z
         .string()
@@ -681,7 +716,9 @@ async function createServer(
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules."
+          "The message to post, must follow the Slack message formatting rules. " +
+            "To mention a user, use <@user_id> (use the user's id field, not name). " +
+            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
       post_at: z
         .union([z.number().int().positive(), z.string()])
@@ -734,12 +771,18 @@ async function createServer(
 
   server.tool(
     "list_users",
-    "List all users in the workspace",
+    "List all users in the workspace, and optionally user groups",
     {
       nameFilter: z
         .string()
         .optional()
         .describe("The name of the user to filter by (optional)"),
+      includeUserGroups: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, also include user groups in the response (optional, default: false)"
+        ),
     },
     withToolLogging(
       auth,
@@ -747,14 +790,18 @@ async function createServer(
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
       },
-      async ({ nameFilter }, { authInfo }) => {
+      async ({ nameFilter, includeUserGroups }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
           return new Err(new MCPError("Access token not found"));
         }
 
         try {
-          return await executeListUsers(nameFilter, accessToken);
+          return await executeListUsers({
+            nameFilter,
+            accessToken,
+            includeUserGroups,
+          });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
@@ -787,7 +834,7 @@ async function createServer(
         }
 
         try {
-          return await executeGetUser(userId, accessToken);
+          return await executeGetUser({ userId, accessToken });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
@@ -1042,10 +1089,10 @@ async function createServer(
         }
 
         // Get display name for the channel.
-        const displayName = await resolveChannelDisplayName(
+        const displayName = await resolveChannelDisplayName({
           channelId,
-          accessToken
-        );
+          accessToken,
+        });
 
         const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
@@ -1058,7 +1105,10 @@ async function createServer(
         const threadsWithAuthors = await Promise.all(
           matches.map(async (match) => {
             const authorName = match.user
-              ? await resolveUserDisplayName(match.user, accessToken)
+              ? await resolveUserDisplayName({
+                  userId: match.user,
+                  accessToken,
+                })
               : null;
             return {
               ...match,
@@ -1136,7 +1186,7 @@ async function createServer(
           return new Err(new MCPError("Access token not found"));
         }
 
-        return executeReadThreadMessages(
+        return executeReadThreadMessages({
           channel,
           threadTs,
           limit,
@@ -1144,8 +1194,8 @@ async function createServer(
           oldest,
           latest,
           accessToken,
-          mcpServerId
-        );
+          mcpServerId,
+        });
       }
     )
   );

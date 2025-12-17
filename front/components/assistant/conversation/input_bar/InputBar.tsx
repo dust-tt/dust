@@ -1,5 +1,5 @@
 import _ from "lodash";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
@@ -8,6 +8,7 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
@@ -28,14 +29,17 @@ import type {
   DataSourceViewContentNode,
   Result,
   RichMention,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 interface InputBarProps {
   owner: WorkspaceType;
+  user: UserType | null;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -54,6 +58,7 @@ interface InputBarProps {
 
 export const InputBar = React.memo(function InputBar({
   owner,
+  user,
   onSubmit,
   conversationId,
   stickyMentions,
@@ -84,6 +89,12 @@ export const InputBar = React.memo(function InputBar({
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 
+  const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
+    workspaceId: owner.sId,
+    userId: user?.sId ?? null,
+    conversationId,
+  });
+
   useEffect(() => {
     if (droppedFiles.length > 0) {
       // Handle the dropped files.
@@ -95,11 +106,15 @@ export const InputBar = React.memo(function InputBar({
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, setAnimate, selectedAgent } = useContext(InputBarContext);
+  const { animate, setAnimate, getAndClearSelectedAgent } =
+    useContext(InputBarContext);
   const { isOnboardingConversation } =
     useIsOnboardingConversation(conversationId);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const selectedAgent = useMemo(
+    () => getAndClearSelectedAgent(),
+    [getAndClearSelectedAgent]
+  );
   useEffect(() => {
     if (animate && !isAnimating) {
       setAnimate(false);
@@ -134,6 +149,8 @@ export const InputBar = React.memo(function InputBar({
     MCPServerViewType[]
   >([]);
 
+  const [selectedSkills, setSelectedSkills] = useState<SkillType[]>([]);
+
   const { conversationTools } = useConversationTools({
     conversationId,
     workspaceId: owner.sId,
@@ -161,6 +178,16 @@ export const InputBar = React.memo(function InputBar({
       prev.filter((sv) => sv.sId !== serverView.sId)
     );
     void deleteTool(serverView.sId);
+  };
+
+  const handleSkillSelect = (skill: SkillType) => {
+    setSelectedSkills((prev) => [...prev, skill]);
+    // TODO: Handle enabled skill in conversation
+  };
+
+  const handleSkillDeselect = (skill: SkillType) => {
+    setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
+    // TODO: Disabled skill in conversation
   };
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -241,6 +268,7 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(false);
       if (r.isOk()) {
         resetEditorText();
+        clearDraft();
         fileUploaderService.resetUpload();
       }
     } else {
@@ -256,6 +284,7 @@ export const InputBar = React.memo(function InputBar({
       });
 
       resetEditorText();
+      clearDraft();
       fileUploaderService.resetUpload();
       setAttachedNodes([]);
     }
@@ -333,7 +362,12 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
+            selectedSkills={selectedSkills}
+            onSkillSelect={handleSkillSelect}
+            onSkillDeselect={handleSkillDeselect}
             attachedNodes={attachedNodes}
+            saveDraft={saveDraft}
+            getDraft={getDraft}
           />
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   _getDefaultWebActionsForGlobalAgent,
   _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -18,8 +19,9 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_1_MODEL_CONFIG,
+  GPT_5_2_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   O1_MINI_MODEL_CONFIG,
@@ -171,6 +173,10 @@ export function _getGPT5GlobalAgent({
   const sId = GLOBAL_AGENTS_SID.GPT5;
   const metadata = getGlobalAgentMetadata(sId);
 
+  // GPT 5.2 is only available in non-EU regions (US)
+  const isEuRegion = regionConfig.getCurrentRegion() === "europe-west1";
+  const modelConfig = isEuRegion ? GPT_5_1_MODEL_CONFIG : GPT_5_2_MODEL_CONFIG;
+
   return {
     id: -1,
     sId,
@@ -187,8 +193,8 @@ export function _getGPT5GlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_MODEL_CONFIG.providerId,
-      modelId: GPT_5_MODEL_CONFIG.modelId,
+      providerId: modelConfig.providerId,
+      modelId: modelConfig.modelId,
       temperature: 0.7,
       /**
        * WARNING: Because the default in ChatGPT is no reasoning, we do the same
@@ -242,6 +248,10 @@ export function _getGPT5ThinkingGlobalAgent({
   const sId = GLOBAL_AGENTS_SID.GPT5_THINKING;
   const metadata = getGlobalAgentMetadata(sId);
 
+  // GPT 5.2 is only available in non-EU regions (US)
+  const isEuRegion = regionConfig.getCurrentRegion() === "europe-west1";
+  const modelConfig = isEuRegion ? GPT_5_1_MODEL_CONFIG : GPT_5_2_MODEL_CONFIG;
+
   return {
     id: -1,
     sId,
@@ -259,10 +269,10 @@ export function _getGPT5ThinkingGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_MODEL_CONFIG.providerId,
-      modelId: GPT_5_MODEL_CONFIG.modelId,
+      providerId: modelConfig.providerId,
+      modelId: modelConfig.modelId,
       temperature: 0.7,
-      reasoningEffort: GPT_5_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: modelConfig.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

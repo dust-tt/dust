@@ -26,6 +26,7 @@ import type {
   ConversationToolActionRequest,
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
+import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/by-spaces-summary";
 import type {
   ConversationError,
   ConversationWithoutContentType,
@@ -88,6 +89,29 @@ export function useConversations({
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
+  };
+}
+
+export function useSpaceConversationsSummary({
+  workspaceId,
+  options,
+}: {
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
+  const summaryFetcher: Fetcher<GetBySpacesSummaryResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/conversations/by-spaces-summary`,
+    summaryFetcher,
+    options
+  );
+
+  return {
+    summary: data?.summary ?? emptyArray(),
+    isLoading: !error && !data && !options?.disabled,
+    isError: !!error,
+    mutate,
   };
 }
 
@@ -693,7 +717,6 @@ export const useConversationParticipationOption = ({
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOption(null);
       return;
     }

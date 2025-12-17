@@ -9,6 +9,7 @@ import { fromError } from "zod-validation-error";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
+  isUserMessageContextValid,
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
@@ -144,6 +145,22 @@ async function handler(
         blocking,
       } = r.data;
 
+      if (
+        req.body.message?.context?.origin &&
+        message?.context?.origin &&
+        req.body.message.context.origin !== message.context.origin
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            authMethod: auth.authMethod(),
+            originProvided: req.body.message.context.origin,
+            originUsed: message.context.origin,
+          },
+          "Invalid origin used, fallbacking to default value"
+        );
+      }
+
       const origin = message?.context.origin ?? "api";
 
       if (message) {
@@ -229,21 +246,6 @@ async function handler(
                 "Messages from run_agent or agent_handover must come from a system key.",
             },
           });
-        }
-
-        if (
-          message.context.origin === "agent_handover" ||
-          message.context.origin === "run_agent" ||
-          message.context.originMessageId
-        ) {
-          logger.error(
-            {
-              panic: true,
-              origin: message.context.origin,
-              originMessageId: message.context.originMessageId,
-            },
-            "use agenticMessageData instead of origin."
-          );
         }
       }
 
@@ -413,6 +415,22 @@ async function handler(
           }
         }
 
+        const validateUserMessageContextRes = isUserMessageContextValid(
+          auth,
+          req,
+          ctx
+        );
+        if (!validateUserMessageContextRes) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "This origin is not allowed. See documentation to fix to an allowed origin.",
+            },
+          });
+        }
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message. `postUserMessage` returns as soon as the user message
         // and the agent messages are created, while `postUserMessageAndWaitForCompletion` waits for
@@ -443,7 +461,6 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (newContentFragment || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been

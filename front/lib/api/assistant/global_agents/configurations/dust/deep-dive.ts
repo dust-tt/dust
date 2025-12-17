@@ -2,7 +2,6 @@ import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  DEEP_DIVE_AVATAR_URL,
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
@@ -37,6 +36,7 @@ import {
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -442,7 +442,7 @@ export function _getDeepDiveGlobalAgent(
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
-  const pictureUrl = DEEP_DIVE_AVATAR_URL;
+  const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
 
   const deepAgent: Omit<
@@ -530,7 +530,6 @@ export function _getDeepDiveGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -552,7 +551,6 @@ export function _getDeepDiveGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -571,7 +569,6 @@ export function _getDeepDiveGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: GLOBAL_AGENTS_SID.DUST_PLANNING,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -593,7 +590,6 @@ export function _getDeepDiveGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -705,7 +701,6 @@ export function _getDustTaskGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {
         useSummary: true,
       },

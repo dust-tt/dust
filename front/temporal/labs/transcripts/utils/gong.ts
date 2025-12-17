@@ -108,6 +108,7 @@ export async function retrieveGongTranscripts(
   const fromDateTime = new Date(
     Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
   ).toISOString();
+  // eslint-disable-next-line no-restricted-globals
   const newTranscripts = await fetch(
     `https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`,
     {
@@ -222,6 +223,7 @@ export async function retrieveGongTranscriptContent(
         ? `https://api.gong.io/v2/users?cursor=${encodeURIComponent(cursor)}`
         : `https://api.gong.io/v2/users`;
 
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${gongAccessToken}`,
@@ -278,6 +280,7 @@ export async function retrieveGongTranscriptContent(
     return gongUser;
   };
 
+  // eslint-disable-next-line no-restricted-globals
   const call = await fetch(`https://api.gong.io/v2/calls/extensive`, {
     method: "POST",
     headers: {
@@ -354,6 +357,7 @@ export async function retrieveGongTranscriptContent(
     "[retrieveGongTranscripts] User participated in the call?"
   );
 
+  // eslint-disable-next-line no-restricted-globals
   const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
     method: "POST",
     headers: {

@@ -199,10 +199,14 @@ export async function validateAction(
       conversation
     );
 
-  // Harmless very rare race condition here where 2 validations get
+  // We only trigger an agent loop after the user has validated all actions
+  // for the current message.
+  // There is a harmless very rare race condition here where 2 validations get
   // blockedActions.length === 0. launchAgentLoopWorkflow will be called twice,
   // but only one will succeed.
-  if (blockedActions.length > 0) {
+  if (
+    blockedActions.filter((action) => action.messageId === messageId).length > 0
+  ) {
     logger.info(
       {
         blockedActions,

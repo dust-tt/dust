@@ -2,15 +2,19 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   compareCreditsForConsumption,
+  computeCreditAlertThresholdKey,
   decreaseProgrammaticCreditsV2,
 } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import logger from "@app/logger/logger";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types";
+
+type MockCreditForConsumption = Pick<CreditResource, "type" | "expirationDate">;
 
 describe("compareCreditsForConsumption", () => {
   const NOW = new Date();
@@ -19,8 +23,8 @@ describe("compareCreditsForConsumption", () => {
   function makeMockCredit(
     type: "free" | "payg" | "committed",
     expirationDate: Date
-  ): CreditResource {
-    return { type, expirationDate } as CreditResource;
+  ): MockCreditForConsumption {
+    return { type, expirationDate };
   }
 
   describe("type ordering", () => {
@@ -146,6 +150,15 @@ describe("decreaseProgrammaticCreditsV2", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
 
+  const testLogger = logger.child({
+    workspaceId: "test-workspace-id",
+    agentMessageId: "test-agent-message-id",
+    agentMessageVersion: 1,
+    conversationId: 123,
+    userMessageId: "test-user-message-id",
+    userMessageVersion: 1,
+  });
+
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -197,7 +210,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshed = await refreshCredit(credit);
       expect(refreshed.consumedAmountMicroUsd).toBe(3_000_000);
@@ -210,14 +230,28 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 10_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 10_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshed = await refreshCredit(credit);
       expect(refreshed.consumedAmountMicroUsd).toBe(5_000_000);
     });
 
     it("should not throw when no credits are available", async () => {
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 10_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 10_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
       // Should complete without error
     });
 
@@ -228,7 +262,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 0 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 0,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshed = await refreshCredit(credit);
       expect(refreshed.consumedAmountMicroUsd).toBe(0);
@@ -248,7 +289,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedFree = await refreshCredit(freeCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
@@ -269,7 +317,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedCommitted = await refreshCredit(committedCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
@@ -299,7 +354,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 1. freeCredit (200)
       // 2. committedCredit (200)
       // 3. paygCredit (100)
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 5_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 5_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedFree = await refreshCredit(freeCredit);
       const refreshedCommitted = await refreshCredit(committedCredit);
@@ -324,7 +386,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + TWO_MONTHS)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
       const refreshedLater = await refreshCredit(laterCredit);
@@ -345,7 +414,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + TWO_MONTHS)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 5_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 5_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedEarlier = await refreshCredit(earlierCredit);
       const refreshedLater = await refreshCredit(laterCredit);
@@ -369,7 +445,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + 6 * ONE_MONTH)
       );
 
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_000_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_000_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedPayg = await refreshCredit(paygCredit);
       const refreshedFree = await refreshCredit(freeCredit);
@@ -412,7 +495,14 @@ describe("decreaseProgrammaticCreditsV2", () => {
       // 2. freeLater (100)
       // 3. committedEarlier (100)
       // 4. paygEarlier (50)
-      await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3_500_000 });
+      await decreaseProgrammaticCreditsV2(
+        auth,
+        {
+          amountMicroUsd: 3_500_000,
+          userMessageOrigin: "api",
+        },
+        testLogger
+      );
 
       const refreshedFreeEarlier = await refreshCredit(freeEarlier);
       const refreshedFreeLater = await refreshCredit(freeLater);
@@ -426,5 +516,171 @@ describe("decreaseProgrammaticCreditsV2", () => {
       expect(refreshedPaygEarlier.consumedAmountMicroUsd).toBe(500_000);
       expect(refreshedPaygLater.consumedAmountMicroUsd).toBe(0);
     });
+  });
+});
+
+type MockCreditForThreshold = Pick<
+  CreditResource,
+  "sId" | "type" | "startDate"
+>;
+
+describe("computeCreditAlertThresholdKey", () => {
+  function makeMockCreditForThreshold(overrides: {
+    sId: string;
+    type: CreditResource["type"];
+    startDate?: Date | null;
+  }): MockCreditForThreshold {
+    return {
+      startDate: overrides.startDate ?? null,
+      sId: overrides.sId,
+      type: overrides.type,
+    };
+  }
+
+  it("returns threshold ID with both free and committed credits", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdKey(credits, 80);
+
+    expect(result).toBe("free-1-committed-1-80");
+  });
+
+  it("selects most recent free and committed credits by startDate", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-old",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "free-new",
+        type: "free",
+        startDate: new Date("2024-06-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-old",
+        type: "committed",
+        startDate: new Date("2024-02-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-new",
+        type: "committed",
+        startDate: new Date("2024-07-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdKey(credits, 80);
+
+    expect(result).toBe("free-new-committed-new-80");
+  });
+
+  it("returns undefined for missing free credit", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdKey(credits, 80);
+
+    expect(result).toBe("undefined-committed-1-80");
+  });
+
+  it("returns undefined for missing committed credit", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdKey(credits, 80);
+
+    expect(result).toBe("free-1-undefined-80");
+  });
+
+  it("returns undefined-undefined when no credits", () => {
+    const result = computeCreditAlertThresholdKey([], 80);
+
+    expect(result).toBe("undefined-undefined-80");
+  });
+
+  it("handles null startDate (sorts to end)", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-null",
+        type: "free",
+        startDate: null,
+      }),
+      makeMockCreditForThreshold({
+        sId: "free-dated",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdKey(credits, 80);
+
+    expect(result).toBe("free-dated-undefined-80");
+  });
+
+  it("uses different threshold percentages", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    expect(computeCreditAlertThresholdKey(credits, 50)).toBe(
+      "free-1-committed-1-50"
+    );
+    expect(computeCreditAlertThresholdKey(credits, 90)).toBe(
+      "free-1-committed-1-90"
+    );
+  });
+
+  it("ignores payg credits", () => {
+    const credits = [
+      makeMockCreditForThreshold({
+        sId: "free-1",
+        type: "free",
+        startDate: new Date("2024-01-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "payg-1",
+        type: "payg",
+        startDate: new Date("2024-06-01"),
+      }),
+      makeMockCreditForThreshold({
+        sId: "committed-1",
+        type: "committed",
+        startDate: new Date("2024-01-01"),
+      }),
+    ];
+
+    const result = computeCreditAlertThresholdKey(credits, 80);
+
+    expect(result).toBe("free-1-committed-1-80");
   });
 });

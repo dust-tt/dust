@@ -26,6 +26,7 @@ import {
 } from "@sparkle/components/markdown/TableBlock";
 import {
   preprocessDollarSigns,
+  preserveLineBreaks,
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
@@ -62,21 +63,28 @@ export function Markdown({
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
+  compactSpacing = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  canCopyQuotes = true,
 }: {
   content: string;
   isStreaming?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
+  compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
   forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  canCopyQuotes?: boolean;
 }) {
   const processedContent = useMemo(() => {
-    const sanitized = sanitizeContent(content);
+    let sanitized = sanitizeContent(content);
+    if (compactSpacing) {
+      sanitized = preserveLineBreaks(sanitized);
+    }
     return preprocessDollarSigns(sanitized);
-  }, [content]);
+  }, [content, compactSpacing]);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -126,6 +134,7 @@ export function Markdown({
         <ParagraphBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          compactSpacing={compactSpacing}
         >
           {children}
         </ParagraphBlock>
@@ -207,14 +216,18 @@ export function Markdown({
         </strong>
       ),
       input: Input,
-      blockquote: BlockquoteBlock,
+      blockquote: ({ children }) => (
+        <BlockquoteBlock buttonDisplay={canCopyQuotes ? "inside" : null}>
+          {children}
+        </BlockquoteBlock>
+      ),
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
-  }, [textColor, additionalMarkdownComponents]);
+  }, [textColor, compactSpacing, additionalMarkdownComponents]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [

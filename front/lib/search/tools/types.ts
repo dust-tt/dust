@@ -12,27 +12,31 @@ export type ToolSearchRawResult = {
   sourceUrl: string | null;
 };
 
-export type ToolSearchResult = ToolSearchRawResult & {
+export type ToolSearchServerResult = {
   serverViewId: string;
   serverName: string;
   serverIcon: CustomResourceIconType | InternalAllowedIconType;
 };
 
+export type ToolSearchResult = ToolSearchRawResult & ToolSearchServerResult;
+
 export type ToolSearchParams = {
   accessToken: string;
   query: string;
   pageSize: number;
+  metadata?: Record<string, string>;
 };
 
 export type ToolDownloadParams = {
   accessToken: string;
   externalId: string;
+  metadata?: Record<string, string>;
 };
 
 export type ToolDownloadResult = {
   content: string;
   fileName: string;
-  mimeType: string;
+  contentType: "text/markdown" | "text/csv" | "text/plain";
 };
 
 export type SearchableTool = {

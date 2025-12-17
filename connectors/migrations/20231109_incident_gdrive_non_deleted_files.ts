@@ -2,7 +2,7 @@ import { Sequelize } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 // To be run from connectors with `CORE_DATABASE_URI` and `FRONT_DATABASE_URI` set.
@@ -25,7 +25,7 @@ async function main() {
   console.log(`Processing ${gDriveConnectors.length} google drive connectors`);
 
   for (const c of gDriveConnectors) {
-    const files = await GoogleDriveFiles.findAll({
+    const files = await GoogleDriveFilesModel.findAll({
       where: {
         connectorId: c.id,
       },

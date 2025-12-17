@@ -1,12 +1,6 @@
-import {
-  Chip,
-  DataTable,
-  Hoverable,
-  LoadingBlock,
-  Page,
-} from "@dust-tt/sparkle";
+import { Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
@@ -36,7 +30,7 @@ const TYPE_SORT_ORDER: Record<CreditType, number> = {
 
 // Display labels for credit types
 const TYPE_LABELS: Record<CreditType, string> = {
-  free: "Included",
+  free: "Free",
   committed: "Committed",
   payg: "Pay-as-you-go",
 };
@@ -49,7 +43,7 @@ const TYPE_COLORS: Record<CreditType, "green" | "blue" | "primary"> = {
 };
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
-  return credits.sort((a, b) => {
+  return [...credits].sort((a, b) => {
     // First sort by type priority
     const typeDiff = TYPE_SORT_ORDER[a.type] - TYPE_SORT_ORDER[b.type];
     if (typeDiff !== 0) {
@@ -71,12 +65,12 @@ function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   });
 }
 
-function isExpired(credit: CreditDisplayData): boolean {
+export function isExpired(credit: CreditDisplayData): boolean {
   const now = Date.now();
   return credit.expirationDate !== null && credit.expirationDate <= now;
 }
 
-function getTableRows(credits: CreditDisplayData[]): RowData[] {
+export function getTableRows(credits: CreditDisplayData[]): RowData[] {
   return credits.map((credit) => ({
     sId: credit.sId,
     type: credit.type,
@@ -113,7 +107,7 @@ const Cell = (info: Info, children: React.ReactNode) => (
   </DataTable.CellContent>
 );
 
-const creditColumns: ColumnDef<RowData, string>[] = [
+export const creditColumns: ColumnDef<RowData, string>[] = [
   {
     id: "type" as const,
     header: "Type",
@@ -156,7 +150,7 @@ const creditColumns: ColumnDef<RowData, string>[] = [
   },
   {
     id: "by" as const,
-    header: "Bought By",
+    header: "Buyer",
     cell: (info: Info) => {
       const boughtByUser = info.row.original.boughtByUser;
       return (
@@ -169,7 +163,7 @@ const creditColumns: ColumnDef<RowData, string>[] = [
       );
     },
     meta: {
-      className: "w-10",
+      className: "w-16",
     },
   },
 ];
@@ -180,24 +174,9 @@ interface CreditsListProps {
 }
 
 export function CreditsList({ credits, isLoading }: CreditsListProps) {
-  const [showExpired, setShowExpired] = useState(false);
-
-  const { activeCredits, expiredCredits } = useMemo(() => {
-    const sorted = sortCredits([...credits]);
-    return {
-      activeCredits: sorted.filter((c) => !isExpired(c)),
-      expiredCredits: sorted.filter((c) => isExpired(c)),
-    };
-  }, [credits]);
-
   const displayedRows = useMemo(() => {
-    const active = getTableRows(activeCredits);
-    if (showExpired) {
-      const expired = getTableRows(expiredCredits);
-      return [...active, ...expired];
-    }
-    return active;
-  }, [activeCredits, expiredCredits, showExpired]);
+    return getTableRows(sortCredits([...credits]));
+  }, [credits]);
 
   if (isLoading) {
     return (
@@ -218,19 +197,5 @@ export function CreditsList({ credits, isLoading }: CreditsListProps) {
     );
   }
 
-  return (
-    <>
-      <DataTable data={displayedRows} columns={creditColumns} />
-      {expiredCredits.length > 0 && (
-        <div className="flex w-full justify-end pt-2">
-          <Hoverable
-            className="cursor-pointer text-sm text-gray-400 hover:text-gray-500 hover:underline"
-            onClick={() => setShowExpired(!showExpired)}
-          >
-            {showExpired ? "Hide expired" : "Show expired"}
-          </Hoverable>
-        </div>
-      )}
-    </>
-  );
+  return <DataTable data={displayedRows} columns={creditColumns} />;
 }

@@ -18,6 +18,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to dust-quick global agent running Gemini 3 with minimal reasoning",
     stage: "dust_only",
   },
+  dust_oai_global_agent: {
+    description: "Access to dust-oai global agent running OpenAI models",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
@@ -225,9 +229,18 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to Skills, which are packaged sets of instructions and tools",
     stage: "dust_only",
   },
-  universal_search: {
+  skills_similar_display: {
     description:
-      "WIP - Search from Input bar search in Knowledge and MCP tools. ",
+      "Display similar skills when creating a new skill to avoid duplicates",
+    stage: "dust_only",
+  },
+  schedules_management: {
+    description:
+      "Access to schedule management tools for creating scheduled automations",
+    stage: "dust_only",
+  },
+  conversations_groups: {
+    description: "Enable conversations groups in Spaces",
     stage: "dust_only",
   },
   databricks_tool: {

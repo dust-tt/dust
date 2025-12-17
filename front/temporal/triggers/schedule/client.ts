@@ -73,7 +73,7 @@ export async function createOrUpdateAgentSchedule({
     logger.warn(
       {
         userId: auth.getNonNullableUser().sId,
-        triggerId: trigger.sId(),
+        triggerId: trigger.sId,
         triggerEditorId: trigger.editor,
       },
       "User is not the editor of the trigger, skipping schedule creation/update."
@@ -81,12 +81,12 @@ export async function createOrUpdateAgentSchedule({
     return new Ok("");
   }
 
-  const scheduleId = makeTriggerScheduleId(workspace.sId, trigger.sId());
+  const scheduleId = makeTriggerScheduleId(workspace.sId, trigger.sId);
 
   const childLogger = logger.child({
     workspaceId: workspace.sId,
     scheduleId,
-    triggerId: trigger.sId(),
+    triggerId: trigger.sId,
     trigger: trigger.toJSON(),
   });
 
@@ -146,7 +146,7 @@ export async function deleteTriggerSchedule({
   trigger: TriggerResource;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = makeTriggerScheduleId(workspaceId, trigger.sId());
+  const scheduleId = makeTriggerScheduleId(workspaceId, trigger.sId);
 
   const childLogger = logger.child({
     workspaceId,

@@ -13,21 +13,19 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace, user, authenticator } =
+  const { req, res, workspace, user, authenticator, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  // Create system space first (required for webhook source creation)
-  await SpaceFactory.system(workspace);
   const space = await SpaceFactory.regular(workspace);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
   req.query.spaceId = space.sId;
 
-  return { req, res, workspace, space, user, authenticator };
+  return { req, res, workspace, space, user, authenticator, globalSpace };
 }
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSourceViewId]", () => {
@@ -59,13 +57,10 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
   });
 
   it("should successfully delete a webhook source view from global space", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
+    const { req, res, workspace, authenticator, globalSpace } = await setupTest(
       "admin",
       "DELETE"
     );
-
-    // Create global space
-    const globalSpace = await SpaceFactory.global(workspace);
 
     // Create a webhook source view in global space
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);

@@ -34,7 +34,9 @@ export class FireworksLLM extends LLM {
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {
-      throw new Error("FIREWORKS_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_FIREWORKS_API_KEY environment variable is required"
+      );
     }
     this.client = new OpenAI({
       apiKey: FIREWORKS_API_KEY,

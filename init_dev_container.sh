@@ -35,6 +35,12 @@ cargo run --bin elasticsearch_create_index -- --index-name data_sources_nodes --
 cargo run --bin elasticsearch_create_index -- --index-name data_sources --index-version 1 --skip-confirmation
 cd -
 
+cd front/
+npm install
+npx tsx ./scripts/create_elasticsearch_index.ts --index-name agent_message_analytics --index-version 2 --skip-confirmation
+npx tsx ./scripts/create_elasticsearch_index.ts --index-name user_search --index-version 1 --skip-confirmation
+cd -
+
 echo "--"
 echo "You should now run the following commands to setup the tables within the databases:"
 echo "cd front && ./admin/init_db.sh --unsafe && cd -"

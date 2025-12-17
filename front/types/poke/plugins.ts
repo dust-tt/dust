@@ -119,6 +119,7 @@ export interface PluginManifest<
   resourceTypes: R[];
   warning?: string;
   isHidden?: boolean;
+  redactResult?: boolean;
 }
 
 interface PluginResourceScope {
@@ -200,6 +201,7 @@ export const supportedResourceTypes = [
   "apps",
   "data_source_views",
   "data_sources",
+  "mcp_server_views",
   "spaces",
   "workspaces",
   "agents",

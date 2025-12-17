@@ -43,6 +43,7 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   GroupType,
@@ -100,7 +101,6 @@ export function CreateOrEditSpaceModal({
 
   useEffect(() => {
     if (!planAllowsSCIM) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setManagementType("manual");
     }
   }, [planAllowsSCIM]);
@@ -129,7 +129,6 @@ export function CreateOrEditSpaceModal({
 
       // Initialize management type from space data (if editing) or default to manual for new spaces
       if (spaceInfo?.managementMode !== undefined) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setManagementType(spaceInfo.managementMode);
       } else {
         setManagementType("manual");
@@ -158,7 +157,7 @@ export function CreateOrEditSpaceModal({
       setIsRestricted(isRestricted);
 
       let initialMembers: UserType[] = [];
-      if (spaceMembers && isRestricted) {
+      if (spaceMembers && space) {
         initialMembers = spaceMembers;
       } else if (!space) {
         initialMembers = [];
@@ -208,25 +207,18 @@ export function CreateOrEditSpaceModal({
     setIsSaving(true);
 
     if (space) {
-      if (isRestricted) {
-        if (planAllowsSCIM && managementType === "group") {
-          await doUpdate(space, {
-            isRestricted: true,
-            groupIds: selectedGroups.map((group) => group.sId),
-            managementMode: "group",
-            name: trimmedName,
-          });
-        } else {
-          await doUpdate(space, {
-            isRestricted: true,
-            memberIds: selectedMembers.map((vm) => vm.sId),
-            managementMode: "manual",
-            name: trimmedName,
-          });
-        }
+      if (planAllowsSCIM && managementType === "group") {
+        await doUpdate(space, {
+          isRestricted,
+          groupIds: selectedGroups.map((group) => group.sId),
+          managementMode: "group",
+          name: trimmedName,
+        });
       } else {
         await doUpdate(space, {
-          isRestricted: false,
+          isRestricted,
+          memberIds: selectedMembers.map((vm) => vm.sId),
+          managementMode: "manual",
           name: trimmedName,
         });
       }
@@ -236,26 +228,19 @@ export function CreateOrEditSpaceModal({
     } else if (!space) {
       let createdSpace;
 
-      if (isRestricted) {
-        if (planAllowsSCIM && managementType === "group") {
-          createdSpace = await doCreate({
-            name: trimmedName,
-            isRestricted: true,
-            groupIds: selectedGroups.map((group) => group.sId),
-            managementMode: "group",
-          });
-        } else {
-          createdSpace = await doCreate({
-            name: trimmedName,
-            isRestricted: true,
-            memberIds: selectedMembers.map((vm) => vm.sId),
-            managementMode: "manual",
-          });
-        }
+      if (planAllowsSCIM && managementType === "group") {
+        createdSpace = await doCreate({
+          name: trimmedName,
+          isRestricted,
+          groupIds: selectedGroups.map((group) => group.sId),
+          managementMode: "group",
+        });
       } else {
         createdSpace = await doCreate({
           name: trimmedName,
-          isRestricted: false,
+          isRestricted,
+          memberIds: selectedMembers.map((vm) => vm.sId),
+          managementMode: "manual",
         });
       }
 
@@ -390,7 +375,9 @@ export function CreateOrEditSpaceModal({
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
-          <SheetTitle>Space Settings{space ? `- ${spaceName}` : ""}</SheetTitle>
+          <SheetTitle>
+            Space Settings{space ? ` - ${spaceName}` : ""}
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
@@ -573,7 +560,10 @@ function RestrictedAccessBody({
   onMembersUpdated,
   onGroupsUpdated,
 }: RestrictedAccessBodyProps) {
-  if (!isRestricted) {
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  if (!isRestricted && !hasFeature("conversations_groups")) {
     return null;
   }
 

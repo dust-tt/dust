@@ -11,7 +11,6 @@ import { Err, Ok } from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProgrammaticUsageConfigurationResource
   extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}

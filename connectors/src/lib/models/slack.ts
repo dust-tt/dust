@@ -83,7 +83,7 @@ SlackConfigurationModel.init(
   }
 );
 
-export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
+export class SlackMessagesModel extends ConnectorBaseModel<SlackMessagesModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare channelId: string;
@@ -91,7 +91,7 @@ export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare documentId: string;
   declare skipReason?: string;
 }
-SlackMessages.init(
+SlackMessagesModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -129,7 +129,7 @@ SlackMessages.init(
   }
 );
 
-export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
+export class SlackChannelModel extends ConnectorBaseModel<SlackChannelModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -144,7 +144,7 @@ export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
   declare agentConfigurationId: CreationOptional<string | null>;
   declare autoRespondWithoutMention: CreationOptional<boolean>;
 }
-SlackChannel.init(
+SlackChannelModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -197,7 +197,7 @@ SlackChannel.init(
   }
 );
 
-export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage> {
+export class SlackChatBotMessageModel extends ConnectorBaseModel<SlackChatBotMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare channelId: string;
@@ -215,7 +215,7 @@ export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage>
   declare conversationId: string | null; // conversationId is set only for V2 conversations
   declare userType: "bot" | "user";
 }
-SlackChatBotMessage.init(
+SlackChatBotMessageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,

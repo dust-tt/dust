@@ -85,6 +85,7 @@ export class AshbyClient {
     data: unknown,
     schema: T
   ): Promise<Result<z.infer<T>, Error>> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
       method: "POST",
       headers: {

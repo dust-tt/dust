@@ -113,7 +113,11 @@ export function ChartContainer({
                 <div className="flex-1 overflow-hidden">
                   <ResponsiveContainer
                     width="100%"
-                    height={window.innerHeight - 250}
+                    height={
+                      typeof window !== "undefined"
+                        ? window.innerHeight - 250
+                        : undefined
+                    }
                   >
                     {children}
                   </ResponsiveContainer>

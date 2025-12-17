@@ -78,7 +78,9 @@ vi.mock("stripe", () => {
 
   return {
     Stripe: Object.assign(
-      vi.fn(() => mockClient),
+      vi.fn(function () {
+        return mockClient;
+      }),
       {
         errors: {
           StripeError: MockStripeError,

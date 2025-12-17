@@ -11,6 +11,8 @@ import { classNames } from "@app/lib/utils";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
+  assembled:
+    "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
@@ -221,7 +223,7 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
+      <H4 className="mb-6 w-full text-center text-foreground">
         Trusted by <span className="text-blue-500">2,000+</span> organizations
       </H4>
 

@@ -36,7 +36,12 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  PlanType,
+  ProgrammaticUsageConfigurationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 import { isDevelopment } from "@app/types";
 
 interface SubscriptionsDataTableProps {
@@ -85,15 +90,19 @@ export function SubscriptionsDataTable({
   );
 }
 
+interface ActiveSubscriptionTableProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  subscriptions: SubscriptionType[];
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+}
+
 export function ActiveSubscriptionTable({
   owner,
   subscription,
   subscriptions,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  subscriptions: SubscriptionType[];
-}) {
+  programmaticUsageConfig,
+}: ActiveSubscriptionTableProps) {
   return (
     <div className="flex flex-col">
       <div className="flex justify-between gap-3">
@@ -106,7 +115,11 @@ export function ActiveSubscriptionTable({
               owner={owner}
               subscriptions={subscriptions}
             />
-            <UpgradeDowngradeModal owner={owner} subscription={subscription} />
+            <UpgradeDowngradeModal
+              owner={owner}
+              subscription={subscription}
+              programmaticUsageConfig={programmaticUsageConfig}
+            />
           </div>
           <PokeTable>
             <PokeTableBody>
@@ -292,13 +305,17 @@ export function PlanLimitationsTable({
   );
 }
 
+interface UpgradeDowngradeModalProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+}
+
 function UpgradeDowngradeModal({
   owner,
   subscription,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}) {
+  programmaticUsageConfig,
+}: UpgradeDowngradeModalProps) {
   const router = useRouter();
   const { plans } = usePokePlans();
 
@@ -381,11 +398,21 @@ function UpgradeDowngradeModal({
               description="This action will downgrade the workspace to having no plan. This means that all the features will be disabled and members of
           the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
             />
+            {programmaticUsageConfig?.paygCapMicroUsd && (
+              <div className="rounded-md border border-warning-200 bg-warning-100 p-3 text-warning-800">
+                Cannot downgrade while Pay-as-you-go is enabled. Please disable
+                PAYG in the "Manage Programmatic Usage Configuration" plugin
+                first.
+              </div>
+            )}
             <div>
               <Button
                 variant="warning"
                 onClick={onDowngrade}
-                disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
+                disabled={
+                  subscription.plan.code === FREE_NO_PLAN_CODE ||
+                  programmaticUsageConfig?.paygCapMicroUsd
+                }
                 label="Downgrade to NO PLAN"
               />
             </div>
@@ -403,7 +430,10 @@ function UpgradeDowngradeModal({
               description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
             />
             <div>
-              <EnterpriseUpgradeDialog owner={owner} />
+              <EnterpriseUpgradeDialog
+                owner={owner}
+                programmaticUsageConfig={programmaticUsageConfig}
+              />
             </div>
             {isProPlanPrefix(subscription.plan.code) && (
               <>

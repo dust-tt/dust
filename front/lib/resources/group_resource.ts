@@ -1,7 +1,4 @@
-import type {
-  DirectoryGroup,
-  DirectoryGroup as WorkOSGroup,
-} from "@workos-inc/node";
+import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
   Attributes,
@@ -22,7 +19,6 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { SkillConfigurationResource } from "@app/lib/resources/skill_configuration_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -57,7 +53,7 @@ export const BUILDER_GROUP_NAME = "dust-builders";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
@@ -139,9 +135,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Creates a new skill editors group for the given skill and adds the creating
    * user to it.
    */
+  // TODO(SKILLS 2025-12-11): Move this to SkillResource.
   static async makeNewSkillEditorsGroup(
     auth: Authenticator,
-    skill: SkillConfigurationResource,
+    skill: SkillConfigurationModel,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const user = auth.getNonNullableUser();
@@ -278,74 +275,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Finds the specific editor group associated with a skill configuration.
-   */
-  static async findEditorGroupForSkill(
-    auth: Authenticator,
-    skill: SkillConfigurationModel
-  ): Promise<
-    Result<
-      GroupResource,
-      DustError<
-        "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
-      >
-    >
-  > {
-    const owner = auth.getNonNullableWorkspace();
-
-    const groupSkills = await GroupSkillModel.findAll({
-      where: {
-        skillConfigurationId: skill.id,
-        workspaceId: owner.id,
-      },
-      attributes: ["groupId"],
-    });
-
-    if (groupSkills.length === 0) {
-      return new Err(
-        new DustError(
-          "group_not_found",
-          "Editor group association not found for skill."
-        )
-      );
-    }
-
-    if (groupSkills.length > 1) {
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Multiple editor group associations found for skill."
-        )
-      );
-    }
-
-    const [groupSkill] = groupSkills;
-    const groups = await this.baseFetch(auth, {
-      where: {
-        id: groupSkill.groupId,
-      },
-    });
-
-    const [group] = groups.filter((g) => g.canRead(auth));
-    if (!group) {
-      return new Err(
-        new DustError("group_not_found", "Editor group not found for skill.")
-      );
-    }
-
-    if (group.kind !== "agent_editors") {
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Associated group is not an agent_editors group."
-        )
-      );
-    }
-
-    return new Ok(group);
-  }
-
-  /**
    * Finds the specific editor groups associated with a set of agent configuration.
    */
   static async findEditorGroupsForAgents(
@@ -440,36 +369,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       globalGroup,
     };
   }
-
-  static async makeNewProvisionedGroup(
-    auth: Authenticator,
-    {
-      workspace,
-      workOSGroup,
-    }: {
-      workspace: LightWorkspaceType;
-      workOSGroup: WorkOSGroup;
-    }
-  ): Promise<{ success: boolean }> {
-    const groupsWithSameName = await this.baseFetch(auth, {
-      where: {
-        name: workOSGroup.name, // Relying on the index (workspaceId, name).
-      },
-    });
-    if (groupsWithSameName.length > 0) {
-      return { success: false };
-    }
-
-    await this.makeNew({
-      kind: "provisioned",
-      name: workOSGroup.name,
-      workOSGroupId: workOSGroup.id,
-      workspaceId: workspace.id,
-    });
-
-    return { success: true };
-  }
-
   // sId
 
   get sId(): string {
@@ -633,6 +532,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       order,
     });
     return groupModels.map((b) => new this(this.model, b.get()));
+  }
+
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
   }
 
   static async fetchById(
@@ -1520,6 +1429,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         permissions: ["read"],
       },
     ];
+
     return [
       {
         groups: [

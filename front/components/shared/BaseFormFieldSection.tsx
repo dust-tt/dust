@@ -8,6 +8,7 @@ interface BaseFormFieldSectionProps<
   title?: string;
   description?: string;
   helpText?: string;
+  headerActions?: ReactNode;
   fieldName: string;
   triggerValidationOnChange?: boolean;
   children: (args: {
@@ -25,6 +26,7 @@ export function BaseFormFieldSection<
   title,
   description,
   helpText,
+  headerActions,
   fieldName,
   triggerValidationOnChange = false,
   children,
@@ -54,17 +56,24 @@ export function BaseFormFieldSection<
 
   return (
     <div className="space-y-4">
-      {(!!title || !!description) && (
-        <div>
-          {title && (
-            <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-              {title}
-            </h3>
-          )}
-          {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {description}
-            </p>
+      {(!!title || !!description || !!headerActions) && (
+        <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
+          <div>
+            {title && (
+              <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+                {title}
+              </h3>
+            )}
+            {description && (
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {description}
+              </p>
+            )}
+          </div>
+          {headerActions && (
+            <div className="flex w-full flex-col gap-2 sm:w-auto">
+              <div className="flex items-center gap-2">{headerActions}</div>
+            </div>
           )}
         </div>
       )}

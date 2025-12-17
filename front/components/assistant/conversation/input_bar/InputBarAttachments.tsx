@@ -93,6 +93,7 @@ export function InputBarAttachments({
         isUploading: blob.isUploading,
         description: uploadDate,
         iconName: blob.iconName,
+        provider: blob.provider,
         fileId: blob.fileId,
         onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
       };
@@ -117,7 +118,6 @@ export function InputBarAttachments({
           spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
 
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
         const visual = isWebsiteOrFolder ? (
           <Icon visual={logo} size="md" />

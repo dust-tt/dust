@@ -5,84 +5,42 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
-import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
 import {
   getConnectionForMCPServer,
   MCPServerPersonalAuthenticationRequiredError,
+  MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import {
   doesInternalMCPServerRequireBearerToken,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
-import type {
-  InternalMCPServerDefinitionType,
-  MCPServerDefinitionType,
-  MCPServerType,
-  MCPToolType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
+import type { MCPOAuthUseCase, Result } from "@app/types";
 import {
   assertNever,
   EnvironmentConfig,
   Err,
-  isOAuthProvider,
   normalizeError,
   Ok,
 } from "@app/types";
-
-export type AuthorizationInfo = {
-  provider: OAuthProvider;
-  supported_use_cases: MCPOAuthUseCase[];
-  scope?: string;
-};
-
-export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
-  return (
-    typeof a === "object" &&
-    a !== null &&
-    "provider" in a &&
-    isOAuthProvider(a.provider) &&
-    "supported_use_cases" in a
-  );
-}
-
-export function isInternalMCPServerDefinition(
-  server: Implementation
-): server is InternalMCPServerDefinitionType {
-  return (
-    "authorization" in server &&
-    (isAuthorizationInfo(server.authorization) ||
-      server.authorization === null) &&
-    "description" in server &&
-    typeof server.description === "string" &&
-    "icon" in server &&
-    typeof server.icon === "string" &&
-    isInternalAllowedIcon(server.icon)
-  );
-}
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -252,6 +210,24 @@ export const connectToMCPServer = async (
                   "Internal server requires workspace authentication but no connection found"
                 );
                 if (params.oAuthUseCase === "personal_actions") {
+                  // Check if admin connection exists for the server.
+                  const adminConnection = await getConnectionForMCPServer(
+                    auth,
+                    {
+                      mcpServerId: params.mcpServerId,
+                      connectionType: "workspace",
+                    }
+                  );
+                  // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                  if (!adminConnection) {
+                    return new Err(
+                      new MCPServerRequiresAdminAuthenticationError(
+                        params.mcpServerId,
+                        metadata.authorization.provider,
+                        metadata.authorization.scope
+                      )
+                    );
+                  }
                   return new Err(
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
@@ -259,8 +235,17 @@ export const connectToMCPServer = async (
                       metadata.authorization.scope
                     )
                   );
+                } else if (params.oAuthUseCase === "platform_actions") {
+                  // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                  return new Err(
+                    new MCPServerRequiresAdminAuthenticationError(
+                      params.mcpServerId,
+                      metadata.authorization.provider,
+                      metadata.authorization.scope
+                    )
+                  );
                 } else {
-                  // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
+                  assertNever(params.oAuthUseCase);
                 }
               }
             }
@@ -314,19 +299,39 @@ export const connectToMCPServer = async (
                 scope: c.connection.metadata.scope,
               };
             } else {
-              if (
-                params.oAuthUseCase === "personal_actions" &&
-                connectionType === "personal"
-              ) {
+              if (connectionType === "personal") {
+                // Check if admin connection exists for the server.
+                const adminConnection = await getConnectionForMCPServer(auth, {
+                  mcpServerId: params.mcpServerId,
+                  connectionType: "workspace",
+                });
+                // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                if (!adminConnection) {
+                  return new Err(
+                    new MCPServerRequiresAdminAuthenticationError(
+                      params.mcpServerId,
+                      remoteMCPServer.authorization.provider,
+                      remoteMCPServer.authorization.scope
+                    )
+                  );
+                }
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
                     remoteMCPServer.authorization.provider
                   )
                 );
+              } else if (connectionType === "workspace") {
+                // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                return new Err(
+                  new MCPServerRequiresAdminAuthenticationError(
+                    params.mcpServerId,
+                    remoteMCPServer.authorization.provider,
+                    remoteMCPServer.authorization.scope
+                  )
+                );
               } else {
-                // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
-                // For now, keeping iso.
+                assertNever(connectionType);
               }
             }
           }
@@ -334,12 +339,8 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
-                // Include stored custom headers (excluding Authorization; handled by authProvider)
-                headers: Object.fromEntries(
-                  Object.entries(remoteMCPServer.customHeaders ?? {}).filter(
-                    ([k]) => k.toLowerCase() !== "authorization"
-                  )
-                ),
+                // Include stored custom headers
+                headers: remoteMCPServer.customHeaders ?? {},
                 dispatcher: createMCPDispatcher(auth),
               },
               authProvider: new MCPOAuthProvider(auth, token),
@@ -461,40 +462,6 @@ async function connectToRemoteMCPServer(
       throw error;
     }
   }
-}
-
-export function extractMetadataFromServerVersion(
-  r: Implementation | undefined
-): MCPServerDefinitionType {
-  if (r) {
-    return {
-      name: r.name ?? DEFAULT_MCP_ACTION_NAME,
-      version: r.version ?? DEFAULT_MCP_ACTION_VERSION,
-      authorization: isInternalMCPServerDefinition(r) ? r.authorization : null,
-      description: isInternalMCPServerDefinition(r)
-        ? r.description
-        : DEFAULT_MCP_ACTION_DESCRIPTION,
-      icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
-      documentationUrl: isInternalMCPServerDefinition(r)
-        ? r.documentationUrl
-        : null,
-      developerSecretSelection: isInternalMCPServerDefinition(r)
-        ? r.developerSecretSelection
-        : undefined,
-      developerSecretSelectionDescription: isInternalMCPServerDefinition(r)
-        ? r.developerSecretSelectionDescription
-        : undefined,
-    };
-  }
-
-  return {
-    name: DEFAULT_MCP_ACTION_NAME,
-    version: DEFAULT_MCP_ACTION_VERSION,
-    description: DEFAULT_MCP_ACTION_DESCRIPTION,
-    icon: DEFAULT_MCP_SERVER_ICON,
-    authorization: null,
-    documentationUrl: null,
-  };
 }
 
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {

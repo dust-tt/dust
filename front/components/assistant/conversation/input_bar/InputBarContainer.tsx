@@ -34,6 +34,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
+import { getSkillIcon } from "@app/lib/skill";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -48,10 +49,11 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  getSupportedFileExtensions,
   normalizeError,
   toRichAgentMentionType,
 } from "@app/types";
-import { getSupportedFileExtensions } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
@@ -65,23 +67,28 @@ export const INPUT_BAR_ACTIONS = [
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
-  allAgents: LightAgentConfigurationType[];
-  onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  owner: WorkspaceType;
-  conversationId: string | null;
-  selectedAgent: RichAgentMention | null;
-  stickyMentions?: RichMention[];
   actions: InputBarAction[];
+  allAgents: LightAgentConfigurationType[];
+  attachedNodes: DataSourceViewContentNode[];
+  conversationId: string | null;
   disableAutoFocus: boolean;
-  isSubmitting: boolean;
   disableInput: boolean;
   fileUploaderService: FileUploaderService;
+  getDraft: () => { text: string } | null;
+  isSubmitting: boolean;
+  onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
+  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  attachedNodes: DataSourceViewContentNode[];
-  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
-  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
+  onSkillDeselect: (skill: SkillType) => void;
+  onSkillSelect: (skill: SkillType) => void;
+  owner: WorkspaceType;
+  saveDraft: (markdown: string) => void;
+  selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
+  selectedSkills: SkillType[];
+  stickyMentions?: RichMention[];
 }
 
 const InputBarContainer = ({
@@ -102,6 +109,11 @@ const InputBarContainer = ({
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  onSkillSelect,
+  onSkillDeselect,
+  selectedSkills,
+  saveDraft,
+  getDraft,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -375,6 +387,10 @@ const InputBarContainer = ({
   useEffect(() => {
     const handleUpdate = () => {
       setIsEmpty(editorService.isEmpty());
+
+      // Auto-save draft when content changes.
+      const { markdown } = editorService.getMarkdownAndMentions();
+      saveDraft(markdown);
     };
 
     if (editorRef.current) {
@@ -391,7 +407,7 @@ const InputBarContainer = ({
         editor.off("update", handleUpdate);
       }
     };
-  }, [editor, editorService]);
+  }, [editor, editorService, saveDraft]);
 
   const disableTextInput = isSubmitting || disableInput;
 
@@ -427,8 +443,7 @@ const InputBarContainer = ({
         }
       : {
           // TextSearchParams
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          search: nodeOrUrlCandidate?.url || "",
+          search: nodeOrUrlCandidate?.url ?? "",
           searchSourceUrls: true,
           includeDataSources: false,
           owner,
@@ -475,7 +490,6 @@ const InputBarContainer = ({
         );
         const node = sortedNodes[0];
         onNodeSelect(node);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedNode(node);
         return;
       }
@@ -507,6 +521,19 @@ const InputBarContainer = ({
       queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
+
+  // Restore draft when switching conversations (including new conversations).
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const draft = getDraft();
+    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
+    if (draft && editorService.isEmpty()) {
+      editorService.setContent(draft.text);
+    }
+  }, [conversationId, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,
@@ -561,6 +588,36 @@ const InputBarContainer = ({
         )}
         <div className="flex w-full flex-col py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center px-2">
+            {selectedSkills.map((skill) => (
+              <React.Fragment key={skill.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
+                <Chip
+                  size="xs"
+                  label={skill.name}
+                  icon={getSkillIcon(skill.icon)}
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onSkillDeselect(skill);
+                        }
+                  }
+                />
+                <Chip
+                  size="xs"
+                  icon={getSkillIcon(skill.icon)}
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onSkillDeselect(skill);
+                        }
+                  }
+                />
+              </React.Fragment>
+            ))}
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
                 {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -660,6 +717,9 @@ const InputBarContainer = ({
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}
                       onDeselect={onMCPServerViewDeselect}
+                      selectedSkills={selectedSkills}
+                      onSkillSelect={onSkillSelect}
+                      onSkillDeselect={onSkillDeselect}
                       disabled={disableTextInput}
                       buttonSize={buttonSize}
                     />

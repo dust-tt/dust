@@ -42,7 +42,9 @@ export class MistralLLM extends LLM {
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
-      throw new Error("MISTRAL_API_KEY environment variable is required");
+      throw new Error(
+        "DUST_MANAGED_MISTRAL_API_KEY environment variable is required"
+      );
     }
     this.client = new Mistral({
       apiKey: MISTRAL_API_KEY,

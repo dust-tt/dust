@@ -48,6 +48,12 @@ export type PokeDataSourceViewType = DataSourceViewType &
 export type PokeMCPServerViewType = MCPServerViewType &
   PokeItemBase & {
     space: PokeSpaceType;
+    connections: {
+      connectionType: "workspace" | "personal";
+      userId: string | null;
+      userFullName: string | null;
+      userEmail: string | null;
+    }[];
   };
 
 type PokeAgentActionType = AgentMessageType["actions"][number] & {

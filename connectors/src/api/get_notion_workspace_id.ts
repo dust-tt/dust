@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { NotionConnectorStateModel } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
@@ -24,7 +24,7 @@ const _getNotionWorkspaceIdHandler = async (
   const { connector_id } = req.params;
 
   try {
-    const connectorState = await NotionConnectorState.findOne({
+    const connectorState = await NotionConnectorStateModel.findOne({
       where: {
         connectorId: connector_id,
       },

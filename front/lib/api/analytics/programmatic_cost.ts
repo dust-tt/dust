@@ -7,6 +7,7 @@ import {
   buildMetricAggregates,
   parseMetricsFromBucket,
 } from "@app/lib/api/assistant/observability/messages_metrics";
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import {
   bucketsToArray,
   ensureAtMostNGroups,
@@ -285,10 +286,10 @@ export async function handleProgrammaticCostRequest(
       const { cycleStart: periodStart, cycleEnd: periodEnd } =
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      // Cap periodEnd to 5 days in the future to avoid empty chart areas.
-      const FIVE_DAYS_IN_MS = 5 * 24 * 60 * 60 * 1000;
+      // Cap periodEnd to 10 days in the future to avoid too big empty chart areas.
+      const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000;
       const cappedPeriodEnd = new Date(
-        Math.min(periodEnd.getTime(), Date.now() + FIVE_DAYS_IN_MS)
+        Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_IN_MS)
       );
 
       const timestamps = getTimestampsInRange(periodStart, cappedPeriodEnd);
@@ -361,11 +362,18 @@ export async function handleProgrammaticCostRequest(
         result.value.aggregations?.by_hour?.buckets
       );
 
+      // Apply the same markup to costs that is applied when consuming credits.
+      // This ensures the graph shows what users are actually billed.
+      const markupMultiplier = 1 + DUST_MARKUP_PERCENT / 100;
+
       // Add total points to groupValues
       groupValues["total"] = new Map<number, number>();
       totalBuckets.forEach((bucket) => {
         const point = parseMetricsFromBucket(bucket, ["costMicroUsd"]);
-        groupValues["total"]?.set(point.timestamp, point.costMicroUsd);
+        groupValues["total"]?.set(
+          point.timestamp,
+          point.costMicroUsd * markupMultiplier
+        );
       });
 
       if (result.value.aggregations?.by_group) {
@@ -394,7 +402,10 @@ export async function handleProgrammaticCostRequest(
         // Process all groups (top 5 + "Others") with single loop
         for (const { groupKey, points } of allGroupsToProcess) {
           groupValues[groupKey] = new Map(
-            points.map((point) => [point.timestamp, point.costMicroUsd])
+            points.map((point) => [
+              point.timestamp,
+              point.costMicroUsd * markupMultiplier,
+            ])
           );
         }
 
@@ -529,7 +540,7 @@ export async function handleProgrammaticCostRequest(
         // Add "total" to available groups
         availableGroups.push({
           groupKey: "total",
-          groupLabel: "Cumulative Cost",
+          groupLabel: "Total cost consumed",
         });
       }
 

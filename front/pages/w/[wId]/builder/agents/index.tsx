@@ -17,7 +17,6 @@ import Head from "next/head";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
@@ -224,8 +223,7 @@ export default function WorkspaceAssistants({
     return { uniqueTags };
   }, [agentConfigurations]);
 
-  const [showDetails, setShowDetails] =
-    useState<LightAgentConfigurationType | null>(null);
+  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
   const handleToggleAgentStatus = async (
     agent: LightAgentConfigurationType
@@ -297,64 +295,63 @@ export default function WorkspaceAssistants({
   }, []);
 
   return (
-    <ConversationsNavigationProvider>
-      <AppWideModeLayout
-        subscription={subscription}
+    <AppWideModeLayout
+      subscription={subscription}
+      owner={owner}
+      navChildren={<AgentSidebarMenu owner={owner} />}
+    >
+      <Head>
+        <title>Dust - Manage Agents</title>
+      </Head>
+      <AgentDetails
         owner={owner}
-        navChildren={<AgentSidebarMenu owner={owner} />}
-      >
-        <Head>
-          <title>Dust - Manage Agents</title>
-        </Head>
-        <AgentDetails
-          owner={owner}
-          user={user}
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          agentId={showDetails?.sId || null}
-          onClose={() => setShowDetails(null)}
-        />
-        <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-          <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
-          <Page.Vertical gap="md" align="stretch">
-            <div className="flex flex-row gap-2">
-              <SearchInput
-                ref={searchBarRef}
-                className="flex-grow"
-                name="search"
-                placeholder="Search (Name, Editors)"
-                value={assistantSearch}
-                onChange={(s) => {
-                  setAssistantSearch(s);
-                }}
-              />
-              {!isBatchEdit && (
-                <div className="flex gap-2">
-                  {isAdmin(owner) && (
-                    <Button
-                      variant="outline"
-                      icon={ListSelectIcon}
-                      label="Batch edit"
-                      onClick={() => {
-                        setIsBatchEdit(true);
-                      }}
-                    />
-                  )}
-
-                  <TagsFilterMenu
-                    tags={uniqueTags}
-                    selectedTags={selectedTags}
-                    setSelectedTags={setSelectedTags}
-                    owner={owner}
+        user={user}
+        agentId={detailedAgentId}
+        onClose={() => setDetailedAgentId(null)}
+      />
+      <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
+        <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
+        <Page.Vertical gap="md" align="stretch">
+          <div className="flex flex-row gap-2">
+            <SearchInput
+              ref={searchBarRef}
+              className="flex-grow"
+              name="search"
+              placeholder="Search (Name, Editors)"
+              value={assistantSearch}
+              onChange={(s) => {
+                setAssistantSearch(s);
+              }}
+            />
+            {!isBatchEdit && (
+              <div className="flex gap-2">
+                {isAdmin(owner) && (
+                  <Button
+                    variant="outline"
+                    icon={ListSelectIcon}
+                    label="Batch edit"
+                    onClick={() => {
+                      setIsBatchEdit(true);
+                    }}
                   />
-                  {!isRestrictedFromAgentCreation && (
-                    <CreateAgentButton
-                      owner={owner}
-                      dataGtmLocation="assistantsWorkspace"
-                    />
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+
+                <TagsFilterMenu
+                  tags={uniqueTags}
+                  selectedTags={selectedTags}
+                  setSelectedTags={setSelectedTags}
+                  owner={owner}
+                />
+                {!isRestrictedFromAgentCreation && (
+                  <CreateAgentButton
+                    owner={owner}
+                    dataGtmLocation="assistantsWorkspace"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+          {selectedTags.length > 0 && (
             <div className="flex flex-row gap-2">
               {selectedTags.map((tag) => (
                 <Chip
@@ -368,81 +365,77 @@ export default function WorkspaceAssistants({
                 />
               ))}
             </div>
-            <div className="flex flex-col pt-3">
-              {isBatchEdit ? (
-                <AgentEditBar
-                  onClose={() => {
-                    setIsBatchEdit(false);
-                    setSelection([]);
-                  }}
-                  owner={owner}
-                  selectedAgents={selectedAgents}
-                  tags={uniqueTags}
-                  mutateAgentConfigurations={mutateAgentConfigurations}
-                />
-              ) : (
-                <Tabs value={activeTab}>
-                  <TabsList>
-                    {visibleTabs.map((tab) => (
-                      <TabsTrigger
-                        key={tab.id}
-                        value={tab.id}
-                        label={tab.label}
-                        onClick={() =>
-                          !assistantSearch && setSelectedTab(tab.id)
-                        }
-                        tooltip={
-                          AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
-                            ?.description
-                        }
-                        isCounter={tab.id !== "archived"}
-                        counterValue={`${agentsByTab[tab.id].length}`}
-                      />
-                    ))}
-                  </TabsList>
-                </Tabs>
-              )}
-              {isAgentConfigurationsLoading ||
-              isArchivedAgentConfigurationsLoading ? (
-                <div className="mt-8 flex justify-center">
-                  <Spinner size="lg" />
-                </div>
-              ) : activeTab && agentsByTab[activeTab] ? (
-                <AssistantsTable
-                  isBatchEdit={isBatchEdit}
-                  selection={selection}
-                  setSelection={setSelection}
-                  owner={owner}
-                  agents={agentsByTab[activeTab]}
-                  setShowDetails={setShowDetails}
-                  handleToggleAgentStatus={handleToggleAgentStatus}
-                  showDisabledFreeWorkspacePopup={
-                    showDisabledFreeWorkspacePopup
-                  }
-                  setShowDisabledFreeWorkspacePopup={
-                    setShowDisabledFreeWorkspacePopup
-                  }
-                  mutateAgentConfigurations={mutateAgentConfigurations}
-                />
-              ) : (
-                !assistantSearch &&
-                !isRestrictedFromAgentCreation && (
-                  <div className="pt-2">
-                    <EmptyCallToAction
-                      href={`/w/${owner.sId}/builder/agents/create`}
-                      label="Create an agent"
-                      icon={PlusIcon}
-                      data-gtm-label="assistantCreationButton"
-                      data-gtm-location="assistantsWorkspace"
+          )}
+          <div className="flex flex-col pt-3">
+            {isBatchEdit ? (
+              <AgentEditBar
+                onClose={() => {
+                  setIsBatchEdit(false);
+                  setSelection([]);
+                }}
+                owner={owner}
+                selectedAgents={selectedAgents}
+                tags={uniqueTags}
+                mutateAgentConfigurations={mutateAgentConfigurations}
+              />
+            ) : (
+              <Tabs value={activeTab}>
+                <TabsList>
+                  {visibleTabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      label={tab.label}
+                      onClick={() => !assistantSearch && setSelectedTab(tab.id)}
+                      tooltip={
+                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
+                          ?.description
+                      }
+                      isCounter={tab.id !== "archived"}
+                      counterValue={`${agentsByTab[tab.id].length}`}
                     />
-                  </div>
-                )
-              )}
-            </div>
-          </Page.Vertical>
-        </div>
-      </AppWideModeLayout>
-    </ConversationsNavigationProvider>
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+            {isAgentConfigurationsLoading ||
+            isArchivedAgentConfigurationsLoading ? (
+              <div className="mt-8 flex justify-center">
+                <Spinner size="lg" />
+              </div>
+            ) : activeTab && agentsByTab[activeTab] ? (
+              <AssistantsTable
+                isBatchEdit={isBatchEdit}
+                selection={selection}
+                setSelection={setSelection}
+                owner={owner}
+                agents={agentsByTab[activeTab]}
+                setDetailedAgentId={setDetailedAgentId}
+                handleToggleAgentStatus={handleToggleAgentStatus}
+                showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
+                setShowDisabledFreeWorkspacePopup={
+                  setShowDisabledFreeWorkspacePopup
+                }
+                mutateAgentConfigurations={mutateAgentConfigurations}
+              />
+            ) : (
+              !assistantSearch &&
+              !isRestrictedFromAgentCreation && (
+                <div className="pt-2">
+                  <EmptyCallToAction
+                    href={`/w/${owner.sId}/builder/agents/create`}
+                    label="Create an agent"
+                    icon={PlusIcon}
+                    data-gtm-label="assistantCreationButton"
+                    data-gtm-location="assistantsWorkspace"
+                  />
+                </div>
+              )
+            )}
+          </div>
+        </Page.Vertical>
+      </div>
+    </AppWideModeLayout>
   );
 }
 

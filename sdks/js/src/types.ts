@@ -34,6 +34,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
   | "gpt-5.1"
+  | "gpt-5.2"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -296,30 +297,31 @@ export function isSupportedAudioContentType(
   return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
 
-const UserMessageOriginSchema = FlexibleEnumSchema<
-  | "agent_handover"
-  | "api"
-  | "email"
-  | "excel"
-  | "extension"
-  | "github-copilot-chat"
-  | "gsheet"
-  | "make"
-  | "n8n"
-  | "powerpoint"
-  | "raycast"
-  | "run_agent"
-  | "slack"
-  | "slack_workflow"
-  | "teams"
-  | "transcript"
-  | "triggered_programmatic"
-  | "triggered"
-  | "web"
-  | "zapier"
-  | "zendesk"
-  | "onboarding_conversation"
->()
+const UserMessageOriginSchema = z
+  .enum([
+    "api",
+    "cli",
+    "cli_programmatic",
+    "email",
+    "excel",
+    "extension",
+    "gsheet",
+    "make",
+    "n8n",
+    "powerpoint",
+    "raycast",
+    "slack",
+    "slack_workflow",
+    "teams",
+    "transcript",
+    "triggered_programmatic",
+    "triggered",
+    "web",
+    "zapier",
+    "zendesk",
+    "onboarding_conversation",
+  ])
+  .catch("api")
   .or(z.null())
   .or(z.undefined());
 
@@ -640,19 +642,21 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
-  | "claude_4_opus_feature"
   | "claude_4_5_opus_feature"
+  | "claude_4_opus_feature"
   | "confluence_tool"
+  | "conversations_groups"
   | "databricks_tool"
   | "deepseek_feature"
-  | "fireworks_new_model_feature"
   | "deepseek_r1_global_agent_feature"
-  | "dust_edge_global_agent"
-  | "dust_quick_global_agent"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "dust_edge_global_agent"
+  | "dust_quick_global_agent"
+  | "dust_oai_global_agent"
+  | "fireworks_new_model_feature"
   | "freshservice_tool"
   | "front_tool"
   | "google_sheets_tool"
@@ -674,22 +678,23 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "restrict_agents_publishing"
   | "salesforce_synced_queries"
-  | "salesforce_tool"
   | "salesforce_tool_write"
+  | "salesforce_tool"
   | "salesloft_tool"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
+  | "skills_similar_display"
   | "skills"
+  | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
-  | "slab_mcp"
   | "slideshow"
-  | "universal_search"
+  | "schedules_management"
   | "usage_data_api"
+  | "vanta_tool"
   | "web_summarization"
   | "xai_feature"
-  | "vanta_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -973,7 +978,6 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
-  originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
   lastTriggerRunAt: z.number().optional().nullable(),
@@ -3366,6 +3370,7 @@ export const GetMentionSuggestionsRequestQuerySchema = z.object({
   select: z
     .union([z.array(z.enum(["agents", "users"])), z.enum(["agents", "users"])])
     .optional(),
+  current: z.boolean().optional(),
 });
 
 export const GetMentionSuggestionsResponseBodySchema = z.object({

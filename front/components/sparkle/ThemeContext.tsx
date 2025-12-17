@@ -132,7 +132,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateTheme(theme);
   }, [theme, updateTheme]);
 

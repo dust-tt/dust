@@ -110,7 +110,6 @@ export function AgentDetails({
 
   useEffect(() => {
     // Reset to info tab when we open/close the modal
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedTab("info");
   }, [agentId]);
 
@@ -140,73 +139,97 @@ export function AgentDetails({
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
     !isGlobalAgent;
 
-  const DescriptionSection = () => (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Avatar
-          name="Agent avatar"
-          visual={agentConfiguration?.pictureUrl}
-          size="lg"
-        />
-        <div className="flex grow flex-col gap-1">
-          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${agentConfiguration?.name ?? ""}`}</div>
-          {agentConfiguration?.status === "active" && (
-            <div>
+  const DescriptionSection = () => {
+    const lastAuthor = agentConfiguration?.lastAuthors?.[0];
+    const editedDate =
+      agentConfiguration?.versionCreatedAt &&
+      new Date(agentConfiguration.versionCreatedAt).toLocaleDateString(
+        "en-US",
+        {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }
+      );
+
+    return (
+      <div className="flex flex-col items-center gap-4 pt-4">
+        <div className="relative flex items-center justify-center">
+          <div className="relative flex flex-col items-center gap-2">
+            <Avatar
+              name="Agent avatar"
+              visual={agentConfiguration?.pictureUrl}
+              size="xl"
+            />
+            {agentConfiguration?.status === "active" && (
               <Chip
+                size="mini"
                 color={SCOPE_INFO[agentConfiguration.scope].color}
                 icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
-              >
-                {SCOPE_INFO[agentConfiguration.scope].label}
-              </Chip>
-            </div>
+                label={SCOPE_INFO[agentConfiguration.scope].label}
+                className="absolute -bottom-3 shadow-sm"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Title and edit info */}
+        <div className="flex flex-col items-center gap-1">
+          <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+            {agentConfiguration?.name ?? ""}
+          </h2>
+          {editedDate && (
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Last edited: {editedDate}
+              {lastAuthor && ` by ${lastAuthor}`}
+            </p>
           )}
         </div>
-      </div>
-      {agentConfiguration?.status === "active" && (
-        <AgentDetailsButtonBar
-          owner={owner}
-          agentConfiguration={agentConfiguration}
-          isAgentConfigurationValidating={isAgentConfigurationValidating}
-        />
-      )}
 
-      {agentConfiguration?.status === "archived" && (
-        <>
-          <ContentMessage
-            title="This agent has been archived."
-            variant="warning"
-            icon={InformationCircleIcon}
-            size="sm"
-          >
-            It is no longer active and cannot be used.
-            <br />
-            <div className="mt-2">
-              <Button
-                variant="outline"
-                label="Restore"
-                onClick={() => {
-                  setShowRestoreModal(true);
-                }}
-                classname="mt-2"
-                icon={ArrowPathIcon}
-              />
-            </div>
-          </ContentMessage>
-
-          <RestoreAgentDialog
+        {agentConfiguration?.status === "active" && (
+          <AgentDetailsButtonBar
             owner={owner}
-            isOpen={showRestoreModal}
             agentConfiguration={agentConfiguration}
-            onClose={() => {
-              setShowRestoreModal(false);
-            }}
+            isAgentConfigurationValidating={isAgentConfigurationValidating}
           />
+        )}
 
-          <div className="flex justify-center"></div>
-        </>
-      )}
-    </div>
-  );
+        {agentConfiguration?.status === "archived" && (
+          <>
+            <ContentMessage
+              title="This agent has been archived."
+              variant="warning"
+              icon={InformationCircleIcon}
+              size="sm"
+            >
+              It is no longer active and cannot be used.
+              <br />
+              <div className="mt-2">
+                <Button
+                  variant="outline"
+                  label="Restore"
+                  onClick={() => {
+                    setShowRestoreModal(true);
+                  }}
+                  classname="mt-2"
+                  icon={ArrowPathIcon}
+                />
+              </div>
+            </ContentMessage>
+
+            <RestoreAgentDialog
+              owner={owner}
+              isOpen={showRestoreModal}
+              agentConfiguration={agentConfiguration}
+              onClose={() => {
+                setShowRestoreModal(false);
+              }}
+            />
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Sheet open={!!agentId} onOpenChange={onClose}>

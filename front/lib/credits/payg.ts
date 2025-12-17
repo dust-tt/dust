@@ -11,6 +11,7 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -99,7 +100,6 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     );
     return;
   }
-
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -136,6 +136,11 @@ export async function startOrResumeEnterprisePAYG({
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (!config) {
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:payg",
+      "customer:enterprise",
+    ]);
     return new Err(
       new Error(
         "Programmatic usage configuration must exist before enabling PAYG"
@@ -147,6 +152,11 @@ export async function startOrResumeEnterprisePAYG({
     paygCapMicroUsd,
   });
   if (updateResult.isErr()) {
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:payg",
+      "customer:enterprise",
+    ]);
     return updateResult;
   }
 
@@ -191,6 +201,11 @@ export async function startOrResumeEnterprisePAYG({
       );
     }
   }
+  statsDClient.increment("credits.top_up.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    "type:payg",
+    "customer:enterprise",
+  ]);
   return new Ok(undefined);
 }
 
@@ -242,7 +257,6 @@ export async function stopEnterprisePAYG({
       return result;
     }
   }
-
   logger.info({ workspaceId: workspace.sId }, "[Credit PAYG] PAYG disabled");
   return new Ok(undefined);
 }

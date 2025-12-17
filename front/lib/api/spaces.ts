@@ -18,6 +18,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -218,6 +219,19 @@ export async function hardDeleteSpace(
     }
   }
 
+  // Delete all webhook source views of the space.
+  const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+    auth,
+    space,
+    { includeDeleted: true }
+  );
+  for (const webhookSourceView of webhookSourceViews) {
+    const res = await webhookSourceView.hardDelete(auth);
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
   await withTransaction(async (t) => {
     // Delete all spaces groups.
     for (const group of space.groups) {
@@ -243,20 +257,10 @@ export async function hardDeleteSpace(
 
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
-  params:
-    | {
-        name: string;
-        isRestricted: true;
-        memberIds: string[];
-        managementMode: "manual";
-      }
-    | {
-        name: string;
-        isRestricted: true;
-        groupIds: string[];
-        managementMode: "group";
-      }
-    | { name: string; isRestricted: false },
+  params: { name: string; isRestricted: boolean } & (
+    | { memberIds: string[]; managementMode: "manual" }
+    | { groupIds: string[]; managementMode: "group" }
+  ),
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<
   Result<

@@ -16,13 +16,21 @@ import {
   Spinner,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import { getPriceAsString } from "@app/lib/client/subscription";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
 import type { StripePricingData } from "@app/lib/types/stripe/pricing";
+import { assertNever } from "@app/types";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
+
+const SUPPORT_EMAIL = "support@dust.tt";
+
+// Minimum purchase amount in microUsd ($1).
+const MIN_PURCHASE_MICRO_USD = 1_000_000;
 
 interface BuyCreditDialogProps {
   isOpen: boolean;
@@ -32,6 +40,7 @@ interface BuyCreditDialogProps {
   currency: string;
   discountPercent: number;
   creditPricing: StripePricingData | null;
+  creditPurchaseLimits: CreditPurchaseLimits | null;
 }
 
 export function BuyCreditDialog({
@@ -42,6 +51,7 @@ export function BuyCreditDialog({
   currency,
   discountPercent,
   creditPricing,
+  creditPurchaseLimits,
 }: BuyCreditDialogProps) {
   const [amountDollars, setAmountDollars] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -51,18 +61,40 @@ export function BuyCreditDialog({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const { purchaseCredits } = usePurchaseCredits({ workspaceId });
 
-  useEffect(() => {
-    if (isOpen) {
-      /* eslint-disable react-hooks/set-state-in-effect */
-      setAmountDollars("");
-      setAcceptedTerms(false);
-      setAcceptedNonRefundable(false);
-      setPurchaseState("idle");
-      setErrorMessage("");
-      setPaymentUrl(null);
-      /* eslint-enable react-hooks/set-state-in-effect */
+  const resetModalStateAndClose = useCallback(() => {
+    setAmountDollars("");
+    setAcceptedTerms(false);
+    setAcceptedNonRefundable(false);
+    setPurchaseState("idle");
+    setErrorMessage("");
+    setPaymentUrl(null);
+    onClose();
+  }, [onClose]);
+
+  const maxAmountDollars = useMemo(() => {
+    if (!creditPurchaseLimits || !creditPurchaseLimits.canPurchase) {
+      return null;
     }
-  }, [isOpen]);
+    return Math.floor(creditPurchaseLimits.maxAmountMicroUsd / 1_000_000);
+  }, [creditPurchaseLimits]);
+
+  const maxAmountFormatted = useMemo(() => {
+    if (!creditPurchaseLimits || !creditPurchaseLimits.canPurchase) {
+      return null;
+    }
+    return getPriceAsString({
+      currency: "usd",
+      priceInMicroUsd: creditPurchaseLimits.maxAmountMicroUsd,
+    });
+  }, [creditPurchaseLimits]);
+
+  const amountExceedsMax = useMemo(() => {
+    if (!maxAmountDollars) {
+      return false;
+    }
+    const amount = parseFloat(amountDollars);
+    return !isNaN(amount) && amount > maxAmountDollars;
+  }, [amountDollars, maxAmountDollars]);
 
   const handlePurchase = async () => {
     setPurchaseState("processing");
@@ -80,6 +112,8 @@ export function BuyCreditDialog({
         setErrorMessage(result.message);
         setPurchaseState("error");
         break;
+      default:
+        assertNever(result);
     }
   };
 
@@ -106,7 +140,11 @@ export function BuyCreditDialog({
   const discountInCurrency = creditsInCurrency * (effectiveDiscount / 100);
   const totalInCurrency = creditsInCurrency - discountInCurrency;
 
-  const canPurchase = isValidAmount && acceptedTerms && acceptedNonRefundable;
+  const canPurchase =
+    isValidAmount &&
+    acceptedTerms &&
+    acceptedNonRefundable &&
+    !amountExceedsMax;
 
   const renderContent = () => {
     switch (purchaseState) {
@@ -202,13 +240,20 @@ export function BuyCreditDialog({
                   value={amountDollars}
                   onChange={(e) => setAmountDollars(e.target.value)}
                   min="0"
+                  max={maxAmountDollars ?? undefined}
                   step="1"
                   className="pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  isError={amountExceedsMax}
+                  message={
+                    amountExceedsMax
+                      ? `Maximum purchase amount is ${maxAmountFormatted}`
+                      : undefined
+                  }
                 />
               </div>
             </div>
 
-            {isValidAmount && (
+            {isValidAmount && !amountExceedsMax && (
               <div className="flex flex-col gap-1 rounded-md border border-border bg-muted-background p-3 text-sm dark:border-border-night dark:bg-muted-background-night">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground dark:text-muted-foreground-night">
@@ -259,6 +304,19 @@ export function BuyCreditDialog({
                   </span>
                 </div>
               </div>
+            )}
+
+            {maxAmountFormatted && (
+              <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                Purchase up to {maxAmountFormatted} worth of credits.
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
+                  className="text-action-500 hover:underline"
+                >
+                  Contact support
+                </a>{" "}
+                if you need more.
+              </p>
             )}
 
             <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
@@ -341,7 +399,7 @@ export function BuyCreditDialog({
             rightButtonProps={{
               label: "Close",
               variant: "primary",
-              onClick: onClose,
+              onClick: resetModalStateAndClose,
             }}
           />
         );
@@ -351,7 +409,7 @@ export function BuyCreditDialog({
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
-              onClick: onClose,
+              onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
               label: "Go to Payment",
@@ -370,14 +428,18 @@ export function BuyCreditDialog({
             rightButtonProps={{
               label: "Close",
               variant: "outline",
-              onClick: onClose,
+              onClick: resetModalStateAndClose,
             }}
           />
         );
       default:
         return (
           <DialogFooter>
-            <Button label="Cancel" variant="outline" onClick={onClose} />
+            <Button
+              label="Cancel"
+              variant="outline"
+              onClick={resetModalStateAndClose}
+            />
             <Button
               label="Purchase Credits"
               variant="primary"
@@ -389,8 +451,150 @@ export function BuyCreditDialog({
     }
   };
 
+  // Cannot purchase: trialing.
+  if (
+    creditPurchaseLimits &&
+    !creditPurchaseLimits.canPurchase &&
+    creditPurchaseLimits.reason === "trialing"
+  ) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogDescription>
+              Credit purchases are not available during your trial period.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Credit purchases become available once you upgrade to a paid
+                plan. If you need credits during your trial, please contact our
+                support team.
+              </p>
+              <Button
+                label={`Contact ${SUPPORT_EMAIL}`}
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20during%20trial`,
+                    "_blank"
+                  )
+                }
+              />
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Cannot purchase: payment issue.
+  if (
+    creditPurchaseLimits &&
+    !creditPurchaseLimits.canPurchase &&
+    creditPurchaseLimits.reason === "payment_issue"
+  ) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogDescription>
+              Credit purchases require an active subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Please ensure your subscription is active and your payment
+                method is up to date. If you need assistance, please contact our
+                support team.
+              </p>
+              <Button
+                label={`Contact ${SUPPORT_EMAIL}`}
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20-%20payment%20issue`,
+                    "_blank"
+                  )
+                }
+              />
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Limit exhausted for this billing cycle.
+  if (
+    creditPurchaseLimits &&
+    creditPurchaseLimits.canPurchase &&
+    creditPurchaseLimits.maxAmountMicroUsd < MIN_PURCHASE_MICRO_USD
+  ) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogDescription>
+              You've reached your credit limit for this billing cycle.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Your credit purchase limit resets at the start of your next
+                billing cycle. If you need additional credits before then,
+                please contact our support team.
+              </p>
+              <Button
+                label={`Contact ${SUPPORT_EMAIL}`}
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20limit%20reached`,
+                    "_blank"
+                  )
+                }
+              />
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Can purchase.
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && resetModalStateAndClose()}
+    >
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Purchase Programmatic Credits</DialogTitle>

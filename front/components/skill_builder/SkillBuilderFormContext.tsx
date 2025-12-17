@@ -10,11 +10,14 @@ export const skillBuilderFormSchema = z.object({
     .string()
     .min(1, "Skill name is required")
     .refine((value) => !/\s/.test(value), "Skill name cannot contain spaces"),
-  description: z.string().min(1, "Skill description is required"),
+  agentFacingDescription: z
+    .string()
+    .min(1, "Description of when to use the skill is required"),
+  userFacingDescription: z.string().nullable(),
   instructions: z.string().min(1, "Skill instructions are required"),
-  scope: z.enum(["private", "workspace"]),
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
+  icon: z.string().nullable(),
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;

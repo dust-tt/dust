@@ -1,9 +1,5 @@
-import type {
-  BelongsToGetAssociationMixin,
-  CreationOptional,
-  ForeignKey,
-  NonAttribute,
-} from "sequelize";
+import isNil from "lodash/isNil";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -15,15 +11,10 @@ export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare customSkill: NonAttribute<SkillConfigurationModel> | null;
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
-  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
-
-  declare getCustomSkill: BelongsToGetAssociationMixin<SkillConfigurationModel>;
-  declare getAgentConfigurationModel: BelongsToGetAssociationMixin<AgentConfigurationModel>;
 }
 
 AgentSkillModel.init(
@@ -56,10 +47,13 @@ AgentSkillModel.init(
     sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
     validate: {
+      // A skill link must reference either a custom skill (workspace-specific, stored in DB)
+      // or a global skill (code-defined, referenced by string ID), but never both or neither.
       eitherGlobalOrCustomSkill() {
-        const hasCustomSkill = this.customSkillId !== null;
-        const hasGlobalSkill = this.globalSkillId !== null;
-        if (hasCustomSkill === hasGlobalSkill) {
+        const hasCustomSkill = !isNil(this.customSkillId);
+        const hasGlobalSkill = !isNil(this.globalSkillId);
+        const hasExactlyOne = hasCustomSkill !== hasGlobalSkill;
+        if (!hasExactlyOne) {
           throw new Error(
             "Exactly one of customSkillId or globalSkillId must be set"
           );

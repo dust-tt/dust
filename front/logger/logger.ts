@@ -1,6 +1,8 @@
 import type { LoggerOptions } from "pino";
 import pino from "pino";
 
+import type { UserType } from "@app/types";
+
 const NODE_ENV = process.env.NODE_ENV;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
 
@@ -52,7 +54,7 @@ export default logger;
 export type { Logger } from "pino";
 
 export function auditLog(
-  data: Record<string, unknown>,
+  data: { author: UserType | "no-author" } & Record<string, unknown>,
   message: string,
   auditLogger = logger
 ) {

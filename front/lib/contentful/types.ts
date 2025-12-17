@@ -106,6 +106,9 @@ export interface CustomerStoryFields {
 
   // SEO
   metaDescription?: string;
+
+  // UTM tracking
+  utmCampaign?: string;
 }
 
 export type CustomerStorySkeleton = EntrySkeletonType<
@@ -137,6 +140,7 @@ export interface CustomerStory {
   featured: boolean;
   createdAt: string;
   updatedAt: string;
+  utmCampaign: string | null;
 }
 
 export interface CustomerStorySummary {

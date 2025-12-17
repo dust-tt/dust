@@ -2,7 +2,7 @@ import assert from "assert";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ModelId } from "@app/types";
 
 export class SkillConfigurationFactory {
@@ -10,37 +10,32 @@ export class SkillConfigurationFactory {
     auth: Authenticator,
     overrides: Partial<{
       name: string;
-      description: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
       instructions: string;
       status: "active" | "archived";
-      scope: "private" | "workspace";
-      version: number;
     }> = {}
-  ): Promise<SkillConfigurationModel> {
-    const workspace = auth.getNonNullableWorkspace();
+  ): Promise<SkillResource> {
     const user = auth.user();
     assert(user, "User is required");
 
     const name = overrides.name ?? "Test Skill";
-    const description = overrides.description ?? "Test skill description";
+    const agentFacingDescription =
+      overrides.agentFacingDescription ?? "Test skill agent facing description";
+    const userFacingDescription =
+      overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
-    const scope = overrides.scope ?? "private";
-    const version = overrides.version ?? 1;
 
-    const skill = await SkillConfigurationModel.create({
-      workspaceId: workspace.id,
+    return SkillResource.makeNew(auth, {
       authorId: user.id,
-      name,
-      description,
+      agentFacingDescription,
+      userFacingDescription,
       instructions,
-      status,
-      scope,
-      version,
+      name,
       requestedSpaceIds: [],
+      status,
     });
-
-    return skill;
   }
 
   static async linkToAgent(
@@ -59,6 +54,28 @@ export class SkillConfigurationFactory {
       workspaceId: workspace.id,
       customSkillId: skillId,
       globalSkillId: null,
+      agentConfigurationId,
+    });
+
+    return agentSkill;
+  }
+
+  static async linkGlobalSkillToAgent(
+    auth: Authenticator,
+    {
+      globalSkillId,
+      agentConfigurationId,
+    }: {
+      globalSkillId: string;
+      agentConfigurationId: ModelId;
+    }
+  ): Promise<AgentSkillModel> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentSkill = await AgentSkillModel.create({
+      workspaceId: workspace.id,
+      customSkillId: null,
+      globalSkillId,
       agentConfigurationId,
     });
 

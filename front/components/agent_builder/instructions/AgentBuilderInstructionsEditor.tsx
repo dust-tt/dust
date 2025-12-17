@@ -1,7 +1,8 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
-import type { Editor as CoreEditor } from "@tiptap/core";
+import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount } from "@tiptap/extensions";
 import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -19,11 +20,11 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import {
-  plainTextFromTipTapContent,
-  tipTapContentFromPlainText,
-} from "@app/lib/client/agent_builder/instructions";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -72,29 +73,52 @@ export function AgentBuilderInstructionsEditor({
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
+  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
+  const mentionsV2 = featureFlags.hasFeature("mentions_v2");
 
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
 
   const extensions = useMemo(() => {
-    return [
+    const extensions: Extensions = [
+      Markdown,
       StarterKit.configure({
-        heading: false,
-        bulletList: false,
-        orderedList: false,
-        listItem: false,
+        heading: false, // we use a custom one, see below
+        bulletList: {
+          HTMLAttributes: {
+            class: markdownStyles.unorderedList(),
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: markdownStyles.orderedList(),
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: markdownStyles.list(),
+          },
+        },
         blockquote: false,
         horizontalRule: false,
-        bold: false,
-        italic: false,
         strike: false,
         undoRedo: {
           depth: 100,
         },
+        code: {
+          HTMLAttributes: {
+            class: markdownStyles.codeBlock(),
+          },
+        },
         codeBlock: {
           HTMLAttributes: {
-            class: markdownStyles.code(),
+            class: markdownStyles.codeBlock(),
+          },
+        },
+        paragraph: {
+          HTMLAttributes: {
+            class: markdownStyles.paragraph(),
           },
         },
       }),
@@ -119,17 +143,39 @@ export function AgentBuilderInstructionsEditor({
           class: "mt-4 mb-3",
         },
       }),
+      EmojiExtension,
     ];
-  }, [suggestionHandler]);
+
+    if (mentionsV2) {
+      extensions.push(
+        MentionExtension.configure({
+          owner,
+          HTMLAttributes: {
+            class:
+              "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+          },
+          suggestion: createMentionSuggestion({
+            owner,
+            conversationId: null,
+            includeCurrentUser: true,
+            select: {
+              agents: false,
+              users: true,
+            },
+          }),
+        })
+      );
+    }
+
+    return extensions;
+  }, [mentionsV2, owner, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          const json = editor.getJSON();
-          const plainText = plainTextFromTipTapContent(json);
-          field.onChange(plainText);
+          field.onChange(editor.getMarkdown());
         }
       }, 250),
     [field, isInstructionDiffMode]
@@ -138,7 +184,8 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: tipTapContentFromPlainText(field.value),
+      content: field.value,
+      contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
           debouncedUpdate(editor);
@@ -190,12 +237,13 @@ export function AgentBuilderInstructionsEditor({
     if (editor.isFocused) {
       return;
     }
-    const currentContent = plainTextFromTipTapContent(editor.getJSON());
+    const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
       // Use setTimeout to ensure this runs after any diff mode changes
       setTimeout(() => {
-        editor.commands.setContent(tipTapContentFromPlainText(field.value), {
+        editor.commands.setContent(field.value, {
           emitUpdate: false,
+          contentType: "markdown",
         });
       }, 0);
     }
@@ -211,9 +259,8 @@ export function AgentBuilderInstructionsEditor({
         editor.commands.exitDiff();
       }
 
-      const currentText = plainTextFromTipTapContent(editor.getJSON());
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const compareText = compareVersion.instructions || "";
+      const currentText = editor.getMarkdown();
+      const compareText = compareVersion.instructions ?? "";
 
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);

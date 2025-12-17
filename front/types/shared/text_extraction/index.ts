@@ -94,6 +94,7 @@ export class TextExtraction {
     fileStream: Readable,
     contentType: SupportedContentTypes
   ): Promise<Readable> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${this.url}/tika/`, {
       method: "PUT",
       headers: {

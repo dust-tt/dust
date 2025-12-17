@@ -513,7 +513,7 @@ async function getBlockParent(
   // we attempt to go up the tree of blocks until we find a page or a database (or the workspace)
   // - after 8 levels of block parents, we give up and return null
   // - if we encounter a block that is not a full block, or we get a non-retriable error, we give up and return null
-  // - if we get 5 transient errors in a row, we throw an error (we let the tempooral activity manage the retries)
+  // - if we get 5 transient errors in a row, we throw an error (we let the temporal activity manage the retries)
   const max_depth = 8;
 
   const notionClient = new Client({
@@ -543,14 +543,25 @@ async function getBlockParent(
 
       if (!isFullBlock(block)) {
         // Not much we can do here to get the parent page.
+        localLogger.info(
+          { parentId: block.id, blockId },
+          "Parent block is not a full block."
+        );
         return null;
       }
 
       const parent = getPageOrBlockParent(block);
       if (parent.type === "unknown") {
-        localLogger.warn("Unknown block parent type.");
+        localLogger.warn(
+          { parentId: parent.id, parentType: parent.type, blockId },
+          "Unknown block parent type."
+        );
         return null;
       } else if (parent.type !== "block") {
+        localLogger.info(
+          { parentId: parent.id, parentType: parent.type, blockId },
+          "Found block parent that is not a block."
+        );
         return {
           parentId: parent.id,
           parentType: parent.type,

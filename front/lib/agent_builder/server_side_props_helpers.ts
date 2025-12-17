@@ -6,7 +6,6 @@ import type {
   AgentBuilderMCPConfigurationWithId,
 } from "@app/components/agent_builder/types";
 import { getDefaultMCPServerActionConfiguration } from "@app/components/agent_builder/types";
-import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
@@ -137,26 +136,6 @@ async function getMCPServerActionConfiguration(
     action.dustAppConfiguration;
 
   builderAction.configuration.childAgentId = action.childAgentId;
-
-  const { reasoningModel } = action;
-  if (reasoningModel) {
-    const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
-      (m) =>
-        m.modelId === reasoningModel.modelId &&
-        m.providerId === reasoningModel.providerId
-    );
-    if (supportedReasoningModel) {
-      const { modelId, providerId } = supportedReasoningModel;
-      builderAction.configuration.reasoningModel = {
-        modelId,
-        providerId,
-        temperature: null,
-        reasoningEffort:
-          reasoningModel.reasoningEffort ??
-          supportedReasoningModel.defaultReasoningEffort,
-      };
-    }
-  }
 
   builderAction.configuration.timeFrame = action.timeFrame;
   builderAction.configuration.jsonSchema = action.jsonSchema;

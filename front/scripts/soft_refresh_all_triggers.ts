@@ -58,7 +58,7 @@ makeScript(
         const user = await UserResource.fetchByModelId(t.editor);
         if (!user) {
           logger.error(
-            { triggerId: t.sId(), triggerName: t.name },
+            { triggerId: t.sId, triggerName: t.name },
             "Trigger editor user not found"
           );
           continue;
@@ -73,7 +73,7 @@ makeScript(
           await t.disable(editorAuth);
           await t.enable(editorAuth);
           logger.info(
-            { triggerId: t.sId(), triggerName: t.name },
+            { triggerId: t.sId, triggerName: t.name },
             "Trigger reset successful."
           );
           affectedTriggersCount++;
@@ -82,7 +82,7 @@ makeScript(
           );
         } else {
           logger.info(
-            { triggerId: t.sId(), triggerName: t.name },
+            { triggerId: t.sId, triggerName: t.name },
             "Would disable and re-enable trigger (dry run)"
           );
           logger.info(

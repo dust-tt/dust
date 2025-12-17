@@ -53,11 +53,15 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "im:read",
             "mpim:read",
             // Semantic search scopes.
+            "search:read",
             "search:read.public",
             "search:read.private",
+            "search:read.mpim",
+            "search:read.im",
             // User info scopes.
             "users:read.email",
             "users:read",
+            "usergroups:read",
           ];
         default:
           assert(

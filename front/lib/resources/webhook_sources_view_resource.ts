@@ -27,7 +27,7 @@ import type {
 } from "@app/types/triggers/webhooks";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WebhookSourcesViewResource
   extends ReadonlyAttributesType<WebhookSourcesViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -169,6 +169,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     } else {
       for (const view of views) {
         const r = await view.init(auth);
+
         if (r.isOk()) {
           filteredViews.push(view);
         }
@@ -205,21 +206,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: viewModelIds,
         },
       },
-    }).then((views) =>
-      views.filter((view) => view.canReadOrAdministrate(auth))
-    );
+    });
 
-    return views ?? [];
-  }
-
-  static async fetchByModelPk(auth: Authenticator, id: ModelId) {
-    const views = await this.fetchByModelIds(auth, [id]);
-
-    if (views.length !== 1) {
-      return null;
-    }
-
-    return views[0];
+    return views.filter((view) => view.canReadOrAdministrate(auth));
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
@@ -273,29 +262,6 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       return [];
     }
     return this.listBySpaces(auth, [space], options);
-  }
-
-  static async listForSystemSpace(
-    auth: Authenticator,
-    options?: ResourceFindOptions<WebhookSourcesViewModel>
-  ) {
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    return this.listBySpace(auth, systemSpace, options);
-  }
-
-  static async countBySpace(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<number> {
-    if (space.canReadOrAdministrate(auth)) {
-      return this.model.count({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: space.id,
-        },
-      });
-    }
-    return 0;
   }
 
   static async listByWebhookSource(
@@ -509,13 +475,6 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return makeSId("webhook_sources_view", {
       id,
       workspaceId,
-    });
-  }
-
-  async setEditedBy(auth: Authenticator) {
-    await this.update({
-      editedByUserId: auth.user()?.id ?? null,
-      editedAt: new Date(),
     });
   }
 

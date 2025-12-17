@@ -29,7 +29,7 @@ import {
 } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerConnectionResource
   extends ReadonlyAttributesType<MCPServerConnectionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -182,6 +182,29 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     return connections.length > 0
       ? new Ok(connections[0])
       : new Err(new DustError("connection_not_found", "Connection not found"));
+  }
+
+  static async listByMCPServer(
+    auth: Authenticator,
+    {
+      mcpServerId,
+    }: {
+      mcpServerId: string;
+    }
+  ): Promise<Result<MCPServerConnectionResource[], DustError>> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+    const connections = await this.baseFetch(auth, {
+      where: {
+        serverType,
+        ...(serverType === "remote"
+          ? { remoteMCPServerId: id }
+          : { internalMCPServerId: mcpServerId }),
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return new Ok(connections);
   }
 
   static async listByWorkspace(

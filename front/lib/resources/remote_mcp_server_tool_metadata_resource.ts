@@ -20,7 +20,7 @@ import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerToolMetadataResource
   extends ReadonlyAttributesType<RemoteMCPServerToolMetadataModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -97,32 +97,6 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
           ? { remoteMCPServerId: serverId }
           : { internalMCPServerId: serverSId },
     });
-  }
-
-  static async fetchByServerIdAndToolName(
-    auth: Authenticator,
-    {
-      serverId,
-      toolName,
-    }: {
-      serverId: number;
-      toolName: string;
-    },
-    options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
-  ): Promise<RemoteMCPServerToolMetadataResource | null> {
-    const toolMetadata = await this.baseFetch(auth, {
-      ...options,
-      where: {
-        remoteMCPServerId: serverId,
-        toolName,
-      },
-    });
-
-    if (toolMetadata.length === 0) {
-      return null;
-    }
-
-    return toolMetadata[0];
   }
 
   // Update

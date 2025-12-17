@@ -928,6 +928,7 @@ const fetchFromOutlook = async (
   accessToken: string,
   options?: RequestInit
 ): Promise<Response> => {
+  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
     headers: {

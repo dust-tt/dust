@@ -214,8 +214,6 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin;
-  // TODO(2025-11-24 PPUL): Remove this once data has been backfilled
-  declare userContextOriginMessageId: string | null;
 
   declare agenticMessageType: "run_agent" | "agent_handover" | null;
   declare agenticOriginMessageId: string | null;
@@ -277,11 +275,6 @@ UserMessageModel.init(
     userContextOrigin: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    // TODO: Remove this once backfilled
-    userContextOriginMessageId: {
-      type: DataTypes.STRING(32),
-      allowNull: true,
     },
     userContextLastTriggerRunAt: {
       type: DataTypes.DATE,
@@ -774,6 +767,8 @@ MessageReactionModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
+export type MentionStatusType = "pending" | "approved" | "rejected";
+
 export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -786,6 +781,8 @@ export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare user: NonAttribute<UserModel> | null;
 
   declare message: NonAttribute<MessageModel>;
+
+  declare status: MentionStatusType;
 }
 
 MentionModel.init(
@@ -811,6 +808,11 @@ MentionModel.init(
         model: UserModel,
         key: "id",
       },
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "approved",
     },
   },
   {

@@ -1,111 +1,109 @@
 {
-  "mappings": {
-    "properties": {
-      "message_id": {
-        "type": "keyword"
-      },
-      "workspace_id": {
-        "type": "keyword"
-      },
-      "conversation_id": {
-        "type": "keyword"
-      },
-      "agent_id": {
-        "type": "keyword"
-      },
-      "agent_version": {
-        "type": "keyword"
-      },
-      "user_id": {
-        "type": "keyword"
-      },
-      "context_origin": {
-        "type": "keyword"
-      },
-      "timestamp": {
-        "type": "date"
-      },
-      "status": {
-        "type": "keyword"
-      },
-      "latency_ms": {
-        "type": "integer"
-      },
-      "content": {
-        "type": "text",
-        "index": "false"
-      },
-      "version": {
-        "type": "keyword"
-      },
-      "tokens": {
-        "type": "object",
-        "properties": {
-          "prompt": {
-            "type": "integer"
-          },
-          "completion": {
-            "type": "integer"
-          },
-          "reasoning": {
-            "type": "integer"
-          },
-          "cached": {
-            "type": "integer"
-          },
-          "cost_micro_usd": {
-            "type": "long"
-          }
+  "properties": {
+    "message_id": {
+      "type": "keyword"
+    },
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "conversation_id": {
+      "type": "keyword"
+    },
+    "agent_id": {
+      "type": "keyword"
+    },
+    "agent_version": {
+      "type": "keyword"
+    },
+    "user_id": {
+      "type": "keyword"
+    },
+    "context_origin": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "latency_ms": {
+      "type": "integer"
+    },
+    "content": {
+      "type": "text",
+      "index": "false"
+    },
+    "version": {
+      "type": "keyword"
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "integer"
+        },
+        "completion": {
+          "type": "integer"
+        },
+        "reasoning": {
+          "type": "integer"
+        },
+        "cached": {
+          "type": "integer"
+        },
+        "cost_micro_usd": {
+          "type": "long"
         }
-      },
-      "tools_used": {
-        "type": "nested",
-        "properties": {
-          "step_index": {
-            "type": "short"
-          },
-          "server_name": {
-            "type": "keyword"
-          },
-          "tool_name": {
-            "type": "keyword"
-          },
-          "mcp_server_configuration_sid": {
-            "type": "keyword"
-          },
-          "execution_time_ms": {
-            "type": "integer"
-          },
-          "status": {
-            "type": "keyword"
-          }
+      }
+    },
+    "tools_used": {
+      "type": "nested",
+      "properties": {
+        "step_index": {
+          "type": "short"
+        },
+        "server_name": {
+          "type": "keyword"
+        },
+        "tool_name": {
+          "type": "keyword"
+        },
+        "mcp_server_configuration_sid": {
+          "type": "keyword"
+        },
+        "execution_time_ms": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "keyword"
         }
-      },
-      "feedbacks": {
-        "type": "nested",
-        "properties": {
-          "feedback_id": {
-            "type": "keyword"
-          },
-          "user_id": {
-            "type": "keyword"
-          },
-          "thumb_direction": {
-            "type": "keyword"
-          },
-          "content": {
-            "type": "text",
-            "index": "false"
-          },
-          "is_conversation_shared": {
-            "type": "boolean"
-          },
-          "dismissed": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "date"
-          }
+      }
+    },
+    "feedbacks": {
+      "type": "nested",
+      "properties": {
+        "feedback_id": {
+          "type": "keyword"
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "thumb_direction": {
+          "type": "keyword"
+        },
+        "content": {
+          "type": "text",
+          "index": "false"
+        },
+        "is_conversation_shared": {
+          "type": "boolean"
+        },
+        "dismissed": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "date"
         }
       }
     }

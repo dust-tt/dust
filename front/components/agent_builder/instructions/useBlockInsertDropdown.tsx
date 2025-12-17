@@ -50,12 +50,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
     label: "XML Tag",
     icon: CodeSlashIcon,
     command: (editor, range) => {
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertInstructionBlock("instructions")
-        .run();
+      editor.chain().focus().deleteRange(range).insertInstructionBlock().run();
     },
   },
   {

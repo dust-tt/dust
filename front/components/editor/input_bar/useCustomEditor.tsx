@@ -6,10 +6,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import {
-  CustomBold,
-  CustomItalic,
-} from "@app/components/editor/extensions/input_bar/CustomMarks";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -18,6 +15,7 @@ import { URLStorageExtension } from "@app/components/editor/extensions/input_bar
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import {
   createMentionSuggestion,
@@ -204,18 +202,16 @@ export const buildEditorExtensions = ({
       heading: {
         levels: [1],
       },
-      bold: false, // Disable default bold, we use a custom one
-      italic: false, // Disable default italic, we use a custom one
       blockquote: false, // Disable default blockquote, we use a custom one
       // Markdown styles configuration.
       code: {
         HTMLAttributes: {
-          class: markdownStyles.code(),
+          class: markdownStyles.codeInline(),
         },
       },
       codeBlock: {
         HTMLAttributes: {
-          class: markdownStyles.code(),
+          class: markdownStyles.codeBlock(),
         },
       },
       bulletList: {
@@ -239,8 +235,6 @@ export const buildEditorExtensions = ({
         },
       },
     }),
-    CustomBold,
-    CustomItalic,
     BlockquoteExtension.configure({
       HTMLAttributes: {
         class: markdownStyles.blockquote(),
@@ -260,8 +254,16 @@ export const buildEditorExtensions = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      suggestion: createMentionSuggestion({ owner, conversationId }),
+      suggestion: createMentionSuggestion({
+        owner,
+        conversationId,
+        select: {
+          agents: true,
+          users: true,
+        },
+      }),
     }),
+    EmojiExtension,
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:
@@ -357,6 +359,12 @@ const useCustomEditor = ({
             const mentionPluginState = mentionPluginKey.getState(view.state);
             // Let the mention extension handle the event if its dropdown is currently opened.
             if (mentionPluginState?.active) {
+              return false;
+            }
+
+            const emojiPluginState = emojiPluginKey.getState(view.state);
+            // Let the emoji extension handle the event if its dropdown is currently opened.
+            if (emojiPluginState?.active) {
               return false;
             }
 

@@ -29,10 +29,9 @@ export const EmailLayout = ({
             target="_new"
           >
             <img
-              alt="Dust Logo"
               style={{ margin: "0 auto", border: "0px" }}
-              width={192}
-              height={48}
+              width={168}
+              height={42}
               src="https://dust.tt/static/landing/logos/dust/Dust_Logo.png"
             />
           </a>

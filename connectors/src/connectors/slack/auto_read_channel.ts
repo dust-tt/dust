@@ -26,8 +26,10 @@ export async function autoReadChannel(
   slackChannelId: string,
   provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
 ): Promise<Result<boolean, Error>> {
-  const slackConfigurations =
-    await SlackConfigurationResource.listForTeamId(teamId);
+  const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+    teamId,
+    provider
+  );
   const connectorIds = slackConfigurations.map((c) => c.connectorId);
   const connectors = await ConnectorResource.fetchByIds(provider, connectorIds);
   const connector = connectors.find((c) => c.type === provider);
