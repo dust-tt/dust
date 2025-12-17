@@ -55,11 +55,7 @@ export function SkillDetailsSheet({
           <SheetTitle />
         </VisuallyHidden>
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          <DescriptionSection
-            skillConfiguration={skill}
-            owner={owner}
-            onClose={onClose}
-          />
+          <DescriptionSection skill={skill} owner={owner} onClose={onClose} />
         </SheetHeader>
         <SheetContainer className="pb-4">
           <SkillDetailsSheetContent skill={skill} user={user} owner={owner} />
@@ -123,21 +119,21 @@ export function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skill: SkillType & { relations: SkillRelations };
   owner: WorkspaceType;
   onClose: () => void;
 };
 
 const DescriptionSection = ({
-  skillConfiguration,
+  skill,
   owner,
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const author = skillConfiguration.relations.author;
+  const author = skill.relations.author;
   const editedDate =
-    skillConfiguration.updatedAt &&
-    new Date(skillConfiguration.updatedAt).toLocaleDateString("en-US", {
+    skill.updatedAt &&
+    new Date(skill.updatedAt).toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -152,7 +148,7 @@ const DescriptionSection = ({
       {/* Title and edit info */}
       <div className="flex flex-col items-center gap-1">
         <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
-          {skillConfiguration.name}
+          {skill.name}
         </h2>
         {editedDate && (
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -162,7 +158,7 @@ const DescriptionSection = ({
         )}
       </div>
 
-      {skillConfiguration.status === "archived" && (
+      {skill.status === "archived" && (
         <>
           <ContentMessage
             title="This skill has been archived."
@@ -171,7 +167,7 @@ const DescriptionSection = ({
             size="sm"
           >
             It is no longer active and cannot be used.
-            {skillConfiguration.canWrite && (
+            {skill.canWrite && (
               <div className="mt-2">
                 <Button
                   variant="outline"
@@ -188,7 +184,7 @@ const DescriptionSection = ({
           <RestoreSkillDialog
             owner={owner}
             isOpen={showRestoreModal}
-            skillConfiguration={skillConfiguration}
+            skill={skill}
             onClose={() => {
               setShowRestoreModal(false);
               onClose();
