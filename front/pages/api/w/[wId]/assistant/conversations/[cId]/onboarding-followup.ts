@@ -65,7 +65,9 @@ async function handler(
 
   const conversation = conversationRes.value;
 
-  const followUpPrompt = buildOnboardingFollowUpPrompt(toolId);
+  const followUpPrompt = buildOnboardingFollowUpPrompt(toolId, {
+    username: user.username,
+  });
 
   const messageRes = await postUserMessage(auth, {
     conversation,

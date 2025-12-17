@@ -86,37 +86,9 @@ const ROLE_TO_PRIMARY_TOOL: Partial<
   // "other" intentionally omitted - will fall back to email-only or Notion default
 };
 
-// Maps tools to their automatable tasks (used to guide the model to suggest automation).
-const TOOL_AUTOMATABLE_TASKS: Record<string, string[]> = {
-  gmail: ["Summarizing emails", "Showing unread emails"],
-  outlook: ["Summarizing emails", "Showing unread emails"],
-  github: ["Showing open PRs", "Showing assigned issues"],
-  google_calendar: ["Showing today's schedule", "Showing this week's events"],
-  outlook_calendar: ["Showing today's schedule", "Showing this week's events"],
-  notion: ["Showing updated pages", "Summarizing activity"],
-  slack: ["Summarizing unread messages", "Showing mentions"],
-  microsoft_teams: ["Summarizing unread messages", "Showing mentions"],
-  hubspot: ["Showing deal updates", "Showing new contacts"],
-  jira: ["Showing open tickets", "Summarizing ticket updates"],
-  google_drive: ["Showing recently updated files"],
-  microsoft_drive: ["Showing recently updated files"],
-  microsoft_excel: ["Showing recently updated spreadsheets"],
-};
-
-function buildAutomatableTasksList(): string {
-  return Object.entries(TOOL_AUTOMATABLE_TASKS)
-    .map(([toolId, tasks]) => {
-      const tool = ONBOARDING_AVAILABLE_TOOLS.find((t) => t.sId === toolId);
-      const toolName = tool?.name ?? toolId;
-      return `- **${toolName}**: ${tasks.join(", ")}`;
-    })
-    .join("\n");
-}
-
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
-  username: string;
 }): string {
   // Determine which tools to show in the first message.
   const toolSetups: Array<{ sId: string; name: string }> = [];
@@ -252,44 +224,6 @@ Example ending:
 Example ending:
 :quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
 
-### After user completes a tool setup
-1. Confirm briefly (one line + emoji)
-2. Suggest 1-2 simple tasks they can try RIGHT NOW with that specific tool
-3. End with quick replies for those tasks
-
-### After user completes a tool action
-When the user completes ANY of these tasks, suggest automation:
-${buildAutomatableTasksList()}
-
-After showing the results:
-1. Show the results of their request
-2. Ask if they'd like to automate this task
-3. Explain it would run automatically (e.g., "every weekday morning")
-4. End with quick reply options
-
-Example response:
-"Here's your summary: [content]
-
-Would you like me to send you this automatically every weekday morning?"
-:quickReply[Yes, automate this]{message="Yes, please automate this for me"} :quickReply[No thanks]{message="No thanks"}
-
-### When user wants to automate a task
-When the user confirms they want to automate a task:
-
-1. **First, ask for their timezone** so the schedule runs at the right time for them:
-   - Ask: "What timezone are you in?"
-   - Provide quick replies for common timezones:
-
-:quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
-
-2. **Once you have the timezone**, call create_schedule_trigger with the timezone parameter:
-   - name: A short descriptive name (e.g., "Daily email summary")
-   - schedule: The schedule in natural language (e.g., "every weekday at 9am")
-   - prompt: What @dust should do. Start with @${options.username} so the user gets pinged (e.g., "@${options.username} Summarize the important emails I received since yesterday")
-   - timezone: The IANA timezone the user provided (e.g., "America/New_York", "Europe/Paris")
-
-The tool will create the trigger and return a confirmation message.
-
 ### When user asks to connect more tools
 1. Show 1-2 relevant toolSetup directives (on same line)
 2. Include a skip option
@@ -329,7 +263,10 @@ const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
 
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
-export function buildOnboardingFollowUpPrompt(toolId: string): string {
+export function buildOnboardingFollowUpPrompt(
+  toolId: string,
+  options: { username: string }
+): string {
   const queryGuidance =
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
 
@@ -351,6 +288,35 @@ The user just connected a tool (${toolId}). Your task is to AUTOMATICALLY use th
    - Mention you checked but didn't find urgent items
    - Suggest 2 general things they can try with this tool
    - End with quick reply buttons for general actions
+
+## After showing the results:
+1. Show the results of their request
+2. Ask if they'd like to automate this task
+3. Explain it would run automatically (e.g., "every weekday morning")
+4. End with quick reply options
+
+Example response:
+"Here's your summary: [content]
+
+Would you like me to send you this automatically every weekday morning?"
+:quickReply[Yes, automate this]{message="Yes, please automate this for me"} :quickReply[No thanks]{message="No thanks"}
+
+### When user wants to automate a task
+When the user confirms they want to automate a task:
+
+1. **First, ask for their timezone** so the schedule runs at the right time for them:
+   - Ask: "What timezone are you in?"
+   - Provide quick replies for common timezones:
+
+:quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
+
+2. **Once you have the timezone**, call create_schedule_trigger with the timezone parameter:
+   - name: A short descriptive name (e.g., "Daily email summary")
+   - schedule: The schedule in natural language (e.g., "every weekday at 9am")
+   - prompt: What @dust should do. Start with @${options.username} so the user gets pinged (e.g., "@${options.username} Summarize the important emails I received since yesterday")
+   - timezone: The IANA timezone the user provided (e.g., "America/New_York", "Europe/Paris")
+
+The tool will create the schedule and return a confirmation message.
 
 ## Response format:
 
@@ -460,7 +426,6 @@ export async function createOnboardingConversationIfNeeded(
   const onboardingSystemMessage = buildOnboardingPrompt({
     emailProvider,
     userJobType,
-    username: userJson.username,
   });
 
   const context: UserMessageContext = {
