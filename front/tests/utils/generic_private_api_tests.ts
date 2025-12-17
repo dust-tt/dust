@@ -5,6 +5,7 @@ import { vi } from "vitest";
 
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types";
@@ -56,7 +57,10 @@ export const createPrivateApiMockRequest = async ({
   const user = await (isSuperUser
     ? UserFactory.superUser()
     : UserFactory.basic());
+
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
+  const systemSpace = await SpaceFactory.system(workspace, systemGroup);
+  const globalSpace = await SpaceFactory.global(workspace, globalGroup);
 
   const membership = await MembershipFactory.associate(workspace, user, {
     role,
@@ -96,7 +100,9 @@ export const createPrivateApiMockRequest = async ({
     user,
     membership,
     globalGroup,
+    globalSpace,
     systemGroup,
+    systemSpace,
     authenticator: await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
