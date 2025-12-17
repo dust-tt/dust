@@ -15,7 +15,12 @@ import React, {
 } from "react";
 import { useForm } from "react-hook-form";
 
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderSkillsType,
+  MCPFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { CapabilityFilterType } from "@app/components/agent_builder/capabilities/mcp/CapabilitiesSelectionPage";
+import { CapabilitiesSelectionPage } from "@app/components/agent_builder/capabilities/mcp/CapabilitiesSelectionPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -30,9 +35,13 @@ import {
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import {
-  getInfoPageDescription,
-  getInfoPageIcon,
-  getInfoPageTitle,
+  getMcpInfoPageDescription,
+  getMcpInfoPageIcon,
+  getMcpInfoPageTitle,
+  getSelectionPageTitle,
+  getSkillInfoPageDescription,
+  getSkillInfoPageIcon,
+  getSkillInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import {
   getFooterButtons,
@@ -60,6 +69,7 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
 import { useBuilderContext } from "@app/components/shared/useBuilderContext";
+import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -137,6 +147,11 @@ interface MCPServerViewsSheetProps {
   getAgentInstructions: () => string;
   /** Optional filter to restrict which MCP server views are shown */
   filterMCPServerViews?: (view: MCPServerViewTypeWithLabel) => boolean;
+  // Skills props (optional - only used when skills FF enabled)
+  skills?: SkillSelection[];
+  isSkillsLoading?: boolean;
+  onAddSkills?: (skills: AgentBuilderSkillsType[]) => void;
+  selectedSkills?: AgentBuilderSkillsType[];
 }
 
 export function MCPServerViewsSheet({
@@ -147,12 +162,18 @@ export function MCPServerViewsSheet({
   selectedActions,
   getAgentInstructions,
   filterMCPServerViews,
+  skills = [],
+  isSkillsLoading = false,
+  onAddSkills,
+  selectedSkills = [],
 }: MCPServerViewsSheetProps) {
-  const { owner } = useBuilderContext();
+  const { owner, user } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags, hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const {
     mcpServerViews: allMcpServerViews,
     mcpServerViewsWithKnowledge,
@@ -160,9 +181,16 @@ export function MCPServerViewsSheet({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
+  const showSkills = hasFeature("skills");
+
   const [selectedToolsInSheet, setSelectedToolsInSheet] = useState<
     SelectedTool[]
   >([]);
+  const [selectedSkillsInSheet, setSelectedSkillsInSheet] = useState<
+    SkillSelection[]
+  >([]);
+  const [capabilityFilter, setCapabilityFilter] =
+    useState<CapabilityFilterType>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -177,6 +205,7 @@ export function MCPServerViewsSheet({
     useState<MCPServerViewTypeWithLabel | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
+  const [infoSkill, setInfoSkill] = useState<SkillSelection | null>(null);
 
   const hasReasoningModel = reasoningModels.length > 0;
 
@@ -264,6 +293,23 @@ export function MCPServerViewsSheet({
     };
   }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
 
+  const selectableSkills = useMemo(() => {
+    const alreadyAddedIds = new Set(selectedSkills.map((s) => s.sId));
+    return skills.filter((skill) => !alreadyAddedIds.has(skill.sId));
+  }, [skills, selectedSkills]);
+
+  const filteredSkills = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return selectableSkills;
+    }
+    const term = searchTerm.toLowerCase();
+    return selectableSkills.filter((skill) =>
+      [skill.name, skill.userFacingDescription].some((field) =>
+        field?.toLowerCase().includes(term)
+      )
+    );
+  }, [searchTerm, selectableSkills]);
+
   useEffect(() => {
     if (mode?.type === "edit") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -305,6 +351,9 @@ export function MCPServerViewsSheet({
       } else {
         setInfoMCPServerView(null);
       }
+    } else if (mode?.type === "skill-info") {
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.SKILL_INFO);
+      setInfoSkill(mode.skill);
     } else if (mode?.type === "add") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
@@ -349,6 +398,16 @@ export function MCPServerViewsSheet({
       }
 
       return [...prev, tool];
+    });
+  }, []);
+
+  const toggleSkillSelection = useCallback((skill: SkillSelection) => {
+    setSelectedSkillsInSheet((prev) => {
+      const isAlreadySelected = prev.some((s) => s.sId === skill.sId);
+      if (isAlreadySelected) {
+        return prev.filter((s) => s.sId !== skill.sId);
+      }
+      return [...prev, skill];
     });
   }, []);
 
@@ -425,6 +484,16 @@ export function MCPServerViewsSheet({
     [onModeChange]
   );
 
+  const handleSkillInfoClick = useCallback(
+    (skill: SkillSelection) => {
+      onModeChange({
+        type: "skill-info",
+        skill,
+      });
+    },
+    [onModeChange]
+  );
+
   const handleAddSelectedTools = useCallback(() => {
     // Validate any configured tools before adding
     for (const tool of selectedToolsInSheet) {
@@ -445,16 +514,37 @@ export function MCPServerViewsSheet({
       }
     }
 
-    // All validations passed, add the tools
-    addTools(
-      selectedToolsInSheet.map((tool) => {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        return tool.configuredAction || getDefaultMCPAction(tool.view);
-      })
-    );
+    // Add MCP tools
+    if (selectedToolsInSheet.length > 0) {
+      addTools(
+        selectedToolsInSheet.map((tool) => {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          return tool.configuredAction || getDefaultMCPAction(tool.view);
+        })
+      );
+    }
+
+    // Add skills
+    if (selectedSkillsInSheet.length > 0 && onAddSkills) {
+      const skillsToAdd: AgentBuilderSkillsType[] = selectedSkillsInSheet.map(
+        (skill) => ({
+          sId: skill.sId,
+          name: skill.name,
+          description: skill.userFacingDescription,
+        })
+      );
+      onAddSkills(skillsToAdd);
+    }
 
     setSelectedToolsInSheet([]);
-  }, [selectedToolsInSheet, addTools, sendNotification]);
+    setSelectedSkillsInSheet([]);
+  }, [
+    selectedToolsInSheet,
+    selectedSkillsInSheet,
+    addTools,
+    onAddSkills,
+    sendNotification,
+  ]);
 
   const mcpServerView = configurationMCPServerView;
 
@@ -511,53 +601,76 @@ export function MCPServerViewsSheet({
 
   const resetSheet = useCallback(() => {
     setSelectedToolsInSheet([]);
+    setSelectedSkillsInSheet([]);
+    setCapabilityFilter("all");
     setSearchTerm("");
     resetToSelection();
   }, [resetToSelection]);
 
+  const isLoading = isMCPServerViewsLoading || isSkillsLoading;
+  const hasAnySelection =
+    selectedToolsInSheet.length > 0 || selectedSkillsInSheet.length > 0;
+
   const pages: MultiPageSheetPage[] = [
     {
       id: TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION,
-      title: selectedActions.length === 0 ? "Add tools" : "Add more",
+      title: getSelectionPageTitle(selectedActions.length > 0, showSkills),
       description: "",
       icon: undefined,
-      content: isMCPServerViewsLoading ? (
+      content: isLoading ? (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />
         </div>
       ) : (
         <>
-          {!isMCPServerViewsLoading && (
-            <SearchInput
-              ref={searchInputRef}
-              value={searchTerm}
-              onChange={setSearchTerm}
-              name="search-mcp"
-              placeholder="Search tools..."
-              className="mt-4"
+          <SearchInput
+            ref={searchInputRef}
+            value={searchTerm}
+            onChange={setSearchTerm}
+            name="search-mcp"
+            placeholder={
+              showSkills ? "Search capabilities..." : "Search tools..."
+            }
+            className="mt-4"
+          />
+          {showSkills ? (
+            <CapabilitiesSelectionPage
+              filter={capabilityFilter}
+              onFilterChange={setCapabilityFilter}
+              showSkills={showSkills}
+              topMCPServerViews={filteredViews.topViews}
+              nonTopMCPServerViews={filteredViews.nonTopViews}
+              selectedToolsInSheet={selectedToolsInSheet}
+              onToolClick={onClickMCPServer}
+              onToolDetailsClick={handleToolInfoClick}
+              skills={filteredSkills}
+              selectedSkillsInSheet={selectedSkillsInSheet}
+              onSkillClick={toggleSkillSelection}
+              onSkillDetailsClick={handleSkillInfoClick}
+              featureFlags={featureFlags}
+            />
+          ) : (
+            <MCPServerSelectionPage
+              topMCPServerViews={filteredViews.topViews}
+              nonTopMCPServerViews={filteredViews.nonTopViews}
+              onItemClick={onClickMCPServer}
+              selectedToolsInSheet={selectedToolsInSheet}
+              onToolDetailsClick={(tool) => {
+                if (tool.type === "MCP") {
+                  handleToolInfoClick(tool.view);
+                }
+              }}
+              featureFlags={featureFlags}
             />
           )}
-          <MCPServerSelectionPage
-            topMCPServerViews={filteredViews.topViews}
-            nonTopMCPServerViews={filteredViews.nonTopViews}
-            onItemClick={onClickMCPServer}
-            selectedToolsInSheet={selectedToolsInSheet}
-            onToolDetailsClick={(tool) => {
-              if (tool.type === "MCP") {
-                handleToolInfoClick(tool.view);
-              }
-            }}
-            featureFlags={featureFlags}
-          />
         </>
       ),
-      footerContent:
-        selectedToolsInSheet.length > 0 ? (
-          <MCPServerViewsFooter
-            selectedToolsInSheet={selectedToolsInSheet}
-            onRemoveSelectedTool={toggleToolSelection}
-          />
-        ) : undefined,
+      footerContent: hasAnySelection ? (
+        <MCPServerViewsFooter
+          selectedToolsInSheet={selectedToolsInSheet}
+          onRemoveSelectedTool={toggleToolSelection}
+        />
+      ) : undefined,
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
@@ -628,11 +741,28 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.INFO,
-      title: getInfoPageTitle(infoMCPServerView),
-      description: getInfoPageDescription(infoMCPServerView),
-      icon: getInfoPageIcon(infoMCPServerView),
+      title: getMcpInfoPageTitle(infoMCPServerView),
+      description: getMcpInfoPageDescription(infoMCPServerView),
+      icon: getMcpInfoPageIcon(infoMCPServerView),
       content: infoMCPServerView ? (
         <MCPServerInfoPage infoMCPServerView={infoMCPServerView} />
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center">
+          <Spinner />
+        </div>
+      ),
+    },
+    {
+      id: TOOLS_SHEET_PAGE_IDS.SKILL_INFO,
+      title: getSkillInfoPageTitle(infoSkill),
+      description: getSkillInfoPageDescription(infoSkill),
+      icon: getSkillInfoPageIcon(),
+      content: infoSkill ? (
+        <SkillDetailsSheetContent
+          skillConfiguration={infoSkill}
+          owner={owner}
+          user={user}
+        />
       ) : (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />
