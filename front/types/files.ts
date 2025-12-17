@@ -110,6 +110,8 @@ export function ensureFileSize(
     return fileSize <= MAX_FILE_SIZES[format.cat];
   }
 
+  console.log("is this used?");
+
   return false;
 }
 
