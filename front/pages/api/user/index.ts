@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { sendUserOperationMessage } from "@app/types";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 
 export type PostUserMetadataResponseBody = {
@@ -25,6 +26,8 @@ const PatchUserBodySchema = t.type({
   lastName: t.string,
   jobType: t.union([t.string, t.undefined]),
   imageUrl: t.union([t.string, t.null, t.undefined]),
+  favoritePlatforms: t.union([t.array(t.string), t.undefined]),
+  emailProvider: t.union([t.string, t.undefined]),
 });
 
 export type GetUserResponseBody = {
@@ -108,6 +111,8 @@ async function handler(
       const lastName = bodyValidation.right.lastName.trim();
       const jobType = bodyValidation.right.jobType?.trim();
       const imageUrl = bodyValidation.right.imageUrl;
+      const favoritePlatforms = bodyValidation.right.favoritePlatforms;
+      const emailProvider = bodyValidation.right.emailProvider;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {
@@ -150,11 +155,27 @@ async function handler(
         });
       }
 
-      // metadata + for loop allows for
-      // more metadata to be processed thru
-      // endpoint in future
-      const metadata = {
+      if (favoritePlatforms !== undefined) {
+        for (const platform of favoritePlatforms) {
+          if (!isFavoritePlatform(platform)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `Invalid favorite platform: ${platform}`,
+              },
+            });
+          }
+        }
+      }
+
+      const metadata: Record<string, string | undefined> = {
         job_type: jobType,
+        favorite_platforms:
+          favoritePlatforms !== undefined
+            ? JSON.stringify(favoritePlatforms)
+            : undefined,
+        "onboarding:email_provider": emailProvider,
       };
 
       for (const [key, value] of Object.entries(metadata)) {

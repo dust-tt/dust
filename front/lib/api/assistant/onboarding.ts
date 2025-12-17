@@ -4,13 +4,13 @@ import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import type {
   APIErrorWithStatusCode,
   Result,
   UserMessageContext,
 } from "@app/types";
 import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 
 import { createConversation, postUserMessage } from "./conversation";
@@ -86,40 +86,97 @@ const ROLE_TO_PRIMARY_TOOL: Partial<
   // "other" intentionally omitted - will fall back to email-only or Notion default
 };
 
-function buildOnboardingPrompt(options: {
-  emailProvider: EmailProviderType;
-  userJobType: string | null;
-}): string {
-  // Determine which tools to show in the first message.
-  const toolSetups: Array<{ sId: string; name: string }> = [];
+const FAVORITE_PLATFORM_TO_TOOL_SID: Record<string, string> = {
+  google: "gmail",
+  microsoft: "outlook",
+  slack: "slack",
+  notion: "notion",
+  confluence: "confluence",
+  github: "github",
+  hubspot: "hubspot",
+  jira: "jira",
+  front: "front",
+};
 
-  // Add email tool if provider is detected.
-  if (options.emailProvider === "google") {
-    toolSetups.push({ sId: "gmail", name: "Gmail" });
-  } else if (options.emailProvider === "microsoft") {
-    toolSetups.push({ sId: "outlook", name: "Outlook" });
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  gmail: "Gmail",
+  outlook: "Outlook",
+  slack: "Slack",
+  notion: "Notion",
+  confluence: "Confluence",
+  github: "GitHub",
+  hubspot: "HubSpot",
+  jira: "Jira",
+  front: "Front",
+};
+
+// Converts favorite platforms to actual tool setups, sorted by job type relevance.
+function favoritePlatformsToToolSetups(
+  favoritePlatforms: FavoritePlatform[],
+  jobType: JobType | null
+): Array<{ sId: string; name: string }> {
+  if (favoritePlatforms.length === 0) {
+    return [];
   }
 
-  // Add role-based tool if job type is available (avoid duplicates).
-  if (options.userJobType) {
-    const roleTool = ROLE_TO_PRIMARY_TOOL[options.userJobType as JobType];
-    if (roleTool && !toolSetups.some((t) => t.sId === roleTool.sId)) {
-      toolSetups.push(roleTool);
+  const tools = favoritePlatforms.map((fav) => {
+    const sId = FAVORITE_PLATFORM_TO_TOOL_SID[fav] ?? fav;
+    return { sId, name: TOOL_DISPLAY_NAMES[sId] ?? sId };
+  });
+
+  // If we have a job type, move the most relevant tool to the front.
+  if (jobType) {
+    const roleTool = ROLE_TO_PRIMARY_TOOL[jobType];
+    if (roleTool) {
+      const relevantIndex = tools.findIndex((t) => t.sId === roleTool.sId);
+      if (relevantIndex > 0) {
+        const [relevant] = tools.splice(relevantIndex, 1);
+        tools.unshift(relevant);
+      }
     }
   }
 
-  // Fallback: if no tools determined, suggest Notion.
+  return tools;
+}
+
+function buildOnboardingPrompt(options: {
+  emailProvider: EmailProviderType;
+  userJobType: string | null;
+  favoritePlatforms: FavoritePlatform[];
+}): string {
+  const toolSetups = favoritePlatformsToToolSetups(
+    options.favoritePlatforms,
+    options.userJobType as JobType | null
+  );
+
+  // If no favorites selected, fall back to email provider + job type inference.
   if (toolSetups.length === 0) {
-    toolSetups.push({ sId: "notion", name: "Notion" });
+    if (options.emailProvider === "google") {
+      toolSetups.push({ sId: "gmail", name: "Gmail" });
+    } else if (options.emailProvider === "microsoft") {
+      toolSetups.push({ sId: "outlook", name: "Outlook" });
+    }
+
+    if (options.userJobType) {
+      const roleTool = ROLE_TO_PRIMARY_TOOL[options.userJobType as JobType];
+      if (roleTool && !toolSetups.some((t) => t.sId === roleTool.sId)) {
+        toolSetups.push(roleTool);
+      }
+    }
+
+    // Final fallback: suggest Notion.
+    if (toolSetups.length === 0) {
+      toolSetups.push({ sId: "notion", name: "Notion" });
+    }
   }
 
-  // Build the tool setup directives for the first message (on same line).
-  const toolSetupDirectives = toolSetups
+  // Build the tool setup directives for the first message (max 2, on same line).
+  const initialTools = toolSetups.slice(0, 2);
+  const toolSetupDirectives = initialTools
     .map((t) => `:toolSetup[Connect ${t.name}]{sId=${t.sId}}`)
     .join(" ");
 
-  // Build tool list with descriptions from INTERNAL_MCP_SERVERS.
-  const toolsWithDescriptions = toolSetups
+  const toolsWithDescriptions = initialTools
     .map((t) => {
       const server =
         INTERNAL_MCP_SERVERS[t.sId as keyof typeof INTERNAL_MCP_SERVERS];
@@ -128,14 +185,22 @@ function buildOnboardingPrompt(options: {
     })
     .join("\n");
 
-  // Build context about user's role if available.
-  const roleContext = options.userJobType
-    ? `\n## User context\nThe user works in: ${options.userJobType}\nThe tools below were selected as relevant for their role.`
-    : "";
+  let userContext = "";
+  if (options.userJobType || options.favoritePlatforms.length > 0) {
+    userContext = "\n## User context\n";
+    if (options.userJobType) {
+      userContext += `The user works in: ${options.userJobType}\n`;
+    }
+    if (options.favoritePlatforms.length > 0) {
+      userContext += `The user indicated they use these platforms: ${options.favoritePlatforms.join(", ")}\n`;
+      userContext +=
+        "Prioritize suggesting these tools. Guide the user through connecting them one by one.";
+    }
+  }
 
   return `<dust_system>
 You are onboarding a brand-new user to Dust.
-${roleContext}
+${userContext}
 
 ## CRITICAL RULES
 
@@ -403,19 +468,33 @@ export async function createOnboardingConversationIfNeeded(
     }
   }
 
-  // Detect the user's email provider (Google, Microsoft, or other).
   const userJson = user.toJSON();
-  const emailProvider = await detectEmailProvider(
-    userJson.email,
-    `user-${userJson.sId}`
-  );
 
-  // Store the detection result as user metadata for future reference.
-  await user.setMetadata("onboarding:email_provider", emailProvider);
+  const emailProviderMetadata = await user.getMetadata(
+    "onboarding:email_provider"
+  );
+  let emailProvider: EmailProviderType = "other";
+  if (
+    emailProviderMetadata?.value &&
+    (emailProviderMetadata.value === "google" ||
+      emailProviderMetadata.value === "microsoft" ||
+      emailProviderMetadata.value === "other")
+  ) {
+    emailProvider = emailProviderMetadata.value;
+  }
 
   // Fetch the user's job type for personalization.
   const jobTypeMetadata = await user.getMetadata("job_type");
   const userJobType = jobTypeMetadata?.value ?? null;
+
+  const favoritePlatformsMetadata =
+    await user.getMetadata("favorite_platforms");
+  let favoritePlatforms: FavoritePlatform[] = [];
+  if (favoritePlatformsMetadata?.value) {
+    favoritePlatforms = JSON.parse(
+      favoritePlatformsMetadata.value
+    ) as FavoritePlatform[];
+  }
 
   const conversation = await createConversation(auth, {
     title: "Welcome to Dust",
@@ -426,6 +505,7 @@ export async function createOnboardingConversationIfNeeded(
   const onboardingSystemMessage = buildOnboardingPrompt({
     emailProvider,
     userJobType,
+    favoritePlatforms,
   });
 
   const context: UserMessageContext = {
