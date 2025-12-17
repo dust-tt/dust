@@ -21,7 +21,6 @@ import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
 
-import { CopyTokenButton } from "@app/components/poke/CopyTokenButton";
 import {
   PokeTable,
   PokeTableBody,
@@ -123,19 +122,6 @@ export function ViewDataSourceTable({
                     href={`/poke/${owner.sId}/spaces/${systemView?.spaceId}/data_source_views/${systemView?.sId}`}
                     content={systemView?.sId ?? "N/A"}
                   />
-                </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Access token</PokeTableCell>
-                  <PokeTableCell>
-                    {connector ? (
-                      <CopyTokenButton
-                        tokenUrl={`/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/token`}
-                        label="Get access token"
-                      />
-                    ) : (
-                      "N/A"
-                    )}
-                  </PokeTableCell>
                 </PokeTableRow>
 
                 <PokeTableRow>

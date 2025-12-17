@@ -200,6 +200,7 @@ export const supportedResourceTypes = [
   "apps",
   "data_source_views",
   "data_sources",
+  "mcp_server_views",
   "spaces",
   "workspaces",
   "agents",
