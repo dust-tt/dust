@@ -6,15 +6,21 @@ import { SKILL_ICON } from "@app/lib/skill";
 export interface AddedSkillCardProps {
   skill: AgentBuilderSkillsType;
   onRemove: () => void;
+  onClick?: () => void;
 }
 
-export function AddedSkillCard({ skill, onRemove }: AddedSkillCardProps) {
+export function AddedSkillCard({
+  skill,
+  onRemove,
+  onClick,
+}: AddedSkillCardProps) {
   const SkillIcon = SKILL_ICON;
 
   return (
     <Card
       variant="primary"
       className="h-28"
+      onClick={onClick}
       action={
         <CardActionButton
           size="mini"

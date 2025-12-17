@@ -1,4 +1,4 @@
-import { ButtonGroup, ToolsIcon } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -8,7 +8,6 @@ import type {
 } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { SkillCard } from "@app/components/agent_builder/skills/skillSheet/SkillCard";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { SKILL_ICON } from "@app/lib/skill";
 import type { WhitelistableFeature } from "@app/types";
 
 export type CapabilityFilterType = "all" | "tools" | "skills";
@@ -74,40 +73,26 @@ export function CapabilitiesSelectionPage({
   return (
     <div className="flex flex-col gap-4 py-2">
       {showSkills && (
-        <ButtonGroup
-          variant="outline"
-          items={[
-            {
-              type: "button",
-              props: {
-                label: "All",
-                variant: filter === "all" ? "primary" : "ghost-secondary",
-                size: "sm",
-                onClick: () => onFilterChange("all"),
-              },
-            },
-            {
-              type: "button",
-              props: {
-                label: "Tools",
-                variant: filter === "tools" ? "primary" : "ghost-secondary",
-                size: "sm",
-                onClick: () => onFilterChange("tools"),
-                icon: ToolsIcon,
-              },
-            },
-            {
-              type: "button",
-              props: {
-                label: "Skills",
-                variant: filter === "skills" ? "primary" : "ghost-secondary",
-                size: "sm",
-                onClick: () => onFilterChange("skills"),
-                icon: SKILL_ICON,
-              },
-            },
-          ]}
-        />
+        <div className="flex gap-2">
+          <Button
+            label="All"
+            variant={filter === "all" ? "primary" : "outline"}
+            size="sm"
+            onClick={() => onFilterChange("all")}
+          />
+          <Button
+            label="Skills"
+            variant={filter === "skills" ? "primary" : "outline"}
+            size="sm"
+            onClick={() => onFilterChange("skills")}
+          />
+          <Button
+            label="Tools"
+            variant={filter === "tools" ? "primary" : "outline"}
+            size="sm"
+            onClick={() => onFilterChange("tools")}
+          />
+        </div>
       )}
 
       {!hasAnyResults && (

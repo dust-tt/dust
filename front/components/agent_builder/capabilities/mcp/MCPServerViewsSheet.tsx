@@ -119,6 +119,7 @@ export type SheetMode =
   | {
       type: "skill-info";
       skill: SkillSelection;
+      source: "skillDetails" | "addedSkill";
     };
 
 type MCPActionWithConfiguration = BuilderAction & {
@@ -298,6 +299,8 @@ export function MCPServerViewsSheet({
     return skills.filter((skill) => !alreadyAddedIds.has(skill.sId));
   }, [skills, selectedSkills]);
 
+  // TODO(skills 2025-12-17): Search should apply to ALL items (skills + tools) regardless of filter.
+  // Currently filter controls both visibility AND search scope. Filter should only control visibility.
   const filteredSkills = useMemo(() => {
     if (!searchTerm.trim()) {
       return selectableSkills;
@@ -489,6 +492,7 @@ export function MCPServerViewsSheet({
       onModeChange({
         type: "skill-info",
         skill,
+        source: "skillDetails",
       });
     },
     [onModeChange]
@@ -849,6 +853,8 @@ export function MCPServerViewsSheet({
     currentPageId,
     mode,
     selectedToolsInSheet,
+    selectedSkillsInSheet,
+    showSkills,
     form,
     onCancel: handleCancel,
     onModeChange,

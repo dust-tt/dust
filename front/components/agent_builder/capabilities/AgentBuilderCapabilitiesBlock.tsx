@@ -120,6 +120,13 @@ export function AgentBuilderCapabilitiesBlock({
     }
   };
 
+  const handleSkillClick = (skillSId: string) => {
+    const skill = skills.find((s) => s.sId === skillSId);
+    if (skill) {
+      setDialogMode({ type: "skill-info", skill, source: "addedSkill" });
+    }
+  };
+
   const handleCloseSheet = () => {
     setDialogMode(null);
     setKnowledgeAction(null);
@@ -244,11 +251,15 @@ export function AgentBuilderCapabilitiesBlock({
                 </div>
               )}
             <CardGrid>
+              {
+                // TODO(skills 2025-12-17): display skills and actions in the order they were added, not separated by type
+              }
               {skillFields.map((field, index) => (
                 <AddedSkillCard
                   key={field.id}
                   skill={field}
                   onRemove={() => removeSkills(index)}
+                  onClick={() => handleSkillClick(field.sId)}
                 />
               ))}
               {actionFields.map((field, index) => (
