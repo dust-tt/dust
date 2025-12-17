@@ -92,12 +92,12 @@ function buildPricingData(): PricingRow[] {
     });
   }
 
-  // Sort by provider, then by output price descending (premium models first).
+  // Sort by provider, then by display name.
   rows.sort((a, b) => {
     if (a.providerDisplayName !== b.providerDisplayName) {
       return a.providerDisplayName.localeCompare(b.providerDisplayName);
     }
-    return b.outputPrice - a.outputPrice;
+    return a.displayName.localeCompare(b.displayName);
   });
 
   return rows;
@@ -255,8 +255,8 @@ export default function ApiPricingPage({
 
   return (
     <AppCenteredLayout
-      subscription={subscription}
       owner={owner}
+      subscription={subscription}
       subNavigation={subNavigationAdmin({
         owner,
         current: "credits_usage",
