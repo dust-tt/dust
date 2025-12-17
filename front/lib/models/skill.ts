@@ -1,8 +1,4 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  ModelAttributes,
-} from "sequelize";
+import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
