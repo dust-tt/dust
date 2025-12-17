@@ -133,7 +133,7 @@ export function useConversationDrafts({
     (text: string) => {
       const hasConversationId = getHasConversationId(conversationId);
       if (!hasConversationId || !userId) {
-        return {};
+        return;
       }
 
       debouncedSave({
