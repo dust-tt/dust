@@ -203,7 +203,7 @@ export function AgentBuilderInstructionsEditor({
   useEffect(() => {
     editorRef.current = editor;
     if (editor) {
-      editor.commands.focus();
+      editor.commands.focus("end");
     }
   }, [editor]);
 
