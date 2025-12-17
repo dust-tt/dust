@@ -86,6 +86,7 @@ function createServer(
         const user = auth.getNonNullableUser();
 
         if (!agentLoopContext?.runContext) {
+          logger.error("Agent context missing");
           return new Err(new MCPError("Agent context is required"));
         }
 
@@ -95,6 +96,7 @@ function createServer(
         const resolvedTimezone = timezone ?? getUserTimezone(agentLoopContext);
 
         if (!resolvedTimezone) {
+          logger.error("resolved timezone missing");
           return new Err(new MCPError("Provide a timezone"));
         }
 
