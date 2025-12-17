@@ -44,7 +44,10 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
+import {
+  concurrentExecutor,
+  getAdaptiveConcurrency,
+} from "@connectors/lib/async_utils";
 import {
   MAX_FILE_SIZE_TO_DOWNLOAD,
   upsertDataSourceFolder,
@@ -478,18 +481,9 @@ export async function syncFiles({
       item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
   );
 
-  // Find the maximum file size of the files that can be synced.
-  const maxFoundFileSize = filesToSync
-    .filter((file) => file.size && file.size <= MAX_FILE_SIZE_TO_DOWNLOAD)
-    .reduce((max, file) => {
-      return Math.max(max, file.size ?? 0);
-    }, 0);
-
-  // Limit the concurrency to the number of files that can be synced in parallel.
-  // We don't want to exceed the MAX_FILE_SIZE_TO_DOWNLOAD in memory,
-  // so we allow in parallel at most MAX_FILE_SIZE_TO_DOWNLOAD / maxFoundFileSize
-  const concurrency = Math.min(
-    Math.floor(MAX_FILE_SIZE_TO_DOWNLOAD / maxFoundFileSize),
+  const concurrency = getAdaptiveConcurrency(
+    filesToSync,
+    MAX_FILE_SIZE_TO_DOWNLOAD,
     FILES_SYNC_CONCURRENCY
   );
 
