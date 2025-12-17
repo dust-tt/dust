@@ -442,9 +442,11 @@ export function isUserMessageContextValid(
 
   const {
     "user-agent": userAgent,
+    origin: origin,
     "x-dust-extension-version": extensionVersion,
     "x-zendesk-app-id": zendeskAppId,
     "x-zendesk-request-id": zendeskReqId,
+    "x-zendesk-user-id": zendeskUserId,
   } = req.headers;
 
   switch (context.origin) {
@@ -464,6 +466,8 @@ export function isUserMessageContextValid(
         {
           zendeskAppId,
           zendeskReqId,
+          zendeskUserId,
+          origin,
         },
         "Zendesk request headers"
       );
