@@ -1,15 +1,15 @@
-import { Chip } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
+import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export function SkillBuilderRequestedSpacesSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
@@ -52,9 +52,12 @@ export function SkillBuilderRequestedSpacesSection() {
     setValue("tools", newTools, { shouldDirty: true });
   };
 
-  if (nonGlobalSpacesUsedInActions.length === 0) {
-    return null;
-  }
+  const globalSpace = useMemo(() => {
+    return spaces.find((s) => s.kind === "global");
+  }, [spaces]);
+  const spacesToDisplay = useMemo(() => {
+    return removeNulls([globalSpace, ...nonGlobalSpacesUsedInActions]);
+  }, [globalSpace, nonGlobalSpacesUsedInActions]);
 
   return (
     <div className="space-y-3">
@@ -66,16 +69,7 @@ export function SkillBuilderRequestedSpacesSection() {
           Determines who can use this skill and what data it can access
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {nonGlobalSpacesUsedInActions.map((space) => (
-          <Chip
-            key={space.sId}
-            label={getSpaceName(space)}
-            icon={getSpaceIcon(space)}
-            onRemove={() => handleRemoveSpace(space)}
-          />
-        ))}
-      </div>
+      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
     </div>
   );
 }
