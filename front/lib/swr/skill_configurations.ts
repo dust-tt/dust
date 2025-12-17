@@ -156,10 +156,10 @@ export function useArchiveSkillConfiguration({
 
 export function useRestoreSkillConfiguration({
   owner,
-  skillConfiguration,
+  skill,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillType;
+  skill: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
@@ -176,11 +176,11 @@ export function useRestoreSkillConfiguration({
     });
 
   const doRestore = async () => {
-    if (!skillConfiguration.sId) {
+    if (!skill.sId) {
       return;
     }
     const res = await clientFetch(
-      `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/restore`,
+      `/api/w/${owner.sId}/skills/${skill.sId}/restore`,
       {
         method: "POST",
       }
@@ -192,15 +192,15 @@ export function useRestoreSkillConfiguration({
 
       sendNotification({
         type: "success",
-        title: `Successfully restored ${skillConfiguration.name}`,
-        description: `${skillConfiguration.name} was successfully restored.`,
+        title: `Successfully restored ${skill.name}`,
+        description: `${skill.name} was successfully restored.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error restoring ${skillConfiguration.name}`,
+        title: `Error restoring ${skill.name}`,
         description: `Error: ${errorData.message}`,
       });
     }

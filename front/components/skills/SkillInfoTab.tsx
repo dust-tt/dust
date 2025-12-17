@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { timeAgoFrom } from "@app/lib/utils";
 import type {
   SkillRelations,
   SkillType,
@@ -27,17 +26,10 @@ export function SkillInfoTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        {skill.userFacingDescription}
-      </div>
-      {/* TODO(skills 2025-12-12): display agent facing description here */}
-      {skill.updatedAt && (
-        <SkillEdited
-          skillConfiguration={{
-            ...skill,
-            updatedAt: skill.updatedAt,
-          }}
-        />
+      {skill.userFacingDescription && (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          {skill.userFacingDescription}
+        </div>
       )}
 
       <Page.Separator />
@@ -72,26 +64,6 @@ export function SkillInfoTab({
         </div>
       )}
     </div>
-  );
-}
-
-interface SkillEditedProps {
-  skillConfiguration: SkillType & {
-    updatedAt: number;
-    relations?: SkillRelations;
-  };
-}
-
-export function SkillEdited({ skillConfiguration }: SkillEditedProps) {
-  const timeAgo = timeAgoFrom(skillConfiguration.updatedAt);
-
-  const lastAuthor = skillConfiguration.relations?.author?.fullName;
-
-  return (
-    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-      Last edited: {timeAgo} ago
-      {lastAuthor && ` by ${lastAuthor}`}
-    </p>
   );
 }
 

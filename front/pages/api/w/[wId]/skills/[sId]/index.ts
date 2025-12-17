@@ -15,8 +15,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { Err, isBuilder, isString, Ok } from "@app/types";
 import type {
-  SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
@@ -126,9 +126,7 @@ async function handler(
         const mcpServerViews = await skillResource.listMCPServerViews(auth);
         const author = await skillResource.fetchAuthor(auth);
 
-        const skillConfigurationWithRelations: SkillType & {
-          relations: SkillRelations;
-        } = {
+        const skillConfigurationWithRelations: SkillWithRelationsType = {
           ...skillConfiguration,
           relations: {
             usage,

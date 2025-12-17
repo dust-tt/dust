@@ -11,6 +11,7 @@ import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type {
   SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
 // TODO(skills 2025-12-05): use the right icon
@@ -53,5 +54,5 @@ export function doesSkillTriggerSelectSpaces(sId: string): boolean {
 }
 export const hasRelations = (
   skillConfiguration: SkillType & { relations?: SkillRelations }
-): skillConfiguration is SkillType & { relations: SkillRelations } =>
+): skillConfiguration is SkillWithRelationsType =>
   skillConfiguration.relations !== undefined;

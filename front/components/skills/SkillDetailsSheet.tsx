@@ -26,10 +26,11 @@ import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skill: SkillType & { relations: SkillRelations };
+  skill: SkillWithRelationsType;
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
@@ -55,11 +56,7 @@ export function SkillDetailsSheet({
           <SheetTitle />
         </VisuallyHidden>
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          <DescriptionSection
-            skillConfiguration={skill}
-            owner={owner}
-            onClose={onClose}
-          />
+          <DescriptionSection skill={skill} owner={owner} onClose={onClose} />
         </SheetHeader>
         <SheetContainer className="pb-4">
           <SkillDetailsSheetContent skill={skill} user={user} owner={owner} />
@@ -123,30 +120,46 @@ export function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skillConfiguration: SkillType;
+  skill: SkillWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
 };
 
 const DescriptionSection = ({
-  skillConfiguration,
+  skill,
   owner,
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const author = skill.relations.author;
+  const editedDate =
+    skill.updatedAt &&
+    new Date(skill.updatedAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Avatar name="Skill avatar" visual={<SKILL_ICON />} size="lg" />
-        <div className="flex grow flex-col gap-1">
-          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-            {skillConfiguration.name}
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-4 pt-4">
+      <div className="relative flex items-center justify-center">
+        <Avatar name="Agent avatar" visual={<SKILL_ICON />} size="xl" />
       </div>
 
-      {skillConfiguration.status === "archived" && (
+      {/* Title and edit info */}
+      <div className="flex flex-col items-center gap-1">
+        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+          {skill.name}
+        </h2>
+        {editedDate && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Last edited: {editedDate}
+            {author && ` by ${author.fullName}`}
+          </p>
+        )}
+      </div>
+
+      {skill.status === "archived" && (
         <>
           <ContentMessage
             title="This skill has been archived."
@@ -155,7 +168,7 @@ const DescriptionSection = ({
             size="sm"
           >
             It is no longer active and cannot be used.
-            {skillConfiguration.canWrite && (
+            {skill.canWrite && (
               <div className="mt-2">
                 <Button
                   variant="outline"
@@ -172,7 +185,7 @@ const DescriptionSection = ({
           <RestoreSkillDialog
             owner={owner}
             isOpen={showRestoreModal}
-            skillConfiguration={skillConfiguration}
+            skill={skill}
             onClose={() => {
               setShowRestoreModal(false);
               onClose();

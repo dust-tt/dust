@@ -14,20 +14,23 @@ import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface RestoreSkillDialogProps {
-  skillConfiguration: SkillType;
+  skill: SkillType;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
 
 export function RestoreSkillDialog({
-  skillConfiguration,
+  skill,
   isOpen,
   onClose,
   owner,
 }: RestoreSkillDialogProps) {
   const [isRestoring, setIsRestoring] = useState(false);
-  const doRestore = useRestoreSkillConfiguration({ owner, skillConfiguration });
+  const doRestore = useRestoreSkillConfiguration({
+    owner,
+    skill: skill,
+  });
 
   return (
     <Dialog
@@ -44,8 +47,7 @@ export function RestoreSkillDialog({
           <DialogDescription>
             <div>
               This will restore the skill{" "}
-              <span className="font-bold">{skillConfiguration.name}</span> for
-              everyone.
+              <span className="font-bold">{skill.name}</span> for everyone.
             </div>
           </DialogDescription>
         </DialogHeader>

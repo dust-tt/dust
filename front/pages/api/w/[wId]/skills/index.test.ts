@@ -17,15 +17,11 @@ import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFa
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
-  SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
 import handler from "./index";
-
-type SkillConfigurationWithRelations = SkillType & {
-  relations: SkillRelations;
-};
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -197,7 +193,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     const skillResult = res
       ._getJSONData()
       .skillConfigurations.find(
-        (s: SkillConfigurationWithRelations) => s.sId === skillSId
+        (s: SkillWithRelationsType) => s.sId === skillSId
       );
 
     expect(skillResult).toMatchObject({
@@ -236,7 +232,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     const skillResult = res
       ._getJSONData()
       .skillConfigurations.find(
-        (s: SkillConfigurationWithRelations) => s.sId === "frames"
+        (s: SkillWithRelationsType) => s.sId === "frames"
       );
 
     expect(skillResult).toMatchObject({
@@ -274,7 +270,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     const skillResult = res
       ._getJSONData()
       .skillConfigurations.find(
-        (s: SkillConfigurationWithRelations) => s.sId === skillSId
+        (s: SkillWithRelationsType) => s.sId === skillSId
       );
 
     expect(skillResult).toMatchObject({
@@ -358,7 +354,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     const skillResult = res
       ._getJSONData()
       .skillConfigurations.find(
-        (s: SkillConfigurationWithRelations) => s.sId === skillSId
+        (s: SkillWithRelationsType) => s.sId === skillSId
       );
 
     expect(skillResult).toMatchObject({
