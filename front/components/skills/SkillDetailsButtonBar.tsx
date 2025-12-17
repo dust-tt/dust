@@ -11,7 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
-import { useUser } from "@app/lib/swr/user";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -25,12 +24,6 @@ export function SkillDetailsButtonBar({
   skill,
   owner,
 }: SkillDetailsButtonBarProps) {
-  const { user } = useUser();
-
-  if (skill.status === "archived" || !user) {
-    return null;
-  }
-
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <Button
