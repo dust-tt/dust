@@ -242,6 +242,8 @@ export async function downloadAndUploadToolFile({
   externalId,
   conversationId,
   metadata,
+  serverName,
+  serverIcon,
 }: {
   auth: Authenticator;
   tool: SearchableTool;
@@ -249,6 +251,8 @@ export async function downloadAndUploadToolFile({
   externalId: string;
   conversationId?: string;
   metadata?: Record<string, string>;
+  serverName?: string;
+  serverIcon?: string;
 }): Promise<Result<FileType, Error>> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
@@ -291,7 +295,11 @@ export async function downloadAndUploadToolFile({
     userId: user.id,
     workspaceId: owner.id,
     useCase: "conversation",
-    useCaseMetadata: conversationId ? { conversationId } : null,
+    useCaseMetadata: {
+      ...(conversationId ? { conversationId } : {}),
+      ...(serverName ? { sourceProvider: serverName } : {}),
+      ...(serverIcon ? { sourceIcon: serverIcon } : {}),
+    },
   });
 
   const processResult = await processAndStoreFile(auth, {

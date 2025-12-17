@@ -39,6 +39,8 @@ function createMockContentFragment(
     generatedTables: [],
     textUrl: "https://example.com/text",
     textBytes: 100,
+    sourceProvider: null,
+    sourceIcon: null,
   };
 }
 
