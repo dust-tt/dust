@@ -83,7 +83,3 @@ export class GlobalSkillsRegistry {
     });
   }
 }
-
-export function isGlobalSkillId(sId: string): sId is GlobalSkillId {
-  return GLOBAL_SKILLS_BY_ID.has(sId);
-}

@@ -99,6 +99,7 @@ export function AgentBuilderSkillsBlock({
     name: "skills",
   });
 
+  // TODO(skills Jules): make a pass on the way we use reacthookform here
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
 

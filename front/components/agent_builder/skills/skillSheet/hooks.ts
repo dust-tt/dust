@@ -8,17 +8,17 @@ import type {
   SkillsSheetMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import { isGlobalSkillId } from "@app/lib/resources/skill/global/registry";
+import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
 import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
-function isGlobalSkill(
+function isGlobalSkillWithSpaceSelection(
   skill: SkillType & { relations: SkillRelations }
 ): boolean {
-  return isGlobalSkillId(skill.sId);
+  return doesSkillTriggerSelectSpaces(skill.sId);
 }
 
 function getSelectionMode(mode: SkillsSheetMode): SelectionMode {
@@ -82,7 +82,7 @@ export const useSkillSelection = ({
           prev.filter((s) => s.sId !== skill.sId)
         );
       } else {
-        if (isGlobalSkill(skill)) {
+        if (isGlobalSkillWithSpaceSelection(skill)) {
           onModeChange({
             type: SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION,
             skillConfiguration: skill,

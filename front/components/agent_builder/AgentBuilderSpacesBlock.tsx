@@ -1,6 +1,6 @@
 import { Chip } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
@@ -13,15 +13,21 @@ import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
 export function AgentBuilderSpacesBlock() {
-  const { watch, setValue } = useFormContext<AgentBuilderFormData>();
+  const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const selectedSkills = watch("skills");
-  const actions = watch("actions");
-  const additionalSpaces = watch("additionalSpaces");
+  const selectedSkills = useWatch<AgentBuilderFormData, "skills">({
+    name: "skills",
+  });
+  const actions = useWatch<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
+  const additionalSpaces = useWatch<AgentBuilderFormData, "additionalSpaces">({
+    name: "additionalSpaces",
+  });
 
   const confirmRemoveSpace = useRemoveSpaceConfirm({
     entityName: "agent",

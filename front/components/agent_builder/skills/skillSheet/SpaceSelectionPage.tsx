@@ -16,11 +16,11 @@ type SpaceRowData = {
   onClick?: () => void;
 };
 
-type SpaceSelectionPageProps = {
+interface SpaceSelectionPageProps {
   alreadyRequestedSpaceIds: Set<string>;
   draftSelectedSpaces: string[];
   setDraftSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
-};
+}
 
 export function SpaceSelectionPageContent({
   alreadyRequestedSpaceIds,
