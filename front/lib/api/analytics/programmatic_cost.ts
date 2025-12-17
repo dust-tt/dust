@@ -188,20 +188,49 @@ function getTimestampsInRange(startOfMonth: Date, endDate: Date): number[] {
 function getSelectedFilterClauses(
   filterParams: Partial<Record<GroupByType, string[]>> | undefined,
   excluded?: GroupByType
-) {
+): estypes.QueryDslQueryContainer[] {
   if (!filterParams) {
     return [];
   }
 
   return GROUP_BY_KEYS.filter(
     (key) => key !== excluded && filterParams[key]
-  ).map((filterKey) => ({
-    terms: {
-      [GROUP_BY_KEY_TO_ES_FIELD[filterKey]]: filterParams[
-        filterKey
-      ] as string[],
-    },
-  }));
+  ).flatMap((filterKey) => {
+    const filterValues = filterParams[filterKey] as string[];
+    const esField = GROUP_BY_KEY_TO_ES_FIELD[filterKey];
+
+    // "non_api_programmatic" is a synthetic key for documents where api_key_name is missing.
+    // We need to handle it specially since ES terms query won't match missing fields.
+    const hasNonApiProgrammatic = filterValues.includes("non_api_programmatic");
+    const otherValues = filterValues.filter(
+      (v) => v !== "non_api_programmatic"
+    );
+
+    const clauses: estypes.QueryDslQueryContainer[] = [];
+
+    if (hasNonApiProgrammatic && otherValues.length > 0) {
+      // Filter includes both "non_api_programmatic" and other keys: use OR (should)
+      clauses.push({
+        bool: {
+          should: [
+            { bool: { must_not: { exists: { field: esField } } } },
+            { terms: { [esField]: otherValues } },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+    } else if (hasNonApiProgrammatic) {
+      // Only "non_api_programmatic": match documents where field is missing
+      clauses.push({
+        bool: { must_not: { exists: { field: esField } } },
+      });
+    } else {
+      // Normal case: use terms query
+      clauses.push({ terms: { [esField]: filterValues } });
+    }
+
+    return clauses;
+  });
 }
 
 function buildAggregation(
