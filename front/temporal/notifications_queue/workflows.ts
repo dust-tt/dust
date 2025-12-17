@@ -9,7 +9,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 const { sendUnreadConversationNotificationActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "1 minute",
   retry: {
     maximumAttempts: 2,
   },
