@@ -11,10 +11,10 @@ import { useState } from "react";
 
 import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface DeleteSkillDialogProps {
-  skillConfiguration: SkillType;
+  skillConfiguration: SkillWithRelationsType;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
