@@ -72,11 +72,6 @@ type SkillVersionCreationAttributes =
     mcpServerConfigurationIds: number[];
   };
 
-type AgentMessageSkillCreationAttributes =
-  CreationAttributes<ConversationSkillModel> & {
-    agentMessageId: number;
-  };
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -871,13 +866,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source,
       addedByUserId: user && source === "conversation" ? user.id : null,
     };
-
-    const agentMessageSkillBlob: AgentMessageSkillCreationAttributes = {
-      ...conversationSkillBlob,
-      agentMessageId: agentMessage.agentMessageId,
-    };
-
-    await AgentMessageSkillModel.create(agentMessageSkillBlob);
 
     await ConversationSkillModel.create(conversationSkillBlob);
 
