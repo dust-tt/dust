@@ -18,6 +18,10 @@ export function isTextNode(node: Block | Inline | Text): node is Text {
   return node.nodeType === "text";
 }
 
+export function isBlockOrInline(node: Block | Inline | Text): node is Block | Inline {
+  return "content" in node;
+}
+
 function extractTextFromNode(node: Block | Inline): string {
   let text = "";
   if ("content" in node) {

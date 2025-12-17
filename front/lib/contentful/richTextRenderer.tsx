@@ -8,7 +8,10 @@ import { useEffect, useState } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import { isTextNode } from "@app/lib/contentful/tableOfContents";
+import {
+  isBlockOrInline,
+  isTextNode,
+} from "@app/lib/contentful/tableOfContents";
 import { isString } from "@app/types";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
@@ -54,8 +57,8 @@ function getParagraphText(node: Block | Inline): string {
     for (const child of node.content) {
       if (isTextNode(child)) {
         text += child.value;
-      } else if ("content" in child) {
-        text += getParagraphText(child as Block | Inline);
+      } else if (isBlockOrInline(child)) {
+        text += getParagraphText(child);
       }
     }
   }
