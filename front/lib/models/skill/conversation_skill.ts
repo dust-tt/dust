@@ -1,9 +1,4 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  ModelAttributes,
-  NonAttribute,
-} from "sequelize";
+import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import {
@@ -88,7 +83,6 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
 
   declare agentConfigurationId: string;
 
-  declare customSkill: NonAttribute<SkillConfigurationModel> | null;
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 

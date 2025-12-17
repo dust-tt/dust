@@ -1,9 +1,4 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  ModelAttributes,
-  NonAttribute,
-} from "sequelize";
+import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -68,11 +63,6 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare authorId: ForeignKey<UserModel["id"]>;
 
   declare requestedSpaceIds: number[];
-
-  declare author: NonAttribute<UserModel>;
-  declare mcpServerConfigurations: NonAttribute<
-    SkillMCPServerConfigurationModel[]
-  >;
 }
 
 SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
@@ -85,7 +75,6 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
 
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
-  declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
   declare mcpServerConfigurationIds: number[];
   declare version: number;
 }
@@ -146,9 +135,6 @@ export class SkillMCPServerConfigurationModel extends WorkspaceAwareModel<SkillM
 
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
-
-  declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
-  declare mcpServerView: NonAttribute<MCPServerViewModel>;
 }
 
 SkillMCPServerConfigurationModel.init(
