@@ -712,12 +712,9 @@ const DropdownMenuFilters = React.forwardRef<
           <Button
             key={filter.value}
             size="xs"
-            variant={isSelected ? "outline" : "ghost"}
+            variant={isSelected ? "primary" : "outline"}
             label={filter.label}
             onClick={() => onSelectFilter(filter.value)}
-            className={cn(
-              isSelected && "s-text-blue-500 hover:s-text-blue-500"
-            )}
           />
         );
       })}
