@@ -76,17 +76,22 @@ export function SkillInfoTab({
 }
 
 interface SkillEditedProps {
-  skillConfiguration: SkillType & { updatedAt: number };
+  skillConfiguration: SkillType & {
+    updatedAt: number;
+    relations?: SkillRelations;
+  };
 }
 
 export function SkillEdited({ skillConfiguration }: SkillEditedProps) {
-  const editedSentence = timeAgoFrom(skillConfiguration.updatedAt);
+  const timeAgo = timeAgoFrom(skillConfiguration.updatedAt);
+
+  const lastAuthor = skillConfiguration.relations?.author?.fullName;
 
   return (
-    <div className="flex gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night sm:grid-cols-2">
-      <b>Last edited: </b>
-      <div>{editedSentence}</div>
-    </div>
+    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      Last edited: {timeAgo}
+      {lastAuthor && ` by ${lastAuthor}`}
+    </p>
   );
 }
 
