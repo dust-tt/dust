@@ -75,7 +75,7 @@ export function useToolFileUpload({
         fileUploaderService.addUploadedFile({
           id: `tool-${fileKey}`,
           fileId: file.sId,
-          filename: file.fileName,
+          filename: toolFile.title,
           contentType: file.contentType,
           size: file.fileSize,
           sourceUrl: toolFile.sourceUrl ?? undefined,
