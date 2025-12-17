@@ -19,7 +19,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "ActionTableIcon",
   "ActionTimeIcon",
   "AsanaLogo",
-  "AshbyLogo"
+  "AshbyLogo",
   "CanvaLogo",
   "CommandLineIcon",
   "ConfluenceLogo",
