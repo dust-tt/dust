@@ -234,11 +234,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Display similar skills when creating a new skill to avoid duplicates",
     stage: "dust_only",
   },
-  schedules_management: {
-    description:
-      "Access to schedule management tools for creating scheduled automations",
-    stage: "dust_only",
-  },
   conversations_groups: {
     description: "Enable conversations groups in Spaces",
     stage: "dust_only",

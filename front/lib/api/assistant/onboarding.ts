@@ -231,41 +231,44 @@ Example ending:
 </dust_system>`;
 }
 
-// Tool-specific guidance for automatically querying tools during onboarding.
-// The agent will use these to fetch real data and generate personalized suggestions.
-const TOOL_AUTO_QUERY_GUIDANCE: Record<string, string> = {
-  gmail: `Automatically fetch recent unread emails from the last 2-3 days. Look for emails that might need a response or action. Present 1-2 specific examples with sender names and brief context.`,
-
-  outlook: `Automatically fetch recent unread emails from the last 2-3 days. Look for emails that might need a response or action. Present 1-2 specific examples with sender names and brief context.`,
-
+// Tool-specific task suggestions for the follow-up prompt after connecting a tool.
+// These are intentionally generic and don't assume what data the user has.
+const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
+  gmail: `Example quick replies:
+:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
+  outlook: `Example quick replies:
+:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
   github: `Automatically check for recent notifications, open pull requests, or issues assigned to the user. Present 1-2 specific examples with repo names and brief context.`,
-
-  notion: `Automatically check for recently edited or created pages from the last few days. Present 1-2 specific examples with page titles.`,
-
-  slack: `Automatically check for recent unread messages, mentions, or important threads from the last day or two. Present 1-2 specific examples with channel or sender names.`,
-
-  hubspot: `Automatically check for recent deals, contacts, or activities. Present 1-2 specific examples with names and brief context.`,
-
-  jira: `Automatically check for open tickets assigned to the user or recently updated tickets. Present 1-2 specific examples with ticket IDs and brief context.`,
-
-  google_drive: `Automatically check for recently modified or created files from the last few days. Present 1-2 specific examples with file names and types.`,
-
-  microsoft_drive: `Automatically check for recently modified or created files from the last few days. Present 1-2 specific examples with file names and types.`,
-
-  google_calendar: `Automatically check for upcoming events today or tomorrow. Present 1-2 specific examples with event names and times.`,
-
-  outlook_calendar: `Automatically check for upcoming events today or tomorrow. Present 1-2 specific examples with event names and times.`,
-
-  microsoft_teams: `Automatically check for recent unread messages or mentions from the last day or two. Present 1-2 specific examples with channel or sender names.`,
-
-  microsoft_excel: `Automatically list recently modified Excel files. Present 1-2 specific examples with file names.`,
+  notion: `Example quick replies:
+:quickReply[Pages updated today]{message="Show Notion pages updated today"} :quickReply[Recent activity]{message="Summarize recent activity in Notion"}`,
+  slack: `Example quick replies:
+:quickReply[Unread summary]{message="Summarize my unread Slack messages"} :quickReply[Today's mentions]{message="Show Slack mentions from today"}`,
+  hubspot: `Example quick replies:
+:quickReply[Deals updated today]{message="Show deals updated today"} :quickReply[New contacts]{message="Show new contacts from this week"}`,
+  jira: `Example quick replies:
+:quickReply[My open tickets]{message="Show my open Jira tickets"} :quickReply[Ticket updates]{message="Summarize updates on my Jira tickets"}`,
+  google_drive: `Example quick replies:
+:quickReply[Files updated today]{message="Show files updated today in Google Drive"} :quickReply[Recent changes]{message="Summarize recent changes in Google Drive"}`,
+  microsoft_drive: `Example quick replies:
+:quickReply[Files updated today]{message="Show files updated today in OneDrive"} :quickReply[Recent changes]{message="Summarize recent changes in OneDrive"}`,
+  google_calendar: `Example quick replies:
+:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
+  outlook_calendar: `Example quick replies:
+:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
+  microsoft_teams: `Example quick replies:
+:quickReply[Unread summary]{message="Summarize my unread Teams messages"} :quickReply[Today's mentions]{message="Show Teams mentions from today"}`,
+  microsoft_excel: `Example quick replies:
+:quickReply[Recent spreadsheets]{message="Show recently updated Excel files"} :quickReply[Changes this week]{message="Summarize changes to my Excel files this week"}`,
 };
 
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
-export function buildOnboardingFollowUpPrompt(toolId: string): string {
+export function buildOnboardingFollowUpPrompt(
+  toolId: string,
+  options: { username: string }
+): string {
   const queryGuidance =
-    TOOL_AUTO_QUERY_GUIDANCE[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
+    TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
 
   return `<dust_system>
 The user just connected a tool (${toolId}). Your task is to AUTOMATICALLY use this tool to provide a personalized, helpful suggestion.
@@ -285,6 +288,35 @@ The user just connected a tool (${toolId}). Your task is to AUTOMATICALLY use th
    - Mention you checked but didn't find urgent items
    - Suggest 2 general things they can try with this tool
    - End with quick reply buttons for general actions
+
+## After showing the results:
+1. Show the results of their request
+2. Ask if they'd like to automate this task
+3. Explain it would run automatically (e.g., "every weekday morning")
+4. End with quick reply options
+
+Example response:
+"Here's your summary: [content]
+
+Would you like me to send you this automatically every weekday morning?"
+:quickReply[Yes, automate this]{message="Yes, please automate this for me"} :quickReply[No thanks]{message="No thanks"}
+
+### When user wants to automate a task
+When the user confirms they want to automate a task:
+
+1. **First, ask for their timezone** so the schedule runs at the right time for them:
+   - Ask: "What timezone are you in?"
+   - Provide quick replies for common timezones:
+
+:quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
+
+2. **Once you have the timezone**, call create_schedule_trigger with the timezone parameter:
+   - name: A short descriptive name (e.g., "Daily email summary")
+   - schedule: The schedule in natural language (e.g., "every weekday at 9am")
+   - prompt: What @dust should do. Start with @${options.username} so the user gets pinged (e.g., "@${options.username} Summarize the important emails I received since yesterday")
+   - timezone: The IANA timezone the user provided (e.g., "America/New_York", "Europe/Paris")
+
+The tool will create the schedule and return a confirmation message.
 
 ## Response format:
 

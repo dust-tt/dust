@@ -1699,9 +1699,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("schedules_management");
-    },
+    isRestricted: undefined,
     tools_stakes: {
       create_schedule: "high",
       list_schedules: "never_ask",
