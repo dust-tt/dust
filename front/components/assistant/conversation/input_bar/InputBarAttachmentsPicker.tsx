@@ -462,7 +462,7 @@ export const InputBarAttachmentsPicker = ({
               )}
               {availableSources.length > 1 && (
                 <DropdownMenuFilters
-                  filters={[{ label: "test", value: "test" }]}
+                  filters={availableSources}
                   selectedValues={selectedFilterKeys}
                   onSelectFilter={handleFilterClick}
                   className="grow"
