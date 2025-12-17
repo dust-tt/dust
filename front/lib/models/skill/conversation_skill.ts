@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -24,7 +25,7 @@ const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
   },
   agentConfigurationId: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   customSkillId: {
     type: DataTypes.BIGINT,
@@ -81,7 +82,9 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: string;
+  declare agentConfigurationId: ForeignKey<
+    AgentConfigurationModel["id"]
+  > | null;
 
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
