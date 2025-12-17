@@ -37,6 +37,7 @@ import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
+  GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
   // OpenAI models
   GPT_3_5_TURBO_MODEL_ID,
@@ -154,6 +155,7 @@ const MODELS: Record<
   },
   [GEMINI_2_5_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
+  [GEMINI_3_FLASH_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   // Mistral models
   [MISTRAL_CODESTRAL_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_LARGE_MODEL_ID]: { runTest: false, providerId: "mistral" },

@@ -187,6 +187,11 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 2,
     output: 18,
   },
+  "gemini-3-flash-preview": {
+    input: 0.5,
+    output: 3.0,
+    cache_read_input_tokens: 0.05,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
