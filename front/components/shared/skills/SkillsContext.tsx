@@ -38,9 +38,9 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
 
   const value: SkillsContextType = useMemo(() => {
     return {
-      skills: skills,
-      isSkillsLoading: isSkillsLoading,
-      isSkillsError: isSkillsError,
+      skills,
+      isSkillsLoading,
+      isSkillsError,
     };
   }, [skills, isSkillsLoading, isSkillsError]);
 
