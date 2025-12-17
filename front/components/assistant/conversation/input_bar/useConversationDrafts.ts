@@ -13,9 +13,9 @@ type KeyId = string;
 
 const getKeyId = (
   workspaceId: string,
-  internalUserId: string,
+  userId: string,
   conversationId: string
-) => `${internalUserId}::${workspaceId}::${conversationId}` satisfies KeyId;
+) => `${userId}::${workspaceId}::${conversationId}` satisfies KeyId;
 
 interface DraftStorage {
   [keyId: KeyId]: ConversationDraft;
