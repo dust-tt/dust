@@ -6,12 +6,264 @@ import { fromError } from "zod-validation-error";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleSearch } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
+import { streamToolFiles } from "@app/lib/search/tools/search";
+import type { ToolSearchResult } from "@app/lib/search/tools/types";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  ContentNodeWithParent,
+  DataSourceType,
+  DataSourceViewType,
+  SearchWarningCode,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { isString } from "@app/types";
+
+export type DataSourceContentNode = ContentNodeWithParent & {
+  dataSource: DataSourceType;
+  dataSourceViews: DataSourceViewType[];
+};
+
+interface UnifiedSearchStreamChunk {
+  knowledgeResults?: {
+    nodes: DataSourceContentNode[];
+    warningCode: SearchWarningCode | null;
+    nextPageCursor: string | null;
+    resultsCount: number | null;
+  };
+  toolResults?: ToolSearchResult[];
+}
+
+async function handleStreamingSearch(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  auth: Authenticator
+): Promise<void> {
+  const {
+    query,
+    limit: limitParam,
+    cursor,
+    viewType = "all",
+    spaceIds: spaceIdsParam,
+    includeDataSources = "true",
+    searchSourceUrls,
+    includeTools = "true",
+  } = req.query;
+
+  if (typeof query !== "string" || query.length < 3) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Query must be at least 3 characters.",
+      },
+    });
+  }
+
+  if (!isString(limitParam)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "limit must be a number between 1 and 100.",
+      },
+    });
+  }
+
+  const limit = limitParam ? parseInt(limitParam, 10) : 25;
+  if (isNaN(limit) || limit < 1 || limit > 100) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "limit must be a number between 1 and 100.",
+      },
+    });
+  }
+
+  try {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    res.flushHeaders();
+
+    // Create an AbortController to handle client disconnection
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    // Handle client disconnection
+    req.on("close", () => {
+      controller.abort();
+    });
+
+    const spaceIds =
+      typeof spaceIdsParam === "string" && spaceIdsParam.length > 0
+        ? spaceIdsParam.split(",")
+        : undefined;
+
+    const searchParams = {
+      query,
+      viewType: viewType as "all" | "document" | "table",
+      spaceIds,
+      includeDataSources: includeDataSources === "true",
+      searchSourceUrls: searchSourceUrls === "true",
+      limit,
+    };
+
+    logger.info(
+      {
+        workspaceId: auth.workspace()?.sId,
+        params: searchParams,
+      },
+      "Search knowledge (streaming - v1 API)"
+    );
+
+    // First, stream knowledge results
+    const searchResult = await handleSearch(req, auth, searchParams);
+
+    if (searchResult.isErr()) {
+      return apiError(req, res, {
+        status_code: searchResult.error.status,
+        api_error: searchResult.error.error,
+      });
+    }
+
+    // If the client disconnected, stop streaming
+    if (signal.aborted) {
+      return;
+    }
+
+    // Send knowledge results
+    const knowledgeChunk: UnifiedSearchStreamChunk = {
+      knowledgeResults: searchResult.value,
+    };
+    res.write(`data: ${JSON.stringify(knowledgeChunk)}\n\n`);
+    // @ts-expect-error - We need it for streaming but it does not exist in the types.
+    res.flush();
+
+    // Stream tool results if enabled and not paginating
+    // Tool results are only included on the first page (no cursor)
+    if (includeTools === "true" && !cursor && !signal.aborted) {
+      for await (const results of streamToolFiles({
+        auth,
+        query,
+        pageSize: limit,
+      })) {
+        // If the client disconnected, stop streaming
+        if (signal.aborted) {
+          break;
+        }
+
+        const toolChunk: UnifiedSearchStreamChunk = {
+          toolResults: results,
+        };
+        res.write(`data: ${JSON.stringify(toolChunk)}\n\n`);
+        // @ts-expect-error - We need it for streaming but it does not exist in the types.
+        res.flush();
+      }
+    }
+
+    res.status(200).end();
+    return;
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Error in unified search (v1 API)"
+    );
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to search: ${error instanceof Error ? error.message : "Unknown error"}`,
+      },
+    });
+  }
+}
 
 /**
  * @swagger
  * /api/v1/w/{wId}/search:
+ *   get:
+ *     summary: Search for nodes in the workspace (streaming)
+ *     description: Search for nodes in the workspace with SSE streaming
+ *     tags:
+ *       - Search
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: query
+ *         required: true
+ *         description: The search query (minimum 3 characters)
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Number of results per page (1-100, default 25)
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: cursor
+ *         required: false
+ *         description: Cursor for pagination
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: viewType
+ *         required: false
+ *         description: Type of view to filter results
+ *         schema:
+ *           type: string
+ *           enum: [all, document, table]
+ *       - in: query
+ *         name: spaceIds
+ *         required: false
+ *         description: Comma-separated list of space IDs to search in
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeDataSources
+ *         required: false
+ *         description: Whether to include data sources
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: searchSourceUrls
+ *         required: false
+ *         description: Whether to search source URLs
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: includeTools
+ *         required: false
+ *         description: Whether to include tool results
+ *         schema:
+ *           type: boolean
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Search results streamed successfully
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       405:
+ *         description: Method not allowed
  *   post:
  *     summary: Search for nodes in the workspace
  *     description: Search for nodes in the workspace
@@ -76,12 +328,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  // Support both GET (streaming) and POST (legacy) methods
+  if (req.method === "GET") {
+    return handleStreamingSearch(req, res, auth);
+  }
+
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
       api_error: {
         type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
+        message: "The method passed is not supported, GET or POST is expected.",
       },
     });
   }
