@@ -25,6 +25,7 @@ export const MessageBaseSchema = t.type({
     t.partial({
       clientSideMCPServerIds: t.array(t.string),
       selectedMCPServerViewIds: t.array(t.string),
+      selectedSkillIds: t.array(t.string),
       originMessageId: t.string,
     }),
   ]),

@@ -108,6 +108,7 @@ export type UserMessageContext = {
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  selectedSkillIds?: string[];
 };
 
 export type AgenticMessageData = {
@@ -403,7 +404,7 @@ type ConversationSkillTypeBase = {
   id: ModelId;
   workspaceId: ModelId;
   conversationId: ModelId;
-  agentConfigurationId: ModelId;
+  agentConfigurationId: ModelId | null;
   source: string;
   addedByUserId: ModelId | null;
   createdAt: Date;
