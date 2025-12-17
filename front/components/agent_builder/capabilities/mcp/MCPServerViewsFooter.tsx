@@ -1,11 +1,11 @@
 import { Chip } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import {
   getSelectedToolIcon,
   getSelectedToolLabel,
 } from "@app/components/agent_builder/capabilities/mcp/utils/toolDisplayUtils";
+import type { SelectedTool } from "@app/components/agent_builder/skills/skillSheet/types";
 
 interface MCPServerViewsFooterProps {
   selectedToolsInSheet: SelectedTool[];

@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SelectedTool } from "@app/components/agent_builder/skills/skillSheet/types";
 import {
   InternalActionIcons,
   isCustomResourceIconType,

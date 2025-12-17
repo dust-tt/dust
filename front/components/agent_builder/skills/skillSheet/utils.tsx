@@ -104,6 +104,18 @@ export function getPageAndFooter(props: PageContentProps): {
             skillSelection.handleSpaceSelectionSave(mode.skillConfiguration),
         },
       };
+    // Tool modes - placeholders until PR3/PR4
+    case SKILLS_SHEET_PAGE_IDS.TOOL_INFO:
+    case SKILLS_SHEET_PAGE_IDS.CONFIGURATION:
+    case SKILLS_SHEET_PAGE_IDS.TOOL_EDIT:
+      return {
+        page: {
+          title: "Tool",
+          id: mode.type,
+          content: <div>Tool configuration coming soon</div>,
+        },
+        leftButton: getCancelButton(onClose),
+      };
     default:
       assertNever(mode);
   }

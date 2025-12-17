@@ -1,4 +1,4 @@
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SelectedTool } from "@app/components/agent_builder/skills/skillSheet/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 
 interface GenerateUniqueActionNameParams {
