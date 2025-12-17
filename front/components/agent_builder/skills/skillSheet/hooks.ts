@@ -39,13 +39,11 @@ export const useSkillSelection = ({
     localAdditionalSpaces
   );
 
-  const {
-    skillsWithRelations,
-    isSkillsWithRelationsLoading,
-  } = useSkillsWithRelations({
-    owner,
-    status: "active",
-  });
+  const { skillsWithRelations, isSkillsWithRelationsLoading } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+    });
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
