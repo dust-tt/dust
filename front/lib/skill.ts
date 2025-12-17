@@ -7,6 +7,7 @@ import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
+import { framesSkill } from "@app/lib/resources/skill/global/frames";
 
 // TODO(skills 2025-12-05): use the right icon
 export const SKILL_ICON = PuzzleIcon;
@@ -37,4 +38,12 @@ export function getSkillIcon(
     return getIcon(iconString);
   }
   return SKILL_ICON;
+}
+
+const IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS: string[] = [
+  framesSkill.sId, // TODO(skills) Remove frames from this list when we have real global skills with space selection
+];
+
+export function doesSkillTriggerSelectSpaces(sId: string): boolean {
+  return IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS.includes(sId);
 }

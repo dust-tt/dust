@@ -1,8 +1,9 @@
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useLocalSelectedSkills } from "@app/components/agent_builder/skills/skillSheet/hooks";
+import { useSkillSelection } from "@app/components/agent_builder/skills/skillSheet/hooks";
 import { SelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SelectionPage";
+import { SpaceSelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SpaceSelectionPage";
 import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
@@ -14,25 +15,40 @@ export function getPageAndFooter(props: PageContentProps): {
   leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
 } {
-  const mode = props.mode;
+  const {
+    mode,
+    onModeChange,
+    onClose,
+    handleSave,
+    owner,
+    user,
+    alreadyRequestedSpaceIds,
+    localAdditionalSpaces,
+  } = props;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const skillSelection = useSkillSelection(props);
+
   switch (mode.type) {
     case SKILLS_SHEET_PAGE_IDS.SELECTION:
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const { handleSave, ...restOfUtils } = useLocalSelectedSkills({
-        mode,
-        onSave: props.onSave,
-        onClose: props.onClose,
-      });
-
       return {
         page: {
           title: "Add skills",
           id: mode.type,
           content: (
-            <SelectionPageContent {...props} {...restOfUtils} mode={mode} />
+            <SelectionPageContent
+              {...props}
+              mode={mode}
+              handleSkillToggle={skillSelection.handleSkillToggle}
+              filteredSkills={skillSelection.filteredSkills}
+              isSkillsLoading={skillSelection.isSkillsLoading}
+              searchQuery={skillSelection.searchQuery}
+              selectedSkillIds={skillSelection.selectedSkillIds}
+              setSearchQuery={skillSelection.setSearchQuery}
+            />
           ),
         },
-        leftButton: getCancelButton(props.onClose),
+        leftButton: getCancelButton(onClose),
         rightButton: {
           label: "Add skills",
           onClick: handleSave,
@@ -44,20 +60,50 @@ export function getPageAndFooter(props: PageContentProps): {
         page: {
           title: mode.skillConfiguration.name,
           description: mode.skillConfiguration.userFacingDescription,
-          id: props.mode.type,
+          id: mode.type,
           icon: SKILL_ICON,
           content: (
             <SkillDetailsSheetContent
               skillConfiguration={mode.skillConfiguration}
-              owner={props.owner}
-              user={props.user}
+              owner={owner}
+              user={user}
             />
           ),
         },
         leftButton: {
           label: "Back",
           variant: "outline",
-          onClick: () => props.onModeChange(mode.previousMode),
+          onClick: () => onModeChange(mode.previousMode),
+        },
+      };
+    case SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION:
+      return {
+        page: {
+          title: `Select spaces`,
+          description:
+            "Automatically grant access to all knowledge sources discovery from your selected spaces",
+          id: mode.type,
+          content: (
+            <SpaceSelectionPageContent
+              alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
+              draftSelectedSpaces={skillSelection.draftSelectedSpaces}
+              setDraftSelectedSpaces={skillSelection.setDraftSelectedSpaces}
+            />
+          ),
+        },
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: () => {
+            skillSelection.setDraftSelectedSpaces(localAdditionalSpaces);
+            onModeChange(mode.previousMode);
+          },
+        },
+        rightButton: {
+          label: "Save",
+          variant: "primary",
+          onClick: () =>
+            skillSelection.handleSpaceSelectionSave(mode.skillConfiguration),
         },
       };
     default:

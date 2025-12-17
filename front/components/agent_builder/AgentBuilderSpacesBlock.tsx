@@ -1,6 +1,6 @@
 import { Chip } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
@@ -13,14 +13,21 @@ import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
 export function AgentBuilderSpacesBlock() {
-  const { watch, setValue } = useFormContext<AgentBuilderFormData>();
+  const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const selectedSkills = watch("skills");
-  const actions = watch("actions");
+  const selectedSkills = useWatch<AgentBuilderFormData, "skills">({
+    name: "skills",
+  });
+  const actions = useWatch<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
+  const additionalSpaces = useWatch<AgentBuilderFormData, "additionalSpaces">({
+    name: "additionalSpaces",
+  });
 
   const confirmRemoveSpace = useRemoveSpaceConfirm({
     entityName: "agent",
@@ -32,7 +39,7 @@ export function AgentBuilderSpacesBlock() {
     return getSpaceIdToActionsMap(actions, mcpServerViews);
   }, [actions, mcpServerViews]);
 
-  // Merge requested spaces from skills and from actions
+  // Merge requested spaces from skills, actions, and additional spaces (from global skills)
   const nonGlobalSpacesWithRestrictions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
 
@@ -53,10 +60,11 @@ export function AgentBuilderSpacesBlock() {
     const allRequestedSpaceIds = new Set([
       ...skillRequestedSpaceIds,
       ...actionRequestedSpaceIds,
+      ...additionalSpaces,
     ]);
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
-  }, [spaces, selectedSkills, allSkills, spaceIdToActions]);
+  }, [spaces, selectedSkills, allSkills, spaceIdToActions, additionalSpaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -70,14 +78,17 @@ export function AgentBuilderSpacesBlock() {
         ?.requestedSpaceIds.includes(space.sId)
     );
 
-    const confirmed = await confirmRemoveSpace(
-      space,
-      actionsToRemove,
-      skillsToRemove
-    );
+    // Only show confirmation dialog if there are resources to remove
+    if (actionsToRemove.length > 0 || skillsToRemove.length > 0) {
+      const confirmed = await confirmRemoveSpace(
+        space,
+        actionsToRemove,
+        skillsToRemove
+      );
 
-    if (!confirmed) {
-      return;
+      if (!confirmed) {
+        return;
+      }
     }
 
     // Remove actions (knowledge + tools) that belong to this space
@@ -93,6 +104,11 @@ export function AgentBuilderSpacesBlock() {
           ?.requestedSpaceIds.includes(space.sId)
     );
     setValue("skills", newSkills, { shouldDirty: true });
+
+    const newAdditionalSpaces = additionalSpaces.filter(
+      (spaceId) => spaceId !== space.sId
+    );
+    setValue("additionalSpaces", newAdditionalSpaces, { shouldDirty: true });
   };
 
   if (nonGlobalSpacesWithRestrictions.length === 0) {
