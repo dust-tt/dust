@@ -3,14 +3,12 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { Warehouse } from "@app/lib/actions/mcp_internal_actions/servers/databricks/types";
+import { WarehouseSchema } from "@app/lib/actions/mcp_internal_actions/servers/databricks/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { normalizeError } from "@app/types";
-
-import type { Warehouse } from "./types";
-import { WarehouseSchema } from "./types";
 
 function getWorkspaceUrl(authInfo?: AuthInfo): string | null {
   if (!authInfo?.extra) {
@@ -37,55 +35,46 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
     body?: Record<string, unknown>;
   } = {}
 ): Promise<Result<z.infer<T>, string>> {
-  try {
-    const baseUrl = workspaceUrl.trim().replace(/\/$/, "");
-    const url = `${baseUrl}${endpoint}`;
+  const baseUrl = workspaceUrl.trim().replace(/\/$/, "");
+  const url = `${baseUrl}${endpoint}`;
 
-    const response = await untrustedFetch(url, {
-      method: options.method ?? "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      ...(options.body && { body: JSON.stringify(options.body) }),
-    });
+  const response = await untrustedFetch(url, {
+    method: options.method ?? "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    ...(options.body && { body: JSON.stringify(options.body) }),
+  });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorMessage = `Databricks API error: ${response.status} ${response.statusText}`;
-      try {
-        const errorJson = JSON.parse(errorBody);
-        errorMessage = errorJson.message ?? errorJson.error ?? errorMessage;
-      } catch {
-        errorMessage = `${errorMessage} - ${errorBody}`;
-      }
-      logger.error(`[Databricks MCP Server] ${errorMessage}`);
-      return new Err(errorMessage);
+  if (!response.ok) {
+    const errorBody = await response.text();
+    let errorMessage = `Databricks API error: ${response.status} ${response.statusText}`;
+    try {
+      const errorJson = JSON.parse(errorBody);
+      errorMessage = errorJson.message ?? errorJson.error ?? errorMessage;
+    } catch {
+      errorMessage = `${errorMessage} - ${errorBody}`;
     }
-
-    const responseText = await response.text();
-    if (!responseText) {
-      return new Err("Empty response from Databricks API");
-    }
-
-    const rawData = JSON.parse(responseText);
-    const parseResult = schema.safeParse(rawData);
-
-    if (!parseResult.success) {
-      const msg = `Invalid Databricks response format: ${parseResult.error.message}`;
-      logger.error(`[Databricks MCP Server] ${msg}`);
-      return new Err(msg);
-    }
-
-    return new Ok(parseResult.data);
-  } catch (error: unknown) {
-    const errorMessage = normalizeError(error).message;
-    logger.error(
-      `[Databricks MCP Server] API call failed for ${endpoint}:`,
-      error
-    );
+    logger.error(`[Databricks MCP Server] ${errorMessage}`);
     return new Err(errorMessage);
   }
+
+  const responseText = await response.text();
+  if (!responseText) {
+    return new Err("Empty response from Databricks API");
+  }
+
+  const rawData = JSON.parse(responseText);
+  const parseResult = schema.safeParse(rawData);
+
+  if (!parseResult.success) {
+    const msg = `Invalid Databricks response format: ${parseResult.error.message}`;
+    logger.error(`[Databricks MCP Server] ${msg}`);
+    return new Err(msg);
+  }
+
+  return new Ok(parseResult.data);
 }
 
 // List SQL warehouses
