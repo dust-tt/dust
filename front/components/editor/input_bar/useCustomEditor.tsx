@@ -257,6 +257,10 @@ export const buildEditorExtensions = ({
       suggestion: createMentionSuggestion({
         owner,
         conversationId,
+        select: {
+          agents: true,
+          users: false,
+        },
       }),
     }),
     EmojiExtension,

@@ -158,6 +158,10 @@ export function AgentBuilderInstructionsEditor({
             owner,
             conversationId: null,
             includeCurrentUser: true,
+            select: {
+              agents: false,
+              users: true,
+            },
           }),
         })
       );

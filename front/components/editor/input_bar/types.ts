@@ -14,6 +14,10 @@ export interface MentionDropdownProps {
   command: (item: RichMention) => void;
   clientRect?: (() => DOMRect | null) | null;
   onClose?: () => void;
+  select: {
+    agents: boolean;
+    users: boolean;
+  };
 }
 
 export type EmojiDropdownOnKeyDown = {
