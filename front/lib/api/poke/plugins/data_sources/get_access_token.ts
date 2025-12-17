@@ -15,6 +15,7 @@ export const getAccessTokenPlugin = createPlugin({
     description: "Retrieve the OAuth access token for this data source.",
     resourceTypes: ["data_sources"],
     args: {},
+    redactResult: true,
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

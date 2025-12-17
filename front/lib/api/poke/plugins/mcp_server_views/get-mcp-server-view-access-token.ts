@@ -18,6 +18,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
           "User ID to get personal access token for. Leave empty to get the workspace token.",
       },
     },
+    redactResult: true,
   },
   isApplicableTo: (auth, resource) => {
     // Only applicable if the MCP server view exists
