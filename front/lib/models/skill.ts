@@ -1,7 +1,6 @@
 import type {
   CreationOptional,
   ForeignKey,
-  Model,
   ModelAttributes,
   NonAttribute,
 } from "sequelize";
@@ -52,7 +51,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-} as const satisfies ModelAttributes<Model>;
+} as const satisfies ModelAttributes;
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
