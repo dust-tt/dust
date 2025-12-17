@@ -5,7 +5,6 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import type {
   SelectedTool,
   SheetMode,
-  SkillSelection,
 } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
@@ -53,8 +52,6 @@ export interface FooterButtonOptions {
   currentPageId: ConfigurationPagePageId;
   mode: SheetMode | null;
   selectedToolsInSheet: SelectedTool[];
-  selectedSkillsInSheet: SkillSelection[];
-  showSkills: boolean;
   form: UseFormReturn<MCPFormData>;
   onCancel: () => void;
   onModeChange: (mode: SheetMode | null) => void;
@@ -67,8 +64,6 @@ export function getFooterButtons({
   currentPageId,
   mode,
   selectedToolsInSheet,
-  selectedSkillsInSheet,
-  showSkills,
   form,
   onCancel,
   onModeChange,
@@ -81,25 +76,8 @@ export function getFooterButtons({
   const isConfigurationPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.CONFIGURATION;
   const isInfoPage = currentPageId === TOOLS_SHEET_PAGE_IDS.INFO;
-  const isSkillInfoPage = currentPageId === TOOLS_SHEET_PAGE_IDS.SKILL_INFO;
 
   if (isToolSelectionPage) {
-    const toolCount = selectedToolsInSheet.length;
-    const skillCount = selectedSkillsInSheet.length;
-    const totalCount = toolCount + skillCount;
-    const hasSelection = totalCount > 0;
-
-    let label: string;
-    if (showSkills) {
-      label = hasSelection
-        ? `Add ${totalCount} ${totalCount === 1 ? "capability" : "capabilities"}`
-        : "Add capabilities";
-    } else {
-      label = hasSelection
-        ? `Add ${toolCount} tool${pluralize(toolCount)}`
-        : "Add tools";
-    }
-
     return {
       leftButton: {
         label: "Cancel",
@@ -107,9 +85,12 @@ export function getFooterButtons({
         onClick: onCancel,
       },
       rightButton: {
-        label,
+        label:
+          selectedToolsInSheet.length > 0
+            ? `Add ${selectedToolsInSheet.length} tool${pluralize(selectedToolsInSheet.length)}`
+            : "Add tools",
         variant: "primary",
-        disabled: !hasSelection,
+        disabled: selectedToolsInSheet.length === 0,
         onClick: onAddSelectedTools,
       },
     };
@@ -162,26 +143,6 @@ export function getFooterButtons({
 
   if (isInfoPage) {
     if (mode?.type === "info" && mode.source === "toolDetails") {
-      return {
-        leftButton: {
-          label: "Back",
-          variant: "outline",
-          onClick: () => onModeChange({ type: "add" }),
-        },
-      };
-    } else {
-      return {
-        leftButton: {
-          label: "Close",
-          variant: "primary",
-          onClick: onCancel,
-        },
-      };
-    }
-  }
-
-  if (isSkillInfoPage) {
-    if (mode?.type === "skill-info" && mode.source === "skillDetails") {
       return {
         leftButton: {
           label: "Back",

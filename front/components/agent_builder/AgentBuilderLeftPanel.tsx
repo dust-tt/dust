@@ -13,6 +13,7 @@ import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuil
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
+import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -22,6 +23,7 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
+  isSkillsLoading?: boolean;
   isTriggersLoading?: boolean;
 }
 
@@ -32,9 +34,10 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isActionsLoading,
+  isSkillsLoading,
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
@@ -62,7 +65,18 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           {hasFeature("skills") && <AgentBuilderSpacesBlock />}
-          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
+          {hasFeature("skills") ? (
+            <AgentBuilderSkillsBlock
+              isActionsLoading={isActionsLoading}
+              isSkillsLoading={isSkillsLoading}
+              owner={owner}
+              user={user}
+            />
+          ) : (
+            <AgentBuilderCapabilitiesBlock
+              isActionsLoading={isActionsLoading}
+            />
+          )}
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}

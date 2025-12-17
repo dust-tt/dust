@@ -449,6 +449,7 @@ export default function AgentBuilder({
               }}
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               agentConfigurationId={agentConfiguration?.sId || null}
+              isSkillsLoading={isSkillsLoading}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}
             />
