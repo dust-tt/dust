@@ -97,7 +97,7 @@ export async function listWarehouses(
   return new Ok(result.value.warehouses);
 }
 
-export const withAuth = async ({
+export async function withAuth({
   authInfo,
   action,
 }: {
@@ -106,7 +106,7 @@ export const withAuth = async ({
     accessToken: string,
     workspaceUrl: string
   ) => Promise<Result<CallToolResult["content"], MCPError>>;
-}): Promise<Result<CallToolResult["content"], MCPError>> => {
+}): Promise<Result<CallToolResult["content"], MCPError>> {
   const accessToken = authInfo?.token;
 
   if (!accessToken) {
@@ -123,4 +123,4 @@ export const withAuth = async ({
   }
 
   return action(accessToken, workspaceUrl);
-};
+}
