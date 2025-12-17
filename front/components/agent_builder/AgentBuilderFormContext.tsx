@@ -128,7 +128,6 @@ export interface MCPFormData {
     dataSourceConfigurations: any;
     tablesConfigurations: any;
     childAgentId: string | null;
-    reasoningModel: any;
     timeFrame: {
       duration: number;
       unit: "hour" | "day" | "week" | "month" | "year";

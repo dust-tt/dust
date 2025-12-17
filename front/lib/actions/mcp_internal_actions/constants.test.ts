@@ -51,7 +51,6 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "deep_dive", id: 29 },
       { name: "speech_generator", id: 34 },
       { name: "search", id: 1006 },
-      { name: "reasoning", id: 1007 },
       { name: "run_agent", id: 1008 },
       { name: "query_tables_v2", id: 1009 },
       { name: "data_sources_file_system", id: 1010 },
