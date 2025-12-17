@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { DEFAULT_ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -18,17 +18,16 @@ function createServer(
   const server = makeInternalMCPServer(SKILL_MANAGEMENT_SERVER_NAME);
 
   server.tool(
-    DEFAULT_ENABLE_SKILL_TOOL_NAME,
-    "Enable a skill for the current conversation. The skill will be available for subsequent messages in this conversation.",
+    ENABLE_SKILL_TOOL_NAME,
+    "Enable a skill for the current conversation. " +
+      "The skill will be available for subsequent messages from the same agent in this conversation.",
     {
-      skillName: z
-        .string()
-        .describe("The name of the skill to enable for the conversation"),
+      skillName: z.string().describe("The name of the skill to enable"),
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: DEFAULT_ENABLE_SKILL_TOOL_NAME,
+        toolNameForMonitoring: ENABLE_SKILL_TOOL_NAME,
         agentLoopContext,
       },
       async ({ skillName }) => {
@@ -48,21 +47,23 @@ function createServer(
           );
         }
 
-        const r = await skill.enableForMessage(auth, {
+        const enableResult = await skill.enableForMessage(auth, {
           agentConfiguration,
           agentMessage,
           conversation,
           source: "agent_enabled",
         });
 
-        if (r.isErr()) {
-          return new Err(new MCPError(r.error.message, { tracked: false }));
+        if (enableResult.isErr()) {
+          return new Err(
+            new MCPError(enableResult.error.message, { tracked: false })
+          );
         }
 
         return new Ok([
           {
             type: "text",
-            text: `Skill "${skill.name}" has been enabled for this conversation.`,
+            text: `Skill "${skill.name}" has been enabled.`,
           },
         ]);
       }
