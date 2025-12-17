@@ -32,14 +32,13 @@ export function useSkills({
   disabled?: boolean;
   status?: SkillStatus;
 }) {
-  const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
-    fetcher;
+  const skillsFetcher: Fetcher<GetSkillConfigurationsResponseBody> = fetcher;
 
   const statusQueryParam = status ? `?status=${status}` : "";
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${statusQueryParam}`,
-    skillConfigurationsFetcher,
+    skillsFetcher,
     { disabled }
   );
 
@@ -60,12 +59,12 @@ export function useSkillsWithRelations({
   disabled?: boolean;
   status: SkillStatus;
 }) {
-  const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
+  const skillsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
     fetcher;
 
   const { data, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills?withRelations=true&status=${status}`,
-    skillConfigurationsFetcher,
+    skillsFetcher,
     { disabled }
   );
 
@@ -221,7 +220,7 @@ export function useSkillHistory({
   limit?: number;
   disabled?: boolean;
 }) {
-  const skillConfigurationHistoryFetcher: Fetcher<GetSkillConfigurationsHistoryResponseBody> =
+  const skillHistoryFetcher: Fetcher<GetSkillConfigurationsHistoryResponseBody> =
     fetcher;
 
   const queryParams = limit ? `?limit=${limit}` : "";
@@ -229,7 +228,7 @@ export function useSkillHistory({
     skillConfiguration
       ? `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/history${queryParams}`
       : null,
-    skillConfigurationHistoryFetcher,
+    skillHistoryFetcher,
     { disabled }
   );
 
@@ -250,12 +249,11 @@ export function useSkillWithRelations({
   disabled?: boolean;
   skillId: string;
 }) {
-  const skillConfigurationsFetcher: Fetcher<GetSkillWithRelationsResponseBody> =
-    fetcher;
+  const skillsFetcher: Fetcher<GetSkillWithRelationsResponseBody> = fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills/${skillId}?withRelations=true`,
-    skillConfigurationsFetcher,
+    skillsFetcher,
     { disabled }
   );
 
