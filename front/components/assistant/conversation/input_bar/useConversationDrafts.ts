@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useCallback, useRef } from "react";
 
 import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 
 interface ConversationDraft {
   text: string;
