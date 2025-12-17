@@ -54,6 +54,7 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   disable?: boolean;
+  shouldUseDraft?: boolean;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -67,6 +68,7 @@ export const InputBar = React.memo(function InputBar({
   isFloating = true,
   isSubmitting = false,
   disable = false,
+  shouldUseDraft = true,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
 
@@ -92,6 +94,8 @@ export const InputBar = React.memo(function InputBar({
   const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user?.sId ?? null,
+    conversationId,
+    shouldUseDraft,
   });
 
   useEffect(() => {

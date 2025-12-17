@@ -1,9 +1,7 @@
 import debounce from "lodash/debounce";
-import { useRouter } from "next/router";
 import { useCallback, useRef } from "react";
 
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
 
 interface ConversationDraft {
   text: string;
@@ -25,16 +23,6 @@ interface DraftStorage {
 const STORAGE_KEY = "conversation-drafts";
 const DRAFT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
-const getHasConversationId = (
-  conversationId: string | string[] | undefined
-): conversationId is string => {
-  if (!isString(conversationId)) {
-    return false;
-  }
-
-  return true;
-};
-
 /**
  * Hook to manage per-conversation input drafts in localStorage.
  * Provides auto-save, retrieval, and cleanup functionality.
@@ -42,19 +30,20 @@ const getHasConversationId = (
 export function useConversationDrafts({
   workspaceId,
   userId,
+  conversationId,
+  shouldUseDraft = true,
 }: {
   workspaceId: string;
   userId: string | null;
+  conversationId: string | null;
+  shouldUseDraft?: boolean;
 }) {
-  const router = useRouter();
-  // this will be undefined if you are in Agent Builder
-  const conversationId = router.query.cId;
+  const internalConversationId = conversationId ?? "new";
 
   // Get all drafts from localStorage.
   const getDraftsFromStorage = useCallback((): DraftStorage => {
     try {
-      const hasConversationId = getHasConversationId(conversationId);
-      if (!hasConversationId) {
+      if (!shouldUseDraft) {
         return {};
       }
 
@@ -84,7 +73,7 @@ export function useConversationDrafts({
       delete localStorage[STORAGE_KEY];
       return {};
     }
-  }, [conversationId]);
+  }, [shouldUseDraft]);
 
   // Save drafts to localStorage.
   const saveDraftsToStorage = useCallback((drafts: DraftStorage) => {
@@ -132,44 +121,43 @@ export function useConversationDrafts({
   // Save draft for current conversation (debounced).
   const saveDraft = useCallback(
     (text: string) => {
-      const hasConversationId = getHasConversationId(conversationId);
-      if (!hasConversationId || !userId) {
+      if (!shouldUseDraft || !userId) {
         return;
       }
 
       debouncedSave({
         workspaceId,
         userId,
-        conversationId,
+        conversationId: internalConversationId,
         text,
         timestamp: Date.now(),
       });
     },
-    [debouncedSave, workspaceId, userId, conversationId]
+    [debouncedSave, workspaceId, userId, shouldUseDraft, internalConversationId]
   );
 
   // Get draft for current conversation.
   const getDraft = useCallback((): ConversationDraft | null => {
     const drafts = getDraftsFromStorage();
 
-    const hasConversationId = getHasConversationId(conversationId);
-    if (!hasConversationId || !userId) {
+    if (!userId) {
       return null;
     }
 
-    return drafts[getKeyId(workspaceId, userId, conversationId)] ?? null;
-  }, [getDraftsFromStorage, workspaceId, userId, conversationId]);
+    return (
+      drafts[getKeyId(workspaceId, userId, internalConversationId)] ?? null
+    );
+  }, [getDraftsFromStorage, workspaceId, userId, internalConversationId]);
 
   // Clear draft for the current conversation.
   const clearDraft = useCallback(() => {
-    const hasConversationId = getHasConversationId(conversationId);
-    if (!hasConversationId || !userId) {
+    if (!userId) {
       return;
     }
 
     const drafts = getDraftsFromStorage();
 
-    delete drafts[getKeyId(workspaceId, userId, conversationId)];
+    delete drafts[getKeyId(workspaceId, userId, internalConversationId)];
     saveDraftsToStorage(drafts);
 
     // Also, cancel any pending debounced save.
@@ -178,7 +166,7 @@ export function useConversationDrafts({
     getDraftsFromStorage,
     workspaceId,
     userId,
-    conversationId,
+    internalConversationId,
     saveDraftsToStorage,
     debouncedSave,
   ]);
