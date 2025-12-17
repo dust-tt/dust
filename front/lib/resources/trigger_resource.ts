@@ -154,58 +154,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(triggers);
   }
 
-  static async listSchedulesByAgentAndEditor(
-    auth: Authenticator,
-    {
-      agentConfigurationId,
-      editorIds,
-    }: {
-      agentConfigurationId: string;
-      editorIds: ModelId[];
-    }
-  ): Promise<Result<TriggerResource[], Error>> {
-    if (editorIds.length === 0) {
-      return new Ok([]);
-    }
-    const triggers = await this.baseFetch(auth, {
-      where: {
-        agentConfigurationId,
-        editor: { [Op.in]: editorIds },
-        kind: "schedule",
-      },
-    });
-    return new Ok(triggers);
-  }
-
-  static async fetchScheduleByIdForEditor(
-    auth: Authenticator,
-    sId: string,
-    {
-      agentConfigurationId,
-      editorId,
-    }: {
-      agentConfigurationId: string;
-      editorId: ModelId;
-    }
-  ): Promise<Result<TriggerResource, Error>> {
-    const trigger = await this.fetchById(auth, sId);
-    if (!trigger) {
-      return new Err(new Error("Schedule not found"));
-    }
-    if (trigger.kind !== "schedule") {
-      return new Err(
-        new Error("This operation only supports schedule triggers")
-      );
-    }
-    if (trigger.agentConfigurationId !== agentConfigurationId) {
-      return new Err(new Error("This schedule does not belong to this agent"));
-    }
-    if (trigger.editor !== editorId) {
-      return new Err(new Error("You can only modify schedules you created"));
-    }
-    return new Ok(trigger);
-  }
-
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }
