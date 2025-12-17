@@ -12,6 +12,7 @@ import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
@@ -21,24 +22,30 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
+  ConversationSkillType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   ModelId,
@@ -73,6 +80,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   // User-specific participation fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
+
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
     blob: Attributes<ConversationModel>,
@@ -983,27 +991,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }[]
   > {
     const query = `
-        SELECT
-        rank,
-        "agentMessageId",
-        version
-      FROM (
-        SELECT
-          rank,
-          "agentMessageId",
-          version,
-          ROW_NUMBER() OVER (
+            SELECT rank,
+                   "agentMessageId",
+                   version
+            FROM (SELECT rank,
+                         "agentMessageId",
+                         version,
+                         ROW_NUMBER() OVER (
             PARTITION BY rank
             ORDER BY version DESC
           ) as rn
-        FROM messages
-        WHERE
-          "workspaceId" = :workspaceId
-          AND "conversationId" = :conversationId
-          AND "agentMessageId" IS NOT NULL
-      ) ranked_messages
-      WHERE rn = 1
-  `;
+                  FROM messages
+                  WHERE "workspaceId" = :workspaceId
+                    AND "conversationId" = :conversationId
+                    AND "agentMessageId" IS NOT NULL) ranked_messages
+            WHERE rn = 1
+        `;
 
     // eslint-disable-next-line dust/no-raw-sql
     const results = await frontSequelize.query<{
@@ -1212,6 +1215,109 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasMore,
       messages,
     };
+  }
+
+  static async fetchSkills(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<ConversationSkillType[]> {
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+      },
+    });
+
+    return conversationSkills.map(
+      (skill): ConversationSkillType => ({
+        id: skill.id,
+        workspaceId: skill.workspaceId,
+        conversationId: skill.conversationId,
+        agentConfigurationId: skill.agentConfigurationId,
+        source: skill.source,
+        addedByUserId: skill.addedByUserId,
+        createdAt: skill.createdAt,
+        updatedAt: skill.updatedAt,
+        ...(skill.customSkillId !== null
+          ? { customSkillId: skill.customSkillId, globalSkillId: null }
+          : { customSkillId: null, globalSkillId: skill.globalSkillId! }),
+      })
+    );
+  }
+
+  static async upsertSkills(
+    auth: Authenticator,
+    {
+      conversation,
+      skills,
+      enabled,
+      agentConfigurationId,
+    }: {
+      conversation: ConversationWithoutContentType;
+      skills: SkillResource[];
+      enabled: boolean;
+      agentConfigurationId: string;
+    }
+  ): Promise<Result<undefined, Error>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("User must be authenticated"));
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentConfiguration = await AgentConfigurationModel.findOne({
+      where: {
+        sId: agentConfigurationId,
+        workspaceId: workspace.id,
+      },
+    });
+
+    if (!agentConfiguration) {
+      return new Err(new Error("Agent configuration not found"));
+    }
+
+    const existingConversationSkills = await this.fetchSkills(
+      auth,
+      conversation
+    );
+
+    for (const skill of skills) {
+      const skillSId = skill.sId;
+      const isGlobalSkill = !isResourceSId("skill", skillSId);
+
+      const existingConversationSkill = existingConversationSkills.find(
+        (cs) =>
+          cs.agentConfigurationId === agentConfiguration.id &&
+          (isGlobalSkill
+            ? cs.globalSkillId === skillSId
+            : cs.customSkillId === skill.id)
+      );
+
+      if (existingConversationSkill) {
+        if (!enabled) {
+          await ConversationSkillModel.destroy({
+            where: {
+              id: existingConversationSkill.id,
+              workspaceId: workspace.id,
+              conversationId: conversation.id,
+            },
+          });
+        }
+      } else if (enabled) {
+        await ConversationSkillModel.create({
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+          agentConfigurationId: agentConfiguration.id,
+          customSkillId: isGlobalSkill ? null : skill.id,
+          globalSkillId: isGlobalSkill ? skillSId : null,
+          source: "conversation",
+          addedByUserId: user.id,
+        });
+      }
+    }
+
+    return new Ok(undefined);
   }
 
   static async updateRequirements(
