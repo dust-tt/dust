@@ -46,6 +46,7 @@ export function AgentBuilderSpacesBlock() {
   const confirmRemoveSpace = useRemoveSpaceConfirm({
     entityName: "agent",
     mcpServerViews,
+    allSkills,
   });
 
   // Compute requested spaces from tools/knowledge (actions)

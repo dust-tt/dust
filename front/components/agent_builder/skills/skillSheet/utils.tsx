@@ -7,7 +7,7 @@ import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_bui
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SpaceSelectionPage";
 import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
 export function getPageAndFooter(props: PageContentProps): {
@@ -59,7 +59,7 @@ export function getPageAndFooter(props: PageContentProps): {
           title: mode.skill.name,
           description: mode.skill.userFacingDescription,
           id: props.mode.type,
-          icon: SKILL_ICON,
+          icon: getSkillIcon(mode.skill.icon),
           content: (
             <SkillWithRelationsDetailsSheetContent
               skill={mode.skill}

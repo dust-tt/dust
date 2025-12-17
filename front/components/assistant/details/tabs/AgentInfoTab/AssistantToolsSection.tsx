@@ -16,7 +16,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -137,16 +137,19 @@ export function AssistantToolsSection({
                 <Spinner size="xs" />
               </div>
             ) : (
-              sortedSkills.map((skill) => (
-                <div
-                  className="flex flex-row items-center gap-2"
-                  key={skill.sId}
-                >
-                  {/* TODO(skills 2025-12-08): Add custom icon support (pictureUrl) */}
-                  <Avatar icon={SKILL_ICON} size="xs" />
-                  <div>{skill.name}</div>
-                </div>
-              ))
+              sortedSkills.map((skill) => {
+                const SkillAvatar = getSkillAvatarIcon(skill.icon);
+                return (
+                  <div
+                    className="flex flex-row items-center gap-2"
+                    key={skill.sId}
+                  >
+                    {/* TODO(skills 2025-12-08): Add custom icon support (pictureUrl) */}
+                    <SkillAvatar size="xs" />
+                    <div>{skill.name}</div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
