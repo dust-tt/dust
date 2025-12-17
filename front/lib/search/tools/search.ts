@@ -6,6 +6,10 @@ import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_int
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  download as githubDownload,
+  search as githubSearch,
+} from "@app/lib/providers/github/search";
+import {
   download as googleDriveDownload,
   search as googleDriveSearch,
 } from "@app/lib/providers/google_drive/search";
@@ -36,6 +40,7 @@ import type { ConnectorProvider, FileType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const SEARCHABLE_TOOLS = {
+  github: { search: githubSearch, download: githubDownload },
   google_drive: { search: googleDriveSearch, download: googleDriveDownload },
   notion: { search: notionSearch, download: notionDownload },
   microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
