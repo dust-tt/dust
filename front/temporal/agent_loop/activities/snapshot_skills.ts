@@ -26,7 +26,14 @@ export async function snapshotAgentMessageSkills(
       sId: agentMessageId,
       workspaceId: owner.id,
     },
-    include: [{ model: AgentMessageModel, as: "agentMessage", required: true }],
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        attributes: ["id", "agentConfigurationId"],
+        required: true,
+      },
+    ],
   });
 
   if (!messageRow?.agentMessage) {
