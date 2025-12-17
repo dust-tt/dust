@@ -161,7 +161,7 @@ export async function trackProgrammaticUsageActivity(
 
     localLogger.info("[Programmatic Usage Tracking] Starting activity");
 
-    await trackProgrammaticCost(
+    const result = await trackProgrammaticCost(
       auth,
       {
         dustRunIds: agentMessage.runIds,
@@ -170,7 +170,7 @@ export async function trackProgrammaticUsageActivity(
       localLogger
     );
 
-    return { tracked: true, origin: userMessageOrigin };
+    return { tracked: true, ...(result ?? {}), origin: userMessageOrigin };
   }
 
   return { tracked: false, origin: userMessageOrigin };

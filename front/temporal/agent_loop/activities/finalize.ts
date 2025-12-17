@@ -16,7 +16,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
 ): Promise<void> {
   await Promise.all([
     launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-    trackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentionsActivity(authType, agentLoopArgs),
     snapshotAgentMessageSkills(authType, agentLoopArgs),
