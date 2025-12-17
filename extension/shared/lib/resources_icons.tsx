@@ -56,8 +56,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
 
-interface ResourceAvatarProps extends ComponentProps<typeof Avatar> {}
-
 /**
  * As Avatar are not made to support dark/light mode switch, this renders a `Avatar` component for resources icons with support for dark mode.
  * If `iconColor` or `backgroundColor` are not provided, sensible defaults are applied for both light and dark themes.
@@ -66,7 +64,7 @@ export function ResourceAvatar({
   iconColor,
   backgroundColor,
   ...props
-}: ResourceAvatarProps) {
+}: ComponentProps<typeof Avatar>) {
   return (
     <SparkleAvatar
       iconColor={iconColor ?? "s-text-foreground dark:s-text-foreground-night"}
