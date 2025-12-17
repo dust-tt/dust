@@ -121,6 +121,7 @@ async function handler(
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
             const mcpServerViews = await sc.listMCPServerViews(auth);
+            const author = await sc.fetchAuthor(auth);
 
             return {
               ...sc.toJSON(auth),
@@ -128,6 +129,7 @@ async function handler(
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
                 mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
+                author: author ? author.toJSON() : null,
               },
             } satisfies SkillType & { relations: SkillRelations };
           },

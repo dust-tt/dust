@@ -34,8 +34,8 @@ export function SkillInstructionsHistory({
   const authorIdsToLookup = useMemo(() => {
     const ids = new Set<number>();
     history.forEach((config) => {
-      if (config.versionAuthorId) {
-        ids.add(Number(config.versionAuthorId));
+      if (config.authorId) {
+        ids.add(Number(config.authorId));
       }
     });
 
@@ -65,10 +65,10 @@ export function SkillInstructionsHistory({
 
   const getAuthorName = useCallback(
     (config: SkillType) => {
-      if (!config.versionAuthorId) {
+      if (!config.authorId) {
         return "System";
       }
-      return authorMap[config.versionAuthorId.toString()] || "Unknown";
+      return authorMap[config.authorId.toString()] || "Unknown";
     },
     [authorMap]
   );
