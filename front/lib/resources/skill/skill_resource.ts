@@ -969,7 +969,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sId: this.sId,
       createdAt: this.globalSId ? null : this.createdAt.getTime(),
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
-      versionAuthorId: this.globalSId ? null : this.authorId,
+      authorId: this.globalSId ? null : this.authorId,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
