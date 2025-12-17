@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
+import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type {
   ContentFragmentsType,
   MentionType,
@@ -10,7 +11,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 
 export function useSubmitMessage({
   owner,

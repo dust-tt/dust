@@ -14,7 +14,7 @@ export function useMessageFeedback({
 }) {
   const sendNotification = useSendNotification();
   const { mutateReactions } = useConversationFeedbacks({
-    conversationId: conversationId || "",
+    conversationId: conversationId ?? "",
     workspaceId: owner.sId,
     options: { disabled: true },
   });
