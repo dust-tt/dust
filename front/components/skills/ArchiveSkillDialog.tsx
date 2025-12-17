@@ -44,8 +44,12 @@ export function ArchiveSkillDialog({
           <DialogDescription>
             <div>
               This will archive the skill{" "}
-              <span className="font-bold">{skillConfiguration?.name}</span> for
-              everyone.
+              <span className="font-bold">{skillConfiguration?.name}</span>{" "}
+              {skillConfiguration.relations.usage.count === 0
+                ? "for everyone."
+                : skillConfiguration.relations.usage.count === 1
+                  ? "used by 1 agent."
+                  : `used by ${skillConfiguration.relations.usage.count} agents.`}
             </div>
           </DialogDescription>
         </DialogHeader>
