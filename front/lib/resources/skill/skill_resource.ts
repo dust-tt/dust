@@ -365,7 +365,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agentConfiguration.sId,
       },
     });
 
@@ -863,7 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const conversationSkillBlob = {
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
+      agentConfigurationId: agentConfiguration.sId,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
       agentMessageId: agentMessage.agentMessageId,
