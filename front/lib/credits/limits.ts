@@ -6,6 +6,10 @@ import { getCustomerPaymentStatus } from "@app/lib/credits/free";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { MIN_CREDIT_PURCHASE_MICRO_USD } from "@app/types/credits";
+
+// Re-export for backend consumers.
+export { MIN_CREDIT_PURCHASE_MICRO_USD };
 
 // $50 per user per month for Pro subscriptions.
 const MAX_PRO_CREDIT_PER_USER_MICRO_USD = 50_000_000;

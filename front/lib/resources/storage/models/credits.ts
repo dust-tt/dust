@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
+import { MIN_CREDIT_PURCHASE_MICRO_USD } from "@app/lib/credits/limits";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -87,6 +88,21 @@ CreditModel.init(
   {
     modelName: "credit",
     sequelize: frontSequelize,
+    validate: {
+      minimumAmountForPurchasedCredits() {
+        // Enforce minimum purchase amount for non-free credits.
+        const credit = this as unknown as CreditModel;
+        if (
+          (credit.type === "committed" || credit.type === "payg") &&
+          credit.initialAmountMicroUsd < MIN_CREDIT_PURCHASE_MICRO_USD
+        ) {
+          const minDollars = MIN_CREDIT_PURCHASE_MICRO_USD / 1_000_000;
+          throw new Error(
+            `Minimum purchase amount for ${credit.type} credits is $${minDollars}.`
+          );
+        }
+      },
+    },
     indexes: [
       { fields: ["workspaceId"] },
       { fields: ["workspaceId", "expirationDate"] },

@@ -24,15 +24,13 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
 import type { StripePricingData } from "@app/lib/types/stripe/pricing";
-import { assertNever } from "@app/types";
+import { assertNever, MIN_CREDIT_PURCHASE_MICRO_USD } from "@app/types";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 
 const SUPPORT_EMAIL = "support@dust.tt";
-
-// Minimum purchase amount in microUsd ($1).
-const MIN_PURCHASE_MICRO_USD = 1_000_000;
+const MIN_PURCHASE_DOLLARS = MIN_CREDIT_PURCHASE_MICRO_USD / 1_000_000;
 
 interface PaygUsage {
   consumed: number;
@@ -117,6 +115,11 @@ export function BuyCreditDialog({
     return percentUsed < PAYG_CAP_WARNING_THRESHOLD_PERCENT;
   }, [isEnterprise, paygUsage]);
 
+  const amountBelowMin = useMemo(() => {
+    const amount = parseFloat(amountDollars);
+    return !isNaN(amount) && amount > 0 && amount < MIN_PURCHASE_DOLLARS;
+  }, [amountDollars]);
+
   const handlePurchase = async () => {
     setPurchaseState("processing");
     const result = await purchaseCredits(parseFloat(amountDollars));
@@ -165,7 +168,8 @@ export function BuyCreditDialog({
     isValidAmount &&
     acceptedTerms &&
     acceptedNonRefundable &&
-    !amountExceedsMax;
+    !amountExceedsMax &&
+    !amountBelowMin;
 
   const renderContent = () => {
     switch (purchaseState) {
@@ -267,24 +271,26 @@ export function BuyCreditDialog({
                 <Input
                   id="amount"
                   type="number"
-                  placeholder="10"
+                  placeholder={`${MIN_PURCHASE_DOLLARS}`}
                   value={amountDollars}
                   onChange={(e) => setAmountDollars(e.target.value)}
-                  min="0"
+                  min={MIN_PURCHASE_DOLLARS}
                   max={maxAmountDollars ?? undefined}
                   step="1"
                   className="pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  isError={amountExceedsMax}
+                  isError={amountExceedsMax || amountBelowMin}
                   message={
-                    amountExceedsMax
-                      ? `Maximum purchase amount is ${maxAmountFormatted}`
-                      : undefined
+                    amountBelowMin
+                      ? `Minimum purchase amount is $${MIN_PURCHASE_DOLLARS}`
+                      : amountExceedsMax
+                        ? `Maximum purchase amount is ${maxAmountFormatted}`
+                        : undefined
                   }
                 />
               </div>
             </div>
 
-            {isValidAmount && !amountExceedsMax && (
+            {isValidAmount && !amountExceedsMax && !amountBelowMin && (
               <div className="flex flex-col gap-1 rounded-md border border-border bg-muted-background p-3 text-sm dark:border-border-night dark:bg-muted-background-night">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground dark:text-muted-foreground-night">
@@ -578,7 +584,7 @@ export function BuyCreditDialog({
   if (
     creditPurchaseLimits &&
     creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.maxAmountMicroUsd < MIN_PURCHASE_MICRO_USD
+    creditPurchaseLimits.maxAmountMicroUsd < MIN_CREDIT_PURCHASE_MICRO_USD
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

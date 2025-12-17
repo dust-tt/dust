@@ -41,6 +41,7 @@ export * from "./connectors/slack";
 export * from "./connectors/webcrawler";
 export * from "./connectors/workflows";
 export * from "./content_fragment";
+export * from "./credits";
 export * from "./core/content_node";
 export * from "./core/core_api";
 export * from "./core/data_source";

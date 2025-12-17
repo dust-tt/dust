@@ -11,6 +11,9 @@ export function isCreditType(value: unknown): value is CreditType {
 // Credit expiration duration in days (default: 1 year)
 export const CREDIT_EXPIRATION_DAYS = 365;
 
+// Minimum purchase amount: $10 in microUsd.
+export const MIN_CREDIT_PURCHASE_MICRO_USD = 10_000_000;
+
 export type CreditDisplayData = {
   sId: string;
   type: CreditType;
