@@ -449,7 +449,7 @@ export const createAgentMessages = async (
           agentConfigurations: LightAgentConfigurationType[];
           skipToolsValidation: boolean;
           nextMessageRank: number;
-          userMessage: UserMessageType;
+          userMessage: UserMessageTypeWithoutMentions;
         };
     transaction?: Transaction;
   }

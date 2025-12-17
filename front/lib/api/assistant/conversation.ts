@@ -675,12 +675,6 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    const userMessage = {
-      ...userMessageWithoutMentions,
-      richMentions: richMentions,
-      mentions: richMentions.map(toMentionType),
-    };
-
     // Mark the conversation as unread for all participants except the user.
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
       conversation,
@@ -698,7 +692,7 @@ export async function postUserMessage(
       if (conversationRes) {
         await triggerConversationUnreadNotifications(auth, {
           conversation: conversationRes,
-          messageId: userMessage.sId,
+          messageId: userMessageWithoutMentions.sId,
         });
       }
     }
@@ -711,10 +705,28 @@ export async function postUserMessage(
         agentConfigurations,
         skipToolsValidation,
         nextMessageRank,
-        userMessage,
+        userMessage: userMessageWithoutMentions,
       },
       transaction: t,
     });
+
+    for (const agentMessage of agentMessages) {
+      const agentRichMention: RichMentionWithStatus = {
+        type: "agent",
+        id: agentMessage.configuration.sId,
+        label: agentMessage.configuration.name,
+        pictureUrl: agentMessage.configuration.pictureUrl,
+        description: agentMessage.configuration.description,
+        status: "approved",
+      };
+      richMentions.push(agentRichMention);
+    }
+
+    const userMessage = {
+      ...userMessageWithoutMentions,
+      richMentions: richMentions,
+      mentions: richMentions.map(toMentionType),
+    };
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
@@ -945,12 +957,6 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      const userMessage = {
-        ...userMessageWithoutMentions,
-        richMentions: richMentions,
-        mentions: richMentions.map(toMentionType),
-      };
-
       const hasAgentMentions = mentions.some(isAgentMention);
 
       if (hasAgentMentions) {
@@ -986,11 +992,28 @@ export async function editUserMessage(
               agentConfigurations,
               skipToolsValidation,
               nextMessageRank,
-              userMessage,
+              userMessage: userMessageWithoutMentions,
             },
             transaction: t,
           });
+
+          for (const agentMessage of agentMessages) {
+            const agentRichMention: RichMentionWithStatus = {
+              type: "agent",
+              id: agentMessage.configuration.sId,
+              label: agentMessage.configuration.name,
+              pictureUrl: agentMessage.configuration.pictureUrl,
+              description: agentMessage.configuration.description,
+              status: "approved",
+            };
+            richMentions.push(agentRichMention);
+          }
         }
+        const userMessage = {
+          ...userMessageWithoutMentions,
+          richMentions: richMentions,
+          mentions: richMentions.map(toMentionType),
+        };
 
         await ConversationResource.markAsUpdated(auth, { conversation, t });
 
@@ -999,6 +1022,12 @@ export async function editUserMessage(
           agentMessages,
         };
       }
+
+      const userMessage = {
+        ...userMessageWithoutMentions,
+        richMentions: richMentions,
+        mentions: richMentions.map(toMentionType),
+      };
 
       return {
         userMessage,
