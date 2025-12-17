@@ -1,5 +1,4 @@
-import { Avatar } from "@dust-tt/sparkle";
-import { PuzzleIcon } from "lucide-react";
+import { Avatar, PuzzleIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import {
@@ -14,7 +13,6 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-// TODO(skills 2025-12-05): use the right icon
 export const SKILL_ICON = PuzzleIcon;
 
 export function getSkillAvatarIcon(
