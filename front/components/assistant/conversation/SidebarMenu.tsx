@@ -53,7 +53,10 @@ import {
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
+import {
+  InAppBanner,
+  MentionBanner,
+} from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SpacesList } from "@app/components/assistant/conversation/sidebar/SpacesList";
 import {
@@ -179,6 +182,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     owner,
   });
   const sendNotification = useSendNotification();
+
+  const [showMentionBanner, setShowMentionBanner] = useState(true);
 
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
@@ -607,7 +612,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 conversationsList
               )}
             </>
-            <InAppBanner owner={owner} />
+            <div>
+              <MentionBanner
+                showMentionBanner={showMentionBanner}
+                setShowMentionBanner={setShowMentionBanner}
+              />
+              <InAppBanner
+                owner={owner}
+                showMentionBanner={showMentionBanner}
+              />
+            </div>
           </div>
         </div>
       </div>
