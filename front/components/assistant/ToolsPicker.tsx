@@ -31,7 +31,7 @@ import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSkillConfigurations } from "@app/lib/swr/skill_configurations";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -224,22 +224,21 @@ export function ToolsPicker({
       disabled: !shouldFetchToolsData,
     });
 
-  const { skillConfigurations, isSkillConfigurationsLoading } =
-    useSkillConfigurations({
-      owner,
-      status: "active",
-      disabled: !shouldFetchToolsData || !hasSkillsFeature,
-    });
+  const { skills, isSkillsLoading } = useSkills({
+    owner,
+    status: "active",
+    disabled: !shouldFetchToolsData || !hasSkillsFeature,
+  });
 
   const isDataReady =
     !isServerViewsLoading &&
     !isAvailableMCPServersLoading &&
-    (!hasSkillsFeature || !isSkillConfigurationsLoading);
+    (!hasSkillsFeature || !isSkillsLoading);
 
   const filteredSkillsUnselected = useMemo(() => {
     const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
 
-    return skillConfigurations
+    return skills
       .filter((skill) => !selectedSkillIds.has(skill.sId))
       .filter((skill) => {
         if (searchText.trim().length === 0) {
@@ -252,7 +251,7 @@ export function ToolsPicker({
             skill.userFacingDescription.toLowerCase().includes(query))
         );
       });
-  }, [skillConfigurations, selectedSkills, searchText]);
+  }, [skills, selectedSkills, searchText]);
 
   // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
@@ -434,40 +433,39 @@ export function ToolsPicker({
             </>
           )}
 
-          {isDataReady && filteredUninstalledServers.length > 0 && (
-            <>
-              {filteredUninstalledServers.map((server) => (
-                <CapabilityItem
-                  key={`tools-to-install-${server.sId}`}
-                  id={server.sId}
-                  icon={() => getAvatar(server)}
-                  label={asDisplayName(server.name)}
-                  description={server.description}
-                  keyPrefix="tools-to-install"
-                  endComponent={
-                    <Chip size="xs" color="golden" label="Configure" />
+          {isDataReady &&
+            filteredUninstalledServers.length > 0 &&
+            filteredUninstalledServers.map((server) => (
+              <CapabilityItem
+                key={`tools-to-install-${server.sId}`}
+                id={server.sId}
+                icon={() => getAvatar(server)}
+                label={asDisplayName(server.name)}
+                description={server.description}
+                keyPrefix="tools-to-install"
+                endComponent={
+                  <Chip size="xs" color="golden" label="Configure" />
+                }
+                onClick={() => {
+                  const remoteMcpServerConfig = getDefaultRemoteMCPServerByName(
+                    server.name
+                  );
+
+                  if (remoteMcpServerConfig) {
+                    // Remote servers always use the remote flow, even if they have OAuth.
+                    setSetupSheetServer(null);
+                    setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                  } else {
+                    // Internal servers (with or without OAuth)
+                    setSetupSheetServer(server);
+                    setSetupSheetRemoteServerConfig(null);
                   }
-                  onClick={() => {
-                    const remoteMcpServerConfig =
-                      getDefaultRemoteMCPServerByName(server.name);
 
-                    if (remoteMcpServerConfig) {
-                      // Remote servers always use the remote flow, even if they have OAuth.
-                      setSetupSheetServer(null);
-                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
-                    } else {
-                      // Internal servers (with or without OAuth)
-                      setSetupSheetServer(server);
-                      setSetupSheetRemoteServerConfig(null);
-                    }
-
-                    setIsSettingUpServer(true);
-                    setIsOpen(false);
-                  }}
-                />
-              ))}
-            </>
-          )}
+                  setIsSettingUpServer(true);
+                  setIsOpen(false);
+                }}
+              />
+            ))}
 
           {isDataReady &&
             filteredSkillsUnselected.length === 0 &&
