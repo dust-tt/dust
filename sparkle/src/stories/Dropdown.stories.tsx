@@ -901,7 +901,7 @@ export const WithFilters: Story = {
               />
               <DropdownMenuFilters
                 filters={filters}
-                selectedValue={selectedFilter}
+                selectedValues={selectedFilter ? [selectedFilter] : []}
                 onSelectFilter={setSelectedFilter}
               />
             </>

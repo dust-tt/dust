@@ -687,7 +687,7 @@ export interface DropdownMenuFilterOption {
 
 interface DropdownMenuFiltersProps {
   filters: DropdownMenuFilterOption[];
-  selectedValue: string | null;
+  selectedValues: string[];
   onSelectFilter: (value: string) => void;
   className?: string;
 }
@@ -695,21 +695,29 @@ interface DropdownMenuFiltersProps {
 const DropdownMenuFilters = React.forwardRef<
   HTMLDivElement,
   DropdownMenuFiltersProps
->(({ filters, selectedValue, onSelectFilter, className }, ref) => {
+>(({ filters, selectedValues = [], onSelectFilter, className }, ref) => {
+  const multiSelectionValues = Array.isArray(selectedValues)
+    ? selectedValues
+    : [];
+
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-flex-wrap s-gap-2 s-p-1.5", className)}
+      className={cn("s-flex s-flex-wrap s-gap-0.5 s-p-2", className)}
     >
-      {filters.map((filter) => (
-        <Button
-          key={filter.value}
-          size="xs"
-          variant={selectedValue === filter.value ? "primary" : "outline"}
-          label={filter.label}
-          onClick={() => onSelectFilter(filter.value)}
-        />
-      ))}
+      {filters.map((filter) => {
+        const isSelected = multiSelectionValues.includes(filter.value);
+
+        return (
+          <Button
+            key={filter.value}
+            size="xs"
+            variant={isSelected ? "primary" : "outline"}
+            label={filter.label}
+            onClick={() => onSelectFilter(filter.value)}
+          />
+        );
+      })}
     </div>
   );
 });
