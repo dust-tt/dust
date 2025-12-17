@@ -157,6 +157,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/subscription",
           "/w/[wId]/analytics",
           "/w/[wId]/actions",
+          "/w/[wId]/developers/api-pricing",
           "/w/[wId]/developers/credits-usage",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
