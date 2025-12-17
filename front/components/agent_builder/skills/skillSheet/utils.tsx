@@ -3,10 +3,10 @@ import React from "react";
 
 import { useSkillSelection } from "@app/components/agent_builder/skills/skillSheet/hooks";
 import { SelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SelectionPage";
+import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_builder/skills/skillSheet/SkillWithRelationsDetailsSheetContent";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SpaceSelectionPage";
 import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { SKILL_ICON } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
@@ -20,8 +20,6 @@ export function getPageAndFooter(props: PageContentProps): {
     onModeChange,
     onClose,
     handleSave,
-    owner,
-    user,
     alreadyRequestedSpaceIds,
     localAdditionalSpaces,
   } = props;
@@ -58,15 +56,15 @@ export function getPageAndFooter(props: PageContentProps): {
     case SKILLS_SHEET_PAGE_IDS.INFO:
       return {
         page: {
-          title: mode.skillConfiguration.name,
-          description: mode.skillConfiguration.userFacingDescription,
-          id: mode.type,
+          title: mode.skill.name,
+          description: mode.skill.userFacingDescription,
+          id: props.mode.type,
           icon: SKILL_ICON,
           content: (
-            <SkillDetailsSheetContent
-              skillConfiguration={mode.skillConfiguration}
-              owner={owner}
-              user={user}
+            <SkillWithRelationsDetailsSheetContent
+              skill={mode.skill}
+              owner={props.owner}
+              user={props.user}
             />
           ),
         },

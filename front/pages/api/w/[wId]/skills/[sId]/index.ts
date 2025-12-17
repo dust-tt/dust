@@ -14,7 +14,10 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { Err, isBuilder, isString, Ok } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillRelations,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationResponseBody = {
   skillConfiguration: SkillType;
@@ -113,7 +116,30 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const { withRelations } = req.query;
+
       const skillConfiguration = skillResource.toJSON(auth);
+
+      if (withRelations === "true") {
+        const usage = await skillResource.fetchUsage(auth);
+        const editors = await skillResource.listEditors(auth);
+        const mcpServerViews = await skillResource.listMCPServerViews(auth);
+
+        const skillConfigurationWithRelations: SkillType & {
+          relations: SkillRelations;
+        } = {
+          ...skillConfiguration,
+          relations: {
+            usage,
+            editors: editors ? editors.map((e) => e.toJSON()) : null,
+            mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
+          },
+        };
+
+        res.status(200).json({
+          skillConfiguration: skillConfigurationWithRelations,
+        });
+      }
       return res.status(200).json({ skillConfiguration });
     }
 

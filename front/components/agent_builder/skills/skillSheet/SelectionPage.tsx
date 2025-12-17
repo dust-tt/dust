@@ -7,15 +7,12 @@ import type {
   SelectionMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import type {
-  SkillRelations,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SelectionPageProps = PageContentProps & {
   mode: SelectionMode;
-  handleSkillToggle: (skill: SkillType & { relations: SkillRelations }) => void;
-  filteredSkills: (SkillType & { relations: SkillRelations })[];
+  handleSkillToggle: (skill: SkillType) => void;
+  filteredSkills: SkillType[];
   isSkillsLoading: boolean;
   searchQuery: string;
   selectedSkillIds: Set<string>;
@@ -71,7 +68,7 @@ export function SelectionPageContent({
               onMoreInfoClick={() => {
                 onModeChange({
                   type: SKILLS_SHEET_PAGE_IDS.INFO,
-                  skillConfiguration: skill,
+                  skill,
                   previousMode: mode,
                 });
               }}

@@ -21,7 +21,7 @@ import { useState } from "react";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { SKILL_ICON } from "@app/lib/skill";
+import { hasRelations, SKILL_ICON } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
@@ -29,21 +29,21 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skill: SkillType & { relations: SkillRelations };
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
 };
 
 export function SkillDetailsSheet({
-  skillConfiguration,
+  skill,
   onClose,
   user,
   owner,
 }: SkillDetailsProps) {
   return (
     <Sheet
-      open={!!skillConfiguration}
+      open={!!skill}
       onOpenChange={(open) => {
         if (!open) {
           onClose();
@@ -56,17 +56,13 @@ export function SkillDetailsSheet({
         </VisuallyHidden>
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
           <DescriptionSection
-            skillConfiguration={skillConfiguration}
+            skillConfiguration={skill}
             owner={owner}
             onClose={onClose}
           />
         </SheetHeader>
         <SheetContainer className="pb-4">
-          <SkillDetailsSheetContent
-            skillConfiguration={skillConfiguration}
-            user={user}
-            owner={owner}
-          />
+          <SkillDetailsSheetContent skill={skill} user={user} owner={owner} />
         </SheetContainer>
       </SheetContent>
     </Sheet>
@@ -74,19 +70,19 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skill: SkillType & { relations?: SkillRelations };
   owner: WorkspaceType;
   user: UserType;
 };
 
 export function SkillDetailsSheetContent({
-  skillConfiguration,
+  skill,
   owner,
   user,
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skillConfiguration.canWrite;
+  const showEditorsTabs = skill.canWrite;
 
   if (showEditorsTabs) {
     return (
@@ -107,21 +103,23 @@ export function SkillDetailsSheetContent({
         </TabsList>
         <div className="mt-4">
           <TabsContent value="info">
-            <SkillInfoTab skillConfiguration={skillConfiguration} />
+            <SkillInfoTab skill={skill} />
           </TabsContent>
           <TabsContent value="editors">
-            <SkillEditorsTab
-              skillConfiguration={skillConfiguration}
-              owner={owner}
-              user={user}
-            />
+            {hasRelations(skill) && (
+              <SkillEditorsTab
+                skillConfiguration={skill}
+                owner={owner}
+                user={user}
+              />
+            )}
           </TabsContent>
         </div>
       </Tabs>
     );
   }
 
-  return <SkillInfoTab skillConfiguration={skillConfiguration} />;
+  return <SkillInfoTab skill={skill} />;
 }
 
 type DescriptionSectionProps = {

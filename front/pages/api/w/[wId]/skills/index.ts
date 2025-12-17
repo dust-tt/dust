@@ -23,6 +23,10 @@ export type GetSkillConfigurationsResponseBody = {
   skillConfigurations: SkillType[];
 };
 
+export type GetSkillWithRelationsResponseBody = {
+  skill: SkillType & { relations: SkillRelations };
+};
+
 export type GetSkillConfigurationsWithRelationsResponseBody = {
   skillConfigurations: (SkillType & { relations: SkillRelations })[];
 };
@@ -116,11 +120,14 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
+            const mcpServerViews = await sc.listMCPServerViews(auth);
+
             return {
               ...sc.toJSON(auth),
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
+                mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
               },
             } satisfies SkillType & { relations: SkillRelations };
           },

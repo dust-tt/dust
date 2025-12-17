@@ -2,10 +2,7 @@ import type React from "react";
 
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserType, WorkspaceType } from "@app/types";
-import type {
-  SkillRelations,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const SKILLS_SHEET_PAGE_IDS = {
   SELECTION: "add",
@@ -19,12 +16,12 @@ export type SkillsSheetMode =
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.INFO;
-      skillConfiguration: SkillType & { relations: SkillRelations };
+      skill: SkillType;
       previousMode: SelectionMode;
     }
   | {
       type: typeof SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION;
-      skillConfiguration: SkillType & { relations: SkillRelations };
+      skillConfiguration: SkillType;
       previousMode: SelectionMode;
     };
 

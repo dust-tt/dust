@@ -10,14 +10,9 @@ import type {
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
 import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
-import type {
-  SkillRelations,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-function isGlobalSkillWithSpaceSelection(
-  skill: SkillType & { relations: SkillRelations }
-): boolean {
+function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
   return doesSkillTriggerSelectSpaces(skill.sId);
 }
 
@@ -72,7 +67,7 @@ export const useSkillSelection = ({
   const selectionMode = getSelectionMode(mode);
 
   const handleSkillToggle = useCallback(
-    (skill: SkillType & { relations: SkillRelations }) => {
+    (skill: SkillType) => {
       const isAlreadySelected = localSelectedSkills.some(
         (s) => s.sId === skill.sId
       );
@@ -104,7 +99,7 @@ export const useSkillSelection = ({
   );
 
   const handleSpaceSelectionSave = useCallback(
-    (skill: SkillType & { relations: SkillRelations }) => {
+    (skill: SkillType) => {
       // Commit draft spaces to actual state
       setLocalAdditionalSpaces(draftSelectedSpaces);
       // Add the skill
