@@ -62,6 +62,15 @@ export const GITHUB_NODE_QUERY = `
             body
             state
             createdAt
+            comments(first: 100) {
+              nodes {
+                author {
+                  login
+                }
+                body
+                createdAt
+              }
+            }
           }
         }
       }

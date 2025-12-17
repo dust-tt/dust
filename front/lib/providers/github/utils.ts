@@ -2,6 +2,7 @@ import type {
   GitHubIssueNode,
   GitHubPullRequestNode,
 } from "@app/lib/providers/github/types";
+import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 
 const GITHUB_MAX_SEARCH_QUERY_LENGTH = 256;
 const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
@@ -74,14 +75,16 @@ export function buildContentSummaryForIssue(node: GitHubIssueNode): string {
   content += `**URL:** ${node.url}\n\n`;
 
   if (node.body) {
-    content += `## Description\n\n${node.body}\n\n`;
+    content += `## Issue Description\n\n${node.body}\n\n`;
   }
+  content += `---\n\n`;
 
   if (node.comments.nodes.length > 0) {
     content += `## Comments (${node.comments.nodes.length})\n\n`;
     for (const comment of node.comments.nodes) {
-      content += `>> @${comment.author.login}:\n\n`;
-      content += `${comment.body}\n\n`;
+      const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+      content += `**@${comment.author.login}** — ${commentDate}\n\n`;
+      content += `> ${comment.body.split("\n").join("\n> ")}\n\n`;
     }
   }
 
@@ -102,24 +105,52 @@ export function buildContentSummaryForPullRequest(
   content += `**URL:** ${node.url}\n\n`;
 
   if (node.body) {
-    content += `## Description\n\n${node.body}\n\n`;
+    content += `## PR Description\n\n${node.body}\n\n`;
   }
 
+  content += `---\n\n`;
+
+  // General comments section
   if (node.comments.nodes.length > 0) {
-    content += `## Comments (${node.comments.nodes.length})\n\n`;
+    content += `## General Comments\n\n`;
     for (const comment of node.comments.nodes) {
-      content += `>> @${comment.author.login}:\n\n`;
-      content += `${comment.body}\n\n`;
+      const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+      content += `**@${comment.author.login}** — ${commentDate}\n\n`;
+      content += `> ${comment.body.split("\n").join("\n> ")}\n\n`;
     }
+    content += `---\n\n`;
   }
 
+  // Reviews and threaded comments
   if (node.reviews.nodes.length > 0) {
-    content += `## Reviews (${node.reviews.nodes.length})\n\n`;
+    content += `## Reviews\n\n`;
+
     for (const review of node.reviews.nodes) {
-      content += `>> @${review.author.login} - ${review.state}\n\n`;
+      const reviewDate = dateToHumanReadable(new Date(review.createdAt));
+      content += `### Review Summary\n`;
+      content += `- Review decision: ${review.state}\n`;
+      content += `- Reviewer: @${review.author.login}\n`;
+      content += `- Submitted at: ${reviewDate}\n\n`;
+
       if (review.body) {
-        content += `${review.body}\n\n`;
+        content += `Summary body:\n`;
+        content += `> ${review.body.split("\n").join("\n> ")}\n\n`;
       }
+
+      // Process review comments
+      if (review.comments.nodes.length > 0) {
+        content += `**Review Comments:**\n\n`;
+
+        let messageNumber = 1;
+        for (const comment of review.comments.nodes) {
+          const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+          content += `${messageNumber}) **@${comment.author.login}** — ${commentDate}\n`;
+          content += `   > ${comment.body.split("\n").join("\n   > ")}\n\n`;
+          messageNumber++;
+        }
+      }
+
+      content += `---\n\n`;
     }
   }
 

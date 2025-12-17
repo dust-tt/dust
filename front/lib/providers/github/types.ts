@@ -69,11 +69,22 @@ const GitHubIssueNodeSchema = z.object({
 });
 
 // Pull Request schemas
+const GitHubReviewCommentSchema = z.object({
+  author: GitHubAuthorSchema,
+  body: z.string(),
+  createdAt: z.string(),
+});
+
+const GitHubReviewCommentsSchema = z.object({
+  nodes: z.array(GitHubReviewCommentSchema),
+});
+
 const GitHubReviewSchema = z.object({
   author: GitHubAuthorSchema,
   body: z.string().nullable(),
   state: z.string(),
   createdAt: z.string(),
+  comments: GitHubReviewCommentsSchema,
 });
 
 const GitHubReviewsSchema = z.object({
