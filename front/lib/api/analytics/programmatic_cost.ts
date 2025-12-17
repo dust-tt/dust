@@ -210,12 +210,16 @@ function buildAggregation(
   includeDailyBreakdown: boolean
 ): Record<string, estypes.AggregationsAggregationContainer> {
   const groupField = GROUP_BY_KEY_TO_ES_FIELD[groupBy];
+  // When grouping by API key, documents without an api_key_name represent
+  // programmatic usage that didn't go through a custom API key (e.g., system keys).
+  const missingValue =
+    groupBy === "apiKey" ? "non_api_programmatic" : "unknown";
   return {
     by_group: {
       terms: {
         field: groupField,
         size: groupByCount,
-        missing: "unknown",
+        missing: missingValue,
         // Sort by total cost across all days (descending)
         order: { total_cost: "desc" },
       },
@@ -461,7 +465,9 @@ export async function handleProgrammaticCostRequest(
 
         availableGroupBuckets.forEach((bucket) => {
           let groupLabel = bucket.key;
-          if (bucket.key === "unknown") {
+          if (bucket.key === "non_api_programmatic") {
+            groupLabel = "Non-API programmatic usage";
+          } else if (bucket.key === "unknown") {
             groupLabel = "Unknown";
           } else if (groupBy === "agent" && agentNames[bucket.key]) {
             groupLabel = agentNames[bucket.key];
