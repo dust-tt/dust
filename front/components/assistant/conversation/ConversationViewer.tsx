@@ -28,9 +28,6 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  areSameRank,
-  getMessageRank,
-  isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -201,7 +198,7 @@ export const ConversationViewer = ({
     }
 
     // We use the messages ranks to know what is older and what is newer.
-    const ranks = ref.current.data.get().map(getMessageRank);
+    const ranks = ref.current.data.get().map((m) => m.rank);
 
     const minRank = Math.min(...ranks);
 
@@ -282,7 +279,7 @@ export const ConversationViewer = ({
             if (ref.current) {
               const userMessage = event.message;
               const predicate = (m: VirtuosoMessage) =>
-                isUserMessage(m) && areSameRank(m, userMessage);
+                m.rank === userMessage.rank;
 
               const exists = ref.current.data.find(predicate);
 
@@ -293,7 +290,7 @@ export const ConversationViewer = ({
 
                 // Find the first message with a rank greater than the user message to insert the new message at the correct position.
                 const offset = ref.current.data.findIndex(
-                  (m) => getMessageRank(m) > getMessageRank(userMessage)
+                  (m) => m.rank > userMessage.rank
                 );
                 if (offset !== -1) {
                   ref.current.data.insert([userMessage], offset, scroll);
@@ -305,7 +302,7 @@ export const ConversationViewer = ({
                 // We only update if the version is greater than the existing version.
                 if (exists.version < event.message.version) {
                   ref.current.data.map((m) =>
-                    areSameRank(m, userMessage) ? userMessage : m
+                    m.rank === userMessage.rank ? userMessage : m
                   );
                 }
               }
@@ -340,28 +337,26 @@ export const ConversationViewer = ({
             break;
           case "agent_message_new":
             if (ref.current) {
-              const messageStreamState = makeInitialMessageStreamState(
+              const agentMessage = makeInitialMessageStreamState(
                 getLightAgentMessageFromAgentMessage(event.message)
               );
 
               // Replace the message in the exist list data, or append.
               const predicate = (m: VirtuosoMessage) =>
-                isMessageTemporayState(m) && areSameRank(m, messageStreamState);
+                m.rank === agentMessage.rank;
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
-                ref.current.data.map((m) =>
-                  predicate(m) ? messageStreamState : m
-                );
+                ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
               } else {
                 // Find the first message with a rank greater than the agent message to insert the new message at the correct position.
                 const offset = ref.current.data.findIndex(
-                  (m) => getMessageRank(m) > getMessageRank(messageStreamState)
+                  (m) => m.rank > agentMessage.rank
                 );
                 if (offset !== -1) {
-                  ref.current.data.insert([messageStreamState], offset);
+                  ref.current.data.insert([agentMessage], offset);
                 } else {
-                  ref.current.data.append([messageStreamState]);
+                  ref.current.data.append([agentMessage]);
                 }
               }
 
@@ -482,7 +477,7 @@ export const ConversationViewer = ({
       };
 
       const lastMessageRank = Math.max(
-        ...ref.current.data.get().map(getMessageRank)
+        ...ref.current.data.get().map((m) => m.rank)
       );
 
       let rank =
@@ -579,7 +574,7 @@ export const ConversationViewer = ({
 
       // map() is how we update the state of virtuoso messages.
       ref.current.data.map((m) =>
-        areSameRank(m, placeholderUserMsg)
+        m.rank === placeholderUserMsg.rank
           ? {
               ...messageFromBackend,
               contentFragments: contentFragmentsFromBackend,
@@ -647,13 +642,13 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
-      return `conversation-${context.conversationId}-message-rank-${isMessageTemporayState(data) ? data.message.rank : data.rank}`;
+      return `conversation-${context.conversationId}-message-rank-${data.rank}`;
     },
     []
   );
 
   const itemIdentity = useCallback((item: VirtuosoMessage) => {
-    return `message-rank-${isMessageTemporayState(item) ? item.message.rank : item.rank}`;
+    return `message-rank-${item.rank}`;
   }, []);
 
   const feedbacksByMessageId = useMemo(() => {

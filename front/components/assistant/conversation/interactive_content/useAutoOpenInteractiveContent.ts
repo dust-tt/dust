@@ -3,13 +3,11 @@ import React from "react";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { LightAgentMessageType } from "@app/types";
 import { isInteractiveContentFileContentType, removeNulls } from "@app/types";
 
 interface useAutoOpenInteractiveContentProps {
-  agentMessageToRender: LightAgentMessageType;
   isLastMessage: boolean;
-  messageStreamState: MessageTemporaryState;
+  agentMessage: MessageTemporaryState;
 }
 
 /**
@@ -21,9 +19,8 @@ interface useAutoOpenInteractiveContentProps {
  * - Generated files (completed): Only open drawer on last message, skip updatedAt.
  */
 export function useAutoOpenInteractiveContent({
-  agentMessageToRender,
   isLastMessage,
-  messageStreamState,
+  agentMessage,
 }: useAutoOpenInteractiveContentProps) {
   const { openPanel } = useConversationSidePanelContext();
 
@@ -46,7 +43,7 @@ export function useAutoOpenInteractiveContent({
   const interactiveFilesFromProgress = React.useMemo(
     () =>
       removeNulls(
-        Array.from(messageStreamState.actionProgress.entries()).map(
+        Array.from(agentMessage.streaming.actionProgress.entries()).map(
           ([, progress]) => {
             const output = progress.progress?.data.output;
             if (isInteractiveContentFileContentOutput(output)) {
@@ -56,16 +53,16 @@ export function useAutoOpenInteractiveContent({
           }
         )
       ),
-    [messageStreamState.actionProgress]
+    [agentMessage.streaming.actionProgress]
   );
 
   // Get completed interactive files from generatedFiles.
   const completedInteractiveFiles = React.useMemo(
     () =>
-      agentMessageToRender.generatedFiles.filter((file) =>
+      agentMessage.generatedFiles.filter((file) =>
         isInteractiveContentFileContentType(file.contentType)
       ),
-    [agentMessageToRender.generatedFiles]
+    [agentMessage.generatedFiles]
   );
 
   React.useEffect(() => {
@@ -106,7 +103,7 @@ export function useAutoOpenInteractiveContent({
   // Reset tracking when message changes.
   React.useEffect(() => {
     lastOpenedFileIdRef.current = null;
-  }, [agentMessageToRender.sId]);
+  }, [agentMessage.sId]);
 
   return {
     interactiveFiles: completedInteractiveFiles,

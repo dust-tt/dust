@@ -209,7 +209,7 @@ export const AgentInputBar = ({
                 const blockedActionMessageIndex = methods.data.findIndex(
                   (m) =>
                     isMessageTemporayState(m) &&
-                    blockedActionTargetMessageId === m.message.sId
+                    blockedActionTargetMessageId === m.sId
                 );
 
                 methods.scrollToItem({
