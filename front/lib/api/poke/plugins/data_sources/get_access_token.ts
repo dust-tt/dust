@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import logger, { auditLog } from "@app/logger/logger";
+import logger from "@app/logger/logger";
 import {
   ConnectorsAPI,
   Err,
@@ -49,14 +49,6 @@ export const getAccessTokenPlugin = createPlugin({
     }
 
     const connector = connectorRes.value;
-
-    auditLog(
-      {
-        author: auth.user()?.toJSON() ?? "no-author",
-        connectorId: connector.id,
-      },
-      "Fetching access token"
-    );
 
     const tokenRes = await getOAuthConnectionAccessToken({
       config: config.getOAuthAPIConfig(),

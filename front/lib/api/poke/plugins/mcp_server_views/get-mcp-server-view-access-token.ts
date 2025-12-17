@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import logger, { auditLog } from "@app/logger/logger";
+import logger from "@app/logger/logger";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@app/types";
 
 export const getMcpServerViewAccessTokenPlugin = createPlugin({
@@ -90,17 +90,6 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
         )
       );
     }
-
-    auditLog(
-      {
-        author: auth.user()?.toJSON() ?? "no-author",
-        connectionId: connection.connectionId,
-        mcpServerId: mcpServerView.mcpServerId,
-        connectionType,
-        ...(userId ? { userId } : {}),
-      },
-      "Fetching MCP access token"
-    );
 
     const tokenRes = await getOAuthConnectionAccessToken({
       config: config.getOAuthAPIConfig(),
