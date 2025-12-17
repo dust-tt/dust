@@ -22,9 +22,11 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
+import { AddedSkillCard } from "@app/components/shared/tools_picker/AddedSkillCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
+import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
 import { pluralize } from "@app/types";
@@ -37,10 +39,12 @@ export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
 }: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
-  const { fields, remove, append, update } = useFieldArray<
-    AgentBuilderFormData,
-    "actions"
-  >({
+  const {
+    fields: actionFields,
+    remove: removeActions,
+    append: appendActions,
+    update: updateActions,
+  } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
   });
 
@@ -54,6 +58,25 @@ export function AgentBuilderCapabilitiesBlock({
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
+  const showSkills = hasFeature("skills");
+
+  const {
+    skillConfigurationsWithRelations: skills,
+    isSkillConfigurationsWithRelationsLoading: isSkillsLoading,
+  } = useSkillConfigurationsWithRelations({
+    owner,
+    status: "active",
+    disabled: !showSkills,
+  });
+
+  const {
+    fields: skillFields,
+    append: appendSkills,
+    remove: removeSkills,
+  } = useFieldArray<AgentBuilderFormData, "skills">({
+    name: "skills",
+  });
+
   const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: BuilderAction;
@@ -62,18 +85,18 @@ export function AgentBuilderCapabilitiesBlock({
   } | null>(null);
 
   usePresetActionHandler({
-    fields,
-    append,
+    fields: actionFields,
+    append: appendActions,
     setKnowledgeAction,
   });
 
   const handleEditSave = (updatedAction: BuilderAction) => {
     if (dialogMode?.type === "edit") {
-      update(dialogMode.index, updatedAction);
+      updateActions(dialogMode.index, updatedAction);
     } else if (knowledgeAction && knowledgeAction.index !== null) {
-      update(knowledgeAction.index, updatedAction);
+      updateActions(knowledgeAction.index, updatedAction);
     } else {
-      append(updatedAction);
+      appendActions(updatedAction);
     }
     setDialogMode(null);
     setKnowledgeAction(null);
@@ -97,13 +120,20 @@ export function AgentBuilderCapabilitiesBlock({
     }
   };
 
+  const handleSkillClick = (skillSId: string) => {
+    const skill = skills.find((s) => s.sId === skillSId);
+    if (skill) {
+      setDialogMode({ type: "skill-info", skill, source: "addedSkill" });
+    }
+  };
+
   const handleCloseSheet = () => {
     setDialogMode(null);
     setKnowledgeAction(null);
   };
 
   const handleMcpActionUpdate = (action: BuilderAction, index: number) => {
-    update(index, action);
+    updateActions(index, action);
   };
 
   const onClickKnowledge = () => {
@@ -130,7 +160,13 @@ export function AgentBuilderCapabilitiesBlock({
 
   const getAgentInstructions = () => getValues("instructions");
 
-  const headerActions = fields.length > 0 && (
+  const toolsButtonLabel = showSkills ? "Add capabilities" : "Add tools";
+  const sectionTitle = showSkills
+    ? "Knowledge, Tools & Skills"
+    : "Knowledge & Tools";
+  const hasCapabilities = actionFields.length > 0 || skillFields.length > 0;
+
+  const headerActions = hasCapabilities && (
     <div className="flex items-center gap-2">
       <Button
         type="button"
@@ -142,7 +178,7 @@ export function AgentBuilderCapabilitiesBlock({
       <Button
         type="button"
         onClick={() => setDialogMode({ type: "add" })}
-        label="Add tools"
+        label={toolsButtonLabel}
         icon={ToolsIcon}
         variant="outline"
       />
@@ -151,7 +187,7 @@ export function AgentBuilderCapabilitiesBlock({
 
   return (
     <AgentBuilderSectionContainer
-      title="Knowledge & Tools"
+      title={sectionTitle}
       description={
         <>
           Add knowledge and tools to enhance your agent’s abilities. Need help?
@@ -173,7 +209,7 @@ export function AgentBuilderCapabilitiesBlock({
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : fields.length === 0 ? (
+        ) : !hasCapabilities ? (
           <EmptyCTA
             action={
               <div className="flex items-center gap-2">
@@ -187,7 +223,7 @@ export function AgentBuilderCapabilitiesBlock({
                 <Button
                   type="button"
                   onClick={() => setDialogMode({ type: "add" })}
-                  label="Add tools"
+                  label={toolsButtonLabel}
                   icon={ToolsIcon}
                   variant="outline"
                 />
@@ -215,11 +251,22 @@ export function AgentBuilderCapabilitiesBlock({
                 </div>
               )}
             <CardGrid>
-              {fields.map((field, index) => (
+              {
+                // TODO(skills 2025-12-17): display skills and actions in the order they were added, not separated by type
+              }
+              {skillFields.map((field, index) => (
+                <AddedSkillCard
+                  key={field.id}
+                  skill={field}
+                  onRemove={() => removeSkills(index)}
+                  onClick={() => handleSkillClick(field.sId)}
+                />
+              ))}
+              {actionFields.map((field, index) => (
                 <ActionCard
                   key={field.id}
                   action={field}
-                  onRemove={() => remove(index)}
+                  onRemove={() => removeActions(index)}
                   onEdit={() => handleActionEdit(field, index)}
                 />
               ))}
@@ -231,19 +278,23 @@ export function AgentBuilderCapabilitiesBlock({
         onClose={handleCloseSheet}
         onSave={handleEditSave}
         action={knowledgeAction?.action ?? null}
-        actions={fields}
+        actions={actionFields}
         isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
         presetActionData={knowledgeAction?.presetData}
       />
       <MCPServerViewsSheet
-        addTools={append}
+        addTools={appendActions}
         mode={dialogMode}
         onModeChange={setDialogMode}
         onActionUpdate={handleMcpActionUpdate}
-        selectedActions={fields}
+        selectedActions={actionFields}
         getAgentInstructions={getAgentInstructions}
+        skills={skills}
+        isSkillsLoading={isSkillsLoading}
+        onAddSkills={appendSkills}
+        selectedSkills={skillFields}
       />
     </AgentBuilderSectionContainer>
   );
