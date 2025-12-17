@@ -1262,8 +1262,7 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description: "Access and manage Ashby ATS data.",
       authorization: null,
-      // TODO(2025-11-04 aubin): add logo.
-      icon: "GithubLogo",
+      icon: "AshbyLogo",
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",
