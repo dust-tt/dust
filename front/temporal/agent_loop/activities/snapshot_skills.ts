@@ -7,7 +7,7 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-export async function snapshotAgentMessageSkillsActivity(
+export async function snapshotAgentMessageSkills(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
