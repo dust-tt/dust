@@ -27,7 +27,7 @@ const DRAFT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const getHasConversationId = (
   conversationId: string | string[] | undefined
 ): conversationId is string => {
-  if (conversationId === undefined || typeof conversationId !== "string") {
+  if (!isString(conversationId)) {
     return false;
   }
 
