@@ -22,6 +22,15 @@ export type CreditDisplayData = {
   boughtByUser: EditedByUser | null;
 };
 
+export type PendingCreditData = {
+  sId: string;
+  type: CreditType;
+  initialAmountMicroUsd: number;
+  paymentUrl: string | null;
+  createdAt: number;
+};
+
 export type GetCreditsResponseBody = {
   credits: CreditDisplayData[];
+  pendingCredits?: PendingCreditData[];
 };

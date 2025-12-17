@@ -12,9 +12,11 @@ import {
 } from "@app/lib/credits/committed";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import {
+  getInvoicePaymentUrl,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -30,6 +32,25 @@ type PostCreditPurchaseResponseBody = {
   invoiceId: string | null;
   paymentUrl: string | null;
 };
+
+async function getPendingCreditPaymentUrl(
+  auth: Authenticator
+): Promise<string | undefined> {
+  const credits = await CreditResource.listAll(auth);
+  const pendingCredit = credits.find(
+    (c) =>
+      c.startDate === null &&
+      c.type === "committed" &&
+      c.invoiceOrLineItemId !== null
+  );
+  if (pendingCredit?.invoiceOrLineItemId) {
+    const paymentUrl = await getInvoicePaymentUrl(
+      pendingCredit.invoiceOrLineItemId
+    );
+    return paymentUrl ?? undefined;
+  }
+  return undefined;
+}
 
 async function handler(
   req: NextApiRequest,
@@ -177,11 +198,18 @@ async function handler(
         });
 
         if (result.isErr()) {
+          // Check for pending committed credits that might need payment.
+          const pendingPaymentUrl = await getPendingCreditPaymentUrl(auth);
+          const message = pendingPaymentUrl
+            ? "Failed to process credit purchase. You have a pending credit purchase awaiting payment. Please complete that payment first or contact support."
+            : "Failed to process credit purchase.";
+
           return apiError(req, res, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: "Failed to process credit purchase.",
+              message,
+              pendingPaymentUrl,
             },
           });
         }
@@ -202,11 +230,18 @@ async function handler(
       });
 
       if (result.isErr()) {
+        // Check for pending committed credits that might need payment.
+        const pendingPaymentUrl = await getPendingCreditPaymentUrl(auth);
+        const message = pendingPaymentUrl
+          ? "Failed to process credit purchase. You have a pending credit purchase awaiting payment. Please complete that payment first or contact support."
+          : "Failed to process credit purchase.";
+
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to process credit purchase.",
+            message,
+            pendingPaymentUrl,
           },
         });
       }

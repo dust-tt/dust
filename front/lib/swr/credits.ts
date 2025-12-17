@@ -3,7 +3,10 @@ import type { Fetcher } from "swr";
 
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetCreditsResponseBody } from "@app/types/credits";
+import type {
+  GetCreditsResponseBody,
+  PendingCreditData,
+} from "@app/types/credits";
 
 // Global state for tracking purchase loading status per workspace
 const purchaseLoadingState = new Map<string, boolean>();
@@ -71,8 +74,11 @@ export function useCredits({
     }
   );
 
+  const pendingCredits: PendingCreditData[] = data?.pendingCredits ?? [];
+
   return {
     credits: data?.credits ?? emptyArray(),
+    pendingCredits,
     isCreditsLoading: !error && !data && !disabled,
     isCreditsValidating: isValidating,
     isCreditsError: error,
@@ -83,7 +89,7 @@ export function useCredits({
 export type PurchaseResult =
   | { status: "success" }
   | { status: "redirect"; paymentUrl: string }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; pendingPaymentUrl?: string };
 
 export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
   const isLoading = useSyncExternalStore(
@@ -122,8 +128,11 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
           const errorMessage =
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             errorData.error?.message || "Failed to purchase credits";
+          const pendingPaymentUrl = errorData.error?.pendingPaymentUrl as
+            | string
+            | undefined;
 
-          return { status: "error", message: errorMessage };
+          return { status: "error", message: errorMessage, pendingPaymentUrl };
         }
 
         const responseData = await response.json();

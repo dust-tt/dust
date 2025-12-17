@@ -331,7 +331,7 @@ export default function CreditsUsagePage({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const { credits, isCreditsLoading } = useCredits({
+  const { credits, pendingCredits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
   });
 
@@ -510,6 +510,28 @@ export default function CreditsUsagePage({
               your payment method is up to date.
             </ContentMessage>
           )}
+
+        {pendingCredits.length > 0 && (
+          <ContentMessage
+            title={`You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: pendingCredits[0].initialAmountMicroUsd })} credit purchase awaiting payment.`}
+            variant="warning"
+            size="lg"
+            icon={ExclamationCircleIcon}
+          >
+            <div className="flex items-end justify-between">
+              <p>Complete your payment to activate your credits.</p>
+              {pendingCredits[0].paymentUrl && (
+                <Button
+                  label="Complete Payment"
+                  variant="primary"
+                  onClick={() =>
+                    window.open(pendingCredits[0].paymentUrl ?? "", "_blank")
+                  }
+                />
+              )}
+            </div>
+          </ContentMessage>
+        )}
 
         {/* Usage Section */}
         <UsageSection
