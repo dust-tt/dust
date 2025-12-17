@@ -23,6 +23,7 @@ import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/as
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   ConversationSkillActionRequest,
+  FetchConversationSkillsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/skills";
 import type {
   ConversationToolActionRequest,
@@ -294,6 +295,40 @@ export function useConversationTools({
   };
 }
 
+export function useConversationSkills({
+  conversationId,
+  workspaceId,
+  options,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
+  const conversationSkillsFetcher: Fetcher<FetchConversationSkillsResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`
+      : null,
+    conversationSkillsFetcher,
+    { ...options, focusThrottleInterval: 30 * 60 * 1000 } // 30 minutes
+  );
+
+  return {
+    conversationSkills: useMemo(
+      () =>
+        data
+          ? data.skills
+          : emptyArray<FetchConversationSkillsResponse["skills"][number]>(),
+      [data]
+    ),
+    isConversationSkillsLoading: !error && !data,
+    isConversationSkillsError: error,
+    mutateConversationSkills: mutate,
+  };
+}
+
 // Cancel message generation for one or multiple messages within a conversation.
 // Returns an async function that accepts a list of message IDs to cancel.
 export function useCancelMessage({
@@ -439,13 +474,7 @@ export function useAddDeleteConversationSkill({
 }) {
   const addSkill = useCallback(
     async (skillId: string): Promise<boolean> => {
-      console.log("addSkill called", {
-        skillId,
-        conversationId,
-        agentConfigurationId,
-      });
-      if (!conversationId || !agentConfigurationId) {
-        console.log("addSkill: missing conversationId or agentConfigurationId");
+      if (!conversationId) {
         return false;
       }
 
@@ -481,7 +510,7 @@ export function useAddDeleteConversationSkill({
 
   const deleteSkill = useCallback(
     async (skillId: string): Promise<boolean> => {
-      if (!conversationId || !agentConfigurationId) {
+      if (!conversationId) {
         return false;
       }
 
