@@ -24,7 +24,6 @@ export { default as BoltIcon } from "./Bolt";
 export { default as BookOpenIcon } from "./BookOpen";
 export { default as BracesIcon } from "./Braces";
 export { default as BrainIcon } from "./Brain";
-export { default as BrainCopieIcon } from "./BrainCopie";
 export { default as CameraIcon } from "./Camera";
 export { default as CardIcon } from "./Card";
 export { default as ChatBubbleBottomCenterPlusIcon } from "./ChatBubbleBottomCenterPlus";
