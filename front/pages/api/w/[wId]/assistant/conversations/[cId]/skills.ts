@@ -20,7 +20,7 @@ export type FetchConversationSkillsResponse = {
 const ConversationSkillActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
   skill_id: z.string(),
-  agent_configuration_id: z.string(),
+  agent_configuration_id: z.string().nullable().optional(),
 });
 
 export type ConversationSkillActionRequest = z.infer<
