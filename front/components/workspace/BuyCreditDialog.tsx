@@ -52,7 +52,7 @@ interface BuyCreditDialogProps {
 }
 
 // Threshold percentage for pay-as-you-go cap usage below which we show a warning.
-const PAYG_CAP_WARNING_THRESHOLD_PERCENT = 80;
+const PAYG_CAP_WARNING_THRESHOLD_PERCENT = 70;
 
 export function BuyCreditDialog({
   isOpen,
