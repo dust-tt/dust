@@ -66,13 +66,7 @@ ConversationSkillModel.init(
   {
     modelName: "conversation_skills",
     sequelize: frontSequelize,
-    indexes: [
-      {
-        fields: ["workspaceId", "conversationId", "agentConfigurationId"],
-        name: "conversation_skills_wid_cid_acid",
-        unique: true,
-      },
-    ],
+    indexes: [],
     validate: {
       eitherGlobalOrCustomSkill() {
         const hasCustomSkill = this.customSkillId !== null;

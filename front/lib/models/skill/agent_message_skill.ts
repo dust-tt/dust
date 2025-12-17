@@ -74,12 +74,7 @@ AgentMessageSkillModel.init(
   {
     modelName: "agent_message_skills",
     sequelize: frontSequelize,
-    indexes: [
-      {
-        fields: ["workspaceId", "conversationId", "agentConfigurationId"],
-        name: "agent_message_skills_wid_cid_acid",
-      },
-    ],
+    indexes: [],
     validate: {
       eitherGlobalOrCustomSkill() {
         const hasCustomSkill = this.customSkillId !== null;
