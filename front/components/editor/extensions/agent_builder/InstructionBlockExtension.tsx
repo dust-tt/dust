@@ -754,7 +754,10 @@ export const InstructionBlockExtension =
 
     renderMarkdown: (node, helpers) => {
       const tagType = node.attrs?.type ?? "instructions";
-      const content = helpers.renderChildren(node.content ?? []);
-      return `<${tagType}>${content}</${tagType}>`;
+      const children = node.content ?? [];
+
+      // We use "\n\n" as a separator, because of a weird bug, see unit tests
+      const content = helpers.renderChildren(children, "\n\n");
+      return `<${tagType}>\n\n${content}\n\n</${tagType}>`;
     },
   });
