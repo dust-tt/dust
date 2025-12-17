@@ -62,6 +62,14 @@ export const GITHUB_NODE_QUERY = `
             body
             state
             createdAt
+          }
+        }
+        reviewThreads(first: 100) {
+          nodes {
+            isResolved
+            resolvedBy {
+              login
+            }
             comments(first: 100) {
               nodes {
                 author {
@@ -69,6 +77,7 @@ export const GITHUB_NODE_QUERY = `
                 }
                 body
                 createdAt
+                path
               }
             }
           }

@@ -69,26 +69,36 @@ const GitHubIssueNodeSchema = z.object({
 });
 
 // Pull Request schemas
-const GitHubReviewCommentSchema = z.object({
-  author: GitHubAuthorSchema,
-  body: z.string(),
-  createdAt: z.string(),
-});
-
-const GitHubReviewCommentsSchema = z.object({
-  nodes: z.array(GitHubReviewCommentSchema),
-});
-
 const GitHubReviewSchema = z.object({
   author: GitHubAuthorSchema,
   body: z.string().nullable(),
   state: z.string(),
   createdAt: z.string(),
-  comments: GitHubReviewCommentsSchema,
 });
 
 const GitHubReviewsSchema = z.object({
   nodes: z.array(GitHubReviewSchema),
+});
+
+const GitHubReviewThreadCommentSchema = z.object({
+  author: GitHubAuthorSchema,
+  body: z.string(),
+  createdAt: z.string(),
+  path: z.string().nullable(),
+});
+
+const GitHubReviewThreadCommentsSchema = z.object({
+  nodes: z.array(GitHubReviewThreadCommentSchema),
+});
+
+const GitHubReviewThreadSchema = z.object({
+  isResolved: z.boolean(),
+  resolvedBy: GitHubAuthorSchema.nullable(),
+  comments: GitHubReviewThreadCommentsSchema,
+});
+
+const GitHubReviewThreadsSchema = z.object({
+  nodes: z.array(GitHubReviewThreadSchema),
 });
 
 const GitHubPullRequestNodeSchema = z.object({
@@ -102,6 +112,7 @@ const GitHubPullRequestNodeSchema = z.object({
   author: GitHubAuthorSchema,
   comments: GitHubCommentsSchema,
   reviews: GitHubReviewsSchema,
+  reviewThreads: GitHubReviewThreadsSchema,
 });
 
 // Union of Issue and PullRequest

@@ -8,6 +8,12 @@ const GITHUB_MAX_SEARCH_QUERY_LENGTH = 256;
 const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
 const GITHUB_BOOLEAN_OPERATORS = "(?:AND|OR|NOT)";
 
+// GitHub review and thread status constants
+const GITHUB_REVIEW_STATE_COMMENTED = "COMMENTED";
+const GITHUB_THREAD_STATUS_RESOLVED = "RESOLVED";
+const GITHUB_THREAD_STATUS_OPEN = "OPEN";
+const GITHUB_THREAD_NUMBER_PADDING = 3;
+
 /**
  * Truncates a GitHub search query to respect both the 256 character limit
  * and the maximum of 5 AND/OR/NOT operators.
@@ -121,11 +127,15 @@ export function buildContentSummaryForPullRequest(
     content += `---\n\n`;
   }
 
-  // Reviews and threaded comments
-  if (node.reviews.nodes.length > 0) {
+  // Reviews section - only show meaningful reviews (not just "COMMENTED" with no body)
+  const meaningfulReviews = node.reviews.nodes.filter(
+    (review) => review.state !== GITHUB_REVIEW_STATE_COMMENTED || review.body
+  );
+
+  if (meaningfulReviews.length > 0) {
     content += `## Reviews\n\n`;
 
-    for (const review of node.reviews.nodes) {
+    for (const review of meaningfulReviews) {
       const reviewDate = dateToHumanReadable(new Date(review.createdAt));
       content += `### Review Summary\n`;
       content += `- Review decision: ${review.state}\n`;
@@ -137,20 +147,59 @@ export function buildContentSummaryForPullRequest(
         content += `> ${review.body.split("\n").join("\n> ")}\n\n`;
       }
 
-      // Process review comments
-      if (review.comments.nodes.length > 0) {
-        content += `**Review Comments:**\n\n`;
+      content += `---\n\n`;
+    }
+  }
 
-        let messageNumber = 1;
-        for (const comment of review.comments.nodes) {
-          const commentDate = dateToHumanReadable(new Date(comment.createdAt));
-          content += `${messageNumber}) **@${comment.author.login}** — ${commentDate}\n`;
-          content += `   > ${comment.body.split("\n").join("\n   > ")}\n\n`;
-          messageNumber++;
-        }
+  // Review threads section
+  if (node.reviewThreads.nodes.length > 0) {
+    content += `## Review Threads\n\n`;
+
+    let threadNumber = 1;
+    for (const thread of node.reviewThreads.nodes) {
+      if (thread.comments.nodes.length === 0) {
+        continue;
+      }
+
+      const firstComment = thread.comments.nodes[0];
+      const lastComment =
+        thread.comments.nodes[thread.comments.nodes.length - 1];
+      const lastUpdateDate = dateToHumanReadable(
+        new Date(lastComment.createdAt)
+      );
+
+      // Collect all participants
+      const participants = new Set(
+        thread.comments.nodes.map((c) => c.author.login)
+      );
+      const participantsList = Array.from(participants)
+        .map((p) => `@${p}`)
+        .join(", ");
+
+      // Thread header
+      content += `### Thread T${String(threadNumber).padStart(GITHUB_THREAD_NUMBER_PADDING, "0")}`;
+      if (firstComment.path) {
+        content += ` — File: ${firstComment.path}`;
+      }
+      content += ` — Status: ${thread.isResolved ? GITHUB_THREAD_STATUS_RESOLVED : GITHUB_THREAD_STATUS_OPEN}\n`;
+      content += `Participants: ${participantsList}\n`;
+      content += `Last update: ${lastUpdateDate}\n`;
+      if (thread.isResolved && thread.resolvedBy) {
+        content += `Resolved by: @${thread.resolvedBy.login}\n`;
+      }
+      content += `\n**Messages (chronological):**\n\n`;
+
+      // Thread messages
+      let messageNumber = 1;
+      for (const comment of thread.comments.nodes) {
+        const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+        content += `${messageNumber}) **@${comment.author.login}** — ${commentDate}\n`;
+        content += `   > ${comment.body.split("\n").join("\n   > ")}\n\n`;
+        messageNumber++;
       }
 
       content += `---\n\n`;
+      threadNumber++;
     }
   }
 
