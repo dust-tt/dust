@@ -122,20 +122,22 @@ export const NotificationPreferences = forwardRef<
             return false;
           }
 
-          // Save email delay in user metadata
-          await setUserMetadataFromClient({
-            key: "email_notification_preferences",
-            value: emailDelay,
-          });
-          await mutateEmailDelay((current) => {
-            if (current) {
-              return {
-                ...current,
-                value: emailDelay,
-              };
-            }
-            return current;
-          });
+          // Save email delay in user metadata only if it changed
+          if (emailDelay !== originalEmailDelayRef.current) {
+            await setUserMetadataFromClient({
+              key: "email_notification_preferences",
+              value: emailDelay,
+            });
+            await mutateEmailDelay((current) => {
+              if (current) {
+                return {
+                  ...current,
+                  value: emailDelay,
+                };
+              }
+              return current;
+            });
+          }
 
           // Update the original references on successful save
           originalPreferencesRef.current = globalPreferences;
