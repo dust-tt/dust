@@ -732,6 +732,7 @@ export const InstructionBlockExtension =
           attrs: {
             type: tagName.toLowerCase(),
           },
+          text: match[2],
           tokens: lexer.blockTokens(match[2]),
         };
       },

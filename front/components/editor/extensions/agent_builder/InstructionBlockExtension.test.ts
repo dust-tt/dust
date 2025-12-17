@@ -225,4 +225,100 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe("<instructions_toto></instructions_toto>\n\n");
   });
+
+  it("should serialize instruction block to markdown with paragraph then list", () => {
+    editor.commands.setContent(
+      `<instructions>
+Toto:
+* hello
+* darkness
+* my old friend
+</instructions>`,
+      {
+        contentType: "markdown",
+      }
+    );
+
+    const json = editor.getJSON();
+    expect(json.content).toEqual([
+      {
+        attrs: {
+          isCollapsed: false,
+          type: "instructions",
+        },
+        content: [
+          {
+            content: [
+              {
+                text: "Toto:",
+                type: "text",
+              },
+            ],
+            type: "paragraph",
+          },
+          {
+            content: [
+              {
+                content: [
+                  {
+                    content: [
+                      {
+                        text: "hello",
+                        type: "text",
+                      },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+              {
+                content: [
+                  {
+                    content: [
+                      {
+                        text: "darkness",
+                        type: "text",
+                      },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+              {
+                content: [
+                  {
+                    content: [
+                      {
+                        text: "my old friend",
+                        type: "text",
+                      },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+            ],
+            type: "bulletList",
+          },
+        ],
+        type: "instructionBlock",
+      },
+      {
+        type: "paragraph",
+      },
+    ]);
+
+    const result = editor.getMarkdown();
+    expect(result).toBe(`<instructions>
+Toto:
+
+- hello
+- darkness
+- my old friend
+</instructions>
+`);
+  });
 });
