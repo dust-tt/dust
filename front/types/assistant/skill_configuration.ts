@@ -27,3 +27,7 @@ export type SkillRelations = {
   mcpServerViews: MCPServerViewType[];
   author: UserType | null;
 };
+
+export type SkillWithRelationsType = SkillType & {
+  relations: SkillRelations;
+};
