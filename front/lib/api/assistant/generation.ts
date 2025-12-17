@@ -4,7 +4,7 @@ import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-  DEFAULT_ENABLE_SKILL_TOOL_NAME,
+  ENABLE_SKILL_TOOL_NAME,
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
@@ -181,7 +181,7 @@ function constructSkillsSection({
   // Equipped but not yet enabled skills - show name and description only
   if (equippedSkills && equippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
-    skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${DEFAULT_ENABLE_SKILL_TOOL_NAME} tool.\n`;
+    skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${ENABLE_SKILL_TOOL_NAME} tool.\n`;
     const skillList = equippedSkills
       .map(
         ({ name, agentFacingDescription }) =>

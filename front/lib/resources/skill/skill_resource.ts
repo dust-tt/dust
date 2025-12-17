@@ -926,6 +926,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
+    // For agent_enabled, we need to check that the skill is added to the agent first.
+    if (source === "agent_enabled") {
+      const agentSkill = await AgentSkillModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          agentConfigurationId: agentConfiguration.id,
+          ...(this.globalSId
+            ? { globalSkillId: this.globalSId }
+            : { customSkillId: this.id }),
+        },
+      });
+
+      if (!agentSkill) {
+        return new Err(
+          new Error(
+            `Skill ${this.name} was not added to agent ${agentConfiguration.name}.`
+          )
+        );
+      }
+    }
+
     const conversationSkillBlob = {
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
