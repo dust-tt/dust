@@ -345,6 +345,7 @@ async function handler(
           executionPerDayLimitOverride: executionPerDay,
           executionMode:
             validatedTrigger.kind === "webhook" ? "fair_use" : null,
+          origin: "user",
         });
 
         if (newTrigger.isErr()) {

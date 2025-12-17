@@ -195,6 +195,56 @@ export async function getJITServers(
     }
   }
 
+  // Add schedules_management MCP server if this is an onboarding conversation
+  const userResource = auth.user();
+  if (userResource) {
+    const onboardingMetadata = await userResource.getMetadata(
+      "onboarding:conversation"
+    );
+    if (onboardingMetadata?.value === conversation.sId) {
+      const schedulesManagementView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "schedules_management"
+        );
+
+      // Only add if the view exists (workspace has schedules_management feature flag)
+      if (
+        schedulesManagementView &&
+        !agentMcpServerViewIds.includes(schedulesManagementView.sId)
+      ) {
+        const schedulesManagementViewJSON = schedulesManagementView.toJSON();
+        const schedulesManagementServer: ServerSideMCPServerConfigurationType =
+          {
+            id: -1,
+            sId: generateRandomModelSId(),
+            type: "mcp_server_configuration",
+            name:
+              schedulesManagementViewJSON.name ??
+              schedulesManagementViewJSON.server.name ??
+              "schedules_management",
+            description:
+              schedulesManagementViewJSON.description ??
+              schedulesManagementViewJSON.server.description ??
+              "Create schedules to automate recurring tasks.",
+            dataSources: null,
+            tables: null,
+            childAgentId: null,
+            reasoningModel: null,
+            timeFrame: null,
+            jsonSchema: null,
+            secretName: null,
+            additionalConfiguration: {},
+            mcpServerViewId: schedulesManagementViewJSON.sId,
+            dustAppConfiguration: null,
+            internalMCPServerId: schedulesManagementView.mcpServerId,
+          };
+
+        jitServers.push(schedulesManagementServer);
+      }
+    }
+  }
+
   if (attachments.length === 0) {
     return jitServers;
   }

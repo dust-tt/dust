@@ -124,6 +124,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
+  "schedules_management",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1700,6 +1701,36 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: null,
       documentationUrl: null,
       instructions: null,
+    },
+  },
+  schedules_management: {
+    id: 1020,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("schedules_management");
+    },
+    tools_stakes: {
+      create_schedule: "high",
+      list_schedules: "never_ask",
+      get_schedule: "never_ask",
+      update_schedule: "high",
+      delete_schedule: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "schedules_management",
+      version: "1.0.0",
+      description: "Create schedules to automate recurring tasks.",
+      icon: "ActionTimeIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions:
+        "Schedules are user-specific: each user can only view and manage their own schedules. " +
+        "When a schedule triggers, it runs this agent with the specified prompt. " +
+        "Limit: 20 schedule creations per user per day.",
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
