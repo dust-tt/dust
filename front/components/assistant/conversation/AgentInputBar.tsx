@@ -29,7 +29,7 @@ import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { RichMention } from "@app/types";
-import { conjugate, pluralize, toRichAgentMentionType } from "@app/types";
+import { pluralize, toRichAgentMentionType } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -192,14 +192,14 @@ export const AgentInputBar = ({
           className="max-h-dvh mb-5 flex w-full"
         >
           <span className="font-bold">
-            {blockedActions.length} action
+            {blockedActions.length} manual action
             {pluralize(blockedActions.length)}
           </span>{" "}
-          require{conjugate(blockedActions.length)} a manual action
+          required
           {/* If there are pending validations, we show a button allowing to cycle through the blocked actions messages. */}
           {hasPendingValidations(context.user.sId) && (
             <ContentMessageAction
-              label="Review actions"
+              label="Review"
               variant="outline"
               size="xs"
               onClick={() => {
