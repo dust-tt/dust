@@ -250,9 +250,7 @@ export function BuyCreditDialog({
                 title="You still have pay-as-you-go capacity"
               >
                 You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your
-                pay-as-you-go cap. Any usage beyond your free credits will
-                automatically be charged against this cap before purchased
-                credits are used.
+                pay-as-you-go cap. 
               </ContentMessage>
             )}
             <div className="flex flex-col gap-2">
