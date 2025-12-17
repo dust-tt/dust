@@ -7,7 +7,7 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
-  UserMessageType,
+  UserMessageTypeWithoutMentions,
 } from "@app/types";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
@@ -22,7 +22,7 @@ export const runAgentLoopWorkflow = async ({
   auth: Authenticator;
   agentMessages: AgentMessageType[];
   conversation: ConversationWithoutContentType;
-  userMessage: UserMessageType;
+  userMessage: UserMessageTypeWithoutMentions;
 }) => {
   await concurrentExecutor(
     agentMessages,

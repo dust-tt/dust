@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  editUserMessage,
+  postUserMessage,
   retryAgentMessage,
   softDeleteAgentMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
+import { MentionModel } from "@app/lib/models/agent/conversation";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -16,11 +19,19 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
+  AgentMention,
   AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
+  MentionType,
+  UserMessageType,
 } from "@app/types";
-import { ConversationError, isUserMessageType } from "@app/types";
+import {
+  ConversationError,
+  isRichAgentMention,
+  isRichUserMention,
+  isUserMessageType,
+} from "@app/types";
 
 // Mock the dependencies
 vi.mock("@app/temporal/agent_loop/client", () => ({
@@ -29,6 +40,7 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishAgentMessagesEvents: vi.fn(),
+  publishMessageEventsOnMessagePostOrEdit: vi.fn(),
 }));
 
 describe("retryAgentMessage", () => {
@@ -447,6 +459,580 @@ describe("softDeleteAgentMessage", () => {
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(ConversationError);
       expect(result.error.type).toBe("message_deletion_not_authorized");
+    }
+  });
+});
+
+describe("postUserMessage", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: ConversationType;
+  let agentConfig1: LightAgentConfigurationType;
+  let agentConfig2: LightAgentConfigurationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent 1",
+      description: "First test agent",
+    });
+
+    agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent 2",
+      description: "Second test agent",
+    });
+
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig1.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    conversation = fetchedConversationResult.value;
+
+    vi.clearAllMocks();
+  });
+
+  it("should preserve agent mentions in the returned userMessage", async () => {
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+      {
+        configurationId: agentConfig2.sId,
+      } satisfies AgentMention,
+    ];
+
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversation,
+      content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
+      mentions,
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(2);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(2);
+
+      // Verify all mentions are agent mentions
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(agentMentions.length).toBe(2);
+
+      // Verify the agent configurations match
+      const mentionedAgentIds = agentMentions.map((m) => m.id);
+      expect(mentionedAgentIds).toContain(agentConfig1.sId);
+      expect(mentionedAgentIds).toContain(agentConfig2.sId);
+
+      // Verify mentions are stored in the database
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+        },
+      });
+      expect(mentionsInDb.length).toBe(2);
+      const agentConfigIdsInDb = mentionsInDb
+        .map((m) => m.agentConfigurationId)
+        .filter((id): id is string => id !== null);
+      expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
+      expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+    }
+  });
+
+  it("should preserve user mentions in the returned userMessage", async () => {
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    const mentions: MentionType[] = [
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+    ];
+
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversation,
+      content: `Hello @${mentionedUser.username}`,
+      mentions,
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(1);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(1);
+
+      // Verify it's a user mention
+      const userMention = userMessage.richMentions[0];
+      expect(isRichUserMention(userMention)).toBe(true);
+      if (isRichUserMention(userMention)) {
+        expect(userMention.id).toBe(mentionedUser.sId);
+      }
+
+      // Verify mention is stored in the database
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+    }
+  });
+
+  it("should preserve both user and agent mentions in the returned userMessage", async () => {
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    const mentions: MentionType[] = [
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+    ];
+
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversation,
+      content: `Hello @${mentionedUser.username} and @${agentConfig1.name}`,
+      mentions,
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(2);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(2);
+
+      // Verify we have both user and agent mentions
+      const userMentions = userMessage.richMentions.filter(isRichUserMention);
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(userMentions.length).toBe(1);
+      expect(agentMentions.length).toBe(1);
+
+      // Verify the user mention
+      expect(userMentions[0].id).toBe(mentionedUser.sId);
+
+      // Verify the agent mention
+      expect(agentMentions[0].id).toBe(agentConfig1.sId);
+
+      // Verify mentions are stored in the database
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+        },
+      });
+      expect(mentionsInDb.length).toBe(2);
+    }
+  });
+
+  it("should preserve empty mentions array when no mentions are provided", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const result = await postUserMessage(auth, {
+      conversation,
+      content: "Hello without mentions",
+      mentions: [],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has empty mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(0);
+
+      // Verify userMessage has empty richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(0);
+    }
+  });
+});
+
+describe("editUserMessage", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: ConversationType;
+  let agentConfig1: LightAgentConfigurationType;
+  let agentConfig2: LightAgentConfigurationType;
+  let originalUserMessage: UserMessageType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent 1",
+      description: "First test agent",
+    });
+
+    agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent 2",
+      description: "Second test agent",
+    });
+
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig1.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    conversation = fetchedConversationResult.value;
+
+    // Create an original user message with agent mentions
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const postResult = await postUserMessage(auth, {
+      conversation,
+      content: `Original message with @${agentConfig1.name}`,
+      mentions: [
+        {
+          configurationId: agentConfig1.sId,
+        } satisfies AgentMention,
+      ],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    if (postResult.isErr()) {
+      throw new Error("Failed to create original message");
+    }
+    originalUserMessage = postResult.value.userMessage;
+
+    vi.clearAllMocks();
+  });
+
+  it("should preserve agent mentions when editing a user message", async () => {
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+      {
+        configurationId: agentConfig2.sId,
+      } satisfies AgentMention,
+    ];
+
+    const result = await editUserMessage(auth, {
+      conversation,
+      message: originalUserMessage,
+      content: `Edited message with @${agentConfig1.name} and @${agentConfig2.name}`,
+      mentions,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(2);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(2);
+
+      // Verify all mentions are agent mentions
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(agentMentions.length).toBe(2);
+
+      // Verify the agent configurations match
+      const mentionedAgentIds = agentMentions.map((m) => m.id);
+      expect(mentionedAgentIds).toContain(agentConfig1.sId);
+      expect(mentionedAgentIds).toContain(agentConfig2.sId);
+
+      // Verify mentions are stored in the database for the edited message
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+        },
+      });
+      expect(mentionsInDb.length).toBe(2);
+      const agentConfigIdsInDb = mentionsInDb
+        .map((m) => m.agentConfigurationId)
+        .filter((id): id is string => id !== null);
+      expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
+      expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+    }
+  });
+
+  it("should preserve user mentions when editing a user message", async () => {
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    const mentions: MentionType[] = [
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+    ];
+
+    const result = await editUserMessage(auth, {
+      conversation,
+      message: originalUserMessage,
+      content: `Edited message with @${mentionedUser.username}`,
+      mentions,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(1);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(1);
+
+      // Verify it's a user mention
+      const userMention = userMessage.richMentions[0];
+      expect(isRichUserMention(userMention)).toBe(true);
+      if (isRichUserMention(userMention)) {
+        expect(userMention.id).toBe(mentionedUser.sId);
+      }
+
+      // Verify mention is stored in the database
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+    }
+  });
+
+  it("should preserve both user and agent mentions when editing a user message", async () => {
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    const mentions: MentionType[] = [
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+      {
+        configurationId: agentConfig2.sId,
+      } satisfies AgentMention,
+    ];
+
+    const result = await editUserMessage(auth, {
+      conversation,
+      message: originalUserMessage,
+      content: `Edited message with @${mentionedUser.username} and @${agentConfig2.name}`,
+      mentions,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(2);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(2);
+
+      // Verify we have both user and agent mentions
+      const userMentions = userMessage.richMentions.filter(isRichUserMention);
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(userMentions.length).toBe(1);
+      expect(agentMentions.length).toBe(1);
+
+      // Verify the user mention
+      expect(userMentions[0].id).toBe(mentionedUser.sId);
+
+      // Verify the agent mention
+      expect(agentMentions[0].id).toBe(agentConfig2.sId);
+
+      // Verify mentions are stored in the database
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+        },
+      });
+      expect(mentionsInDb.length).toBe(2);
+    }
+  });
+
+  it("should preserve empty mentions array when editing removes all mentions", async () => {
+    const result = await editUserMessage(auth, {
+      conversation,
+      message: originalUserMessage,
+      content: "Edited message without mentions",
+      mentions: [],
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has empty mentions
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(0);
+
+      // Verify userMessage has empty richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(0);
+
+      // Verify no mentions are stored in the database for the edited message
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+        },
+      });
+      expect(mentionsInDb.length).toBe(0);
+    }
+  });
+
+  it("should preserve mentions when editing a message without agent mentions (only user mentions)", async () => {
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    const mentions: MentionType[] = [
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+    ];
+
+    const result = await editUserMessage(auth, {
+      conversation,
+      message: originalUserMessage,
+      content: `Edited message with only user mention @${mentionedUser.username}`,
+      mentions,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { userMessage } = result.value;
+
+      // Verify userMessage has mentions (this is the critical test - ensuring mentions aren't lost)
+      expect(userMessage).not.toBeNull();
+      expect(userMessage.mentions).toBeDefined();
+      expect(userMessage.mentions.length).toBe(1);
+
+      // Verify userMessage has richMentions
+      expect(userMessage.richMentions).toBeDefined();
+      expect(userMessage.richMentions.length).toBe(1);
+
+      // Verify it's a user mention
+      const userMention = userMessage.richMentions[0];
+      expect(isRichUserMention(userMention)).toBe(true);
+      if (isRichUserMention(userMention)) {
+        expect(userMention.id).toBe(mentionedUser.sId);
+      }
     }
   });
 });

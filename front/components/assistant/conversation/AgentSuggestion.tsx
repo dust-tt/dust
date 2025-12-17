@@ -67,7 +67,6 @@ export function AgentSuggestion({
   const sendNotification = useSendNotification();
 
   const autoSelectedMessageIdRef = useRef<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [showSuggestion, setShowSuggestion] = useState(false);
 
   const router = useRouter();
@@ -83,7 +82,7 @@ export function AgentSuggestion({
     }
   }, [dustAgent]);
 
-  const { submit: handleSelectSuggestion } = useSubmitFunction(
+  const { submit: handleSelectSuggestion, isSubmitting } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
       // Ensure proper formatting: if content starts with markdown that requires being at
       // the beginning of a line (code blocks, list items, etc.), add a newline after the
@@ -161,6 +160,7 @@ export function AgentSuggestion({
 
   useEffect(() => {
     if (
+      isSubmitting ||
       !dustAgent ||
       userMessage.id === -1 ||
       userMessage.sId === autoSelectedMessageIdRef.current ||
@@ -182,6 +182,7 @@ export function AgentSuggestion({
     setSelectedAgent,
     handleSelectSuggestion,
     userMessage.contentFragments.length,
+    isSubmitting,
   ]);
 
   if (!showSuggestion) {
@@ -211,13 +212,12 @@ export function AgentSuggestion({
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               onClick={async () => {
-                if (isLoading) {
+                if (isSubmitting) {
                   return;
                 }
-                setIsLoading(true);
+
                 setSelectedAgent(toRichAgentMentionType(agent));
                 await handleSelectSuggestion(agent);
-                setIsLoading(false);
               }}
               variant="secondary"
               action={
@@ -233,13 +233,11 @@ export function AgentSuggestion({
           owner={owner}
           agents={allSortedAgents}
           onItemClick={async (agent) => {
-            if (isLoading) {
+            if (isSubmitting) {
               return;
             }
-            setIsLoading(true);
             setSelectedAgent(toRichAgentMentionType(agent));
             await handleSelectSuggestion(agent);
-            setIsLoading(false);
           }}
           pickerButton={
             <Button
