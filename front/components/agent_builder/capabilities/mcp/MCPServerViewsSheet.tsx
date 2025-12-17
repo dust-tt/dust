@@ -331,27 +331,9 @@ export function MCPServerViewsSheet({
     if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
 
-      let configuredAction = action;
-      if (action.type === "MCP") {
-        configuredAction = {
-          ...action,
-          configuration: {
-            ...action.configuration,
-          },
-        };
-
-        // For reasoning tools, add directly to selected tools instead of going to configure page
-        toggleToolSelection({
-          type: "MCP",
-          view: mcpServerView,
-          configuredAction,
-        });
-        return;
-      }
-
       onModeChange({
         type: "configure",
-        action: configuredAction,
+        action,
         mcpServerView,
       });
       return;
