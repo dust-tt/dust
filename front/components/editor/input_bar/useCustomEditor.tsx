@@ -259,7 +259,7 @@ export const buildEditorExtensions = ({
         conversationId,
         select: {
           agents: true,
-          users: false,
+          users: true,
         },
       }),
     }),
