@@ -244,7 +244,7 @@ export function ConversationMenu({
       <EditConversationTitleDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        ownerId={owner.sId}
+        owner={owner}
         conversationId={activeConversationId}
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         currentTitle={conversation?.title || ""}

@@ -118,9 +118,11 @@ export function useSpaceConversationsSummary({
 export function useConversationFeedbacks({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string;
   workspaceId: string;
+  options?: { disabled: boolean };
 }) {
   const conversationFeedbacksFetcher: Fetcher<{
     feedbacks: AgentMessageFeedbackType[];
@@ -131,6 +133,7 @@ export function useConversationFeedbacks({
     conversationFeedbacksFetcher,
     {
       focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
+      ...options,
     }
   );
 
