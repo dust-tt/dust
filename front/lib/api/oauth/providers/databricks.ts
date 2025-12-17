@@ -133,10 +133,20 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
 
     const { client_secret } = extraConfig;
 
+    // Validate that both are strings before using them
+    if (
+      typeof client_secret !== "string" ||
+      typeof extraConfig.client_id !== "string"
+    ) {
+      throw new Error(
+        "Missing or invalid client_id or client_secret in extraConfig"
+      );
+    }
+
     return {
       content: {
-        client_secret: client_secret as string,
-        client_id: extraConfig.client_id as string,
+        client_secret,
+        client_id: extraConfig.client_id,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     };
