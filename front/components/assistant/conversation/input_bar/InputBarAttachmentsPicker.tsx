@@ -1,3 +1,4 @@
+import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   AttachmentIcon,
   Button,
@@ -6,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -362,20 +364,26 @@ export const InputBarAttachmentsPicker = ({
   const showLoader =
     isSearchLoading || isLoadingNextPage || isSearchValidating || isDebouncing;
 
-  const availableSources = [
+  const availableSources: DropdownMenuFilterOption[] = [
     ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
-      key,
+      value: key,
       label: getDisplayNameForDataSource(r.dataSource, true),
     })),
     ...Object.entries(serversWithResults).map(([key, s]) => ({
-      key,
+      value: key,
       label: asDisplayToolName(s.server.serverName),
     })),
   ];
 
-  const allUnselected = Object.values(selectedDataSourcesAndTools).every(
-    (value) => !value
+  const selectedFilterKeys = useMemo(
+    () =>
+      Object.entries(selectedDataSourcesAndTools)
+        .filter(([, value]) => value)
+        .map(([key]) => key),
+    [selectedDataSourcesAndTools]
   );
+
+  const allUnselected = selectedFilterKeys.length === 0;
   return (
     <DropdownMenu
       open={isOpen}
@@ -452,22 +460,14 @@ export const InputBarAttachmentsPicker = ({
                   <Spinner variant="dark" size="xs" />
                 </div>
               )}
-              {availableSources.length > 1 &&
-                availableSources.map(({ key, label }) => (
-                  <Button
-                    size="xs"
-                    variant={
-                      selectedDataSourcesAndTools[key] ? "outline" : "ghost"
-                    }
-                    className={
-                      selectedDataSourcesAndTools[key]
-                        ? "text-blue-500 hover:text-blue-500"
-                        : ""
-                    }
-                    label={label}
-                    onClick={() => handleFilterClick(key)}
-                  />
-                ))}
+              {availableSources.length > 1 && (
+                <DropdownMenuFilters
+                  filters={[{ label: "test", value: "test" }]}
+                  selectedValues={selectedFilterKeys}
+                  onSelectFilter={handleFilterClick}
+                  className="grow"
+                />
+              )}
             </div>
             {Object.keys(serversWithResults).length === 0 ? (
               // No tools results - show knowledge nodes as returned by the search
