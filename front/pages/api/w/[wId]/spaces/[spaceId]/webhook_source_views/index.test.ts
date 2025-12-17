@@ -12,14 +12,12 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, user, authenticator } =
+  const { req, res, workspace, user, authenticator, systemSpace, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  const systemSpace = await SpaceFactory.system(workspace);
-  const globalSpace = await SpaceFactory.global(workspace);
   const regularSpace = await SpaceFactory.regular(workspace);
 
   // Set up common query parameters
@@ -180,7 +178,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
   });
 
   it("returns 400 for invalid space type", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
+    const { req, res, workspace, systemSpace } = await setupTest(
       "admin",
       "POST"
     );
@@ -194,8 +192,6 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
       webhookSourceId: webhookSource.sId,
     };
 
-    // Get the system space from defaults (don't create a new one)
-    const { systemSpace } = await SpaceFactory.defaults(authenticator);
     req.query.spaceId = systemSpace.sId;
 
     await handler(req, res);

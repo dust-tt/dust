@@ -693,15 +693,15 @@ describe("TriggerResource", () => {
       // Fetch updated triggers to verify they were disabled
       const updatedTrigger1 = await TriggerResource.fetchById(
         authenticator,
-        trigger1.sId
+        trigger1.sId()
       );
       const updatedTrigger2 = await TriggerResource.fetchById(
         authenticator,
-        trigger2.sId
+        trigger2.sId()
       );
       const updatedTrigger3 = await TriggerResource.fetchById(
         authenticator,
-        trigger3.sId
+        trigger3.sId()
       );
 
       expect(updatedTrigger1).toBeTruthy();
@@ -845,15 +845,15 @@ describe("TriggerResource", () => {
       // Fetch updated triggers to verify correct behavior
       const updatedTrigger1 = await TriggerResource.fetchById(
         authenticator,
-        trigger1.sId
+        trigger1.sId()
       );
       const updatedTrigger2 = await TriggerResource.fetchById(
         authenticator,
-        trigger2.sId
+        trigger2.sId()
       );
       const updatedTrigger3 = await TriggerResource.fetchById(
         authenticator,
-        trigger3.sId
+        trigger3.sId()
       );
 
       expect(updatedTrigger1).toBeTruthy();

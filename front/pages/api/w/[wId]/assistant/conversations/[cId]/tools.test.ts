@@ -7,7 +7,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 import handler from "./tools";
@@ -16,7 +15,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
+  const { req, res, workspace, authenticator, globalSpace, systemSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -26,19 +25,19 @@ async function setupTest(
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     messagesCreatedAt: [new Date()],
   });
-  const systemSpace = await SpaceFactory.system(workspace);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
   req.query.cId = conversation.sId;
 
   return {
+    auth: authenticator,
+    conversation,
+    globalSpace,
     req,
     res,
-    workspace,
     systemSpace,
-    conversation,
-    auth: authenticator,
+    workspace,
   };
 }
 
@@ -54,10 +53,8 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
   });
 
   it("should return enabled tools for a conversation", async () => {
-    const { req, res, workspace, conversation, auth } = await setupTest(
-      "admin",
-      "GET"
-    );
+    const { req, res, workspace, globalSpace, conversation, auth } =
+      await setupTest("admin", "GET");
 
     // Create MCP server views
     const remoteMCPServer1 = await RemoteMCPServerFactory.create(workspace);
@@ -69,7 +66,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
         remoteMCPServer1.sId
       );
     assert(systemView1, "MCP server view not found");
-    const globalSpace = await SpaceFactory.global(workspace);
     const mcpServerView1 = await MCPServerViewResource.create(auth, {
       systemView: systemView1,
       space: globalSpace,
@@ -132,10 +128,8 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
 describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
   describe("add action", () => {
     it("should add a new tool to conversation", async () => {
-      const { req, res, workspace, conversation, auth } = await setupTest(
-        "admin",
-        "POST"
-      );
+      const { req, res, workspace, conversation, auth, globalSpace } =
+        await setupTest("admin", "POST");
 
       const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
       const systemView =
@@ -144,7 +138,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const globalSpace = await SpaceFactory.global(workspace);
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
@@ -171,10 +164,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
     });
 
     it("should enable existing disabled tool", async () => {
-      const { req, res, workspace, conversation, auth } = await setupTest(
-        "admin",
-        "POST"
-      );
+      const { req, res, workspace, conversation, auth, globalSpace } =
+        await setupTest("admin", "POST");
 
       const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
       const systemView =
@@ -183,7 +174,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const globalSpace = await SpaceFactory.global(workspace);
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
@@ -217,10 +207,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
     });
 
     it("should handle already enabled tool gracefully", async () => {
-      const { req, res, workspace, conversation, auth } = await setupTest(
-        "admin",
-        "POST"
-      );
+      const { req, res, workspace, conversation, auth, globalSpace } =
+        await setupTest("admin", "POST");
 
       const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
       const systemView =
@@ -229,7 +217,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const globalSpace = await SpaceFactory.global(workspace);
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
@@ -272,10 +259,8 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
 
   describe("delete action", () => {
     it("should disable existing tool", async () => {
-      const { req, res, workspace, conversation, auth } = await setupTest(
-        "admin",
-        "POST"
-      );
+      const { req, res, workspace, conversation, auth, globalSpace } =
+        await setupTest("admin", "POST");
 
       const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
       const systemView =
@@ -284,7 +269,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const globalSpace = await SpaceFactory.global(workspace);
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
@@ -318,7 +302,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
     });
 
     it("should handle non-existent relationship gracefully", async () => {
-      const { req, res, workspace, auth } = await setupTest("admin", "POST");
+      const { req, res, workspace, auth, globalSpace } = await setupTest(
+        "admin",
+        "POST"
+      );
 
       const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
       const systemView =
@@ -327,7 +314,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const globalSpace = await SpaceFactory.global(workspace);
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space: globalSpace,
@@ -421,7 +407,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
 
   describe("permissions", () => {
     it("should work for users with access to conversation", async () => {
-      const { req, res, workspace, auth } = await setupTest("user", "POST");
+      const { req, res, workspace, auth, globalSpace } = await setupTest(
+        "user",
+        "POST"
+      );
 
       const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
       const systemView =
@@ -430,7 +419,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
           remoteMCPServer.sId
         );
       assert(systemView, "MCP server view not found");
-      const globalSpace = await SpaceFactory.global(workspace);
       const mcpServerView = await MCPServerViewResource.create(
         await Authenticator.internalAdminForWorkspace(workspace.sId),
         {
