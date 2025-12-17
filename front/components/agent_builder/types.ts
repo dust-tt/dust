@@ -41,6 +41,7 @@ export const TOOLS_SHEET_PAGE_IDS = {
   TOOL_SELECTION: "tool-selection",
   CONFIGURATION: "configuration",
   INFO: "info",
+  SKILL_INFO: "skill-info",
 };
 
 export type ConfigurationPagePageId =

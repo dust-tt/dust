@@ -69,6 +69,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
+import type {
+  SkillRelations,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
@@ -87,6 +91,8 @@ export type SelectedTool = {
   configuredAction?: BuilderAction;
 };
 
+export type SkillSelection = SkillType & { relations: SkillRelations };
+
 export type SheetMode =
   | { type: "add" }
   | {
@@ -99,6 +105,10 @@ export type SheetMode =
       type: "info";
       action: BuilderAction;
       source: "toolDetails" | "addedTool";
+    }
+  | {
+      type: "skill-info";
+      skill: SkillSelection;
     };
 
 type MCPActionWithConfiguration = BuilderAction & {
