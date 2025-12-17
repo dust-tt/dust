@@ -182,19 +182,22 @@ export const useToolSelection = ({
   const { mcpServerViewsWithoutKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  // Filter out already selected actions and apply custom filter
+  // Filter out already added actions (not in-sheet selections) and apply custom filter
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: BuilderAction[]) => {
-      // Check if already selected
-      const selectedServerIds = new Set(
+      // Only filter out tools that are already ADDED to the agent (in selectedActions)
+      // Don't filter out tools that are selected in the sheet - those should show as selected
+      const alreadyAddedServerIds = new Set(
         actions
-          .filter((a) => a.type === "MCP" && a.configuration?.mcpServerViewId)
+          .filter(
+            (a) =>
+              a.type === "MCP" &&
+              a.configuration?.mcpServerViewId &&
+              !a.configurationRequired
+          )
           .map((a) => a.configuration!.mcpServerViewId)
       );
-      const selectedView = selectedToolsInSheet.find(
-        (t) => t.type === "MCP" && t.view.sId === view.sId
-      );
-      if (selectedView?.configuredAction || selectedServerIds.has(view.sId)) {
+      if (alreadyAddedServerIds.has(view.sId)) {
         return true;
       }
       // Apply custom filter
@@ -203,7 +206,7 @@ export const useToolSelection = ({
       }
       return false;
     },
-    [selectedToolsInSheet, filterMCPServerViews]
+    [filterMCPServerViews]
   );
 
   const topMCPServerViews = useMemo(() => {

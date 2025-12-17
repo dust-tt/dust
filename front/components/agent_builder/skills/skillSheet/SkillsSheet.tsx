@@ -1,16 +1,31 @@
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderSkillsType,
+  MCPFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  generateUniqueActionName,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
+import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
+import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import type {
   CapabilityFilterType,
   SelectedTool,
   SkillsSheetMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
+import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import { getPageAndFooter } from "@app/components/agent_builder/skills/skillSheet/utils";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { UserType, WorkspaceType } from "@app/types";
 
 interface SkillsSheetProps {
@@ -63,6 +78,16 @@ function SkillsSheetContent({
   getAgentInstructions,
   filterMCPServerViews,
 }: SkillsSheetProps & { mode: SkillsSheetMode }) {
+  const sendNotification = useSendNotification();
+  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
+    useMCPServerViewsContext();
+
+  // Combine all labeled MCP server views for lookup
+  const allLabeledMcpServerViews = useMemo(
+    () => [...mcpServerViewsWithKnowledge, ...mcpServerViewsWithoutKnowledge],
+    [mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge]
+  );
+
   // Skills state
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
@@ -77,6 +102,142 @@ function SkillsSheetContent({
   >([]);
   const [capabilityFilter, setCapabilityFilter] =
     useState<CapabilityFilterType>("all");
+
+  // Configuration tool for edit/configure modes
+  const configurationTool = useMemo<BuilderAction | null>(() => {
+    if (
+      mode.type === SKILLS_SHEET_PAGE_IDS.CONFIGURATION ||
+      mode.type === SKILLS_SHEET_PAGE_IDS.TOOL_EDIT
+    ) {
+      return mode.action;
+    }
+    return null;
+  }, [mode]);
+
+  // Get MCP server view for configuration
+  const configurationMCPServerView =
+    useMemo((): MCPServerViewTypeWithLabel | null => {
+      if (mode.type === SKILLS_SHEET_PAGE_IDS.CONFIGURATION) {
+        return mode.mcpServerView;
+      }
+      if (
+        mode.type === SKILLS_SHEET_PAGE_IDS.TOOL_EDIT &&
+        mode.action.configuration?.mcpServerViewId
+      ) {
+        return (
+          allLabeledMcpServerViews.find(
+            (v) => v.sId === mode.action.configuration?.mcpServerViewId
+          ) ?? null
+        );
+      }
+      return null;
+    }, [mode, allLabeledMcpServerViews]);
+
+  // Form schema (conditional on view)
+  const formSchema = useMemo(
+    () =>
+      configurationMCPServerView
+        ? getMCPConfigurationFormSchema(configurationMCPServerView)
+        : null,
+    [configurationMCPServerView]
+  );
+
+  // Default form values
+  const defaultFormValues = useMemo<MCPFormData>(() => {
+    if (configurationTool?.type === "MCP") {
+      return {
+        name: configurationTool.name ?? "",
+        description: configurationTool.description ?? "",
+        configuration: configurationTool.configuration,
+      };
+    }
+    return getDefaultFormValues(configurationMCPServerView);
+  }, [configurationTool, configurationMCPServerView]);
+
+  // Form instance
+  const form = useForm<MCPFormData>({
+    resolver: formSchema ? zodResolver(formSchema) : undefined,
+    mode: "onSubmit",
+    defaultValues: defaultFormValues,
+    shouldUnregister: false,
+  });
+
+  // Form reset on mode change
+  const resetFormValues = useMemo(
+    () =>
+      createFormResetHandler(
+        configurationTool,
+        configurationMCPServerView,
+        mode !== null
+      ),
+    [configurationTool, configurationMCPServerView, mode]
+  );
+
+  useEffect(() => {
+    resetFormValues(form);
+  }, [resetFormValues, form]);
+
+  // Configuration save handler
+  const handleConfigurationSave = useCallback(
+    (formData: MCPFormData) => {
+      if (!configurationTool || !configurationMCPServerView) {
+        return;
+      }
+
+      // For new actions or when name changed, generate unique name
+      const isEditMode = mode.type === SKILLS_SHEET_PAGE_IDS.TOOL_EDIT;
+      const nameChanged = defaultFormValues.name !== formData.name;
+      const shouldGenerateName = !isEditMode || nameChanged;
+
+      const newActionName = shouldGenerateName
+        ? generateUniqueActionName({
+            baseName: nameToStorageFormat(formData.name),
+            existingActions: selectedActions,
+            selectedToolsInSheet,
+          })
+        : configurationTool.name;
+
+      const configuredAction: BuilderAction = {
+        ...configurationTool,
+        name: newActionName,
+        description: formData.description,
+        configuration: formData.configuration,
+      };
+
+      if (mode.type === SKILLS_SHEET_PAGE_IDS.TOOL_EDIT && onActionUpdate) {
+        onActionUpdate(configuredAction, mode.index);
+        onClose();
+        sendNotification({
+          title: "Tool updated",
+          description: "Configuration saved.",
+          type: "success",
+        });
+      } else {
+        // Add to selectedToolsInSheet
+        setSelectedToolsInSheet((prev) => [
+          ...prev,
+          {
+            type: "MCP",
+            view: configurationMCPServerView,
+            configuredAction,
+          },
+        ]);
+        onModeChange({ type: SKILLS_SHEET_PAGE_IDS.SELECTION });
+      }
+    },
+    [
+      configurationTool,
+      configurationMCPServerView,
+      mode,
+      defaultFormValues,
+      selectedActions,
+      selectedToolsInSheet,
+      onActionUpdate,
+      onClose,
+      sendNotification,
+      onModeChange,
+    ]
+  );
 
   const handleSave = useCallback(() => {
     // Save skills
@@ -130,6 +291,10 @@ function SkillsSheetContent({
     addTools,
     onActionUpdate,
     getAgentInstructions,
+    // Form props for configuration pages
+    form,
+    handleConfigurationSave,
+    configurationMCPServerView,
   });
 
   return (
