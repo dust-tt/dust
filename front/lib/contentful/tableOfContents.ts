@@ -18,7 +18,9 @@ export function isTextNode(node: Block | Inline | Text): node is Text {
   return node.nodeType === "text";
 }
 
-export function isBlockOrInline(node: Block | Inline | Text): node is Block | Inline {
+export function isBlockOrInline(
+  node: Block | Inline | Text
+): node is Block | Inline {
   return "content" in node;
 }
 
