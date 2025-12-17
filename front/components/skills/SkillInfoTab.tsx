@@ -89,7 +89,7 @@ export function SkillEdited({ skillConfiguration }: SkillEditedProps) {
 
   return (
     <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-      Last edited: {timeAgo}
+      Last edited: {timeAgo} ago
       {lastAuthor && ` by ${lastAuthor}`}
     </p>
   );
