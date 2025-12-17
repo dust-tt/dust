@@ -1,12 +1,19 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
+import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
-import { updateWorkspaceUsageWorkflow } from "@app/temporal/usage_queue/workflows";
+import {
+  trackProgrammaticUsageWorkflow,
+  updateWorkspaceUsageWorkflow,
+} from "@app/temporal/usage_queue/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+
+import { makeTrackProgrammaticUsageWorkflowId } from "./helpers";
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.
@@ -65,6 +72,52 @@ export async function launchUpdateUsageWorkflow({
         "Failed starting usage workflow."
       );
     }
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchTrackProgrammaticUsageWorkflow({
+  authType,
+  agentLoopArgs,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgs;
+}): Promise<Result<undefined, Error>> {
+  const { workspaceId } = authType;
+
+  const { agentMessageId, conversationId } = agentLoopArgs;
+
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workflowId = makeTrackProgrammaticUsageWorkflowId({
+    agentMessageId,
+    conversationId,
+    workspaceId,
+  });
+
+  try {
+    await client.workflow.start(trackProgrammaticUsageWorkflow, {
+      args: [authType, { agentLoopArgs }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: {
+        agentMessageId,
+        workspaceId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
+      logger.error(
+        {
+          workflowId,
+          agentMessageId,
+          error: e,
+        },
+        "Failed starting agent analytics workflow"
+      );
+    }
+
     return new Err(normalizeError(e));
   }
 }

@@ -1,3 +1,15 @@
+import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  isProgrammaticUsage,
+  trackProgrammaticCost,
+} from "@app/lib/api/programmatic_usage_tracking";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
@@ -5,6 +17,9 @@ import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
+import logger from "@app/logger/logger";
+import type { UserMessageOrigin } from "@app/types";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -72,4 +87,91 @@ export async function recordUsageActivity(workspaceId: string) {
     stripeSubscription,
     renderLightWorkspaceType({ workspace })
   );
+}
+
+export async function trackProgrammaticUsageActivity(
+  authType: AuthenticatorType,
+  { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
+): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
+  const workspace = auth.getNonNullableWorkspace();
+
+  const { agentMessageId, userMessageId } = agentLoopArgs;
+
+  // Query the Message/AgentMessage rows.
+  const agentMessageRow = await MessageModel.findOne({
+    where: {
+      sId: agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  const agentMessage = agentMessageRow?.agentMessage;
+
+  // Query the UserMessage row to get user.
+  const userMessageRow = await MessageModel.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  const userMessage = userMessageRow?.userMessage;
+
+  if (!agentMessage || !userMessage || !agentMessageRow || !userMessageRow) {
+    throw new Error("Agent message or user message not found");
+  }
+
+  const userMessageOrigin = userMessage.userContextOrigin;
+
+  if (
+    AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
+    agentMessage.runIds &&
+    isProgrammaticUsage(auth, { userMessageOrigin })
+  ) {
+    const localLogger = logger.child({
+      workspaceId: workspace.sId,
+      agentMessageId,
+      agentMessageVersion: agentMessageRow.version,
+      conversationId: agentMessageRow.conversationId,
+      userMessageId,
+      userMessageVersion: userMessageRow.version,
+      userMessageOrigin,
+    });
+
+    localLogger.info("[Programmatic Usage Tracking] Starting activity");
+
+    await trackProgrammaticCost(
+      auth,
+      {
+        dustRunIds: agentMessage.runIds,
+        userMessageOrigin,
+      },
+      localLogger
+    );
+
+    return { tracked: true, origin: userMessageOrigin };
+  }
+
+  return { tracked: false, origin: userMessageOrigin };
 }
