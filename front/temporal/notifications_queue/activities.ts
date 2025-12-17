@@ -7,8 +7,6 @@ import {
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { NOTIFICATION_DELAY_MS } from "@app/temporal/agent_loop/workflows";
-import { isDevelopment } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
@@ -47,11 +45,6 @@ export async function sendUnreadConversationNotificationActivity(
   if (!featureFlags.includes("notifications")) {
     return;
   }
-
-  // Wait 30 seconds before triggering the notification.
-  await new Promise((resolve) =>
-    setTimeout(resolve, isDevelopment() ? 3000 : NOTIFICATION_DELAY_MS)
-  );
 
   // Get conversation participants
   const conversation = await ConversationResource.fetchById(
