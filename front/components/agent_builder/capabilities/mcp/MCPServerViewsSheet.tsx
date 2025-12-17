@@ -145,7 +145,7 @@ interface MCPServerViewsSheetProps {
   getAgentInstructions: () => string;
   /** Optional filter to restrict which MCP server views are shown */
   filterMCPServerViews?: (view: MCPServerViewTypeWithLabel) => boolean;
-  // Skills props (optional - only used when skills FF enabled)
+  // Skills props (optional - only used by agent builder, not skill builder)
   skills?: SkillSelection[];
   isSkillsLoading?: boolean;
   onAddSkills?: (skills: AgentBuilderSkillsType[]) => void;
