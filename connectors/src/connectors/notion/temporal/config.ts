@@ -19,6 +19,8 @@ export const MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW = 5;
 
 export const MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES = 1;
 
+export const GC_BATCHES_PER_RUN = 128;
+
 // If set to true, the workflow will process all discovered resources until empty.
 export const PROCESS_ALL_DISCOVERED_RESOURCES = false;
 
