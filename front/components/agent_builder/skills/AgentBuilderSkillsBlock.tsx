@@ -18,6 +18,7 @@ import type {
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
 import type { CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { getActionsAndSkillsRequestedSpaceIds } from "@app/components/agent_builder/utils";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -108,27 +109,15 @@ export function AgentBuilderSkillsBlock({
   const additionalSpaces = watch("additionalSpaces");
 
   // Compute space IDs already requested by actions (tools/knowledge)
-  const alreadyRequestedSpaceIds = useMemo(() => {
-    const spaceIdToActions = getSpaceIdToActionsMap(actions, mcpServerViews);
-    const actionRequestedSpaceIds = new Set<string>();
-    for (const spaceId of Object.keys(spaceIdToActions)) {
-      if (spaceIdToActions[spaceId]?.length > 0) {
-        actionRequestedSpaceIds.add(spaceId);
-      }
-    }
-
-    // Also include space IDs from custom skills (those with canWrite: true have their own requestedSpaceIds)
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
-    for (const skill of allSkills) {
-      if (selectedSkillIds.has(skill.sId) && skill.canWrite) {
-        for (const spaceId of skill.requestedSpaceIds) {
-          actionRequestedSpaceIds.add(spaceId);
-        }
-      }
-    }
-
-    return actionRequestedSpaceIds;
-  }, [actions, mcpServerViews, selectedSkills, allSkills]);
+  const alreadyRequestedSpaceIds = useMemo(
+    () =>
+      getActionsAndSkillsRequestedSpaceIds(
+        selectedSkills,
+        allSkills,
+        getSpaceIdToActionsMap(actions, mcpServerViews)
+      ),
+    [actions, mcpServerViews, selectedSkills, allSkills]
+  );
 
   const [sheetMode, setSheetMode] = useState<CapabilitiesSheetMode | null>(
     null
@@ -147,9 +136,21 @@ export function AgentBuilderSkillsBlock({
   const handleSaveSkills = useCallback(
     (skills: AgentBuilderSkillsType[], newAdditionalSpaces: string[]) => {
       setValue("skills", skills, { shouldDirty: true });
-      setValue("additionalSpaces", newAdditionalSpaces, { shouldDirty: true });
+
+      // filter "additional" spaces to only keep those not already requested by skills/actions
+      const requestedSpaceIds = getActionsAndSkillsRequestedSpaceIds(
+        skills,
+        allSkills,
+        getSpaceIdToActionsMap(actions, mcpServerViews)
+      );
+      const actualAdditionalSpaces = newAdditionalSpaces.filter(
+        (spaceId) => !requestedSpaceIds.has(spaceId)
+      );
+      setValue("additionalSpaces", actualAdditionalSpaces, {
+        shouldDirty: true,
+      });
     },
-    [setValue]
+    [setValue, allSkills, actions, mcpServerViews]
   );
 
   return (
