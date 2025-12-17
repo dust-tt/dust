@@ -1,20 +1,25 @@
-import { GoogleGenAI } from "@google/genai";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { createImageProvider } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/provider_factory";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedImageModelConfig } from "@app/lib/image_models";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
-import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { Err, Ok } from "@app/types";
+import {
+  DEFAULT_IMAGE_MODEL_CONFIG,
+  SUPPORTED_IMAGE_MODEL_CONFIGS,
+} from "@app/types/assistant/models/image_models";
 import {
   fileSizeToHumanReadable,
   isSupportedImageContentType,
@@ -27,28 +32,50 @@ const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 w
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
-// Map tool size parameters to Gemini aspect ratios.
+// Map tool size parameters to aspect ratios.
 const SIZE_TO_ASPECT_RATIO: Record<string, string> = {
   "1024x1024": "1:1",
   "1536x1024": "3:2",
   "1024x1536": "2:3",
 };
 
-const GeminiInlineDataPartSchema = z.object({
-  inlineData: z.object({
-    data: z.string(),
-    mimeType: z.string().optional(),
-  }),
-});
+// Build the options schema for image models.
+// Each model becomes an option with value and label.
+function buildImageModelOptionsSchema() {
+  const modelSchemas = SUPPORTED_IMAGE_MODEL_CONFIGS.map((model) =>
+    z
+      .object({
+        value: z.literal(model.modelId),
+        label: z.literal(model.displayName),
+      })
+      .describe(model.description)
+  );
 
-type GeminiInlineDataPart = z.infer<typeof GeminiInlineDataPartSchema>;
+  // For z.union() to generate anyOf in JSON schema, we need at least 2 schemas.
+  // If there's only one model, duplicate it to ensure anyOf is generated.
+  if (modelSchemas.length === 1) {
+    modelSchemas.push(modelSchemas[0]);
+  }
 
-// Type guard to validate Gemini inline data parts.
-function isValidGeminiInlineDataPart(
-  part: unknown
-): part is GeminiInlineDataPart {
-  return GeminiInlineDataPartSchema.safeParse(part).success;
+  return z
+    .union(
+      modelSchemas as unknown as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]
+    )
+    .optional();
 }
+
+// Configurable image model schema - hidden from LLM but shown in agent builder.
+const imageModelSchema = z
+  .object({
+    options: buildImageModelOptionsSchema(),
+    value: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+  })
+  .describe("The image generation model to use.")
+  .default({
+    value: DEFAULT_IMAGE_MODEL_CONFIG.modelId,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+  });
 
 // Helper functions for image generation tools.
 
@@ -116,64 +143,28 @@ async function checkImageGenerationRateLimit(
   return new Ok(undefined);
 }
 
-function validateGeminiImageResponse(
-  response: any,
-  operationType: "generation" | "editing",
-  promptText: string
-): Ok<GeminiInlineDataPart[]> | Err<MCPError> {
-  // Check for empty candidates.
-  if (!response.candidates || response.candidates.length === 0) {
-    if (response.promptFeedback?.blockReason) {
-      logger.error(
-        {
-          blockReason: response.promptFeedback.blockReason,
-          safetyRatings: response.promptFeedback.safetyRatings,
-          prompt: promptText,
-        },
-        `Gemini image ${operationType}: Prompt blocked by safety filters`
-      );
-      return new Err(
-        new MCPError(
-          `Image ${operationType} blocked by safety filters: ${response.promptFeedback.blockReason}`
-        )
-      );
-    }
-    return new Err(new MCPError("No image generated."));
-  }
-
-  // Validate content structure.
-  const content = response.candidates[0].content;
-  if (!content || !content.parts) {
-    return new Err(new MCPError("No image data in response"));
-  }
-
-  // Extract valid image parts.
-  const imageParts = content.parts.filter(isValidGeminiInlineDataPart);
-  if (imageParts.length === 0) {
-    return new Err(new MCPError("No image data in response."));
-  }
-
-  return new Ok(imageParts);
-}
-
-function trackGeminiTokenUsage(
-  response: any,
-  statsDClient: ReturnType<typeof getStatsDClient>
+function trackTokenUsage(
+  usage: { inputTokens: number; outputTokens: number } | undefined,
+  statsDClient: ReturnType<typeof getStatsDClient>,
+  providerId: string
 ): void {
+  if (!usage) {
+    return;
+  }
   statsDClient.increment(
     "tools.image_generation.usage.input_tokens",
-    response.usageMetadata?.promptTokenCount ?? 0,
-    ["provider:gemini"]
+    usage.inputTokens,
+    [`provider:${providerId}`]
   );
   statsDClient.increment(
     "tools.image_generation.usage.output_tokens",
-    response.usageMetadata?.candidatesTokenCount ?? 0,
-    ["provider:gemini"]
+    usage.outputTokens,
+    [`provider:${providerId}`]
   );
 }
 
 function formatImageResponse(
-  imageParts: GeminiInlineDataPart[],
+  images: Array<{ imageBase64: string; mimeType: string }>,
   fileName: string
 ): Ok<
   Array<{
@@ -186,20 +177,13 @@ function formatImageResponse(
   const outputFileName = `${fileName}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
 
   return new Ok(
-    imageParts.map((part) => ({
+    images.map((image) => ({
       type: "image" as const,
-      mimeType: part.inlineData.mimeType ?? DEFAULT_IMAGE_MIME_TYPE,
-      data: part.inlineData.data,
+      mimeType: image.mimeType ?? DEFAULT_IMAGE_MIME_TYPE,
+      data: image.imageBase64,
       name: outputFileName,
     }))
   );
-}
-
-function createGeminiClient(): GoogleGenAI {
-  const credentials = dustManagedCredentials();
-  return new GoogleGenAI({
-    apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
-  });
 }
 
 function createServer(
@@ -214,6 +198,7 @@ function createServer(
       " better the result will be. You can customize the output through various parameters to" +
       " match your needs.",
     {
+      imageModel: imageModelSchema,
       prompt: z
         .string()
         .max(4000)
@@ -245,8 +230,21 @@ function createServer(
     withToolLogging(
       auth,
       { toolNameForMonitoring: "generate_image", agentLoopContext },
-      async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
+      async (
+        { imageModel, prompt, name, quality, size },
+        { sendNotification, _meta }
+      ) => {
         const workspace = auth.getNonNullableWorkspace();
+
+        // Get the model configuration from the imageModel value.
+        const modelConfig = getSupportedImageModelConfig(imageModel.value);
+        if (!modelConfig) {
+          return new Err(
+            new MCPError(`Unsupported image model: ${imageModel.value}`, {
+              tracked: false,
+            })
+          );
+        }
 
         await sendImageProgressNotification(
           sendNotification,
@@ -258,7 +256,8 @@ function createServer(
         statsDClient.increment("tools.image_generation.generated", 1, [
           `quality:${quality}`,
           `size:${size}`,
-          "provider:gemini",
+          `provider:${modelConfig.providerId}`,
+          `model:${modelConfig.modelId}`,
         ]);
 
         const rateLimitResult = await checkImageGenerationRateLimit(
@@ -270,38 +269,24 @@ function createServer(
         }
 
         try {
-          const gemini = createGeminiClient();
+          const provider = createImageProvider(modelConfig);
 
           const aspectRatio =
             SIZE_TO_ASPECT_RATIO[size] || SIZE_TO_ASPECT_RATIO["1024x1024"];
 
-          const response = await gemini.models.generateContent({
-            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            contents: prompt,
-            config: {
-              temperature: 0.7,
-              responseModalities: ["IMAGE"],
-              candidateCount: 1,
-              imageConfig: {
-                aspectRatio,
-              },
-            },
+          const result = await provider.generateImage({
+            prompt,
+            aspectRatio,
+            quality,
           });
 
-          const validationResult = validateGeminiImageResponse(
-            response,
-            "generation",
-            prompt
-          );
-          if (validationResult.isErr()) {
-            return validationResult;
+          if (result.isErr()) {
+            return new Err(new MCPError(result.error.message));
           }
 
-          const imageParts = validationResult.value;
+          trackTokenUsage(result.value.usage, statsDClient, modelConfig.providerId);
 
-          trackGeminiTokenUsage(response, statsDClient);
-
-          return formatImageResponse(imageParts, name);
+          return formatImageResponse(result.value.images, name);
         } catch (error) {
           logger.error(
             {
@@ -321,6 +306,7 @@ function createServer(
       " file storage and describe the changes you want to make. The tool preserves the original" +
       " image's aspect ratio by default, but you can optionally change it.",
     {
+      imageModel: imageModelSchema,
       imageFileId: z
         .string()
         .describe(
@@ -359,6 +345,7 @@ function createServer(
       { toolNameForMonitoring: "edit_image", agentLoopContext },
       async (
         {
+          imageModel,
           imageFileId: inputImageFileId,
           editPrompt: editImageInstructions,
           outputName: outputImageFileName,
@@ -369,6 +356,16 @@ function createServer(
       ) => {
         const workspace = auth.getNonNullableWorkspace();
         const statsDClient = getStatsDClient();
+
+        // Get the model configuration from the imageModel value.
+        const modelConfig = getSupportedImageModelConfig(imageModel.value);
+        if (!modelConfig) {
+          return new Err(
+            new MCPError(`Unsupported image model: ${imageModel.value}`, {
+              tracked: false,
+            })
+          );
+        }
 
         await sendImageProgressNotification(
           sendNotification,
@@ -425,7 +422,7 @@ function createServer(
           statsDClient.increment(
             "tools.image_generation.file_size_limit_exceeded",
             1,
-            ["provider:gemini"]
+            [`provider:${modelConfig.providerId}`]
           );
 
           return new Err(
@@ -469,7 +466,8 @@ function createServer(
         statsDClient.increment("tools.image_generation.edited", 1, [
           `quality:${quality}`,
           `aspect_ratio:${aspectRatio ?? "original"}`,
-          "provider:gemini",
+          `provider:${modelConfig.providerId}`,
+          `model:${modelConfig.modelId}`,
         ]);
 
         const rateLimitResult = await checkImageGenerationRateLimit(
@@ -483,49 +481,27 @@ function createServer(
         const imageBase64 = buffer.toString("base64");
 
         try {
-          const gemini = createGeminiClient();
+          const provider = createImageProvider(modelConfig);
 
-          // Call Gemini API with image inline data and edit prompt.
-          // The contents array includes both the image and the text prompt.
-          const response = await gemini.models.generateContent({
-            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            contents: [
-              {
-                parts: [
-                  {
-                    inlineData: {
-                      data: imageBase64,
-                      mimeType: contentType,
-                    },
-                  },
-                  {
-                    text: editImageInstructions,
-                  },
-                ],
-              },
-            ],
-            config: {
-              temperature: 0.7,
-              responseModalities: ["IMAGE"],
-              candidateCount: 1,
-              imageConfig: aspectRatio ? { aspectRatio } : undefined,
-            },
+          const result = await provider.editImage({
+            imageBase64,
+            imageMimeType: contentType,
+            editPrompt: editImageInstructions,
+            aspectRatio,
+            quality,
           });
 
-          const validationResult = validateGeminiImageResponse(
-            response,
-            "editing",
-            editImageInstructions
-          );
-          if (validationResult.isErr()) {
-            return validationResult;
+          if (result.isErr()) {
+            return new Err(new MCPError(result.error.message));
           }
 
-          const imageParts = validationResult.value;
+          trackTokenUsage(
+            result.value.usage,
+            statsDClient,
+            modelConfig.providerId
+          );
 
-          trackGeminiTokenUsage(response, statsDClient);
-
-          return formatImageResponse(imageParts, outputImageFileName);
+          return formatImageResponse(result.value.images, outputImageFileName);
         } catch (error) {
           logger.error(
             {

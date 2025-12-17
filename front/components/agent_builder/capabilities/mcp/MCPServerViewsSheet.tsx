@@ -328,7 +328,14 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
 
-    if (!requirements.noRequirement) {
+    // Show configuration page if:
+    // - There are required configurations without defaults, OR
+    // - There are enums or lists (even with defaults, so user can change them)
+    const hasConfigurableOptions =
+      Object.keys(requirements.requiredEnums).length > 0 ||
+      Object.keys(requirements.requiredLists).length > 0;
+
+    if (!requirements.noRequirement || hasConfigurableOptions) {
       const action = getDefaultMCPAction(mcpServerView);
 
       onModeChange({

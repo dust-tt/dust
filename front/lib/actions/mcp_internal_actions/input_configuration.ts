@@ -760,6 +760,7 @@ export function getMCPServerRequirements(
     requiredLists,
     requiresDustAppConfiguration,
     developerSecretSelection,
+    // noRequirement: true means the tool can be used without configuration (for JIT tools)
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresDataWarehouseConfiguration &&
