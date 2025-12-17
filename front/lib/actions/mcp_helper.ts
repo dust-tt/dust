@@ -207,7 +207,7 @@ const TEMPLATE_ACTION_TO_MCP_SERVER: Record<
   InternalMCPServerNameType
 > = {
   RETRIEVAL_SEARCH: "search",
-  TABLES_QUERY: "query_tables_v2",
+  TABLES_QUERY: "query_tables",
   PROCESS: "extract_data",
   WEB_NAVIGATION: "web_search_&_browse",
 };

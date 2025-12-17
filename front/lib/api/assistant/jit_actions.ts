@@ -325,12 +325,12 @@ export async function getJITServers(
     const queryTablesView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "query_tables_v2"
+        "query_tables"
       );
 
     assert(
       queryTablesView,
-      "MCP server view not found for query_tables_v2. Ensure auto tools are created."
+      "MCP server view not found for query_tables. Ensure auto tools are created."
     );
 
     const tables: TableDataSourceConfiguration[] = [];

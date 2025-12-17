@@ -67,7 +67,7 @@ export const getActionName = (action: AgentActionPublicType) => {
     }
   }
 
-  if (internalMCPServerName === "query_tables_v2") {
+  if (internalMCPServerName === "query_tables") {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
       return "Getting database schema";
     }

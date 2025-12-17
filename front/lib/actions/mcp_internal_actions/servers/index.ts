@@ -119,7 +119,7 @@ export async function getInternalMCPServer(
       return generateFileServer(auth, agentLoopContext);
     case "interactive_content":
       return interactiveContentServer(auth, agentLoopContext);
-    case "query_tables_v2":
+    case "query_tables":
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer(auth, agentLoopContext);

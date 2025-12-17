@@ -55,7 +55,7 @@ export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export const SEARCH_SERVER_NAME = "search";
 
-export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
+export const TABLE_QUERY_SERVER_NAME = "query_tables";
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
@@ -121,7 +121,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "zendesk",
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
   "schedules_management",
 ] as const;
@@ -1449,7 +1449,7 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  [TABLE_QUERY_V2_SERVER_NAME]: {
+  [TABLE_QUERY_SERVER_NAME]: {
     id: 1009,
     availability: "auto",
     allowMultipleInstances: false,
@@ -1459,7 +1459,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "query_tables_v2",
+      name: "query_tables",
       version: "1.0.0",
       description:
         "Query structured data like a spreadsheet or database for data analyses.",

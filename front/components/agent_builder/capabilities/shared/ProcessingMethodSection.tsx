@@ -29,7 +29,7 @@ import {
   DATA_WAREHOUSE_SERVER_NAME,
   isInternalMCPServerOfName,
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -92,7 +92,7 @@ export function ProcessingMethodSection() {
       const isTableOrWarehouseServer =
         isInternalMCPServerOfName(
           mcpServerView.server.sId,
-          TABLE_QUERY_V2_SERVER_NAME
+          TABLE_QUERY_SERVER_NAME
         ) ||
         isInternalMCPServerOfName(
           mcpServerView.server.sId,
@@ -139,10 +139,7 @@ export function ProcessingMethodSection() {
 
       if (allTablesOrDatabases) {
         const tableQueryServer = serversToDisplay.find((server) =>
-          isInternalMCPServerOfName(
-            server.server.sId,
-            TABLE_QUERY_V2_SERVER_NAME
-          )
+          isInternalMCPServerOfName(server.server.sId, TABLE_QUERY_SERVER_NAME)
         );
         if (tableQueryServer) {
           setValue("mcpServerView", tableQueryServer, { shouldDirty: false });

@@ -59,7 +59,7 @@ import {
   isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -233,7 +233,7 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, TABLE_QUERY_V2_SERVER_NAME)) {
+  if (isInternalMCPServerOfName(mcpServerId, TABLE_QUERY_SERVER_NAME)) {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
       return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
     }

@@ -828,16 +828,16 @@ export async function createGenericAgentConfiguration(
     }
   }
 
-  // Add query_tables_v2 tools for data warehouses in global space.
+  // Add query_tables tools for data warehouses in global space.
   const queryTablesV2View =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "query_tables_v2"
+      "query_tables"
     );
 
   if (!queryTablesV2View) {
     await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-    return new Err(new Error("Could not find query_tables_v2 MCP server view"));
+    return new Err(new Error("Could not find query_tables MCP server view"));
   }
 
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);

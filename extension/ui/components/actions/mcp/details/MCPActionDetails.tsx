@@ -164,7 +164,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (internalMCPServerName === "query_tables_v2") {
+  if (internalMCPServerName === "query_tables") {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
       return <MCPGetDatabaseSchemaActionDetails {...props} />;
     }

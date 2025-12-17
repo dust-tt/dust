@@ -104,7 +104,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("query_tables_v2");
+  const server = makeInternalMCPServer("query_tables");
 
   server.tool(
     GET_DATABASE_SCHEMA_TOOL_NAME,

@@ -21,7 +21,6 @@ export const sortMCPServerViewsByPriority = (
   const priorityOrder: Record<string, number> = {
     search: 1,
     query_tables: 2,
-    query_tables_v2: 2, // Same priority as query_tables
     include_data: 3,
     extract_data: 4,
   };
