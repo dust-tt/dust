@@ -9,13 +9,9 @@ import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
-import {
-  getMessageSId,
-  isMessageTemporayState,
-} from "@app/components/assistant/conversation/types";
+import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type {
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
@@ -40,10 +36,11 @@ const updateMessageThrottled = _.throttle(
     sId: string;
   }) => {
     methods.data.map((m) => {
-      if (isMessageTemporayState(m) && getMessageSId(m) === sId) {
+      if (isMessageTemporayState(m) && m.sId === sId) {
         return {
           ...m,
-          message: { ...m.message, chainOfThought, content },
+          content,
+          chainOfThought,
         };
       }
       return m;
@@ -64,29 +61,35 @@ export function updateMessageWithAction(
 }
 
 export function updateProgress(
-  state: MessageTemporaryState,
+  agentMessage: MessageTemporaryState,
   event: ToolNotificationEvent
 ): MessageTemporaryState {
   const actionId = event.action.id;
-  const currentProgress = state.actionProgress.get(actionId);
+  const currentProgress = agentMessage.streaming.actionProgress.get(actionId);
 
   return {
-    ...state,
-    actionProgress: new Map(state.actionProgress).set(actionId, {
-      action: event.action,
-      progress: {
-        ...currentProgress?.progress,
-        ...event.notification,
-        data: {
-          ...currentProgress?.progress?.data,
-          ...event.notification.data,
-        },
-      },
-    }),
+    ...agentMessage,
+    streaming: {
+      ...agentMessage.streaming,
+      actionProgress: new Map(agentMessage.streaming.actionProgress).set(
+        actionId,
+        {
+          action: event.action,
+          progress: {
+            ...currentProgress?.progress,
+            ...event.notification,
+            data: {
+              ...currentProgress?.progress?.data,
+              ...event.notification.data,
+            },
+          },
+        }
+      ),
+    },
   };
 }
 interface UseAgentMessageStreamParams {
-  messageStreamState: MessageTemporaryState;
+  agentMessage: MessageTemporaryState;
   conversationId: string | null;
   owner: LightWorkspaceType;
   onEventCallback?: (event: {
@@ -98,13 +101,13 @@ interface UseAgentMessageStreamParams {
 }
 
 export function useAgentMessageStream({
-  messageStreamState,
+  agentMessage,
   conversationId,
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
 }: UseAgentMessageStreamParams) {
-  const sId = getMessageSId(messageStreamState);
+  const sId = agentMessage.sId;
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
@@ -112,21 +115,17 @@ export function useAgentMessageStream({
 
   const shouldStream = useMemo(
     () =>
-      messageStreamState.message.status === "created" &&
-      messageStreamState.agentState !== "placeholder",
-    [messageStreamState.message.status, messageStreamState.agentState]
+      agentMessage.status === "created" &&
+      agentMessage.streaming.agentState !== "placeholder",
+    [agentMessage.status, agentMessage.streaming.agentState]
   );
 
   const isFreshMountWithContent = useRef(
-    shouldStream &&
-      (!!messageStreamState.message.content ||
-        !!messageStreamState.message.chainOfThought)
+    shouldStream && (!!agentMessage.content || !!agentMessage.chainOfThought)
   );
 
-  const chainOfThought = useRef(
-    messageStreamState.message.chainOfThought ?? ""
-  );
-  const content = useRef(messageStreamState.message.content ?? "");
+  const chainOfThought = useRef(agentMessage.chainOfThought ?? "");
+  const content = useRef(agentMessage.content ?? "");
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -200,16 +199,18 @@ export function useAgentMessageStream({
         case "agent_action_success":
           const action = eventPayload.data.action;
           methods.data.map((m) =>
-            isMessageTemporayState(m) && getMessageSId(m) === sId
+            isMessageTemporayState(m) && m.sId === sId
               ? {
-                  ...m,
-                  message: updateMessageWithAction(m.message, action),
-                  // Clean up progress for this specific action.
-                  actionProgress: new Map(
-                    Array.from(m.actionProgress.entries()).filter(
-                      ([id]) => id !== action.id
-                    )
-                  ),
+                  ...updateMessageWithAction(m, action),
+                  streaming: {
+                    ...m.streaming,
+                    // Clean up progress for this specific action.
+                    actionProgress: new Map(
+                      Array.from(m.streaming.actionProgress.entries()).filter(
+                        ([id]) => id !== action.id
+                      )
+                    ),
+                  },
                 }
               : m
           );
@@ -219,14 +220,13 @@ export function useAgentMessageStream({
         case "tool_params":
           const toolParams = eventPayload.data;
           methods.data.map((m) =>
-            isMessageTemporayState(m) && getMessageSId(m) === sId
+            isMessageTemporayState(m) && m.sId === sId
               ? {
-                  ...m,
-                  message: updateMessageWithAction(
-                    m.message,
-                    toolParams.action
-                  ),
-                  agentState: "acting",
+                  ...updateMessageWithAction(m, toolParams.action),
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "acting",
+                  },
                 }
               : m
           );
@@ -235,7 +235,7 @@ export function useAgentMessageStream({
         case "tool_notification":
           const toolNotification = eventPayload.data;
           methods.data.map((m) =>
-            isMessageTemporayState(m) && getMessageSId(m) === sId
+            isMessageTemporayState(m) && m.sId === sId
               ? updateProgress(m, toolNotification)
               : m
           );
@@ -245,15 +245,15 @@ export function useAgentMessageStream({
         case "agent_error":
           const error = eventPayload.data.error;
           methods.data.map((m) =>
-            isMessageTemporayState(m) && getMessageSId(m) === sId
+            isMessageTemporayState(m) && m.sId === sId
               ? {
                   ...m,
-                  message: {
-                    ...m.message,
-                    status: "failed",
-                    error: error,
+                  status: "failed",
+                  error: error,
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "done",
                   },
-                  agentState: "done",
                 }
               : m
           );
@@ -261,11 +261,14 @@ export function useAgentMessageStream({
 
         case "agent_generation_cancelled":
           methods.data.map((m) =>
-            isMessageTemporayState(m) && getMessageSId(m) === sId
+            isMessageTemporayState(m) && m.sId === sId
               ? {
                   ...m,
-                  message: { ...m.message, status: "cancelled" },
-                  agentState: "done",
+                  status: "cancelled",
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "done",
+                  },
                 }
               : m
           );
@@ -274,19 +277,15 @@ export function useAgentMessageStream({
         case "agent_message_success":
           const messageSuccess = eventPayload.data;
           methods.data.map((m) =>
-            isMessageTemporayState(m) && getMessageSId(m) === sId
+            isMessageTemporayState(m) && m.sId === sId
               ? {
                   ...m,
-                  message: {
-                    ...getLightAgentMessageFromAgentMessage(
-                      messageSuccess.message
-                    ),
-                    status: "succeeded",
-                    actions: m.message.actions,
-                    rank: m.message.rank,
-                    version: m.message.version,
+                  ...messageSuccess.message,
+                  status: "succeeded",
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "done",
                   },
-                  agentState: "done",
                 }
               : m
           );

@@ -12,7 +12,6 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   getMessageDate,
-  getMessageSId,
   isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
@@ -40,7 +39,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const { hasFeature } = useFeatureFlags({ workspaceId: context.owner.sId });
     const userMentionsEnabled = hasFeature("mentions_v2");
 
-    const sId = getMessageSId(data);
+    const sId = data.sId;
 
     const sendNotification = useSendNotification();
 
@@ -160,7 +159,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
-              messageStreamState={data}
+              agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
