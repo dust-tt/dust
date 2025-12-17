@@ -123,7 +123,7 @@ export function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skillConfiguration: SkillType;
+  skillConfiguration: SkillType & { relations: SkillRelations };
   owner: WorkspaceType;
   onClose: () => void;
 };
@@ -134,16 +134,32 @@ const DescriptionSection = ({
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const author = skillConfiguration.relations.author;
+  const editedDate =
+    skillConfiguration.updatedAt &&
+    new Date(skillConfiguration.updatedAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Avatar name="Skill avatar" visual={<SKILL_ICON />} size="lg" />
-        <div className="flex grow flex-col gap-1">
-          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-            {skillConfiguration.name}
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-4 pt-4">
+      <div className="relative flex items-center justify-center">
+        <Avatar name="Agent avatar" visual={<SKILL_ICON />} size="xl" />
+      </div>
+
+      {/* Title and edit info */}
+      <div className="flex flex-col items-center gap-1">
+        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+          {skillConfiguration.name}
+        </h2>
+        {editedDate && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Last edited: {editedDate}
+            {author && ` by ${author.fullName}`}
+          </p>
+        )}
       </div>
 
       {skillConfiguration.status === "archived" && (
