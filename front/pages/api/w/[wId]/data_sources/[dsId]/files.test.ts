@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./files";
@@ -109,10 +108,14 @@ vi.mock("@app/lib/file_storage", () => ({
 
 describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   it("returns 404 when file not found", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
+    const {
+      req,
+      res,
+      workspace,
+      globalSpace: space,
+    } = await createPrivateApiMockRequest({
       method: "POST",
     });
-    const space = await SpaceFactory.global(workspace);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query.dsId = dataSourceView.dataSource.sId;
@@ -132,12 +135,15 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   });
 
   it("returns 400 on unsupported use-cases", async () => {
-    const { req, res, workspace, globalGroup, user } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-      });
-    const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
+    const {
+      req,
+      res,
+      workspace,
+      user,
+      globalSpace: space,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+    });
 
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
     const file = await FileFactory.csv(workspace, user, {
@@ -232,13 +238,16 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
   });
 
   it("successfully upserts file to data source with the right arguments", async () => {
-    const { req, res, workspace, globalGroup, user } =
-      await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
-    const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
+    const {
+      req,
+      res,
+      workspace,
+      globalSpace: space,
+      user,
+    } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
     const file = await FileFactory.csv(workspace, user, {
