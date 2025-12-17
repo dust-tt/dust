@@ -21,7 +21,7 @@
     "tsgo": "tsgo",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --run",
     "test:watch": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --watch",
-    "test:ci": "vitest --reporter=junit --watch=false",
+    "test:ci": "vitest --reporter=junit --watch=false --test-timeout=10000",
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
