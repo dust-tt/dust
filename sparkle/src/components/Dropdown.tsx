@@ -703,7 +703,7 @@ const DropdownMenuFilters = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-flex-wrap s-gap-2 s-p-1.5", className)}
+      className={cn("s-flex s-flex-wrap s-gap-0.5 s-p-2", className)}
     >
       {filters.map((filter) => {
         const isSelected = multiSelectionValues.includes(filter.value);
@@ -712,9 +712,12 @@ const DropdownMenuFilters = React.forwardRef<
           <Button
             key={filter.value}
             size="xs"
-            variant={isSelected ? "primary" : "outline"}
+            variant={isSelected ? "outline" : "ghost"}
             label={filter.label}
             onClick={() => onSelectFilter(filter.value)}
+            className={cn(
+              isSelected && "s-text-blue-500 hover:s-text-blue-500"
+            )}
           />
         );
       })}
