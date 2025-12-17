@@ -24,7 +24,7 @@ export const getAccessTokenPlugin = createPlugin({
     // Only applicable to data sources with connectors
     return !!resource.connectorId;
   },
-  execute: async (auth, dataSource, args) => {
+  execute: async (auth, dataSource) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }
