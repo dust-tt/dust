@@ -21,6 +21,7 @@ import { BlockInsertExtension } from "@app/components/editor/extensions/agent_bu
 import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -85,6 +86,8 @@ export function AgentBuilderInstructionsEditor({
       Markdown,
       StarterKit.configure({
         heading: false, // we use a custom one, see below
+        paragraph: false, // we use custom EmptyLineParagraphExtension instead
+        hardBreak: false, // we use custom EmptyLineParagraphExtension instead
         bulletList: {
           HTMLAttributes: {
             class: markdownStyles.unorderedList(),
@@ -116,10 +119,12 @@ export function AgentBuilderInstructionsEditor({
             class: markdownStyles.codeBlock(),
           },
         },
-        paragraph: {
-          HTMLAttributes: {
-            class: markdownStyles.paragraph(),
-          },
+      }),
+      // Custom paragraph extension to preserve empty lines in markdown
+      // See: https://github.com/ueberdosis/tiptap/issues/7269
+      EmptyLineParagraphExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
         },
       }),
       KeyboardShortcutsExtension,

@@ -60,7 +60,11 @@ describe("buildEditorExtensions", () => {
 
     const result = editor.getMarkdown();
     expect(result).toBe(
-      "```javascript\nconsole.log('Hello, world!');\n```\n\n"
+      "```javascript\n" +
+        "console.log('Hello, world!');\n" +
+        "```\n" +
+        "\n" +
+        "<br>"
     );
   });
 
@@ -144,6 +148,9 @@ describe("buildEditorExtensions", () => {
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe("- hello\n- world\n\n");
+    expect(result).toBe(`- hello
+- world
+
+<br>`);
   });
 });

@@ -7,6 +7,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -199,6 +200,7 @@ export const buildEditorExtensions = ({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
       link: false, // Disable built-in Link extension, using custom LinkExtension instead
+      paragraph: false, // Disable built-in paragraph, use custom EmptyLineParagraphExtension instead
       heading: {
         levels: [1],
       },
@@ -229,10 +231,12 @@ export const buildEditorExtensions = ({
           class: markdownStyles.orderedList(),
         },
       },
-      paragraph: {
-        HTMLAttributes: {
-          class: markdownStyles.paragraph(),
-        },
+    }),
+    // Custom paragraph extension to preserve empty lines in markdown
+    // See: https://github.com/ueberdosis/tiptap/issues/7269
+    EmptyLineParagraphExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.paragraph(),
       },
     }),
     BlockquoteExtension.configure({
