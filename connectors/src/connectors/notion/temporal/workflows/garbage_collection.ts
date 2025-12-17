@@ -1,6 +1,5 @@
 import {
   continueAsNew,
-  deprecatePatch,
   patched,
   proxyActivities,
   sleep,
@@ -247,8 +246,6 @@ export async function notionGarbageCollectionWorkflow({
   // Once done, clear all the redis keys used for garbage collection
   await completeGarbageCollectionRun(connectorId, nbOfBatches);
 
-  deprecatePatch("one-hour-gc-interval");
-  deprecatePatch("12-hour-gc-interval");
   await sleep(INTERVAL_BETWEEN_GC_SYNCS_MS);
 
   await continueAsNew<typeof notionGarbageCollectionWorkflow>({
