@@ -432,6 +432,14 @@ export default function CreditsUsagePage({
         discountPercent={discountPercent}
         creditPricing={creditPricing}
         creditPurchaseLimits={creditPurchaseLimits}
+        paygUsage={
+          isEnterprise
+            ? {
+                consumed: creditsByType.payg.consumed,
+                total: creditsByType.payg.total,
+              }
+            : null
+        }
       />
 
       <Page.Vertical gap="xl" align="stretch">
