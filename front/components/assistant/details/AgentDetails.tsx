@@ -128,15 +128,13 @@ export function AgentDetails({
   );
 
   const showPerformanceTabs =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (agentConfiguration?.canEdit || isAdmin(owner)) &&
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
 
   const showInsightsTabs =
     agentId != null &&
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (agentConfiguration?.canEdit || isAdmin(owner)) &&
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
     !isGlobalAgent;
 
   const DescriptionSection = () => {
