@@ -100,10 +100,10 @@ export type UserMessageOrigin =
 
 export type UserMessageContext = {
   username: string;
-  timezone: string;
   fullName: string | null;
   email: string | null;
   profilePictureUrl: string | null;
+  timezone: string;
   origin: UserMessageOrigin;
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];

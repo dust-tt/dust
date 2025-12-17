@@ -7,7 +7,10 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { replaceMentionsWithAt } from "@app/lib/mentions/format";
+import {
+  replaceMentionsWithAt,
+  serializeMention,
+} from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -244,18 +247,30 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
   let additionalInstructions = "";
 
   const identityTokens: string[] = [];
-  if (m.context.fullName) {
-    identityTokens.push(m.context.fullName);
+  const fullName = m.user?.fullName ?? m.context.fullName;
+  const mention = m.user
+    ? serializeMention({
+        id: m.user.sId,
+        type: "user",
+        label: m.user.fullName,
+      })
+    : m.context.fullName
+      ? `@${m.context.fullName}`
+      : m.context.username
+        ? `@${m.context.username}`
+        : null;
+  const email = m.user?.email ?? m.context.email;
+
+  if (fullName) {
+    identityTokens.push(fullName);
   }
-  if (m.context.username) {
-    const usernameToken = m.context.fullName
-      ? `(@${m.context.username})`
-      : `@${m.context.username}`;
-    identityTokens.push(usernameToken);
+  if (mention) {
+    identityTokens.push(`(${mention})`);
   }
-  if (m.context.email) {
-    identityTokens.push(`<${m.context.email}>`);
+  if (email) {
+    identityTokens.push(`<${email}>`);
   }
+
   if (identityTokens.length > 0) {
     metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
   }
