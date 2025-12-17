@@ -337,7 +337,7 @@ export function BaseProgrammaticCostChart({
     const isActive =
       !enabledGroupKeys || enabledGroupKeys.includes(group.groupKey);
     const isVisible = visibleGroupKeys.has(group.groupKey);
-    const canFilter = !["total", "others", "unknown"].includes(group.groupKey);
+    const canFilter = !["total", "others"].includes(group.groupKey);
 
     return {
       key: group.groupKey,
