@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   PlanetIcon,
   Sheet,
   SheetContainer,
@@ -18,10 +17,11 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export function AgentBuilderSpacesBlock() {
   const { setValue } = useFormContext<AgentBuilderFormData>();
@@ -143,6 +143,14 @@ export function AgentBuilderSpacesBlock() {
     handleCloseSheet();
   };
 
+  const globalSpace = useMemo(() => {
+    return spaces.find((s) => s.kind === "global");
+  }, [spaces]);
+
+  const spacesToDisplay = useMemo(() => {
+    return removeNulls([globalSpace, ...nonGlobalSpacesWithRestrictions]);
+  }, [globalSpace, nonGlobalSpacesWithRestrictions]);
+
   return (
     <div className="space-y-3 px-6">
       <div className="flex items-start justify-between">
@@ -161,18 +169,7 @@ export function AgentBuilderSpacesBlock() {
           onClick={handleOpenSheet}
         />
       </div>
-      {nonGlobalSpacesWithRestrictions.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {nonGlobalSpacesWithRestrictions.map((space) => (
-            <Chip
-              key={space.sId}
-              label={getSpaceName(space)}
-              icon={getSpaceIcon(space)}
-              onRemove={() => handleRemoveSpace(space)}
-            />
-          ))}
-        </div>
-      )}
+      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
         <SheetContent>
