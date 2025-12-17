@@ -21,6 +21,8 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import type { NotificationPreferencesRef } from "@app/components/me/NotificationPreferences";
+import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -28,10 +30,6 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { usePatchUser, useUser } from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
-import {
-  NotificationPreferences,
-  type NotificationPreferencesRef,
-} from "@app/components/me/NotificationPreferences";
 
 interface AccountSettingsProps {
   owner: WorkspaceType;

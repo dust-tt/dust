@@ -1,5 +1,7 @@
 import { workflow } from "@novu/framework";
+import type { ChannelPreference } from "@novu/react";
 import uniqBy from "lodash/uniqBy";
+import { Op } from "sequelize";
 import z from "zod";
 
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
@@ -9,6 +11,7 @@ import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result, UserMessageOrigin } from "@app/types";
 import {
@@ -19,10 +22,7 @@ import {
   isUserMessageType,
   Ok,
 } from "@app/types";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
-import { Op } from "sequelize";
-import { NotificationPreferencesDelay } from "@app/types/notification_preferences";
-import { ChannelPreference } from "@novu/react";
+import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
 
 const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
 
@@ -96,13 +96,13 @@ type NotificationDelayConfig = {
  */
 const NOTIFICATION_PREFERENCES_DELAYS: Record<
   NotificationPreferencesDelay,
-  NotificationDelayConfig
+  NotificationDelayConfig | { cron: string }
 > = {
   "5_minutes": { amount: 5, unit: "minutes" },
   "15_minutes": { amount: 15, unit: "minutes" },
   "30_minutes": { amount: 30, unit: "minutes" },
   "1_hour": { amount: 1, unit: "hours" },
-  daily: { amount: 1, unit: "days" },
+  daily: { cron: "0 6 * * *" }, // Every day at 6am
 };
 
 const getConversationDetails = async ({
