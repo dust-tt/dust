@@ -76,7 +76,7 @@ const HeroContent = () => {
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
       <H1 className="text-center text-5xl font-medium text-foreground md:text-6xl lg:text-7xl">
-        The Operating System<br></br>for the AI era
+        The Operating System<br></br>for AI Agents
       </H1>
       <P
         size="lg"
