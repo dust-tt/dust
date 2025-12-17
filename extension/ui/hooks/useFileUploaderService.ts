@@ -29,6 +29,9 @@ interface FileBlob {
   preview?: string;
   size: number;
   publicUrl?: string;
+  sourceUrl?: string;
+  iconName?: string;
+  provider?: string;
 }
 
 type FileBlobUploadErrorCode =
@@ -445,7 +448,35 @@ export function useFileUploaderService(
     return fileBlobs.filter(fileBlobHasFileId);
   };
 
+  const addUploadedFile = (fileData: {
+    fileId: string;
+    filename: string;
+    contentType: SupportedFileContentType;
+    size: number;
+    id?: string;
+    sourceUrl?: string;
+    iconName?: string;
+    provider?: string;
+  }) => {
+    const blob: FileBlob = {
+      id: fileData.id ?? fileData.filename,
+      fileId: fileData.fileId,
+      filename: fileData.filename,
+      contentType: fileData.contentType,
+      file: new File([], fileData.filename, { type: fileData.contentType }),
+      kind: "attachment",
+      isUploading: false,
+      size: fileData.size,
+      sourceUrl: fileData.sourceUrl,
+      iconName: fileData.iconName,
+      provider: fileData.provider,
+    };
+
+    setFileBlobs((prevFiles) => [...prevFiles, blob]);
+  };
+
   return {
+    addUploadedFile,
     fileBlobs,
     getFileBlobs,
     handleFileChange,

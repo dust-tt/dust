@@ -46,7 +46,7 @@ export function InputBarAttachments({
       files?.service.fileBlobs.map((blob) => ({
         type: "file",
         id: blob.id,
-        title: blob.id,
+        title: blob.filename,
         preview: blob.preview,
         isUploading: blob.isUploading,
         onRemove: () => files.service.removeFile(blob.id),
