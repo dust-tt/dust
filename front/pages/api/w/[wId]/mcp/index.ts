@@ -11,8 +11,8 @@ import {
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";

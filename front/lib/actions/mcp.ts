@@ -16,7 +16,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,

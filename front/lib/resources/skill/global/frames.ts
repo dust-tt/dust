@@ -9,5 +9,6 @@ export const framesSkill = {
   // TODO(skills 2025-12-12): add an appropriate description.
   agentFacingDescription: "",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
+  internalMCPServerNames: ["interactive_content"],
   version: 1,
 } as const satisfies GlobalSkillDefinition;

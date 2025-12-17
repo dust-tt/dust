@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: "./vite.setup.ts",
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
+    exclude: ["**/node_modules/**", "**/dist/**"],
 
     // We use forks by default to isolate tests in separate processes that can rely on CLS for
     // transactions isolation. However, when a debugger is attached (Node --inspect), we switch to
