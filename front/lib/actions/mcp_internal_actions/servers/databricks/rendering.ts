@@ -1,4 +1,4 @@
-import type { Warehouse } from "./types";
+import type { Warehouse } from "@app/lib/actions/mcp_internal_actions/servers/databricks/types";
 
 export function renderWarehouse(warehouse: Warehouse): string {
   let text = `- **${warehouse.name}** (ID: ${warehouse.id})`;

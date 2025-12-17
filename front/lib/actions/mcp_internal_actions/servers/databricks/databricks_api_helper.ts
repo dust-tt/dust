@@ -9,14 +9,17 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 function getWorkspaceUrl(authInfo?: AuthInfo): string | null {
   if (!authInfo?.extra) {
     return null;
   }
-  const databricksWorkspaceUrl = authInfo.extra
-    .databricks_workspace_url as string;
-  return databricksWorkspaceUrl ?? null;
+  const databricksWorkspaceUrl = authInfo.extra?.databricks_workspace_url;
+  if (!isString(databricksWorkspaceUrl)) {
+    return null;
+  }
+  return databricksWorkspaceUrl;
 }
 
 async function databricksApiCall<T extends z.ZodTypeAny>(
@@ -56,7 +59,10 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
     } catch {
       errorMessage = `${errorMessage} - ${errorBody}`;
     }
-    logger.error(`[Databricks MCP Server] ${errorMessage}`);
+    logger.error({
+      error: errorMessage,
+      message: `[Databricks MCP Server] ${errorMessage}`,
+    });
     return new Err(errorMessage);
   }
 
