@@ -79,11 +79,6 @@ type SkillVersionCreationAttributes =
     mcpServerConfigurationIds: number[];
   };
 
-type AgentMessageSkillCreationAttributes =
-  CreationAttributes<ConversationSkillModel> & {
-    agentMessageId: number;
-  };
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -958,16 +953,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       addedByUserId: user && source === "conversation" ? user.id : null,
     };
 
-    const agentMessageSkillBlob: AgentMessageSkillCreationAttributes = {
-      ...conversationSkillBlob,
-      agentMessageId: agentMessage.agentMessageId,
-    };
-
-    await AgentMessageSkillModel.create(agentMessageSkillBlob);
-
     await ConversationSkillModel.create(conversationSkillBlob);
 
     return new Ok(undefined);
+  }
+
+  static async snapshotConversationSkillsForMessage(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      agentMessageId,
+      conversationId,
+    }: {
+      agentConfigurationId: string;
+      agentMessageId: ModelId;
+      conversationId: ModelId;
+    }
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId,
+        agentConfigurationId,
+      },
+    });
+
+    await AgentMessageSkillModel.bulkCreate(
+      conversationSkills.map((cs) => ({
+        workspaceId: workspace.id,
+        agentConfigurationId: cs.agentConfigurationId,
+        customSkillId: cs.customSkillId,
+        globalSkillId: cs.globalSkillId,
+        agentMessageId,
+        conversationId: cs.conversationId,
+        source: cs.source,
+        addedByUserId: cs.addedByUserId,
+      }))
+    );
   }
 
   toJSON(auth: Authenticator): SkillType {

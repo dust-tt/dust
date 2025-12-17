@@ -6,6 +6,7 @@ import {
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentionsActivity } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
+import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
 import { trackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
@@ -18,6 +19,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     trackProgrammaticUsageActivity(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentionsActivity(authType, agentLoopArgs),
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
 
@@ -29,6 +31,7 @@ export async function finalizeCancelledAgentLoopActivity(
     launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
     trackProgrammaticUsageActivity(authType, agentLoopArgs),
     finalizeCancellationActivity(authType, agentLoopArgs),
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
 
@@ -46,5 +49,6 @@ export async function finalizeErroredAgentLoopActivity(
       agentMessageVersion: agentLoopArgs.agentMessageVersion,
       error,
     }),
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
