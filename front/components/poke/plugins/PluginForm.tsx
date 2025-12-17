@@ -192,7 +192,7 @@ export function PluginForm({
                         {arg.type === "string" && <PokeFormInput {...field} />}
                         {arg.type === "number" && (
                           <PokeFormInput
-                            type={arg.variant === "input" ? "text" : "number"}
+                            type={arg.variant === "text" ? "text" : "number"}
                             {...field}
                             onChange={(e) =>
                               field.onChange(Number(e.target.value))
