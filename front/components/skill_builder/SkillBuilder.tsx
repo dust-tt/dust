@@ -31,7 +31,7 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSkillConfigurationTools } from "@app/lib/swr/actions";
+import { useSkillTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -47,7 +47,7 @@ export default function SkillBuilder({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const { actions, isActionsLoading } = useSkillConfigurationTools(
+  const { actions, isActionsLoading } = useSkillTools(
     owner,
     skillConfiguration?.sId ?? null
   );

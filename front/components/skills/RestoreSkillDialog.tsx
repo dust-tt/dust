@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { useRestoreSkillConfiguration } from "@app/lib/swr/skill_configurations";
+import { useRestoreSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -27,7 +27,7 @@ export function RestoreSkillDialog({
   owner,
 }: RestoreSkillDialogProps) {
   const [isRestoring, setIsRestoring] = useState(false);
-  const doRestore = useRestoreSkillConfiguration({
+  const doRestore = useRestoreSkill({
     owner,
     skill: skill,
   });

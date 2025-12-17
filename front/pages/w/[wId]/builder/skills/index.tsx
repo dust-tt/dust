@@ -23,7 +23,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SKILL_ICON } from "@app/lib/skill";
-import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
@@ -126,17 +126,17 @@ export default function WorkspaceSkills({
   }, [selectedTab, skillSearch]);
 
   const {
-    skillConfigurationsWithRelations: activeSkills,
-    isSkillConfigurationsWithRelationsLoading: isActiveLoading,
-  } = useSkillConfigurationsWithRelations({
+    skillsWithRelations: activeSkills,
+    isSkillsWithRelationsLoading: isActiveLoading,
+  } = useSkillsWithRelations({
     owner,
     status: "active",
   });
 
   const {
-    skillConfigurationsWithRelations: archivedSkills,
-    isSkillConfigurationsWithRelationsLoading: isArchivedLoading,
-  } = useSkillConfigurationsWithRelations({
+    skillsWithRelations: archivedSkills,
+    isSkillsWithRelationsLoading: isArchivedLoading,
+  } = useSkillsWithRelations({
     owner,
     status: "archived",
     disabled: activeTab !== "archived",

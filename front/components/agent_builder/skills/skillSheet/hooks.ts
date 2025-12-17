@@ -9,7 +9,7 @@ import type {
 } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useSkillConfigurationsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
@@ -39,13 +39,11 @@ export const useSkillSelection = ({
     localAdditionalSpaces
   );
 
-  const {
-    skillConfigurationsWithRelations,
-    isSkillConfigurationsWithRelationsLoading,
-  } = useSkillConfigurationsWithRelations({
-    owner,
-    status: "active",
-  });
+  const { skillsWithRelations, isSkillsWithRelationsLoading } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+    });
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
@@ -54,15 +52,15 @@ export const useSkillSelection = ({
 
   const filteredSkills = useMemo(() => {
     if (!searchQuery.trim()) {
-      return skillConfigurationsWithRelations;
+      return skillsWithRelations;
     }
     const query = searchQuery.toLowerCase();
-    return skillConfigurationsWithRelations.filter(
+    return skillsWithRelations.filter(
       (skill) =>
         skill.name.toLowerCase().includes(query) ||
         skill.userFacingDescription.toLowerCase().includes(query)
     );
-  }, [skillConfigurationsWithRelations, searchQuery]);
+  }, [skillsWithRelations, searchQuery]);
 
   const selectionMode = getSelectionMode(mode);
 
@@ -125,7 +123,7 @@ export const useSkillSelection = ({
   return {
     handleSkillToggle,
     filteredSkills,
-    isSkillsLoading: isSkillConfigurationsWithRelationsLoading,
+    isSkillsLoading: isSkillsWithRelationsLoading,
     searchQuery,
     selectedSkillIds,
     setSearchQuery,
