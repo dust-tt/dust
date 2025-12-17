@@ -92,7 +92,6 @@ export const InputBar = React.memo(function InputBar({
   const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user?.sId ?? null,
-    conversationId,
   });
 
   useEffect(() => {

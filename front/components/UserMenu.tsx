@@ -63,7 +63,6 @@ export function UserMenu({
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
-    conversationId: null,
   });
 
   const forceRoleUpdate = useMemo(
