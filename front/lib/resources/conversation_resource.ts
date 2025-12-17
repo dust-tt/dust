@@ -1256,7 +1256,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversation: ConversationWithoutContentType;
       skills: SkillResource[];
       enabled: boolean;
-      agentConfigurationId: string;
+      agentConfigurationId: string | null | undefined;
     }
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();
@@ -1266,23 +1266,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const agentConfiguration = await AgentConfigurationModel.findOne({
-      where: {
-        sId: agentConfigurationId,
-        workspaceId: workspace.id,
-      },
-    });
+    let agentConfigurationModelId: ModelId | null = null;
 
-    if (!agentConfiguration) {
-      console.error("Agent configuration not found:", {
-        sId: agentConfigurationId,
-        workspaceId: workspace.id,
+    // For JIT skills (agentConfigurationId is null/undefined), they apply to all agents
+    // For agent-enabled skills, validate the agent configuration exists
+    if (agentConfigurationId) {
+      const agentConfiguration = await AgentConfigurationModel.findOne({
+        where: {
+          sId: agentConfigurationId,
+          workspaceId: workspace.id,
+        },
       });
-      return new Err(
-        new Error(
-          `Agent configuration not found: sId=${agentConfigurationId}, workspaceId=${workspace.id}`
-        )
-      );
+
+      if (!agentConfiguration) {
+        return new Err(
+          new Error(
+            `Agent configuration not found: sId=${agentConfigurationId}, workspaceId=${workspace.id}`
+          )
+        );
+      }
+
+      agentConfigurationModelId = agentConfiguration.id;
     }
 
     const existingConversationSkills = await this.fetchSkills(
@@ -1296,7 +1300,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
       const existingConversationSkill = existingConversationSkills.find(
         (cs) =>
-          cs.agentConfigurationId === agentConfiguration.id &&
+          cs.agentConfigurationId === agentConfigurationModelId &&
           (isGlobalSkill
             ? cs.globalSkillId === skillSId
             : cs.customSkillId === skill.id)
@@ -1316,7 +1320,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         await ConversationSkillModel.create({
           conversationId: conversation.id,
           workspaceId: workspace.id,
-          agentConfigurationId: agentConfiguration.id,
+          agentConfigurationId: agentConfigurationModelId ?? undefined,
           customSkillId: isGlobalSkill ? null : skill.id,
           globalSkillId: isGlobalSkill ? skillSId : null,
           source: "conversation",

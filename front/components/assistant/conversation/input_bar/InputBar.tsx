@@ -16,6 +16,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
+  useConversationSkills,
   useConversationTools,
 } from "@app/lib/swr/conversations";
 import { useIsOnboardingConversation } from "@app/lib/swr/user";
@@ -45,7 +46,8 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    selectedSkillIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: RichMention[];
@@ -170,16 +172,21 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
-  // Get agent configuration ID from sticky mentions (first agent mention)
-  const agentConfigurationId = useMemo(() => {
-    const agentMention = stickyMentions?.find((m) => m.type === "agent");
-    return agentMention?.id ?? null;
-  }, [stickyMentions]);
+  const { conversationSkills } = useConversationSkills({
+    conversationId,
+    workspaceId: owner.sId,
+  });
 
+  // The truth is in the conversationSkills, we need to update the selectedSkills when the conversationSkills change.
+  useEffect(() => {
+    setSelectedSkills(conversationSkills);
+  }, [conversationSkills]);
+
+  // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
   const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
     conversationId,
     workspaceId: owner.sId,
-    agentConfigurationId,
+    agentConfigurationId: null,
   });
 
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
@@ -278,7 +285,9 @@ export const InputBar = React.memo(function InputBar({
         },
         // Only send the selectedMCPServerViewIds if we are creating a new conversation.
         // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-        selectedMCPServerViews.map((sv) => sv.sId)
+        selectedMCPServerViews.map((sv) => sv.sId),
+        // JIT skills for new conversations
+        selectedSkills.map((s) => s.sId)
       );
 
       setLoading(false);
