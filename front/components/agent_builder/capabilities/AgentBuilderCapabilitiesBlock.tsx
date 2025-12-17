@@ -22,6 +22,7 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
+import { AddedSkillCard } from "@app/components/shared/tools_picker/AddedSkillCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
@@ -68,10 +69,11 @@ export function AgentBuilderCapabilitiesBlock({
     disabled: !showSkills,
   });
 
-  const { fields: skillFields, append: appendSkills } = useFieldArray<
-    AgentBuilderFormData,
-    "skills"
-  >({
+  const {
+    fields: skillFields,
+    append: appendSkills,
+    remove: removeSkills,
+  } = useFieldArray<AgentBuilderFormData, "skills">({
     name: "skills",
   });
 
@@ -152,8 +154,12 @@ export function AgentBuilderCapabilitiesBlock({
   const getAgentInstructions = () => getValues("instructions");
 
   const toolsButtonLabel = showSkills ? "Add capabilities" : "Add tools";
+  const sectionTitle = showSkills
+    ? "Knowledge, Tools & Skills"
+    : "Knowledge & Tools";
+  const hasCapabilities = actionFields.length > 0 || skillFields.length > 0;
 
-  const headerActions = actionFields.length > 0 && (
+  const headerActions = hasCapabilities && (
     <div className="flex items-center gap-2">
       <Button
         type="button"
@@ -174,7 +180,7 @@ export function AgentBuilderCapabilitiesBlock({
 
   return (
     <AgentBuilderSectionContainer
-      title="Knowledge & Tools"
+      title={sectionTitle}
       description={
         <>
           Add knowledge and tools to enhance your agent’s abilities. Need help?
@@ -196,7 +202,7 @@ export function AgentBuilderCapabilitiesBlock({
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : actionFields.length === 0 ? (
+        ) : !hasCapabilities ? (
           <EmptyCTA
             action={
               <div className="flex items-center gap-2">
@@ -238,6 +244,13 @@ export function AgentBuilderCapabilitiesBlock({
                 </div>
               )}
             <CardGrid>
+              {skillFields.map((field, index) => (
+                <AddedSkillCard
+                  key={field.id}
+                  skill={field}
+                  onRemove={() => removeSkills(index)}
+                />
+              ))}
               {actionFields.map((field, index) => (
                 <ActionCard
                   key={field.id}
