@@ -19,6 +19,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
+import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { hasRelations, SKILL_ICON } from "@app/lib/skill";
@@ -158,6 +159,10 @@ const DescriptionSection = ({
           </p>
         )}
       </div>
+
+      {skill.status === "active" && skill.canWrite && (
+        <SkillDetailsButtonBar owner={owner} skill={skill} />
+      )}
 
       {skill.status === "archived" && (
         <>
