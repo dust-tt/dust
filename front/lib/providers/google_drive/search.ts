@@ -1,8 +1,11 @@
 import TurndownService from "turndown";
 
 import {
+  PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
+  PROVIDER_SEARCH_MAX_PAGE_SIZE,
+} from "@app/lib/providers/constants";
+import {
   getGoogleDriveClient,
-  MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/providers/google_drive/utils";
 import type {
@@ -44,7 +47,7 @@ export async function search({
 
   const res = await drive.files.list({
     q: searchQuery,
-    pageSize: Math.min(pageSize, 100),
+    pageSize: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     fields: "files(id, name, mimeType, webViewLink)",
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
@@ -90,9 +93,9 @@ export async function download({
     throw new Error("File metadata is incomplete.");
   }
 
-  if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
+  if (file.size && parseInt(file.size, 10) > PROVIDER_DOWNLOAD_MAX_FILE_SIZE) {
     throw new Error(
-      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+      `File size exceeds the maximum limit of ${PROVIDER_DOWNLOAD_MAX_FILE_SIZE / (1024 * 1024)} MB.`
     );
   }
 

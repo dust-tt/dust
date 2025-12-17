@@ -430,7 +430,6 @@ export async function submitAgentBuilderForm({
                 )
               : null,
           childAgentId: action.configuration.childAgentId,
-          reasoningModel: action.configuration.reasoningModel,
           timeFrame: action.configuration.timeFrame,
           jsonSchema: action.configuration.jsonSchema,
           additionalConfiguration:
@@ -482,7 +481,7 @@ export async function submitAgentBuilderForm({
       editors: formData.agentSettings.editors.map((editor) => ({
         sId: editor.sId,
       })),
-      additionalRequestedSpaceIds: [],
+      additionalRequestedSpaceIds: formData.additionalSpaces,
     },
   };
 

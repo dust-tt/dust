@@ -113,7 +113,6 @@ async function handler(
         dustAppConfiguration: null,
         secretName: null,
         jsonSchema: null,
-        reasoningModel: null,
         _jsonSchemaString: null,
       },
     });

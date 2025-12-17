@@ -1,8 +1,4 @@
-import type {
-  BelongsToGetAssociationMixin,
-  CreationOptional,
-  ForeignKey,
-} from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -17,9 +13,6 @@ export class GroupSkillModel extends WorkspaceAwareModel<GroupSkillModel> {
 
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
-
-  declare getGroup: BelongsToGetAssociationMixin<GroupModel>;
-  declare getSkillConfiguration: BelongsToGetAssociationMixin<SkillConfigurationModel>;
 }
 
 GroupSkillModel.init(

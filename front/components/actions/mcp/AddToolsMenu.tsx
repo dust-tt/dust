@@ -105,6 +105,9 @@ export const AddToolsMenu = ({
               )
           )
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
+          .sort((a, b) =>
+            getMcpServerDisplayName(a).localeCompare(getMcpServerDisplayName(b))
+          )
           .map((mcpServer) => (
             <DropdownMenuItem
               key={mcpServer.sId}

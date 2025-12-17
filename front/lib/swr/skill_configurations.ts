@@ -12,6 +12,7 @@ import {
 import type {
   GetSkillConfigurationsResponseBody,
   GetSkillConfigurationsWithRelationsResponseBody,
+  GetSkillWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
 import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
@@ -25,15 +26,19 @@ import type {
 export function useSkillConfigurations({
   owner,
   disabled,
+  status,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
+  status?: SkillStatus;
 }) {
   const skillConfigurationsFetcher: Fetcher<GetSkillConfigurationsResponseBody> =
     fetcher;
 
+  const statusQueryParam = status ? `?status=${status}` : "";
+
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills`,
+    `/api/w/${owner.sId}/skills${statusQueryParam}`,
     skillConfigurationsFetcher,
     { disabled }
   );
@@ -151,10 +156,10 @@ export function useArchiveSkillConfiguration({
 
 export function useRestoreSkillConfiguration({
   owner,
-  skillConfiguration,
+  skill,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillType;
+  skill: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillConfigurationsWithRelations: mutateArchivedSkills } =
@@ -171,11 +176,11 @@ export function useRestoreSkillConfiguration({
     });
 
   const doRestore = async () => {
-    if (!skillConfiguration.sId) {
+    if (!skill.sId) {
       return;
     }
     const res = await clientFetch(
-      `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/restore`,
+      `/api/w/${owner.sId}/skills/${skill.sId}/restore`,
       {
         method: "POST",
       }
@@ -187,15 +192,15 @@ export function useRestoreSkillConfiguration({
 
       sendNotification({
         type: "success",
-        title: `Successfully restored ${skillConfiguration.name}`,
-        description: `${skillConfiguration.name} was successfully restored.`,
+        title: `Successfully restored ${skill.name}`,
+        description: `${skill.name} was successfully restored.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error restoring ${skillConfiguration.name}`,
+        title: `Error restoring ${skill.name}`,
         description: `Error: ${errorData.message}`,
       });
     }
@@ -233,5 +238,29 @@ export function useSkillConfigurationHistory({
     isSkillConfigurationHistoryLoading: !error && !data && !disabled,
     isSkillConfigurationHistoryError: error,
     mutateSkillConfigurationHistory: mutate,
+  };
+}
+
+export function useSkillWithRelations({
+  owner,
+  disabled,
+  skillId,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+  skillId: string;
+}) {
+  const skillConfigurationsFetcher: Fetcher<GetSkillWithRelationsResponseBody> =
+    fetcher;
+
+  const { data, isLoading } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/${skillId}?withRelations=true`,
+    skillConfigurationsFetcher,
+    { disabled }
+  );
+
+  return {
+    skillWithRelations: data?.skill ?? null,
+    isSkillWithRelationsLoading: isLoading,
   };
 }

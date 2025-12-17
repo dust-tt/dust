@@ -17,7 +17,6 @@ import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/
 import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
-  ReasoningModelConfigurationType,
   TimeFrame,
   WhitelistableFeature,
 } from "@app/types";
@@ -169,7 +168,6 @@ export type AgentBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
-  reasoningModel: ReasoningModelConfigurationType | null;
   timeFrame: TimeFrame | null;
   additionalConfiguration: AdditionalConfigurationType;
   dustAppConfiguration: DustAppRunConfigurationType | null;
@@ -203,7 +201,6 @@ export function getDefaultMCPServerActionConfiguration(
       dataSourceConfigurations: null,
       tablesConfigurations: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       additionalConfiguration: {},
       dustAppConfiguration: null,

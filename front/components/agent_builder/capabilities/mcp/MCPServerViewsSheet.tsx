@@ -55,7 +55,6 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
-import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
@@ -76,9 +75,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 import type {
   SkillRelations,
   SkillType,
@@ -171,7 +168,6 @@ export function MCPServerViewsSheet({
   const { owner, user } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
   const sendNotification = useSendNotification();
-  const { reasoningModels } = useModels({ owner });
   const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -207,8 +203,6 @@ export function MCPServerViewsSheet({
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
   const [infoSkill, setInfoSkill] = useState<SkillSelection | null>(null);
-
-  const hasReasoningModel = reasoningModels.length > 0;
 
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: BuilderAction[]) => {
@@ -254,20 +248,8 @@ export function MCPServerViewsSheet({
       (view) => !shouldFilterServerView(view, selectedActions)
     );
 
-    if (hasReasoningModel) {
-      return filteredList;
-    }
-
-    // You should not be able to select Reasoning if there is no reasoning model available.
-    return filteredList.filter(
-      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
-    );
-  }, [
-    topMCPServerViews,
-    selectedActions,
-    hasReasoningModel,
-    shouldFilterServerView,
-  ]);
+    return filteredList;
+  }, [topMCPServerViews, selectedActions, shouldFilterServerView]);
 
   const selectableNonTopMCPServerViews = useMemo(
     () =>
@@ -421,51 +403,9 @@ export function MCPServerViewsSheet({
     if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
 
-      let configuredAction = action;
-      if (
-        action.type === "MCP" &&
-        requirements.requiresReasoningConfiguration
-      ) {
-        if (reasoningModels.length === 0) {
-          sendNotification({
-            title: "No reasoning model available",
-            description:
-              "Please add a reasoning model to your workspace to be able to use this tool",
-            type: "error",
-          });
-          return;
-        }
-
-        const defaultReasoningModel =
-          reasoningModels.find(
-            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ?? reasoningModels[0];
-
-        configuredAction = {
-          ...action,
-          configuration: {
-            ...action.configuration,
-            reasoningModel: {
-              modelId: defaultReasoningModel.modelId,
-              providerId: defaultReasoningModel.providerId,
-              temperature: null,
-              reasoningEffort: null,
-            },
-          },
-        };
-
-        // For reasoning tools, add directly to selected tools instead of going to configure page
-        toggleToolSelection({
-          type: "MCP",
-          view: mcpServerView,
-          configuredAction,
-        });
-        return;
-      }
-
       onModeChange({
         type: "configure",
-        action: configuredAction,
+        action,
         mcpServerView,
       });
       return;
@@ -698,10 +638,6 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {requirements.requiresReasoningConfiguration && (
-                  <ReasoningModelSection />
-                )}
-
                 {requirements.requiresChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
@@ -764,11 +700,7 @@ export function MCPServerViewsSheet({
       description: getSkillInfoPageDescription(infoSkill),
       icon: getSkillInfoPageIcon(),
       content: infoSkill ? (
-        <SkillDetailsSheetContent
-          skillConfiguration={infoSkill}
-          owner={owner}
-          user={user}
-        />
+        <SkillDetailsSheetContent skill={infoSkill} owner={owner} user={user} />
       ) : (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />

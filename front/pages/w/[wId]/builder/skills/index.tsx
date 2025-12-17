@@ -28,10 +28,7 @@ import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { isBuilder, isEmptyString } from "@app/types";
-import type {
-  SkillRelations,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 const SKILL_SEARCH_TAB = {
   id: "search",
@@ -69,9 +66,7 @@ function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
 }
 
-function getSkillSearchString(
-  skill: SkillType & { relations: SkillRelations }
-): string {
+function getSkillSearchString(skill: SkillWithRelationsType): string {
   const skillEditorNames =
     skill.relations.editors?.map((e) => e.fullName) ?? [];
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
@@ -114,9 +109,8 @@ export default function WorkspaceSkills({
   subscription,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [selectedSkill, setSelectedSkill] = useState<
-    (SkillType & { relations: SkillRelations }) | null
-  >(null);
+  const [selectedSkill, setSelectedSkill] =
+    useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
@@ -206,7 +200,7 @@ export default function WorkspaceSkills({
     <>
       {!!selectedSkill && (
         <SkillDetailsSheet
-          skillConfiguration={selectedSkill}
+          skill={selectedSkill}
           onClose={() => setSelectedSkill(null)}
           user={user}
           owner={owner}

@@ -1,7 +1,6 @@
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
-import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -15,25 +14,25 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
+  const { req, res, workspace, authenticator, systemSpace, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  const systemSpace = await SpaceFactory.system(workspace);
-
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, auth: authenticator, systemSpace };
+  return { req, res, workspace, auth: authenticator, systemSpace, globalSpace };
 }
 
 describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   it("should return webhook source view when valid viewId is provided", async () => {
-    const { req, res, workspace } = await setupTest("admin", "GET");
+    const { req, res, workspace, globalSpace } = await setupTest(
+      "admin",
+      "GET"
+    );
 
-    const globalSpace = await SpaceFactory.global(workspace);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
       await webhookSourceViewFactory.create(globalSpace);
@@ -85,13 +84,8 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should work for user role when accessing valid webhook source view", async () => {
-    const { req, res, workspace } = await setupTest("user", "GET");
+    const { req, res, workspace, globalSpace } = await setupTest("user", "GET");
 
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-
-    const { globalSpace } = await SpaceFactory.defaults(adminAuth);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
       await webhookSourceViewFactory.create(globalSpace);
@@ -294,10 +288,8 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should update name for all views of the same webhook source when admin", async () => {
-    const { req, res, workspace, auth, systemSpace } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+    const { req, res, workspace, auth, systemSpace, globalSpace } =
+      await setupTest("admin", "PATCH");
 
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const systemView = await webhookSourceViewFactory.create(systemSpace);
@@ -305,7 +297,6 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     expect(systemView).not.toBeNull();
 
     // Create additional views in global space for the same webhook source
-    const globalSpace = await SpaceFactory.global(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
       webhookSourceId: systemView.webhookSourceSId,
     });
@@ -373,10 +364,8 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should update icon and description for all views of the same webhook source when admin", async () => {
-    const { req, res, workspace, auth, systemSpace } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+    const { req, res, workspace, auth, systemSpace, globalSpace } =
+      await setupTest("admin", "PATCH");
 
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const systemView = await webhookSourceViewFactory.create(systemSpace);
@@ -384,7 +373,6 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     expect(systemView).not.toBeNull();
 
     // Create additional views in global space for the same webhook source
-    const globalSpace = await SpaceFactory.global(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
       webhookSourceId: systemView.webhookSourceSId,
     });

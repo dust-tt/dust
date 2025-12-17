@@ -1,8 +1,19 @@
-import { Chip } from "@dust-tt/sparkle";
-import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
+import {
+  Button,
+  Chip,
+  PlanetIcon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { SpaceSelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SpaceSelectionPage";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
@@ -13,14 +24,24 @@ import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
 export function AgentBuilderSpacesBlock() {
-  const { watch, setValue } = useFormContext<AgentBuilderFormData>();
+  const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const selectedSkills = watch("skills");
-  const actions = watch("actions");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
+
+  const selectedSkills = useWatch<AgentBuilderFormData, "skills">({
+    name: "skills",
+  });
+  const actions = useWatch<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
+  const additionalSpaces = useWatch<AgentBuilderFormData, "additionalSpaces">({
+    name: "additionalSpaces",
+  });
 
   const confirmRemoveSpace = useRemoveSpaceConfirm({
     entityName: "agent",
@@ -32,10 +53,8 @@ export function AgentBuilderSpacesBlock() {
     return getSpaceIdToActionsMap(actions, mcpServerViews);
   }, [actions, mcpServerViews]);
 
-  // Merge requested spaces from skills and from actions
-  const nonGlobalSpacesWithRestrictions = useMemo(() => {
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
-
+  // Merge requested spaces from skills, actions, and additional spaces (from global skills)
+  const actionsAndSkillsRequestedSpaceIds = useMemo(() => {
     const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
     const skillRequestedSpaceIds = new Set(
       allSkills
@@ -50,13 +69,18 @@ export function AgentBuilderSpacesBlock() {
       }
     }
 
+    return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
+  }, [selectedSkills, allSkills, spaceIdToActions]);
+
+  const nonGlobalSpacesWithRestrictions = useMemo(() => {
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
     const allRequestedSpaceIds = new Set([
-      ...skillRequestedSpaceIds,
-      ...actionRequestedSpaceIds,
+      ...actionsAndSkillsRequestedSpaceIds,
+      ...additionalSpaces,
     ]);
 
     return nonGlobalSpaces.filter((s) => allRequestedSpaceIds.has(s.sId));
-  }, [spaces, selectedSkills, allSkills, spaceIdToActions]);
+  }, [spaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
@@ -70,14 +94,17 @@ export function AgentBuilderSpacesBlock() {
         ?.requestedSpaceIds.includes(space.sId)
     );
 
-    const confirmed = await confirmRemoveSpace(
-      space,
-      actionsToRemove,
-      skillsToRemove
-    );
+    // Only show confirmation dialog if there are resources to remove
+    if (actionsToRemove.length > 0 || skillsToRemove.length > 0) {
+      const confirmed = await confirmRemoveSpace(
+        space,
+        actionsToRemove,
+        skillsToRemove
+      );
 
-    if (!confirmed) {
-      return;
+      if (!confirmed) {
+        return;
+      }
     }
 
     // Remove actions (knowledge + tools) that belong to this space
@@ -93,32 +120,86 @@ export function AgentBuilderSpacesBlock() {
           ?.requestedSpaceIds.includes(space.sId)
     );
     setValue("skills", newSkills, { shouldDirty: true });
+
+    const newAdditionalSpaces = additionalSpaces.filter(
+      (spaceId) => spaceId !== space.sId
+    );
+    setValue("additionalSpaces", newAdditionalSpaces, { shouldDirty: true });
   };
 
-  if (nonGlobalSpacesWithRestrictions.length === 0) {
-    return null;
-  }
+  const handleOpenSheet = () => {
+    // Initialize with current additional spaces so they appear selected
+    setDraftSelectedSpaces([...additionalSpaces]);
+    setIsSheetOpen(true);
+  };
+
+  const handleCloseSheet = () => {
+    setIsSheetOpen(false);
+    setDraftSelectedSpaces([]);
+  };
+
+  const handleSaveSpaces = () => {
+    setValue("additionalSpaces", draftSelectedSpaces, { shouldDirty: true });
+    handleCloseSheet();
+  };
 
   return (
     <div className="space-y-3 px-6">
-      <div>
-        <h2 className="heading-lg text-foreground dark:text-foreground-night">
-          Spaces
-        </h2>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Determines who can use this agent and what data it can access
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="heading-lg text-foreground dark:text-foreground-night">
+            Spaces
+          </h2>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Determines who can use this agent and what data it can access
+          </p>
+        </div>
+        <Button
+          label="Add space"
+          icon={PlanetIcon}
+          variant="outline"
+          onClick={handleOpenSheet}
+        />
       </div>
-      <div className="flex flex-wrap gap-2">
-        {nonGlobalSpacesWithRestrictions.map((space) => (
-          <Chip
-            key={space.sId}
-            label={getSpaceName(space)}
-            icon={getSpaceIcon(space)}
-            onRemove={() => handleRemoveSpace(space)}
+      {nonGlobalSpacesWithRestrictions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {nonGlobalSpacesWithRestrictions.map((space) => (
+            <Chip
+              key={space.sId}
+              label={getSpaceName(space)}
+              icon={getSpaceIcon(space)}
+              onRemove={() => handleRemoveSpace(space)}
+            />
+          ))}
+        </div>
+      )}
+
+      <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Add Spaces</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <SpaceSelectionPageContent
+              alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
+              draftSelectedSpaces={draftSelectedSpaces}
+              setDraftSelectedSpaces={setDraftSelectedSpaces}
+            />
+          </SheetContainer>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: handleCloseSheet,
+            }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "primary",
+              onClick: handleSaveSpaces,
+            }}
           />
-        ))}
-      </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

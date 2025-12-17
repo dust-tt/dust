@@ -328,7 +328,7 @@ export async function createOrUpgradeAgentConfiguration({
   if (featureFlags.includes("skills")) {
     const skillResources = await SkillResource.fetchByIds(
       auth,
-      assistant.skills.map((s) => s.sId)
+      (assistant.skills ?? []).map((s) => s.sId)
     );
 
     const skillRequestedSpaceIds = new Set<number>();
@@ -412,7 +412,6 @@ export async function createOrUpgradeAgentConfiguration({
         mcpServerViewId: action.mcpServerViewId,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         dataSources: action.dataSources || null,
-        reasoningModel: action.reasoningModel,
         tables: action.tables,
         childAgentId: action.childAgentId,
         additionalConfiguration: action.additionalConfiguration,
@@ -479,7 +478,7 @@ export async function createOrUpgradeAgentConfiguration({
   // Create skill associations
   const owner = auth.getNonNullableWorkspace();
   await concurrentExecutor(
-    assistant.skills,
+    assistant.skills ?? [],
     async (skill) => {
       // Validate the skill exists and belongs to this workspace
       const skillResource = await SkillResource.fetchById(auth, skill.sId);

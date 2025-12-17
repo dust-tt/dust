@@ -4,6 +4,10 @@ import {
   downloadAndProcessMicrosoftFile,
   searchMicrosoftDriveItems,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import {
+  PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
+  PROVIDER_SEARCH_MAX_PAGE_SIZE,
+} from "@app/lib/providers/constants";
 import type {
   ToolDownloadParams,
   ToolDownloadResult,
@@ -12,8 +16,6 @@ import type {
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import type { ContentNodeType } from "@app/types/core/content_node";
-
-const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB
 
 // Supported MIME types for Microsoft files
 const SUPPORTED_MIMETYPES = [
@@ -82,7 +84,7 @@ export async function search({
     const response = await searchMicrosoftDriveItems({
       client,
       query: "FileName: " + query,
-      pageSize: Math.min(pageSize, 100),
+      pageSize: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     });
 
     // Parse response structure
@@ -188,9 +190,12 @@ export async function download({
   }
 
   // Check file size
-  if (fileMetadata.size && fileMetadata.size > MAX_FILE_SIZE) {
+  if (
+    fileMetadata.size &&
+    fileMetadata.size > PROVIDER_DOWNLOAD_MAX_FILE_SIZE
+  ) {
     throw new Error(
-      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+      `File size exceeds the maximum limit of ${PROVIDER_DOWNLOAD_MAX_FILE_SIZE / (1024 * 1024)} MB.`
     );
   }
 

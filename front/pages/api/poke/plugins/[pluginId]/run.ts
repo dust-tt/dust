@@ -199,7 +199,7 @@ async function handler(
         });
       }
 
-      await pluginRun.recordResult(runRes.value);
+      await pluginRun.recordResult(runRes.value, plugin);
 
       res.status(200).json({ result: runRes.value });
 

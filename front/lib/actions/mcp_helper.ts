@@ -104,21 +104,22 @@ export const mcpServerViewSortingFn = (
 };
 
 export const mcpServersSortingFn = (
-  a: { mcpServer: MCPServerType | MCPServerTypeWithViews },
-  b: { mcpServer: MCPServerType | MCPServerTypeWithViews }
-) => {
-  const { serverType: aServerType } = getServerTypeAndIdFromSId(
-    a.mcpServer.sId
-  );
-  const { serverType: bServerType } = getServerTypeAndIdFromSId(
-    b.mcpServer.sId
-  );
-  if (aServerType === bServerType) {
-    const aDisplayName = getMcpServerDisplayName(a.mcpServer);
-    const bDisplayName = getMcpServerDisplayName(b.mcpServer);
-    return aDisplayName.localeCompare(bDisplayName);
+  a: {
+    mcpServer: MCPServerType | MCPServerTypeWithViews;
+    mcpServerView?: MCPServerViewType;
+  },
+  b: {
+    mcpServer: MCPServerType | MCPServerTypeWithViews;
+    mcpServerView?: MCPServerViewType;
   }
-  return aServerType < bServerType ? -1 : 1;
+) => {
+  const aDisplayName = a.mcpServerView
+    ? getMcpServerViewDisplayName(a.mcpServerView)
+    : getMcpServerDisplayName(a.mcpServer);
+  const bDisplayName = b.mcpServerView
+    ? getMcpServerViewDisplayName(b.mcpServerView)
+    : getMcpServerDisplayName(b.mcpServer);
+  return aDisplayName.localeCompare(bDisplayName);
 };
 
 export function isRemoteMCPServerType(

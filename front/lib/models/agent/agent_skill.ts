@@ -1,10 +1,5 @@
 import isNil from "lodash/isNil";
-import type {
-  BelongsToGetAssociationMixin,
-  CreationOptional,
-  ForeignKey,
-  NonAttribute,
-} from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -16,15 +11,10 @@ export class AgentSkillModel extends WorkspaceAwareModel<AgentSkillModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare customSkill: NonAttribute<SkillConfigurationModel> | null;
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare globalSkillId: string | null;
 
-  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
-
-  declare getCustomSkill: BelongsToGetAssociationMixin<SkillConfigurationModel>;
-  declare getAgentConfigurationModel: BelongsToGetAssociationMixin<AgentConfigurationModel>;
 }
 
 AgentSkillModel.init(

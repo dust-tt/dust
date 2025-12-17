@@ -33,6 +33,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -148,6 +149,8 @@ export const InputBar = React.memo(function InputBar({
     MCPServerViewType[]
   >([]);
 
+  const [selectedSkills, setSelectedSkills] = useState<SkillType[]>([]);
+
   const { conversationTools } = useConversationTools({
     conversationId,
     workspaceId: owner.sId,
@@ -175,6 +178,16 @@ export const InputBar = React.memo(function InputBar({
       prev.filter((sv) => sv.sId !== serverView.sId)
     );
     void deleteTool(serverView.sId);
+  };
+
+  const handleSkillSelect = (skill: SkillType) => {
+    setSelectedSkills((prev) => [...prev, skill]);
+    // TODO: Handle enabled skill in conversation
+  };
+
+  const handleSkillDeselect = (skill: SkillType) => {
+    setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
+    // TODO: Disabled skill in conversation
   };
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -349,6 +362,9 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
+            selectedSkills={selectedSkills}
+            onSkillSelect={handleSkillSelect}
+            onSkillDeselect={handleSkillDeselect}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}

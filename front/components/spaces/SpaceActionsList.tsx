@@ -155,12 +155,14 @@ export const SpaceActionsList = ({
 
   const rows: RowData[] = React.useMemo(
     () =>
-      serverViews.map((serverView) => ({
-        id: serverView.sId,
-        name: getMcpServerViewDisplayName(serverView),
-        description: getMcpServerViewDescription(serverView),
-        avatar: getAvatar(serverView.server),
-      })) || [],
+      serverViews
+        .map((serverView) => ({
+          id: serverView.sId,
+          name: getMcpServerViewDisplayName(serverView),
+          description: getMcpServerViewDescription(serverView),
+          avatar: getAvatar(serverView.server),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)) || [],
     [serverViews]
   );
 

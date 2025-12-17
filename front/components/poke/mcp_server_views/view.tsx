@@ -1,5 +1,4 @@
 import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import { CopyTokenButton } from "@app/components/poke/CopyTokenButton";
 import {
   PokeTable,
   PokeTableBody,
@@ -7,7 +6,6 @@ import {
   PokeTableCellWithCopy,
   PokeTableCellWithLink,
   PokeTableHead,
-  PokeTableHeader,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import {
@@ -105,60 +103,6 @@ export function ViewMCPServerViewTable({
           </PokeTable>
         </div>
       </div>
-      {mcpServerView.connections && mcpServerView.connections.length > 0 && (
-        <div className="flex justify-between gap-3">
-          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-md flex-grow pb-4 font-bold">Connections</h2>
-            </div>
-            <PokeTable>
-              <PokeTableHeader>
-                <PokeTableRow>
-                  <PokeTableHead>Connection Type</PokeTableHead>
-                  <PokeTableHead>User</PokeTableHead>
-                  <PokeTableHead>Access Token</PokeTableHead>
-                </PokeTableRow>
-              </PokeTableHeader>
-              <PokeTableBody>
-                {mcpServerView.connections.map((connection, index) => (
-                  <PokeTableRow key={index}>
-                    <PokeTableCell>
-                      <span className="capitalize">
-                        {connection.connectionType}
-                      </span>
-                    </PokeTableCell>
-                    <PokeTableCell>
-                      {connection.connectionType === "workspace" ? (
-                        <span className="text-gray-500">Workspace</span>
-                      ) : (
-                        (connection.userFullName ??
-                        connection.userEmail ??
-                        connection.userId ?? (
-                          <span className="text-gray-500">N/A</span>
-                        ))
-                      )}
-                    </PokeTableCell>
-                    <PokeTableCell>
-                      {(() => {
-                        let url = `/api/poke/workspaces/${owner.sId}/mcp/connections/${mcpServerView.server.sId}/${connection.connectionType}/token`;
-                        if (
-                          connection.connectionType === "personal" &&
-                          connection.userId
-                        ) {
-                          url += `?userId=${encodeURIComponent(
-                            connection.userId
-                          )}`;
-                        }
-                        return <CopyTokenButton tokenUrl={url} />;
-                      })()}
-                    </PokeTableCell>
-                  </PokeTableRow>
-                ))}
-              </PokeTableBody>
-            </PokeTable>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

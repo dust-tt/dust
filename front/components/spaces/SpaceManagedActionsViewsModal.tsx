@@ -88,6 +88,9 @@ export default function SpaceManagedActionsViewsModel({
         )}
         {availableMCPServers
           .filter((s) => filterMCPServer(s, searchText))
+          .sort((a, b) =>
+            getMcpServerDisplayName(a).localeCompare(getMcpServerDisplayName(b))
+          )
           .map((server) => (
             <DropdownMenuItem
               key={server.sId}

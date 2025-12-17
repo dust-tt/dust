@@ -88,6 +88,9 @@ const skillsSchema = z.object({
   description: z.string(),
 });
 
+// Additional space IDs selected by the user for global skills
+const additionalSpacesSchema = z.array(z.string());
+
 export type AgentBuilderWebhookTriggerType = z.infer<
   typeof webhookTriggerSchema
 >;
@@ -100,6 +103,7 @@ export const agentBuilderFormSchema = z.object({
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   skills: z.array(skillsSchema),
+  additionalSpaces: additionalSpacesSchema,
   actions: z.array(actionSchema),
   triggersToCreate: z.array(triggerSchema),
   triggersToUpdate: z.array(triggerSchema),
@@ -124,7 +128,6 @@ export interface MCPFormData {
     dataSourceConfigurations: any;
     tablesConfigurations: any;
     childAgentId: string | null;
-    reasoningModel: any;
     timeFrame: {
       duration: number;
       unit: "hour" | "day" | "week" | "month" | "year";

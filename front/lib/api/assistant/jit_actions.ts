@@ -88,7 +88,6 @@ export async function getJITServers(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -129,7 +128,6 @@ export async function getJITServers(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -180,7 +178,6 @@ export async function getJITServers(
           dataSources: null,
           tables: null,
           childAgentId: null,
-          reasoningModel: null,
           timeFrame: null,
           jsonSchema: null,
           secretName: null,
@@ -191,6 +188,59 @@ export async function getJITServers(
         };
 
         jitServers.push(skillManagementServer);
+      }
+    }
+  }
+
+  // Add schedules_management MCP server if this is an onboarding conversation
+  // user is not always defined (API triggered agent loop)
+  const userResource = auth.user();
+  if (userResource) {
+    const onboardingMetadata = await userResource.getMetadata(
+      "onboarding:conversation"
+    );
+    if (onboardingMetadata?.value === conversation.sId) {
+      const schedulesManagementView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "schedules_management"
+        );
+      if (!schedulesManagementView) {
+        logger.warn(
+          {
+            agentConfigurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+          },
+          "MCP server view not found for schedules_management. Ensure auto tools are created."
+        );
+      } else {
+        const schedulesManagementViewJSON = schedulesManagementView.toJSON();
+        const schedulesManagementServer: ServerSideMCPServerConfigurationType =
+          {
+            id: -1,
+            sId: generateRandomModelSId(),
+            type: "mcp_server_configuration",
+            name:
+              schedulesManagementViewJSON.name ??
+              schedulesManagementViewJSON.server.name ??
+              "schedules_management",
+            description:
+              schedulesManagementViewJSON.description ??
+              schedulesManagementViewJSON.server.description ??
+              "Create schedules to automate recurring tasks.",
+            dataSources: null,
+            tables: null,
+            childAgentId: null,
+            timeFrame: null,
+            jsonSchema: null,
+            secretName: null,
+            additionalConfiguration: {},
+            mcpServerViewId: schedulesManagementViewJSON.sId,
+            dustAppConfiguration: null,
+            internalMCPServerId: schedulesManagementView.mcpServerId,
+          };
+
+        jitServers.push(schedulesManagementServer);
       }
     }
   }
@@ -220,7 +270,6 @@ export async function getJITServers(
     dataSources: null,
     tables: null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
@@ -330,7 +379,6 @@ export async function getJITServers(
       dataSources: null,
       tables,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -399,7 +447,6 @@ export async function getJITServers(
       dataSources,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
@@ -448,7 +495,6 @@ export async function getJITServers(
       dataSources,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       secretName: null,

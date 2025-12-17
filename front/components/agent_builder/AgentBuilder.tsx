@@ -27,6 +27,7 @@ import {
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
@@ -168,6 +169,31 @@ export default function AgentBuilder({
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 
+  // Additional spaces = total - actions - skills
+  const computedAdditionalSpaces = useMemo(() => {
+    if (!agentConfiguration || !agentConfiguration.requestedSpaceIds) {
+      return [];
+    }
+
+    const agentRequestedSpaceIds = new Set(
+      agentConfiguration.requestedSpaceIds
+    );
+
+    const spaceIdToActions = getSpaceIdToActionsMap(
+      processedActions,
+      mcpServerViews
+    );
+    const actionSpaceIds = new Set(Object.keys(spaceIdToActions));
+
+    const skillSpaceIds = new Set(
+      skills.flatMap((skill) => skill.requestedSpaceIds)
+    );
+
+    return [...agentRequestedSpaceIds].filter(
+      (spaceId) => !actionSpaceIds.has(spaceId) && !skillSpaceIds.has(spaceId)
+    );
+  }, [agentConfiguration, processedActions, mcpServerViews, skills]);
+
   // This defaultValues should be computed only with data from backend.
   // Any other values we are fetching on client side should be updated inside
   // the useEffect below.
@@ -207,6 +233,7 @@ export default function AgentBuilder({
       ...currentValues,
       actions: processedActions,
       skills: processedSkills,
+      additionalSpaces: computedAdditionalSpaces,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
@@ -233,6 +260,7 @@ export default function AgentBuilder({
     isSkillsLoading,
     processedActions,
     processedSkills,
+    computedAdditionalSpaces,
     form,
     duplicateAgentId,
     user,

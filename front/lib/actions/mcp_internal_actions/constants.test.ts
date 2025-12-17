@@ -51,7 +51,6 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "deep_dive", id: 29 },
       { name: "speech_generator", id: 34 },
       { name: "search", id: 1006 },
-      { name: "reasoning", id: 1007 },
       { name: "run_agent", id: 1008 },
       { name: "query_tables_v2", id: 1009 },
       { name: "data_sources_file_system", id: 1010 },
@@ -60,6 +59,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "toolsets", id: 1013 },
       { name: "common_utilities", id: 1017 },
       { name: "skill_management", id: 1019 },
+      { name: "schedules_management", id: 1020 },
     ];
     expect(
       autoInternalTools,

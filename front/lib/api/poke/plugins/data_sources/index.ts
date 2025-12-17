@@ -4,6 +4,7 @@ export * from "./compute_statistics";
 export * from "./confluence_page_checker";
 export * from "./delete_data_source";
 export * from "./garbage_collect_google_drive_document";
+export * from "./get_access_token";
 export * from "./google_drive_sync_file";
 export * from "./intercom_set_sliding_window";
 export * from "./mark_connector_as_error";

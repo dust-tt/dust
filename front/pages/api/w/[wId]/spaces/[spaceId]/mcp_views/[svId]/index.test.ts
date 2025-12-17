@@ -16,26 +16,33 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "DELETE"
 ) {
-  const { req, res, workspace, user, authenticator } =
+  const { req, res, workspace, user, authenticator, systemSpace, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  const space = await SpaceFactory.system(workspace);
-
   // Set up common query parameters
   req.query.wId = workspace.sId;
-  req.query.spaceId = space.sId;
+  req.query.spaceId = systemSpace.sId;
 
-  return { req, res, workspace, space, user, authenticator };
+  return {
+    req,
+    res,
+    workspace,
+    space: systemSpace,
+    user,
+    authenticator,
+    globalSpace,
+  };
 }
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   it("should delete a server view", async () => {
-    const { req, res, workspace } = await setupTest("admin", "DELETE");
-
-    const globalSpace = await SpaceFactory.global(workspace);
+    const { req, res, workspace, globalSpace } = await setupTest(
+      "admin",
+      "DELETE"
+    );
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -130,7 +137,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
 
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => {
   it("only supports DELETE method", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
+    const { req, res, workspace, authenticator, globalSpace } = await setupTest(
       "admin",
       "GET"
     );
@@ -144,8 +151,6 @@ describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp_views/[svId]", () => 
         useCase: null,
       }
     );
-
-    const globalSpace = await SpaceFactory.global(workspace);
 
     const serverView = await MCPServerViewFactory.create(
       workspace,

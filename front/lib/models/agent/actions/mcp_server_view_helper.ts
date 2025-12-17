@@ -9,6 +9,7 @@ import {
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import type { ModelId } from "@app/types";
 
 export const destroyMCPServerViewDependencies = async (
@@ -72,6 +73,14 @@ export const destroyMCPServerViewDependencies = async (
   });
 
   await ConversationMCPServerViewModel.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      mcpServerViewId: mcpServerViewId,
+    },
+    transaction,
+  });
+
+  await SkillMCPServerConfigurationModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerViewId: mcpServerViewId,

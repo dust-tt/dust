@@ -90,14 +90,6 @@ const TablesConfigurationsCodec = t.array(
   })
 );
 
-// Reasoning
-
-const ReasoningModelConfigurationSchema = t.type({
-  modelId: ModelIdCodec,
-  providerId: ModelProviderIdCodec,
-  reasoningEffort: t.union([t.null, ReasoningEffortCodec]),
-});
-
 // Actions
 
 const DustAppRunActionConfigurationSchema = t.type({
@@ -134,7 +126,6 @@ const MCPServerActionConfigurationSchema = t.type({
   dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
   tables: t.union([t.null, TablesConfigurationsCodec]),
   childAgentId: t.union([t.null, t.string]),
-  reasoningModel: t.union([t.null, ReasoningModelConfigurationSchema]),
   timeFrame: t.union([
     t.null,
     t.type({
@@ -191,25 +182,30 @@ const SkillSchema = t.type({
 });
 
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
-  assistant: t.type({
-    name: t.string,
-    description: t.string,
-    instructions: t.union([t.string, t.null]),
-    pictureUrl: t.string,
-    status: t.union([
-      t.literal("active"),
-      t.literal("archived"),
-      t.literal("draft"),
-    ]),
-    scope: t.union([t.literal("hidden"), t.literal("visible")]),
-    model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
-    actions: t.array(MCPServerActionConfigurationSchema),
-    templateId: t.union([t.string, t.null, t.undefined]),
-    tags: t.array(TagSchema),
-    editors: t.array(EditorSchema),
-    skills: t.array(SkillSchema),
-    additionalRequestedSpaceIds: t.array(t.string),
-  }),
+  assistant: t.intersection([
+    t.type({
+      name: t.string,
+      description: t.string,
+      instructions: t.union([t.string, t.null]),
+      pictureUrl: t.string,
+      status: t.union([
+        t.literal("active"),
+        t.literal("archived"),
+        t.literal("draft"),
+      ]),
+      scope: t.union([t.literal("hidden"), t.literal("visible")]),
+      model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
+      actions: t.array(MCPServerActionConfigurationSchema),
+      templateId: t.union([t.string, t.null, t.undefined]),
+      tags: t.array(TagSchema),
+      editors: t.array(EditorSchema),
+    }),
+    t.partial({
+      // temporary partial so opened windows can save without refreshing
+      skills: t.array(SkillSchema),
+      additionalRequestedSpaceIds: t.array(t.string),
+    }),
+  ]),
 });
 
 export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<

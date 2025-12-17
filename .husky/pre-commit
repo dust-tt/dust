@@ -12,22 +12,27 @@ fi
 
 if [ -z "$ENABLE_GGSHIELD_ON_COMMIT" ]
 then
-  echo "You can enable secret check by setting ENABLE_GGSHIELD_ON_COMMIT and installing ggshield"
+    echo "You can enable secret check by setting ENABLE_GGSHIELD_ON_COMMIT and installing ggshield"
 else
-  if command -v ggshield 2>&1 >/dev/null;  then
-    ggshield secret scan pre-commit "$@"
-  else
-    echo "ggshield is not installed. Please install ggshield to enable secret check"
-  fi
+    if command -v ggshield 2>&1 >/dev/null;  then
+        ggshield secret scan pre-commit "$@"
+    else
+        echo "ggshield is not installed. Please install ggshield to enable secret check"
+    fi
 fi
 
 # Get the root path of the git repository
 root_path=$(git rev-parse --show-toplevel)
 
-# Check if package.json and package-lock.json are in sync
-if ! "$root_path"/scripts/check-package-lock-sync.sh; then
-    echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
-    exit 1
+if [ -z "$PACKAGE_CHECK_ON_COMMIT" ]; 
+then
+    echo "You can enable package-lock.json check by enabling PACKAGE_CHECK_ON_COMMIT"
+else
+    # Check if package.json and package-lock.json are in sync
+    if ! "$root_path"/scripts/check-package-lock-sync.sh; then
+        echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
+        exit 1
+    fi
 fi
 
 # If env var DUST_LINT_ON_COMMIT = 1, run the linter

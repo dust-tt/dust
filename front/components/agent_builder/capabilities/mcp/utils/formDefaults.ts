@@ -20,7 +20,6 @@ export function getDefaultConfiguration(
     dataSourceConfigurations: null,
     tablesConfigurations: null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,

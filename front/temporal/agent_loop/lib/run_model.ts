@@ -724,7 +724,6 @@ export async function runModelActivity(
         dataSources: null,
         tables: null,
         childAgentId: null,
-        reasoningModel: null,
         timeFrame: null,
         jsonSchema: null,
         secretName: null,
