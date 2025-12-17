@@ -668,7 +668,9 @@ export function MCPServerViewsSheet({
       footerContent: hasAnySelection ? (
         <MCPServerViewsFooter
           selectedToolsInSheet={selectedToolsInSheet}
+          selectedSkillsInSheet={selectedSkillsInSheet}
           onRemoveSelectedTool={toggleToolSelection}
+          onRemoveSelectedSkill={toggleSkillSelection}
         />
       ) : undefined,
     },
