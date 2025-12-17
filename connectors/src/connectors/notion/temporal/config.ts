@@ -1,6 +1,6 @@
 const WORKFLOW_VERSION = 52;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
-const GC_WORKFLOW_VERSION = 52;
+const GC_WORKFLOW_VERSION = 53;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${GC_WORKFLOW_VERSION}`;
 
 // Notion's "last edited" timestamp is precise to the minute
