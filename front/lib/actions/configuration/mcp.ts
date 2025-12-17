@@ -255,7 +255,6 @@ export async function fetchSkillMCPServerConfigurations(
       tables: null,
       dustAppConfiguration: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       additionalConfiguration: {},

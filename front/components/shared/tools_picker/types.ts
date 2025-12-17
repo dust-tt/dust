@@ -100,15 +100,6 @@ const baseActionSchema = z.object({
   configurationRequired: z.boolean().optional(),
 });
 
-export const reasoningModelSchema = z
-  .object({
-    modelId: modelIdSchema,
-    providerId: providerIdSchema,
-    temperature: z.number().min(0).max(1).nullable(),
-    reasoningEffort: reasoningEffortSchema.nullable(),
-  })
-  .nullable();
-
 export const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
   dataSourceConfigurations: dataSourceConfigurationSchema,
@@ -119,7 +110,6 @@ export const mcpServerConfigurationSchema = z.object({
   dustAppConfiguration: dustAppConfigurationSchema,
   secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
-  reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
 });
 

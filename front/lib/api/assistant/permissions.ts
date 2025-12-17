@@ -166,7 +166,6 @@ export async function getRequestedSpaceIdsFromMCPServerViewIds(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
       additionalConfiguration: {},
