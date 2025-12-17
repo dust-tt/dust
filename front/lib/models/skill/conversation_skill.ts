@@ -1,4 +1,9 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type {
+  CreationOptional,
+  ForeignKey,
+  ModelAttributes,
+  NonAttribute,
+} from "sequelize";
 import { DataTypes } from "sequelize";
 
 import {
