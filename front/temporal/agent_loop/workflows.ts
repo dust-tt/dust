@@ -5,7 +5,7 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  patched,
+  deprecatePatch,
   proxyActivities,
   setHandler,
   startChild,
@@ -17,17 +17,12 @@ import {
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
-import type * as analyticsActivities from "@app/temporal/agent_loop/activities/analytics";
-import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
-import type * as mentionsActivities from "@app/temporal/agent_loop/activities/mentions";
-import type * as notificationActivities from "@app/temporal/agent_loop/activities/notification";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import type * as usageTrackingActivities from "@app/temporal/agent_loop/activities/usage_tracking";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
@@ -93,26 +88,6 @@ const {
   startToCloseTimeout: "30 seconds",
 });
 
-const { launchAgentMessageAnalyticsActivity } = proxyActivities<
-  typeof analyticsActivities
->({
-  startToCloseTimeout: "30 seconds",
-});
-
-const { conversationUnreadNotificationActivity } = proxyActivities<
-  typeof notificationActivities
->({
-  startToCloseTimeout: "3 minutes",
-  heartbeatTimeout: `${Math.ceil((NOTIFICATION_DELAY_MS * 2) / 1000)} seconds`,
-  retry: {
-    maximumAttempts: 1,
-  },
-});
-
-const { handleMentionsActivity } = proxyActivities<typeof mentionsActivities>({
-  startToCloseTimeout: "3 minutes",
-});
-
 const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
 >({
@@ -121,24 +96,6 @@ const { ensureConversationTitleActivity } = proxyActivities<
     // Retry twice and fail given non criticality. The activity will fail if the conversation gets
     // deleted before it gets to title generation.
     maximumAttempts: 3,
-  },
-});
-
-const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
-  typeof commonActivities
->({
-  startToCloseTimeout: "2 minutes",
-  retry: {
-    maximumAttempts: 5,
-  },
-});
-
-const { trackProgrammaticUsageActivity } = proxyActivities<
-  typeof usageTrackingActivities
->({
-  startToCloseTimeout: "2 minutes",
-  retry: {
-    maximumAttempts: 5,
   },
 });
 
@@ -281,16 +238,8 @@ export async function agentLoopWorkflow({
 
       // Ensure analytics runs even if workflow is cancelled
       await CancellationScope.nonCancellable(async () => {
-        if (patched(PATCH_NAME)) {
-          await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
-        } else {
-          await Promise.all([
-            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-            trackProgrammaticUsageActivity(authType, agentLoopArgs),
-            conversationUnreadNotificationActivity(authType, agentLoopArgs),
-            handleMentionsActivity(authType, agentLoopArgs),
-          ]);
-        }
+        deprecatePatch(PATCH_NAME);
+        await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
       });
     });
 
@@ -304,36 +253,17 @@ export async function agentLoopWorkflow({
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
         // Ensure analytics runs even when workflow is cancelled
-        if (patched(PATCH_NAME)) {
-          await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
-        } else {
-          await Promise.all([
-            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-            trackProgrammaticUsageActivity(authType, agentLoopArgs),
-            finalizeCancellationActivity(authType, agentLoopArgs),
-          ]);
-        }
+        deprecatePatch(PATCH_NAME);
+        await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
         return;
       } else {
         // Ensure analytics runs even when workflow errors
-        if (patched(PATCH_NAME)) {
-          await finalizeErroredAgentLoopActivity(
-            authType,
-            agentLoopArgs,
-            workflowError
-          );
-        } else {
-          await Promise.all([
-            launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-            trackProgrammaticUsageActivity(authType, agentLoopArgs),
-            notifyWorkflowError(authType, {
-              conversationId: agentLoopArgs.conversationId,
-              agentMessageId: agentLoopArgs.agentMessageId,
-              agentMessageVersion: agentLoopArgs.agentMessageVersion,
-              error: workflowError,
-            }),
-          ]);
-        }
+        deprecatePatch(PATCH_NAME);
+        await finalizeErroredAgentLoopActivity(
+          authType,
+          agentLoopArgs,
+          workflowError
+        );
       }
       throw err;
     });
