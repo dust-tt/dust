@@ -454,19 +454,21 @@ export const InputBarAttachmentsPicker = ({
       >
         {searchQuery ? (
           <div ref={itemsContainerRef}>
-            {showLoader && (
-              <div className="flex h-7 items-center justify-center last:grow">
-                <Spinner variant="dark" size="xs" />
-              </div>
-            )}
-            {availableSources.length > 1 && (
-              <DropdownMenuFilters
-                filters={availableSources}
-                selectedValues={selectedFilterKeys}
-                onSelectFilter={handleFilterClick}
-                className="grow"
-              />
-            )}
+            <div className="flex flex-wrap items-center gap-0.5 p-2">
+              {showLoader && (
+                <div className="flex h-7 items-center justify-center last:grow">
+                  <Spinner variant="dark" size="xs" />
+                </div>
+              )}
+              {availableSources.length > 1 && (
+                <DropdownMenuFilters
+                  filters={[{ label: "test", value: "test" }]}
+                  selectedValues={selectedFilterKeys}
+                  onSelectFilter={handleFilterClick}
+                  className="grow"
+                />
+              )}
+            </div>
             {Object.keys(serversWithResults).length === 0 ? (
               // No tools results - show knowledge nodes as returned by the search
               dataSourcesNodes
