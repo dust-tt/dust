@@ -27,6 +27,7 @@ import type { NotificationPreferencesDelay } from "@app/types/notification_prefe
 import {
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
+  NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
 
 const CHANNELS_TO_NAMES: Record<keyof ChannelPreference, string> = {
@@ -47,10 +48,6 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   "1_hour": "Every hour",
   daily: "Once a day",
 };
-
-const NOTIFICATION_DELAY_OPTIONS = Object.keys(
-  NOTIFICATION_PREFERENCES_DELAY_LABELS
-) as NotificationPreferencesDelay[];
 
 const DEFAULT_NOTIFICATION_DELAY = "1_hour";
 

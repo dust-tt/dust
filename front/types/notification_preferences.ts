@@ -3,7 +3,7 @@ import type { ChannelPreference } from "@novu/react";
 /**
  * Available delay options for email digest notifications.
  */
-const VALID_DELAYS = [
+export const NOTIFICATION_DELAY_OPTIONS = [
   "5_minutes",
   "15_minutes",
   "30_minutes",
@@ -11,14 +11,15 @@ const VALID_DELAYS = [
   "daily",
 ] as const;
 
-export type NotificationPreferencesDelay = (typeof VALID_DELAYS)[number];
+export type NotificationPreferencesDelay =
+  (typeof NOTIFICATION_DELAY_OPTIONS)[number];
 
 export const isNotificationPreferencesDelay = (
   value: unknown
 ): value is NotificationPreferencesDelay => {
   return (
     typeof value === "string" &&
-    (VALID_DELAYS as readonly string[]).includes(value)
+    (NOTIFICATION_DELAY_OPTIONS as readonly string[]).includes(value)
   );
 };
 
