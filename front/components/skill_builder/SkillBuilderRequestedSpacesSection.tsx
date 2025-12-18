@@ -22,7 +22,6 @@ export function SkillBuilderRequestedSpacesSection() {
   const confirmRemoveSpace = useRemoveSpaceConfirm({
     entityName: "skill",
     mcpServerViews,
-    allSkills: [],
   });
 
   const spaceIdToActions = useMemo(() => {

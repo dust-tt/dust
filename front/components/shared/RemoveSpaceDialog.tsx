@@ -8,7 +8,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 function getActionDisplayName(
   action: BuilderAction,
@@ -36,14 +35,8 @@ function getActionIcon(
   return null;
 }
 
-function getSkillIcon(
-  skill: SkillToRemove,
-  allSkills: SkillType[]
-): React.ReactNode {
-  const fullSkill = allSkills.find((s) => s.sId === skill.sId);
-  return React.createElement(
-    getSkillAvatarIcon(fullSkill ? fullSkill.icon : null)
-  );
+function getSkillIcon(skill: SkillToRemove): React.ReactNode {
+  return React.createElement(getSkillAvatarIcon(skill.icon));
 }
 
 interface ItemToRemove {
@@ -55,18 +48,17 @@ interface ItemToRemove {
 interface SkillToRemove {
   sId: string;
   name: string;
+  icon: string | null;
 }
 
 interface UseRemoveSpaceConfirmParams {
   entityName: "agent" | "skill";
   mcpServerViews: MCPServerViewType[];
-  allSkills: SkillType[];
 }
 
 export function useRemoveSpaceConfirm({
   entityName,
   mcpServerViews,
-  allSkills,
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
@@ -79,7 +71,7 @@ export function useRemoveSpaceConfirm({
       ...skills.map((skill) => ({
         id: skill.sId,
         name: skill.name,
-        icon: getSkillIcon(skill, allSkills),
+        icon: getSkillIcon(skill),
       })),
       ...actions.map((action) => ({
         id: action.id,

@@ -88,6 +88,7 @@ export const useSkillSelection = ({
               sId: skill.sId,
               name: skill.name,
               description: skill.userFacingDescription,
+              icon: skill.icon,
             },
           ]);
         }
@@ -107,6 +108,7 @@ export const useSkillSelection = ({
           sId: skill.sId,
           name: skill.name,
           description: skill.userFacingDescription,
+          icon: skill.icon,
         },
       ]);
       onModeChange(selectionMode);

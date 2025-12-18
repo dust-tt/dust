@@ -46,7 +46,6 @@ export function AgentBuilderSpacesBlock() {
   const confirmRemoveSpace = useRemoveSpaceConfirm({
     entityName: "agent",
     mcpServerViews,
-    allSkills,
   });
 
   // Compute requested spaces from tools/knowledge (actions)
@@ -100,7 +99,9 @@ export function AgentBuilderSpacesBlock() {
       const confirmed = await confirmRemoveSpace(
         space,
         actionsToRemove,
-        skillsToRemove
+        allSkills.filter((skill) =>
+          skillsToRemove.some((s) => s.sId === skill.sId)
+        )
       );
 
       if (!confirmed) {

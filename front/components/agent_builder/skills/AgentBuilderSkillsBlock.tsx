@@ -41,9 +41,7 @@ interface SkillCardProps {
 }
 
 function SkillCard({ skill, onRemove }: SkillCardProps) {
-  const { skills } = useSkillsContext();
-  const skillData = skills.find((s) => s.sId === skill.sId);
-  const SkillIcon = getSkillIcon(skillData?.icon ?? null);
+  const SkillIcon = getSkillIcon(skill.icon);
 
   return (
     <Card
