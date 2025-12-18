@@ -17,7 +17,7 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundSize: "cover",
 };
 
-const MENTION_BANNER_BACKGROUND_IMAGE_PATH = "/static/mentions_banner.svg";
+const MENTION_IMAGE_PATH = "/static/mentions_banner.svg";
 
 const YEAR_IN_REVIEW_TITLE = "/static/year-in-review-title.svg";
 
@@ -213,7 +213,7 @@ export function MentionBanner({
         >
           <div className="relative">
             <img
-              src={MENTION_BANNER_BACKGROUND_IMAGE_PATH}
+              src={MENTION_IMAGE_PATH}
               alt="Mention your colleagues in your conversations"
               className="w-full object-cover"
             />
