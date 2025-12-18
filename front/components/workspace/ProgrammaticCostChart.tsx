@@ -107,7 +107,9 @@ function getColorClassName(
 function GroupedTooltip(
   props: TooltipContentProps<number, string>,
   groupBy: GroupByType | undefined,
-  availableGroupsArray: { groupKey: string; groupLabel: string }[]
+  availableGroupsArray: { groupKey: string; groupLabel: string }[],
+  displayMode: DisplayMode,
+  shouldShowTotalCredits: boolean
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -124,7 +126,8 @@ function GroupedTooltip(
       (p) =>
         p.dataKey !== "totalCreditsMicroUsd" &&
         p.value != null &&
-        typeof p.value === "number"
+        typeof p.value === "number" &&
+        p.value > 0
     )
     .map((p) => {
       const groupKey = p.name;
@@ -151,16 +154,24 @@ function GroupedTooltip(
       };
     });
 
-  // Add credits row
-  rows.push({
-    label: "Total Credits",
-    value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
-    colorClassName: COST_PALETTE.totalCredits,
-  });
+  // Don't show tooltip if no data (e.g., hovering on empty space in bar chart)
+  if (rows.length === 0) {
+    return null;
+  }
+
+  // Add credits row only in cumulative mode
+  if (shouldShowTotalCredits) {
+    rows.push({
+      label: "Total Credits",
+      value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
+      colorClassName: COST_PALETTE.totalCredits,
+    });
+  }
+
   const date = new Date(data.timestamp).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    hour: "numeric",
+    hour: displayMode === "cumulative" ? "numeric" : undefined,
   });
   return <ChartTooltipCard title={date} rows={rows} />;
 }
@@ -682,7 +693,13 @@ export function BaseProgrammaticCostChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>
-            GroupedTooltip(props, groupBy, availableGroupsArray)
+            GroupedTooltip(
+              props,
+              groupBy,
+              availableGroupsArray,
+              displayMode,
+              shouldShowTotalCredits
+            )
           }
           cursor={false}
           wrapperStyle={{ outline: "none" }}
