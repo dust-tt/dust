@@ -19,6 +19,7 @@ export type SkillType = {
   requestedSpaceIds: string[];
   tools: { mcpServerViewId: string }[];
   canWrite: boolean;
+  isExtendable: boolean;
 };
 
 export type SkillRelations = {
