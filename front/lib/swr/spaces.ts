@@ -489,7 +489,12 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: PatchSpaceMembersRequestBodyType
   ) => {
-    const { name: newName, managementMode, isRestricted } = params;
+    const {
+      name: newName,
+      managementMode,
+      isRestricted,
+      conversationsEnabled,
+    } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -521,6 +526,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             name: newName,
             isRestricted,
+            conversationsEnabled,
             managementMode,
             memberIds: params.memberIds,
           }),
@@ -536,6 +542,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             name: newName,
             isRestricted,
+            conversationsEnabled,
             managementMode,
             groupIds: params.groupIds,
           }),

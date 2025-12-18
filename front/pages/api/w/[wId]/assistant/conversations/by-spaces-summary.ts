@@ -63,12 +63,17 @@ async function handler(
 
       // Build response with all spaces (including those without unread conversations)
       const response: GetBySpacesSummaryResponseBody = {
-        summary: spaces.map((space) => ({
-          space: space.toJSON(),
-          unreadConversations: (conversationsBySpace.get(space.id) ?? []).sort(
-            (a, b) => b.updated - a.updated
-          ), // Sort by updated time descending
-        })),
+        summary: spaces
+          .filter(
+            (space) =>
+              space.conversationsEnabled || conversationsBySpace.has(space.id)
+          )
+          .map((space) => ({
+            space: space.toJSON(),
+            unreadConversations: (
+              conversationsBySpace.get(space.id) ?? []
+            ).sort((a, b) => b.updated - a.updated), // Sort by updated time descending
+          })),
       };
 
       return res.status(200).json(response);
