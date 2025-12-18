@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
-import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
@@ -118,9 +117,11 @@ export function useSpaceConversationsSummary({
 export function useConversationFeedbacks({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string;
   workspaceId: string;
+  options?: { disabled: boolean };
 }) {
   const conversationFeedbacksFetcher: Fetcher<{
     feedbacks: AgentMessageFeedbackType[];
@@ -131,6 +132,7 @@ export function useConversationFeedbacks({
     conversationFeedbacksFetcher,
     {
       focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
+      ...options,
     }
   );
 
@@ -259,40 +261,6 @@ export function useConversationTools({
     mutateConversationTools: mutate,
   };
 }
-
-export const useDeleteConversation = (owner: LightWorkspaceType) => {
-  const sendNotification = useSendNotification();
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-  });
-
-  const doDelete = async (
-    conversation: ConversationWithoutContentType | null
-  ) => {
-    if (!conversation) {
-      return false;
-    }
-    const res = await deleteConversation({
-      workspaceId: owner.sId,
-      conversationId: conversation.sId,
-      sendNotification,
-    });
-    if (res) {
-      void mutateConversations((prevState) => {
-        return {
-          ...prevState,
-          conversations:
-            prevState?.conversations.filter(
-              (c) => c.sId !== conversation.sId
-            ) ?? [],
-        };
-      });
-    }
-    return res;
-  };
-
-  return doDelete;
-};
 
 // Cancel message generation for one or multiple messages within a conversation.
 // Returns an async function that accepts a list of message IDs to cancel.

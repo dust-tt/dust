@@ -1,6 +1,5 @@
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
-import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
@@ -19,9 +18,8 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types";
@@ -44,13 +42,16 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const sId = data.sId;
 
-    const sendNotification = useSendNotification();
-
-    const { mutate } = useSWRConfig();
     const methods = useVirtuosoMethods<
       VirtuosoMessage,
       VirtuosoMessageListContext
     >();
+
+    const submitFeedback = useMessageFeedback({
+      owner: context.owner,
+      conversationId: context.conversationId,
+    });
+
     const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
@@ -64,35 +65,13 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           feedbackContent: string | null;
           isConversationShared: boolean;
         }) => {
-          const res = await clientFetch(
-            `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/messages/${sId}/feedbacks`,
-            {
-              method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                thumbDirection: thumb,
-                feedbackContent,
-                isConversationShared,
-              }),
-            }
-          );
-
-          if (res.ok) {
-            if (feedbackContent && !shouldRemoveExistingFeedback) {
-              sendNotification({
-                title: "Feedback submitted",
-                description:
-                  "Your comment has been submitted successfully to the Builder of this agent. Thank you!",
-                type: "success",
-              });
-            }
-
-            await mutate(
-              `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/feedbacks`
-            );
-          }
+          await submitFeedback({
+            messageId: sId,
+            thumbDirection: thumb,
+            feedbackContent,
+            isConversationShared,
+            shouldRemoveExistingFeedback,
+          });
         }
       );
 

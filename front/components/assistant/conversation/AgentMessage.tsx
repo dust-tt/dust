@@ -61,8 +61,8 @@ import {
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import {
   useCancelMessage,
@@ -455,6 +455,8 @@ export function AgentMessage({
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
 
+  const retryMessage = useRetryMessage({ owner });
+
   const retryHandler = useCallback(
     async ({
       conversationId,
@@ -466,19 +468,14 @@ export function AgentMessage({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
-      await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
+      await retryMessage({
+        conversationId,
+        messageId,
+        blockedOnly,
+      });
       setIsRetryHandlerProcessing(false);
     },
-    [owner.sId]
+    [retryMessage]
   );
 
   // Add feedback buttons first (thumbs up/down)
@@ -835,8 +832,8 @@ function AgentMessageContent({
       }
       // Retry on the main conversation.
       await retryHandler({
-        blockedOnly: true,
         conversationId,
+        blockedOnly: true,
         messageId: sId,
       });
     },

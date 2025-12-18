@@ -61,6 +61,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -69,7 +70,6 @@ import { SKILL_ICON } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
-  useDeleteConversation,
   useSpaceConversationsSummary,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
