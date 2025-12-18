@@ -111,7 +111,7 @@ export function HelpDropdown({
           );
         }
       },
-      [createConversationWithMessage, router, sendNotification]
+      [createConversationWithMessage, owner, router, sendNotification]
     )
   );
 

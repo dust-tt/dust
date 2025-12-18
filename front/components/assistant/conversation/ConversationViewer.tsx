@@ -603,6 +603,8 @@ export const ConversationViewer = ({
     },
     [
       submitMessage,
+      user,
+      conversationId,
       sendNotification,
       setPlanLimitReached,
       mutateConversations,
