@@ -11,10 +11,11 @@ import { useState } from "react";
 
 import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { pluralize } from "@app/types";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface DeleteSkillDialogProps {
-  skillConfiguration: SkillType;
+  skillConfiguration: SkillWithRelationsType;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
@@ -44,8 +45,10 @@ export function ArchiveSkillDialog({
           <DialogDescription>
             <div>
               This will archive the skill{" "}
-              <span className="font-bold">{skillConfiguration?.name}</span> for
-              everyone.
+              <span className="font-bold">{skillConfiguration?.name}</span>{" "}
+              {skillConfiguration.relations.usage.count === 0
+                ? "for everyone."
+                : `used by ${skillConfiguration.relations.usage.count} agent${pluralize(skillConfiguration.relations.usage.count)}.`}
             </div>
           </DialogDescription>
         </DialogHeader>
