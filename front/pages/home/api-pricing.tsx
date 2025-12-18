@@ -1,17 +1,17 @@
-import { Button, CardIcon, Page, SearchInput } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, SearchInput } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import React, { useMemo, useState } from "react";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import {
   DUST_MARKUP_PERCENT,
   MODEL_PRICING,
 } from "@app/lib/api/assistant/token_pricing";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   getProviderDisplayName,
@@ -103,24 +103,13 @@ function buildPricingData(): PricingRow[] {
   return rows;
 }
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}>(async (_context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.getNonNullableSubscription();
-
-  if (!auth.isAdmin()) {
-    return { notFound: true };
-  }
-
+export async function getStaticProps() {
   return {
     props: {
-      owner,
-      subscription,
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
-});
+}
 
 interface PricingTableProps {
   rows: PricingRow[];
@@ -204,11 +193,8 @@ function PricingTable({ rows }: PricingTableProps) {
   );
 }
 
-export default function ApiPricingPage({
-  owner,
-  subscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+export default function ApiPricingPage() {
+  const router = useRouter();
   const [selectedProvider, setSelectedProvider] =
     useState<string>(ALL_PROVIDERS_LABEL);
   const [searchQuery, setSearchQuery] = useState("");
@@ -254,67 +240,68 @@ export default function ApiPricingPage({
   ];
 
   return (
-    <AppCenteredLayout
-      owner={owner}
-      subscription={subscription}
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "credits_usage",
-        featureFlags,
-      })}
-    >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="API Pricing"
-          icon={CardIcon}
-          description="Prices per million tokens. All prices are in USD."
-        />
-
-        {/* Filters */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {providerFilters.map((filter) => (
-              <Button
-                key={filter}
-                label={filter}
-                variant={selectedProvider === filter ? "primary" : "outline"}
-                size="xs"
-                onClick={() => setSelectedProvider(filter)}
+    <>
+      <PageMetadata
+        title="Dust API Pricing: Model Costs for Programmatic Usage"
+        description="Explore Dust API pricing for all supported AI models. View input and output token costs, cache pricing, and compare providers."
+        pathname={router.asPath}
+      />
+      <HeaderContentBlock
+        title="API Pricing"
+        hasCTA={false}
+        subtitle="Prices per million tokens. All prices are in USD."
+      />
+      <Grid>
+        <div className="col-span-12 flex flex-col gap-6 md:col-span-10 md:col-start-2">
+          {/* Filters */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {providerFilters.map((filter) => (
+                <Button
+                  key={filter}
+                  label={filter}
+                  variant={selectedProvider === filter ? "primary" : "outline"}
+                  size="xs"
+                  onClick={() => setSelectedProvider(filter)}
+                />
+              ))}
+            </div>
+            <div className="w-full sm:w-64">
+              <SearchInput
+                name="model-search"
+                placeholder="Search models..."
+                value={searchQuery}
+                onChange={setSearchQuery}
               />
-            ))}
+            </div>
           </div>
-          <div className="w-full sm:w-64">
-            <SearchInput
-              name="model-search"
-              placeholder="Search models..."
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
+
+          {/* Summary */}
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Showing {filteredData.length} of {allPricingData.length} models
+          </div>
+
+          {/* Pricing Table */}
+          <PricingTable rows={filteredData} />
+
+          {/* Footer note */}
+          <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground dark:border-border-night dark:bg-muted-night/20 dark:text-muted-foreground-night">
+            <p>
+              <strong>Note:</strong> Prices are subject to change. Cache pricing
+              is available for models that support prompt caching. Input price
+              applies to prompt tokens, output price applies to completion
+              tokens.
+            </p>
           </div>
         </div>
-
-        {/* Summary */}
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Showing {filteredData.length} of {allPricingData.length} models
-        </div>
-
-        {/* Pricing Table */}
-        <PricingTable rows={filteredData} />
-
-        {/* Footer note */}
-        <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground dark:border-border-night dark:bg-muted-night/20 dark:text-muted-foreground-night">
-          <p>
-            <strong>Note:</strong> Prices are subject to change. Cache pricing
-            is available for models that support prompt caching. Input price
-            applies to prompt tokens, output price applies to completion tokens.
-          </p>
-        </div>
-      </Page.Vertical>
-      <div className="h-12" />
-    </AppCenteredLayout>
+      </Grid>
+    </>
   );
 }
 
-ApiPricingPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+ApiPricingPage.getLayout = (
+  page: ReactElement,
+  pageProps: LandingLayoutProps
+) => {
+  return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };

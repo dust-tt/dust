@@ -453,14 +453,15 @@ export default function CreditsUsagePage({
                 automated workflows, etc.). Usage cost is based on token
                 consumption, according to our{" "}
                 <a
-                  href={`/w/${owner.sId}/developers/api-pricing`}
+                  href="/home/api-pricing"
+                  target="_blank"
                   className="text-primary underline hover:text-primary-dark"
                 >
                   pricing page
                 </a>
                 . Learn more in the{" "}
                 <a
-                  href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e?pvs=74"
+                  href="https://docs.dust.tt/docs/programmatic-usage"
                   target="_blank"
                   className="text-primary underline hover:text-primary-dark"
                 >
