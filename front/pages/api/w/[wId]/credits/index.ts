@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
@@ -50,8 +51,9 @@ async function handler(
       );
 
       // Fetch payment URLs for pending credits.
-      const pendingCreditsData: PendingCreditData[] = await Promise.all(
-        pendingCommittedCredits.map(async (credit) => {
+      const pendingCreditsData: PendingCreditData[] = await concurrentExecutor(
+        pendingCommittedCredits,
+        async (credit) => {
           const paymentUrl = credit.invoiceOrLineItemId
             ? await getInvoicePaymentUrl(credit.invoiceOrLineItemId)
             : null;
@@ -62,7 +64,8 @@ async function handler(
             paymentUrl,
             createdAt: credit.createdAt.getTime(),
           };
-        })
+        },
+        { concurrency: 8 }
       );
 
       return res.status(200).json({

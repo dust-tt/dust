@@ -158,7 +158,6 @@ export type APIError = {
   run_error?: CoreAPIError;
   app_error?: CoreAPIError;
   connectors_error?: ConnectorsAPIError;
-  pendingPaymentUrl?: string;
 };
 
 export function isAPIError(obj: unknown): obj is APIError {

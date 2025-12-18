@@ -71,9 +71,6 @@ export function BuyCreditDialog({
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [pendingPaymentUrl, setPendingPaymentUrl] = useState<string | null>(
-    null
-  );
   const { purchaseCredits } = usePurchaseCredits({ workspaceId });
 
   const resetModalStateAndClose = useCallback(() => {
@@ -83,7 +80,6 @@ export function BuyCreditDialog({
     setPurchaseState("idle");
     setErrorMessage("");
     setPaymentUrl(null);
-    setPendingPaymentUrl(null);
     onClose();
   }, [onClose]);
 
@@ -135,7 +131,6 @@ export function BuyCreditDialog({
         break;
       case "error":
         setErrorMessage(result.message);
-        setPendingPaymentUrl(result.pendingPaymentUrl ?? null);
         setPurchaseState("error");
         break;
       default:
@@ -238,11 +233,9 @@ export function BuyCreditDialog({
               <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {errorMessage}
               </p>
-              {!pendingPaymentUrl && (
-                <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  Please contact support if the issue persists.
-                </p>
-              )}
+              <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                Please contact support if the issue persists.
+              </p>
             </div>
           </div>
         );
@@ -468,17 +461,13 @@ export function BuyCreditDialog({
               variant: "outline",
               onClick: resetModalStateAndClose,
             }}
-            rightButtonProps={
-              pendingPaymentUrl
-                ? {
-                    label: "Complete Pending Payment",
-                    variant: "primary",
-                    onClick: () => {
-                      window.open(pendingPaymentUrl, "_blank")?.focus();
-                    },
-                  }
-                : undefined
-            }
+            rightButtonProps={{
+              label: "Manage Invoices",
+              variant: "primary",
+              onClick: () => {
+                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+              },
+            }}
           />
         );
       default:

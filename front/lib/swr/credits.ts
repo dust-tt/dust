@@ -89,7 +89,7 @@ export function useCredits({
 export type PurchaseResult =
   | { status: "success" }
   | { status: "redirect"; paymentUrl: string }
-  | { status: "error"; message: string; pendingPaymentUrl?: string };
+  | { status: "error"; message: string };
 
 export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
   const isLoading = useSyncExternalStore(
@@ -128,11 +128,8 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
           const errorMessage =
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             errorData.error?.message || "Failed to purchase credits";
-          const pendingPaymentUrl = errorData.error?.pendingPaymentUrl as
-            | string
-            | undefined;
 
-          return { status: "error", message: errorMessage, pendingPaymentUrl };
+          return { status: "error", message: errorMessage };
         }
 
         const responseData = await response.json();
