@@ -15,7 +15,7 @@ function getWorkspaceUrl(authInfo?: AuthInfo): string | null {
   if (!authInfo?.extra) {
     return null;
   }
-  const databricksWorkspaceUrl = authInfo.extra?.databricks_workspace_url;
+  const databricksWorkspaceUrl = authInfo.extra.databricks_workspace_url;
   if (!isString(databricksWorkspaceUrl)) {
     return null;
   }
@@ -37,7 +37,7 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
     method?: "GET";
     body?: Record<string, unknown>;
   } = {}
-): Promise<Result<z.infer<T>, string>> {
+): Promise<Result<z.infer<T>, MCPError>> {
   const baseUrl = workspaceUrl.trim().replace(/\/$/, "");
   const url = `${baseUrl}${endpoint}`;
 
@@ -63,12 +63,12 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
       error: errorMessage,
       message: `[Databricks MCP Server] ${errorMessage}`,
     });
-    return new Err(errorMessage);
+    return new Err(new MCPError(errorMessage));
   }
 
   const responseText = await response.text();
   if (!responseText) {
-    return new Err("Empty response from Databricks API");
+    return new Err(new MCPError("Empty response from Databricks API"));
   }
 
   const rawData = JSON.parse(responseText);
@@ -77,7 +77,7 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
   if (!parseResult.success) {
     const msg = `Invalid Databricks response format: ${parseResult.error.message}`;
     logger.error(`[Databricks MCP Server] ${msg}`);
-    return new Err(msg);
+    return new Err(new MCPError(msg));
   }
 
   return new Ok(parseResult.data);
@@ -97,7 +97,7 @@ export async function listWarehouses(
   );
 
   if (result.isErr()) {
-    return new Err(new MCPError(result.error));
+    return result;
   }
 
   return new Ok(result.value.warehouses);
