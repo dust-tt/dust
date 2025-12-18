@@ -1,5 +1,6 @@
 import { Html } from "@react-email/html";
 import Head from "next/head";
+import React from "react";
 
 export const EmailLayout = ({
   workspace,
@@ -17,21 +18,20 @@ export const EmailLayout = ({
         style={{
           fontFamily: "Open Sans, Helvetica Neue, Helvetica, Arial, sans-serif",
           fontSize: "14px",
-          backgroundColor: "#e9f7ff",
+          backgroundColor: "#ffffff",
           padding: "20px",
         }}
       >
-        <div
-          style={{ width: "100%", textAlign: "center", marginBottom: "10px" }}
-        >
+        <div style={{ width: "100%", textAlign: "left", marginBottom: "30px" }}>
           <a
             href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
             target="_new"
           >
             <img
+              alt="Dust Logo"
               style={{ margin: "0 auto", border: "0px" }}
-              width={168}
-              height={42}
+              width={96}
+              height={24}
               src="https://dust.tt/static/landing/logos/dust/Dust_Logo.png"
             />
           </a>
@@ -41,8 +41,6 @@ export const EmailLayout = ({
             margin: "0 auto",
             maxWidth: "600px",
             backgroundColor: "#ffffff",
-            borderRadius: "20px",
-            padding: "20px",
           }}
         >
           {children}
@@ -50,19 +48,23 @@ export const EmailLayout = ({
         <div
           style={{
             width: "100%",
-            textAlign: "center",
+            textAlign: "left",
             marginTop: "20px",
             fontSize: "12px",
+            color: "#969CA5",
           }}
         >
-          <div>This is an automated email. Please do not reply. </div>
+          <div>This is an automated email. Please do not reply.</div>
           <div>
+            Manage your notifications in{" "}
             <a
               href={`${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${workspace.id}/me`}
               target="_blank"
+              style={{ color: "#1C91FF" }}
             >
-              Manage your notifications in your profile settings.
+              your profile settings
             </a>
+            .
           </div>
         </div>
       </body>
