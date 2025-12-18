@@ -415,27 +415,57 @@ export function BaseProgrammaticCostChart({
     });
   }
 
-  const chartData = points.map((point) => {
-    const dataPoint: ChartDataPoint = {
-      timestamp: point.timestamp,
-    };
+  const chartData = useMemo(() => {
+    if (displayMode === "cumulative") {
+      // Cumulative mode: use each 4-hour point as-is
+      return points.map((point) => {
+        const dataPoint: ChartDataPoint = {
+          timestamp: point.timestamp,
+        };
 
-    // Compute total credits as present cumulative cost + remaining credits at that timestamp.
-    // This avoids showing a total credits line below cumulative cost when credits expire
-    // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
-    // usage is still in cumulative cost)--and vice versa in the past when credits are created.
-    dataPoint.totalCreditsMicroUsd =
-      (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
+        // Compute total credits as present cumulative cost + remaining credits at that timestamp.
+        // This avoids showing a total credits line below cumulative cost when credits expire
+        // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
+        // usage is still in cumulative cost)--and vice versa in the past when credits are created.
+        dataPoint.totalCreditsMicroUsd =
+          (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
 
-    // Add each group's cost to the data point using labels from availableGroups
-    // Keep undefined values as-is so Recharts doesn't render those points
-    point.groups.forEach((g) => {
-      dataPoint[g.groupKey] =
-        displayMode === "cumulative" ? g.cumulatedCostMicroUsd : g.costMicroUsd;
-    });
+        // Add each group's cumulative cost
+        point.groups.forEach((g) => {
+          dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
+        });
 
-    return dataPoint;
-  });
+        return dataPoint;
+      });
+    }
+
+    // Daily mode: aggregate 4-hour points into daily totals
+    const dailyMap = new Map<number, ChartDataPoint>();
+
+    for (const point of points) {
+      // Get start of day (midnight UTC) for this point
+      const date = new Date(point.timestamp);
+      date.setUTCHours(0, 0, 0, 0);
+      const dayTimestamp = date.getTime();
+
+      let dayPoint = dailyMap.get(dayTimestamp);
+      if (!dayPoint) {
+        dayPoint = { timestamp: dayTimestamp };
+        dailyMap.set(dayTimestamp, dayPoint);
+      }
+
+      // Sum up costs for each group
+      for (const g of point.groups) {
+        const currentValue = (dayPoint[g.groupKey] as number) ?? 0;
+        dayPoint[g.groupKey] = currentValue + g.costMicroUsd;
+      }
+    }
+
+    // Convert map to sorted array
+    return Array.from(dailyMap.values()).sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
+  }, [points, displayMode, maxCumulatedCost]);
 
   // Daily mode uses BarChart, cumulative mode uses AreaChart (grouped) or LineChart (global)
   const ChartComponent =
