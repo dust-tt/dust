@@ -578,7 +578,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               </Label>
             )}
             <>
-              {hasSpaceConversations ? (
+              {hasSpaceConversations && summary.length > 0 ? (
                 <div className="overflow-y-auto">
                   <CollapsibleComponent
                     rootProps={{ defaultOpen: summary.length <= 5 }}

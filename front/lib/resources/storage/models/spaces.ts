@@ -22,6 +22,10 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   // But in both modes we have "groups" associated to the space to hold the members.
   declare managementMode: CreationOptional<"manual" | "group">;
 
+  // This is a bit confusing (but temporary) as we have a "conversations" kind of space to hold ALL conversations files (legacy).
+  // This flag is used to indicate if the space supports having conversations in it (for conversations groups).
+  declare conversationsEnabled: CreationOptional<boolean>;
+
   declare groups: NonAttribute<GroupModel[]>;
 }
 SpaceModel.init(
@@ -51,6 +55,11 @@ SpaceModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "manual",
+    },
+    conversationsEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

@@ -454,7 +454,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   async updatePermissions(
     auth: Authenticator,
-    params: { name: string; isRestricted: boolean } & (
+    params: {
+      name: string;
+      isRestricted: boolean;
+      conversationsEnabled: boolean;
+    } & (
       | { memberIds: string[]; managementMode: "manual" }
       | { groupIds: string[]; managementMode: "group" }
     )
@@ -514,6 +518,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return withTransaction(async (t) => {
       // Update managementMode if provided
       const { managementMode } = params;
+
+      if (params.conversationsEnabled && this.isRegular()) {
+        await this.update({ conversationsEnabled: true }, t);
+      } else {
+        await this.update({ conversationsEnabled: false }, t);
+      }
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
@@ -871,6 +881,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.kind === "system";
   }
 
+  // This is a bit confusing (but temporary) because the "conversations" kind is a special kind of space to hold all conversations files (legacy).
+  // It's different from a space that support having conversations.
   isConversations() {
     return this.kind === "conversations";
   }
@@ -900,6 +912,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       this.isSystem() ||
       this.isConversations()
     );
+  }
+
+  areConversationsEnabled() {
+    return this.conversationsEnabled;
   }
 
   // Serialization.
@@ -957,6 +973,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       createdAt: this.createdAt.getTime(),
       groupIds: this.groups.map((group) => group.sId),
       isRestricted: this.isRegularAndRestricted(),
+      conversationsEnabled: this.conversationsEnabled,
       kind: this.kind,
       managementMode: this.managementMode,
       name: this.name,

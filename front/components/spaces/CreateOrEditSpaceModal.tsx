@@ -1,5 +1,6 @@
 import {
   Button,
+  ContentMessage,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -83,7 +84,13 @@ export function CreateOrEditSpaceModal({
   plan,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
+  const [conversationsEnabled, setConversationsEnabled] = useState<boolean>(
+    space?.conversationsEnabled ?? false
+  );
   const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
@@ -210,6 +217,7 @@ export function CreateOrEditSpaceModal({
       if (planAllowsSCIM && managementType === "group") {
         await doUpdate(space, {
           isRestricted,
+          conversationsEnabled,
           groupIds: selectedGroups.map((group) => group.sId),
           managementMode: "group",
           name: trimmedName,
@@ -217,6 +225,7 @@ export function CreateOrEditSpaceModal({
       } else {
         await doUpdate(space, {
           isRestricted,
+          conversationsEnabled,
           memberIds: selectedMembers.map((vm) => vm.sId),
           managementMode: "manual",
           name: trimmedName,
@@ -264,6 +273,7 @@ export function CreateOrEditSpaceModal({
     managementType,
     selectedGroups,
     planAllowsSCIM,
+    conversationsEnabled,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -371,6 +381,11 @@ export function CreateOrEditSpaceModal({
     setIsDirty(true);
   }, []);
 
+  const handleConversationsEnabledChange = useCallback((value: boolean) => {
+    setConversationsEnabled(value);
+    setIsDirty(true);
+  }, []);
+
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
@@ -392,6 +407,7 @@ export function CreateOrEditSpaceModal({
               onDelete={onDelete}
               isDeleting={isDeleting}
             />
+
             <RestrictedAccessHeader
               isRestricted={isRestricted}
               onToggle={() => {
@@ -408,9 +424,45 @@ export function CreateOrEditSpaceModal({
                 }
               }}
             />
+            {hasFeature("conversations_groups") &&
+              space?.kind === "regular" && (
+                <div>
+                  <ContentMessage
+                    title="Alpha: Conversations in Spaces"
+                    variant="info"
+                    action={
+                      <SliderToggle
+                        selected={conversationsEnabled}
+                        onClick={() => {
+                          handleConversationsEnabledChange(
+                            !conversationsEnabled
+                          );
+                        }}
+                      />
+                    }
+                  >
+                    <p>
+                      This feature is currently in internal testing. It is only
+                      available in the Dust workspace ("conversations_groups"
+                      feature flag enabled).
+                      <br />
+                      Enabling this feature will make the space show in the
+                      "Chat" sidebar for all members of the space.
+                      {!isRestricted && (
+                        <>
+                          <br />
+                          Since this space is not restricted, you can pick which
+                          members will see the chat sidebar.
+                        </>
+                      )}
+                    </p>
+                  </ContentMessage>
+                </div>
+              )}
             <RestrictedAccessBody
               isRestricted={isRestricted}
               isManual={isManual}
+              areConversationsEnabled={conversationsEnabled}
               planAllowsSCIM={planAllowsSCIM}
               managementType={managementType}
               owner={owner}
@@ -534,6 +586,7 @@ function RestrictedAccessHeader({
 interface RestrictedAccessBodyProps {
   isRestricted: boolean;
   isManual: boolean;
+  areConversationsEnabled: boolean;
   planAllowsSCIM: boolean;
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
@@ -549,6 +602,7 @@ interface RestrictedAccessBodyProps {
 function RestrictedAccessBody({
   isRestricted,
   isManual,
+  areConversationsEnabled,
   planAllowsSCIM,
   managementType,
   owner,
@@ -563,134 +617,137 @@ function RestrictedAccessBody({
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  if (!isRestricted && !hasFeature("conversations_groups")) {
-    return null;
+  if (
+    isRestricted ||
+    (hasFeature("conversations_groups") && areConversationsEnabled)
+  ) {
+    return (
+      <>
+        {planAllowsSCIM ? (
+          <div className="flex flex-row items-center justify-between">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  isSelect
+                  label={
+                    managementType === "manual"
+                      ? "Manual access"
+                      : "Provisioned group access"
+                  }
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label="Manual access"
+                  onClick={() => {
+                    if (isMembersManagementType("manual")) {
+                      onManagementTypeChange("manual");
+                    }
+                  }}
+                />
+                <DropdownMenuItem
+                  label="Provisioned group access"
+                  onClick={() => {
+                    if (isMembersManagementType("group")) {
+                      onManagementTypeChange("group");
+                    }
+                  }}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {isManual && selectedMembers.length > 0 && (
+              <SearchMembersDropdown
+                owner={owner}
+                selectedMembers={selectedMembers}
+                onMembersUpdated={onMembersUpdated}
+              />
+            )}
+            {!isManual && selectedGroups.length > 0 && (
+              <SearchGroupsDropdown
+                owner={owner}
+                selectedGroups={selectedGroups}
+                onGroupsUpdated={onGroupsUpdated}
+              />
+            )}
+          </div>
+        ) : (
+          isManual &&
+          selectedMembers.length > 0 && (
+            <div className="flex w-full justify-end">
+              <SearchMembersDropdown
+                owner={owner}
+                selectedMembers={selectedMembers}
+                onMembersUpdated={onMembersUpdated}
+              />
+            </div>
+          )
+        )}
+
+        {isManual && selectedMembers.length === 0 && (
+          <EmptyCTA
+            action={
+              <SearchMembersDropdown
+                owner={owner}
+                selectedMembers={selectedMembers}
+                onMembersUpdated={onMembersUpdated}
+              />
+            }
+            message="Add members to the space"
+          />
+        )}
+        {!isManual && selectedGroups.length === 0 && (
+          <EmptyCTA
+            action={
+              <SearchGroupsDropdown
+                owner={owner}
+                selectedGroups={selectedGroups}
+                onGroupsUpdated={onGroupsUpdated}
+              />
+            }
+            message="Add groups to the space"
+          />
+        )}
+
+        {isManual && selectedMembers.length > 0 && (
+          <>
+            <SearchInput
+              name="search"
+              placeholder="Search (email)"
+              value={searchSelectedMembers}
+              onChange={onSearchChange}
+            />
+            <ScrollArea className="h-full">
+              <MembersTable
+                onMembersUpdated={onMembersUpdated}
+                selectedMembers={selectedMembers}
+                searchSelectedMembers={searchSelectedMembers}
+              />
+            </ScrollArea>
+          </>
+        )}
+        {!isManual && selectedGroups.length > 0 && (
+          <>
+            <SearchInput
+              name="search"
+              placeholder={"Search groups"}
+              value={searchSelectedMembers}
+              onChange={onSearchChange}
+            />
+            <ScrollArea className="h-full">
+              <GroupsTable
+                onGroupsUpdated={onGroupsUpdated}
+                selectedGroups={selectedGroups}
+                searchSelectedGroups={searchSelectedMembers}
+              />
+            </ScrollArea>
+          </>
+        )}
+      </>
+    );
   }
 
-  return (
-    <>
-      {planAllowsSCIM ? (
-        <div className="flex flex-row items-center justify-between">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                isSelect
-                label={
-                  managementType === "manual"
-                    ? "Manual access"
-                    : "Provisioned group access"
-                }
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Manual access"
-                onClick={() => {
-                  if (isMembersManagementType("manual")) {
-                    onManagementTypeChange("manual");
-                  }
-                }}
-              />
-              <DropdownMenuItem
-                label="Provisioned group access"
-                onClick={() => {
-                  if (isMembersManagementType("group")) {
-                    onManagementTypeChange("group");
-                  }
-                }}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {isManual && selectedMembers.length > 0 && (
-            <SearchMembersDropdown
-              owner={owner}
-              selectedMembers={selectedMembers}
-              onMembersUpdated={onMembersUpdated}
-            />
-          )}
-          {!isManual && selectedGroups.length > 0 && (
-            <SearchGroupsDropdown
-              owner={owner}
-              selectedGroups={selectedGroups}
-              onGroupsUpdated={onGroupsUpdated}
-            />
-          )}
-        </div>
-      ) : (
-        isManual &&
-        selectedMembers.length > 0 && (
-          <div className="flex w-full justify-end">
-            <SearchMembersDropdown
-              owner={owner}
-              selectedMembers={selectedMembers}
-              onMembersUpdated={onMembersUpdated}
-            />
-          </div>
-        )
-      )}
-
-      {isManual && selectedMembers.length === 0 && (
-        <EmptyCTA
-          action={
-            <SearchMembersDropdown
-              owner={owner}
-              selectedMembers={selectedMembers}
-              onMembersUpdated={onMembersUpdated}
-            />
-          }
-          message="Add members to the space"
-        />
-      )}
-      {!isManual && selectedGroups.length === 0 && (
-        <EmptyCTA
-          action={
-            <SearchGroupsDropdown
-              owner={owner}
-              selectedGroups={selectedGroups}
-              onGroupsUpdated={onGroupsUpdated}
-            />
-          }
-          message="Add groups to the space"
-        />
-      )}
-
-      {isManual && selectedMembers.length > 0 && (
-        <>
-          <SearchInput
-            name="search"
-            placeholder="Search (email)"
-            value={searchSelectedMembers}
-            onChange={onSearchChange}
-          />
-          <ScrollArea className="h-full">
-            <MembersTable
-              onMembersUpdated={onMembersUpdated}
-              selectedMembers={selectedMembers}
-              searchSelectedMembers={searchSelectedMembers}
-            />
-          </ScrollArea>
-        </>
-      )}
-      {!isManual && selectedGroups.length > 0 && (
-        <>
-          <SearchInput
-            name="search"
-            placeholder={"Search groups"}
-            value={searchSelectedMembers}
-            onChange={onSearchChange}
-          />
-          <ScrollArea className="h-full">
-            <GroupsTable
-              onGroupsUpdated={onGroupsUpdated}
-              selectedGroups={selectedGroups}
-              searchSelectedGroups={searchSelectedMembers}
-            />
-          </ScrollArea>
-        </>
-      )}
-    </>
-  );
+  return null;
 }
 
 type MemberRowData = {
