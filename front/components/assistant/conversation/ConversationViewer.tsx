@@ -602,11 +602,9 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
-      user,
-      owner,
-      conversationId,
-      setPlanLimitReached,
+      submitMessage,
       sendNotification,
+      setPlanLimitReached,
       mutateConversations,
     ]
   );

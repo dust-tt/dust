@@ -130,7 +130,14 @@ export function ConversationContainerVirtuoso({
         return new Ok(undefined);
       }
     },
-    [isSubmitting, mutateConversations, owner, router, sendNotification, user]
+    [
+      isSubmitting,
+      mutateConversations,
+      owner,
+      router,
+      sendNotification,
+      createConversationWithMessage,
+    ]
   );
 
   const [greeting, setGreeting] = useState<string>("");
