@@ -251,7 +251,7 @@ export async function agentLoopWorkflow({
         // Ensure analytics runs even when workflow is canceled.
         return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
-      // Ensure analytics runs even when workflow errors
+      // Ensure analytics runs even when workflow errors.
       await finalizeErroredAgentLoopActivity(
         authType,
         agentLoopArgs,
