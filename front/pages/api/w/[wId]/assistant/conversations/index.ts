@@ -221,6 +221,7 @@ async function handler(
             enabled: true,
             agentConfigurationId: null, // JIT skills apply to all agents in conversation
           });
+
           if (r.isErr()) {
             return apiError(req, res, {
               status_code: 500,
