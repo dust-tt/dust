@@ -23,6 +23,8 @@ import {
   safeParseJSON,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 const systemPrompt = fs.readFileSync("./wrapped_system_prompt.txt", "utf8");
 
@@ -349,7 +351,19 @@ async function processForWorkspace(
     return result;
   }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  // Find first internal admin for the workspace.
+  // We need a user to change the shared scope of the frame later.
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace: renderLightWorkspaceType({ workspace }),
+    roles: ["admin"],
+  });
+
+  const [firstAdmin] = memberships;
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    firstAdmin.user!.sId,
+    workspace.sId
+  );
 
   try {
     // Step 1: Create conversation.
