@@ -12,7 +12,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import {
@@ -59,6 +59,7 @@ function createServer(
               // on personal actions that have to be operated in the name of the user initiating the
               // interaction.
               ...getHeaderFromUserEmail(user?.email),
+              ...getApiKeyNameHeader(auth),
             },
           },
           logger

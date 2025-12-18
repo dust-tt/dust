@@ -6,6 +6,7 @@ import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
+  getApiKeyNameFromHeaders,
   getBearerToken,
   getSession,
   isOAuthToken,
@@ -421,6 +422,16 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           )) ?? workspaceAuth;
       }
 
+      const apiKeyNameFromHeader = getApiKeyNameFromHeaders(req.headers);
+      const key = workspaceAuth.key();
+      if (apiKeyNameFromHeader && key) {
+        workspaceAuth = workspaceAuth.exchangeKey({
+          id: key.id,
+          name: apiKeyNameFromHeader,
+          isSystem: key.isSystem,
+          role: key.role,
+        });
+      }
       return handler(
         req,
         res,
