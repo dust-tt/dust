@@ -396,7 +396,7 @@ async function processWorkspacesFile(
       const result = await processForWorkspace(data, logger, { execute });
       if (result) {
         allResults.push(result);
-        saveResults(allResults);
+        saveResults(allResults, { execute });
 
         logger.info(
           {
