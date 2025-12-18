@@ -102,6 +102,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       },
       freeCreditsDollars: {
         type: "number",
+        variant: "text",
         label: "Negotiated Monthly Free Credits (USD)",
         description: `Negotiated monthly free credits ($1-$${MAX_FREE_CREDITS_DOLLARS.toLocaleString()}). ⚠️This will top-up next billing cycle's free credits. If you want an immediate top-up, use "Buy Committed Credits" plugin in free mode.`,
         async: true,
@@ -109,6 +110,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       },
       defaultDiscountPercent: {
         type: "number",
+        variant: "text",
         label: "Default Discount (%)",
         description:
           "Discount applied by default to programmatic credit purchases, PAYG or committed.",
@@ -124,6 +126,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       },
       paygCapDollars: {
         type: "number",
+        variant: "text",
         label: "Pay-as-you-go Spending Cap (US$)",
         description: `Maximum monthly PAYG spending (required to enable PAYG). Range: $1-$${MAX_PAYG_CAP_DOLLARS.toLocaleString()}.`,
         async: true,
