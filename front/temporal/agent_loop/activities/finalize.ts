@@ -41,12 +41,7 @@ export async function finalizeErroredAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs,
   error: Error
 ): Promise<void> {
-  await notifyWorkflowError(authType, {
-    conversationId: agentLoopArgs.conversationId,
-    agentMessageId: agentLoopArgs.agentMessageId,
-    agentMessageVersion: agentLoopArgs.agentMessageVersion,
-    error,
-  });
+  await notifyWorkflowError(authType, agentLoopArgs, error);
 
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),
