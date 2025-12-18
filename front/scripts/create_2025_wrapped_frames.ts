@@ -190,7 +190,7 @@ async function createWrappedConversation(
           fullName: "2025 Recap Generator",
           email: "recap@dust.tt",
           timezone: "UTC",
-          origin: "api",
+          origin: "web",
         },
         mentions: [
           {
