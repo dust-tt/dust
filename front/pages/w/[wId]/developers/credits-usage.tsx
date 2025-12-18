@@ -432,6 +432,14 @@ export default function CreditsUsagePage({
         discountPercent={discountPercent}
         creditPricing={creditPricing}
         creditPurchaseLimits={creditPurchaseLimits}
+        paygUsage={
+          isEnterprise
+            ? {
+                consumed: creditsByType.payg.consumed,
+                total: creditsByType.payg.total,
+              }
+            : null
+        }
       />
 
       <Page.Vertical gap="xl" align="stretch">
@@ -445,8 +453,7 @@ export default function CreditsUsagePage({
                 automated workflows, etc.). Usage cost is based on token
                 consumption, according to our{" "}
                 <a
-                  href="https://dust-tt.notion.site/API-Pricing-12928599d941805a89dedeed342aacd5"
-                  target="_blank"
+                  href={`/w/${owner.sId}/developers/api-pricing`}
                   className="text-primary underline hover:text-primary-dark"
                 >
                   pricing page

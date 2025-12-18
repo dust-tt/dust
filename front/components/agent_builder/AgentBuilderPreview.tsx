@@ -123,6 +123,7 @@ function PreviewContent({
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
+              shouldUseDraft={false}
             />
           </div>
         )}

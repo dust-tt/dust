@@ -75,6 +75,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ashby",
   "confluence",
   "conversation_files",
+  "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "deep_dive",
@@ -105,7 +106,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "common_utilities",
   "jit_testing",
-  "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
@@ -124,6 +124,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
+  "schedules_management",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -481,7 +482,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
-      get_messages: "low",
+      get_messages: "never_ask",
       create_reply_draft: "low",
     },
     tools_retry_policies: undefined,
@@ -1262,8 +1263,7 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description: "Access and manage Ashby ATS data.",
       authorization: null,
-      // TODO(2025-11-04 aubin): add logo.
-      icon: "GithubLogo",
+      icon: "AshbyLogo",
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",
@@ -1360,6 +1360,19 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     tools_stakes: {
       list_tests: "never_ask",
+      list_test_entities: "never_ask",
+      list_controls: "never_ask",
+      list_control_tests: "never_ask",
+      list_control_documents: "never_ask",
+      list_documents: "never_ask",
+      list_document_resources: "never_ask",
+      list_integrations: "never_ask",
+      list_integration_resources: "never_ask",
+      list_frameworks: "never_ask",
+      list_framework_controls: "never_ask",
+      list_people: "never_ask",
+      list_risks: "never_ask",
+      list_vulnerabilities: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1413,26 +1426,6 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description: "Search content to find the most relevant information.",
       icon: "ActionMagnifyingGlassIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  reasoning: {
-    id: 1007,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "reasoning",
-      version: "1.0.0",
-      description:
-        "Agent can decide to trigger a reasoning model for complex tasks.",
-      icon: "ActionLightbulbIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
@@ -1699,6 +1692,61 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionLightbulbIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
+    },
+  },
+  schedules_management: {
+    id: 1020,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: {
+      create_schedule: "high",
+      list_schedules: "never_ask",
+      get_schedule: "never_ask",
+      update_schedule: "high",
+      delete_schedule: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "schedules_management",
+      version: "1.0.0",
+      description: "Create schedules to automate recurring tasks.",
+      icon: "ActionTimeIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions:
+        "Schedules are user-specific: each user can only view and manage their own schedules. " +
+        "When a schedule triggers, it runs this agent with the specified prompt. " +
+        "Limit: 20 schedule creations per user per day.",
+    },
+  },
+  databricks: {
+    id: 45,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("databricks_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_warehouses: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "databricks",
+      version: "1.0.0",
+      description:
+        "Execute SQL queries and manage databases in Databricks SQL.",
+      authorization: {
+        provider: "databricks" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ActionTableIcon",
+      documentationUrl: "https://docs.dust.tt/docs/databricks",
       instructions: null,
     },
   },

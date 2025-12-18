@@ -9,7 +9,6 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -54,8 +53,10 @@ import {
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/agent_message_skill";
-import { ConversationSkillModel } from "@app/lib/models/skill/conversation_skill";
+import {
+  AgentMessageSkillModel,
+  ConversationSkillModel,
+} from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { TagModel } from "@app/lib/models/tags";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -172,7 +173,6 @@ async function main() {
 
   await AgentMCPServerConfigurationModel.sync({ alter: true });
   await AgentTablesQueryConfigurationTableModel.sync({ alter: true });
-  await AgentReasoningConfigurationModel.sync({ alter: true });
 
   await AgentDataSourceConfigurationModel.sync({ alter: true });
 

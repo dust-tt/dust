@@ -152,18 +152,6 @@ export class AgentYAMLConverter {
             time_frame: action.configuration.timeFrame || undefined,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             json_schema: action.configuration.jsonSchema || undefined,
-            reasoning_model: action.configuration.reasoningModel
-              ? {
-                  model_id: action.configuration.reasoningModel.modelId,
-                  provider_id: action.configuration.reasoningModel.providerId,
-                  temperature:
-                    action.configuration.reasoningModel.temperature ??
-                    undefined,
-                  reasoning_effort:
-                    action.configuration.reasoningModel.reasoningEffort ??
-                    undefined,
-                }
-              : undefined,
             additional_configuration:
               Object.keys(action.configuration.additionalConfiguration || {})
                 .length > 0
@@ -356,18 +344,6 @@ export class AgentYAMLConverter {
         tables: null,
         // TODO(ab-v2): Handle child agent ID if needed
         childAgentId: null,
-        reasoningModel:
-          "reasoning_model" in action.configuration &&
-          action.configuration.reasoning_model
-            ? {
-                modelId: action.configuration.reasoning_model.model_id,
-                providerId: action.configuration.reasoning_model.provider_id,
-                temperature:
-                  action.configuration.reasoning_model.temperature ?? null,
-                reasoningEffort:
-                  action.configuration.reasoning_model.reasoning_effort ?? null,
-              }
-            : null,
         jsonSchema:
           "json_schema" in action.configuration &&
           action.configuration.json_schema

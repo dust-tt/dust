@@ -27,7 +27,8 @@ export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
 
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
 
-export const DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
+export const DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME =
+  "cat_conversation_file";
 
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
@@ -41,7 +42,7 @@ export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 
-export const DEFAULT_ENABLE_SKILL_TOOL_NAME = "enable_skill";
+export const ENABLE_SKILL_TOOL_NAME = "enable_skill";
 
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";

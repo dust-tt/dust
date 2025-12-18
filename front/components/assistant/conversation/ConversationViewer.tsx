@@ -20,7 +20,6 @@ import { ConversationErrorDisplay } from "@app/components/assistant/conversation
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
-  submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type {
@@ -28,16 +27,14 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  areSameRank,
-  getMessageRank,
-  isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
-import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
@@ -173,6 +170,12 @@ export const ConversationViewer = ({
     options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
+  const submitMessage = useSubmitMessage({
+    owner,
+    user,
+    conversationId,
+  });
+
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
   >(undefined);
@@ -201,7 +204,7 @@ export const ConversationViewer = ({
     }
 
     // We use the messages ranks to know what is older and what is newer.
-    const ranks = ref.current.data.get().map(getMessageRank);
+    const ranks = ref.current.data.get().map((m) => m.rank);
 
     const minRank = Math.min(...ranks);
 
@@ -237,23 +240,6 @@ export const ConversationViewer = ({
 
   // Hooks related to conversation events streaming.
 
-  const buildEventSourceURL = useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-      }
-      const url = esURL + "?lastEventId=" + lastEventId;
-
-      return url;
-    },
-    [conversationId, owner.sId]
-  );
-
   const debouncedMarkAsRead = useMemo(
     () => debounce(markAsRead, 2000),
     [markAsRead]
@@ -282,7 +268,7 @@ export const ConversationViewer = ({
             if (ref.current) {
               const userMessage = event.message;
               const predicate = (m: VirtuosoMessage) =>
-                isUserMessage(m) && areSameRank(m, userMessage);
+                m.rank === userMessage.rank;
 
               const exists = ref.current.data.find(predicate);
 
@@ -293,7 +279,7 @@ export const ConversationViewer = ({
 
                 // Find the first message with a rank greater than the user message to insert the new message at the correct position.
                 const offset = ref.current.data.findIndex(
-                  (m) => getMessageRank(m) > getMessageRank(userMessage)
+                  (m) => m.rank > userMessage.rank
                 );
                 if (offset !== -1) {
                   ref.current.data.insert([userMessage], offset, scroll);
@@ -302,10 +288,10 @@ export const ConversationViewer = ({
                 }
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
-                // We only update if the version is greater than the existing version.
-                if (exists.version < event.message.version) {
+                // We only update if the version is greater or equals than the existing version.
+                if (exists.version <= event.message.version) {
                   ref.current.data.map((m) =>
-                    areSameRank(m, userMessage) ? userMessage : m
+                    m.rank === userMessage.rank ? userMessage : m
                   );
                 }
               }
@@ -340,28 +326,26 @@ export const ConversationViewer = ({
             break;
           case "agent_message_new":
             if (ref.current) {
-              const messageStreamState = makeInitialMessageStreamState(
+              const agentMessage = makeInitialMessageStreamState(
                 getLightAgentMessageFromAgentMessage(event.message)
               );
 
               // Replace the message in the exist list data, or append.
               const predicate = (m: VirtuosoMessage) =>
-                isMessageTemporayState(m) && areSameRank(m, messageStreamState);
+                m.rank === agentMessage.rank;
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
-                ref.current.data.map((m) =>
-                  predicate(m) ? messageStreamState : m
-                );
+                ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
               } else {
                 // Find the first message with a rank greater than the agent message to insert the new message at the correct position.
                 const offset = ref.current.data.findIndex(
-                  (m) => getMessageRank(m) > getMessageRank(messageStreamState)
+                  (m) => m.rank > agentMessage.rank
                 );
                 if (offset !== -1) {
-                  ref.current.data.insert([messageStreamState], offset);
+                  ref.current.data.insert([agentMessage], offset);
                 } else {
-                  ref.current.data.append([messageStreamState]);
+                  ref.current.data.append([agentMessage]);
                 }
               }
 
@@ -449,18 +433,13 @@ export const ConversationViewer = ({
     ]
   );
 
-  useEventSource(
-    buildEventSourceURL,
-    onEventCallback,
-    `conversation-${conversationId}`,
-    {
-      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-      isReadyToConsumeStream:
-        !isConversationLoading &&
-        !isLoadingInitialData &&
-        messages.length !== 0,
-    }
-  );
+  useConversationEvents({
+    owner,
+    conversationId,
+    onEvent: onEventCallback,
+    isReadyToConsumeStream:
+      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
+  });
 
   const handleSubmit = useCallback(
     async (
@@ -482,7 +461,7 @@ export const ConversationViewer = ({
       };
 
       const lastMessageRank = Math.max(
-        ...ref.current.data.get().map(getMessageRank)
+        ...ref.current.data.get().map((m) => m.rank)
       );
 
       let rank =
@@ -545,12 +524,7 @@ export const ConversationViewer = ({
             }
       );
 
-      const result = await submitMessage({
-        owner,
-        user,
-        conversationId,
-        messageData,
-      });
+      const result = await submitMessage(messageData);
 
       if (result.isErr()) {
         if (result.error.type === "plan_limit_reached_error") {
@@ -579,7 +553,7 @@ export const ConversationViewer = ({
 
       // map() is how we update the state of virtuoso messages.
       ref.current.data.map((m) =>
-        areSameRank(m, placeholderUserMsg)
+        m.rank === placeholderUserMsg.rank
           ? {
               ...messageFromBackend,
               contentFragments: contentFragmentsFromBackend,
@@ -606,11 +580,11 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
+      submitMessage,
       user,
-      owner,
       conversationId,
-      setPlanLimitReached,
       sendNotification,
+      setPlanLimitReached,
       mutateConversations,
     ]
   );
@@ -647,13 +621,13 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
-      return `conversation-${context.conversationId}-message-rank-${isMessageTemporayState(data) ? data.message.rank : data.rank}`;
+      return `conversation-${context.conversationId}-message-rank-${data.rank}`;
     },
     []
   );
 
   const itemIdentity = useCallback((item: VirtuosoMessage) => {
-    return `message-rank-${isMessageTemporayState(item) ? item.message.rank : item.rank}`;
+    return `message-rank-${item.rank}`;
   }, []);
 
   const feedbacksByMessageId = useMemo(() => {

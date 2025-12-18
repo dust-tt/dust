@@ -37,7 +37,7 @@ import type {
 import {
   CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
+  GEMINI_3_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -513,7 +513,6 @@ function _getDustLikeGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -534,7 +533,6 @@ function _getDustLikeGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -632,7 +630,7 @@ export function _getDustQuickGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
     name: "dust-quick",
-    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }

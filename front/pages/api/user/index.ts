@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { sendUserOperationMessage } from "@app/types";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 
 export type PostUserMetadataResponseBody = {
@@ -25,6 +26,9 @@ const PatchUserBodySchema = t.type({
   lastName: t.string,
   jobType: t.union([t.string, t.undefined]),
   imageUrl: t.union([t.string, t.null, t.undefined]),
+  favoritePlatforms: t.union([t.array(t.string), t.undefined]),
+  emailProvider: t.union([t.string, t.undefined]),
+  workspaceId: t.union([t.string, t.undefined]),
 });
 
 export type GetUserResponseBody = {
@@ -108,6 +112,9 @@ async function handler(
       const lastName = bodyValidation.right.lastName.trim();
       const jobType = bodyValidation.right.jobType?.trim();
       const imageUrl = bodyValidation.right.imageUrl;
+      const favoritePlatforms = bodyValidation.right.favoritePlatforms;
+      const emailProvider = bodyValidation.right.emailProvider;
+      const workspaceId = bodyValidation.right.workspaceId;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {
@@ -150,17 +157,37 @@ async function handler(
         });
       }
 
-      // metadata + for loop allows for
-      // more metadata to be processed thru
-      // endpoint in future
-      const metadata = {
+      if (favoritePlatforms !== undefined) {
+        for (const platform of favoritePlatforms) {
+          if (!isFavoritePlatform(platform)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `Invalid favorite platform: ${platform}`,
+              },
+            });
+          }
+        }
+      }
+
+      const userMetadata: Record<string, string | undefined> = {
         job_type: jobType,
+        "onboarding:email_provider": emailProvider,
       };
 
-      for (const [key, value] of Object.entries(metadata)) {
+      for (const [key, value] of Object.entries(userMetadata)) {
         if (value !== undefined) {
           await u.setMetadata(key, String(value));
         }
+      }
+
+      // Workspace-scoped metadata (requires workspaceId).
+      if (workspaceId && favoritePlatforms !== undefined) {
+        await u.setMetadata(
+          `workspace:${workspaceId}:favorite_platforms`,
+          JSON.stringify(favoritePlatforms)
+        );
       }
 
       await ServerSideTracking.trackUpdateUser({

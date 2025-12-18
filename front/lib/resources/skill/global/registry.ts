@@ -1,3 +1,4 @@
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
@@ -5,6 +6,7 @@ export interface GlobalSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
   readonly instructions: string;
+  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly name: string;
   readonly sId: string;
   readonly version: number;

@@ -234,7 +234,6 @@ const TOOL_MIME_TYPES = {
       "BOOLEAN",
       "ENUM",
       "LIST",
-      "REASONING_MODEL",
       "DUST_APP",
       "TIME_FRAME",
       "JSON_SCHEMA",

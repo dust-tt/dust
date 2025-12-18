@@ -26,7 +26,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     // Create workspace and space
     const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
-    await SpaceFactory.system(workspace);
 
     // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);

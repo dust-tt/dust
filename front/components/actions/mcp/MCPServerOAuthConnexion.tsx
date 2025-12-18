@@ -12,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
   OAuthCredentialInputs,

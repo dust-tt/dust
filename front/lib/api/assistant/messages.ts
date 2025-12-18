@@ -28,8 +28,8 @@ import type {
   LightAgentConfigurationType,
   LightAgentMessageType,
   MessageType,
+  ModelId,
   Result,
-  RichMention,
   UserMessageType,
   UserType,
 } from "@app/types";
@@ -58,19 +58,20 @@ import {
 import type {
   LightMessageType,
   ParsedContentItem,
+  RichMentionWithStatus,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
-function getRichMentionsForMessage(
-  message: MessageModel,
+export function getRichMentionsWithStatusForMessage(
+  messageId: ModelId,
   mentionRows: MentionModel[],
-  usersById: Map<number, UserType>,
+  usersById: Map<ModelId, UserType>,
   agentConfigurationsById: Map<string, LightAgentConfigurationType>
-): RichMention[] {
+): RichMentionWithStatus[] {
   return removeNulls(
     mentionRows
       // Keep only the mentions for the current message.
-      .filter((m) => m.messageId === message.id)
+      .filter((m) => m.messageId === messageId)
       // Map the mentions to rich mentions.
       .map((m) => {
         if (m.agentConfigurationId) {
@@ -78,12 +79,18 @@ function getRichMentionsForMessage(
             m.agentConfigurationId
           );
           if (agentConfiguration) {
-            return toRichAgentMentionType(agentConfiguration);
+            return {
+              ...toRichAgentMentionType(agentConfiguration),
+              status: m.status,
+            };
           }
         } else if (m.userId) {
           const mentionnedUser = usersById.get(m.userId);
           if (mentionnedUser) {
-            return toRichUserMentionType(mentionnedUser);
+            return {
+              ...toRichUserMentionType(mentionnedUser),
+              status: m.status,
+            };
           }
         } else {
           throw new Error(
@@ -229,8 +236,8 @@ async function batchRenderUserMessages(
     const userMessage = message.userMessage;
     const user = userMessage.userId ? usersById.get(userMessage.userId) : null;
 
-    const richMentions = getRichMentionsForMessage(
-      message,
+    const richMentions = getRichMentionsWithStatusForMessage(
+      message.id,
       mentionRows,
       usersById,
       agentConfigurationsById
@@ -559,8 +566,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           messagesBySId.get(userMessage.agenticOriginMessageId) ?? null;
       }
 
-      const richMentions = getRichMentionsForMessage(
-        message,
+      const richMentions = getRichMentionsWithStatusForMessage(
+        message.id,
         mentionRows,
         usersById,
         agentConfigurationsById

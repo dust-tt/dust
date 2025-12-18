@@ -2,6 +2,7 @@ import {
   Button,
   Checkbox,
   CheckCircleIcon,
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -12,6 +13,7 @@ import {
   ExternalLinkIcon,
   Hoverable,
   Icon,
+  InformationCircleIcon,
   Input,
   Spinner,
   XCircleIcon,
@@ -32,6 +34,11 @@ const SUPPORT_EMAIL = "support@dust.tt";
 // Minimum purchase amount in microUsd ($1).
 const MIN_PURCHASE_MICRO_USD = 1_000_000;
 
+interface PaygUsage {
+  consumed: number;
+  total: number;
+}
+
 interface BuyCreditDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,7 +48,11 @@ interface BuyCreditDialogProps {
   discountPercent: number;
   creditPricing: StripePricingData | null;
   creditPurchaseLimits: CreditPurchaseLimits | null;
+  paygUsage: PaygUsage | null;
 }
+
+// Threshold percentage for pay-as-you-go cap usage below which we show a warning.
+const PAYG_CAP_WARNING_THRESHOLD_PERCENT = 70;
 
 export function BuyCreditDialog({
   isOpen,
@@ -52,6 +63,7 @@ export function BuyCreditDialog({
   discountPercent,
   creditPricing,
   creditPurchaseLimits,
+  paygUsage,
 }: BuyCreditDialogProps) {
   const [amountDollars, setAmountDollars] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -95,6 +107,15 @@ export function BuyCreditDialog({
     const amount = parseFloat(amountDollars);
     return !isNaN(amount) && amount > maxAmountDollars;
   }, [amountDollars, maxAmountDollars]);
+
+  // Show warning for enterprise users when pay-as-you-go usage is under the threshold.
+  const showPaygCapWarning = useMemo(() => {
+    if (!isEnterprise || !paygUsage || paygUsage.total === 0) {
+      return false;
+    }
+    const percentUsed = (paygUsage.consumed / paygUsage.total) * 100;
+    return percentUsed < PAYG_CAP_WARNING_THRESHOLD_PERCENT;
+  }, [isEnterprise, paygUsage]);
 
   const handlePurchase = async () => {
     setPurchaseState("processing");
@@ -222,6 +243,16 @@ export function BuyCreditDialog({
       default:
         return (
           <div className="flex flex-col gap-4">
+            {showPaygCapWarning && (
+              <ContentMessage
+                variant="info"
+                icon={InformationCircleIcon}
+                title="You still have pay-as-you-go capacity"
+              >
+                You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your
+                pay-as-you-go cap.
+              </ContentMessage>
+            )}
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="amount"

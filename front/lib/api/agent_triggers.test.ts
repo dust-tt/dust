@@ -37,6 +37,7 @@ describe("getWebhookSourcesUsage", () => {
       enabled: true,
       configuration: { includePayload: true },
       webhookSourceViewId,
+      origin: "user",
     });
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });
@@ -74,6 +75,7 @@ describe("getWebhookSourcesUsage", () => {
       enabled: true,
       configuration: { includePayload: true },
       webhookSourceViewId,
+      origin: "user",
     });
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });
@@ -116,6 +118,7 @@ describe("getWebhookSourcesUsage", () => {
       enabled: true,
       configuration: { includePayload: true },
       webhookSourceViewId,
+      origin: "user",
     });
 
     await TriggerModel.create({
@@ -128,6 +131,7 @@ describe("getWebhookSourcesUsage", () => {
       enabled: true,
       configuration: { includePayload: true },
       webhookSourceViewId,
+      origin: "user",
     });
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });

@@ -332,12 +332,6 @@ export const menuConfig: DocsConfig = {
       items: SolutionsMenuConfig.items,
     },
     {
-      title: DevelopersMenuConfig.title,
-      label: "Build with Dust",
-      rows: 2,
-      items: DevelopersMenuConfig.items,
-    },
-    {
       title: ResourcesMenuConfig.title,
       label: "Resources",
       rows: 3,
@@ -364,10 +358,6 @@ export const menuConfig: DocsConfig = {
     {
       title: SolutionsMenuConfig.title,
       items: SolutionsMenuConfig.items,
-    },
-    {
-      title: DevelopersMenuConfig.title,
-      items: DevelopersMenuConfig.items,
     },
     {
       title: BuildMenuConfig.title,
@@ -414,15 +404,15 @@ export const menuConfig: DocsConfig = {
           title: "Security",
           href: "/home/security",
         },
+        {
+          title: DevelopersMenuConfig.title,
+        },
+        ...DevelopersMenuConfig.items,
       ],
     },
     {
       title: SolutionsMenuConfig.title,
       items: SolutionsMenuConfig.items,
-    },
-    {
-      title: DevelopersMenuConfig.title,
-      items: DevelopersMenuConfig.items,
     },
     {
       title: "Company",

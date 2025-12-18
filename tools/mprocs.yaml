@@ -40,6 +40,7 @@ procs:
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting front."
+      rm -rf node_modules/isomorphic-dompurify node_modules/@elevenlabs/
       source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh
 
   front-workers:

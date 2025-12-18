@@ -37,14 +37,15 @@ export type ActionProgressState = Map<
   }
 >;
 
-export interface MessageTemporaryState {
-  message: LightAgentMessageWithActionsType;
-  agentState: AgentStateClassification;
-  isRetrying: boolean;
-  lastUpdated: Date;
-  actionProgress: ActionProgressState;
-  useFullChainOfThought: boolean;
-}
+export type MessageTemporaryState = LightAgentMessageWithActionsType & {
+  streaming: {
+    agentState: AgentStateClassification;
+    isRetrying: boolean;
+    lastUpdated: Date;
+    actionProgress: ActionProgressState;
+    useFullChainOfThought: boolean;
+  };
+};
 
 export type AgentMessageStateEvent = (
   | AgentMessageEvents
@@ -103,42 +104,25 @@ export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
 
 export const isMessageTemporayState = (
   msg: VirtuosoMessage
-): msg is MessageTemporaryState => "agentState" in msg;
-
-export const getMessageSId = (msg: VirtuosoMessage): string =>
-  isMessageTemporayState(msg) ? msg.message.sId : msg.sId;
+): msg is MessageTemporaryState => "streaming" in msg;
 
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
-  isMessageTemporayState(msg)
-    ? new Date(msg.message.created)
-    : new Date(msg.created);
-
-export const getMessageRank = (msg: VirtuosoMessage): number =>
-  isMessageTemporayState(msg) ? msg.message.rank : msg.rank;
+  new Date(msg.created);
 
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType
 ): MessageTemporaryState => {
   return {
-    actionProgress: new Map(),
-    agentState: message.status === "created" ? "thinking" : "done",
-    isRetrying: false,
-    lastUpdated: new Date(),
-    message: {
-      ...message,
-      actions: isLightAgentMessageWithActionsType(message)
-        ? message.actions
-        : [],
+    ...message,
+    actions: isLightAgentMessageWithActionsType(message) ? message.actions : [],
+    streaming: {
+      actionProgress: new Map(),
+      agentState: message.status === "created" ? "thinking" : "done",
+      isRetrying: false,
+      lastUpdated: new Date(),
+      useFullChainOfThought: false,
     },
-    useFullChainOfThought: false,
   };
-};
-
-export const areSameRank = (
-  messageA: VirtuosoMessage,
-  messageB: VirtuosoMessage
-) => {
-  return getMessageRank(messageA) === getMessageRank(messageB);
 };
 
 export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>

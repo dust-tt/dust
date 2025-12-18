@@ -8,7 +8,7 @@ import {
   ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -19,7 +19,11 @@ import { AgentBuilderSectionContainer } from "@app/components/agent_builder/Agen
 import { SkillsSheet } from "@app/components/agent_builder/skills/skillSheet/SkillsSheet";
 import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SKILL_ICON } from "@app/lib/skill";
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getSkillIcon } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 
 const BACKGROUND_IMAGE_PATH = "/static/SkillsBar.svg";
@@ -37,7 +41,7 @@ interface SkillCardProps {
 }
 
 function SkillCard({ skill, onRemove }: SkillCardProps) {
-  const SkillIcon = SKILL_ICON;
+  const SkillIcon = getSkillIcon(skill.icon);
 
   return (
     <Card
@@ -56,7 +60,7 @@ function SkillCard({ skill, onRemove }: SkillCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <SkillIcon className="h-4 w-4 shrink-0" />
+          <ResourceAvatar icon={SkillIcon} size="sm" />
           <span className="truncate">{skill.name}</span>
         </div>
 
@@ -91,27 +95,58 @@ export function AgentBuilderSkillsBlock({
   owner,
   user,
 }: AgentBuilderSkillsBlockProps) {
-  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { setValue, watch } = useFormContext<AgentBuilderFormData>();
   const { fields, remove } = useFieldArray<AgentBuilderFormData, "skills">({
     name: "skills",
   });
+
+  // TODO(skills Jules): make a pass on the way we use reacthookform here
+  const { mcpServerViews } = useMCPServerViewsContext();
+  const { skills: allSkills } = useSkillsContext();
+
+  const actions = watch("actions");
+  const selectedSkills = watch("skills");
+  const additionalSpaces = watch("additionalSpaces");
+
+  // Compute space IDs already requested by actions (tools/knowledge)
+  const alreadyRequestedSpaceIds = useMemo(() => {
+    const spaceIdToActions = getSpaceIdToActionsMap(actions, mcpServerViews);
+    const actionRequestedSpaceIds = new Set<string>();
+    for (const spaceId of Object.keys(spaceIdToActions)) {
+      if (spaceIdToActions[spaceId]?.length > 0) {
+        actionRequestedSpaceIds.add(spaceId);
+      }
+    }
+
+    // Also include space IDs from custom skills (those with canWrite: true have their own requestedSpaceIds)
+    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
+    for (const skill of allSkills) {
+      if (selectedSkillIds.has(skill.sId) && skill.canWrite) {
+        for (const spaceId of skill.requestedSpaceIds) {
+          actionRequestedSpaceIds.add(spaceId);
+        }
+      }
+    }
+
+    return actionRequestedSpaceIds;
+  }, [actions, mcpServerViews, selectedSkills, allSkills]);
 
   const [sheetMode, setSheetMode] = useState<SkillsSheetMode | null>(null);
 
   const handleOpenSheet = useCallback(() => {
     setSheetMode({
-      type: SKILLS_SHEET_PAGE_IDS.SELECTION,
-      selectedSkills: getValues("skills"),
+      pageId: SKILLS_SHEET_PAGE_IDS.SELECTION,
     });
-  }, [getValues]);
+  }, []);
 
   const handleCloseSheet = useCallback(() => {
     setSheetMode(null);
   }, []);
 
   const handleSaveSkills = useCallback(
-    (skills: AgentBuilderSkillsType[]) => {
+    (skills: AgentBuilderSkillsType[], newAdditionalSpaces: string[]) => {
       setValue("skills", skills, { shouldDirty: true });
+      setValue("additionalSpaces", newAdditionalSpaces, { shouldDirty: true });
     },
     [setValue]
   );
@@ -154,6 +189,9 @@ export function AgentBuilderSkillsBlock({
         onModeChange={setSheetMode}
         owner={owner}
         user={user}
+        initialSelectedSkills={selectedSkills}
+        initialAdditionalSpaces={additionalSpaces}
+        alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
       />
     </AgentBuilderSectionContainer>
   );

@@ -13,7 +13,6 @@ import {
   getServerTypeAndIdFromSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type {
   AutoInternalMCPServerNameType,
   MCPServerAvailability,
@@ -25,6 +24,7 @@ import {
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";

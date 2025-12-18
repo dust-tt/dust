@@ -7,10 +7,12 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { LightWorkspaceType } from "@app/types";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 
 export function useUser(
@@ -106,7 +108,10 @@ export function usePatchUser() {
     lastName: string,
     notifySuccess: boolean,
     jobType?: JobType,
-    imageUrl?: string | null
+    imageUrl?: string | null,
+    favoritePlatforms?: FavoritePlatform[],
+    emailProvider?: EmailProviderType,
+    workspaceId?: string
   ) => {
     const res = await clientFetch("/api/user", {
       method: "PATCH",
@@ -118,6 +123,9 @@ export function usePatchUser() {
         lastName,
         jobType,
         imageUrl,
+        favoritePlatforms,
+        emailProvider,
+        workspaceId,
       }),
     });
 

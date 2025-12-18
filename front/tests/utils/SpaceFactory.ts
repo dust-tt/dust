@@ -5,6 +5,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import type { WorkspaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {
@@ -26,25 +27,25 @@ export class SpaceFactory {
     };
   }
 
-  static async global(workspace: WorkspaceType) {
+  static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "global",
         workspaceId: workspace.id,
       },
-      [] // TODO: Add groups
+      removeNulls([globalGroup]) // TODO: Add groups
     );
   }
 
-  static async system(workspace: WorkspaceType) {
+  static async system(workspace: WorkspaceType, systemGroup?: GroupResource) {
     return SpaceResource.makeNew(
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "system",
         workspaceId: workspace.id,
       },
-      [] // TODO: Add groups
+      removeNulls([systemGroup]) // TODO: Add groups
     );
   }
 

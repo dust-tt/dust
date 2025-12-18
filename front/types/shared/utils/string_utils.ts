@@ -172,6 +172,14 @@ export function asDisplayToolName(name?: string | null) {
     return "Go deep";
   }
 
+  // Override the name to avoids having "Query Tables V2" show up in the UI. Ideally, we would
+  // rename the tool internally to just "query_tables", but that raises more potential risks,
+  // in particular with the Extension logic in extension/ui/components/actions/mcp/details/MCPActionDetails.tsx,
+  // which has some hardcoded logic that could be affected.
+  if (name === "query_tables_v2") {
+    return "Query Tables";
+  }
+
   return formatAsDisplayName(name);
 }
 

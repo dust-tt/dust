@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
-import type { RichMention } from "@app/types";
+import type { PostMentionActionResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
+import type { RichMention, RichMentionWithStatus } from "@app/types";
 
 type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];
@@ -76,4 +80,70 @@ export function useMentionSuggestions({
     isError: !!error,
     mutate,
   };
+}
+
+export function useMentionValidation({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const validateMention = async (
+    mention: RichMentionWithStatus,
+    action: "approved" | "rejected"
+  ): Promise<boolean> => {
+    try {
+      const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
+
+      const res = await clientFetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: mention.type,
+          id: mention.id,
+          action,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
+          description: errorData.message || "An error occurred",
+        });
+        return false;
+      }
+
+      const result: PostMentionActionResponseBody = await res.json();
+
+      if (result.success && action === "approved") {
+        sendNotification({
+          type: "success",
+          title: "Success",
+          description: `${mention.label} has been invited to the conversation.`,
+        });
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+      });
+      return false;
+    }
+  };
+
+  return { validateMention };
 }

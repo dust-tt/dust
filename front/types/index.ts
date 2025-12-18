@@ -66,6 +66,7 @@ export * from "./oauth/oauth_api";
 export * from "./plan";
 export * from "./poke";
 export * from "./poke/plugins";
+export * from "./programmatic_usage";
 export * from "./project";
 export * from "./provider";
 export * from "./resource_permissions";

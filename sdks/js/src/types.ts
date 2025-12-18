@@ -62,6 +62,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
   | "gemini-3-pro-preview"
+  | "gemini-3-flash-preview"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -305,7 +306,6 @@ const UserMessageOriginSchema = z
     "email",
     "excel",
     "extension",
-    "github-copilot-chat",
     "gsheet",
     "make",
     "n8n",
@@ -2883,6 +2883,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AsanaLogo"
+  | "AshbyLogo"
   | "CanvaLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"

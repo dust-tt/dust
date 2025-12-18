@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./index";
 
@@ -51,11 +49,15 @@ describe("POST /api/w/[wId]/data_sources/[dsId]", () => {
   });
 
   it("returns 403 if not authorized to administrate the data source", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-    });
-    const space = await SpaceFactory.regular(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+      });
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query.dsId = dataSourceView.dataSource.sId;
     req.body = {
@@ -75,15 +77,16 @@ describe("POST /api/w/[wId]/data_sources/[dsId]", () => {
   });
 
   it("returns 400 when request body is invalid", async () => {
-    const { req, res, workspace, globalGroup } =
+    const { req, res, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
       });
-    const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
 
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query.dsId = dataSourceView.dataSource.sId;
     req.body = {
@@ -103,15 +106,16 @@ describe("POST /api/w/[wId]/data_sources/[dsId]", () => {
   });
 
   it("successfully updates assistantDefaultSelected to true (admin only)", async () => {
-    const { req, res, workspace, globalGroup } =
+    const { req, res, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
       });
-    const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
 
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query.dsId = dataSourceView.dataSource.sId;
     req.body = {
@@ -127,15 +131,16 @@ describe("POST /api/w/[wId]/data_sources/[dsId]", () => {
   });
 
   it("successfully updates assistantDefaultSelected to false", async () => {
-    const { req, res, workspace, globalGroup } =
+    const { req, res, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
       });
-    const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
 
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query.dsId = dataSourceView.dataSource.sId;
     req.body = {

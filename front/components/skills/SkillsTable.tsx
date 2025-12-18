@@ -1,6 +1,5 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  Avatar,
   DataTable,
   EyeIcon,
   PencilSquareIcon,
@@ -13,13 +12,14 @@ import { useMemo, useState } from "react";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
-  SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 
@@ -48,23 +48,27 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
     {
       header: "Name",
       accessorKey: "name",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <div className="flex flex-row items-center gap-2 py-3">
-            <div>
-              <Avatar visual={info.row.original.icon} size="sm" />
-            </div>
-            <div className="flex min-w-0 grow flex-col">
-              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-                {info.getValue()}
+      cell: (info: CellContext<RowData, string>) => {
+        const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
+
+        return (
+          <DataTable.CellContent>
+            <div className="flex flex-row items-center gap-2 py-3">
+              <div>
+                <SkillAvatar />
               </div>
-              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {info.row.original.description}
+              <div className="flex min-w-0 grow flex-col">
+                <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+                  {info.getValue()}
+                </div>
+                <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {info.row.original.description}
+                </div>
               </div>
             </div>
-          </div>
-        </DataTable.CellContent>
-      ),
+          </DataTable.CellContent>
+        );
+      },
       meta: {
         className: "w-40 @lg:w-full",
       },
@@ -134,9 +138,9 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: (SkillType & { relations: SkillRelations })[];
+  skills: SkillWithRelationsType[];
   owner: LightWorkspaceType;
-  onSkillClick: (skill: SkillType & { relations: SkillRelations }) => void;
+  onSkillClick: (skill: SkillWithRelationsType) => void;
   onAgentClick: (agentId: string) => void;
 };
 

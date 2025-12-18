@@ -392,7 +392,6 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
             dataSources: null,
             tables: null,
             childAgentId: null,
-            reasoningModel: null,
             timeFrame: null,
             jsonSchema: null,
             additionalConfiguration: {},

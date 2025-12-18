@@ -18,6 +18,7 @@ vi.mock("@app/lib/api/redis", () => ({
     expire: vi.fn(),
     zRange: vi.fn(),
     hGetAll: vi.fn().mockResolvedValue([]),
+    hGet: vi.fn(),
   }),
   runOnRedis: vi
     .fn()
@@ -32,6 +33,7 @@ vi.mock("@app/lib/api/redis", () => ({
           expire: vi.fn(),
           zRange: vi.fn(),
           hGetAll: vi.fn().mockResolvedValue([]),
+          hGet: vi.fn(),
         };
 
         return fn(mockRedisClient);

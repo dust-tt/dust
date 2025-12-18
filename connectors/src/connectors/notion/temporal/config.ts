@@ -1,6 +1,6 @@
 const WORKFLOW_VERSION = 52;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
-const GC_WORKFLOW_VERSION = 52;
+const GC_WORKFLOW_VERSION = 53;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${GC_WORKFLOW_VERSION}`;
 
 // Notion's "last edited" timestamp is precise to the minute
@@ -18,6 +18,8 @@ export const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 64;
 export const MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW = 5;
 
 export const MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES = 1;
+
+export const GC_BATCHES_PER_RUN = 128;
 
 // If set to true, the workflow will process all discovered resources until empty.
 export const PROCESS_ALL_DISCOVERED_RESOURCES = false;

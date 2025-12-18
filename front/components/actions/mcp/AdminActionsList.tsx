@@ -193,7 +193,12 @@ export const AdminActionsList = ({
             },
           };
         })
-        .sort(mcpServersSortingFn),
+        .sort((a, b) =>
+          mcpServersSortingFn(
+            { mcpServer: a.mcpServer, mcpServerView: a.mcpServerView },
+            { mcpServer: b.mcpServer, mcpServerView: b.mcpServerView }
+          )
+        ),
     [
       connections,
       mcpServers,
@@ -217,8 +222,15 @@ export const AdminActionsList = ({
         filterFn: (row, id, filterValue) =>
           filterMCPServer(row.original.mcpServer, filterValue),
         sortingFn: (rowA, rowB) => {
-          return rowA.original.mcpServer.name.localeCompare(
-            rowB.original.mcpServer.name
+          return mcpServersSortingFn(
+            {
+              mcpServer: rowA.original.mcpServer,
+              mcpServerView: rowA.original.mcpServerView,
+            },
+            {
+              mcpServer: rowB.original.mcpServer,
+              mcpServerView: rowB.original.mcpServerView,
+            }
           );
         },
         meta: {

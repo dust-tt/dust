@@ -14,6 +14,7 @@ import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actio
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
+import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
@@ -41,11 +42,11 @@ import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
-import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
+import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
@@ -147,8 +148,6 @@ export async function getInternalMCPServer(
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
       return runAgentServer(auth, agentLoopContext);
-    case "reasoning":
-      return reasoningServer(auth, agentLoopContext);
     case "run_dust_app":
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":
@@ -173,6 +172,8 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
+    case "databricks":
+      return databricksServer(auth, agentLoopContext);
     case "jira":
       return jiraServer(auth, agentLoopContext);
     case "microsoft_drive":
@@ -217,6 +218,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
+    case "schedules_management":
+      return schedulesManagementServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

@@ -42,7 +42,6 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
-  getMessageSId,
   isHandoverUserMessage,
   isMessageTemporayState,
   isUserMessage,
@@ -62,8 +61,8 @@ import {
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import {
   useCancelMessage,
@@ -73,8 +72,6 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
-  LightAgentMessageType,
-  LightAgentMessageWithActionsType,
   LightWorkspaceType,
   Result,
   RichAgentMention,
@@ -92,10 +89,11 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  messageStreamState: MessageTemporaryState;
+  agentMessage: MessageTemporaryState;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
+  triggeringUser: UserType | null;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -106,13 +104,14 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   isLastMessage,
-  messageStreamState,
+  agentMessage,
   messageFeedback,
   owner,
   user,
+  triggeringUser,
   handleSubmit,
 }: AgentMessageProps) {
-  const sId = getMessageSId(messageStreamState);
+  const sId = agentMessage.sId;
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -125,7 +124,7 @@ export function AgentMessage({
   const confirm = useContext(ConfirmContext);
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-    messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
+    agentMessage.configuration.sId as GLOBAL_AGENTS_SID
   );
 
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
@@ -136,22 +135,13 @@ export function AgentMessage({
     VirtuosoMessageListContext
   >();
 
-  const triggeringUser = useMemo((): UserType | null => {
-    const parentMessageId = messageStreamState.message.parentMessageId;
-    const messages = methods.data.get();
-    const parentUserMessage = messages
-      .filter(isUserMessage)
-      .find((m) => m.sId === parentMessageId);
-    return parentUserMessage?.user ?? null;
-  }, [messageStreamState.message.parentMessageId, methods.data]);
-
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
     [triggeringUser, user.sId]
   );
 
   const { shouldStream } = useAgentMessageStream({
-    messageStreamState,
+    agentMessage: agentMessage,
     conversationId,
     owner,
     onEventCallback: useCallback(
@@ -235,16 +225,12 @@ export function AgentMessage({
     useFullChainOfThought: false,
   });
 
-  const agentMessageToRender = getAgentMessageToRender({
-    message: messageStreamState.message,
-    messageStreamState: messageStreamState,
-  });
-  const isDeleted = agentMessageToRender.visibility === "deleted";
+  const isDeleted = agentMessage.visibility === "deleted";
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
     () =>
-      Object.entries(agentMessageToRender.citations ?? {}).reduce<
+      Object.entries(agentMessage.citations ?? {}).reduce<
         Record<string, MCPReferenceCitation>
       >((acc, [key, citation]) => {
         if (citation) {
@@ -262,7 +248,7 @@ export function AgentMessage({
         }
         return acc;
       }, {}),
-    [agentMessageToRender.citations]
+    [agentMessage.citations]
   );
 
   // GenerationContext: to know if we are generating or not.
@@ -287,14 +273,14 @@ export function AgentMessage({
     () => (
       <FeedbackSelectorPopoverContent
         owner={owner}
-        agentMessageToRender={agentMessageToRender}
+        agentMessageToRender={agentMessage}
       />
     ),
-    [owner, agentMessageToRender]
+    [owner, agentMessage]
   );
 
   async function handleCopyToClipboard() {
-    const messageContent = agentMessageToRender.content ?? "";
+    const messageContent = agentMessage.content ?? "";
     let footnotesMarkdown = "";
     let footnotesHtml = "";
 
@@ -398,19 +384,16 @@ export function AgentMessage({
     .get()
     .find(
       (m) =>
-        isMessageTemporayState(m) &&
-        m.message.sId === messageStreamState.message.parentAgentMessageId
+        isMessageTemporayState(m) && m.sId === agentMessage.parentAgentMessageId
     );
 
   const parentAgent =
     parentAgentMessage && isMessageTemporayState(parentAgentMessage)
-      ? parentAgentMessage.message.configuration
+      ? parentAgentMessage.configuration
       : null;
 
   const canDeleteAgentMessage =
-    !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    isTriggeredByCurrentUser;
+    !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
 
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
@@ -429,54 +412,50 @@ export function AgentMessage({
       return;
     }
 
-    await deleteAgentMessage(agentMessageToRender.sId);
+    await deleteAgentMessage(agentMessage.sId);
 
     methods.data.map((m) => {
-      if (
-        isMessageTemporayState(m) &&
-        getMessageSId(m) === agentMessageToRender.sId
-      ) {
+      if (m.sId === agentMessage.sId) {
         return {
           ...m,
-          message: {
-            ...m.message,
-            visibility: "deleted",
-          },
+          visibility: "deleted",
         };
       }
       return m;
     });
   }, [
-    agentMessageToRender.sId,
-    canDeleteAgentMessage,
-    confirm,
     isDeleted,
-    deleteAgentMessage,
+    canDeleteAgentMessage,
     isDeleting,
+    confirm,
+    deleteAgentMessage,
+    agentMessage.sId,
     methods.data,
   ]);
 
   const shouldShowCopy =
     !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed";
+    agentMessage.status !== "created" &&
+    agentMessage.status !== "failed";
 
   const shouldShowRetry =
     !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed" &&
+    agentMessage.status !== "created" &&
+    agentMessage.status !== "failed" &&
     !shouldStream &&
     !isAgentMessageHandingOver;
 
   const shouldShowFeedback =
     !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed" &&
+    agentMessage.status !== "created" &&
+    agentMessage.status !== "failed" &&
     !isGlobalAgent &&
-    agentMessageToRender.configuration.status !== "draft";
+    agentMessage.configuration.status !== "draft";
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
+
+  const retryMessage = useRetryMessage({ owner });
 
   const retryHandler = useCallback(
     async ({
@@ -489,19 +468,14 @@ export function AgentMessage({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
-      await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
+      await retryMessage({
+        conversationId,
+        messageId,
+        blockedOnly,
+      });
       setIsRetryHandlerProcessing(false);
     },
-    [owner.sId]
+    [retryMessage]
   );
 
   // Add feedback buttons first (thumbs up/down)
@@ -530,7 +504,7 @@ export function AgentMessage({
         onSelect: () => {
           void retryHandler({
             conversationId,
-            messageId: agentMessageToRender.sId,
+            messageId: agentMessage.sId,
           });
         },
         disabled: isRetryHandlerProcessing || shouldStream,
@@ -605,7 +579,7 @@ export function AgentMessage({
           onClick={() => {
             void retryHandler({
               conversationId,
-              messageId: agentMessageToRender.sId,
+              messageId: agentMessage.sId,
             });
           }}
           icon={ArrowPathIcon}
@@ -616,7 +590,7 @@ export function AgentMessage({
     }
   }
 
-  const { configuration: agentConfiguration } = agentMessageToRender;
+  const { configuration: agentConfiguration } = agentMessage;
 
   const citations = React.useMemo(
     () => getCitations({ activeReferences, owner, conversationId }),
@@ -626,10 +600,10 @@ export function AgentMessage({
   const handleQuickReply = React.useCallback(
     async (reply: string) => {
       const mention: RichAgentMention = {
-        id: agentMessageToRender.configuration.sId,
+        id: agentMessage.configuration.sId,
         type: "agent",
-        label: agentMessageToRender.configuration.name,
-        pictureUrl: agentMessageToRender.configuration.pictureUrl ?? "",
+        label: agentMessage.configuration.name,
+        pictureUrl: agentMessage.configuration.pictureUrl ?? "",
         description: "",
       };
 
@@ -646,7 +620,7 @@ export function AgentMessage({
         });
       }
     },
-    [agentMessageToRender.configuration, handleSubmit, sendNotification]
+    [agentMessage.configuration, handleSubmit, sendNotification]
   );
 
   const canMention = agentConfiguration.canRead;
@@ -669,7 +643,7 @@ export function AgentMessage({
             size="xs"
             className="ml-1"
             color="primary"
-            isBusy={agentMessageToRender.status === "created"}
+            isBusy={agentMessage.status === "created"}
           />
         )}
       </span>
@@ -680,7 +654,7 @@ export function AgentMessage({
       canMention,
       isArchived,
       parentAgent,
-      agentMessageToRender.status,
+      agentMessage.status,
     ]
   );
 
@@ -690,19 +664,17 @@ export function AgentMessage({
         pictureUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         buttons={messageButtons}
-        avatarBusy={agentMessageToRender.status === "created"}
+        avatarBusy={agentMessage.status === "created"}
         isDisabled={isArchived}
         renderName={renderName}
         timestamp={
           parentAgent
             ? undefined
-            : formatTimestring(
-                agentMessageToRender.completedTs ?? agentMessageToRender.created
-              )
+            : formatTimestring(agentMessage.completedTs ?? agentMessage.created)
         }
         completionStatus={
           isDeleted ? undefined : (
-            <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+            <AgentMessageCompletionStatus agentMessage={agentMessage} />
           )
         }
         type="agent"
@@ -717,11 +689,11 @@ export function AgentMessage({
             conversationId={conversationId}
             retryHandler={retryHandler}
             isLastMessage={isLastMessage}
-            messageStreamState={messageStreamState}
+            agentMessage={agentMessage}
             references={references}
             streaming={shouldStream}
             lastTokenClassification={
-              messageStreamState.agentState === "thinking" ? "tokens" : null
+              agentMessage.streaming.agentState === "thinking" ? "tokens" : null
             }
             activeReferences={activeReferences}
             setActiveReferences={setActiveReferences}
@@ -737,19 +709,17 @@ export function AgentMessage({
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
       buttons={messageButtons.length > 0 ? messageButtons : undefined}
-      avatarBusy={agentMessageToRender.status === "created"}
+      avatarBusy={agentMessage.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
       timestamp={
         parentAgent
           ? undefined
-          : formatTimestring(
-              agentMessageToRender.completedTs ?? agentMessageToRender.created
-            )
+          : formatTimestring(agentMessage.completedTs ?? agentMessage.created)
       }
       completionStatus={
         isDeleted ? undefined : (
-          <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+          <AgentMessageCompletionStatus agentMessage={agentMessage} />
         )
       }
       type="agent"
@@ -763,12 +733,12 @@ export function AgentMessage({
           conversationId={conversationId}
           retryHandler={retryHandler}
           isLastMessage={isLastMessage}
-          messageStreamState={messageStreamState}
+          agentMessage={agentMessage}
           references={references}
           onQuickReplySend={handleQuickReply}
           streaming={shouldStream}
           lastTokenClassification={
-            messageStreamState.agentState === "thinking" ? "tokens" : null
+            agentMessage.streaming.agentState === "thinking" ? "tokens" : null
           }
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
@@ -782,7 +752,7 @@ export function AgentMessage({
 function AgentMessageContent({
   triggeringUser,
   isLastMessage,
-  messageStreamState,
+  agentMessage,
   references,
   streaming,
   lastTokenClassification,
@@ -802,7 +772,7 @@ function AgentMessageContent({
     messageId: string;
     blockedOnly?: boolean;
   }) => Promise<void>;
-  messageStreamState: MessageTemporaryState;
+  agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
   lastTokenClassification: null | "tokens" | "chain_of_thought";
@@ -820,7 +790,6 @@ function AgentMessageContent({
     VirtuosoMessageListContext
   >();
 
-  const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -839,16 +808,16 @@ function AgentMessageContent({
       messageId: string;
     }) => {
       methods.data.map((m) =>
-        isMessageTemporayState(m) && getMessageSId(m) === sId
+        isMessageTemporayState(m) && m.sId === sId
           ? {
               ...m,
-              message: {
-                ...m.message,
-                status: "created",
-                error: null,
-              },
+              status: "created",
+              error: null,
               // Reset the agent state to "acting" to allow for streaming to continue.
-              agentState: "acting",
+              streaming: {
+                ...m.streaming,
+                agentState: "acting",
+              },
             }
           : m
       );
@@ -863,8 +832,8 @@ function AgentMessageContent({
       }
       // Retry on the main conversation.
       await retryHandler({
-        blockedOnly: true,
         conversationId,
+        blockedOnly: true,
         messageId: sId,
       });
     },
@@ -914,8 +883,7 @@ function AgentMessageContent({
 
   // Auto-open interactive content drawer when interactive files are available.
   const { interactiveFiles } = useAutoOpenInteractiveContent({
-    messageStreamState,
-    agentMessageToRender: agentMessage,
+    agentMessage,
     isLastMessage,
   });
 
@@ -970,7 +938,7 @@ function AgentMessageContent({
 
   // Get in-progress images.
   const inProgressImages = Array.from(
-    messageStreamState.actionProgress.entries()
+    agentMessage.streaming.actionProgress.entries()
   )
     .filter(([, progress]) =>
       isImageProgressOutput(progress.progress?.data.output)
@@ -998,8 +966,8 @@ function AgentMessageContent({
     <div className="flex flex-col gap-y-4">
       <AgentMessageActions
         agentMessage={agentMessage}
-        lastAgentStateClassification={messageStreamState.agentState}
-        actionProgress={messageStreamState.actionProgress}
+        lastAgentStateClassification={agentMessage.streaming.agentState}
+        actionProgress={agentMessage.streaming.actionProgress}
         owner={owner}
       />
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
@@ -1068,33 +1036,6 @@ function AgentMessageContent({
       )}
     </div>
   );
-}
-
-/**
- * Reconstructs the agent message to render based on the message fetched and the data streamed.
- * The message does not contain actions, we may only have some if we received through the stream.
- */
-function getAgentMessageToRender({
-  message,
-  messageStreamState,
-}: {
-  message: LightAgentMessageType;
-  messageStreamState: MessageTemporaryState;
-}): LightAgentMessageType | LightAgentMessageWithActionsType {
-  switch (message.status) {
-    case "succeeded":
-    case "failed":
-      return message;
-    case "cancelled":
-      if (messageStreamState.message.status === "created") {
-        return { ...messageStreamState.message, status: "cancelled" };
-      }
-      return messageStreamState.message;
-    case "created":
-      return messageStreamState.message;
-    default:
-      assertNever(message.status);
-  }
 }
 
 function getCitations({

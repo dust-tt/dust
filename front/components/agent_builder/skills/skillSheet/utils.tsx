@@ -1,12 +1,13 @@
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useLocalSelectedSkills } from "@app/components/agent_builder/skills/skillSheet/hooks";
+import { useSkillSelection } from "@app/components/agent_builder/skills/skillSheet/hooks";
 import { SelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SelectionPage";
+import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_builder/skills/skillSheet/SkillWithRelationsDetailsSheetContent";
+import { SpaceSelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SpaceSelectionPage";
 import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
 export function getPageAndFooter(props: PageContentProps): {
@@ -14,41 +15,58 @@ export function getPageAndFooter(props: PageContentProps): {
   leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
 } {
-  const mode = props.mode;
-  switch (mode.type) {
-    case SKILLS_SHEET_PAGE_IDS.SELECTION:
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const { handleSave, ...restOfUtils } = useLocalSelectedSkills({
-        mode,
-        onSave: props.onSave,
-        onClose: props.onClose,
-      });
+  const {
+    mode,
+    onModeChange,
+    onClose,
+    handleSave,
+    alreadyRequestedSpaceIds,
+    localAdditionalSpaces,
+  } = props;
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const skillSelection = useSkillSelection(props);
+
+  switch (mode.pageId) {
+    case SKILLS_SHEET_PAGE_IDS.SELECTION:
       return {
         page: {
           title: "Add skills",
-          id: mode.type,
+          id: mode.pageId,
           content: (
-            <SelectionPageContent {...props} {...restOfUtils} mode={mode} />
+            <SelectionPageContent
+              {...props}
+              mode={mode}
+              handleSkillToggle={skillSelection.handleSkillToggle}
+              filteredSkills={skillSelection.filteredSkills}
+              isSkillsLoading={skillSelection.isSkillsLoading}
+              searchQuery={skillSelection.searchQuery}
+              selectedSkillIds={skillSelection.selectedSkillIds}
+              setSearchQuery={skillSelection.setSearchQuery}
+            />
           ),
         },
-        leftButton: getCancelButton(props.onClose),
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: onClose,
+        },
         rightButton: {
           label: "Add skills",
           onClick: handleSave,
           variant: "primary",
         },
       };
-    case SKILLS_SHEET_PAGE_IDS.INFO:
+    case SKILLS_SHEET_PAGE_IDS.SKILL_INFO:
       return {
         page: {
-          title: mode.skillConfiguration.name,
-          description: mode.skillConfiguration.userFacingDescription,
-          id: props.mode.type,
-          icon: SKILL_ICON,
+          title: mode.skill.name,
+          description: mode.skill.userFacingDescription,
+          id: props.mode.pageId,
+          icon: getSkillIcon(mode.skill.icon),
           content: (
-            <SkillDetailsSheetContent
-              skillConfiguration={mode.skillConfiguration}
+            <SkillWithRelationsDetailsSheetContent
+              skill={mode.skill}
               owner={props.owner}
               user={props.user}
             />
@@ -57,16 +75,60 @@ export function getPageAndFooter(props: PageContentProps): {
         leftButton: {
           label: "Back",
           variant: "outline",
-          onClick: () => props.onModeChange(mode.previousMode),
+          onClick: () => {
+            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+          },
+        },
+      };
+    case SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION:
+      return {
+        page: {
+          title: `Select spaces`,
+          description:
+            "Automatically grant access to all knowledge sources discovery from your selected spaces",
+          id: mode.pageId,
+          content: (
+            <SpaceSelectionPageContent
+              alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
+              draftSelectedSpaces={skillSelection.draftSelectedSpaces}
+              setDraftSelectedSpaces={skillSelection.setDraftSelectedSpaces}
+            />
+          ),
+        },
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: () => {
+            skillSelection.setDraftSelectedSpaces(localAdditionalSpaces);
+            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+          },
+        },
+        rightButton: {
+          label: "Save",
+          variant: "primary",
+          onClick: () =>
+            skillSelection.handleSpaceSelectionSave(mode.skillConfiguration),
+        },
+      };
+    // TODO(skills 2025-12-18): placeholder to satisfy type for now, will be implemented in future PRs
+    case SKILLS_SHEET_PAGE_IDS.TOOL_INFO:
+    case SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION:
+    case SKILLS_SHEET_PAGE_IDS.TOOL_EDIT:
+      return {
+        page: {
+          title: "Tool",
+          id: mode.pageId,
+          content: <div>Tool configuration coming soon</div>,
+        },
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: () => {
+            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+          },
         },
       };
     default:
       assertNever(mode);
   }
 }
-
-export const getCancelButton = (onClose: () => void) => ({
-  label: "Cancel",
-  variant: "outline",
-  onClick: onClose,
-});

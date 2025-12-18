@@ -21,12 +21,6 @@ import { Err, Ok } from "@app/types";
 import { MembershipResource } from "../resources/membership_resource";
 import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
 
-/**
- * This function checks that both the auth user and the requested user share at least one
- * workspace membership, and that the requested user had at least one membership in the past
- * for the auth workspace. Returns null otherwise, preventing retrieving user information
- * from their sId.
- */
 export async function getUserForWorkspace(
   auth: Authenticator,
   { userId }: { userId: string }
@@ -46,6 +40,30 @@ export async function getUserForWorkspace(
     return null;
   }
 
+  const shouldReturnUser = await hasSharedMembership(auth, { user });
+
+  return shouldReturnUser ? user : null;
+}
+
+/**
+ * This function checks that both the auth user and the requested user share at least one
+ * workspace membership, and that the requested user had at least one membership in the past
+ * for the auth workspace. Returns false otherwise.
+ */
+export async function hasSharedMembership(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return false;
+  }
+
+  const authUser = auth.user();
+  if (!authUser) {
+    return false;
+  }
+
   // Check that the requested user had at least one membership in the auth workspace.
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
@@ -54,12 +72,12 @@ export async function getUserForWorkspace(
     });
 
   if (!membership) {
-    return null;
+    return false;
   }
 
   // Special case for superusers: they can see all users.
   if (auth.isDustSuperUser()) {
-    return user;
+    return true;
   }
 
   // Check that the auth user is part of at least one workspace that the requested user is in.
@@ -82,10 +100,10 @@ export async function getUserForWorkspace(
   );
 
   if (!hasSharedWorkspace) {
-    return null;
+    return false;
   }
 
-  return user;
+  return true;
 }
 
 export async function fetchRevokedWorkspace(

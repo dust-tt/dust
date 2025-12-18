@@ -5,24 +5,18 @@ import {
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerById,
   allowsMultipleInstancesOfInternalMCPServerByName,
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
-  getAvailabilityOfInternalMCPServerByName,
   getInternalMCPServerNameAndWorkspaceId,
   isAutoInternalMCPServerName,
-  isInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  connectToMCPServer,
-  extractMetadataFromServerVersion,
-  extractMetadataFromTools,
-} from "@app/lib/actions/mcp_metadata";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -33,52 +27,8 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { MCPOAuthUseCase, Result } from "@app/types";
 import { Err, Ok, redactString, removeNulls } from "@app/types";
-import { isDevelopment } from "@app/types";
-
-const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-// Getting the metadata is a relatively long operation, so we cache it for 5 minutes
-// as internal servers are not expected to change often.
-// In any case, when actually running the action, the metadata will be fetched from the MCP server.
-const getCachedMetadata = cacheWithRedis(
-  async (auth: Authenticator, id: string) => {
-    const s = await connectToMCPServer(auth, {
-      params: {
-        type: "mcpServerId",
-        mcpServerId: id,
-        oAuthUseCase: null,
-      },
-    });
-
-    if (s.isErr()) {
-      return null;
-    }
-
-    const mcpClient = s.value;
-    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
-
-    const metadata = {
-      ...md,
-      tools: extractMetadataFromTools(
-        (await mcpClient.listTools()).tools
-      ) as any,
-      availability: isInternalMCPServerName(md.name)
-        ? getAvailabilityOfInternalMCPServerByName(md.name)
-        : "manual",
-    };
-
-    await mcpClient.close();
-
-    return metadata;
-  },
-  (_auth: Authenticator, id: string) => `internal-mcp-server-metadata-${id}`,
-  {
-    ttlMs: isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS,
-  }
-);
 
 export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
@@ -111,6 +61,11 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new InternalMCPServerInMemoryResource(id);
 
+    // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
+    // Bigger refactoring to extract this logic from the resource will come later.
+    const { getCachedMetadata } = await import(
+      "@app/lib/actions/mcp_cached_metadata"
+    );
     const cachedMetadata = await getCachedMetadata(auth, id);
     if (!cachedMetadata) {
       return null;

@@ -1,17 +1,20 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import type {
   APIErrorWithStatusCode,
   Result,
   UserMessageContext,
 } from "@app/types";
 import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 import { createConversation, postUserMessage } from "./conversation";
 
@@ -69,73 +72,114 @@ ${toolLines}`;
 
 // Maps job types (from welcome form) to their primary recommended tool.
 const ROLE_TO_PRIMARY_TOOL: Partial<
-  Record<JobType, { sId: string; name: string }>
+  Record<JobType, InternalMCPServerNameType>
 > = {
-  engineering: { sId: "github", name: "GitHub" },
-  sales: { sId: "hubspot", name: "HubSpot" },
-  customer_success: { sId: "hubspot", name: "HubSpot" },
-  customer_support: { sId: "hubspot", name: "HubSpot" },
-  product: { sId: "notion", name: "Notion" },
-  design: { sId: "notion", name: "Notion" },
-  marketing: { sId: "hubspot", name: "HubSpot" },
-  data: { sId: "github", name: "GitHub" },
-  operations: { sId: "notion", name: "Notion" },
-  finance: { sId: "notion", name: "Notion" },
-  people: { sId: "notion", name: "Notion" },
-  legal: { sId: "notion", name: "Notion" },
+  engineering: "github",
+  sales: "hubspot",
+  customer_success: "hubspot",
+  customer_support: "hubspot",
+  product: "notion",
+  design: "notion",
+  marketing: "hubspot",
+  data: "github",
+  operations: "notion",
+  finance: "notion",
+  people: "notion",
+  legal: "notion",
   // "other" intentionally omitted - will fall back to email-only or Notion default
 };
+
+// Builds the list of tools to suggest based on user's favorite platforms and job type.
+// Returns tool sIds sorted by relevance (job-type-relevant tool first if applicable).
+function getToolsForOnboarding(
+  favoritePlatforms: FavoritePlatform[],
+  emailProvider: EmailProviderType,
+  jobType: JobType | null
+): InternalMCPServerNameType[] {
+  let tools: InternalMCPServerNameType[] = [...favoritePlatforms];
+
+  // If no favorites selected, fall back to email provider + job type inference.
+  if (tools.length === 0) {
+    if (emailProvider === "google") {
+      tools.push("gmail");
+    } else if (emailProvider === "microsoft") {
+      tools.push("outlook");
+    }
+
+    if (jobType) {
+      const roleTool = ROLE_TO_PRIMARY_TOOL[jobType];
+      if (roleTool && !tools.includes(roleTool)) {
+        tools.push(roleTool);
+      }
+    }
+
+    // Final fallback: suggest Notion.
+    if (tools.length === 0) {
+      tools.push("notion");
+    }
+  } else if (jobType) {
+    // If we have favorites and a job type, move the most relevant tool to the front.
+    const roleTool = ROLE_TO_PRIMARY_TOOL[jobType];
+    if (roleTool) {
+      const relevantIndex = tools.indexOf(roleTool);
+      if (relevantIndex > 0) {
+        const relevant = tools[relevantIndex];
+        tools = [
+          relevant,
+          ...tools.slice(0, relevantIndex),
+          ...tools.slice(relevantIndex + 1),
+        ];
+      }
+    }
+  }
+
+  return tools;
+}
 
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
+  favoritePlatforms: FavoritePlatform[];
 }): string {
-  // Determine which tools to show in the first message.
-  const toolSetups: Array<{ sId: string; name: string }> = [];
+  const tools = getToolsForOnboarding(
+    options.favoritePlatforms,
+    options.emailProvider,
+    options.userJobType as JobType | null
+  );
 
-  // Add email tool if provider is detected.
-  if (options.emailProvider === "google") {
-    toolSetups.push({ sId: "gmail", name: "Gmail" });
-  } else if (options.emailProvider === "microsoft") {
-    toolSetups.push({ sId: "outlook", name: "Outlook" });
-  }
-
-  // Add role-based tool if job type is available (avoid duplicates).
-  if (options.userJobType) {
-    const roleTool = ROLE_TO_PRIMARY_TOOL[options.userJobType as JobType];
-    if (roleTool && !toolSetups.some((t) => t.sId === roleTool.sId)) {
-      toolSetups.push(roleTool);
-    }
-  }
-
-  // Fallback: if no tools determined, suggest Notion.
-  if (toolSetups.length === 0) {
-    toolSetups.push({ sId: "notion", name: "Notion" });
-  }
-
-  // Build the tool setup directives for the first message (on same line).
-  const toolSetupDirectives = toolSetups
-    .map((t) => `:toolSetup[Connect ${t.name}]{sId=${t.sId}}`)
+  // Build the tool setup directives for the first message (max 2, on same line).
+  const initialTools = tools.slice(0, 2);
+  const toolSetupDirectives = initialTools
+    .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
 
-  // Build tool list with descriptions from INTERNAL_MCP_SERVERS.
-  const toolsWithDescriptions = toolSetups
-    .map((t) => {
-      const server =
-        INTERNAL_MCP_SERVERS[t.sId as keyof typeof INTERNAL_MCP_SERVERS];
+  const toolsWithDescriptions = initialTools
+    .map((sId) => {
+      const server = INTERNAL_MCP_SERVERS[sId];
       const description = server?.serverInfo?.description ?? "";
-      return `- ${t.name}: ${description}`;
+      return `- ${asDisplayName(sId)}: ${description}`;
     })
     .join("\n");
 
-  // Build context about user's role if available.
-  const roleContext = options.userJobType
-    ? `\n## User context\nThe user works in: ${options.userJobType}\nThe tools below were selected as relevant for their role.`
-    : "";
+  let userContext = "";
+  if (options.userJobType || options.favoritePlatforms.length > 0) {
+    userContext = "\n## User context\n";
+    if (options.userJobType) {
+      userContext += `The user works in: ${options.userJobType}\n`;
+    }
+    if (options.favoritePlatforms.length > 0) {
+      const platformNames = options.favoritePlatforms
+        .map((p) => asDisplayName(p))
+        .join(", ");
+      userContext += `The user indicated they use these platforms: ${platformNames}\n`;
+      userContext +=
+        "Prioritize suggesting these tools. Guide the user through connecting them one by one.";
+    }
+  }
 
   return `<dust_system>
 You are onboarding a brand-new user to Dust.
-${roleContext}
+${userContext}
 
 ## CRITICAL RULES
 
@@ -224,11 +268,6 @@ Example ending:
 Example ending:
 :quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
 
-### After user completes a tool setup
-1. Confirm briefly (one line + emoji)
-2. Suggest 1-2 simple tasks they can try RIGHT NOW with that specific tool
-3. End with quick replies for those tasks
-
 ### When user asks to connect more tools
 1. Show 1-2 relevant toolSetup directives (on same line)
 2. Include a skip option
@@ -240,63 +279,121 @@ Example ending:
 // These are intentionally generic and don't assume what data the user has.
 const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
   gmail: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Search emails]{message="Search my emails for messages from last week"}`,
-
+:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
   outlook: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Search emails]{message="Search my emails for messages from last week"}`,
-
-  github: `Example quick replies:
-:quickReply[My open PRs]{message="Show my open pull requests"} :quickReply[My issues]{message="Show issues assigned to me"}`,
-
+:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
+  github: `Automatically check for recent notifications, open pull requests, or issues assigned to the user. Present 1-2 specific examples with repo names and brief context.`,
   notion: `Example quick replies:
-:quickReply[Search pages]{message="Search for a page in Notion"} :quickReply[Recent pages]{message="Show recently updated pages"}`,
-
+:quickReply[Pages updated today]{message="Show Notion pages updated today"} :quickReply[Recent activity]{message="Summarize recent activity in Notion"}`,
   slack: `Example quick replies:
-:quickReply[Search messages]{message="Search my Slack messages"} :quickReply[Recent messages]{message="Show my recent Slack messages"}`,
-
+:quickReply[Unread summary]{message="Summarize my unread Slack messages"} :quickReply[Today's mentions]{message="Show Slack mentions from today"}`,
   hubspot: `Example quick replies:
-:quickReply[Search contacts]{message="Search for a contact in HubSpot"} :quickReply[Recent deals]{message="Show recent deals"}`,
-
+:quickReply[Deals updated today]{message="Show deals updated today"} :quickReply[New contacts]{message="Show new contacts from this week"}`,
   jira: `Example quick replies:
-:quickReply[My tickets]{message="Show my open Jira tickets"} :quickReply[Search tickets]{message="Search for a Jira ticket"}`,
-
+:quickReply[My open tickets]{message="Show my open Jira tickets"} :quickReply[Ticket updates]{message="Summarize updates on my Jira tickets"}`,
   google_drive: `Example quick replies:
-:quickReply[Search files]{message="Search for a file in Google Drive"} :quickReply[Recent files]{message="Show my recently modified files"}`,
-
+:quickReply[Files updated today]{message="Show files updated today in Google Drive"} :quickReply[Recent changes]{message="Summarize recent changes in Google Drive"}`,
   microsoft_drive: `Example quick replies:
-:quickReply[Search files]{message="Search for a file in OneDrive"} :quickReply[Recent files]{message="Show my recently modified files"}`,
-
+:quickReply[Files updated today]{message="Show files updated today in OneDrive"} :quickReply[Recent changes]{message="Summarize recent changes in OneDrive"}`,
   google_calendar: `Example quick replies:
-:quickReply[Today's events]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
-
+:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
   outlook_calendar: `Example quick replies:
-:quickReply[Today's events]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
-
+:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
   microsoft_teams: `Example quick replies:
-:quickReply[Search messages]{message="Search my Teams messages"} :quickReply[Recent messages]{message="Show my recent Teams messages"}`,
-
+:quickReply[Unread summary]{message="Summarize my unread Teams messages"} :quickReply[Today's mentions]{message="Show Teams mentions from today"}`,
   microsoft_excel: `Example quick replies:
-:quickReply[List files]{message="List my Excel files"} :quickReply[Open a file]{message="Help me find an Excel file"}`,
+:quickReply[Recent spreadsheets]{message="Show recently updated Excel files"} :quickReply[Changes this week]{message="Summarize changes to my Excel files this week"}`,
 };
 
-const DEFAULT_TASK_SUGGESTIONS = `Example quick replies:
-:quickReply[Try it out]{message="What can I do with this tool?"} :quickReply[Connect more]{message="What other tools can I connect?"}`;
+const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
-export function buildOnboardingFollowUpPrompt(toolId: string): string {
-  const taskSuggestions =
-    TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_TASK_SUGGESTIONS;
+export function buildOnboardingFollowUpPrompt(
+  toolId: string,
+  options: { username: string }
+): string {
+  const queryGuidance =
+    TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
 
   return `<dust_system>
-The user just connected a tool. Respond briefly (2-3 lines max).
+The user just connected a tool (${toolId}). Your task is to AUTOMATICALLY use this tool to provide a personalized, helpful suggestion.
 
-1. Confirm the connection (one line + emoji)
-2. End with the quick replies below
+## Instructions:
 
-${taskSuggestions}
+1. **Immediately use the ${toolId} tool** to fetch real data (don't ask permission, just do it)
+2. **Query guidance**: ${queryGuidance}
+3. **If you find relevant data**:
+   - Briefly confirm the connection (one line + emoji)
+   - Share what you found in a conversational way (e.g., "I see you have an email from Roger 2 days ago that you haven't replied to")
+   - Suggest 1-2 specific, actionable things the user can do with this data
+   - End with quick reply buttons for those specific actions
 
-Do NOT invent specific searches or assume what data the user has. Only use the quick replies above.
+4. **If you don't find relevant data or get an error**:
+   - Briefly confirm the connection (one line + emoji)
+   - Mention you checked but didn't find urgent items
+   - Suggest 2 general things they can try with this tool
+   - End with quick reply buttons for general actions
 
-After tasks, end with: :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+## After showing the results:
+1. Show the results of their request
+2. Ask if they'd like to automate this task
+3. Explain it would run automatically (e.g., "every weekday morning")
+4. End with quick reply options
+
+Example response:
+"Here's your summary: [content]
+
+Would you like me to send you this automatically every weekday morning?"
+:quickReply[Yes, automate this]{message="Yes, please automate this for me"} :quickReply[No thanks]{message="No thanks"}
+
+### When user wants to automate a task
+When the user confirms they want to automate a task:
+
+1. **First, ask for their timezone** so the schedule runs at the right time for them:
+   - Ask: "What timezone are you in?"
+   - Provide quick replies for common timezones:
+
+:quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
+
+2. **Once you have the timezone**, call create_schedule_trigger with the timezone parameter:
+   - name: A short descriptive name (e.g., "Daily email summary")
+   - schedule: The schedule in natural language (e.g., "every weekday at 9am")
+   - prompt: What @dust should do. Start with @${options.username} so the user gets pinged (e.g., "@${options.username} Summarize the important emails I received since yesterday")
+   - timezone: The IANA timezone the user provided (e.g., "America/New_York", "Europe/Paris")
+
+The tool will create the schedule and return a confirmation message.
+
+## Response format:
+
+Keep your response SHORT (4-5 lines max). Structure it like:
+- Connection confirmed + emoji
+- What you found (specific names/titles/dates)
+- Suggestion(s)
+- Quick reply buttons
+
+## Quick reply format:
+
+End with 2-3 quick reply buttons on a single line:
+:quickReply[Button 1 Label]{message="The exact message to send"} :quickReply[Button 2 Label]{message="The exact message to send"}
+
+Then add these standard buttons on the next line:
+:quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+
+## CRITICAL: Be specific and actionable
+
+- Use actual names, titles, dates from the data you fetch
+- Make suggestions that are immediately actionable
+- Don't be vague or generic
+- If you can't find data, admit it and pivot to general suggestions
+
+## Example (Gmail):
+
+Great! Your Gmail is connected ✅
+
+I see you have an unread email from Sarah Chen from 2 days ago about the Q4 planning meeting, and one from Mike Rodriguez about reviewing the proposal draft.
+
+:quickReply[Draft reply to Sarah]{message="Help me draft a reply to Sarah Chen's email about Q4 planning"} :quickReply[Summarize today's emails]{message="Summarize my emails from today"}
+:quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+
 </dust_system>`;
 }
 
@@ -350,19 +447,43 @@ export async function createOnboardingConversationIfNeeded(
     }
   }
 
-  // Detect the user's email provider (Google, Microsoft, or other).
   const userJson = user.toJSON();
-  const emailProvider = await detectEmailProvider(
-    userJson.email,
-    `user-${userJson.sId}`
+
+  const workspaceMetadataPrefix = `workspace:${owner.sId}:`;
+
+  // Email provider is user-scoped (same email across all workspaces).
+  const emailProviderMetadata = await user.getMetadata(
+    "onboarding:email_provider"
   );
+  let emailProvider: EmailProviderType = "other";
+  if (
+    emailProviderMetadata?.value &&
+    (emailProviderMetadata.value === "google" ||
+      emailProviderMetadata.value === "microsoft" ||
+      emailProviderMetadata.value === "other")
+  ) {
+    emailProvider = emailProviderMetadata.value;
+  }
 
-  // Store the detection result as user metadata for future reference.
-  await user.setMetadata("onboarding:email_provider", emailProvider);
-
-  // Fetch the user's job type for personalization.
+  // Job type is user-scoped (not workspace-specific).
   const jobTypeMetadata = await user.getMetadata("job_type");
   const userJobType = jobTypeMetadata?.value ?? null;
+
+  // Favorite platforms is workspace-scoped.
+  const favoritePlatformsMetadata = await user.getMetadata(
+    `${workspaceMetadataPrefix}favorite_platforms`
+  );
+
+  let favoritePlatforms: FavoritePlatform[] = [];
+  if (favoritePlatformsMetadata?.value) {
+    const parsed: unknown = JSON.parse(favoritePlatformsMetadata.value);
+    if (
+      Array.isArray(parsed) &&
+      parsed.every((p) => typeof p === "string" && isFavoritePlatform(p))
+    ) {
+      favoritePlatforms = parsed;
+    }
+  }
 
   const conversation = await createConversation(auth, {
     title: "Welcome to Dust",
@@ -373,6 +494,7 @@ export async function createOnboardingConversationIfNeeded(
   const onboardingSystemMessage = buildOnboardingPrompt({
     emailProvider,
     userJobType,
+    favoritePlatforms,
   });
 
   const context: UserMessageContext = {

@@ -1,6 +1,5 @@
 import {
   ArrowPathIcon,
-  Avatar,
   Button,
   ContentMessage,
   InformationCircleIcon,
@@ -18,32 +17,35 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
+import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon, hasRelations } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skill: SkillWithRelationsType;
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
 };
 
 export function SkillDetailsSheet({
-  skillConfiguration,
+  skill,
   onClose,
   user,
   owner,
 }: SkillDetailsProps) {
   return (
     <Sheet
-      open={!!skillConfiguration}
+      open={!!skill}
       onOpenChange={(open) => {
         if (!open) {
           onClose();
@@ -55,18 +57,10 @@ export function SkillDetailsSheet({
           <SheetTitle />
         </VisuallyHidden>
         <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          <DescriptionSection
-            skillConfiguration={skillConfiguration}
-            owner={owner}
-            onClose={onClose}
-          />
+          <DescriptionSection skill={skill} owner={owner} onClose={onClose} />
         </SheetHeader>
         <SheetContainer className="pb-4">
-          <SkillDetailsSheetContent
-            skillConfiguration={skillConfiguration}
-            user={user}
-            owner={owner}
-          />
+          <SkillDetailsSheetContent skill={skill} user={user} owner={owner} />
         </SheetContainer>
       </SheetContent>
     </Sheet>
@@ -74,19 +68,19 @@ export function SkillDetailsSheet({
 }
 
 type SkillDetailsSheetContentProps = {
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skill: SkillType & { relations?: SkillRelations };
   owner: WorkspaceType;
   user: UserType;
 };
 
 export function SkillDetailsSheetContent({
-  skillConfiguration,
+  skill,
   owner,
   user,
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skillConfiguration.canWrite;
+  const showEditorsTabs = skill.canWrite;
 
   if (showEditorsTabs) {
     return (
@@ -107,48 +101,74 @@ export function SkillDetailsSheetContent({
         </TabsList>
         <div className="mt-4">
           <TabsContent value="info">
-            <SkillInfoTab skillConfiguration={skillConfiguration} />
+            <SkillInfoTab skill={skill} />
           </TabsContent>
           <TabsContent value="editors">
-            <SkillEditorsTab
-              skillConfiguration={skillConfiguration}
-              owner={owner}
-              user={user}
-            />
+            {hasRelations(skill) && (
+              <SkillEditorsTab
+                skillConfiguration={skill}
+                owner={owner}
+                user={user}
+              />
+            )}
           </TabsContent>
         </div>
       </Tabs>
     );
   }
 
-  return <SkillInfoTab skillConfiguration={skillConfiguration} />;
+  return <SkillInfoTab skill={skill} />;
 }
 
 type DescriptionSectionProps = {
-  skillConfiguration: SkillType;
+  skill: SkillWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
 };
 
 const DescriptionSection = ({
-  skillConfiguration,
+  skill,
   owner,
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const author = skill.relations.author;
+  const editedDate =
+    skill.updatedAt &&
+    new Date(skill.updatedAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Avatar name="Skill avatar" visual={<SKILL_ICON />} size="lg" />
-        <div className="flex grow flex-col gap-1">
-          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
-            {skillConfiguration.name}
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-4 pt-4">
+      <div className="relative flex items-center justify-center">
+        <ResourceAvatar
+          icon={getSkillIcon(skill.icon)}
+          name="Skill avatar"
+          size="xl"
+        />
       </div>
 
-      {skillConfiguration.status === "archived" && (
+      {/* Title and edit info */}
+      <div className="flex flex-col items-center gap-1">
+        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+          {skill.name}
+        </h2>
+        {editedDate && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Last edited: {editedDate}
+            {author && ` by ${author.fullName}`}
+          </p>
+        )}
+      </div>
+
+      {skill.status === "active" && skill.canWrite && (
+        <SkillDetailsButtonBar owner={owner} skill={skill} />
+      )}
+
+      {skill.status === "archived" && (
         <>
           <ContentMessage
             title="This skill has been archived."
@@ -157,7 +177,7 @@ const DescriptionSection = ({
             size="sm"
           >
             It is no longer active and cannot be used.
-            {skillConfiguration.canWrite && (
+            {skill.canWrite && (
               <div className="mt-2">
                 <Button
                   variant="outline"
@@ -174,7 +194,7 @@ const DescriptionSection = ({
           <RestoreSkillDialog
             owner={owner}
             isOpen={showRestoreModal}
-            skillConfiguration={skillConfiguration}
+            skill={skill}
             onClose={() => {
               setShowRestoreModal(false);
               onClose();

@@ -3,6 +3,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
+import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
@@ -662,7 +663,7 @@ const DropdownMenuSearchbar = React.forwardRef<
     return (
       <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
-          className="w-full"
+          className="s-w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}
@@ -678,6 +679,50 @@ const DropdownMenuSearchbar = React.forwardRef<
 );
 
 DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
+
+export interface DropdownMenuFilterOption {
+  label: string;
+  value: string;
+}
+
+interface DropdownMenuFiltersProps {
+  filters: DropdownMenuFilterOption[];
+  selectedValues: string[];
+  onSelectFilter: (value: string) => void;
+  className?: string;
+}
+
+const DropdownMenuFilters = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuFiltersProps
+>(({ filters, selectedValues = [], onSelectFilter, className }, ref) => {
+  const multiSelectionValues = Array.isArray(selectedValues)
+    ? selectedValues
+    : [];
+
+  return (
+    <div
+      ref={ref}
+      className={cn("s-flex s-flex-wrap s-gap-0.5 s-p-2", className)}
+    >
+      {filters.map((filter) => {
+        const isSelected = multiSelectionValues.includes(filter.value);
+
+        return (
+          <Button
+            key={filter.value}
+            size="xs"
+            variant={isSelected ? "primary" : "outline"}
+            label={filter.label}
+            onClick={() => onSelectFilter(filter.value)}
+          />
+        );
+      })}
+    </div>
+  );
+});
+
+DropdownMenuFilters.displayName = "DropdownMenuFilters";
 
 interface DropdownMenuStaticItemProps {
   label: string;
@@ -718,6 +763,7 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,

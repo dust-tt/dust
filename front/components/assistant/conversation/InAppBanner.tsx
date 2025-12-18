@@ -129,7 +129,7 @@ export function WrappedInAppBanner({
             isBehindMentionBanner
               ? "translate-y-[-50%] scale-95"
               : "translate-y-0 scale-100",
-            "transition-all duration-300 ease-in",
+            "transition-all duration-200 ease-in",
             shouldShowHoverState && "translate-y-[-80%]"
           )}
           style={BACKGROUND_IMAGE_STYLE_PROPS}
@@ -201,8 +201,8 @@ export function MentionBanner({
             "cursor-pointer overflow-hidden"
           )}
           onClick={withTracking(
-            TRACKING_AREAS.DUST_WRAPPED,
-            "cta_dust_wrapped_banner",
+            TRACKING_AREAS.MENTIONS,
+            "cta_collaboration_banner",
             onLearnMore
           )}
         >

@@ -1,4 +1,3 @@
-import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
@@ -11,6 +10,7 @@ import {
 } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import { getFoldersToSync } from "@connectors/connectors/google_drive/temporal/activities/get_folders_to_sync";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -45,39 +45,37 @@ export async function garbageCollector(
     limit: 100,
   });
 
-  const queue = new PQueue({ concurrency: FILES_GC_CONCURRENCY });
   const selectedFolders = await getFoldersToSync(connectorId);
-  await Promise.all(
-    files.map(async (file) => {
-      return queue.add(async () => {
-        const driveFile = await getGoogleDriveObject({
-          connectorId,
-          authCredentials,
-          driveObjectId: file.driveFileId,
-          cacheKey: { connectorId, ts },
-        });
-        if (!driveFile) {
-          // Could not find the file on Gdrive, deleting our local reference to it.
-          await deleteFile(file);
-          return null;
-        }
-        const isInFolderSelection = await objectIsInFolderSelection(
-          connectorId,
-          authCredentials,
-          driveFile,
-          selectedFolders,
-          lastSeenTs
-        );
-
-        if (isInFolderSelection === false || driveFile.trashed) {
-          await deleteOneFile(connectorId, driveFile);
-        } else {
-          await file.update({
-            lastSeenTs: new Date(),
-          });
-        }
+  await concurrentExecutor(
+    files,
+    async (file) => {
+      const driveFile = await getGoogleDriveObject({
+        connectorId,
+        authCredentials,
+        driveObjectId: file.driveFileId,
+        cacheKey: { connectorId, ts },
       });
-    })
+      if (!driveFile) {
+        await deleteFile(file);
+        return null;
+      }
+      const isInFolderSelection = await objectIsInFolderSelection(
+        connectorId,
+        authCredentials,
+        driveFile,
+        selectedFolders,
+        lastSeenTs
+      );
+
+      if (isInFolderSelection === false || driveFile.trashed) {
+        await deleteOneFile(connectorId, driveFile);
+      } else {
+        await file.update({
+          lastSeenTs: new Date(),
+        });
+      }
+    },
+    { concurrency: FILES_GC_CONCURRENCY }
   );
 
   // TODO(nodes-core): Run fixParents in dry run mode to check parentIds validity

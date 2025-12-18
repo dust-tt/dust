@@ -18,10 +18,8 @@ import {
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
-import { serializeMention } from "@app/lib/mentions/format";
 import {
   useAgentConfigurations,
   useSuggestedAgentConfigurations,
@@ -64,10 +62,7 @@ export function AgentSuggestion({
       userMessage.id === -1 || userMessage.sId.startsWith("placeholder"),
   });
 
-  const sendNotification = useSendNotification();
-
   const autoSelectedMessageIdRef = useRef<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [showSuggestion, setShowSuggestion] = useState(false);
 
   const router = useRouter();
@@ -77,53 +72,27 @@ export function AgentSuggestion({
     (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST && agent.status === "active"
   );
 
+  const addMention = useAddUserMessageMention({
+    owner,
+    conversationId,
+  });
+
   useEffect(() => {
     if (!dustAgent) {
       setShowSuggestion(true);
     }
   }, [dustAgent]);
 
-  const { submit: handleSelectSuggestion } = useSubmitFunction(
+  const { submit: handleSelectSuggestion, isSubmitting } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
-      // Ensure proper formatting: if content starts with markdown that requires being at
-      // the beginning of a line (code blocks, list items, etc.), add a newline after the
-      // mention so the markdown remains valid.
-      const contentStartsWithLineStartMarkdown = userMessage.content.match(
-        /^(\s*)(```|`|---|\*\*\*|#{1,6}\s|[-*+]\s|>\s|\d+\.\s)/
-      );
-      const editedContent = contentStartsWithLineStartMarkdown
-        ? `${serializeMention(agent)}\n\n${userMessage.content}`
-        : `${serializeMention(agent)} ${userMessage.content}`;
-      const mRes = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: editedContent,
-            mentions: [
-              {
-                type: "agent",
-                configurationId: agent.sId,
-              },
-            ],
-          }),
-        }
-      );
+      const success = await addMention({
+        agent,
+        userMessage,
+      });
 
-      if (!mRes.ok) {
-        const data = await mRes.json();
-        sendNotification({
-          type: "error",
-          title: "Error adding mention to message",
-          description: data.error.message,
-        });
-        // In case the auto-selection failed, we show the suggestion.
-        if (dustAgent && !showSuggestion) {
-          setShowSuggestion(true);
-        }
+      // In case the auto-selection failed, we show the suggestion.
+      if (!success && dustAgent && !showSuggestion) {
+        setShowSuggestion(true);
       }
     }
   );
@@ -161,6 +130,7 @@ export function AgentSuggestion({
 
   useEffect(() => {
     if (
+      isSubmitting ||
       !dustAgent ||
       userMessage.id === -1 ||
       userMessage.sId === autoSelectedMessageIdRef.current ||
@@ -182,6 +152,7 @@ export function AgentSuggestion({
     setSelectedAgent,
     handleSelectSuggestion,
     userMessage.contentFragments.length,
+    isSubmitting,
   ]);
 
   if (!showSuggestion) {
@@ -211,13 +182,12 @@ export function AgentSuggestion({
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               onClick={async () => {
-                if (isLoading) {
+                if (isSubmitting) {
                   return;
                 }
-                setIsLoading(true);
+
                 setSelectedAgent(toRichAgentMentionType(agent));
                 await handleSelectSuggestion(agent);
-                setIsLoading(false);
               }}
               variant="secondary"
               action={
@@ -233,13 +203,11 @@ export function AgentSuggestion({
           owner={owner}
           agents={allSortedAgents}
           onItemClick={async (agent) => {
-            if (isLoading) {
+            if (isSubmitting) {
               return;
             }
-            setIsLoading(true);
             setSelectedAgent(toRichAgentMentionType(agent));
             await handleSelectSuggestion(agent);
-            setIsLoading(false);
           }}
           pickerButton={
             <Button

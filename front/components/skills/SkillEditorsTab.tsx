@@ -11,15 +11,12 @@ import type {
   UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types";
-import type {
-  SkillRelations,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
   user: UserType;
-  skillConfiguration: SkillType & { relations: SkillRelations };
+  skillConfiguration: SkillWithRelationsType;
 };
 
 export function SkillEditorsTab({

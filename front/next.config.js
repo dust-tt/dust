@@ -295,6 +295,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/triggers",
+        destination: "https://docs.dust.tt/docs/triggers",
+        permanent: true,
+      },
+      {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/conversation/:cId",
         permanent: true,

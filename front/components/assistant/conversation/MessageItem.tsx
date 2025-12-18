@@ -1,10 +1,11 @@
-import React from "react";
-import { useSWRConfig } from "swr";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import React, { useMemo } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
   VirtuosoMessage,
@@ -12,17 +13,16 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   getMessageDate,
-  getMessageSId,
   isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
+import type { UserType } from "@app/types";
 
 interface MessageItemProps {
   data: VirtuosoMessage;
@@ -40,11 +40,18 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const { hasFeature } = useFeatureFlags({ workspaceId: context.owner.sId });
     const userMentionsEnabled = hasFeature("mentions_v2");
 
-    const sId = getMessageSId(data);
+    const sId = data.sId;
 
-    const sendNotification = useSendNotification();
+    const methods = useVirtuosoMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >();
 
-    const { mutate } = useSWRConfig();
+    const submitFeedback = useMessageFeedback({
+      owner: context.owner,
+      conversationId: context.conversationId,
+    });
+
     const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
@@ -58,35 +65,13 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           feedbackContent: string | null;
           isConversationShared: boolean;
         }) => {
-          const res = await clientFetch(
-            `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/messages/${sId}/feedbacks`,
-            {
-              method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                thumbDirection: thumb,
-                feedbackContent,
-                isConversationShared,
-              }),
-            }
-          );
-
-          if (res.ok) {
-            if (feedbackContent && !shouldRemoveExistingFeedback) {
-              sendNotification({
-                title: "Feedback submitted",
-                description:
-                  "Your comment has been submitted successfully to the Builder of this agent. Thank you!",
-                type: "success",
-              });
-            }
-
-            await mutate(
-              `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/feedbacks`
-            );
-          }
+          await submitFeedback({
+            messageId: sId,
+            thumbDirection: thumb,
+            feedbackContent,
+            isConversationShared,
+            shouldRemoveExistingFeedback,
+          });
         }
       );
 
@@ -127,6 +112,19 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    const triggeringUser = useMemo((): UserType | null => {
+      if (isMessageTemporayState(data)) {
+        const parentMessageId = data.parentMessageId;
+        const messages = methods.data.get();
+        const parentUserMessage = messages
+          .filter(isUserMessage)
+          .find((m) => m.sId === parentMessageId);
+        return parentUserMessage?.user ?? null;
+      } else {
+        return data.user;
+      }
+    }, [data, methods.data]);
+
     if (isHiddenMessage(data)) {
       // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
       // because it has no value to display.
@@ -158,14 +156,28 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           {isMessageTemporayState(data) && (
             <AgentMessage
               user={context.user}
+              triggeringUser={triggeringUser}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
-              messageStreamState={data}
+              agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
             />
           )}
+          {data.visibility !== "deleted" &&
+            data.richMentions
+              .filter((mention) => mention.status === "pending")
+              .map((mention) => (
+                <MentionValidationRequired
+                  key={mention.id}
+                  pendingMention={mention}
+                  message={data}
+                  owner={context.owner}
+                  triggeringUser={triggeringUser}
+                  conversationId={context.conversationId}
+                />
+              ))}
         </div>
       </>
     );

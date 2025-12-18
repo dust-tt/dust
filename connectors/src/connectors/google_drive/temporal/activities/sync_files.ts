@@ -1,4 +1,3 @@
-import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
@@ -13,6 +12,11 @@ import {
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import {
+  concurrentExecutor,
+  getAdaptiveConcurrency,
+} from "@connectors/lib/async_utils";
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfigModel,
   GoogleDriveFilesModel,
@@ -155,25 +159,38 @@ export async function syncFiles(
     `[SyncFiles] Call syncOneFile.`
   );
 
-  const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
-  const results = await Promise.all(
-    filesToSync.map((file) => {
-      return queue.add(async () => {
-        await heartbeat();
-        if (!file.trashed) {
-          return syncOneFile(
-            connectorId,
-            authCredentials,
-            dataSourceConfig,
-            file,
-            startSyncTs,
-            true // isBatchSync
-          );
-        } else {
-          await deleteOneFile(connectorId, file);
-        }
-      });
-    })
+  const filesToDelete = filesToSync.filter((file) => file.trashed);
+  const filesToActuallySync = filesToSync.filter((file) => !file.trashed);
+
+  await concurrentExecutor(
+    filesToDelete,
+    async (file) => {
+      await heartbeat();
+      await deleteOneFile(connectorId, file);
+    },
+    { concurrency: FILES_SYNC_CONCURRENCY }
+  );
+
+  const concurrency = getAdaptiveConcurrency(
+    filesToActuallySync,
+    MAX_FILE_SIZE_TO_DOWNLOAD,
+    FILES_SYNC_CONCURRENCY
+  );
+
+  const results = await concurrentExecutor(
+    filesToActuallySync,
+    async (file) => {
+      await heartbeat();
+      return syncOneFile(
+        connectorId,
+        authCredentials,
+        dataSourceConfig,
+        file,
+        startSyncTs,
+        true // isBatchSync
+      );
+    },
+    { concurrency }
   );
 
   const count = results.filter((r) => r).length;

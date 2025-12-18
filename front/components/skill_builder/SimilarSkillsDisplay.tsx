@@ -5,7 +5,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SimilarSkillsDisplayProps = {
@@ -42,7 +42,7 @@ export function SimilarSkillsDisplay({
           <div key={skill.sId} className="flex items-start gap-2">
             <Avatar
               name={skill.name}
-              visual={<SKILL_ICON className="text-element-700" />}
+              icon={getSkillIcon(skill.icon)}
               size="xs"
             />
             <div className="flex flex-col">

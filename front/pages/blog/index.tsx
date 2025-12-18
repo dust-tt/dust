@@ -1,23 +1,27 @@
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
-import Image from "next/image";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { BlogBlock } from "@app/components/home/ContentBlocks";
-import { Grid, P } from "@app/components/home/ContentComponents";
+import {
+  BLOG_PAGE_SIZE,
+  BlogHeader,
+  BlogLayout,
+  BlogPostGrid,
+  BlogTagFilter,
+  FeaturedPost,
+} from "@app/components/blog/BlogComponents";
+import { BlogPagination } from "@app/components/blog/BlogPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getAllBlogPosts,
 } from "@app/lib/contentful/client";
-import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 
 export const getStaticProps: GetStaticProps<
   BlogListingPageProps
@@ -49,8 +53,23 @@ export const getStaticProps: GetStaticProps<
 
 export default function BlogListing({ posts }: BlogListingPageProps) {
   const router = useRouter();
-  const selectedTag =
-    typeof router.query.tag === "string" ? router.query.tag : null;
+  const initialTag = isString(router.query.tag) ? router.query.tag : null;
+  const initialPage = useMemo(() => {
+    const queryPage = isString(router.query.page)
+      ? router.query.page
+      : undefined;
+    const parsed = parseInt(queryPage ?? "1", 10);
+    return parsed > 0 ? parsed : 1;
+  }, [router.query.page]);
+
+  const [selectedTag, setSelectedTag] = useState<string | null>(initialTag);
+
+  useEffect(() => {
+    const queryTag = isString(router.query.tag) ? router.query.tag : null;
+    setSelectedTag(queryTag);
+  }, [router.query.tag]);
+
+  const page = initialPage;
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -64,6 +83,24 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     }
     return posts.filter((post) => post.tags.includes(selectedTag));
   }, [posts, selectedTag]);
+
+  const hasFeaturedCandidate = !selectedTag && filteredPosts.length > 0;
+  const remainingPool = hasFeaturedCandidate
+    ? filteredPosts.slice(1)
+    : filteredPosts;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(remainingPool.length / BLOG_PAGE_SIZE)
+  );
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * BLOG_PAGE_SIZE;
+  const endIndex = startIndex + BLOG_PAGE_SIZE;
+  const paginatedPosts = remainingPool.slice(startIndex, endIndex);
+
+  const showFeatured =
+    hasFeaturedCandidate && currentPage === 1 && filteredPosts.length > 0;
+  const featuredPost = showFeatured ? filteredPosts[0] : null;
 
   return (
     <>
@@ -81,89 +118,39 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://dust.tt/blog" />
         <meta property="og:image" content="/static/og_image.png" />
+        <link rel="canonical" href="https://dust.tt/blog" />
+        {!selectedTag && totalPages > 1 && (
+          <link rel="next" href="https://dust.tt/blog/page/2" />
+        )}
       </Head>
 
-      <Grid>
-        {allTags.length > 0 && (
-          <div className="col-span-12 flex justify-end pt-8">
-            <div className="relative inline-block">
-              <select
-                value={selectedTag ?? ""}
-                onChange={(e) => {
-                  const tag = e.target.value;
-                  if (tag) {
-                    void router.push(`/blog?tag=${encodeURIComponent(tag)}`);
-                  } else {
-                    void router.push("/blog");
-                  }
-                }}
-                className="appearance-none rounded-full border border-gray-200 bg-white py-2 pl-4 pr-10 text-sm font-medium text-foreground transition-colors hover:border-gray-300 focus:border-highlight focus:outline-none focus:ring-1 focus:ring-highlight"
-              >
-                <option value="">All topics</option>
-                {allTags.map((tag) => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            </div>
+      <BlogLayout>
+        <BlogHeader />
+        <BlogTagFilter allTags={allTags} selectedTag={selectedTag} />
+
+        {featuredPost && <FeaturedPost post={featuredPost} />}
+
+        <BlogPostGrid
+          posts={paginatedPosts}
+          emptyMessage={
+            selectedTag
+              ? `No posts found with tag "${selectedTag}".`
+              : "No blog posts available yet. Check back soon!"
+          }
+        />
+
+        {remainingPool.length > BLOG_PAGE_SIZE && (
+          <div className="col-span-12 mt-6 flex items-center justify-center">
+            <BlogPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rowCount={remainingPool.length}
+              pageSize={BLOG_PAGE_SIZE}
+              tag={selectedTag}
+            />
           </div>
         )}
-
-        <div
-          className={classNames(
-            "col-span-12 pt-6",
-            "grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
-          )}
-        >
-          {filteredPosts.length > 0 ? (
-            filteredPosts.map((post) => (
-              <BlogBlock
-                key={post.id}
-                title={post.title}
-                content={
-                  <>
-                    {post.description && (
-                      <span className="mb-2 line-clamp-2 block text-muted-foreground">
-                        {post.description}
-                      </span>
-                    )}
-                    <span className="block text-xs text-muted-foreground">
-                      {formatTimestampToFriendlyDate(
-                        new Date(post.createdAt).getTime(),
-                        "short"
-                      )}
-                    </span>
-                  </>
-                }
-                href={`/blog/${post.slug}`}
-                tags={post.tags}
-              >
-                {post.image && (
-                  <Image
-                    src={post.image.url}
-                    alt={post.image.alt}
-                    width={640}
-                    height={360}
-                    loader={contentfulImageLoader}
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="aspect-video w-full object-cover"
-                  />
-                )}
-              </BlogBlock>
-            ))
-          ) : (
-            <div className="col-span-full py-12 text-center">
-              <P size="md" className="text-muted-foreground">
-                {selectedTag
-                  ? `No posts found with tag "${selectedTag}".`
-                  : "No blog posts available yet. Check back soon!"}
-              </P>
-            </div>
-          )}
-        </div>
-      </Grid>
+      </BlogLayout>
     </>
   );
 }

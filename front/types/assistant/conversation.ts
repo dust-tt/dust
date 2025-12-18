@@ -1,5 +1,6 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import type {
   AllSupportedWithDustSpecificFileContentType,
   ContentFragmentType,
@@ -79,7 +80,6 @@ export type UserMessageOrigin =
   | "email"
   | "excel"
   | "extension"
-  | "github-copilot-chat"
   | "gsheet"
   | "make"
   | "n8n"
@@ -115,6 +115,8 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
+export type RichMentionWithStatus = RichMention & { status: MentionStatusType };
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -125,11 +127,16 @@ export type UserMessageType = {
   rank: number;
   user: UserType | null;
   mentions: MentionType[];
-  richMentions: RichMention[];
+  richMentions: RichMentionWithStatus[];
   content: string;
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
 };
+
+export type UserMessageTypeWithoutMentions = Omit<
+  UserMessageType,
+  "richMentions" | "mentions"
+>;
 
 export type UserMessageTypeWithContentFragments = UserMessageType & {
   contentFragments: ContentFragmentType[];
@@ -185,7 +192,7 @@ export type BaseAgentMessageType = {
   chainOfThought: string | null;
   error: GenericErrorContent | null;
   visibility: MessageVisibility;
-  richMentions: RichMention[];
+  richMentions: RichMentionWithStatus[];
 };
 
 export type ParsedContentItem =
@@ -208,6 +215,11 @@ export type AgentMessageType = BaseAgentMessageType & {
   parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
 };
+
+export type AgentMessageTypeWithoutMentions = Omit<
+  AgentMessageType,
+  "richMentions"
+>;
 
 export type LightAgentMessageType = BaseAgentMessageType & {
   configuration: {
@@ -274,6 +286,7 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
+  triggerId: string | null;
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];

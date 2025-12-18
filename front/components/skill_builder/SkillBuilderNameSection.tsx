@@ -8,6 +8,7 @@ const NAME_FIELD_NAME = "name";
 export function SkillBuilderNameSection() {
   return (
     <BaseFormFieldSection
+      title="Name"
       fieldName={NAME_FIELD_NAME}
       triggerValidationOnChange={false}
     >
@@ -16,7 +17,6 @@ export function SkillBuilderNameSection() {
           <div className="flex-grow">
             <Input
               ref={registerRef}
-              label="Name"
               placeholder="Enter skill name"
               onChange={onChange}
               message={errorMessage}

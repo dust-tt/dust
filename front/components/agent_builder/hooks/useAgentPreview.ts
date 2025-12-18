@@ -5,7 +5,7 @@ import { useFormContext } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
@@ -117,20 +117,17 @@ export function useDraftConversation({
     null
   );
 
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner,
+    user,
+  });
+
   const createConversation = useCallback(
     async (
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
-      if (!user) {
-        return new Err({
-          code: "internal_error",
-          name: "No user",
-          message: "No user found",
-        });
-      }
-
       try {
         // Ensure we have a current draft agent before submitting
         const currentAgent = await getDraftAgent();
@@ -166,8 +163,6 @@ export function useDraftConversation({
       };
 
       const result = await createConversationWithMessage({
-        owner,
-        user,
         messageData,
         visibility: "test",
       });
@@ -189,7 +184,12 @@ export function useDraftConversation({
         message: result.error.message,
       });
     },
-    [draftAgent?.sId, getDraftAgent, owner, sendNotification, user]
+    [
+      createConversationWithMessage,
+      draftAgent?.sId,
+      getDraftAgent,
+      sendNotification,
+    ]
   );
 
   const resetConversation = useCallback(() => {

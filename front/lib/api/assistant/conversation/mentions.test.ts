@@ -13,6 +13,7 @@ vi.mock("@app/lib/api/assistant/conversation/agent_loop", () => ({
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createAgentMessages,
   createUserMentions,
@@ -22,11 +23,13 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
+  ConversationModel,
   ConversationParticipantModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   generateRandomModelSId,
@@ -42,12 +45,15 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgenticMessageData,
   AgentMention,
+  AgentMessageTypeWithoutMentions,
+  ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MentionType,
   UserMessageContext,
   WorkspaceType,
 } from "@app/types";
+import { isRichUserMention } from "@app/types/assistant/mentions";
 
 describe("createAgentMessages", () => {
   let workspace: WorkspaceType;
@@ -886,7 +892,7 @@ describe("createAgentMessages", () => {
 describe("createUserMentions", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
-  let conversation: ConversationWithoutContentType;
+  let conversation: ConversationType;
 
   beforeEach(async () => {
     // Create workspace, user, spaces, and groups using the helper
@@ -922,11 +928,26 @@ describe("createUserMentions", () => {
       },
     ];
 
-    await createUserMentions(auth, {
+    const result = await createUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
     });
+
+    // Verify return value is an array of RichMentionWithStatus
+    expect(result).toBeInstanceOf(Array);
+    expect(result).toHaveLength(1);
+    const mentionedUserJson = mentionedUser.toJSON();
+    expect(result[0]).toMatchObject({
+      id: mentionedUser.sId,
+      type: "user",
+      label: mentionedUserJson.fullName,
+      pictureUrl:
+        mentionedUserJson.image ?? "/static/humanavatar/anonymous.png",
+      description: mentionedUserJson.email,
+      status: "approved",
+    });
+    expect(isRichUserMention(result[0])).toBe(true);
 
     // Verify user mention was stored in the database
     const userMentionInDb = await MentionModel.findOne({
@@ -976,11 +997,35 @@ describe("createUserMentions", () => {
       },
     ];
 
-    await createUserMentions(auth, {
+    const result = await createUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
     });
+
+    // Verify return value is an array of RichMentionWithStatus
+    expect(result).toBeInstanceOf(Array);
+    expect(result).toHaveLength(2);
+    const user1Mention = result.find((m) => m.id === user1.sId);
+    const user2Mention = result.find((m) => m.id === user2.sId);
+    expect(user1Mention).toBeDefined();
+    expect(user2Mention).toBeDefined();
+    const user1Json = user1.toJSON();
+    const user2Json = user2.toJSON();
+    expect(user1Mention).toMatchObject({
+      id: user1.sId,
+      type: "user",
+      label: user1Json.fullName,
+      status: "approved",
+    });
+    expect(user2Mention).toMatchObject({
+      id: user2.sId,
+      type: "user",
+      label: user2Json.fullName,
+      status: "approved",
+    });
+    expect(isRichUserMention(user1Mention!)).toBe(true);
+    expect(isRichUserMention(user2Mention!)).toBe(true);
 
     // Verify both user mentions were stored
     const allMentionsInDb = await MentionModel.findAll({
@@ -1032,11 +1077,15 @@ describe("createUserMentions", () => {
 
     const mentions: MentionType[] = [];
 
-    await createUserMentions(auth, {
+    const result = await createUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
     });
+
+    // Verify return value is an empty array
+    expect(result).toBeInstanceOf(Array);
+    expect(result).toHaveLength(0);
 
     // Verify no mentions were stored
     const allMentionsInDb = await MentionModel.findAll({
@@ -1079,11 +1128,21 @@ describe("createUserMentions", () => {
       } as AgentMention,
     ];
 
-    await createUserMentions(auth, {
+    const result = await createUserMentions(auth, {
       mentions,
       message: userMessage,
       conversation,
     });
+
+    // Verify return value only contains the user mention
+    expect(result).toBeInstanceOf(Array);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: mentionedUser.sId,
+      type: "user",
+      status: "approved",
+    });
+    expect(isRichUserMention(result[0])).toBe(true);
 
     // Verify only user mention was stored, agent mention should be ignored
     const allMentionsInDb = await MentionModel.findAll({
@@ -1094,6 +1153,708 @@ describe("createUserMentions", () => {
     expect(allMentionsInDb).toHaveLength(1);
     expect(allMentionsInDb[0].userId).toBe(mentionedUser.id);
     expect(allMentionsInDb[0].agentConfigurationId).toBeNull();
+  });
+
+  describe("auto-approval behavior", () => {
+    it("should always auto approve mentions in user messages", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: `Hello @${mentionedUser.username}`,
+      });
+
+      const mentions: MentionType[] = [
+        {
+          type: "user",
+          userId: mentionedUser.sId.toString(),
+        },
+      ];
+
+      const result = await createUserMentions(auth, {
+        mentions,
+        message: userMessage,
+        conversation,
+      });
+
+      // Verify return value
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: mentionedUser.sId,
+        type: "user",
+        status: "approved",
+      });
+      expect(isRichUserMention(result[0])).toBe(true);
+
+      // Verify mention was auto-approved
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("approved");
+    });
+
+    it("should always auto approve mentions for existing participants", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Add user as participant first
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "subscribed",
+        user: mentionedUser.toJSON(),
+      });
+
+      // Create an agent message
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        workspaceId: workspace.id,
+        skipToolsValidation: false,
+      });
+
+      const messageRow = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversation.id,
+        parentId: null,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const agentMessage: AgentMessageTypeWithoutMentions = {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: messageRow.visibility,
+        version: messageRow.version,
+        parentMessageId: "",
+        parentAgentMessageId: null,
+        status: agentMessageRow.status,
+        content: null,
+        chainOfThought: null,
+        error: null,
+        configuration: agentConfig,
+        skipToolsValidation: false,
+        actions: [],
+        rawContents: [],
+        contents: [],
+        parsedContents: {},
+        modelInteractionDurationMs: null,
+        rank: messageRow.rank,
+      };
+
+      const mentions: MentionType[] = [
+        {
+          type: "user",
+          userId: mentionedUser.sId.toString(),
+        },
+      ];
+
+      const result = await createUserMentions(auth, {
+        mentions,
+        message: agentMessage,
+        conversation,
+      });
+
+      // Verify return value
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: mentionedUser.sId,
+        type: "user",
+        status: "approved",
+      });
+      expect(isRichUserMention(result[0])).toBe(true);
+
+      // Verify mention was auto-approved because user is already a participant
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: messageRow.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("approved");
+    });
+
+    it("should require approval for mentions in agent messages (non-triggered conversation)", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create an agent message
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        workspaceId: workspace.id,
+        skipToolsValidation: false,
+      });
+
+      const messageRow = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversation.id,
+        parentId: null,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const agentMessage: AgentMessageTypeWithoutMentions = {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: messageRow.visibility,
+        version: messageRow.version,
+        parentMessageId: "",
+        parentAgentMessageId: null,
+        status: agentMessageRow.status,
+        content: null,
+        chainOfThought: null,
+        error: null,
+        configuration: agentConfig,
+        skipToolsValidation: false,
+        actions: [],
+        rawContents: [],
+        contents: [],
+        parsedContents: {},
+        modelInteractionDurationMs: null,
+        rank: messageRow.rank,
+      };
+
+      const mentions: MentionType[] = [
+        {
+          type: "user",
+          userId: mentionedUser.sId.toString(),
+        },
+      ];
+
+      const result = await createUserMentions(auth, {
+        mentions,
+        message: agentMessage,
+        conversation,
+      });
+
+      // Verify return value
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: mentionedUser.sId,
+        type: "user",
+        status: "pending",
+      });
+      expect(isRichUserMention(result[0])).toBe(true);
+
+      // Verify mention requires approval (pending status)
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: messageRow.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("pending");
+    });
+
+    it("should auto approve mentions in agent messages on triggered conversations if user is mentioned in instructions", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create an agent config for the trigger
+      const triggerAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Trigger Agent",
+        });
+
+      // Create a trigger
+      const trigger = await TriggerModel.create({
+        workspaceId: workspace.id,
+        name: "Test Trigger",
+        kind: "webhook",
+        agentConfigurationId: triggerAgentConfig.sId,
+        editor: auth.getNonNullableUser().id,
+        customPrompt: null,
+        enabled: true,
+        configuration: { includePayload: true },
+        origin: "user",
+      });
+
+      // Create a conversation with triggerId
+      const triggeredConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: triggerAgentConfig.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+
+      // Update conversation to have a triggerId
+      await ConversationModel.update(
+        { triggerId: trigger.id },
+        { where: { id: triggeredConversation.id } }
+      );
+
+      // Fetch updated conversation
+      const updatedConversationResult = await getConversation(
+        auth,
+        triggeredConversation.sId
+      );
+      expect(updatedConversationResult.isOk()).toBe(true);
+      if (!updatedConversationResult.isOk()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const updatedConversation = updatedConversationResult.value;
+      expect(updatedConversation.triggerId).not.toBeNull();
+
+      // Create agent config with instructions mentioning the user
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+
+      // Update agent config to include user mention in instructions
+      const instructionsWithMention = `Please notify :mention_user[${mentionedUser.username}]{sId=${mentionedUser.sId}} about this.`;
+      await AgentConfigurationModel.update(
+        { instructions: instructionsWithMention },
+        {
+          where: {
+            workspaceId: workspace.id,
+            sId: agentConfig.sId,
+            version: agentConfig.version,
+          },
+        }
+      );
+
+      // Fetch updated agent config
+      const updatedAgentConfig = await getAgentConfiguration(auth, {
+        agentId: agentConfig.sId,
+        agentVersion: agentConfig.version,
+        variant: "light",
+      });
+      expect(updatedAgentConfig).not.toBeNull();
+      expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
+
+      const agentMessageRow = await AgentMessageModel.create({
+        status: "created",
+        agentConfigurationId: updatedAgentConfig!.sId,
+        agentConfigurationVersion: updatedAgentConfig!.version,
+        workspaceId: workspace.id,
+        skipToolsValidation: false,
+      });
+
+      const messageRow = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: updatedConversation.id,
+        parentId: null,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const agentMessage: AgentMessageTypeWithoutMentions = {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: messageRow.visibility,
+        version: messageRow.version,
+        parentMessageId: "",
+        parentAgentMessageId: null,
+        status: agentMessageRow.status,
+        content: null,
+        chainOfThought: null,
+        error: null,
+        configuration: updatedAgentConfig!,
+        skipToolsValidation: false,
+        actions: [],
+        rawContents: [],
+        contents: [],
+        parsedContents: {},
+        modelInteractionDurationMs: null,
+        rank: messageRow.rank,
+      };
+
+      const mentions: MentionType[] = [
+        {
+          type: "user",
+          userId: mentionedUser.sId.toString(),
+        },
+      ];
+
+      const result = await createUserMentions(auth, {
+        mentions,
+        message: agentMessage,
+        conversation: updatedConversation,
+      });
+
+      // Verify return value
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: mentionedUser.sId,
+        type: "user",
+        status: "approved",
+      });
+      expect(isRichUserMention(result[0])).toBe(true);
+
+      // Verify mention was auto-approved because user is mentioned in instructions
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: messageRow.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("approved");
+    });
+
+    it("should require approval for mentions in agent messages on triggered conversations if user is NOT mentioned in instructions", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create an agent config for the trigger
+      const triggerAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Trigger Agent",
+        });
+
+      // Create a trigger
+      const trigger = await TriggerModel.create({
+        workspaceId: workspace.id,
+        name: "Test Trigger",
+        kind: "webhook",
+        agentConfigurationId: triggerAgentConfig.sId,
+        editor: auth.getNonNullableUser().id,
+        customPrompt: null,
+        enabled: true,
+        configuration: { includePayload: true },
+        origin: "user",
+      });
+
+      // Create a conversation with triggerId
+      const triggeredConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: triggerAgentConfig.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+
+      // Update conversation to have a triggerId
+      await ConversationModel.update(
+        { triggerId: trigger.id },
+        { where: { id: triggeredConversation.id } }
+      );
+
+      // Fetch updated conversation
+      const updatedConversationResult = await getConversation(
+        auth,
+        triggeredConversation.sId
+      );
+      expect(updatedConversationResult.isOk()).toBe(true);
+      if (!updatedConversationResult.isOk()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const updatedConversation = updatedConversationResult.value;
+      expect(updatedConversation.triggerId).not.toBeNull();
+
+      // Create agent config WITHOUT mentioning the user in instructions
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+
+      // Ensure instructions don't mention the user
+      await AgentConfigurationModel.update(
+        { instructions: "Standard instructions without user mentions." },
+        {
+          where: {
+            workspaceId: workspace.id,
+            sId: agentConfig.sId,
+            version: agentConfig.version,
+          },
+        }
+      );
+
+      // Fetch updated agent config
+      const updatedAgentConfig = await getAgentConfiguration(auth, {
+        agentId: agentConfig.sId,
+        agentVersion: agentConfig.version,
+        variant: "light",
+      });
+      expect(updatedAgentConfig).not.toBeNull();
+      expect(updatedAgentConfig?.instructions).not.toContain(mentionedUser.sId);
+
+      const agentMessageRow = await AgentMessageModel.create({
+        status: "created",
+        agentConfigurationId: updatedAgentConfig!.sId,
+        agentConfigurationVersion: updatedAgentConfig!.version,
+        workspaceId: workspace.id,
+        skipToolsValidation: false,
+      });
+
+      const messageRow = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: updatedConversation.id,
+        parentId: null,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const agentMessage: AgentMessageTypeWithoutMentions = {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: messageRow.visibility,
+        version: messageRow.version,
+        parentMessageId: "",
+        parentAgentMessageId: null,
+        status: agentMessageRow.status,
+        content: null,
+        chainOfThought: null,
+        error: null,
+        configuration: updatedAgentConfig!,
+        skipToolsValidation: false,
+        actions: [],
+        rawContents: [],
+        contents: [],
+        parsedContents: {},
+        modelInteractionDurationMs: null,
+        rank: messageRow.rank,
+      };
+
+      const mentions: MentionType[] = [
+        {
+          type: "user",
+          userId: mentionedUser.sId.toString(),
+        },
+      ];
+
+      const result = await createUserMentions(auth, {
+        mentions,
+        message: agentMessage,
+        conversation: updatedConversation,
+      });
+
+      // Verify return value
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: mentionedUser.sId,
+        type: "user",
+        status: "pending",
+      });
+      expect(isRichUserMention(result[0])).toBe(true);
+
+      // Verify mention requires approval (pending status) because user is NOT mentioned in instructions
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: messageRow.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("pending");
+    });
+
+    it("should require approval for mentions in agent messages on triggered conversations if instructions are null", async () => {
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create an agent config for the trigger
+      const triggerAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(auth, {
+          name: "Trigger Agent",
+        });
+
+      // Create a trigger
+      const trigger = await TriggerModel.create({
+        workspaceId: workspace.id,
+        name: "Test Trigger",
+        kind: "webhook",
+        agentConfigurationId: triggerAgentConfig.sId,
+        editor: auth.getNonNullableUser().id,
+        customPrompt: null,
+        enabled: true,
+        configuration: { includePayload: true },
+        origin: "user",
+      });
+
+      // Create a conversation with triggerId
+      const triggeredConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: triggerAgentConfig.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      });
+
+      // Update conversation to have a triggerId
+      await ConversationModel.update(
+        { triggerId: trigger.id },
+        { where: { id: triggeredConversation.id } }
+      );
+
+      // Fetch updated conversation
+      const updatedConversationResult = await getConversation(
+        auth,
+        triggeredConversation.sId
+      );
+      expect(updatedConversationResult.isOk()).toBe(true);
+      if (!updatedConversationResult.isOk()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const updatedConversation = updatedConversationResult.value;
+      expect(updatedConversation.triggerId).not.toBeNull();
+
+      // Create agent config with null instructions
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+
+      // Set instructions to null
+      await AgentConfigurationModel.update(
+        { instructions: null },
+        {
+          where: {
+            workspaceId: workspace.id,
+            sId: agentConfig.sId,
+            version: agentConfig.version,
+          },
+        }
+      );
+
+      // Fetch updated agent config
+      const updatedAgentConfig = await getAgentConfiguration(auth, {
+        agentId: agentConfig.sId,
+        agentVersion: agentConfig.version,
+        variant: "light",
+      });
+      expect(updatedAgentConfig).not.toBeNull();
+      expect(updatedAgentConfig?.instructions).toBeNull();
+
+      const agentMessageRow = await AgentMessageModel.create({
+        status: "created",
+        agentConfigurationId: updatedAgentConfig!.sId,
+        agentConfigurationVersion: updatedAgentConfig!.version,
+        workspaceId: workspace.id,
+        skipToolsValidation: false,
+      });
+
+      const messageRow = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: updatedConversation.id,
+        parentId: null,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const agentMessage: AgentMessageTypeWithoutMentions = {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: messageRow.visibility,
+        version: messageRow.version,
+        parentMessageId: "",
+        parentAgentMessageId: null,
+        status: agentMessageRow.status,
+        content: null,
+        chainOfThought: null,
+        error: null,
+        configuration: updatedAgentConfig!,
+        skipToolsValidation: false,
+        actions: [],
+        rawContents: [],
+        contents: [],
+        parsedContents: {},
+        modelInteractionDurationMs: null,
+        rank: messageRow.rank,
+      };
+
+      const mentions: MentionType[] = [
+        {
+          type: "user",
+          userId: mentionedUser.sId.toString(),
+        },
+      ];
+
+      const result = await createUserMentions(auth, {
+        mentions,
+        message: agentMessage,
+        conversation: updatedConversation,
+      });
+
+      // Verify return value
+      expect(result).toBeInstanceOf(Array);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: mentionedUser.sId,
+        type: "user",
+        status: "pending",
+      });
+      expect(isRichUserMention(result[0])).toBe(true);
+
+      // Verify mention requires approval (pending status) because instructions are null
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          messageId: messageRow.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("pending");
+    });
   });
 });
 
@@ -1127,7 +1888,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello, this is a test message";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1143,7 +1903,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1160,7 +1919,6 @@ describe("createUserMessage", () => {
     expect(userMessage.rank).toBe(rank);
     expect(userMessage.version).toBe(0);
     expect(userMessage.user).toEqual(userJson);
-    expect(userMessage.mentions).toEqual(mentions);
     expect(userMessage.context).toEqual(context);
     expect(userMessage.agenticMessageData).toBeUndefined();
 
@@ -1187,7 +1945,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello, this is a test message";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1203,7 +1960,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: null, // User should be attributed from email
@@ -1222,7 +1978,6 @@ describe("createUserMessage", () => {
   it("should create a user message with agenticMessageData and originMessage lookup", async () => {
     const user = auth.getNonNullableUser();
     const content = "Hello, this is an agentic message";
-    const mentions: MentionType[] = [];
 
     // Create an origin message first with rank 0
     const originMessage = await withTransaction(async (transaction) => {
@@ -1269,7 +2024,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1297,7 +2051,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello, this is an agentic message";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1318,7 +2071,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1348,7 +2100,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const originalContent = "Original message";
     const editedContent = "Edited message";
-    const mentions: MentionType[] = [];
 
     // Create original message
     const userJson = user.toJSON();
@@ -1356,7 +2107,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: originalContent,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1379,10 +2129,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
-        mentions,
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1405,65 +2154,6 @@ describe("createUserMessage", () => {
       messageInDb!.userMessageId!
     );
     expect(userMessageInDb?.content).toBe(editedContent);
-  });
-
-  it("should edit a user message with different mentions", async () => {
-    const user = auth.getNonNullableUser();
-    const userJson = user.toJSON();
-    const originalContent = "Original message";
-    const editedContent = "Edited message with mentions";
-    const originalMentions: MentionType[] = [];
-    const editedMentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } satisfies AgentMention,
-    ];
-
-    // Create original message
-    const originalMessage = await withTransaction(async (transaction) => {
-      return createUserMessage(auth, {
-        conversation,
-        content: originalContent,
-        mentions: originalMentions,
-        metadata: {
-          type: "create",
-          user: userJson,
-          rank: 0,
-          context: {
-            username: userJson.username,
-            timezone: "UTC",
-            fullName: userJson.fullName,
-            email: userJson.email,
-            profilePictureUrl: userJson.image,
-            origin: "web",
-          },
-        },
-        transaction,
-      });
-    });
-
-    // Edit the message with new mentions
-    const editedMessage = await withTransaction(async (transaction) => {
-      return createUserMessage(auth, {
-        conversation,
-        content: editedContent,
-        mentions: editedMentions,
-        metadata: {
-          type: "edit",
-          message: originalMessage,
-        },
-        transaction,
-      });
-    });
-
-    expect(editedMessage).toBeDefined();
-    expect(editedMessage.content).toBe(editedContent);
-    expect(editedMessage.mentions).toEqual(editedMentions);
-    expect(editedMessage.mentions).toHaveLength(1);
-    expect(editedMessage.version).toBe(originalMessage.version + 1);
-    expect(editedMessage.rank).toBe(originalMessage.rank);
-    expect(editedMessage.user).toEqual(originalMessage.user);
-    expect(editedMessage.context).toEqual(originalMessage.context);
   });
 
   it("should preserve agenticMessageData when editing", async () => {
@@ -1504,7 +2194,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Original agentic message",
-        mentions: [],
         metadata: {
           type: "create",
           user: userJson,
@@ -1530,10 +2219,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Edited agentic message",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1575,7 +2263,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Original message",
-        mentions: [],
         metadata: {
           type: "create",
           user: userJson,
@@ -1591,10 +2278,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Edited message",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1643,7 +2329,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Original message",
-        mentions: [],
         metadata: {
           type: "create",
           user: userJson,
@@ -1668,10 +2353,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "First edit",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1689,10 +2373,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Second edit",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: firstEdit,
+          message: { ...firstEdit, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1710,10 +2393,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Third edit",
-        mentions: [],
         metadata: {
           type: "edit",
-          message: secondEdit,
+          message: { ...secondEdit, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1730,14 +2412,12 @@ describe("createUserMessage", () => {
   it("should preserve null user when editing", async () => {
     const content = "Original anonymous message";
     const editedContent = "Edited anonymous message";
-    const mentions: MentionType[] = [];
 
     // Create original message with null user
     const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: null,
@@ -1762,10 +2442,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
-        mentions,
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1790,14 +2469,12 @@ describe("createUserMessage", () => {
     const userJson = user.toJSON();
     const originalContent = "Original message";
     const editedContent = "Edited message";
-    const mentions: MentionType[] = [];
 
     // Create original message
     const originalMessage = await withTransaction(async (transaction) => {
       return createUserMessage(auth, {
         conversation,
         content: originalContent,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1820,10 +2497,9 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: editedContent,
-        mentions,
         metadata: {
           type: "edit",
-          message: originalMessage,
+          message: { ...originalMessage, mentions: [], richMentions: [] },
         },
         transaction,
       });
@@ -1843,51 +2519,10 @@ describe("createUserMessage", () => {
     expect(userMessageInDb?.userId).toBe(userJson.id);
   });
 
-  it("should create a user message with mentions", async () => {
-    const user = auth.getNonNullableUser();
-    const userJson = user.toJSON();
-    const content = "Hello @agent";
-    const mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } satisfies AgentMention,
-    ];
-    const rank = 0;
-
-    const context: UserMessageContext = {
-      username: userJson.username,
-      timezone: "UTC",
-      fullName: userJson.fullName,
-      email: userJson.email,
-      profilePictureUrl: userJson.image,
-      origin: "web",
-    };
-
-    const userMessage = await withTransaction(async (transaction) => {
-      return createUserMessage(auth, {
-        conversation,
-        content,
-        mentions,
-        metadata: {
-          type: "create",
-          user: userJson,
-          rank,
-          context,
-        },
-        transaction,
-      });
-    });
-
-    expect(userMessage).toBeDefined();
-    expect(userMessage.mentions).toEqual(mentions);
-    expect(userMessage.mentions).toHaveLength(1);
-  });
-
   it("should handle context with all optional fields", async () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello with full context";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1906,7 +2541,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1941,7 +2575,6 @@ describe("createUserMessage", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
     const content = "Hello with minimal context";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -1957,7 +2590,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -1986,7 +2618,6 @@ describe("createUserMessage", () => {
   it("should create multiple user messages with correct ranks", async () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
-    const mentions: MentionType[] = [];
 
     const context: UserMessageContext = {
       username: userJson.username,
@@ -2001,7 +2632,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "First message",
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -2016,7 +2646,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content: "Second message",
-        mentions,
         metadata: {
           type: "create",
           user: userJson,
@@ -2035,7 +2664,6 @@ describe("createUserMessage", () => {
 
   it("should handle user message with null user", async () => {
     const content = "Hello from anonymous user";
-    const mentions: MentionType[] = [];
     const rank = 0;
 
     const context: UserMessageContext = {
@@ -2051,7 +2679,6 @@ describe("createUserMessage", () => {
       return createUserMessage(auth, {
         conversation,
         content,
-        mentions,
         metadata: {
           type: "create",
           user: null,

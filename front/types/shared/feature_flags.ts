@@ -32,7 +32,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   ashby_tool: {
     description: "Ashby tool for ATS integration",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
@@ -237,6 +237,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   conversations_groups: {
     description: "Enable conversations groups in Spaces",
     stage: "dust_only",
+  },
+  databricks_tool: {
+    description: "Databricks MCP tool",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

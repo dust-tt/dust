@@ -49,6 +49,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1", // Every Monday at 9 AM
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -103,6 +104,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -153,6 +155,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -211,6 +214,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -275,6 +279,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -345,6 +350,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -403,6 +409,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -466,6 +473,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -535,6 +543,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -631,6 +640,7 @@ describe("TriggerResource", () => {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       const trigger2Result = await TriggerResource.makeNew(authenticator, {
@@ -646,6 +656,7 @@ describe("TriggerResource", () => {
           cron: "0 10 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       const trigger3Result = await TriggerResource.makeNew(authenticator, {
@@ -661,6 +672,7 @@ describe("TriggerResource", () => {
           cron: "0 11 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(trigger1Result.isOk()).toBe(true);
@@ -693,15 +705,15 @@ describe("TriggerResource", () => {
       // Fetch updated triggers to verify they were disabled
       const updatedTrigger1 = await TriggerResource.fetchById(
         authenticator,
-        trigger1.sId()
+        trigger1.sId
       );
       const updatedTrigger2 = await TriggerResource.fetchById(
         authenticator,
-        trigger2.sId()
+        trigger2.sId
       );
       const updatedTrigger3 = await TriggerResource.fetchById(
         authenticator,
-        trigger3.sId()
+        trigger3.sId
       );
 
       expect(updatedTrigger1).toBeTruthy();
@@ -777,6 +789,7 @@ describe("TriggerResource", () => {
             cron: "0 9 * * 1",
             timezone: "UTC",
           },
+          origin: "user",
         }
       );
 
@@ -795,6 +808,7 @@ describe("TriggerResource", () => {
             cron: "0 10 * * 1",
             timezone: "UTC",
           },
+          origin: "user",
         }
       );
 
@@ -813,6 +827,7 @@ describe("TriggerResource", () => {
             cron: "0 11 * * 1",
             timezone: "UTC",
           },
+          origin: "user",
         }
       );
 
@@ -845,15 +860,15 @@ describe("TriggerResource", () => {
       // Fetch updated triggers to verify correct behavior
       const updatedTrigger1 = await TriggerResource.fetchById(
         authenticator,
-        trigger1.sId()
+        trigger1.sId
       );
       const updatedTrigger2 = await TriggerResource.fetchById(
         authenticator,
-        trigger2.sId()
+        trigger2.sId
       );
       const updatedTrigger3 = await TriggerResource.fetchById(
         authenticator,
-        trigger3.sId()
+        trigger3.sId
       );
 
       expect(updatedTrigger1).toBeTruthy();

@@ -15,16 +15,20 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
 import type {
-  SkillRelations,
   SkillType,
+  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillConfigurationsResponseBody = {
   skillConfigurations: SkillType[];
 };
 
+export type GetSkillWithRelationsResponseBody = {
+  skill: SkillWithRelationsType;
+};
+
 export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: (SkillType & { relations: SkillRelations })[];
+  skillConfigurations: SkillWithRelationsType[];
 };
 
 export type PostSkillConfigurationResponseBody = {
@@ -116,13 +120,18 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
+            const mcpServerViews = await sc.listMCPServerViews(auth);
+            const author = await sc.fetchAuthor(auth);
+
             return {
               ...sc.toJSON(auth),
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
+                mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
+                author: author ? author.toJSON() : null,
               },
-            } satisfies SkillType & { relations: SkillRelations };
+            } satisfies SkillWithRelationsType;
           },
           { concurrency: 10 }
         );

@@ -13,7 +13,6 @@ import {
   AgentChildAgentConfigurationModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
@@ -235,14 +234,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentTablesQueryConfigurationTableModel.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
-
-    await AgentReasoningConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),

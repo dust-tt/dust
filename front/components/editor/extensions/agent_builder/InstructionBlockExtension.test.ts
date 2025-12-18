@@ -46,7 +46,13 @@ describe("InstructionBlockExtension", () => {
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe("<instructions>hello</instructions>\n\n");
+    expect(result).toBe(`<instructions>
+
+hello
+
+</instructions>
+
+<br>`);
   });
 
   it("should serialize instruction block with headings to markdown", () => {
@@ -83,7 +89,13 @@ describe("InstructionBlockExtension", () => {
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe("<instructions># header1</instructions>\n\n");
+    expect(result).toBe(`<instructions>
+
+# header1
+
+</instructions>
+
+<br>`);
   });
 
   it("should serialize instruction block with code blocks to markdown", () => {
@@ -129,8 +141,17 @@ code block
     ]);
 
     const result = editor.getMarkdown();
+
     expect(result).toBe(
-      "<instructions>```\n" + "code block\n" + "```</instructions>\n" + "\n"
+      "<instructions>\n" +
+        "\n" +
+        "```\n" +
+        "code block\n" +
+        "```\n" +
+        "\n" +
+        "</instructions>\n" +
+        "\n" +
+        "<br>"
     );
   });
 
@@ -157,7 +178,13 @@ code block
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe("<instructions></instructions>\n" + "\n");
+    expect(result).toBe(`<instructions>
+
+<br>
+
+</instructions>
+
+<br>`);
   });
 
   it("should serialize instruction block with mentions", () => {
@@ -198,9 +225,13 @@ code block
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe(
-      "<instructions>:mention[agent-name]{sId=agent-123}</instructions>\n\n"
-    );
+    expect(result).toBe(`<instructions>
+
+:mention[agent-name]{sId=agent-123}
+
+</instructions>
+
+<br>`);
   });
 
   it("should serialize instruction block with _", () => {
@@ -223,6 +254,111 @@ code block
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe("<instructions_toto></instructions_toto>\n\n");
+    expect(result).toBe(`<instructions_toto>
+
+
+
+</instructions_toto>
+
+<br>`);
+  });
+
+  it("should serialize instruction block to markdown with paragraph then list", () => {
+    editor.commands.setContent(
+      `<instructions>
+Toto:
+* hello
+* darkness
+* my old friend
+</instructions>`,
+      {
+        contentType: "markdown",
+      }
+    );
+
+    const json = editor.getJSON();
+    expect(json.content).toEqual([
+      {
+        attrs: {
+          isCollapsed: false,
+          type: "instructions",
+        },
+        content: [
+          {
+            content: [
+              {
+                text: "Toto:",
+                type: "text",
+              },
+            ],
+            type: "paragraph",
+          },
+          {
+            content: [
+              {
+                content: [
+                  {
+                    content: [
+                      {
+                        text: "hello",
+                        type: "text",
+                      },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+              {
+                content: [
+                  {
+                    content: [
+                      {
+                        text: "darkness",
+                        type: "text",
+                      },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+              {
+                content: [
+                  {
+                    content: [
+                      {
+                        text: "my old friend",
+                        type: "text",
+                      },
+                    ],
+                    type: "paragraph",
+                  },
+                ],
+                type: "listItem",
+              },
+            ],
+            type: "bulletList",
+          },
+        ],
+        type: "instructionBlock",
+      },
+      {
+        type: "paragraph",
+      },
+    ]);
+
+    const result = editor.getMarkdown();
+    expect(result).toBe(`<instructions>
+
+Toto:
+
+- hello
+- darkness
+- my old friend
+
+</instructions>
+
+<br>`);
   });
 });

@@ -46,3 +46,18 @@ export async function concurrentExecutor<T, V>(
 
 export const setTimeoutAsync = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+export function getAdaptiveConcurrency(
+  files: { size?: number | null }[],
+  maxFileSize: number,
+  defaultConcurrency: number
+): number {
+  const maxFoundFileSize = files
+    .filter((file) => file.size && file.size <= maxFileSize)
+    .reduce((max, file) => Math.max(max, file.size ?? 0), 0);
+
+  return Math.min(
+    Math.floor(maxFileSize / maxFoundFileSize),
+    defaultConcurrency
+  );
+}

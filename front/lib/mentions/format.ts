@@ -9,7 +9,12 @@
 
 import type { JSONContent } from "@tiptap/react";
 
-import type { RichMention } from "@app/types";
+import type {
+  AgentMention,
+  MentionType,
+  RichMention,
+  UserMention,
+} from "@app/types";
 import { assertNever } from "@app/types";
 
 /**
@@ -31,6 +36,26 @@ export const USER_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + USER_MENTION_REGEX.source,
   USER_MENTION_REGEX.flags
 );
+
+/**
+ * Extracts mentions from content.
+ * @param content the content to extract mentions from
+ * @returns an array of mentions
+ */
+export function extractFromString(content: string): MentionType[] {
+  // Extract agent mentions
+  const agentMentions: AgentMention[] = [
+    ...content.matchAll(AGENT_MENTION_REGEX),
+  ].map((match) => ({ configurationId: match[2] }));
+  // Extract user mentions
+  const userMentions: UserMention[] = [
+    ...content.matchAll(USER_MENTION_REGEX),
+  ].map((match) => ({ type: "user", userId: match[2] }));
+
+  // Return the mentions
+  return [...agentMentions, ...userMentions];
+}
+
 /**
  * Serializes a mention to the standard string format.
  * Format:

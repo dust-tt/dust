@@ -76,6 +76,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(resource);
   }
 
+  get sId(): string {
+    return TriggerResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<TriggerModel> = {}
@@ -711,17 +718,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  sId(): string {
-    return TriggerResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
   toJSON(): TriggerType {
     const base = {
       id: this.id,
-      sId: this.sId(),
+      sId: this.sId,
       name: this.name,
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
@@ -729,6 +729,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       enabled: this.enabled,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
+      origin: this.origin,
     };
 
     if (this.kind === "webhook") {

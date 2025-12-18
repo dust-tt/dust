@@ -61,6 +61,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -69,7 +70,6 @@ import { SKILL_ICON } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
-  useDeleteConversation,
   useSpaceConversationsSummary,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -793,6 +793,8 @@ const ConversationListItem = memo(
             selected={router.query.cId === conversation.sId}
             status={getConversationDotStatus(conversation)}
             label={conversationLabel}
+            href={getConversationRoute(owner.sId, conversation.sId)}
+            shallow
             moreMenu={
               <ConversationMenu
                 activeConversationId={conversation.sId}
@@ -813,13 +815,6 @@ const ConversationListItem = memo(
                 // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
                 await new Promise((resolve) => setTimeout(resolve, 600));
               }
-              await router.push(
-                getConversationRoute(owner.sId, conversation.sId),
-                undefined,
-                {
-                  shallow: true,
-                }
-              );
             }}
           />
         )}

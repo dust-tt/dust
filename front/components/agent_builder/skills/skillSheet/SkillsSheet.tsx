@@ -1,5 +1,5 @@
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useCallback, useState } from "react";
 
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
@@ -9,10 +9,16 @@ import type { UserType, WorkspaceType } from "@app/types";
 interface SkillsSheetProps {
   mode: SkillsSheetMode | null;
   onClose: () => void;
-  onSave: (skills: AgentBuilderSkillsType[]) => void;
+  onSave: (
+    skills: AgentBuilderSkillsType[],
+    additionalSpaces: string[]
+  ) => void;
   onModeChange: (mode: SkillsSheetMode | null) => void;
   owner: WorkspaceType;
   user: UserType;
+  initialSelectedSkills: AgentBuilderSkillsType[];
+  initialAdditionalSpaces: string[];
+  alreadyRequestedSpaceIds: Set<string>;
 }
 
 export function SkillsSheet(props: SkillsSheetProps) {
@@ -35,20 +41,40 @@ function SkillsSheetContent({
   onModeChange,
   owner,
   user,
+  initialSelectedSkills,
+  initialAdditionalSpaces,
+  alreadyRequestedSpaceIds,
 }: SkillsSheetProps & { mode: SkillsSheetMode }) {
+  const [localSelectedSkills, setLocalSelectedSkills] = useState<
+    AgentBuilderSkillsType[]
+  >(initialSelectedSkills);
+  const [localAdditionalSpaces, setLocalAdditionalSpaces] = useState<string[]>(
+    initialAdditionalSpaces
+  );
+
+  const handleSave = useCallback(() => {
+    onSave(localSelectedSkills, localAdditionalSpaces);
+    onClose();
+  }, [localSelectedSkills, localAdditionalSpaces, onSave, onClose]);
+
   const { page, leftButton, rightButton } = getPageAndFooter({
     mode,
     onModeChange,
     onClose,
-    onSave,
+    handleSave,
     owner,
     user,
+    alreadyRequestedSpaceIds,
+    localSelectedSkills,
+    setLocalSelectedSkills,
+    localAdditionalSpaces,
+    setLocalAdditionalSpaces,
   });
 
   return (
     <MultiPageSheetContent
       pages={[page]}
-      currentPageId={mode.type}
+      currentPageId={mode.pageId}
       onPageChange={() => {}}
       size="xl"
       addFooterSeparator

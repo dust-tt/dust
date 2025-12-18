@@ -1,4 +1,5 @@
 import assert from "assert";
+import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
@@ -28,7 +29,7 @@ import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
+import { extractFromString } from "@app/lib/mentions/format";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -56,6 +57,7 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgenticMessageData,
   AgentMessageType,
+  AgentMessageTypeWithoutMentions,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
   ContentFragmentInputWithContentNode,
@@ -68,8 +70,8 @@ import type {
   MentionType,
   ModelId,
   Result,
+  RichMentionWithStatus,
   UserMessageContext,
-  UserMessageOrigin,
   UserMessageType,
 } from "@app/types";
 import {
@@ -80,37 +82,14 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
+  isUserMention,
   isUserMessageType,
   md5,
   Ok,
   removeNulls,
+  toMentionType,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
-
-const ALLOWED_API_KEY_ORIGINS: UserMessageOrigin[] = [
-  "api",
-  "excel",
-  "github-copilot-chat", // TODO: find out how it's used
-  "gsheet",
-  "make",
-  "n8n",
-  "powerpoint",
-  "zapier",
-  "zendesk",
-  "slack", // TODO: should not be allowed for API key usage
-  "web", // TODO: should not be allowed for API key usage
-];
-
-const ALLOWED_OAUTH_ORIGINS: UserMessageOrigin[] = [
-  "api",
-  "cli",
-  "cli_programmatic",
-  "extension",
-  "github-copilot-chat", // TODO: find out how it's used
-  "raycast",
-  "teams",
-  "web", // TODO: should not be allowed for OAuth usage
-];
 
 /**
  * Conversation Creation, update and deletion
@@ -174,6 +153,7 @@ export async function createConversation(
     visibility: conversation.visibility,
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
+    triggerId: conversation.triggerSId,
   };
 }
 
@@ -454,45 +434,57 @@ export function getRelatedContentFragments(
   return relatedContentFragments;
 }
 
-export function validateUserMessageContext(
+export function isUserMessageContextValid(
   auth: Authenticator,
+  req: NextApiRequest,
   context: UserMessageContext
-): Result<void, APIErrorWithStatusCode> {
+): boolean {
   const authMethod = auth.authMethod();
-  switch (authMethod) {
-    case "api_key":
-      if (!ALLOWED_API_KEY_ORIGINS.includes(context.origin)) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "This origin is not allowed when using a custom API key. See documentation to fix to an allowed origin.",
-          },
-        });
-      }
-      break;
-    case "oauth":
-      if (!ALLOWED_OAUTH_ORIGINS.includes(context.origin)) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "This origin is not allowed when using OAuth for authentication. See documentation to fix to an allowed origin.",
-          },
-        });
-      }
-      break;
-    case "session":
-    case "internal":
-    case "system_api_key":
-      break;
-    default:
-      assertNever(authMethod);
+
+  if (authMethod === "system_api_key") {
+    return true;
   }
 
-  return new Ok(undefined);
+  const {
+    "user-agent": userAgent,
+    "x-dust-extension-version": extensionVersion,
+    "x-zendesk-user-id": zendeskUserId,
+  } = req.headers;
+
+  switch (context.origin) {
+    case "api":
+    case "slack": // TODO: should not be allowed
+    case "web": // TODO: should not be allowed
+      return true;
+    case "excel":
+    case "gsheet":
+    case "make":
+    case "n8n":
+    case "powerpoint":
+    case "zapier":
+      return authMethod === "api_key";
+    case "zendesk":
+      return (
+        (authMethod === "api_key" || authMethod === "oauth") && !!zendeskUserId
+      );
+    case "cli":
+    case "cli_programmatic":
+      return authMethod === "oauth" && userAgent === "Dust CLI";
+    case "extension":
+      return authMethod === "oauth" && !!extensionVersion;
+    case "raycast":
+      return authMethod === "oauth" && userAgent === "undici";
+    case "email":
+    case "slack_workflow":
+    case "teams":
+    case "transcript":
+    case "triggered":
+    case "triggered_programmatic":
+    case "onboarding_conversation":
+      return false;
+    default:
+      assertNever(context.origin);
+  }
 }
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -524,14 +516,6 @@ export async function postUserMessage(
     APIErrorWithStatusCode
   >
 > {
-  const validateUserMessageContextRes = validateUserMessageContext(
-    auth,
-    context
-  );
-  if (validateUserMessageContextRes.isErr()) {
-    return validateUserMessageContextRes;
-  }
-
   const user = auth.user();
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -659,10 +643,11 @@ export async function postUserMessage(
         transaction: t,
       })) ?? -1) + 1;
 
-    const userMessage = await createUserMessage(auth, {
+    // Return the user message without mentions.
+    // This way typescript forces us to create the mentions after the user message is created.
+    const userMessageWithoutMentions = await createUserMessage(auth, {
       conversation,
       content,
-      mentions,
       metadata: {
         type: "create",
         user: user?.toJSON() ?? null,
@@ -673,9 +658,9 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    await createUserMentions(auth, {
+    const richMentions = await createUserMentions(auth, {
       mentions,
-      message: userMessage,
+      message: userMessageWithoutMentions,
       conversation,
       transaction: t,
     });
@@ -697,7 +682,7 @@ export async function postUserMessage(
       if (conversationRes) {
         await triggerConversationUnreadNotifications(auth, {
           conversation: conversationRes,
-          messageId: userMessage.sId,
+          messageId: userMessageWithoutMentions.sId,
         });
       }
     }
@@ -710,10 +695,28 @@ export async function postUserMessage(
         agentConfigurations,
         skipToolsValidation,
         nextMessageRank,
-        userMessage,
+        userMessage: userMessageWithoutMentions,
       },
       transaction: t,
     });
+
+    for (const agentMessage of agentMessages) {
+      const agentRichMention: RichMentionWithStatus = {
+        type: "agent",
+        id: agentMessage.configuration.sId,
+        label: agentMessage.configuration.name,
+        pictureUrl: agentMessage.configuration.pictureUrl,
+        description: agentMessage.configuration.description,
+        status: "approved",
+      };
+      richMentions.push(agentRichMention);
+    }
+
+    const userMessage = {
+      ...userMessageWithoutMentions,
+      richMentions: richMentions,
+      mentions: richMentions.map(toMentionType),
+    };
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
@@ -920,10 +923,10 @@ export async function editUserMessage(
         );
       }
 
-      const userMessage = await createUserMessage(auth, {
+      const userMessageWithoutMentions = await createUserMessage(auth, {
         conversation,
         content,
-        mentions,
+
         metadata: {
           type: "edit",
           message,
@@ -937,9 +940,9 @@ export async function editUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      await createUserMentions(auth, {
+      const richMentions = await createUserMentions(auth, {
         mentions,
-        message: userMessage,
+        message: userMessageWithoutMentions,
         conversation,
         transaction: t,
       });
@@ -979,11 +982,28 @@ export async function editUserMessage(
               agentConfigurations,
               skipToolsValidation,
               nextMessageRank,
-              userMessage,
+              userMessage: userMessageWithoutMentions,
             },
             transaction: t,
           });
+
+          for (const agentMessage of agentMessages) {
+            const agentRichMention: RichMentionWithStatus = {
+              type: "agent",
+              id: agentMessage.configuration.sId,
+              label: agentMessage.configuration.name,
+              pictureUrl: agentMessage.configuration.pictureUrl,
+              description: agentMessage.configuration.description,
+              status: "approved",
+            };
+            richMentions.push(agentRichMention);
+          }
         }
+        const userMessage = {
+          ...userMessageWithoutMentions,
+          richMentions: richMentions,
+          mentions: richMentions.map(toMentionType),
+        };
 
         await ConversationResource.markAsUpdated(auth, { conversation, t });
 
@@ -992,6 +1012,12 @@ export async function editUserMessage(
           agentMessages,
         };
       }
+
+      const userMessage = {
+        ...userMessageWithoutMentions,
+        richMentions: richMentions,
+        mentions: richMentions.map(toMentionType),
+      };
 
       return {
         userMessage,
@@ -1045,8 +1071,8 @@ export async function handleAgentMessage(
     conversation,
     agentMessage,
   }: {
-    conversation: ConversationWithoutContentType;
-    agentMessage: AgentMessageType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageTypeWithoutMentions;
   }
 ) {
   if (!agentMessage.content) {
@@ -1058,21 +1084,27 @@ export async function handleAgentMessage(
       },
     });
   }
-  const userMentions = [
-    ...agentMessage.content.matchAll(USER_MENTION_REGEX),
-  ].map((match) => ({ name: match[1], sId: match[2] }));
+  const userMentions = extractFromString(agentMessage.content).filter(
+    isUserMention
+  );
 
+  const richMentions: RichMentionWithStatus[] = [];
   if (userMentions.length > 0) {
     await withTransaction(async (t) => {
-      for (const m of userMentions) {
-        await createUserMentions(auth, {
-          mentions: [{ type: "user", userId: m.sId }],
+      richMentions.push(
+        ...(await createUserMentions(auth, {
+          mentions: userMentions,
           message: agentMessage,
           conversation,
           transaction: t,
-        });
-      }
+        }))
+      );
     });
+
+    // Publish the new agent message event to all open tabs to maintain state synchronization.
+    await publishAgentMessagesEvents(conversation, [
+      { ...agentMessage, richMentions },
+    ]);
   }
 }
 
@@ -1382,7 +1414,6 @@ export async function softDeleteUserMessage(
     const userMessage = await createUserMessage(auth, {
       conversation,
       content: "deleted",
-      mentions: [],
       metadata: {
         type: "delete",
         message,
@@ -1414,7 +1445,7 @@ export async function softDeleteUserMessage(
 
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
-    { ...userMessage, contentFragments: [] },
+    { ...userMessage, contentFragments: [], mentions: [], richMentions: [] },
     []
   );
 

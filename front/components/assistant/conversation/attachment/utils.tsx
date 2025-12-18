@@ -204,12 +204,16 @@ export function contentFragmentToAttachmentCitation(
       title,
       sourceUrl: contentFragment.sourceUrl,
       visual: (
-        <IconForAttachmentCitation contentType={contentFragment.contentType} />
+        <IconForAttachmentCitation
+          contentType={contentFragment.contentType}
+          iconName={contentFragment.sourceIcon ?? undefined}
+        />
       ),
       description: description ?? null,
       fileId: contentFragment.fileId,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
+      provider: contentFragment.sourceProvider ?? undefined,
     };
   }
 

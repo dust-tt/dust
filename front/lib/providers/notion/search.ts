@@ -6,9 +6,10 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 
 import {
-  getNotionClient,
-  MAX_FILE_SIZE,
-} from "@app/lib/providers/notion/utils";
+  PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
+  PROVIDER_SEARCH_MAX_PAGE_SIZE,
+} from "@app/lib/providers/constants";
+import { getNotionClient } from "@app/lib/providers/notion/utils";
 import type {
   ToolDownloadParams,
   ToolDownloadResult,
@@ -39,7 +40,7 @@ export async function search({
 
   const response = await notion.search({
     query,
-    page_size: Math.min(pageSize, 100),
+    page_size: Math.min(pageSize, PROVIDER_SEARCH_MAX_PAGE_SIZE),
     filter: {
       property: "object",
       // We only support pages, as databases would require getting too much data
@@ -254,9 +255,9 @@ export async function download({
 
   // Check content size
   const contentSize = Buffer.byteLength(content, "utf8");
-  if (contentSize > MAX_FILE_SIZE) {
+  if (contentSize > PROVIDER_DOWNLOAD_MAX_FILE_SIZE) {
     throw new Error(
-      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+      `File size exceeds the maximum limit of ${PROVIDER_DOWNLOAD_MAX_FILE_SIZE / (1024 * 1024)} MB.`
     );
   }
   logger.info(

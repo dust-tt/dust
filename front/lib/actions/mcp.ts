@@ -16,7 +16,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
@@ -28,7 +28,6 @@ import type {
   DustAppRunConfigurationType,
   ModelId,
   PersonalAuthenticationRequiredErrorContent,
-  ReasoningModelConfigurationType,
   TimeFrame,
   ToolErrorEvent,
 } from "@app/types";
@@ -62,7 +61,6 @@ export type ServerSideMCPServerConfigurationType =
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
-    reasoningModel: ReasoningModelConfigurationType | null;
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
     additionalConfiguration: AdditionalConfigurationType;

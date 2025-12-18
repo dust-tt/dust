@@ -3,11 +3,13 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getRichMentionsWithStatusForMessage } from "@app/lib/api/assistant/messages";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { extractFromString } from "@app/lib/mentions/format";
+import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
   MentionModel,
@@ -28,14 +30,16 @@ import logger from "@app/logger/logger";
 import type {
   AgenticMessageData,
   AgentMessageType,
+  AgentMessageTypeWithoutMentions,
   ContentFragmentInputWithContentNode,
+  ConversationType,
   ConversationWithoutContentType,
   MentionType,
-  MessageType,
   MessageVisibility,
   ModelId,
-  RichMention,
+  RichMentionWithStatus,
   UserMessageContext,
+  UserMessageTypeWithoutMentions,
   UserType,
 } from "@app/types";
 import type {
@@ -48,9 +52,6 @@ import {
   isAgentMention,
   isUserMention,
   removeNulls,
-  toMentionType,
-  toRichAgentMentionType,
-  toRichUserMentionType,
 } from "@app/types";
 
 import { runAgentLoopWorkflow } from "./agent_loop";
@@ -64,46 +65,99 @@ export const createUserMentions = async (
     transaction,
   }: {
     mentions: MentionType[];
-    message: MessageType;
-    conversation: ConversationWithoutContentType;
+    message: AgentMessageTypeWithoutMentions | UserMessageTypeWithoutMentions;
+    conversation: ConversationType;
     transaction?: Transaction;
   }
-) => {
+): Promise<RichMentionWithStatus[]> => {
+  const usersById = new Map<ModelId, UserType>();
   // Store user mentions in the database
-  await Promise.all(
-    mentions.filter(isUserMention).map(async (mention) => {
-      // check if the user exists in the workspace before creating the mention
-      const user = await getUserForWorkspace(auth, { userId: mention.userId });
-      if (user) {
-        await MentionModel.create(
-          {
-            messageId: message.id,
-            userId: user.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            status: "approved",
-          },
-          { transaction }
-        );
-
-        const status = await ConversationResource.upsertParticipation(auth, {
-          conversation,
-          action: "subscribed",
-          user: user.toJSON(),
+  const mentionModels = await Promise.all(
+    mentions.map(async (mention) => {
+      if (isUserMention(mention)) {
+        // check if the user exists in the workspace before creating the mention
+        const user = await getUserForWorkspace(auth, {
+          userId: mention.userId,
         });
+        if (user) {
+          usersById.set(user.id, user.toJSON());
 
-        const featureFlags = await getFeatureFlags(
-          auth.getNonNullableWorkspace()
-        );
+          const isParticipant =
+            await ConversationResource.isConversationParticipant(auth, {
+              conversation,
+              user: user.toJSON(),
+            });
 
-        if (status === "added" && featureFlags.includes("notifications")) {
-          await triggerConversationAddedAsParticipantNotification(auth, {
-            conversation,
-            addedUserId: user.sId,
-          });
+          // Always auto approve mentions for user messages & existing participants.
+          let autoApprove = isParticipant || message.type === "user_message";
+          // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
+          if (
+            !autoApprove &&
+            conversation.triggerId &&
+            message.type === "agent_message" &&
+            message.configuration.instructions
+          ) {
+            const isUserMentionnedInInstructions = extractFromString(
+              message.configuration.instructions
+            )
+              .filter(isUserMention)
+              .some((mention) => mention.userId === user.sId);
+
+            if (isUserMentionnedInInstructions) {
+              autoApprove = true;
+            }
+          }
+
+          const status: MentionStatusType = autoApprove
+            ? "approved"
+            : "pending";
+
+          const mentionModel = await MentionModel.create(
+            {
+              messageId: message.id,
+              userId: user.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              status,
+            },
+            { transaction }
+          );
+
+          if (!isParticipant && status === "approved") {
+            const status = await ConversationResource.upsertParticipation(
+              auth,
+              {
+                conversation,
+                action: "subscribed",
+                user: user.toJSON(),
+                transaction,
+              }
+            );
+
+            const featureFlags = await getFeatureFlags(
+              auth.getNonNullableWorkspace()
+            );
+
+            if (status === "added" && featureFlags.includes("notifications")) {
+              await triggerConversationAddedAsParticipantNotification(auth, {
+                conversation,
+                addedUserId: user.sId,
+              });
+            }
+          }
+          return mentionModel;
         }
       }
     })
   );
+
+  const richMentions = getRichMentionsWithStatusForMessage(
+    message.id,
+    removeNulls(mentionModels),
+    usersById,
+    new Map() // No agent configurations in the users mentions.
+  );
+
+  return richMentions;
 };
 
 async function attributeUserFromWorkspaceAndEmail(
@@ -216,12 +270,10 @@ export async function createUserMessage(
     conversation,
     metadata,
     content,
-    mentions,
     transaction,
   }: {
     conversation: ConversationWithoutContentType;
     content: string;
-    mentions: MentionType[];
     metadata:
       | {
           type: "edit";
@@ -240,7 +292,7 @@ export async function createUserMessage(
         };
     transaction: Transaction;
   }
-) {
+): Promise<UserMessageTypeWithoutMentions> {
   const workspace = auth.getNonNullableWorkspace();
   let rank = 0;
   let version = 0;
@@ -356,46 +408,7 @@ export async function createUserMessage(
     }
   );
 
-  const mentionUserIds = mentions.filter(isUserMention).map((m) => m.userId);
-  const mentionAgentConfigurationIds = mentions
-    .filter(isAgentMention)
-    .map((m) => m.configurationId);
-
-  const [mentionnedUsers, mentionnedAgentConfigurations] = await Promise.all([
-    mentionUserIds.length > 0 ? UserResource.fetchByIds(mentionUserIds) : [],
-    mentionAgentConfigurationIds.length > 0
-      ? getAgentConfigurations(auth, {
-          agentIds: mentionAgentConfigurationIds,
-          variant: "extra_light",
-        })
-      : [],
-  ]);
-  const mentionnedUsersBySId = new Map(
-    mentionnedUsers.map((u) => [u.sId, u.toJSON()])
-  );
-  const mentionnedAgentConfigurationsBySId = new Map(
-    mentionnedAgentConfigurations.map((ac) => [ac.sId, ac])
-  );
-
-  const richMentions: RichMention[] = removeNulls(
-    mentions.map((m) => {
-      if (isUserMention(m)) {
-        const mentionnedUser = mentionnedUsersBySId.get(m.userId);
-        if (mentionnedUser) {
-          return toRichUserMentionType(mentionnedUser);
-        }
-      } else if (isAgentMention(m)) {
-        const mentionnedAgentConfiguration =
-          mentionnedAgentConfigurationsBySId.get(m.configurationId);
-        if (mentionnedAgentConfiguration) {
-          return toRichAgentMentionType(mentionnedAgentConfiguration);
-        }
-      } else {
-        assertNever(m);
-      }
-    })
-  );
-  const createdUserMessage: UserMessageType = {
+  const createdUserMessage: UserMessageTypeWithoutMentions = {
     id: m.id,
     created: m.createdAt.getTime(),
     sId: m.sId,
@@ -403,9 +416,6 @@ export async function createUserMessage(
     visibility: m.visibility,
     version: m.version,
     user,
-    // Use the rich mentions to create the mentions so we exclude the one that do not exists in the database.
-    mentions: richMentions.map(toMentionType),
-    richMentions,
     content,
     context,
     agenticMessageData: agenticMessageData ?? undefined,
@@ -439,7 +449,7 @@ export const createAgentMessages = async (
           agentConfigurations: LightAgentConfigurationType[];
           skipToolsValidation: boolean;
           nextMessageRank: number;
-          userMessage: UserMessageType;
+          userMessage: UserMessageTypeWithoutMentions;
         };
     transaction?: Transaction;
   }
@@ -540,6 +550,8 @@ export const createAgentMessages = async (
               return;
             }
 
+            // This create the mentions from the original user message.
+            // Not to be mixed with the mentions from the agent message (which will be filled later).
             await MentionModel.create(
               {
                 messageId: metadata.userMessage.id,

@@ -337,7 +337,7 @@ export function BaseProgrammaticCostChart({
     const isActive =
       !enabledGroupKeys || enabledGroupKeys.includes(group.groupKey);
     const isVisible = visibleGroupKeys.has(group.groupKey);
-    const canFilter = !["total", "others", "unknown"].includes(group.groupKey);
+    const canFilter = !["total", "others"].includes(group.groupKey);
 
     return {
       key: group.groupKey,
@@ -361,8 +361,8 @@ export function BaseProgrammaticCostChart({
     return programmaticCostData?.points.reduce((max, point) => {
       return Math.max(
         max,
-        point.groups.reduce((max, group) => {
-          return Math.max(max, group.cumulatedCostMicroUsd ?? 0);
+        point.groups.reduce((sum, group) => {
+          return sum + (group.cumulatedCostMicroUsd ?? 0);
         }, 0)
       );
     }, 0);

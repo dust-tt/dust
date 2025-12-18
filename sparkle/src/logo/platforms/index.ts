@@ -31,6 +31,7 @@ export { default as GooglePdfLogo } from "./GooglePdf";
 export { default as GoogleSlideLogo } from "./GoogleSlide";
 export { default as GoogleSpreadsheetLogo } from "./GoogleSpreadsheet";
 export { default as GrokLogo } from "./Grok";
+export { default as GuruLogo } from "./Guru";
 export { default as HubspotLogo } from "./Hubspot";
 export { default as HuggingFaceLogo } from "./HuggingFace";
 export { default as IntercomLogo } from "./Intercom";

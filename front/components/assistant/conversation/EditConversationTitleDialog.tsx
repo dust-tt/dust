@@ -8,15 +8,14 @@ import {
   Input,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useSWRConfig } from "swr";
 
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { useUpdateConversationTitle } from "@app/hooks/useUpdateConversationTitle";
+import type { LightWorkspaceType } from "@app/types";
 
 type EditConversationTitleDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  ownerId: string;
+  owner: LightWorkspaceType;
   conversationId: string;
   currentTitle: string;
 };
@@ -24,14 +23,17 @@ type EditConversationTitleDialogProps = {
 export const EditConversationTitleDialog = ({
   isOpen,
   onClose,
-  ownerId,
+  owner,
   conversationId,
   currentTitle,
 }: EditConversationTitleDialogProps) => {
-  const { mutate } = useSWRConfig();
   const [title, setTitle] = useState<string>(currentTitle);
-  const sendNotification = useSendNotification();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const updateTitle = useUpdateConversationTitle({
+    owner,
+    conversationId,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -44,30 +46,8 @@ export const EditConversationTitleDialog = ({
   }, [isOpen, currentTitle]);
 
   const editTitle = useCallback(async () => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${ownerId}/assistant/conversations/${conversationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title }),
-        }
-      );
-      if (!res.ok) {
-        throw new Error("Failed to update title");
-      }
-      await mutate(
-        `/api/w/${ownerId}/assistant/conversations/${conversationId}`
-      );
-      void mutate(`/api/w/${ownerId}/assistant/conversations`);
-      sendNotification({ type: "success", title: "Title edited" });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {
-      sendNotification({ type: "error", title: "Failed to edit title" });
-    }
-  }, [conversationId, mutate, ownerId, title, sendNotification]);
+    await updateTitle(title);
+  }, [title, updateTitle]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

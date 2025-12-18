@@ -142,6 +142,7 @@ describe("renderAllMessages", () => {
       } as ConversationType["owner"],
       visibility: "unlisted",
       content: content as ConversationType["content"],
+      triggerId: null,
     } as ConversationType;
   }
 

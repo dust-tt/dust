@@ -13,6 +13,7 @@ import {
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -143,6 +144,21 @@ async function handler(
         assertStripeSubscriptionIsValid(stripeSubscription);
       if (assertValidSubscription.isErr()) {
         const errorMessage = assertValidSubscription.error.invalidity_message;
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      const programmaticUsageConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      if (!programmaticUsageConfig) {
+        const errorMessage =
+          "Programmatic usage configuration must be set before upgrading to enterprise.";
         await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
