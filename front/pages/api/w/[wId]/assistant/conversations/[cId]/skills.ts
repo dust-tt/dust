@@ -60,9 +60,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       try {
-        const conversationSkills = await ConversationResource.fetchSkills(
+        const conversationSkills = await SkillResource.fetchConversationSkills(
           auth,
-          conversationWithoutContent
+          conversationWithoutContent.id
         );
 
         const skills: SkillType[] = [];
@@ -143,8 +143,8 @@ async function handler(
           });
         }
 
-        const r = await ConversationResource.upsertSkills(auth, {
-          conversation: conversationWithoutContent,
+        const r = await SkillResource.upsertConversationSkills(auth, {
+          conversationId: conversationWithoutContent.id,
           skills: [skillRes],
           enabled: action === "add",
           agentConfigurationId: agent_configuration_id ?? null,

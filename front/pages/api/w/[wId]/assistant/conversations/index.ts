@@ -215,8 +215,8 @@ async function handler(
             message.context.selectedSkillIds
           );
 
-          const r = await ConversationResource.upsertSkills(auth, {
-            conversation,
+          const r = await SkillResource.upsertConversationSkills(auth, {
+            conversationId: conversation.id,
             skills,
             enabled: true,
             agentConfigurationId: null, // JIT skills apply to all agents in conversation
