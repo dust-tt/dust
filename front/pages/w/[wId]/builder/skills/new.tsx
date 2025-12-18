@@ -16,7 +16,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
-  extendedSkill?: ExtendedSkillType;
+  extendedSkill: ExtendedSkillType | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -27,7 +27,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       : null;
   const extendedSkill = skillToExtend?.isExtendable
     ? { name: skillToExtend.name }
-    : undefined;
+    : null;
 
   if (!owner || !auth.isBuilder() || !subscription) {
     return {
@@ -65,7 +65,7 @@ export default function CreateSkill({
         <Head>
           <title>Dust - New Skill</title>
         </Head>
-        <SkillBuilder extendedSkill={extendedSkill} />
+        <SkillBuilder extendedSkill={extendedSkill ?? undefined} />
       </SpacesProvider>
     </SkillBuilderProvider>
   );
