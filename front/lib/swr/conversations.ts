@@ -473,6 +473,7 @@ export function useAddDeleteConversationSkill({
   workspaceId: string;
   agentConfigurationId: string | null;
 }) {
+  const sendNotification = useSendNotification();
   const addSkill = useCallback(
     async (skillId: string): Promise<boolean> => {
       if (!conversationId) {
@@ -491,7 +492,7 @@ export function useAddDeleteConversationSkill({
               action: "add",
               skill_id: skillId,
               agent_configuration_id: agentConfigurationId,
-            } as ConversationSkillActionRequest),
+            } satisfies ConversationSkillActionRequest),
           }
         );
 
@@ -501,19 +502,25 @@ export function useAddDeleteConversationSkill({
 
         const result = await response.json();
         return result.success === true;
-      } catch (error) {
+      } catch (err) {
+        const error = normalizeError(err);
         datadogLogger.error(
           {
-            error: normalizeError(error),
+            error,
             conversationId,
             workspaceId,
           },
           "[JIT Skill] Error adding skill to conversation"
         );
+        sendNotification({
+          type: "error",
+          title: "Failed to add skill to conversation",
+          description: error.message,
+        });
         return false;
       }
     },
-    [conversationId, workspaceId, agentConfigurationId]
+    [conversationId, workspaceId, agentConfigurationId, sendNotification]
   );
 
   const deleteSkill = useCallback(
@@ -534,7 +541,7 @@ export function useAddDeleteConversationSkill({
               action: "delete",
               skill_id: skillId,
               agent_configuration_id: agentConfigurationId,
-            } as ConversationSkillActionRequest),
+            } satisfies ConversationSkillActionRequest),
           }
         );
 
@@ -544,20 +551,26 @@ export function useAddDeleteConversationSkill({
 
         const result = await response.json();
         return result.success === true;
-      } catch (error) {
+      } catch (err) {
+        const error = normalizeError(err);
         datadogLogger.error(
           {
-            error: normalizeError(error),
+            error,
             conversationId,
             workspaceId,
             skillId,
           },
           "[JIT Skill] Error removing skill from conversation"
         );
+        sendNotification({
+          type: "error",
+          title: "Failed to remove skill from conversation",
+          description: error.message,
+        });
         return false;
       }
     },
-    [conversationId, workspaceId, agentConfigurationId]
+    [conversationId, workspaceId, agentConfigurationId, sendNotification]
   );
 
   return { addSkill, deleteSkill };
