@@ -339,7 +339,7 @@ export const conversationUnreadWorkflow = workflow(
     const { events } = await step.digest(
       "digest",
       async () => {
-        const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-unread-conversations`;
+        const digestKey = `workspace-${payload.workspaceId}-unread-conversations`;
         const userPreferences = userNotificationDelayStep.delay;
         return {
           ...NOTIFICATION_PREFERENCES_DELAYS[userPreferences],
