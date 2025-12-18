@@ -1,6 +1,8 @@
 import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import debounce from "lodash/debounce";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
@@ -21,14 +23,20 @@ const MENTION_BANNER_LOCAL_STORAGE_KEY = "mention-banner-dismissed";
 
 const MENTION_BANNER_URL = "https://docs.dust.tt/docs/collaboration";
 
-const EXIT_ANIMATION_CLASSNAME =
-  "transition-opacity transition-transform duration-300";
+interface StackedInAppBannersProps {
+  owner: WorkspaceType;
+}
 
-const AFTER_EXIT_CLASSNAME = "translate-y-[170%] opacity-30";
+interface MentionBannerProps {
+  showMentionBanner: boolean;
+  setShowMentionBanner: (show: boolean) => void;
+  isHovering: boolean;
+}
 
-interface InAppBannerProps {
+interface WrappedInAppBannerProps {
   owner: WorkspaceType;
   showMentionBanner: boolean;
+  isHovering: boolean;
 }
 
 function getLocalStorageKey(owner: WorkspaceType) {
@@ -47,128 +55,210 @@ function getWrappedUrl(owner: WorkspaceType): string | null {
   return null;
 }
 
-export function InAppBanner({ owner, showMentionBanner }: InAppBannerProps) {
-  const [showInAppBanner, setShowInAppBanner] = useState(true);
+export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
+  const [showMentionBanner, setShowMentionBanner] = useState(true);
+  const [ref, isHovering] = useHover();
+  return (
+    <div className="absolute bottom-0 left-0 z-20" ref={ref}>
+      <MentionBanner
+        showMentionBanner={showMentionBanner}
+        setShowMentionBanner={setShowMentionBanner}
+        isHovering={isHovering}
+      />
+      <WrappedInAppBanner
+        owner={owner}
+        showMentionBanner={showMentionBanner}
+        isHovering={isHovering}
+      />
+    </div>
+  );
+}
 
-  const onDismiss = () => {
+export function WrappedInAppBanner({
+  owner,
+  showMentionBanner,
+  isHovering,
+}: WrappedInAppBannerProps) {
+  const [showInAppBanner, setShowInAppBanner] = useState(true);
+  const [innerWrappedInAppBannerRef, isWrappedInAppBannerHovering] = useHover();
+
+  const onDismiss = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
     localStorage.setItem(getLocalStorageKey(owner), "true");
-    setShowInAppBanner((prev) => !prev);
+    setShowInAppBanner(false);
   };
 
   const wrappedUrl = getWrappedUrl(owner);
-
-  // if (!showInAppBanner) {
-  //   return null;
-  // }
 
   const onLearnMore = () => {
     window.open(wrappedUrl, "_blank", "noopener,noreferrer");
   };
 
-  console.log("showMentionBanner", showMentionBanner);
-  console.log("showInAppBanner", showInAppBanner);
-
   return (
-    <div
-      className={cn(
-        "hidden flex-col sm:flex",
-        // "absolute left-0 top-[-1]",
-        "rounded-2xl shadow-sm",
-        "border border-border/0 dark:border-border-night/0",
-        "mx-2 mb-2",
-        "opacity-100",
-        EXIT_ANIMATION_CLASSNAME,
-        showMentionBanner
-          ? "translate-y-[-20%] scale-95"
-          : "translate-y-0 scale-100 opacity-100",
-        !showInAppBanner && AFTER_EXIT_CLASSNAME
-      )}
-      style={BACKGROUND_IMAGE_STYLE_PROPS}
-    >
-      <div className="relative p-4">
-        <img
-          src={YEAR_IN_REVIEW_TITLE}
-          alt="Year in Review"
-          className="mb-4 h-12"
-        />
-        <Button
-          variant="highlight"
-          size="xs"
-          onClick={withTracking(
-            TRACKING_AREAS.DUST_WRAPPED,
-            "cta_dust_wrapped_banner",
-            onLearnMore
+    <AnimatePresence>
+      {showInAppBanner ? (
+        <motion.div
+          transition={{ duration: 0.1, ease: "easeIn" }}
+          exit={{ opacity: 0, translateY: "120%" }}
+          className={cn(
+            "hidden flex-col sm:flex",
+            "rounded-2xl shadow-sm",
+            "border border-border/0 dark:border-border-night/0",
+            "mx-2 mb-2",
+            showMentionBanner
+              ? "translate-y-[-20%] scale-95"
+              : "translate-y-0 scale-100",
+            "transition-all duration-300 ease-in",
+            showMentionBanner &&
+              showInAppBanner &&
+              (isHovering ?? isWrappedInAppBannerHovering) &&
+              "translate-y-[-60%]"
           )}
-          label="Open your holiday recap"
-        />
-        <Button
-          variant="outline"
-          icon={XMarkIcon}
-          className="absolute right-1 top-1 opacity-80"
-          onClick={onDismiss}
-        />
-      </div>
-    </div>
+          style={BACKGROUND_IMAGE_STYLE_PROPS}
+        >
+          <div
+            className="relative w-[300px] p-4"
+            onClick={withTracking(
+              TRACKING_AREAS.DUST_WRAPPED,
+              "cta_dust_wrapped_banner",
+              onLearnMore
+            )}
+          >
+            <img
+              src={YEAR_IN_REVIEW_TITLE}
+              alt="Year in Review"
+              className="mb-4 h-12"
+            />
+            <Button
+              variant="highlight"
+              size="xs"
+              label="Open your holiday recap"
+            />
+            {!showMentionBanner && (
+              <Button
+                variant="outline"
+                icon={XMarkIcon}
+                className="absolute right-1 top-1 opacity-80"
+                onClick={onDismiss}
+              />
+            )}
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 
 export function MentionBanner({
   showMentionBanner,
   setShowMentionBanner,
-}: InAppBannerProps) {
+}: MentionBannerProps) {
   const onDismiss = () => {
     localStorage.setItem(MENTION_BANNER_LOCAL_STORAGE_KEY, "true");
-    setShowMentionBanner((prev) => !prev);
+    setShowMentionBanner(false);
   };
 
   const onLearnMore = () => {
     window.open(MENTION_BANNER_URL, "_blank", "noopener,noreferrer");
   };
 
-  // if (!showMentionBanner) {
-  //   return null;
-  // }
-
   return (
-    <div
-      className={cn(
-        "hidden flex-col sm:flex",
-        // "absolute top-0",
-        "bg-white",
-        "rounded-2xl shadow-md",
-        "border border-border/0 dark:border-border-night/0",
-        "mx-2 mb-2",
-        "relative z-10",
-        EXIT_ANIMATION_CLASSNAME,
-        showMentionBanner
-          ? "translate-y-[100%] opacity-100"
-          : AFTER_EXIT_CLASSNAME
-      )}
-    >
-      <div className="relative p-4">
-        <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
-          Introducing Triggers ✨
-        </div>
-        <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-          Make your agents work while you're away.
-        </h4>
-        <Button
-          variant="highlight"
-          size="xs"
-          onClick={withTracking(
-            TRACKING_AREAS.DUST_WRAPPED,
-            "cta_dust_wrapped_banner",
-            onLearnMore
+    <AnimatePresence>
+      {showMentionBanner ? (
+        <motion.div
+          initial={
+            showMentionBanner ? { opacity: 100, translateY: "100%" } : {}
+          }
+          transition={{ duration: 0.1, ease: "easeIn" }}
+          exit={{ opacity: 0, translateY: "120%" }}
+          className={cn(
+            "hidden flex-col sm:flex",
+            "rounded-2xl bg-white shadow-md",
+            "border border-border/0 dark:border-border-night/0",
+            "mx-2 mb-2",
+            "relative z-10",
+            "width-[300px]"
           )}
-          label="Learn more"
-        />
-        <Button
-          variant="outline"
-          icon={XMarkIcon}
-          className="absolute right-1 top-1 opacity-80"
-          onClick={onDismiss}
-        />
-      </div>
-    </div>
+        >
+          <div className="relative p-4">
+            <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
+              Introducing Triggers ✨
+            </div>
+            <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
+              Make your agents work while you're away.
+            </h4>
+            <Button
+              variant="highlight"
+              size="xs"
+              onClick={withTracking(
+                TRACKING_AREAS.DUST_WRAPPED,
+                "cta_dust_wrapped_banner",
+                onLearnMore
+              )}
+              label="Learn more"
+            />
+            <Button
+              variant="outline"
+              icon={XMarkIcon}
+              className="absolute right-1 top-1 opacity-80"
+              onClick={onDismiss}
+            />
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
+}
+
+export function useHover() {
+  const [hovering, setHovering] = useState(false);
+  const previousNode = useRef<HTMLElement | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    setHovering(true);
+  }, []);
+
+  // Create debounced version of handleMouseLeave
+  const debouncedHandleMouseLeave = useRef(
+    debounce(() => {
+      setHovering(false);
+    }, 300)
+  ).current;
+
+  const handleMouseLeave = useCallback(() => {
+    debouncedHandleMouseLeave();
+  }, [debouncedHandleMouseLeave]);
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedHandleMouseLeave.cancel();
+    };
+  }, [debouncedHandleMouseLeave]);
+
+  const customRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (previousNode.current?.nodeType === Node.ELEMENT_NODE) {
+        previousNode.current.removeEventListener(
+          "mouseenter",
+          handleMouseEnter
+        );
+        previousNode.current.removeEventListener(
+          "mouseleave",
+          handleMouseLeave
+        );
+      }
+
+      if (node?.nodeType === Node.ELEMENT_NODE) {
+        node.addEventListener("mouseenter", handleMouseEnter);
+        node.addEventListener("mouseleave", handleMouseLeave);
+      }
+
+      previousNode.current = node;
+    },
+    [handleMouseEnter, handleMouseLeave]
+  );
+
+  return [customRef, hovering];
 }
