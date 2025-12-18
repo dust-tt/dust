@@ -48,6 +48,8 @@ interface ProgrammaticCostChartProps {
   billingCycleStartDay: number;
 }
 
+export type DisplayMode = "cumulative" | "daily";
+
 export interface BaseProgrammaticCostChartProps {
   programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
   isProgrammaticCostLoading: boolean;
@@ -61,6 +63,8 @@ export interface BaseProgrammaticCostChartProps {
   selectedPeriod: string;
   setSelectedPeriod: (period: string) => void;
   billingCycleStartDay: number;
+  displayMode: DisplayMode;
+  setDisplayMode: (mode: DisplayMode) => void;
 }
 
 type ChartDataPoint = {
@@ -167,6 +171,14 @@ export function formatPeriod(date: Date): string {
  * Base chart component that renders the programmatic cost chart.
  * This component is agnostic of how the data is fetched.
  */
+const DISPLAY_MODE_OPTIONS: {
+  value: DisplayMode;
+  label: string;
+}[] = [
+  { value: "cumulative", label: "Cumulative" },
+  { value: "daily", label: "Daily" },
+];
+
 export function BaseProgrammaticCostChart({
   programmaticCostData,
   isProgrammaticCostLoading,
@@ -178,6 +190,8 @@ export function BaseProgrammaticCostChart({
   selectedPeriod,
   setSelectedPeriod,
   billingCycleStartDay,
+  displayMode,
+  setDisplayMode,
 }: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
   const [labelCache, setLabelCache] = useState<
@@ -369,6 +383,10 @@ export function BaseProgrammaticCostChart({
   }, [programmaticCostData]);
 
   const shouldShowTotalCredits = useMemo(() => {
+    // Total credits only make sense in cumulative mode.
+    if (displayMode !== "cumulative") {
+      return false;
+    }
     // Don't show total credits when a filter is applied, since credits are global
     // but the cumulative cost shown would be filtered.
     if (hasFilters) {
@@ -383,7 +401,7 @@ export function BaseProgrammaticCostChart({
       (point) =>
         point.totalRemainingCreditsMicroUsd > 4 * (maxCumulatedCost ?? 0)
     );
-  }, [points, maxCumulatedCost, now, hasFilters]);
+  }, [points, maxCumulatedCost, now, hasFilters, displayMode]);
 
   // Add Total Credits to legend (not clickable)
   if (shouldShowTotalCredits) {
@@ -407,10 +425,11 @@ export function BaseProgrammaticCostChart({
     dataPoint.totalCreditsMicroUsd =
       (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
 
-    // Add each group's cumulative cost to the data point using labels from availableGroups
+    // Add each group's cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {
-      dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
+      dataPoint[g.groupKey] =
+        displayMode === "cumulative" ? g.cumulatedCostMicroUsd : g.costMicroUsd;
     });
 
     return dataPoint;
@@ -523,6 +542,28 @@ export function BaseProgrammaticCostChart({
               onClick={handleClearFilters}
             />
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                label={
+                  DISPLAY_MODE_OPTIONS.find((opt) => opt.value === displayMode)
+                    ?.label ?? "Cumulative"
+                }
+                size="xs"
+                variant="outline"
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {DISPLAY_MODE_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  label={option.label}
+                  onClick={() => setDisplayMode(option.value)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -681,6 +722,7 @@ export function ProgrammaticCostChart({
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
 
   // Initialize selectedPeriod to a date within the current billing cycle.
   // Using just formatPeriod(now) would create a date on the 1st of the month,
@@ -721,6 +763,8 @@ export function ProgrammaticCostChart({
       selectedPeriod={selectedPeriod}
       setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
+      displayMode={displayMode}
+      setDisplayMode={setDisplayMode}
     />
   );
 }
