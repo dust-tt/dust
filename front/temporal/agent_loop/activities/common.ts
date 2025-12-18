@@ -283,7 +283,7 @@ export async function notifyWorkflowError(
 /**
  * Activity executed after a cancel signal
  */
-export async function finalizeCancellationActivity(
+export async function finalizeCancellation(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {

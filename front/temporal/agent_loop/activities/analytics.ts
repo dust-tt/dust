@@ -7,7 +7,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 /**
  * Launch agent message analytics workflow in fire-and-forget mode.
  */
-export async function launchAgentMessageAnalyticsActivity(
+export async function launchAgentMessageAnalytics(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {

@@ -1,10 +1,10 @@
 import type { AuthenticatorType } from "@app/lib/auth";
-import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
+import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
-  finalizeCancellationActivity,
+  finalizeCancellation,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
-import { handleMentionsActivity } from "@app/temporal/agent_loop/activities/mentions";
+import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
 import { launchTrackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
@@ -15,10 +15,10 @@ export async function finalizeSuccessfulAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await Promise.all([
-    launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+    launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
-    handleMentionsActivity(authType, agentLoopArgs),
+    handleMentions(authType, agentLoopArgs),
     snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
@@ -28,9 +28,9 @@ export async function finalizeCancelledAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await Promise.all([
-    launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+    launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
-    finalizeCancellationActivity(authType, agentLoopArgs),
+    finalizeCancellation(authType, agentLoopArgs),
     snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
@@ -41,7 +41,7 @@ export async function finalizeErroredAgentLoopActivity(
   error: Error
 ): Promise<void> {
   await Promise.all([
-    launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+    launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     notifyWorkflowError(authType, {
       conversationId: agentLoopArgs.conversationId,
