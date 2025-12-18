@@ -16,6 +16,8 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundSize: "cover",
 };
 
+const MENTION_BANNER_BACKGROUND_IMAGE_PATH = "/static/mentions_banner.svg";
+
 const YEAR_IN_REVIEW_TITLE = "/static/year-in-review-title.svg";
 
 const LOCAL_STORAGE_KEY_PREFIX = "dust-wrapped-dismissed";
@@ -47,14 +49,12 @@ function getLocalStorageKey(owner: WorkspaceType) {
 }
 
 function getWrappedUrl(owner: WorkspaceType): string | null {
-  return null;
   const metadata = owner.metadata;
   if (!metadata) {
     return null;
   }
   const wrappedUrl = metadata.wrappedUrl;
 
-  return wrappedUrl;
   if (wrappedUrl && isString(wrappedUrl)) {
     return wrappedUrl;
   }
@@ -127,10 +127,10 @@ export function WrappedInAppBanner({
             "border border-border/0 dark:border-border-night/0",
             "mx-2 mb-2",
             isBehindMentionBanner
-              ? "translate-y-[-20%] scale-95"
+              ? "translate-y-[-50%] scale-95"
               : "translate-y-0 scale-100",
             "transition-all duration-300 ease-in",
-            shouldShowHoverState && "translate-y-[-50%]"
+            shouldShowHoverState && "translate-y-[-80%]"
           )}
           style={BACKGROUND_IMAGE_STYLE_PROPS}
         >
@@ -189,33 +189,28 @@ export function MentionBanner({
     <AnimatePresence>
       {showMentionBanner ? (
         <motion.div
-          initial={hasBothBanners ? { opacity: 100, translateY: "100%" } : {}}
+          initial={hasBothBanners ? { opacity: 100, translateY: "80%" } : {}}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
           className={cn(
             "hidden flex-col sm:flex",
-            "rounded-2xl bg-white shadow-md",
-            "border border-border/0 dark:border-border-night/0",
+            "rounded-2xl shadow-md",
             "mx-2 mb-2",
-            "relative z-10"
+            "relative z-10",
+            "bg-white dark:bg-white",
+            "cursor-pointer overflow-hidden"
+          )}
+          onClick={withTracking(
+            TRACKING_AREAS.DUST_WRAPPED,
+            "cta_dust_wrapped_banner",
+            onLearnMore
           )}
         >
-          <div className="relative cursor-pointer p-4" onClick={onLearnMore}>
-            <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
-              Introducing Collaboration ✨
-            </div>
-            <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-              Collaborate with your team on Dust
-            </h4>
-            <Button
-              variant="highlight"
-              size="xs"
-              onClick={withTracking(
-                TRACKING_AREAS.MENTIONS,
-                "cta_collaboration_banner",
-                onLearnMore
-              )}
-              label="Learn more"
+          <div className="relative">
+            <img
+              src={MENTION_BANNER_BACKGROUND_IMAGE_PATH}
+              alt="Mention your colleagues in your conversations"
+              className="w-full object-cover"
             />
             <Button
               variant="outline"
@@ -223,6 +218,14 @@ export function MentionBanner({
               className="absolute right-1 top-1 opacity-80"
               onClick={onDismiss}
             />
+          </div>
+          <div className="relative px-4 py-3">
+            <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
+              Collaborate with your team on Dust
+            </div>
+            <h4 className="text-xs leading-tight text-primary dark:text-primary-night">
+              Tag teammates to notify them and work together on conversations.
+            </h4>
           </div>
         </motion.div>
       ) : null}
