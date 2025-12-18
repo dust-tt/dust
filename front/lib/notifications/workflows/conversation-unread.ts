@@ -26,6 +26,7 @@ import type { NotificationPreferencesDelay } from "@app/types/notification_prefe
 import {
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
+  NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
 
 const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
@@ -86,6 +87,10 @@ const ConversationDetailsSchema = z.object({
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
+
+const UserNotificationDelaySchema = z.object({
+  delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
+});
 
 type NotificationDelayAmountConfig = {
   amount: number;
@@ -316,35 +321,30 @@ export const conversationUnreadWorkflow = workflow(
       }
     );
 
-    const { events } = await step.digest(
-      "digest",
+    const userNotificationDelayStep = await step.custom(
+      "get-user-notification-delay",
       async () => {
-        const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-unread-conversations`;
-        const userPreferences = await getUserNotificationDelay({
+        const userNotificationDelay = await getUserNotificationDelay({
           subscriberId: subscriber.subscriberId,
           workspaceId: payload.workspaceId,
           channel: "email",
         });
-        if (
-          userPreferences !== undefined &&
-          NOTIFICATION_PREFERENCES_DELAYS[userPreferences]
-        ) {
-          return {
-            ...NOTIFICATION_PREFERENCES_DELAYS[userPreferences],
-            digestKey,
-          };
-        }
-        return isDevelopment()
-          ? {
-              amount: 2,
-              unit: "minutes",
-              digestKey,
-            }
-          : {
-              amount: 1,
-              unit: "hours",
-              digestKey,
-            };
+        return { delay: userNotificationDelay };
+      },
+      {
+        outputSchema: UserNotificationDelaySchema,
+      }
+    );
+
+    const { events } = await step.digest(
+      "digest",
+      async () => {
+        const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-unread-conversations`;
+        const userPreferences = userNotificationDelayStep.delay;
+        return {
+          ...NOTIFICATION_PREFERENCES_DELAYS[userPreferences],
+          digestKey,
+        };
       },
       {
         // No email from trigger until we give more control over the notification to the users.
