@@ -4,7 +4,9 @@ import { z } from "zod";
 
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -32,7 +34,19 @@ async function updateFrameMetadata(
     return;
   }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  // Find first internal admin for the workspace.
+  // We need a user to change the shared scope of the frame later.
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace: renderLightWorkspaceType({ workspace }),
+    roles: ["admin"],
+  });
+
+  const [firstAdmin] = memberships;
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    firstAdmin.user!.sId,
+    workspace.sId
+  );
 
   const result =
     await FileResource.fetchByShareTokenWithContent(frameWrappedToken);

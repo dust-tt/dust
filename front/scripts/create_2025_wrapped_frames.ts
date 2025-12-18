@@ -11,8 +11,10 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { APIError, Result } from "@app/types";
@@ -23,8 +25,6 @@ import {
   safeParseJSON,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 const systemPrompt = fs.readFileSync("./wrapped_system_prompt.txt", "utf8");
 
