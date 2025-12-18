@@ -16,7 +16,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -38,6 +38,11 @@ export function HelpDropdown({
 }) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner,
+    user,
+  });
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
@@ -82,8 +87,6 @@ export function HelpDropdown({
               { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
             ];
         const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
           messageData: {
             input: inputWithHelp.replace(
               "@help",

@@ -56,6 +56,7 @@ export function useSubmitMessage({
                 body: JSON.stringify({
                   title: contentFragment.title,
                   fileId: contentFragment.fileId,
+                  url: contentFragment.url,
                   context: {
                     timezone:
                       Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",

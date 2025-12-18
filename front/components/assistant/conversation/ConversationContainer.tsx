@@ -7,10 +7,10 @@ import { AgentBrowserContainer } from "@app/components/assistant/conversation/Ag
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
@@ -54,6 +54,11 @@ export function ConversationContainerVirtuoso({
     },
   });
 
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner,
+    user,
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConversationCreation = useCallback(
@@ -74,8 +79,6 @@ export function ConversationContainerVirtuoso({
       setIsSubmitting(true);
 
       const conversationRes = await createConversationWithMessage({
-        owner,
-        user,
         messageData: {
           input,
           mentions: mentions.map(toMentionType),

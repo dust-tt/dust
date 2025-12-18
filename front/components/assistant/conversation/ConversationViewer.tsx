@@ -20,7 +20,6 @@ import { ConversationErrorDisplay } from "@app/components/assistant/conversation
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
-  submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type {
@@ -35,6 +34,7 @@ import { ConversationViewerEmptyState } from "@app/components/assistant/Conversa
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
@@ -168,6 +168,12 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     options: { disabled: true }, // We don't need the participants, only the mutator.
+  });
+
+  const submitMessage = useSubmitMessage({
+    owner,
+    user,
+    conversationId,
   });
 
   const [initialListData, setInitialListData] = useState<
@@ -540,12 +546,7 @@ export const ConversationViewer = ({
             }
       );
 
-      const result = await submitMessage({
-        owner,
-        user,
-        conversationId,
-        messageData,
-      });
+      const result = await submitMessage(messageData);
 
       if (result.isErr()) {
         if (result.error.type === "plan_limit_reached_error") {

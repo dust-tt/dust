@@ -22,7 +22,7 @@ export function useCreateConversationWithMessage({
   user,
 }: {
   owner: WorkspaceType;
-  user: UserType;
+  user: UserType | null;
 }) {
   return useCallback(
     async ({
@@ -40,6 +40,14 @@ export function useCreateConversationWithMessage({
       visibility?: ConversationVisibility;
       title?: string;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
+      if (!user) {
+        return new Err({
+          type: "message_send_error",
+          title: "User not found",
+          message: "Cannot create conversation without a user",
+        });
+      }
+
       const {
         input,
         mentions,
@@ -66,7 +74,7 @@ export function useCreateConversationWithMessage({
           contentFragments: [
             ...contentFragments.uploaded.map((cf) => ({
               title: cf.title,
-
+              url: cf.url,
               context: {
                 profilePictureUrl: user.image,
               },
