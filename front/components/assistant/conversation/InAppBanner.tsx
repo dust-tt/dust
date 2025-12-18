@@ -39,6 +39,7 @@ interface MentionBannerProps {
 }
 
 interface WrappedInAppBannerProps {
+  wrappedUrl: string | null;
   owner: WorkspaceType;
   showMentionBanner: boolean;
   isHovering: boolean;
@@ -72,23 +73,28 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   });
   const [ref, isHovering] = useHover();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const wrappedUrl = getWrappedUrl(owner);
+
   const isMentionsEnabled = hasFeature("mentions_v2");
+
+  const canShowMentionBanner = isMentionsEnabled && showMentionBanner;
+  const canShowWrappedInAppBanner =
+    Boolean(wrappedUrl) && showWrappedInAppBanner;
 
   return (
     <div className="absolute bottom-0 left-0 z-20 w-full" ref={ref}>
-      {isMentionsEnabled && (
-        <MentionBanner
-          showWrappedInAppBanner={showWrappedInAppBanner}
-          showMentionBanner={showMentionBanner}
-          setShowMentionBanner={setShowMentionBanner}
-          isHovering={isHovering}
-        />
-      )}
+      <MentionBanner
+        showWrappedInAppBanner={canShowWrappedInAppBanner}
+        showMentionBanner={canShowMentionBanner}
+        setShowMentionBanner={setShowMentionBanner}
+        isHovering={isHovering}
+      />
       <WrappedInAppBanner
+        wrappedUrl={wrappedUrl}
         owner={owner}
-        showWrappedInAppBanner={showWrappedInAppBanner}
+        showWrappedInAppBanner={canShowWrappedInAppBanner}
         setShowWrappedInAppBanner={setShowWrappedInAppBanner}
-        showMentionBanner={isMentionsEnabled && showMentionBanner}
+        showMentionBanner={canShowMentionBanner}
         isHovering={isHovering}
       />
     </div>
@@ -96,6 +102,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
 }
 
 export function WrappedInAppBanner({
+  wrappedUrl,
   owner,
   showWrappedInAppBanner,
   setShowWrappedInAppBanner,
@@ -108,8 +115,6 @@ export function WrappedInAppBanner({
     localStorage.setItem(getLocalStorageKey(owner), "true");
     setShowWrappedInAppBanner(false);
   };
-
-  const wrappedUrl = getWrappedUrl(owner);
 
   const onLearnMore = () => {
     if (wrappedUrl) {
@@ -201,7 +206,7 @@ export function MentionBanner({
           initial={hasBothBanners ? { opacity: 100, translateY: "80%" } : {}}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
-          className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-md dark:bg-white sm:flex"
+          className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-md dark:bg-background-night sm:flex"
           onClick={withTracking(
             TRACKING_AREAS.MENTIONS,
             "cta_collaboration_banner",
