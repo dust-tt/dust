@@ -28,7 +28,7 @@ export const EmptyLineParagraphExtension = Paragraph.extend({
     if (!content || content.trim() === "") {
       // Render as <br> tag instead of empty paragraph
       // This will be preserved in markdown and parsed back correctly
-      return "<br>";
+      return "\n\n";
     }
 
     // Normal paragraph rendering
