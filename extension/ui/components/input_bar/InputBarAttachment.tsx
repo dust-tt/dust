@@ -50,6 +50,9 @@ export function InputBarAttachments({
         preview: blob.preview,
         isUploading: blob.isUploading,
         onRemove: () => files.service.removeFile(blob.id),
+        iconName: blob.iconName,
+        provider: blob.provider,
+        sourceUrl: blob.sourceUrl,
       })) || []
     );
   }, [files?.service]);

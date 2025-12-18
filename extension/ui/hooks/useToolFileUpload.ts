@@ -53,6 +53,8 @@ export function useToolFileUpload({
             serverViewId: toolFile.serverViewId,
             externalId: toolFile.externalId,
             conversationId,
+            serverName: toolFile.serverName,
+            serverIcon: toolFile.serverIcon,
           },
         });
 
