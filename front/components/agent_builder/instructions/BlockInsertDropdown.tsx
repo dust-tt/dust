@@ -77,12 +77,12 @@ export const BlockInsertDropdown = ({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="px-2 pb-0.5 pt-1">
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
             Insert
           </span>
         </div>
         {suggestions.length === 0 ? (
-          <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
             No matching blocks
           </div>
         ) : (
@@ -95,8 +95,7 @@ export const BlockInsertDropdown = ({
                   icon={() => <Icon className="h-3.5 w-3.5" />}
                   label={suggestion.label}
                   className={cn(
-                    index === selectedIndex &&
-                      "bg-muted-background dark:bg-muted-background-night"
+                    index === selectedIndex && "bg-muted dark:bg-muted-night"
                   )}
                   onClick={() => onSelect(suggestion)}
                   onMouseEnter={() => onSelectedIndexChange(index)}
