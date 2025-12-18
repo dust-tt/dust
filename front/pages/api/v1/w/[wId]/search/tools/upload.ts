@@ -1,3 +1,4 @@
+import type { FileUploadedRequestResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -7,11 +8,7 @@ import {
   getToolAccessToken,
 } from "@app/lib/search/tools/search";
 import { apiError } from "@app/logger/withlogging";
-import type { FileType, WithAPIErrorResponse } from "@app/types";
-
-interface ToolUploadResponseBody {
-  file: FileType;
-}
+import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @swagger
@@ -63,7 +60,7 @@ interface ToolUploadResponseBody {
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ToolUploadResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<FileUploadedRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "POST") {
