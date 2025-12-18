@@ -36,6 +36,7 @@ interface MentionBannerProps {
   setShowMentionBanner: (show: boolean) => void;
   isHovering: boolean;
   showWrappedInAppBanner: boolean;
+  mentionBannerRef: (node: HTMLElement | null) => void;
 }
 
 interface WrappedInAppBannerProps {
@@ -45,6 +46,7 @@ interface WrappedInAppBannerProps {
   isHovering: boolean;
   showWrappedInAppBanner: boolean;
   setShowWrappedInAppBanner: (show: boolean) => void;
+  wrappedBannerRef: (node: HTMLElement | null) => void;
 }
 
 function getLocalStorageKey(owner: WorkspaceType) {
@@ -71,9 +73,11 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   const [showMentionBanner, setShowMentionBanner] = useState(() => {
     return localStorage.getItem(MENTION_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
-  const [ref, isHovering] = useHover();
+  const [mentionBannerRef, isMentionBannerHovering] = useHover();
+  const [wrappedBannerRef, isWrappedBannerHovering] = useHover();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const wrappedUrl = getWrappedUrl(owner);
+  // const wrappedUrl = getWrappedUrl(owner);
+  const wrappedUrl = "https://www.google.com";
 
   const isMentionsEnabled = hasFeature("mentions_v2");
 
@@ -81,13 +85,16 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   const canShowWrappedInAppBanner =
     Boolean(wrappedUrl) && showWrappedInAppBanner;
 
+  const isHovering = isMentionBannerHovering || isWrappedBannerHovering;
+
   return (
-    <div className="absolute bottom-0 left-0 z-20 w-full" ref={ref}>
+    <div className="absolute bottom-0 left-0 z-20 w-full">
       <MentionBanner
         showWrappedInAppBanner={canShowWrappedInAppBanner}
         showMentionBanner={canShowMentionBanner}
         setShowMentionBanner={setShowMentionBanner}
         isHovering={isHovering}
+        mentionBannerRef={mentionBannerRef}
       />
       <WrappedInAppBanner
         wrappedUrl={wrappedUrl}
@@ -96,6 +103,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
         setShowWrappedInAppBanner={setShowWrappedInAppBanner}
         showMentionBanner={canShowMentionBanner}
         isHovering={isHovering}
+        wrappedBannerRef={wrappedBannerRef}
       />
     </div>
   );
@@ -108,6 +116,7 @@ export function WrappedInAppBanner({
   setShowWrappedInAppBanner,
   showMentionBanner,
   isHovering,
+  wrappedBannerRef,
 }: WrappedInAppBannerProps) {
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -130,6 +139,7 @@ export function WrappedInAppBanner({
     <AnimatePresence>
       {showWrappedInAppBanner && wrappedUrl ? (
         <motion.div
+          ref={wrappedBannerRef}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
           className={cn(
@@ -185,6 +195,7 @@ export function MentionBanner({
   showMentionBanner,
   showWrappedInAppBanner,
   setShowMentionBanner,
+  mentionBannerRef,
 }: MentionBannerProps) {
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -203,6 +214,7 @@ export function MentionBanner({
     <AnimatePresence>
       {showMentionBanner ? (
         <motion.div
+          ref={mentionBannerRef}
           initial={hasBothBanners ? { opacity: 100, translateY: "80%" } : {}}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
