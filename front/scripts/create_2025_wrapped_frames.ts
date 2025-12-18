@@ -370,7 +370,7 @@ async function processForWorkspace(
     const conversationResult = await createWrappedConversation(
       auth,
       data,
-      logger,
+      childLogger,
       { execute }
     );
 
