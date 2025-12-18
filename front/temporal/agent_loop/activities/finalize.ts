@@ -15,11 +15,11 @@ export async function finalizeSuccessfulAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await Promise.all([
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
 
@@ -27,11 +27,12 @@ export async function finalizeCancelledAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
+  await finalizeCancellation(authType, agentLoopArgs);
+
   await Promise.all([
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
-    finalizeCancellation(authType, agentLoopArgs),
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
 
@@ -40,15 +41,16 @@ export async function finalizeErroredAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs,
   error: Error
 ): Promise<void> {
+  await notifyWorkflowError(authType, {
+    conversationId: agentLoopArgs.conversationId,
+    agentMessageId: agentLoopArgs.agentMessageId,
+    agentMessageVersion: agentLoopArgs.agentMessageVersion,
+    error,
+  });
+
   await Promise.all([
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
-    notifyWorkflowError(authType, {
-      conversationId: agentLoopArgs.conversationId,
-      agentMessageId: agentLoopArgs.agentMessageId,
-      agentMessageVersion: agentLoopArgs.agentMessageVersion,
-      error,
-    }),
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
 }
