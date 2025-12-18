@@ -8,6 +8,8 @@ import type { UserType, WorkspaceType } from "@app/types";
 export type SkillBuilderContextType = {
   owner: WorkspaceType;
   user: UserType;
+  /** Id of the current skill being edited, or null if the skill is not yet created. */
+  skillConfigurationId: string | null;
 };
 
 export const SkillBuilderContext =
@@ -16,16 +18,18 @@ export const SkillBuilderContext =
 interface SkillBuilderProviderProps {
   owner: WorkspaceType;
   user: UserType;
+  skillConfigurationId: string | null;
   children: ReactNode;
 }
 
 export function SkillBuilderProvider({
   owner,
   user,
+  skillConfigurationId,
   children,
 }: SkillBuilderProviderProps) {
   return (
-    <SkillBuilderContext.Provider value={{ owner, user }}>
+    <SkillBuilderContext.Provider value={{ owner, user, skillConfigurationId }}>
       <SpacesProvider owner={owner}>
         <MCPServerViewsProvider owner={owner}>
           {children}
