@@ -2,18 +2,18 @@ import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
 
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
-import { getPageAndFooter } from "@app/components/agent_builder/skills/skillSheet/utils";
+import type { CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { getPageAndFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/utils";
 import type { UserType, WorkspaceType } from "@app/types";
 
-interface SkillsSheetProps {
-  mode: SkillsSheetMode | null;
+interface CapabilitiesSheetProps {
+  mode: CapabilitiesSheetMode | null;
   onClose: () => void;
   onSave: (
     skills: AgentBuilderSkillsType[],
     additionalSpaces: string[]
   ) => void;
-  onModeChange: (mode: SkillsSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   owner: WorkspaceType;
   user: UserType;
   initialSelectedSkills: AgentBuilderSkillsType[];
@@ -21,7 +21,7 @@ interface SkillsSheetProps {
   alreadyRequestedSpaceIds: Set<string>;
 }
 
-export function SkillsSheet(props: SkillsSheetProps) {
+export function CapabilitiesSheet(props: CapabilitiesSheetProps) {
   const { mode, onClose } = props;
 
   return (
@@ -29,12 +29,12 @@ export function SkillsSheet(props: SkillsSheetProps) {
       open={mode !== null}
       onOpenChange={(open) => !open && onClose()}
     >
-      {mode && <SkillsSheetContent {...props} mode={mode} />}
+      {mode && <CapabilitiesSheetContent {...props} mode={mode} />}
     </MultiPageSheet>
   );
 }
 
-function SkillsSheetContent({
+function CapabilitiesSheetContent({
   mode,
   onClose,
   onSave,
@@ -44,7 +44,7 @@ function SkillsSheetContent({
   initialSelectedSkills,
   initialAdditionalSpaces,
   alreadyRequestedSpaceIds,
-}: SkillsSheetProps & { mode: SkillsSheetMode }) {
+}: CapabilitiesSheetProps & { mode: CapabilitiesSheetMode }) {
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
   >(initialSelectedSkills);
