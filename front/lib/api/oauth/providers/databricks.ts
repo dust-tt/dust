@@ -16,6 +16,7 @@ import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import { OAuthAPI } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import { isString } from "@app/types/shared/utils/general";
 
 export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -134,10 +135,7 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
     const { client_secret } = extraConfig;
 
     // Validate that both are strings before using them
-    if (
-      typeof client_secret !== "string" ||
-      typeof extraConfig.client_id !== "string"
-    ) {
+    if (!isString(client_secret) || !isString(extraConfig.client_id)) {
       throw new Error(
         "Missing or invalid client_id or client_secret in extraConfig"
       );
