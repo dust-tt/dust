@@ -1,6 +1,7 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type { ResourceSId } from "@app/lib/resources/string_ids";
 
 export interface GlobalSkillDefinition {
   readonly agentFacingDescription: string;
@@ -27,8 +28,11 @@ function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
           }[number]["sId"] // Extract their sId values as a union.
           ? // If current sId matches any other element's sId, return error.
             `ERROR: Duplicate sId detected: \${T[I][K] & string}`
-          : // Otherwise, return the original sId type.
-            T[I][K]
+          : // Ensure it does not start with skl_ to avoid conflicts with custom skills.
+            T[I][K] extends ResourceSId
+            ? "ERROR: sId cannot start with resource prefix"
+            : // Otherwise, return the original sId type.
+              T[I][K]
         : // For non-sId properties, just pass through unchanged.
           T[I][K];
     };

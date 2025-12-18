@@ -590,6 +590,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup.canWrite(auth);
   }
 
+  isExtendable(): boolean {
+    return this.isGlobal;
+  }
+
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -1025,6 +1029,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon ?? null,
       tools,
       canWrite: this.canWrite(auth),
+      isExtendable: this.isExtendable(),
     };
   }
 

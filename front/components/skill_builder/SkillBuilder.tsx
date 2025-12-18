@@ -33,14 +33,19 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  ExtendedSkillType,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
   skillConfiguration?: SkillType;
+  extendedSkill?: ExtendedSkillType;
 }
 
 export default function SkillBuilder({
   skillConfiguration,
+  extendedSkill,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useRouter();
@@ -155,7 +160,8 @@ export default function SkillBuilder({
               title={
                 skillConfiguration
                   ? `Edit skill ${skillConfiguration.name}`
-                  : "Create new skill"
+                  : "Create new skill" +
+                    (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
               }
               rightActions={
                 <Button

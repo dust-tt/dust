@@ -19,7 +19,7 @@ const sqids = new Sqids({
 export const LEGACY_REGION_BIT = 1; // Previously indicated US region.
 const LEGACY_SHARD_BIT = 1;
 
-const RESOURCES_PREFIX = {
+export const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
   // TODO(2024-10-31 flav) Add new prefix for space.
@@ -59,13 +59,17 @@ const RESOURCES_PREFIX = {
 
   // Skills.
   skill: "skl",
-};
+} as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
 
-const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
+const ALL_RESOURCES_PREFIXES = Object.values<string>(RESOURCES_PREFIX);
 
 type ResourceNameType = keyof typeof RESOURCES_PREFIX;
+
+export type ResourceSId = {
+  [key in keyof typeof RESOURCES_PREFIX]: `${(typeof RESOURCES_PREFIX)[key]}_${string}`;
+}[keyof typeof RESOURCES_PREFIX];
 
 const sIdCache = new Map<string, string>();
 
