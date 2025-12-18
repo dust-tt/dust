@@ -7,8 +7,8 @@
  * See: https://github.com/ueberdosis/tiptap/issues/7269
  *
  * Strategy:
- * - When serializing to markdown, convert empty paragraphs to <br> tags
- * - When parsing markdown, convert <br> tags back to empty paragraphs
+ * - When serializing to markdown, convert empty paragraphs to double line breaks
+ * - When parsing markdown, convert double line breaks back to empty paragraphs
  * - This preserves empty lines through the round-trip conversion
  */
 
@@ -19,14 +19,14 @@ export const EmptyLineParagraphExtension = Paragraph.extend({
    * Override Markdown rendering to preserve empty paragraphs.
    *
    * Normal paragraphs are rendered as usual, but empty paragraphs are
-   * converted to <br> tags which are preserved by markdown parsers.
+   * converted to double line breakstags which are preserved by markdown parsers.
    */
   renderMarkdown: (node, helpers) => {
     const content = helpers.renderChildren(node.content ?? []);
 
     // Check if this is an empty paragraph
     if (!content || content.trim() === "") {
-      // Render as <br> tag instead of empty paragraph
+      // Render as double line breaks instead of empty paragraph
       // This will be preserved in markdown and parsed back correctly
       return "\n\n";
     }
