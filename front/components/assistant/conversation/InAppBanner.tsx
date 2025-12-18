@@ -201,14 +201,7 @@ export function MentionBanner({
           initial={hasBothBanners ? { opacity: 100, translateY: "80%" } : {}}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
-          className={cn(
-            "hidden flex-col sm:flex",
-            "rounded-2xl shadow-md",
-            "mx-2 mb-2",
-            "relative z-10",
-            "bg-white dark:bg-white",
-            "cursor-pointer overflow-hidden"
-          )}
+          className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-md dark:bg-white sm:flex"
           onClick={withTracking(
             TRACKING_AREAS.MENTIONS,
             "cta_collaboration_banner",
