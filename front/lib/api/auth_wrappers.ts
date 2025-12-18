@@ -424,7 +424,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
       const apiKeyNameFromHeader = getApiKeyNameFromHeaders(req.headers);
       const key = workspaceAuth.key();
-      if (apiKeyNameFromHeader && key) {
+      if (apiKeyNameFromHeader && key && key.isSystem) {
         workspaceAuth = workspaceAuth.exchangeKey({
           id: key.id,
           name: apiKeyNameFromHeader,
