@@ -457,7 +457,7 @@ export const InputBarAttachmentsPicker = ({
             <div className="flex flex-wrap items-center gap-0.5 p-2">
               {showLoader && (
                 <div className="flex h-7 items-center justify-center last:grow">
-                  <Spinner variant="dark" size="xs" />
+                  <Spinner size="xs" />
                 </div>
               )}
               {availableSources.length > 1 && (

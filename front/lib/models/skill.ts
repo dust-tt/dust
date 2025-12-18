@@ -46,6 +46,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  extendedSkillId: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 } as const satisfies ModelAttributes;
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
@@ -61,6 +65,8 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare icon: string | null;
 
   declare authorId: ForeignKey<UserModel["id"]>;
+  // Not a foreign key, only global skills can be extended.
+  declare extendedSkillId: string | null;
 
   declare requestedSpaceIds: number[];
 }

@@ -63,3 +63,14 @@ export const getConversationRoute = (
   const route = queryParams ? `${fullPath}?${queryParams}` : fullPath;
   return baseUrl ? `${baseUrl}${route}` : route;
 };
+
+export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
+  return `/w/${workspaceId}/spaces/${spaceId}`;
+};
+
+export const getSpaceConversationsRoute = (
+  workspaceId: string,
+  spaceId: string
+) => {
+  return `/w/${workspaceId}/conversation/space/${spaceId}`;
+};

@@ -1,3 +1,5 @@
+import type { Range } from "@tiptap/core";
+import type { EditorState } from "@tiptap/pm/state";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
 import type {
@@ -20,6 +22,14 @@ export function createEmojiSuggestion() {
     char: ":",
     // Emoji shortcodes don't have spaces, so disable allowSpaces
     allowSpaces: false,
+
+    // Require at least 2 characters before triggering dropdown
+    allow: ({ state, range }: { state: EditorState; range: Range }) => {
+      const text = state.doc.textBetween(range.from, range.to);
+      // Remove the trigger character ":" and check the remaining length
+      const query = text.slice(1);
+      return query.length >= 2;
+    },
 
     render: () => {
       let component: ReactRenderer<

@@ -18,6 +18,7 @@ export const skillBuilderFormSchema = z.object({
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
+  extendedSkillId: z.string().nullable(),
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;

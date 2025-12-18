@@ -18,6 +18,7 @@ export function transformSkillConfigurationToFormData(
     editors: [], // Will be populated reactively from useEditors hook
     tools: [], // Will be populated reactively from MCP server views context
     icon: skillConfiguration.icon ?? null,
+    extendedSkillId: skillConfiguration.extendedSkillId,
   };
 }
 
@@ -26,8 +27,10 @@ export function transformSkillConfigurationToFormData(
  */
 export function getDefaultSkillFormData({
   user,
+  extendedSkillId = null,
 }: {
   user: UserType;
+  extendedSkillId?: string | null;
 }): SkillBuilderFormData {
   return {
     name: "",
@@ -37,5 +40,6 @@ export function getDefaultSkillFormData({
     editors: [user],
     tools: [],
     icon: null,
+    extendedSkillId,
   };
 }

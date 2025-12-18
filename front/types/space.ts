@@ -14,6 +14,7 @@ export type SpaceKind = (typeof SPACE_KINDS)[number];
 
 export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 export type SpaceType = {
+  conversationsEnabled: boolean;
   createdAt: number;
   groupIds: string[];
   isRestricted: boolean;

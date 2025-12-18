@@ -164,7 +164,7 @@ const DescriptionSection = ({
         )}
       </div>
 
-      {skill.status === "active" && skill.canWrite && (
+      {skill.status === "active" && (
         <SkillDetailsButtonBar owner={owner} skill={skill} />
       )}
 

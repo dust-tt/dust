@@ -24,56 +24,50 @@ export function SkillDetailsButtonBar({
   skill,
   owner,
 }: SkillDetailsButtonBarProps) {
-  return (
-    <div className="flex flex-row items-center gap-2 px-1.5">
-      <Button
-        size="sm"
-        tooltip="Edit agent"
-        href={getSkillBuilderRoute(owner.sId, skill.sId)}
-        variant="outline"
-        icon={PencilSquareIcon}
-      />
-      <SkillDetailsDropdownMenu skill={skill} owner={owner} />
-    </div>
-  );
-}
-
-interface SkillDetailsDropdownMenuProps {
-  skill: SkillType;
-  owner: WorkspaceType;
-}
-
-export function SkillDetailsDropdownMenu({
-  skill,
-  owner,
-}: SkillDetailsDropdownMenuProps) {
   const router = useRouter();
 
+  if (!skill.canWrite && !skill.isExtendable) {
+    return null;
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button icon={MoreIcon} size="sm" variant="ghost" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem
-          label="Copy skill ID"
-          onClick={async (e) => {
-            e.stopPropagation();
-            await navigator.clipboard.writeText(skill.sId);
-          }}
-          icon={BracesIcon}
+    <div className="flex flex-row items-center gap-2 px-1.5">
+      {skill.canWrite && (
+        <Button
+          size="sm"
+          tooltip="Edit agent"
+          href={getSkillBuilderRoute(owner.sId, skill.sId)}
+          variant="outline"
+          icon={PencilSquareIcon}
         />
-        <DropdownMenuItem
-          label="Clone (New)"
-          icon={ClipboardIcon}
-          onClick={async (e) => {
-            e.stopPropagation();
-            await router.push(
-              getSkillBuilderRoute(owner.sId, "new", `duplicate=${skill.sId}`)
-            );
-          }}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button icon={MoreIcon} size="sm" variant="ghost" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            label="Copy skill ID"
+            onClick={async (e) => {
+              e.stopPropagation();
+              await navigator.clipboard.writeText(skill.sId);
+            }}
+            icon={BracesIcon}
+          />
+          {skill.isExtendable && (
+            <DropdownMenuItem
+              label="Extend (New)"
+              icon={ClipboardIcon}
+              onClick={async (e) => {
+                e.stopPropagation();
+                await router.push(
+                  getSkillBuilderRoute(owner.sId, "new", `extends=${skill.sId}`)
+                );
+              }}
+            />
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

@@ -56,6 +56,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     args: {
       amountDollars: {
         type: "number",
+        variant: "text",
         label: "Credit Amount (US$)",
         description:
           "Committed credits amount in USD. Note: this is different from billed amount, as it  excludes VAT, currency conversion and discounts",
@@ -77,6 +78,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       },
       discountPercent: {
         type: "number",
+        variant: "text",
         async: true,
         label: "Billing Discount (%)",
         description: "Discount applied to the actual credit purchase",

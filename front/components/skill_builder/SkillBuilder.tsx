@@ -37,10 +37,12 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
   skillConfiguration?: SkillType;
+  extendedSkill?: SkillType;
 }
 
 export default function SkillBuilder({
   skillConfiguration,
+  extendedSkill,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useRouter();
@@ -62,8 +64,11 @@ export default function SkillBuilder({
       return transformSkillConfigurationToFormData(skillConfiguration);
     }
 
-    return getDefaultSkillFormData({ user });
-  }, [skillConfiguration, user]);
+    return getDefaultSkillFormData({
+      user,
+      extendedSkillId: extendedSkill?.sId ?? null,
+    });
+  }, [skillConfiguration, user, extendedSkill]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -153,9 +158,10 @@ export default function SkillBuilder({
               variant="default"
               className="mx-4"
               title={
-                skillConfiguration
+                (skillConfiguration
                   ? `Edit skill ${skillConfiguration.name}`
-                  : "Create new skill"
+                  : "Create new skill") +
+                (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
               }
               rightActions={
                 <Button

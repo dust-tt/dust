@@ -8,15 +8,26 @@ import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilder
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
-}>(async (_, auth) => {
+  extendedSkill: SkillType | null;
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const { query } = context;
+  const skillToExtend =
+    typeof query.extends === "string"
+      ? await SkillResource.fetchById(auth, query.extends)
+      : null;
+  const extendedSkill = skillToExtend?.isExtendable
+    ? skillToExtend.toJSON(auth)
+    : null;
 
   if (!owner || !auth.isBuilder() || !subscription) {
     return {
@@ -38,6 +49,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       user,
+      extendedSkill,
     },
   };
 });
@@ -45,14 +57,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateSkill({
   owner,
   user,
+  extendedSkill,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <SkillBuilderProvider owner={owner} user={user}>
+    <SkillBuilderProvider owner={owner} user={user} skillConfigurationId={null}>
       <SpacesProvider owner={owner}>
         <Head>
           <title>Dust - New Skill</title>
         </Head>
-        <SkillBuilder />
+        <SkillBuilder extendedSkill={extendedSkill ?? undefined} />
       </SpacesProvider>
     </SkillBuilderProvider>
   );
