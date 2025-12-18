@@ -55,7 +55,7 @@ const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
-const DustApiKeyNameHeader = "x-api-key-name";
+const DustApiKeyNameHeader = "x-dust-api-key-name";
 
 export type AuthMethodType =
   | "system_api_key"
