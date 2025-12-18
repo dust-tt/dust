@@ -46,6 +46,7 @@ import {
   isAdmin,
   isBuilder,
   isDevelopment,
+  isString,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -1227,7 +1228,7 @@ export function getApiKeyNameFromHeaders(headers: {
   [key: string]: string | string[] | undefined;
 }) {
   const apiKeyName = headers[DustApiKeyNameHeader];
-  if (typeof apiKeyName === "string") {
+  if (isString(apiKeyName)) {
     return apiKeyName;
   }
   return undefined;
