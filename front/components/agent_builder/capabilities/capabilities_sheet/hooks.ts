@@ -7,11 +7,11 @@ import type {
   PageContentProps,
   SelectedTool,
   SkillsSheetMode,
-} from "@app/components/agent_builder/skills/skillSheet/types";
+} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import {
   SKILLS_SHEET_PAGE_IDS,
   TOP_MCP_SERVER_VIEWS,
-} from "@app/components/agent_builder/skills/skillSheet/types";
+} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";

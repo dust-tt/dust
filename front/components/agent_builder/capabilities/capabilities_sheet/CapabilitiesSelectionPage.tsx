@@ -1,9 +1,9 @@
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
-import { SkillCard } from "@app/components/agent_builder/skills/skillSheet/SkillCard";
-import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
+import type { PageContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SelectionPageProps = PageContentProps & {

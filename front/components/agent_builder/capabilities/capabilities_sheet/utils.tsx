@@ -1,12 +1,12 @@
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useSkillSelection } from "@app/components/agent_builder/skills/skillSheet/hooks";
-import { SelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SelectionPage";
-import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_builder/skills/skillSheet/SkillWithRelationsDetailsSheetContent";
-import { SpaceSelectionPageContent } from "@app/components/agent_builder/skills/skillSheet/SpaceSelectionPage";
-import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import { SelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
+import { useSkillSelection } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
+import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillWithRelationsDetailsSheetContent";
+import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
+import type { PageContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
