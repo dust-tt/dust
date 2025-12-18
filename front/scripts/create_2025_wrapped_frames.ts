@@ -78,7 +78,7 @@ async function waitForConversationCompletion(
   dustAPI: DustAPI,
   conversationId: string,
   logger: Logger,
-  maxWaitTimeMs: number = 60 * 10 * 1000, // 10 minutes
+  maxWaitTimeMs: number = 60 * 15 * 1000, // 15 minutes
   pollIntervalMs: number = 20_000 // 20 seconds
 ): Promise<void> {
   const startTime = Date.now();
