@@ -233,7 +233,7 @@ export async function agentLoopWorkflow({
         },
       });
 
-      // Ensure analytics runs even if workflow is cancelled
+      // Ensure analytics runs even if workflow is canceled.
       await CancellationScope.nonCancellable(async () => {
         await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
       });
@@ -245,20 +245,18 @@ export async function agentLoopWorkflow({
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
 
-    // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
+    // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
-        // Ensure analytics runs even when workflow is cancelled
-        await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
-        return;
-      } else {
-        // Ensure analytics runs even when workflow errors
-        await finalizeErroredAgentLoopActivity(
-          authType,
-          agentLoopArgs,
-          workflowError
-        );
+        // Ensure analytics runs even when workflow is canceled.
+        return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
+      // Ensure analytics runs even when workflow errors
+      await finalizeErroredAgentLoopActivity(
+        authType,
+        agentLoopArgs,
+        workflowError
+      );
       throw err;
     });
   }
