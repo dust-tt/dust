@@ -22,10 +22,10 @@ import {
   isUserMessageType,
   Ok,
 } from "@app/types";
+import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
 import {
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
-  type NotificationPreferencesDelay,
 } from "@app/types/notification_preferences";
 
 const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";

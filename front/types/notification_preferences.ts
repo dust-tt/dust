@@ -1,4 +1,4 @@
-import { ChannelPreference } from "@novu/react";
+import type { ChannelPreference } from "@novu/react";
 
 /**
  * Available delay options for email digest notifications.

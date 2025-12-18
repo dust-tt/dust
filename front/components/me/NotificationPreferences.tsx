@@ -23,10 +23,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import type {NotificationPreferencesDelay} from "@app/types/notification_preferences";
 import {
   isNotificationPreferencesDelay,
-  makeNotificationPreferencesUserMetadata,
-  type NotificationPreferencesDelay,
+  makeNotificationPreferencesUserMetadata
 } from "@app/types/notification_preferences";
 
 const CHANNELS_TO_NAMES: Record<keyof ChannelPreference, string> = {
