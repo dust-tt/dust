@@ -25,7 +25,6 @@ import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/E
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -74,9 +73,6 @@ export function AgentBuilderInstructionsEditor({
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const mentionsV2 = featureFlags.hasFeature("mentions_v2");
-
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
@@ -151,29 +147,27 @@ export function AgentBuilderInstructionsEditor({
       EmojiExtension,
     ];
 
-    if (mentionsV2) {
-      extensions.push(
-        MentionExtension.configure({
+    extensions.push(
+      MentionExtension.configure({
+        owner,
+        HTMLAttributes: {
+          class:
+            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+        },
+        suggestion: createMentionSuggestion({
           owner,
-          HTMLAttributes: {
-            class:
-              "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+          conversationId: null,
+          includeCurrentUser: true,
+          select: {
+            agents: false,
+            users: true,
           },
-          suggestion: createMentionSuggestion({
-            owner,
-            conversationId: null,
-            includeCurrentUser: true,
-            select: {
-              agents: false,
-              users: true,
-            },
-          }),
-        })
-      );
-    }
+        }),
+      })
+    );
 
     return extensions;
-  }, [mentionsV2, owner, suggestionHandler]);
+  }, [owner, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(

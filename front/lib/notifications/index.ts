@@ -1,8 +1,6 @@
 import { Novu } from "@novu/node";
 import { createHmac } from "crypto";
 
-import { getFeatureFlags } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { UserTypeWithWorkspaces } from "@app/types";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
@@ -27,16 +25,6 @@ export const getNovuClient = async (): Promise<Novu> => {
 export const getSubscriberHash = async (
   user: UserTypeWithWorkspaces
 ): Promise<string | null> => {
-  const featureFlags = await concurrentExecutor(
-    user.workspaces,
-    getFeatureFlags,
-    { concurrency: 8 }
-  );
-
-  if (!featureFlags.some((flags) => flags.includes("notifications"))) {
-    return null;
-  }
-
   return computeSubscriberHash(user.sId);
 };
 

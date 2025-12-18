@@ -161,8 +161,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
-  const isMentionsV2Enabled = hasFeature("mentions_v2");
-
   const hasSpaceConversations = hasFeature("projects");
 
   const { summary } = useSpaceConversationsSummary({
@@ -314,17 +312,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   }, [setSidebarOpen, router, setAnimate]);
 
   const conversationsList = useMemo(() => {
-    const conversationsByDate = conversations.length
-      ? getGroupConversationsByDate({
-          conversations: conversations.slice(
-            0,
-            (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
-          ),
-          titleFilter,
-        })
-      : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
-
-    return isMentionsV2Enabled ? (
+    return (
       <NavigationListWithInbox
         ref={ref}
         conversations={conversations}
@@ -336,36 +324,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         router={router}
         owner={owner}
       />
-    ) : (
-      <NavigationList className="dd-privacy-mask h-full w-full">
-        {conversations.length > 0 && (
-          <>
-            {Object.keys(conversationsByDate).map((dateLabel) => (
-              <ConversationList
-                key={dateLabel}
-                conversations={conversationsByDate[dateLabel as GroupLabel]}
-                dateLabel={dateLabel}
-                isMultiSelect={isMultiSelect}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                router={router}
-                owner={owner}
-              />
-            ))}
-            {}
-            <div
-              // Change the key each page to force a re-render and get a new entry
-              key={`infinite-scroll-conversation-${conversationsPage}`}
-              id="infinite-scroll-conversations"
-              ref={ref}
-              style={{ height: "2px" }}
-            />
-          </>
-        )}
-      </NavigationList>
     );
   }, [
-    isMentionsV2Enabled,
     ref,
     conversations,
     conversationsPage,

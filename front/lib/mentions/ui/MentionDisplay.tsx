@@ -16,7 +16,6 @@ import {
 import React from "react";
 
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { WorkspaceType } from "@app/types";
 import type { RichMention } from "@app/types";
 
@@ -32,24 +31,17 @@ interface MentionDisplayProps {
 interface MentionTriggerProps {
   mention: RichMention;
   isCurrentUserMentioned: boolean;
-  owner: WorkspaceType;
 }
 
 function MentionTrigger({
   mention,
   isCurrentUserMentioned = false,
-  owner,
 }: MentionTriggerProps) {
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
-
   return (
     <span
       className={cn(
         "inline-block cursor-pointer font-light text-highlight-500 dark:text-highlight-500-night",
-        userMentionsEnabled &&
-          isCurrentUserMentioned &&
-          "bg-golden-100 dark:bg-golden-100-night"
+        isCurrentUserMentioned && "bg-golden-100 dark:bg-golden-100-night"
       )}
     >
       @{mention.label}
@@ -84,7 +76,6 @@ export function MentionDisplay({
                 <MentionTrigger
                   mention={mention}
                   isCurrentUserMentioned={isCurrentUserMentioned}
-                  owner={owner}
                 />
               </MentionDropdown>
             </TooltipTrigger>
@@ -100,7 +91,6 @@ export function MentionDisplay({
           <MentionTrigger
             mention={mention}
             isCurrentUserMentioned={isCurrentUserMentioned}
-            owner={owner}
           />
         </MentionDropdown>
       </div>
@@ -116,7 +106,6 @@ export function MentionDisplay({
             <MentionTrigger
               mention={mention}
               isCurrentUserMentioned={isCurrentUserMentioned}
-              owner={owner}
             />
           </TooltipTrigger>
           <TooltipContent>{mention.description}</TooltipContent>
@@ -129,7 +118,6 @@ export function MentionDisplay({
     <MentionTrigger
       mention={mention}
       isCurrentUserMentioned={isCurrentUserMentioned}
-      owner={owner}
     />
   );
 }

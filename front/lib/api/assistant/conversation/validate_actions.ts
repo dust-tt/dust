@@ -17,7 +17,6 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
   MentionModel,
@@ -462,9 +461,7 @@ export async function validateUserMention(
       user: user.toJSON(),
     });
 
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
-    if (status === "added" && featureFlags.includes("notifications")) {
+    if (status === "added") {
       await triggerConversationAddedAsParticipantNotification(auth, {
         conversation,
         addedUserId: user.sId,

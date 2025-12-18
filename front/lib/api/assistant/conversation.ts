@@ -671,20 +671,17 @@ export async function postUserMessage(
       excludedUser: user?.toJSON(),
     });
 
-    const featureFlags = await getFeatureFlags(owner);
-    if (featureFlags.includes("notifications")) {
-      // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
-      // We should refactor to pass the resource as the argument of the postUserMessage function.
-      const conversationRes = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      if (conversationRes) {
-        await triggerConversationUnreadNotifications(auth, {
-          conversation: conversationRes,
-          messageId: userMessageWithoutMentions.sId,
-        });
-      }
+    // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
+    // We should refactor to pass the resource as the argument of the postUserMessage function.
+    const conversationRes = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    if (conversationRes) {
+      await triggerConversationUnreadNotifications(auth, {
+        conversation: conversationRes,
+        messageId: userMessageWithoutMentions.sId,
+      });
     }
 
     const agentMessages = await createAgentMessages(auth, {

@@ -20,7 +20,6 @@ import {
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types";
 
@@ -37,9 +36,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
-    const { hasFeature } = useFeatureFlags({ workspaceId: context.owner.sId });
-    const userMentionsEnabled = hasFeature("mentions_v2");
-
     const sId = data.sId;
 
     const methods = useVirtuosoMethods<
@@ -137,11 +133,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames(
-            "mx-auto min-w-60",
-            userMentionsEnabled ? "mb-4" : "pt-6 md:pt-10",
-            "max-w-4xl"
-          )}
+          className={classNames("mx-auto min-w-60", "mb-4", "max-w-4xl")}
         >
           {isUserMessage(data) && (
             <UserMessage

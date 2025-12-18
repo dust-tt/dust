@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -40,7 +39,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  *       - in: query
  *         name: select
  *         required: false
- *         description: Array of mention types to include. Can be "agents", "users", or both. If not provided, defaults to agents (and users if mentions_v2 is enabled).
+ *         description: Array of mention types to include. Can be "agents", "users", or both. If not provided, defaults to agents and users.
  *         schema:
  *           type: array
  *           items:
@@ -125,14 +124,10 @@ async function handler(
   const parsedQuery = GetMentionSuggestionsRequestQuerySchema.parse(req.query);
   const { query, select: selectParam, current } = parsedQuery;
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const mentions_v2_enabled = featureFlags.includes("mentions_v2");
-
   // Parse select parameter: can be "agents", "users", ["agents", "users"], or undefined.
   const select = (() => {
     if (!selectParam) {
-      // Default behavior: agents always, users only if mentions_v2 enabled.
-      return { agents: true, users: mentions_v2_enabled };
+      return { agents: true, users: true };
     }
 
     if (typeof selectParam === "string") {
@@ -143,7 +138,7 @@ async function handler(
     }
 
     const agents = selectParam.includes("agents");
-    const users = selectParam.includes("users") && mentions_v2_enabled;
+    const users = selectParam.includes("users");
 
     return { agents, users };
   })();

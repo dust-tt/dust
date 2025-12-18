@@ -5,7 +5,6 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
-  ConversationMessage,
   InteractiveImageGrid,
   MoreIcon,
   StopIcon,
@@ -68,7 +67,6 @@ import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -452,9 +450,6 @@ export function AgentMessage({
     !isGlobalAgent &&
     agentMessage.configuration.status !== "draft";
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
-
   const retryMessage = useRetryMessage({ owner });
 
   const retryHandler = useCallback(
@@ -489,12 +484,8 @@ export function AgentMessage({
     );
   }
 
-  // Add copy button or split button with dropdown (only when mentions_v2 is enabled)
-  if (
-    userMentionsEnabled &&
-    shouldShowCopy &&
-    (shouldShowRetry || canDeleteAgentMessage)
-  ) {
+  // Add copy button or split button with dropdown
+  if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
     const dropdownItems = [];
 
     if (shouldShowRetry) {
@@ -554,7 +545,6 @@ export function AgentMessage({
       />
     );
   } else {
-    // if mentions_v2 is disabled, show copy button
     if (shouldShowCopy) {
       messageButtons.push(
         <Button
@@ -658,57 +648,11 @@ export function AgentMessage({
     ]
   );
 
-  if (userMentionsEnabled) {
-    return (
-      <NewConversationMessage
-        pictureUrl={agentConfiguration.pictureUrl}
-        name={agentConfiguration.name}
-        buttons={messageButtons}
-        avatarBusy={agentMessage.status === "created"}
-        isDisabled={isArchived}
-        renderName={renderName}
-        timestamp={
-          parentAgent
-            ? undefined
-            : formatTimestring(agentMessage.completedTs ?? agentMessage.created)
-        }
-        completionStatus={
-          isDeleted ? undefined : (
-            <AgentMessageCompletionStatus agentMessage={agentMessage} />
-          )
-        }
-        type="agent"
-        citations={isDeleted ? undefined : citations}
-      >
-        {isDeleted ? (
-          <DeletedMessage />
-        ) : (
-          <AgentMessageContent
-            onQuickReplySend={handleQuickReply}
-            owner={owner}
-            conversationId={conversationId}
-            retryHandler={retryHandler}
-            isLastMessage={isLastMessage}
-            agentMessage={agentMessage}
-            references={references}
-            streaming={shouldStream}
-            lastTokenClassification={
-              agentMessage.streaming.agentState === "thinking" ? "tokens" : null
-            }
-            activeReferences={activeReferences}
-            setActiveReferences={setActiveReferences}
-            triggeringUser={triggeringUser}
-          />
-        )}
-      </NewConversationMessage>
-    );
-  }
-
   return (
-    <ConversationMessage
+    <NewConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={messageButtons.length > 0 ? messageButtons : undefined}
+      buttons={messageButtons}
       avatarBusy={agentMessage.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
@@ -729,13 +673,13 @@ export function AgentMessage({
         <DeletedMessage />
       ) : (
         <AgentMessageContent
+          onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
           retryHandler={retryHandler}
           isLastMessage={isLastMessage}
           agentMessage={agentMessage}
           references={references}
-          onQuickReplySend={handleQuickReply}
           streaming={shouldStream}
           lastTokenClassification={
             agentMessage.streaming.agentState === "thinking" ? "tokens" : null
@@ -745,7 +689,7 @@ export function AgentMessage({
           triggeringUser={triggeringUser}
         />
       )}
-    </ConversationMessage>
+    </NewConversationMessage>
   );
 }
 
