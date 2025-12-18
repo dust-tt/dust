@@ -158,10 +158,10 @@ export default function SkillBuilder({
               variant="default"
               className="mx-4"
               title={
-                skillConfiguration
+                (skillConfiguration
                   ? `Edit skill ${skillConfiguration.name}`
-                  : "Create new skill" +
-                    (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
+                  : "Create new skill") +
+                (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
               }
               rightActions={
                 <Button

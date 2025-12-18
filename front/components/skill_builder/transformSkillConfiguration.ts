@@ -18,6 +18,7 @@ export function transformSkillConfigurationToFormData(
     editors: [], // Will be populated reactively from useEditors hook
     tools: [], // Will be populated reactively from MCP server views context
     icon: skillConfiguration.icon ?? null,
+    extendedSkillId: skillConfiguration.extendedSkillId,
   };
 }
 
