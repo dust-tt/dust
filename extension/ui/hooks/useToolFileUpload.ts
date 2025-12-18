@@ -1,17 +1,14 @@
+import { useDustAPI } from "@app/shared/lib/dust_api";
+import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
+import type { ToolSearchResult } from "@app/ui/hooks/useUnifiedSearch";
+import type { SupportedFileContentType } from "@dust-tt/client";
+import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import type { LightWorkspaceType } from "@app/types";
-
 export function useToolFileUpload({
-  owner,
   fileUploaderService,
   conversationId,
 }: {
-  owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   conversationId?: string;
 }) {
@@ -19,6 +16,7 @@ export function useToolFileUpload({
     new Set()
   );
   const sendNotification = useSendNotification();
+  const dustAPI = useDustAPI();
 
   const getFileKey = useCallback(
     (file: ToolSearchResult) => `${file.serverViewId}-${file.externalId}`,
@@ -48,35 +46,41 @@ export function useToolFileUpload({
       setUploadingFileKeys((prev) => new Set(prev).add(fileKey));
 
       try {
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/search/tools/upload`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              serverViewId: toolFile.serverViewId,
-              externalId: toolFile.externalId,
-              conversationId,
-              serverName: toolFile.serverName,
-              serverIcon: toolFile.serverIcon,
-            }),
-          }
-        );
+        const response = await dustAPI.request({
+          method: "POST",
+          path: `search/tools/upload`,
+          body: {
+            serverViewId: toolFile.serverViewId,
+            externalId: toolFile.externalId,
+            conversationId,
+          },
+        });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error?.message ?? "Failed to upload file");
+        if (response.isErr()) {
+          throw new Error(response.error.message ?? "Failed to upload file");
         }
 
-        const { file } = await response.json();
+        // Parse the response body (which is a string for non-stream responses)
+        const responseBody = response.value.response.body;
+        if (typeof responseBody !== "string") {
+          throw new Error("Unexpected response format");
+        }
+
+        const data = JSON.parse(responseBody) as {
+          file: {
+            sId: string;
+            fileName: string;
+            contentType: string;
+            fileSize: number;
+          };
+        };
+        const { file } = data;
 
         fileUploaderService.addUploadedFile({
           id: `tool-${fileKey}`,
           fileId: file.sId,
           filename: toolFile.title,
-          contentType: file.contentType,
+          contentType: file.contentType as SupportedFileContentType,
           size: file.fileSize,
           sourceUrl: toolFile.sourceUrl ?? undefined,
           iconName: toolFile.serverIcon,
@@ -97,13 +101,7 @@ export function useToolFileUpload({
         });
       }
     },
-    [
-      owner.sId,
-      fileUploaderService,
-      sendNotification,
-      getFileKey,
-      conversationId,
-    ]
+    [fileUploaderService, sendNotification, getFileKey, conversationId, dustAPI]
   );
 
   const removeToolFile = useCallback(
