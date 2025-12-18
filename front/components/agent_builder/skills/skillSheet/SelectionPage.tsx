@@ -2,15 +2,11 @@ import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { SkillCard } from "@app/components/agent_builder/skills/skillSheet/SkillCard";
-import type {
-  PageContentProps,
-  SelectionMode,
-} from "@app/components/agent_builder/skills/skillSheet/types";
+import type { PageContentProps } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SelectionPageProps = PageContentProps & {
-  mode: SelectionMode;
   handleSkillToggle: (skill: SkillType) => void;
   filteredSkills: SkillType[];
   isSkillsLoading: boolean;
@@ -21,7 +17,6 @@ type SelectionPageProps = PageContentProps & {
 
 export function SelectionPageContent({
   onModeChange,
-  mode,
   handleSkillToggle,
   filteredSkills,
   isSkillsLoading,
@@ -67,9 +62,9 @@ export function SelectionPageContent({
               onClick={() => handleSkillToggle(skill)}
               onMoreInfoClick={() => {
                 onModeChange({
-                  type: SKILLS_SHEET_PAGE_IDS.INFO,
+                  pageId: SKILLS_SHEET_PAGE_IDS.SKILL_INFO,
                   skill,
-                  previousMode: mode,
+                  hasPreviousPage: true,
                 });
               }}
             />

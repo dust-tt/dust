@@ -74,7 +74,7 @@ function SkillsSheetContent({
   return (
     <MultiPageSheetContent
       pages={[page]}
-      currentPageId={mode.type}
+      currentPageId={mode.pageId}
       onPageChange={() => {}}
       size="xl"
       addFooterSeparator
