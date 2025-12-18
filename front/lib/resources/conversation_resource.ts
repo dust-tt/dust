@@ -1320,7 +1320,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         await ConversationSkillModel.create({
           conversationId: conversation.id,
           workspaceId: workspace.id,
-          agentConfigurationId: agentConfigurationModelId ?? undefined,
+          agentConfigurationId:
+            agentConfigurationModelId?.toString() ?? undefined,
           customSkillId: isGlobalSkill ? null : skill.id,
           globalSkillId: isGlobalSkill ? skillSId : null,
           source: "conversation",

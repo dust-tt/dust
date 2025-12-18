@@ -404,7 +404,7 @@ type ConversationSkillTypeBase = {
   id: ModelId;
   workspaceId: ModelId;
   conversationId: ModelId;
-  agentConfigurationId: ModelId | null;
+  agentConfigurationId: string | null;
   source: string;
   addedByUserId: ModelId | null;
   createdAt: Date;
