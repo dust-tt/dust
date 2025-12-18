@@ -1,17 +1,20 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import type {
   APIErrorWithStatusCode,
   Result,
   UserMessageContext,
 } from "@app/types";
 import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 import { createConversation, postUserMessage } from "./conversation";
 
@@ -69,73 +72,114 @@ ${toolLines}`;
 
 // Maps job types (from welcome form) to their primary recommended tool.
 const ROLE_TO_PRIMARY_TOOL: Partial<
-  Record<JobType, { sId: string; name: string }>
+  Record<JobType, InternalMCPServerNameType>
 > = {
-  engineering: { sId: "github", name: "GitHub" },
-  sales: { sId: "hubspot", name: "HubSpot" },
-  customer_success: { sId: "hubspot", name: "HubSpot" },
-  customer_support: { sId: "hubspot", name: "HubSpot" },
-  product: { sId: "notion", name: "Notion" },
-  design: { sId: "notion", name: "Notion" },
-  marketing: { sId: "hubspot", name: "HubSpot" },
-  data: { sId: "github", name: "GitHub" },
-  operations: { sId: "notion", name: "Notion" },
-  finance: { sId: "notion", name: "Notion" },
-  people: { sId: "notion", name: "Notion" },
-  legal: { sId: "notion", name: "Notion" },
+  engineering: "github",
+  sales: "hubspot",
+  customer_success: "hubspot",
+  customer_support: "hubspot",
+  product: "notion",
+  design: "notion",
+  marketing: "hubspot",
+  data: "github",
+  operations: "notion",
+  finance: "notion",
+  people: "notion",
+  legal: "notion",
   // "other" intentionally omitted - will fall back to email-only or Notion default
 };
+
+// Builds the list of tools to suggest based on user's favorite platforms and job type.
+// Returns tool sIds sorted by relevance (job-type-relevant tool first if applicable).
+function getToolsForOnboarding(
+  favoritePlatforms: FavoritePlatform[],
+  emailProvider: EmailProviderType,
+  jobType: JobType | null
+): InternalMCPServerNameType[] {
+  let tools: InternalMCPServerNameType[] = [...favoritePlatforms];
+
+  // If no favorites selected, fall back to email provider + job type inference.
+  if (tools.length === 0) {
+    if (emailProvider === "google") {
+      tools.push("gmail");
+    } else if (emailProvider === "microsoft") {
+      tools.push("outlook");
+    }
+
+    if (jobType) {
+      const roleTool = ROLE_TO_PRIMARY_TOOL[jobType];
+      if (roleTool && !tools.includes(roleTool)) {
+        tools.push(roleTool);
+      }
+    }
+
+    // Final fallback: suggest Notion.
+    if (tools.length === 0) {
+      tools.push("notion");
+    }
+  } else if (jobType) {
+    // If we have favorites and a job type, move the most relevant tool to the front.
+    const roleTool = ROLE_TO_PRIMARY_TOOL[jobType];
+    if (roleTool) {
+      const relevantIndex = tools.indexOf(roleTool);
+      if (relevantIndex > 0) {
+        const relevant = tools[relevantIndex];
+        tools = [
+          relevant,
+          ...tools.slice(0, relevantIndex),
+          ...tools.slice(relevantIndex + 1),
+        ];
+      }
+    }
+  }
+
+  return tools;
+}
 
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
+  favoritePlatforms: FavoritePlatform[];
 }): string {
-  // Determine which tools to show in the first message.
-  const toolSetups: Array<{ sId: string; name: string }> = [];
+  const tools = getToolsForOnboarding(
+    options.favoritePlatforms,
+    options.emailProvider,
+    options.userJobType as JobType | null
+  );
 
-  // Add email tool if provider is detected.
-  if (options.emailProvider === "google") {
-    toolSetups.push({ sId: "gmail", name: "Gmail" });
-  } else if (options.emailProvider === "microsoft") {
-    toolSetups.push({ sId: "outlook", name: "Outlook" });
-  }
-
-  // Add role-based tool if job type is available (avoid duplicates).
-  if (options.userJobType) {
-    const roleTool = ROLE_TO_PRIMARY_TOOL[options.userJobType as JobType];
-    if (roleTool && !toolSetups.some((t) => t.sId === roleTool.sId)) {
-      toolSetups.push(roleTool);
-    }
-  }
-
-  // Fallback: if no tools determined, suggest Notion.
-  if (toolSetups.length === 0) {
-    toolSetups.push({ sId: "notion", name: "Notion" });
-  }
-
-  // Build the tool setup directives for the first message (on same line).
-  const toolSetupDirectives = toolSetups
-    .map((t) => `:toolSetup[Connect ${t.name}]{sId=${t.sId}}`)
+  // Build the tool setup directives for the first message (max 2, on same line).
+  const initialTools = tools.slice(0, 2);
+  const toolSetupDirectives = initialTools
+    .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
 
-  // Build tool list with descriptions from INTERNAL_MCP_SERVERS.
-  const toolsWithDescriptions = toolSetups
-    .map((t) => {
-      const server =
-        INTERNAL_MCP_SERVERS[t.sId as keyof typeof INTERNAL_MCP_SERVERS];
+  const toolsWithDescriptions = initialTools
+    .map((sId) => {
+      const server = INTERNAL_MCP_SERVERS[sId];
       const description = server?.serverInfo?.description ?? "";
-      return `- ${t.name}: ${description}`;
+      return `- ${asDisplayName(sId)}: ${description}`;
     })
     .join("\n");
 
-  // Build context about user's role if available.
-  const roleContext = options.userJobType
-    ? `\n## User context\nThe user works in: ${options.userJobType}\nThe tools below were selected as relevant for their role.`
-    : "";
+  let userContext = "";
+  if (options.userJobType || options.favoritePlatforms.length > 0) {
+    userContext = "\n## User context\n";
+    if (options.userJobType) {
+      userContext += `The user works in: ${options.userJobType}\n`;
+    }
+    if (options.favoritePlatforms.length > 0) {
+      const platformNames = options.favoritePlatforms
+        .map((p) => asDisplayName(p))
+        .join(", ");
+      userContext += `The user indicated they use these platforms: ${platformNames}\n`;
+      userContext +=
+        "Prioritize suggesting these tools. Guide the user through connecting them one by one.";
+    }
+  }
 
   return `<dust_system>
 You are onboarding a brand-new user to Dust.
-${roleContext}
+${userContext}
 
 ## CRITICAL RULES
 
@@ -403,19 +447,43 @@ export async function createOnboardingConversationIfNeeded(
     }
   }
 
-  // Detect the user's email provider (Google, Microsoft, or other).
   const userJson = user.toJSON();
-  const emailProvider = await detectEmailProvider(
-    userJson.email,
-    `user-${userJson.sId}`
+
+  const workspaceMetadataPrefix = `workspace:${owner.sId}:`;
+
+  // Email provider is user-scoped (same email across all workspaces).
+  const emailProviderMetadata = await user.getMetadata(
+    "onboarding:email_provider"
   );
+  let emailProvider: EmailProviderType = "other";
+  if (
+    emailProviderMetadata?.value &&
+    (emailProviderMetadata.value === "google" ||
+      emailProviderMetadata.value === "microsoft" ||
+      emailProviderMetadata.value === "other")
+  ) {
+    emailProvider = emailProviderMetadata.value;
+  }
 
-  // Store the detection result as user metadata for future reference.
-  await user.setMetadata("onboarding:email_provider", emailProvider);
-
-  // Fetch the user's job type for personalization.
+  // Job type is user-scoped (not workspace-specific).
   const jobTypeMetadata = await user.getMetadata("job_type");
   const userJobType = jobTypeMetadata?.value ?? null;
+
+  // Favorite platforms is workspace-scoped.
+  const favoritePlatformsMetadata = await user.getMetadata(
+    `${workspaceMetadataPrefix}favorite_platforms`
+  );
+
+  let favoritePlatforms: FavoritePlatform[] = [];
+  if (favoritePlatformsMetadata?.value) {
+    const parsed: unknown = JSON.parse(favoritePlatformsMetadata.value);
+    if (
+      Array.isArray(parsed) &&
+      parsed.every((p) => typeof p === "string" && isFavoritePlatform(p))
+    ) {
+      favoritePlatforms = parsed;
+    }
+  }
 
   const conversation = await createConversation(auth, {
     title: "Welcome to Dust",
@@ -426,6 +494,7 @@ export async function createOnboardingConversationIfNeeded(
   const onboardingSystemMessage = buildOnboardingPrompt({
     emailProvider,
     userJobType,
+    favoritePlatforms,
   });
 
   const context: UserMessageContext = {
