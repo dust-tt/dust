@@ -2,6 +2,7 @@ import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import debounce from "lodash/debounce";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -147,10 +148,13 @@ export function WrappedInAppBanner({
               onLearnMore
             )}
           >
-            <img
+            <Image
               src={YEAR_IN_REVIEW_TITLE}
               alt="Year in Review"
-              className="mb-4 h-12"
+              width={200}
+              height={48}
+              className="mb-4 h-12 w-auto"
+              priority
             />
             <Button
               variant="highlight"
@@ -211,11 +215,14 @@ export function MentionBanner({
             onLearnMore
           )}
         >
-          <div className="relative">
-            <img
+          <div className="relative w-full">
+            <Image
               src={MENTION_IMAGE_PATH}
               alt="Mention your colleagues in your conversations"
+              width={300}
+              height={98}
               className="w-full object-cover"
+              priority
             />
             <Button
               variant="outline"
