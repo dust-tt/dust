@@ -10,12 +10,12 @@ import {
   DustLogoSquare,
   FrontLogo,
   GithubLogo,
-  GoogleLogo,
+  GmailLogo,
   HubspotLogo,
   Icon,
   Input,
   JiraLogo,
-  MicrosoftLogo,
+  MicrosoftOutlookLogo,
   NotionLogo,
   Page,
   SlackLogo,
@@ -40,10 +40,11 @@ import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
-  google: GoogleLogo,
-  microsoft: MicrosoftLogo,
+  gmail: GmailLogo,
+  outlook: MicrosoftOutlookLogo,
   slack: SlackLogo,
   notion: NotionLogo,
   confluence: ConfluenceLogo,
@@ -284,19 +285,21 @@ function FavoritePlatformsStep({
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {FAVORITE_PLATFORM_OPTIONS.map((platform) => {
-            const PlatformIcon = PLATFORM_ICONS[platform.value];
-            const isSelected = selectedPlatforms.has(platform.value);
+            const PlatformIcon = PLATFORM_ICONS[platform];
+            const isSelected = selectedPlatforms.has(platform);
             return (
               <Card
-                key={platform.value}
+                key={platform}
                 variant="secondary"
                 size="sm"
                 selected={isSelected}
-                onClick={() => onTogglePlatform(platform.value)}
+                onClick={() => onTogglePlatform(platform)}
               >
                 <div className="flex items-center gap-3">
                   <Icon visual={PlatformIcon} size="md" />
-                  <span className="text-sm font-medium">{platform.label}</span>
+                  <span className="text-sm font-medium">
+                    {asDisplayName(platform)}
+                  </span>
                 </div>
               </Card>
             );
@@ -332,9 +335,9 @@ function getInitialSelectedPlatforms(
 ): Set<FavoritePlatform> {
   const platforms = new Set<FavoritePlatform>();
   if (emailProvider === "google") {
-    platforms.add("google");
+    platforms.add("gmail");
   } else if (emailProvider === "microsoft") {
-    platforms.add("microsoft");
+    platforms.add("outlook");
   }
   return platforms;
 }
