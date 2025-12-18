@@ -49,9 +49,7 @@ export function getPageAndFooter(props: PageContentProps): {
         leftButton: {
           label: "Cancel",
           variant: "outline",
-          onClick: () => {
-            onClose();
-          },
+          onClick: onClose,
         },
         rightButton: {
           label: "Add skills",

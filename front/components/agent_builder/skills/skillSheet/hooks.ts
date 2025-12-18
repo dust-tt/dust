@@ -157,7 +157,7 @@ export const useToolSelection = ({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
-  const shouldFilterServerView = useCallback(
+  const isSelectedMCPServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: BuilderAction[]) => {
       // Build the set of server.sId already selected by actions (via their selected view).
       const selectedServerIds = new Set<string>();
@@ -182,58 +182,44 @@ export const useToolSelection = ({
     [allMcpServerViews]
   );
 
-  const selectableTopMCPServerViews = useMemo(() => {
-    const views = mcpServerViewsWithoutKnowledge.filter((view) =>
-      TOP_MCP_SERVER_VIEWS.includes(view.server.name)
-    );
-    const topMCPServerViews = filterMCPServerViews
-      ? views.filter(filterMCPServerViews)
-      : views;
-
-    return topMCPServerViews.filter(
-      (view) => !shouldFilterServerView(view, selectedActions)
-    );
-  }, [
-    mcpServerViewsWithoutKnowledge,
-    filterMCPServerViews,
-    selectedActions,
-    shouldFilterServerView,
-  ]);
-
-  const selectableNonTopMCPServerViews = useMemo(() => {
-    const views = mcpServerViewsWithoutKnowledge.filter(
-      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
-    );
-    const nonTopMCPServerViews = filterMCPServerViews
-      ? views.filter(filterMCPServerViews)
-      : views;
-
-    return nonTopMCPServerViews.filter(
-      (view) => !shouldFilterServerView(view, selectedActions)
-    );
-  }, [
-    mcpServerViewsWithoutKnowledge,
-    filterMCPServerViews,
-    selectedActions,
-    shouldFilterServerView,
-  ]);
-
   const filteredViews = useMemo(() => {
     const filterViews = (views: MCPServerViewTypeWithLabel[]) =>
-      !searchTerm.trim()
-        ? views
-        : views.filter((view) => {
-            const term = searchTerm.toLowerCase();
-            return [view.label, view.server.description, view.server.name].some(
-              (field) => field?.toLowerCase().includes(term)
-            );
-          });
+      views
+        .filter((view) => {
+          if (!filterMCPServerViews) {
+            return true;
+          }
+          return filterMCPServerViews(view);
+        })
+        .filter((view) => !isSelectedMCPServerView(view, selectedActions))
+        .filter((view) => {
+          if (!searchTerm.trim()) {
+            return true;
+          }
+          const term = searchTerm.toLowerCase();
+          return [view.label, view.server.description, view.server.name].some(
+            (field) => field?.toLowerCase().includes(term)
+          );
+        });
+
+    const topViews = mcpServerViewsWithoutKnowledge.filter(
+      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+    const nonTopViews = mcpServerViewsWithoutKnowledge.filter((view) =>
+      TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
 
     return {
-      topViews: filterViews(selectableTopMCPServerViews),
-      nonTopViews: filterViews(selectableNonTopMCPServerViews),
+      topViews: filterViews(topViews),
+      nonTopViews: filterViews(nonTopViews),
     };
-  }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
+  }, [
+    searchTerm,
+    filterMCPServerViews,
+    mcpServerViewsWithoutKnowledge,
+    selectedActions,
+    isSelectedMCPServerView,
+  ]);
 
   const toggleToolSelection = useCallback(
     (tool: SelectedTool) => {
