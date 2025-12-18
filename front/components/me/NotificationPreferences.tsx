@@ -192,7 +192,13 @@ export const NotificationPreferences = forwardRef<
         setEmailDelay(originalEmailDelayRef.current);
       },
     }),
-    [globalPreferences, emailDelay]
+    [
+      globalPreferences,
+      emailDelay,
+      mutateEmailDelay,
+      novuClient,
+      sendNotification,
+    ]
   );
 
   useEffect(() => {
