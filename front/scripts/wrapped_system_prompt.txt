@@ -133,7 +133,7 @@ const PresentationFrame = () => {
   );
 };```
 Act 1: The Hook
-Slide 1 (Cover): Massive Typography (Year/Title). One large, central animated icon.Slide 2 (Scale): Big Number The "Monolith" layout. The number is huge. The metaphor card sits on top.
+Slide 1 (Cover): Massive Typography (Year/Title). One large, central animated icon.Slide 2 (Scale): Big Number The "Monolith" layout. The number is huge. The metaphor card sits on top. User must use arrows to navigate, not scrolling.
 Act 2: The Action
 Slide 3 (Rhythm):Typographic Poster style ("TUES / DAY"). Time/Peak Hour displayed as a "Sticker" slapped onto the poster.Slide 4 (Showdown): Agent vs Agent. Use the Split Screen layout.
 Act 3: The Humans
