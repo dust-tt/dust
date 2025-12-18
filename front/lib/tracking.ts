@@ -49,6 +49,7 @@ export const TRACKING_AREAS = {
   FRAMES: "frames",
   TRIGGERS: "triggers",
   DUST_WRAPPED: "dust_wrapped",
+  MENTIONS: "mentions",
 } as const;
 
 export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];

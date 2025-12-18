@@ -31,12 +31,15 @@ interface MentionBannerProps {
   showMentionBanner: boolean;
   setShowMentionBanner: (show: boolean) => void;
   isHovering: boolean;
+  showWrappedInAppBanner: boolean;
 }
 
 interface WrappedInAppBannerProps {
   owner: WorkspaceType;
   showMentionBanner: boolean;
   isHovering: boolean;
+  showWrappedInAppBanner: boolean;
+  setShowWrappedInAppBanner: (show: boolean) => void;
 }
 
 function getLocalStorageKey(owner: WorkspaceType) {
@@ -44,11 +47,14 @@ function getLocalStorageKey(owner: WorkspaceType) {
 }
 
 function getWrappedUrl(owner: WorkspaceType): string | null {
+  return null;
   const metadata = owner.metadata;
   if (!metadata) {
     return null;
   }
   const wrappedUrl = metadata.wrappedUrl;
+
+  return wrappedUrl;
   if (wrappedUrl && isString(wrappedUrl)) {
     return wrappedUrl;
   }
@@ -56,17 +62,26 @@ function getWrappedUrl(owner: WorkspaceType): string | null {
 }
 
 export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
-  const [showMentionBanner, setShowMentionBanner] = useState(true);
+  const [showWrappedInAppBanner, setShowWrappedInAppBanner] = useState(() => {
+    return localStorage.getItem(getLocalStorageKey(owner)) !== "true";
+  });
+  const [showMentionBanner, setShowMentionBanner] = useState(() => {
+    return localStorage.getItem(MENTION_BANNER_LOCAL_STORAGE_KEY) !== "true";
+  });
   const [ref, isHovering] = useHover();
+
   return (
-    <div className="absolute bottom-0 left-0 z-20" ref={ref}>
+    <div className="absolute bottom-0 left-0 z-20 w-full" ref={ref}>
       <MentionBanner
+        showWrappedInAppBanner={showWrappedInAppBanner}
         showMentionBanner={showMentionBanner}
         setShowMentionBanner={setShowMentionBanner}
         isHovering={isHovering}
       />
       <WrappedInAppBanner
         owner={owner}
+        showWrappedInAppBanner={showWrappedInAppBanner}
+        setShowWrappedInAppBanner={setShowWrappedInAppBanner}
         showMentionBanner={showMentionBanner}
         isHovering={isHovering}
       />
@@ -76,28 +91,33 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
 
 export function WrappedInAppBanner({
   owner,
+  showWrappedInAppBanner,
+  setShowWrappedInAppBanner,
   showMentionBanner,
   isHovering,
 }: WrappedInAppBannerProps) {
-  const [showInAppBanner, setShowInAppBanner] = useState(true);
-  const [innerWrappedInAppBannerRef, isWrappedInAppBannerHovering] = useHover();
-
-  const onDismiss = (e) => {
+  const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     localStorage.setItem(getLocalStorageKey(owner), "true");
-    setShowInAppBanner(false);
+    setShowWrappedInAppBanner(false);
   };
 
   const wrappedUrl = getWrappedUrl(owner);
 
   const onLearnMore = () => {
-    window.open(wrappedUrl, "_blank", "noopener,noreferrer");
+    if (wrappedUrl) {
+      window.open(wrappedUrl, "_blank", "noopener,noreferrer");
+    }
   };
+
+  const isBehindMentionBanner = showMentionBanner;
+  const shouldShowHoverState =
+    isBehindMentionBanner && showWrappedInAppBanner && isHovering;
 
   return (
     <AnimatePresence>
-      {showInAppBanner ? (
+      {showWrappedInAppBanner ? (
         <motion.div
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
@@ -106,19 +126,16 @@ export function WrappedInAppBanner({
             "rounded-2xl shadow-sm",
             "border border-border/0 dark:border-border-night/0",
             "mx-2 mb-2",
-            showMentionBanner
+            isBehindMentionBanner
               ? "translate-y-[-20%] scale-95"
               : "translate-y-0 scale-100",
             "transition-all duration-300 ease-in",
-            showMentionBanner &&
-              showInAppBanner &&
-              (isHovering ?? isWrappedInAppBannerHovering) &&
-              "translate-y-[-60%]"
+            shouldShowHoverState && "translate-y-[-50%]"
           )}
           style={BACKGROUND_IMAGE_STYLE_PROPS}
         >
           <div
-            className="relative w-[300px] p-4"
+            className="relative cursor-pointer p-4"
             onClick={withTracking(
               TRACKING_AREAS.DUST_WRAPPED,
               "cta_dust_wrapped_banner",
@@ -152,9 +169,12 @@ export function WrappedInAppBanner({
 
 export function MentionBanner({
   showMentionBanner,
+  showWrappedInAppBanner,
   setShowMentionBanner,
 }: MentionBannerProps) {
-  const onDismiss = () => {
+  const onDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     localStorage.setItem(MENTION_BANNER_LOCAL_STORAGE_KEY, "true");
     setShowMentionBanner(false);
   };
@@ -163,13 +183,13 @@ export function MentionBanner({
     window.open(MENTION_BANNER_URL, "_blank", "noopener,noreferrer");
   };
 
+  const hasBothBanners = showMentionBanner && showWrappedInAppBanner;
+
   return (
     <AnimatePresence>
       {showMentionBanner ? (
         <motion.div
-          initial={
-            showMentionBanner ? { opacity: 100, translateY: "100%" } : {}
-          }
+          initial={hasBothBanners ? { opacity: 100, translateY: "100%" } : {}}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
           className={cn(
@@ -177,23 +197,22 @@ export function MentionBanner({
             "rounded-2xl bg-white shadow-md",
             "border border-border/0 dark:border-border-night/0",
             "mx-2 mb-2",
-            "relative z-10",
-            "width-[300px]"
+            "relative z-10"
           )}
         >
-          <div className="relative p-4">
+          <div className="relative cursor-pointer p-4" onClick={onLearnMore}>
             <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
-              Introducing Triggers ✨
+              Introducing Collaboration ✨
             </div>
             <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-              Make your agents work while you're away.
+              Collaborate with your team on Dust
             </h4>
             <Button
               variant="highlight"
               size="xs"
               onClick={withTracking(
-                TRACKING_AREAS.DUST_WRAPPED,
-                "cta_dust_wrapped_banner",
+                TRACKING_AREAS.MENTIONS,
+                "cta_collaboration_banner",
                 onLearnMore
               )}
               label="Learn more"
@@ -211,31 +230,30 @@ export function MentionBanner({
   );
 }
 
-export function useHover() {
+function useHover(): [(node: HTMLElement | null) => void, boolean] {
   const [hovering, setHovering] = useState(false);
   const previousNode = useRef<HTMLElement | null>(null);
+  const debouncedHandleMouseLeaveRef = useRef(
+    debounce(() => {
+      setHovering(false);
+    }, 300)
+  );
 
   const handleMouseEnter = useCallback(() => {
     setHovering(true);
   }, []);
 
-  // Create debounced version of handleMouseLeave
-  const debouncedHandleMouseLeave = useRef(
-    debounce(() => {
-      setHovering(false);
-    }, 300)
-  ).current;
-
   const handleMouseLeave = useCallback(() => {
-    debouncedHandleMouseLeave();
-  }, [debouncedHandleMouseLeave]);
+    debouncedHandleMouseLeaveRef.current();
+  }, []);
 
   // Cleanup debounced function on unmount
   useEffect(() => {
+    const debouncedFn = debouncedHandleMouseLeaveRef.current;
     return () => {
-      debouncedHandleMouseLeave.cancel();
+      debouncedFn.cancel();
     };
-  }, [debouncedHandleMouseLeave]);
+  }, []);
 
   const customRef = useCallback(
     (node: HTMLElement | null) => {
