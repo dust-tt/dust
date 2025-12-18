@@ -497,7 +497,7 @@ async function processWorkspacesFile(
       }
       return result;
     },
-    { concurrency: 3 }
+    { concurrency: 20 }
   );
 
   // Final summary.
