@@ -71,8 +71,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   });
   const [ref, isHovering] = useHover();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  // const isMentionsEnabled = hasFeature("mentions_v2");
-  const isMentionsEnabled = false;
+  const isMentionsEnabled = hasFeature("mentions_v2");
 
   return (
     <div className="absolute bottom-0 left-0 z-20 w-full" ref={ref}>
