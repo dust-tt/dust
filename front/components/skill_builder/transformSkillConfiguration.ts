@@ -26,8 +26,10 @@ export function transformSkillConfigurationToFormData(
  */
 export function getDefaultSkillFormData({
   user,
+  extendedSkillId = null,
 }: {
   user: UserType;
+  extendedSkillId?: string | null;
 }): SkillBuilderFormData {
   return {
     name: "",
@@ -37,5 +39,6 @@ export function getDefaultSkillFormData({
     editors: [user],
     tools: [],
     icon: null,
+    extendedSkillId,
   };
 }

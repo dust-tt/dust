@@ -54,6 +54,7 @@ const PostSkillConfigurationRequestBodySchema = t.type({
       mcpServerViewId: t.string,
     })
   ),
+  extendedSkillId: t.union([t.string, t.null]),
 });
 
 type PostSkillConfigurationRequestBody = t.TypeOf<
@@ -212,6 +213,24 @@ async function handler(
         mcpServerViewIds
       );
 
+      const extendedSkill = body.extendedSkillId
+        ? await SkillResource.fetchById(auth, body.extendedSkillId)
+        : null;
+
+      // Only global skills can be extended
+      if (
+        extendedSkill !== null &&
+        (extendedSkill === null || !extendedSkill.isExtendable)
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
+          },
+        });
+      }
+
       // Use a transaction to ensure all creates succeed or all are rolled back
       const skillResource = await SkillResource.makeNew(auth, {
         status: "active",
@@ -222,6 +241,7 @@ async function handler(
         instructions: body.instructions,
         authorId: user.id,
         requestedSpaceIds,
+        extendedSkillId: body.extendedSkillId,
       });
 
       // Create MCP server configurations (tools) for this skill

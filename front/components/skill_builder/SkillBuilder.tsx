@@ -64,8 +64,11 @@ export default function SkillBuilder({
       return transformSkillConfigurationToFormData(skillConfiguration);
     }
 
-    return getDefaultSkillFormData({ user });
-  }, [skillConfiguration, user]);
+    return getDefaultSkillFormData({
+      user,
+      extendedSkillId: extendedSkill?.sId ?? null,
+    });
+  }, [skillConfiguration, user, extendedSkill]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
