@@ -263,6 +263,41 @@ export function VisualizationWrapper({
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
+  const { ref } = useResizeDetector({
+    handleHeight: true,
+    refreshMode: "debounce",
+    refreshRate: 500,
+    onResize: sendHeightToParent,
+  });
+
+  const handleScreenshotDownload = useCallback(
+    async (name: string = `visualization-${identifier}.png`) => {
+      if (ref.current) {
+        try {
+          const blob = await toBlob(ref.current, {
+            // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
+            skipFonts: true,
+          });
+          if (blob) {
+            await downloadFile(blob, name);
+          }
+        } catch (err) {
+          console.error("Failed to convert to Blob", err);
+          window.parent.postMessage(
+            {
+              type: "EXPORT_ERROR",
+              identifier,
+              errorMessage:
+                "Failed to export as PNG. This can happen when the content references external images.",
+            },
+            "*"
+          );
+        }
+      }
+    },
+    [ref, downloadFile, identifier]
+  );
+
   useEffect(() => {
     const loadCode = async () => {
       try {
@@ -300,6 +335,7 @@ export function VisualizationWrapper({
                   "lucide-react": lucideAll,
                   "@dust/slideshow/v1": dustSlideshowV1,
                   "@dust/react-hooks": {
+                    captureScreenshot: handleScreenshotDownload,
                     triggerUserFileDownload: memoizedDownloadFile,
                     useFile: (fileId: string) => useFile(fileId, api.data),
                   },
@@ -318,39 +354,7 @@ export function VisualizationWrapper({
     };
 
     loadCode();
-  }, [memoizedDownloadFile, api.data]);
-
-  const { ref } = useResizeDetector({
-    handleHeight: true,
-    refreshMode: "debounce",
-    refreshRate: 500,
-    onResize: sendHeightToParent,
-  });
-
-  const handleScreenshotDownload = useCallback(async () => {
-    if (ref.current) {
-      try {
-        const blob = await toBlob(ref.current, {
-          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
-          skipFonts: true,
-        });
-        if (blob) {
-          await downloadFile(blob, `visualization-${identifier}.png`);
-        }
-      } catch (err) {
-        console.error("Failed to convert to Blob", err);
-        window.parent.postMessage(
-          {
-            type: "EXPORT_ERROR",
-            identifier,
-            errorMessage:
-              "Failed to export as PNG. This can happen when the content references external images.",
-          },
-          "*"
-        );
-      }
-    }
-  }, [ref, downloadFile, identifier]);
+  }, [memoizedDownloadFile, handleScreenshotDownload, api.data]);
 
   const handleSVGDownload = useCallback(async () => {
     if (ref.current) {
@@ -418,7 +422,7 @@ export function VisualizationWrapper({
       {!isFullHeight && (
         <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
-            onClick={handleScreenshotDownload}
+            onClick={() => handleScreenshotDownload()}
             title='Download screenshot'
             className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
