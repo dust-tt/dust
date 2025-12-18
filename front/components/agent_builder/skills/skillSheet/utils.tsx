@@ -104,6 +104,18 @@ export function getPageAndFooter(props: PageContentProps): {
             skillSelection.handleSpaceSelectionSave(mode.skillConfiguration),
         },
       };
+    // TODO(skills 2025-12-18): placeholder to satisfy type for now, will be implemented in future PRs
+    case SKILLS_SHEET_PAGE_IDS.TOOL_INFO:
+    case SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION:
+    case SKILLS_SHEET_PAGE_IDS.TOOL_EDIT:
+      return {
+        page: {
+          title: "Tool",
+          id: mode.type,
+          content: <div>Tool configuration coming soon</div>,
+        },
+        leftButton: getCancelButton(onClose),
+      };
     default:
       assertNever(mode);
   }
