@@ -70,6 +70,73 @@ ${workspaceInfo}`;
 }
 
 /**
+ * Waits for a conversation to complete by polling its status
+ */
+async function waitForConversationCompletion(
+  dustAPI: DustAPI,
+  conversationId: string,
+  logger: Logger,
+  maxWaitTimeMs: number = 300_000, // 5 minutes
+  pollIntervalMs: number = 20_000 // 20 seconds
+): Promise<void> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitTimeMs) {
+    const conversationResult = await dustAPI.getConversation({
+      conversationId,
+    });
+
+    if (conversationResult.isErr()) {
+      logger.error(
+        { error: conversationResult.error },
+        "❌ Error fetching conversation status"
+      );
+      throw new Error(
+        `Failed to fetch conversation status: ${conversationResult.error.message}`
+      );
+    }
+
+    const conversation = conversationResult.value;
+    const lastMessageGroup =
+      conversation.content[conversation.content.length - 1];
+
+    const lastAgentMessages = lastMessageGroup.filter(
+      (msg) => msg.type === "agent_message"
+    );
+
+    const lastAgentMessage = lastAgentMessages.length
+      ? lastAgentMessages[lastAgentMessages.length - 1]
+      : null;
+
+    // Check if the assistant has responded and the message is complete
+    if (
+      lastAgentMessage &&
+      lastAgentMessage.type === "agent_message" &&
+      lastAgentMessage.status === "succeeded"
+    ) {
+      logger.info({ conversationId }, "✅ Conversation completed");
+      return;
+    }
+
+    logger.info(
+      {
+        conversationId,
+        elapsed: Math.round((Date.now() - startTime) / 1000),
+        status:
+          lastAgentMessage && lastAgentMessage.type === "agent_message"
+            ? lastAgentMessage.status
+            : "unknown",
+      },
+      "⏳ Waiting for conversation completion..."
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  throw new Error(`Conversation did not complete within ${maxWaitTimeMs}ms`);
+}
+
+/**
  * Creates a conversation using the Dust API
  */
 async function createWrappedConversation(
@@ -109,11 +176,11 @@ async function createWrappedConversation(
       logger
     );
 
-    // Create conversation with blocking=true.
+    // Create conversation without blocking.
     const result = await dustAPI.createConversation({
       title: `${data.COMPANY_NAME} - 2025 Year in Review`,
       visibility: "unlisted",
-      blocking: true, // Wait for completion.
+      blocking: false, // Don't block, we'll poll for completion.
       message: {
         content: prompt,
         context: {
@@ -142,7 +209,14 @@ async function createWrappedConversation(
     const conversationId = result.value.conversation.sId;
     const conversationUrl = `${config.getDustAPIConfig().url}/w/${workspaceId}/assistant/${conversationId}`;
 
-    logger.info({ conversationId }, `✅ Created conversation`);
+    logger.info(
+      { conversationId },
+      `✅ Created conversation, waiting for completion...`
+    );
+
+    // Poll for conversation completion
+    await waitForConversationCompletion(dustAPI, conversationId, logger);
+
     return new Ok({ conversationId, conversationUrl });
   } catch (error) {
     logger.error({ error }, "❌ Error creating conversation");
