@@ -238,6 +238,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable conversations groups in Spaces",
     stage: "dust_only",
   },
+  databricks_tool: {
+    description: "Databricks MCP tool",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
