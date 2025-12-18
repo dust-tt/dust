@@ -22,7 +22,11 @@ import {
   isUserMessageType,
   Ok,
 } from "@app/types";
-import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
+import {
+  isNotificationPreferencesDelay,
+  makeNotificationPreferencesUserMetadata,
+  type NotificationPreferencesDelay,
+} from "@app/types/notification_preferences";
 
 const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
 
@@ -83,20 +87,23 @@ const ConversationDetailsSchema = z.object({
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
-/**
- * Configuration for a notification delay option.
- */
-type NotificationDelayConfig = {
+type NotificationDelayAmountConfig = {
   amount: number;
   unit: "minutes" | "hours" | "days";
 };
+
+type NotificationDelayCronConfig = { cron: string };
+
+type NotificationDelayConfig =
+  | NotificationDelayAmountConfig
+  | NotificationDelayCronConfig;
 
 /**
  * Maps delay option keys to their time configurations.
  */
 const NOTIFICATION_PREFERENCES_DELAYS: Record<
   NotificationPreferencesDelay,
-  NotificationDelayConfig | { cron: string }
+  NotificationDelayConfig
 > = {
   "5_minutes": { amount: 5, unit: "minutes" },
   "15_minutes": { amount: 15, unit: "minutes" },
@@ -104,6 +111,10 @@ const NOTIFICATION_PREFERENCES_DELAYS: Record<
   "1_hour": { amount: 1, unit: "hours" },
   daily: { cron: "0 6 * * *" }, // Every day at 6am
 };
+
+const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = isDevelopment()
+  ? "5_minutes"
+  : "1_hour";
 
 const getConversationDetails = async ({
   subscriberId,
@@ -178,7 +189,7 @@ const getConversationDetails = async ({
   };
 };
 
-const getUserPreferences = async ({
+const getUserNotificationDelay = async ({
   subscriberId,
   workspaceId,
   channel,
@@ -186,9 +197,9 @@ const getUserPreferences = async ({
   subscriberId?: string;
   workspaceId: string;
   channel: keyof ChannelPreference;
-}): Promise<NotificationPreferencesDelay | undefined> => {
+}): Promise<NotificationPreferencesDelay> => {
   if (!subscriberId) {
-    return undefined;
+    return DEFAULT_NOTIFICATION_DELAY;
   }
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     subscriberId,
@@ -196,17 +207,20 @@ const getUserPreferences = async ({
   );
   const user = auth.user();
   if (!user) {
-    return undefined;
+    return DEFAULT_NOTIFICATION_DELAY;
   }
   const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key: {
-        [Op.eq]: `${channel}_notification_preferences`,
+        [Op.eq]: makeNotificationPreferencesUserMetadata(channel),
       },
     },
   });
-  return metadata?.value as NotificationPreferencesDelay | undefined;
+  const metadataValue = metadata?.value;
+  return isNotificationPreferencesDelay(metadataValue)
+    ? metadataValue
+    : DEFAULT_NOTIFICATION_DELAY;
 };
 
 const shouldSkipConversation = async ({
@@ -306,7 +320,7 @@ export const conversationUnreadWorkflow = workflow(
       "digest",
       async () => {
         const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-unread-conversations`;
-        const userPreferences = await getUserPreferences({
+        const userPreferences = await getUserNotificationDelay({
           subscriberId: subscriber.subscriberId,
           workspaceId: payload.workspaceId,
           channel: "email",

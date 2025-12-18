@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import type { NotificationPreferencesRef } from "@app/components/me/NotificationPreferences";
+import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -54,7 +54,8 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const notificationPreferencesRef = useRef<NotificationPreferencesRef>(null);
+  const notificationPreferencesRef =
+    useRef<NotificationPreferencesRefProps>(null);
   const [hasNotificationChanges, setHasNotificationChanges] = useState(false);
 
   const fileUploaderService = useFileUploaderService({
@@ -220,6 +221,10 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
     return input;
   };
 
+  const buttonDisabled =
+    (!form.formState.isDirty && !hasNotificationChanges) ||
+    form.formState.isSubmitting;
+
   return (
     <FormProvider form={form} onSubmit={updateUserProfile}>
       <input
@@ -360,19 +365,13 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             variant="ghost"
             onClick={handleCancel}
             type="button"
-            disabled={
-              (!form.formState.isDirty && !hasNotificationChanges) ||
-              form.formState.isSubmitting
-            }
+            disabled={buttonDisabled}
           />
           <Button
             label="Save"
             variant="primary"
             type="submit"
-            disabled={
-              (!form.formState.isDirty && !hasNotificationChanges) ||
-              form.formState.isSubmitting
-            }
+            disabled={buttonDisabled}
             loading={form.formState.isSubmitting}
           />
         </div>

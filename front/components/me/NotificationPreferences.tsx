@@ -23,7 +23,11 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
+import {
+  isNotificationPreferencesDelay,
+  makeNotificationPreferencesUserMetadata,
+  type NotificationPreferencesDelay,
+} from "@app/types/notification_preferences";
 
 const CHANNELS_TO_NAMES: Record<keyof ChannelPreference, string> = {
   in_app: "In-App",
@@ -48,7 +52,9 @@ const NOTIFICATION_DELAY_OPTIONS = Object.keys(
   NOTIFICATION_PREFERENCES_DELAY_LABELS
 ) as NotificationPreferencesDelay[];
 
-export interface NotificationPreferencesRef {
+const DEFAULT_NOTIFICATION_DELAY = "1_hour";
+
+export interface NotificationPreferencesRefProps {
   savePreferences: () => Promise<boolean>;
   isDirty: () => boolean;
   reset: () => void;
@@ -59,30 +65,35 @@ interface NotificationPreferencesProps {
 }
 
 export const NotificationPreferences = forwardRef<
-  NotificationPreferencesRef,
+  NotificationPreferencesRefProps,
   NotificationPreferencesProps
 >(({ onChanged }, ref) => {
   const sendNotification = useSendNotification();
   const [globalPreferences, setGlobalPreferences] = useState<
     Preference | undefined
   >();
-  const [emailDelay, setEmailDelay] =
-    useState<NotificationPreferencesDelay>("1_hour");
+  const [emailDelay, setEmailDelay] = useState<NotificationPreferencesDelay>(
+    DEFAULT_NOTIFICATION_DELAY
+  );
 
   const { novuClient } = useNovuClient();
   const { metadata: emailDelayMetadata, mutateMetadata: mutateEmailDelay } =
-    useUserMetadata("email_notification_preferences");
+    useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
 
   // Store the original preferences to allow resetting on cancel
   const originalPreferencesRef = useRef<Preference | undefined>();
-  const originalEmailDelayRef = useRef<NotificationPreferencesDelay>("1_hour");
+  const originalEmailDelayRef = useRef<NotificationPreferencesDelay>(
+    DEFAULT_NOTIFICATION_DELAY
+  );
 
   // Load email delay from user metadata
   useEffect(() => {
     if (emailDelayMetadata?.value) {
       const delay = emailDelayMetadata.value as NotificationPreferencesDelay;
-      setEmailDelay(delay);
-      originalEmailDelayRef.current = delay;
+      if (isNotificationPreferencesDelay(delay)) {
+        setEmailDelay(delay);
+        originalEmailDelayRef.current = delay;
+      }
     }
   }, [emailDelayMetadata]);
 
@@ -125,7 +136,7 @@ export const NotificationPreferences = forwardRef<
           // Save email delay in user metadata only if it changed
           if (emailDelay !== originalEmailDelayRef.current) {
             await setUserMetadataFromClient({
-              key: "email_notification_preferences",
+              key: makeNotificationPreferencesUserMetadata("email"),
               value: emailDelay,
             });
             await mutateEmailDelay((current) => {
