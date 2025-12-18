@@ -511,27 +511,44 @@ export default function CreditsUsagePage({
             </ContentMessage>
           )}
 
-        {pendingCredits.length > 0 && (
-          <ContentMessage
-            title={`You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: pendingCredits[0].initialAmountMicroUsd })} credit purchase awaiting payment.`}
-            variant="warning"
-            size="lg"
-            icon={ExclamationCircleIcon}
-          >
-            <div className="flex items-end justify-between">
-              <p>Complete your payment to activate your credits.</p>
-              {pendingCredits[0].paymentUrl && (
-                <Button
-                  label="Complete Payment"
-                  variant="primary"
-                  onClick={() =>
-                    window.open(pendingCredits[0].paymentUrl ?? "", "_blank")
-                  }
-                />
-              )}
-            </div>
-          </ContentMessage>
-        )}
+        {pendingCredits.length > 0 &&
+          (() => {
+            const totalPendingMicroUsd = pendingCredits.reduce(
+              (sum, c) => sum + c.initialAmountMicroUsd,
+              0
+            );
+            const isSingle = pendingCredits.length === 1;
+            const title = isSingle
+              ? `You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} credit purchase awaiting payment.`
+              : `You have ${pendingCredits.length} pending credit purchases totaling ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} awaiting payment.`;
+
+            return (
+              <ContentMessage
+                title={title}
+                variant="warning"
+                size="lg"
+                icon={ExclamationCircleIcon}
+              >
+                <div className="flex items-end justify-between">
+                  <p>Complete your payment to activate your credits.</p>
+                  <Button
+                    label={isSingle ? "Complete Payment" : "Manage Invoices"}
+                    variant="primary"
+                    onClick={() => {
+                      if (isSingle && pendingCredits[0].paymentUrl) {
+                        window.open(pendingCredits[0].paymentUrl, "_blank");
+                      } else {
+                        window.open(
+                          `/w/${owner.sId}/subscription/manage`,
+                          "_blank"
+                        );
+                      }
+                    }}
+                  />
+                </div>
+              </ContentMessage>
+            );
+          })()}
 
         {/* Usage Section */}
         <UsageSection
