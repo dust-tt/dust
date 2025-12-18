@@ -52,7 +52,7 @@ hello
 
 </instructions>
 
-`);
+<br>`);
   });
 
   it("should serialize instruction block with headings to markdown", () => {
@@ -95,7 +95,7 @@ hello
 
 </instructions>
 
-`);
+<br>`);
   });
 
   it("should serialize instruction block with code blocks to markdown", () => {
@@ -141,15 +141,18 @@ code block
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe(`<instructions>
 
-\`\`\`
-code block
-\`\`\`
-
-</instructions>
-
-`);
+    expect(result).toBe(
+      "<instructions>\n" +
+        "\n" +
+        "```\n" +
+        "code block\n" +
+        "```\n" +
+        "\n" +
+        "</instructions>\n" +
+        "\n" +
+        "<br>"
+    );
   });
 
   it("should create instruction block using command", () => {
@@ -177,11 +180,11 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions>
 
-
+<br>
 
 </instructions>
 
-`);
+<br>`);
   });
 
   it("should serialize instruction block with mentions", () => {
@@ -228,7 +231,7 @@ code block
 
 </instructions>
 
-`);
+<br>`);
   });
 
   it("should serialize instruction block with _", () => {
@@ -257,7 +260,7 @@ code block
 
 </instructions_toto>
 
-`);
+<br>`);
   });
 
   it("should serialize instruction block to markdown with paragraph then list", () => {
@@ -356,6 +359,6 @@ Toto:
 
 </instructions>
 
-`);
+<br>`);
   });
 });
