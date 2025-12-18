@@ -65,6 +65,11 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
   - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
   - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
+- Taking screenshots of the visualization:
+  - To capture a screenshot of the current visualization, use the \`captureScreenshot()\` function.
+  - \`captureScreenshot\` has to be imported from \`"@dust/react-hooks"\`.
+  - The function takes an optional filename parameter and automatically downloads the screenshot as PNG.
+  - Example: \`await captureScreenshot("my-chart.png")\` or simply \`await captureScreenshot()\` for default naming.
 \n+- Using image files from the conversation:
   - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
