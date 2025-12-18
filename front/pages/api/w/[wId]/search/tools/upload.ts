@@ -8,6 +8,7 @@ import {
 } from "@app/lib/search/tools/search";
 import { apiError } from "@app/logger/withlogging";
 import type { FileType, WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 interface ToolUploadResponseBody {
   file: FileType;
@@ -28,7 +29,8 @@ async function handler(
     });
   }
 
-  const { serverViewId, externalId, conversationId } = req.body;
+  const { serverViewId, externalId, conversationId, serverName, serverIcon } =
+    req.body;
 
   if (typeof serverViewId !== "string" || serverViewId.length < 1) {
     return apiError(req, res, {
@@ -60,6 +62,26 @@ async function handler(
     });
   }
 
+  if (serverName !== undefined && !isString(serverName)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "serverName must be a string.",
+      },
+    });
+  }
+
+  if (serverIcon !== undefined && !isString(serverIcon)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "serverIcon must be a string.",
+      },
+    });
+  }
+
   const tokenResult = await getToolAccessToken({ auth, serverViewId });
   if (tokenResult.isErr()) {
     return apiError(req, res, {
@@ -79,6 +101,8 @@ async function handler(
     externalId,
     conversationId,
     metadata,
+    serverName,
+    serverIcon,
   });
 
   if (result.isErr()) {

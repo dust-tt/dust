@@ -324,6 +324,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           generatedTables: [],
           textUrl: null,
           textBytes: null,
+          sourceProvider: null,
+          sourceIcon: null,
         };
       } else if (contentFragmentType === "content_node") {
         return {
@@ -350,6 +352,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let fileStringId: string | null = null;
       let snippet: string | null = null;
       let generatedTables: string[] = [];
+      let sourceProvider: string | null = null;
+      let sourceIcon: string | null = null;
       let file: FileResource | null = null;
       if (this.fileId) {
         file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
@@ -360,6 +364,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         fileStringId = file.sId;
         snippet = file.snippet;
         generatedTables = file.useCaseMetadata?.generatedTables ?? [];
+        sourceProvider = file.useCaseMetadata?.sourceProvider ?? null;
+        sourceIcon = file.useCaseMetadata?.sourceIcon ?? null;
       }
 
       return {
@@ -371,6 +377,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         generatedTables,
         textUrl: location.downloadUrl,
         textBytes: this.textBytes,
+        sourceProvider,
+        sourceIcon,
       } satisfies FileContentFragmentType;
     } else if (contentFragmentType === "content_node") {
       assert(

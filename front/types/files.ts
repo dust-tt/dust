@@ -29,6 +29,8 @@ export type FileUseCaseMetadata = {
   spaceId?: string;
   generatedTables?: string[];
   lastEditedByAgentConfigurationId?: string;
+  sourceProvider?: string;
+  sourceIcon?: string;
 };
 
 export function isConversationFileUseCase(

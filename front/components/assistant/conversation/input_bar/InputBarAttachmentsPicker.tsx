@@ -426,7 +426,7 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSearchbar
               autoFocus
               name="search-files"
-              placeholder="Search knowledge"
+              placeholder="Search"
               value={search}
               onChange={setSearch}
               disabled={isLoading}

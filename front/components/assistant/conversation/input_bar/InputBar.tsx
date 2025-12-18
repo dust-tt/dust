@@ -258,6 +258,7 @@ export const InputBar = React.memo(function InputBar({
               title: cf.filename,
               fileId: cf.fileId,
               contentType: cf.contentType,
+              url: cf.sourceUrl,
             };
           }),
           contentNodes: attachedNodes,
@@ -281,6 +282,7 @@ export const InputBar = React.memo(function InputBar({
             title: cf.filename,
             fileId: cf.fileId,
             contentType: cf.contentType,
+            url: cf.sourceUrl,
           };
         }),
         contentNodes: attachedNodes,

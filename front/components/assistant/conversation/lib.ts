@@ -98,6 +98,8 @@ export function createPlaceholderUserMessage({
             contentFragmentId: "placeholder-content-fragment",
             contentFragmentVersion: "latest" as const,
             expiredReason: null,
+            sourceProvider: null,
+            sourceIcon: null,
           }) satisfies FileContentFragmentType
       ),
       ...(contentFragments?.contentNodes ?? []).map(
@@ -227,6 +229,7 @@ export async function submitMessage({
             body: JSON.stringify({
               title: contentFragment.title,
               fileId: contentFragment.fileId,
+              url: contentFragment.url,
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -388,7 +391,7 @@ export async function createConversationWithMessage({
     contentFragments: [
       ...contentFragments.uploaded.map((cf) => ({
         title: cf.title,
-
+        url: cf.url,
         context: {
           profilePictureUrl: user.image,
         },

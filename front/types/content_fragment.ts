@@ -83,6 +83,8 @@ export type FileContentFragmentType = BaseContentFragmentType & {
         generatedTables: string[];
         textUrl: string;
         textBytes: number | null;
+        sourceProvider: string | null;
+        sourceIcon: string | null;
       }
     | {
         expiredReason: ContentFragmentExpiredReason;
@@ -91,6 +93,8 @@ export type FileContentFragmentType = BaseContentFragmentType & {
         generatedTables: [];
         textUrl: null;
         textBytes: null;
+        sourceProvider: null;
+        sourceIcon: null;
       }
   );
 
@@ -102,6 +106,7 @@ export type UploadedContentFragment = {
   fileId: string;
   title: string;
   contentType: SupportedContentFragmentType;
+  url?: string;
 };
 
 export type ContentFragmentsType = {
