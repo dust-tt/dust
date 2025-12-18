@@ -50,27 +50,10 @@ async function handleStreamingSearch(
     includeTools = "true",
   } = req.query;
 
-  if (typeof query !== "string" || query.length < 3) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Query must be at least 3 characters.",
-      },
-    });
-  }
+  // Transform query parameters to match SearchRequestBodySchema format
+  const limit = isString(limitParam) ? parseInt(limitParam, 10) : 25;
 
-  if (!isString(limitParam)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "limit must be a number between 1 and 100.",
-      },
-    });
-  }
-
-  const limit = limitParam ? parseInt(limitParam, 10) : 25;
+  // Validate limit range
   if (isNaN(limit) || limit < 1 || limit > 100) {
     return apiError(req, res, {
       status_code: 400,
@@ -80,6 +63,33 @@ async function handleStreamingSearch(
       },
     });
   }
+
+  const searchParamsInput = {
+    query: isString(query) ? query : undefined,
+    viewType: isString(viewType) ? viewType : "all",
+    spaceIds:
+      isString(spaceIdsParam) && spaceIdsParam.length > 0
+        ? spaceIdsParam.split(",")
+        : [],
+    includeDataSources: includeDataSources === "true",
+    limit,
+    searchSourceUrls: searchSourceUrls === "true" ? true : undefined,
+  };
+
+  // Validate using SearchRequestBodySchema
+  const r = SearchRequestBodySchema.safeParse(searchParamsInput);
+
+  if (r.error) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: fromError(r.error).toString(),
+      },
+    });
+  }
+
+  const searchParams = r.data;
 
   try {
     res.writeHead(200, {
@@ -97,20 +107,6 @@ async function handleStreamingSearch(
     req.on("close", () => {
       controller.abort();
     });
-
-    const spaceIds =
-      typeof spaceIdsParam === "string" && spaceIdsParam.length > 0
-        ? spaceIdsParam.split(",")
-        : undefined;
-
-    const searchParams = {
-      query,
-      viewType: viewType as "all" | "document" | "table",
-      spaceIds,
-      includeDataSources: includeDataSources === "true",
-      searchSourceUrls: searchSourceUrls === "true",
-      limit,
-    };
 
     logger.info(
       {
@@ -145,11 +141,16 @@ async function handleStreamingSearch(
 
     // Stream tool results if enabled and not paginating
     // Tool results are only included on the first page (no cursor)
-    if (includeTools === "true" && !cursor && !signal.aborted) {
+    if (
+      includeTools === "true" &&
+      !cursor &&
+      !signal.aborted &&
+      isString(searchParams.query)
+    ) {
       for await (const results of streamToolFiles({
         auth,
-        query,
-        pageSize: limit,
+        query: searchParams.query,
+        pageSize: searchParams.limit,
       })) {
         // If the client disconnected, stop streaming
         if (signal.aborted) {

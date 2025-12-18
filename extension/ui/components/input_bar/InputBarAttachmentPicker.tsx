@@ -49,6 +49,7 @@ const getKeyForDataSource = (dataSource: DataSourceType) => {
 };
 
 const asDisplayToolName = (serverName: string) => {
+  // Here we don't need the complexity of the asDisplayToolName function from the front-end, as we only need that for searchable tools
   return (
     serverName.charAt(0).toUpperCase() + serverName.slice(1).replace(/_/g, " ")
   );
