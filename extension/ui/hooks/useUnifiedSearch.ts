@@ -123,8 +123,8 @@ export function useUnifiedSearch({
       try {
         setIsSearchValidating(true);
 
-        // Use the DustAPI searchUnified async generator
-        const generator = dustAPI.searchUnified({
+        // Use the DustAPI searchUnified which now returns a Result
+        const result = await dustAPI.searchUnified({
           query,
           limit: pageSize,
           cursor,
@@ -136,8 +136,16 @@ export function useUnifiedSearch({
           includeTools: !appendResults && includeTools,
         });
 
+        // Check if the request failed
+        if (result.isErr()) {
+          throw new Error(result.error.message);
+        }
+
+        // Get the event stream from the result
+        const { eventStream } = result.value;
+
         // Process each chunk from the stream
-        for await (const chunk of generator) {
+        for await (const chunk of eventStream) {
           // Check if aborted
           if (abortController.signal.aborted) {
             break;

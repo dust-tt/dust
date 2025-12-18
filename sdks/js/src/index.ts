@@ -1653,12 +1653,12 @@ export class DustAPI {
 
   /**
    * Unified search with SSE streaming for both knowledge and tool results.
-   * Returns an async generator that yields search results as they arrive.
+   * Returns a Result containing an async generator that yields search results as they arrive.
    *
    * @param params Search parameters
-   * @returns Async generator yielding UnifiedSearchChunk results
+   * @returns Promise resolving to Result with eventStream AsyncGenerator
    */
-  async *searchUnified({
+  async searchUnified({
     query,
     limit = 25,
     cursor,
@@ -1676,31 +1676,7 @@ export class DustAPI {
     includeDataSources?: boolean;
     searchSourceUrls?: boolean;
     includeTools?: boolean;
-  }): AsyncGenerator<
-    {
-      knowledgeResults?: {
-        nodes: DataSourceContentNodeType[];
-        warningCode: SearchWarningCode | null;
-        nextPageCursor: string | null;
-        resultsCount: number | null;
-      };
-      toolResults?: Array<{
-        internalId: string;
-        externalId: string;
-        title: string;
-        type: ContentNodeType["type"];
-        mimeType: string;
-        serverName: string;
-        serverIcon: string;
-        serverViewId: string;
-        sourceUrl: string | null;
-        url?: string;
-        score?: number;
-      }>;
-    },
-    void,
-    unknown
-  > {
+  }) {
     const params = new URLSearchParams();
     params.append("query", query);
     params.append("limit", limit.toString());
@@ -1724,74 +1700,93 @@ export class DustAPI {
     });
 
     if (res.isErr()) {
-      throw new Error(`Search request failed: ${res.error.message}`);
+      return new Err({
+        type: "search_error",
+        message: `Search request failed: ${res.error.message}`,
+      });
     }
 
     if (typeof res.value.response.body === "string") {
-      throw new Error("Expected stream body but got string");
+      return new Err({
+        type: "search_error",
+        message: "Expected stream body but got string",
+      });
     }
 
-    const reader = res.value.response.body.getReader();
-    const decoder = new TextDecoder();
+    const logger = this._logger;
 
-    try {
-      let pendingChunks: Array<{
-        knowledgeResults?: {
-          nodes: DataSourceContentNodeType[];
-          warningCode: SearchWarningCode | null;
-          nextPageCursor: string | null;
-          resultsCount: number | null;
-        };
-        toolResults?: Array<{
-          internalId: string;
-          externalId: string;
-          title: string;
-          type: ContentNodeType["type"];
-          mimeType: string;
-          serverName: string;
-          serverIcon: string;
-          serverViewId: string;
-          sourceUrl: string | null;
-          url?: string;
-          score?: number;
-        }>;
-      }> = [];
+    const streamSearchResults = async function* () {
+      if (
+        !res.value.response.body ||
+        typeof res.value.response.body === "string"
+      ) {
+        throw new Error("Expected a stream response, but got a string or null");
+      }
 
-      const parser = createParser((event) => {
-        if (event.type === "event") {
-          if (event.data) {
-            try {
-              const chunk = JSON.parse(event.data);
-              pendingChunks.push(chunk);
-            } catch (err) {
-              this._logger.error(
-                {
-                  error: normalizeError(err),
-                },
-                "Error parsing search stream chunk"
-              );
+      const reader = res.value.response.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        let pendingChunks: Array<{
+          knowledgeResults?: {
+            nodes: DataSourceContentNodeType[];
+            warningCode: SearchWarningCode | null;
+            nextPageCursor: string | null;
+            resultsCount: number | null;
+          };
+          toolResults?: Array<{
+            internalId: string;
+            externalId: string;
+            title: string;
+            type: ContentNodeType["type"];
+            mimeType: string;
+            serverName: string;
+            serverIcon: string;
+            serverViewId: string;
+            sourceUrl: string | null;
+            url?: string;
+            score?: number;
+          }>;
+        }> = [];
+
+        const parser = createParser((event) => {
+          if (event.type === "event") {
+            if (event.data) {
+              try {
+                const chunk = JSON.parse(event.data);
+                pendingChunks.push(chunk);
+              } catch (err) {
+                logger.error(
+                  {
+                    error: normalizeError(err),
+                  },
+                  "Error parsing search stream chunk"
+                );
+              }
             }
           }
-        }
-      });
+        });
 
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (value) {
-          parser.feed(decoder.decode(value, { stream: true }));
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (value) {
+            parser.feed(decoder.decode(value, { stream: true }));
 
-          for (const chunk of pendingChunks) {
-            yield chunk;
+            for (const chunk of pendingChunks) {
+              yield chunk;
+            }
+            pendingChunks = [];
           }
-          pendingChunks = [];
+          if (done) {
+            break;
+          }
         }
-        if (done) {
-          break;
-        }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
-    }
+    };
+
+    return new Ok({ eventStream: streamSearchResults() });
   }
 
   async retryMessage({
