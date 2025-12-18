@@ -5,6 +5,12 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   test: {
+    testTimeout: (function getTestTimeout() {
+      const isDebug =
+        process.env.VITEST_DEBUG === "1" ||
+        process.execArgv?.some((a) => a.includes("--inspect")) === true;
+      return isDebug ? Infinity : 5_000;
+    })(),
     globals: true,
     environment: "jsdom",
     setupFiles: "./vite.setup.ts",

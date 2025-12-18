@@ -4,6 +4,7 @@ import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 
 import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
+import { RawHtmlExtension } from "@app/components/editor/extensions/RawHtmlExtension";
 
 export const EditorFactory = (extensions: Extensions) => {
   return new Editor({
@@ -16,6 +17,7 @@ export const EditorFactory = (extensions: Extensions) => {
       }),
       EmptyLineParagraphExtension,
       Markdown,
+      RawHtmlExtension,
       ...extensions,
     ],
   });

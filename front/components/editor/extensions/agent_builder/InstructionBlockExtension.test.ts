@@ -361,4 +361,36 @@ Toto:
 
 <br>`);
   });
+
+  it("should serialize instruction with HTML to markdown", () => {
+    editor.commands.setContent(
+      `
+<instructions>
+
+<a href="https://www.google.com">Google</a>
+<span style="color: red"></span>
+<div/>
+
+</instructions>`,
+      {
+        contentType: "markdown",
+      }
+    );
+
+    const result = editor.getMarkdown();
+    // Note: HTML is reconstructed from DOM, so formatting may change slightly
+    // (e.g., <div/> becomes <div></div>), but semantic content is preserved
+    expect(result).toBe(`<instructions>
+
+<a href="https://www.google.com">Google</a>
+<span style="color: red"></span>
+
+<div>
+
+</div>
+
+</instructions>
+
+<br>`);
+  });
 });

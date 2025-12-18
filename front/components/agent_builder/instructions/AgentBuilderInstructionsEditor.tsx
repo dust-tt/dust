@@ -24,6 +24,7 @@ import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension
 import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { RawHtmlExtension } from "@app/components/editor/extensions/RawHtmlExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -128,6 +129,7 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
       KeyboardShortcutsExtension,
+      RawHtmlExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       BlockInsertExtension.configure({
