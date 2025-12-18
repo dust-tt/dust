@@ -19,7 +19,7 @@ const sqids = new Sqids({
 export const LEGACY_REGION_BIT = 1; // Previously indicated US region.
 const LEGACY_SHARD_BIT = 1;
 
-const RESOURCES_PREFIX = {
+export const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
   // TODO(2024-10-31 flav) Add new prefix for space.
