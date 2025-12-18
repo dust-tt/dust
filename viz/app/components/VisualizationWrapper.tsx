@@ -422,7 +422,7 @@ export function VisualizationWrapper({
       {!isFullHeight && (
         <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
-            onClick={handleScreenshotDownload}
+            onClick={() => handleScreenshotDownload()}
             title='Download screenshot'
             className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
