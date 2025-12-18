@@ -12,7 +12,7 @@ import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types";
 import {
-  GEMINI_2_5_PRO_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
@@ -50,10 +50,10 @@ export function _getGeminiProGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GEMINI_2_5_PRO_MODEL_CONFIG.providerId,
-      modelId: GEMINI_2_5_PRO_MODEL_CONFIG.modelId,
+      providerId: GEMINI_3_PRO_MODEL_CONFIG.providerId,
+      modelId: GEMINI_3_PRO_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort: GEMINI_2_5_PRO_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: GEMINI_3_PRO_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
