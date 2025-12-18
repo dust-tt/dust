@@ -71,7 +71,8 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   });
   const [ref, isHovering] = useHover();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const isMentionsEnabled = hasFeature("mentions_v2");
+  // const isMentionsEnabled = hasFeature("mentions_v2");
+  const isMentionsEnabled = false;
 
   return (
     <div className="absolute bottom-0 left-0 z-20 w-full" ref={ref}>
@@ -122,7 +123,7 @@ export function WrappedInAppBanner({
 
   return (
     <AnimatePresence>
-      {showWrappedInAppBanner ? (
+      {showWrappedInAppBanner || !wrappedUrl ? (
         <motion.div
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
