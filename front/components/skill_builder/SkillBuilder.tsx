@@ -33,14 +33,11 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
-import type {
-  ExtendedSkillType,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
   skillConfiguration?: SkillType;
-  extendedSkill?: ExtendedSkillType;
+  extendedSkill?: SkillType;
 }
 
 export default function SkillBuilder({
@@ -67,8 +64,11 @@ export default function SkillBuilder({
       return transformSkillConfigurationToFormData(skillConfiguration);
     }
 
-    return getDefaultSkillFormData({ user });
-  }, [skillConfiguration, user]);
+    return getDefaultSkillFormData({
+      user,
+      extendedSkillId: extendedSkill?.sId ?? null,
+    });
+  }, [skillConfiguration, user, extendedSkill]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -158,10 +158,10 @@ export default function SkillBuilder({
               variant="default"
               className="mx-4"
               title={
-                skillConfiguration
+                (skillConfiguration
                   ? `Edit skill ${skillConfiguration.name}`
-                  : "Create new skill" +
-                    (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
+                  : "Create new skill") +
+                (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
               }
               rightActions={
                 <Button

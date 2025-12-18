@@ -10,13 +10,13 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import type { ExtendedSkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
-  extendedSkill: ExtendedSkillType | null;
+  extendedSkill: SkillType | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -26,7 +26,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       ? await SkillResource.fetchById(auth, query.extends)
       : null;
   const extendedSkill = skillToExtend?.isExtendable
-    ? { name: skillToExtend.name }
+    ? skillToExtend.toJSON(auth)
     : null;
 
   if (!owner || !auth.isBuilder() || !subscription) {

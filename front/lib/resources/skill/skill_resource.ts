@@ -577,6 +577,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
         icon: null,
+        extendedSkillId: null,
       },
       { globalSId: def.sId, mcpServerConfigurations }
     );
@@ -680,6 +681,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             instructions: versionModel.instructions,
             icon: versionModel.icon,
             requestedSpaceIds: versionModel.requestedSpaceIds,
+            extendedSkillId: versionModel.extendedSkillId,
           },
           {
             editorGroup: this.editorGroup ?? undefined,
@@ -1030,6 +1032,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       tools,
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable(),
+      extendedSkillId: this.extendedSkillId,
     };
   }
 

@@ -13,6 +13,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   skillConfiguration: SkillType;
+  extendedSkill: SkillType | null;
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
@@ -52,9 +53,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const extendedSkillResource = skillResource.extendedSkillId
+    ? await SkillResource.fetchById(auth, skillResource.extendedSkillId)
+    : null;
+
   return {
     props: {
       skillConfiguration: skillResource.toJSON(auth),
+      extendedSkill: extendedSkillResource
+        ? extendedSkillResource.toJSON(auth)
+        : null,
       owner,
       subscription,
       user: auth.getNonNullableUser().toJSON(),
@@ -64,6 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function EditSkill({
   skillConfiguration,
+  extendedSkill,
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -81,7 +90,10 @@ export default function EditSkill({
         <Head>
           <title>{`Dust - ${skillConfiguration.name}`}</title>
         </Head>
-        <SkillBuilder skillConfiguration={skillConfiguration} />
+        <SkillBuilder
+          skillConfiguration={skillConfiguration}
+          extendedSkill={extendedSkill ?? undefined}
+        />
       </>
     </SkillBuilderProvider>
   );

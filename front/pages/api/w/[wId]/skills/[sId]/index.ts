@@ -125,6 +125,12 @@ async function handler(
         const editors = await skillResource.listEditors(auth);
         const mcpServerViews = await skillResource.listMCPServerViews(auth);
         const author = await skillResource.fetchAuthor(auth);
+        const extendedSkill = skillConfiguration.extendedSkillId
+          ? await SkillResource.fetchById(
+              auth,
+              skillConfiguration.extendedSkillId
+            )
+          : null;
 
         const skillConfigurationWithRelations: SkillWithRelationsType = {
           ...skillConfiguration,
@@ -133,6 +139,7 @@ async function handler(
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
             author: author ? author.toJSON() : null,
+            extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           },
         };
 

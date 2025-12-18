@@ -20,6 +20,7 @@ export type SkillType = {
   tools: { mcpServerViewId: string }[];
   canWrite: boolean;
   isExtendable: boolean;
+  extendedSkillId: string | null;
 };
 
 export type SkillRelations = {
@@ -27,10 +28,9 @@ export type SkillRelations = {
   editors: UserType[] | null;
   mcpServerViews: MCPServerViewType[];
   author: UserType | null;
+  extendedSkill: SkillType | null;
 };
 
 export type SkillWithRelationsType = SkillType & {
   relations: SkillRelations;
 };
-
-export type ExtendedSkillType = { name: string };
