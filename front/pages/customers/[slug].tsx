@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { TableOfContents } from "@app/components/blog/TableOfContents";
-import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
+import { A, Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -383,6 +383,27 @@ export default function CustomerStoryPage({
                     </div>
                   </div>
                 )}
+
+                <div className="mt-12 rounded-2xl border border-highlight/20 bg-highlight/5 p-6">
+                  <p className="font-sans text-foreground">
+                    Interested in learning more about how Dust can help your
+                    team? Visit our{" "}
+                    <A
+                      rel="noopener noreferrer"
+                      href={`/home/product?utm_source=blog&utm_medium=customer_story${story.utmCampaign ? `&utm_campaign=${story.utmCampaign}` : ""}&utm_content=visit_product_page`}
+                    >
+                      solutions page
+                    </A>{" "}
+                    or reach out to{" "}
+                    <A
+                      rel="noopener noreferrer"
+                      href={`/home/contact?utm_source=blog&utm_medium=customer_story${story.utmCampaign ? `&utm_campaign=${story.utmCampaign}` : ""}&utm_content=contact_sales`}
+                    >
+                      our sales team
+                    </A>
+                    .
+                  </p>
+                </div>
               </div>
               {tocItems.length > 0 && (
                 <div className="hidden lg:col-span-3 lg:block">

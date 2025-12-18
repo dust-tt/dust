@@ -32,6 +32,8 @@ const CASE_STUDIES: Record<string, string> = {
     "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
   watershed:
     "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
+  vanta:
+    "/customers/how-vantas-gtm-team-saves-thousands-of-hours-annually-with-dust",
 };
 
 const LOGO_SETS = {
