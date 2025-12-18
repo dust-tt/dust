@@ -11,7 +11,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const FrameMetadataSchema = z.object({
-  frameWrappedToken: z.string().url(),
+  frameWrappedToken: z.string(),
   workspaceId: z.string(),
 });
 
