@@ -584,7 +584,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                     rootProps={{ defaultOpen: summary.length <= 5 }}
                     triggerChildren={
                       <div className="text-sm text-foreground dark:text-foreground-night">
-                        Spaces
+                        Projects
                       </div>
                     }
                     contentChildren={

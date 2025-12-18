@@ -45,6 +45,7 @@ import type {
 import {
   Err,
   isAgentMessageType,
+  isContentFragmentType,
   isUserMessageType,
   Ok,
   toMentionType,
@@ -133,6 +134,9 @@ function SpaceConversationListItem({
   };
 
   const shouldShowStatusDot = status !== "idle";
+  const messageCount = conversation.content.filter(
+    (versions) => !isContentFragmentType(versions[versions.length - 1])
+  ).length;
 
   return (
     <>
@@ -171,7 +175,7 @@ function SpaceConversationListItem({
                 <div className="text-sm font-medium">{conversationLabel}</div>
                 <div className="flex flex-grow" />
                 <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {conversation.content.length} messages
+                  {messageCount} {messageCount === 1 ? "message" : "messages"}
                 </div>
               </div>
               <AgentMessageMarkdown
@@ -346,7 +350,6 @@ export default function SpaceConversations({
     [
       isSubmitting,
       owner,
-      user,
       spaceId,
       setPlanLimitReached,
       sendNotification,
