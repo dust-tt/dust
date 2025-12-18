@@ -123,7 +123,7 @@ export function WrappedInAppBanner({
 
   return (
     <AnimatePresence>
-      {showWrappedInAppBanner || !wrappedUrl ? (
+      {showWrappedInAppBanner && wrappedUrl ? (
         <motion.div
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
