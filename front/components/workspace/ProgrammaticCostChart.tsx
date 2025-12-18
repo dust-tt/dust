@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -435,7 +437,9 @@ export function BaseProgrammaticCostChart({
     return dataPoint;
   });
 
-  const ChartComponent = groupBy ? AreaChart : LineChart;
+  // Daily mode uses BarChart, cumulative mode uses AreaChart (grouped) or LineChart (global)
+  const ChartComponent =
+    displayMode === "daily" ? BarChart : groupBy ? AreaChart : LineChart;
 
   // Filter to only show ticks for midnight dates
   const midnightTicks = useMemo(() => {
@@ -665,6 +669,18 @@ export function BaseProgrammaticCostChart({
             groupKey,
             allGroupKeys
           );
+
+          if (displayMode === "daily") {
+            return (
+              <Bar
+                key={groupKey}
+                dataKey={groupKey}
+                stackId={groupBy ? "cost" : undefined}
+                fill="currentColor"
+                className={colorClassName}
+              />
+            );
+          }
 
           return groupBy ? (
             <Area
