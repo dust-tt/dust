@@ -240,7 +240,14 @@ function loadExistingResults(): ProcessResult[] {
 /**
  * Saves results to file
  */
-function saveResults(results: ProcessResult[]): void {
+function saveResults(
+  results: ProcessResult[],
+  { execute }: { execute: boolean }
+): void {
+  if (!execute) {
+    return;
+  }
+
   fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2));
 }
 
