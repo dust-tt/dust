@@ -5,6 +5,7 @@ import React from "react";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -69,3 +70,7 @@ export default function CreateSkill({
     </SkillBuilderProvider>
   );
 }
+
+CreateSkill.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};
