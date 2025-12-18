@@ -438,9 +438,7 @@ export const ConversationViewer = ({
     conversationId,
     onEvent: onEventCallback,
     isReadyToConsumeStream:
-      !isConversationLoading &&
-      !isLoadingInitialData &&
-      messages.length !== 0,
+      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
   });
 
   const handleSubmit = useCallback(
