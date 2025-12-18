@@ -15,6 +15,9 @@ const PostSkillSuggestionsRequestBodySchema = t.type({
   agentFacingDescription: t.string,
   tools: t.array(t.type({ name: t.string, description: t.string })),
 });
+export type PostSkillSuggestionsRequestBody = t.TypeOf<
+  typeof PostSkillSuggestionsRequestBodySchema
+>;
 
 type SkillSuggestionsResponseType = {
   suggestion: string;
