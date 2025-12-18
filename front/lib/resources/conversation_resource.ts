@@ -651,6 +651,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async listConversationsInSpace(
+    auth: Authenticator,
+    {
+      spaceId,
+      options,
+    }: {
+      spaceId: string;
+      options?: FetchConversationOptions;
+    }
+  ): Promise<ConversationResource[]> {
+    // Convert space sId to model ID
+    const spaceModelId = getResourceIdFromSId(spaceId);
+    if (spaceModelId === null) {
+      return [];
+    }
+
+    // Fetch all conversations in the space (not filtered by user participation)
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+      where: {
+        spaceId: spaceModelId,
+      },
+    });
+
+    // Fetch participation map for the user for these conversations
+    const conversationIds = conversations.map((c) => c.id);
+    const participationMap =
+      conversationIds.length > 0
+        ? await this.fetchParticipationMapForUser(auth, conversationIds)
+        : new Map<number, UserParticipation>();
+
+    // Attach participation data to resources where the user is a participant
+    conversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
+
+    return conversations;
+  }
+
   static async listConversationsForTrigger(
     auth: Authenticator,
     triggerId: string,

@@ -29,6 +29,7 @@ export function useCreateConversationWithMessage({
       messageData,
       visibility = "unlisted",
       title,
+      spaceId,
     }: {
       messageData: {
         input: string;
@@ -39,6 +40,7 @@ export function useCreateConversationWithMessage({
       };
       visibility?: ConversationVisibility;
       title?: string;
+      spaceId?: string | null;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
       if (!user) {
         return new Err({
@@ -60,6 +62,7 @@ export function useCreateConversationWithMessage({
         {
           title: title ?? null,
           visibility,
+          spaceId: spaceId ?? null,
           message: {
             content: input,
             context: {

@@ -25,7 +25,8 @@ import type {
   ConversationToolActionRequest,
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
-import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/by-spaces-summary";
+import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
+import type { GetSpaceConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]";
 import type {
   ConversationError,
   ConversationWithoutContentType,
@@ -101,7 +102,7 @@ export function useSpaceConversationsSummary({
   const summaryFetcher: Fetcher<GetBySpacesSummaryResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/conversations/by-spaces-summary`,
+    `/api/w/${workspaceId}/assistant/conversations/spaces`,
     summaryFetcher,
     options
   );
@@ -111,6 +112,34 @@ export function useSpaceConversationsSummary({
     isLoading: !error && !data && !options?.disabled,
     isError: !!error,
     mutate,
+  };
+}
+
+export function useSpaceConversations({
+  workspaceId,
+  spaceId,
+  options,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  options?: { disabled: boolean };
+}) {
+  const spaceConversationsFetcher: Fetcher<GetSpaceConversationsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    spaceId
+      ? `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}`
+      : null,
+    spaceConversationsFetcher,
+    options
+  );
+
+  return {
+    conversations: data?.conversations ?? emptyArray(),
+    isConversationsLoading: !error && !data,
+    isConversationsError: error,
+    mutateConversations: mutate,
   };
 }
 

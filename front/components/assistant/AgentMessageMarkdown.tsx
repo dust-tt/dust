@@ -29,12 +29,20 @@ export const AgentMessageMarkdown = ({
   additionalMarkdownComponents = {} as Components,
   isLastMessage = false,
   isStreaming = false,
+  textColor,
+  compactSpacing,
+  forcedTextSize,
+  canCopyQuotes,
 }: {
   owner: WorkspaceType;
   content: string;
   isLastMessage?: boolean;
   isStreaming?: boolean;
   additionalMarkdownComponents?: Components;
+  textColor?: string;
+  compactSpacing?: boolean;
+  forcedTextSize?: string;
+  canCopyQuotes?: boolean;
 }) => {
   // Preprocess content to handle instruction blocks
   const processedContent = React.useMemo(
@@ -76,6 +84,10 @@ export const AgentMessageMarkdown = ({
       additionalMarkdownPlugins={additionalMarkdownPlugins}
       isLastMessage={isLastMessage}
       isStreaming={isStreaming}
+      textColor={textColor}
+      compactSpacing={compactSpacing}
+      forcedTextSize={forcedTextSize}
+      canCopyQuotes={canCopyQuotes}
     />
   );
 };
