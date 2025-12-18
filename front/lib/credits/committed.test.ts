@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
+  deleteCreditFromVoidedInvoice,
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
@@ -686,5 +687,88 @@ describe("createProCreditPurchase", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Payment declined");
     }
+  });
+});
+
+describe("deleteCreditFromVoidedInvoice", () => {
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    auth = authenticator;
+  });
+
+  it("should return credit_not_found when no credit exists for invoice", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+
+    const invoice = makeCreditPurchaseInvoice();
+
+    const result = await deleteCreditFromVoidedInvoice({ auth, invoice });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("credit_not_found");
+    }
+  });
+
+  it("should return credit_already_started when credit has started", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+
+    const invoice = makeCreditPurchaseInvoice();
+
+    const credit = await CreditResource.makeNew(auth, {
+      type: "committed",
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
+      invoiceOrLineItemId: invoice.id,
+    });
+    await credit.start(auth);
+
+    const result = await deleteCreditFromVoidedInvoice({ auth, invoice });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("credit_already_started");
+      if (result.error.type === "credit_already_started") {
+        expect(result.error.credit.id).toBe(credit.id);
+      }
+    }
+  });
+
+  it("should delete credit and return Ok when credit is not started", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+
+    const invoice = makeCreditPurchaseInvoice();
+
+    await CreditResource.makeNew(auth, {
+      type: "committed",
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
+      invoiceOrLineItemId: invoice.id,
+    });
+
+    const creditsBefore = await CreditResource.listAll(auth);
+    expect(creditsBefore.length).toBe(1);
+
+    const result = await deleteCreditFromVoidedInvoice({ auth, invoice });
+
+    expect(result.isOk()).toBe(true);
+
+    const creditsAfter = await CreditResource.listAll(auth);
+    expect(creditsAfter.length).toBe(0);
+  });
+
+  it("should throw when invoice is not a credit purchase invoice", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(false);
+
+    const invoice = makeCreditPurchaseInvoice();
+
+    await expect(
+      deleteCreditFromVoidedInvoice({ auth, invoice })
+    ).rejects.toThrow(
+      "deleteCreditFromVoidedInvoice called with non-credit-purchase invoice"
+    );
   });
 });

@@ -180,6 +180,20 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   /**
+   * Returns pending committed credits (not yet paid/started) for the workspace.
+   * Used to block new purchases when there are unpaid invoices.
+   */
+  static async listPendingCommitted(auth: Authenticator) {
+    return this.baseFetch(auth, {
+      where: {
+        type: "committed",
+        startDate: null,
+        invoiceOrLineItemId: { [Op.ne]: null },
+      },
+    });
+  }
+
+  /**
    * Returns the total amount of committed credits purchased in the given period.
    * Used to enforce per-billing-cycle purchase limits.
    */
@@ -430,7 +444,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<number | undefined, Error>> {
+  ): Promise<Result<number, Error>> {
     assert(
       this.startDate === null || this.type === "free",
       "Cannot delete a credit that has been started. Use freeze() instead."
@@ -440,6 +454,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       where: { id: this.id, workspaceId: auth.getNonNullableWorkspace().id },
       transaction,
     });
+
     return new Ok(deletedCount);
   }
 }

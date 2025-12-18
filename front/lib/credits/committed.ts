@@ -1,3 +1,4 @@
+import assert from "assert";
 import type Stripe from "stripe";
 
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
@@ -418,4 +419,38 @@ export async function createProCreditPurchase({
   );
 
   return new Ok({ invoiceId: invoice.id, paymentUrl });
+}
+
+export type DeleteCreditError =
+  | { type: "credit_not_found" }
+  | { type: "credit_already_started"; credit: CreditResource };
+
+export async function deleteCreditFromVoidedInvoice({
+  auth,
+  invoice,
+}: {
+  auth: Authenticator;
+  invoice: Stripe.Invoice;
+}): Promise<Result<undefined, DeleteCreditError>> {
+  assert(
+    isCreditPurchaseInvoice(invoice),
+    "deleteCreditFromVoidedInvoice called with non-credit-purchase invoice"
+  );
+
+  const credit = await CreditResource.fetchByInvoiceOrLineItemId(
+    auth,
+    invoice.id
+  );
+
+  if (!credit) {
+    return new Err({ type: "credit_not_found" });
+  }
+
+  if (credit.startDate !== null) {
+    return new Err({ type: "credit_already_started", credit });
+  }
+
+  await credit.delete(auth);
+
+  return new Ok(undefined);
 }
