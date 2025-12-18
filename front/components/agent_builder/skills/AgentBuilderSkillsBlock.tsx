@@ -135,7 +135,7 @@ export function AgentBuilderSkillsBlock({
 
   const handleOpenSheet = useCallback(() => {
     setSheetMode({
-      type: SKILLS_SHEET_PAGE_IDS.SELECTION,
+      pageId: SKILLS_SHEET_PAGE_IDS.SELECTION,
     });
   }, []);
 

@@ -5,16 +5,18 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
   PageContentProps,
-  SelectionMode,
+  SelectedTool,
   SkillsSheetMode,
 } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import {
+  SKILLS_SHEET_PAGE_IDS,
+  TOP_MCP_SERVER_VIEWS,
+} from "@app/components/agent_builder/skills/skillSheet/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { useBuilderContext } from "@app/components/shared/useBuilderContext";
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
@@ -26,19 +28,7 @@ function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
   return doesSkillTriggerSelectSpaces(skill.sId);
 }
 
-function getSelectionMode(mode: SkillsSheetMode): SelectionMode {
-  if (
-    mode.type === SKILLS_SHEET_PAGE_IDS.INFO ||
-    mode.type === SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION
-  ) {
-    return mode.previousMode;
-  }
-
-  return { type: SKILLS_SHEET_PAGE_IDS.SELECTION };
-}
-
 export const useSkillSelection = ({
-  mode,
   onModeChange,
   localSelectedSkills,
   setLocalSelectedSkills,
@@ -76,8 +66,6 @@ export const useSkillSelection = ({
     );
   }, [skillsWithRelations, searchQuery]);
 
-  const selectionMode = getSelectionMode(mode);
-
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
       const isAlreadySelected = localSelectedSkills.some(
@@ -91,9 +79,8 @@ export const useSkillSelection = ({
       } else {
         if (isGlobalSkillWithSpaceSelection(skill)) {
           onModeChange({
-            type: SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION,
+            pageId: SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION,
             skillConfiguration: skill,
-            previousMode: selectionMode,
           });
         } else {
           setLocalSelectedSkills((prev) => [
@@ -108,7 +95,7 @@ export const useSkillSelection = ({
         }
       }
     },
-    [localSelectedSkills, selectionMode, onModeChange, setLocalSelectedSkills]
+    [localSelectedSkills, onModeChange, setLocalSelectedSkills]
   );
 
   const handleSpaceSelectionSave = useCallback(
@@ -125,10 +112,9 @@ export const useSkillSelection = ({
           icon: skill.icon,
         },
       ]);
-      onModeChange(selectionMode);
+      onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
     },
     [
-      selectionMode,
       onModeChange,
       setLocalSelectedSkills,
       setLocalAdditionalSpaces,
@@ -147,23 +133,6 @@ export const useSkillSelection = ({
     draftSelectedSpaces,
     setDraftSelectedSpaces,
   };
-};
-
-// TODO(skills 2025-12-18): duplicated from MCPServerViewsSheet, to cleanup later
-const TOP_MCP_SERVER_VIEWS = [
-  "web_search_&_browse",
-  "image_generation",
-  AGENT_MEMORY_SERVER_NAME,
-  "deep_dive",
-  "interactive_content",
-  "slack",
-  "gmail",
-  "google_calendar",
-];
-type SelectedTool = {
-  type: "MCP";
-  view: MCPServerViewTypeWithLabel;
-  configuredAction?: BuilderAction;
 };
 
 export const useToolSelection = ({
@@ -213,35 +182,41 @@ export const useToolSelection = ({
     [allMcpServerViews]
   );
 
-  const topMCPServerViews = useMemo(() => {
+  const selectableTopMCPServerViews = useMemo(() => {
     const views = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
-  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
+    const topMCPServerViews = filterMCPServerViews
+      ? views.filter(filterMCPServerViews)
+      : views;
 
-  const nonTopMCPServerViews = useMemo(() => {
+    return topMCPServerViews.filter(
+      (view) => !shouldFilterServerView(view, selectedActions)
+    );
+  }, [
+    mcpServerViewsWithoutKnowledge,
+    filterMCPServerViews,
+    selectedActions,
+    shouldFilterServerView,
+  ]);
+
+  const selectableNonTopMCPServerViews = useMemo(() => {
     const views = mcpServerViewsWithoutKnowledge.filter(
       (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
-    return filterMCPServerViews ? views.filter(filterMCPServerViews) : views;
-  }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
+    const nonTopMCPServerViews = filterMCPServerViews
+      ? views.filter(filterMCPServerViews)
+      : views;
 
-  const selectableTopMCPServerViews = useMemo(() => {
-    const filteredList = topMCPServerViews.filter(
+    return nonTopMCPServerViews.filter(
       (view) => !shouldFilterServerView(view, selectedActions)
     );
-
-    return filteredList;
-  }, [topMCPServerViews, selectedActions, shouldFilterServerView]);
-
-  const selectableNonTopMCPServerViews = useMemo(
-    () =>
-      nonTopMCPServerViews.filter(
-        (view) => !shouldFilterServerView(view, selectedActions)
-      ),
-    [nonTopMCPServerViews, selectedActions, shouldFilterServerView]
-  );
+  }, [
+    mcpServerViewsWithoutKnowledge,
+    filterMCPServerViews,
+    selectedActions,
+    shouldFilterServerView,
+  ]);
 
   const filteredViews = useMemo(() => {
     const filterViews = (views: MCPServerViewTypeWithLabel[]) =>
@@ -297,7 +272,7 @@ export const useToolSelection = ({
         const action = getDefaultMCPAction(mcpServerView);
 
         onModeChange({
-          type: SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION,
+          pageId: SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION,
           action,
           mcpServerView,
         });
@@ -314,9 +289,9 @@ export const useToolSelection = ({
     (mcpServerView: MCPServerViewType) => {
       const action = getDefaultMCPAction(mcpServerView);
       onModeChange({
-        type: SKILLS_SHEET_PAGE_IDS.TOOL_INFO,
+        pageId: SKILLS_SHEET_PAGE_IDS.TOOL_INFO,
         action,
-        source: "toolDetails",
+        hasPreviousPage: true,
       });
     },
     [onModeChange]
@@ -328,6 +303,5 @@ export const useToolSelection = ({
     toggleToolSelection,
     onClickMCPServer,
     handleToolInfoClick,
-    featureFlags,
   };
 };

@@ -27,12 +27,12 @@ export function getPageAndFooter(props: PageContentProps): {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const skillSelection = useSkillSelection(props);
 
-  switch (mode.type) {
+  switch (mode.pageId) {
     case SKILLS_SHEET_PAGE_IDS.SELECTION:
       return {
         page: {
           title: "Add skills",
-          id: mode.type,
+          id: mode.pageId,
           content: (
             <SelectionPageContent
               {...props}
@@ -46,19 +46,25 @@ export function getPageAndFooter(props: PageContentProps): {
             />
           ),
         },
-        leftButton: getCancelButton(onClose),
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: () => {
+            onClose();
+          },
+        },
         rightButton: {
           label: "Add skills",
           onClick: handleSave,
           variant: "primary",
         },
       };
-    case SKILLS_SHEET_PAGE_IDS.INFO:
+    case SKILLS_SHEET_PAGE_IDS.SKILL_INFO:
       return {
         page: {
           title: mode.skill.name,
           description: mode.skill.userFacingDescription,
-          id: props.mode.type,
+          id: props.mode.pageId,
           icon: getSkillIcon(mode.skill.icon),
           content: (
             <SkillWithRelationsDetailsSheetContent
@@ -71,16 +77,18 @@ export function getPageAndFooter(props: PageContentProps): {
         leftButton: {
           label: "Back",
           variant: "outline",
-          onClick: () => onModeChange(mode.previousMode),
+          onClick: () => {
+            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+          },
         },
       };
-    case SKILLS_SHEET_PAGE_IDS.SPACE_SELECTION:
+    case SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION:
       return {
         page: {
           title: `Select spaces`,
           description:
             "Automatically grant access to all knowledge sources discovery from your selected spaces",
-          id: mode.type,
+          id: mode.pageId,
           content: (
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
@@ -94,7 +102,7 @@ export function getPageAndFooter(props: PageContentProps): {
           variant: "outline",
           onClick: () => {
             skillSelection.setDraftSelectedSpaces(localAdditionalSpaces);
-            onModeChange(mode.previousMode);
+            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
           },
         },
         rightButton: {
@@ -111,18 +119,18 @@ export function getPageAndFooter(props: PageContentProps): {
       return {
         page: {
           title: "Tool",
-          id: mode.type,
+          id: mode.pageId,
           content: <div>Tool configuration coming soon</div>,
         },
-        leftButton: getCancelButton(onClose),
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: () => {
+            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+          },
+        },
       };
     default:
       assertNever(mode);
   }
 }
-
-export const getCancelButton = (onClose: () => void) => ({
-  label: "Cancel",
-  variant: "outline",
-  onClick: onClose,
-});
