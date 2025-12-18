@@ -2,7 +2,7 @@ import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
 
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SkillsSheetMode as CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { getPageAndFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/utils";
 import type { UserType, WorkspaceType } from "@app/types";
 

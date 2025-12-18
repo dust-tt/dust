@@ -6,7 +6,6 @@ import { useSkillSelection } from "@app/components/agent_builder/capabilities/ca
 import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillWithRelationsDetailsSheetContent";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { PageContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
@@ -28,7 +27,7 @@ export function getPageAndFooter(props: PageContentProps): {
   const skillSelection = useSkillSelection(props);
 
   switch (mode.pageId) {
-    case SKILLS_SHEET_PAGE_IDS.SELECTION:
+    case "selection":
       return {
         page: {
           title: "Add skills",
@@ -57,16 +56,16 @@ export function getPageAndFooter(props: PageContentProps): {
           variant: "primary",
         },
       };
-    case SKILLS_SHEET_PAGE_IDS.SKILL_INFO:
+    case "skill_info":
       return {
         page: {
-          title: mode.skill.name,
-          description: mode.skill.userFacingDescription,
+          title: mode.capability.name,
+          description: mode.capability.userFacingDescription,
           id: props.mode.pageId,
-          icon: getSkillIcon(mode.skill.icon),
+          icon: getSkillIcon(mode.capability.icon),
           content: (
             <SkillWithRelationsDetailsSheetContent
-              skill={mode.skill}
+              skill={mode.capability}
               owner={props.owner}
               user={props.user}
             />
@@ -76,11 +75,11 @@ export function getPageAndFooter(props: PageContentProps): {
           label: "Back",
           variant: "outline",
           onClick: () => {
-            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+            onModeChange({ pageId: "selection" });
           },
         },
       };
-    case SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION:
+    case "skill_space_selection":
       return {
         page: {
           title: `Select spaces`,
@@ -100,20 +99,20 @@ export function getPageAndFooter(props: PageContentProps): {
           variant: "outline",
           onClick: () => {
             skillSelection.setDraftSelectedSpaces(localAdditionalSpaces);
-            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+            onModeChange({ pageId: "selection" });
           },
         },
         rightButton: {
           label: "Save",
           variant: "primary",
           onClick: () =>
-            skillSelection.handleSpaceSelectionSave(mode.skillConfiguration),
+            skillSelection.handleSpaceSelectionSave(mode.capability),
         },
       };
     // TODO(skills 2025-12-18): placeholder to satisfy type for now, will be implemented in future PRs
-    case SKILLS_SHEET_PAGE_IDS.TOOL_INFO:
-    case SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION:
-    case SKILLS_SHEET_PAGE_IDS.TOOL_EDIT:
+    case "tool_info":
+    case "tool_configuration":
+    case "tool_edit":
       return {
         page: {
           title: "Tool",
@@ -124,7 +123,7 @@ export function getPageAndFooter(props: PageContentProps): {
           label: "Cancel",
           variant: "outline",
           onClick: () => {
-            onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+            onModeChange({ pageId: "selection" });
           },
         },
       };

@@ -16,9 +16,8 @@ import type {
   AgentBuilderSkillsType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { SkillsSheet } from "@app/components/agent_builder/skills/skillSheet/SkillsSheet";
-import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
-import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
+import type { CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -131,11 +130,13 @@ export function AgentBuilderSkillsBlock({
     return actionRequestedSpaceIds;
   }, [actions, mcpServerViews, selectedSkills, allSkills]);
 
-  const [sheetMode, setSheetMode] = useState<SkillsSheetMode | null>(null);
+  const [sheetMode, setSheetMode] = useState<CapabilitiesSheetMode | null>(
+    null
+  );
 
   const handleOpenSheet = useCallback(() => {
     setSheetMode({
-      pageId: SKILLS_SHEET_PAGE_IDS.SELECTION,
+      pageId: "selection",
     });
   }, []);
 
@@ -182,7 +183,7 @@ export function AgentBuilderSkillsBlock({
           </CardGrid>
         )}
       </div>
-      <SkillsSheet
+      <CapabilitiesSheet
         mode={sheetMode}
         onClose={handleCloseSheet}
         onSave={handleSaveSkills}

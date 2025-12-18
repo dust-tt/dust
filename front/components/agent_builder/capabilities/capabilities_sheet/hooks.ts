@@ -4,14 +4,11 @@ import { useCallback, useMemo, useState } from "react";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
+  CapabilitiesSheetMode,
   PageContentProps,
   SelectedTool,
-  SkillsSheetMode,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import {
-  SKILLS_SHEET_PAGE_IDS,
-  TOP_MCP_SERVER_VIEWS,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -79,8 +76,8 @@ export const useSkillSelection = ({
       } else {
         if (isGlobalSkillWithSpaceSelection(skill)) {
           onModeChange({
-            pageId: SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION,
-            skillConfiguration: skill,
+            pageId: "skill_space_selection",
+            capability: skill,
           });
         } else {
           setLocalSelectedSkills((prev) => [
@@ -112,7 +109,7 @@ export const useSkillSelection = ({
           icon: skill.icon,
         },
       ]);
-      onModeChange({ pageId: SKILLS_SHEET_PAGE_IDS.SELECTION });
+      onModeChange({ pageId: "selection" });
     },
     [
       onModeChange,
@@ -144,7 +141,7 @@ export const useToolSelection = ({
 }: {
   selectedActions: BuilderAction[];
   setSelectedToolsInSheet: Dispatch<SetStateAction<SelectedTool[]>>;
-  onModeChange: (mode: SkillsSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   searchTerm: string;
   filterMCPServerViews?: (view: MCPServerViewTypeWithLabel) => boolean;
 }) => {
@@ -258,8 +255,8 @@ export const useToolSelection = ({
         const action = getDefaultMCPAction(mcpServerView);
 
         onModeChange({
-          pageId: SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION,
-          action,
+          pageId: "tool_configuration",
+          capability: action,
           mcpServerView,
         });
         return;
@@ -275,8 +272,8 @@ export const useToolSelection = ({
     (mcpServerView: MCPServerViewType) => {
       const action = getDefaultMCPAction(mcpServerView);
       onModeChange({
-        pageId: SKILLS_SHEET_PAGE_IDS.TOOL_INFO,
-        action,
+        pageId: "tool_info",
+        capability: action,
         hasPreviousPage: true,
       });
     },

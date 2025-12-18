@@ -26,55 +26,50 @@ export type SelectedTool = {
 
 export type CapabilityFilterType = "all" | "tools" | "skills";
 
-export const SKILLS_SHEET_PAGE_IDS = {
-  SELECTION: "selection",
-  SKILL_INFO: "skill_info",
-  SKILL_SPACE_SELECTION: "skill_space_selection",
-  TOOL_INFO: "tool_info",
-  TOOL_CONFIGURATION: "tool_configuration",
-  TOOL_EDIT: "tool_edit",
-} as const;
+type SelectionMode = {
+  pageId: "selection";
+};
 
-export type SkillsSheetMode =
-  | { pageId: typeof SKILLS_SHEET_PAGE_IDS.SELECTION }
-  | {
-      pageId: typeof SKILLS_SHEET_PAGE_IDS.SKILL_INFO;
-      skill: SkillType;
-      hasPreviousPage: boolean;
-    }
-  | {
-      pageId: typeof SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION;
-      skillConfiguration: SkillType;
-    }
-  | {
-      pageId: typeof SKILLS_SHEET_PAGE_IDS.TOOL_INFO;
-      action: BuilderAction;
-      hasPreviousPage: boolean;
-    }
-  | {
-      pageId: typeof SKILLS_SHEET_PAGE_IDS.TOOL_CONFIGURATION;
-      action: BuilderAction;
-      mcpServerView: MCPServerViewTypeWithLabel;
-    }
-  | {
-      pageId: typeof SKILLS_SHEET_PAGE_IDS.TOOL_EDIT;
-      action: BuilderAction;
-      index: number;
-    };
+type SkillInfoMode = {
+  pageId: "skill_info";
+  capability: SkillType;
+  hasPreviousPage: boolean;
+};
 
-export type SelectionMode = Extract<
-  SkillsSheetMode,
-  { type: typeof SKILLS_SHEET_PAGE_IDS.SELECTION }
->;
+type SkillSpaceSelectionMode = {
+  pageId: "skill_space_selection";
+  capability: SkillType;
+};
 
-export type SpaceSelectionMode = Extract<
-  SkillsSheetMode,
-  { type: typeof SKILLS_SHEET_PAGE_IDS.SKILL_SPACE_SELECTION }
->;
+type ToolInfoMode = {
+  pageId: "tool_info";
+  capability: BuilderAction;
+  hasPreviousPage: boolean;
+};
+
+type ToolConfigurationMode = {
+  pageId: "tool_configuration";
+  capability: BuilderAction;
+  mcpServerView: MCPServerViewTypeWithLabel;
+};
+
+type ToolEditMode = {
+  pageId: "tool_edit";
+  capability: BuilderAction;
+  index: number;
+};
+
+export type CapabilitiesSheetMode =
+  | SelectionMode
+  | SkillInfoMode
+  | SkillSpaceSelectionMode
+  | ToolInfoMode
+  | ToolConfigurationMode
+  | ToolEditMode;
 
 export type PageContentProps = {
-  mode: SkillsSheetMode;
-  onModeChange: (mode: SkillsSheetMode | null) => void;
+  mode: CapabilitiesSheetMode;
+  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   onClose: () => void;
   handleSave: () => void;
   owner: WorkspaceType;
