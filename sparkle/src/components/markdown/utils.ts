@@ -45,9 +45,9 @@ export function detectLanguage(children: React.ReactNode) {
  * Inserts an empty line with a non-breaking space to create visual spacing.
  */
 export function preserveLineBreaks(content: string): string {
-  // Replace \n\n with \n&nbsp;\n\n to insert an empty line with content
+  // Replace <br> and \n\n with \n&nbsp;\n\n to insert an empty line with content
   // This creates visual spacing between paragraphs
-  return content.replace(/\n\n\n\n/g, "\n\n&nbsp;\n\n");
+  return content.replace(/(\n\n\n\n|<br>)/g, "\n\n&nbsp;\n\n");
 }
 
 /**
