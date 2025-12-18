@@ -289,6 +289,12 @@ async function processForWorkspace(
     result.conversationId = conversationId;
     result.conversationUrl = conversationUrl;
 
+    if (!execute) {
+      result.status = "partial";
+      result.error = "Dry run - conversation not created";
+      return result;
+    }
+
     // Step 2: Extract frame info.
     const frameInfo = await handleCreatedFrame(
       auth,
