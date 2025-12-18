@@ -76,7 +76,7 @@ async function waitForConversationCompletion(
   dustAPI: DustAPI,
   conversationId: string,
   logger: Logger,
-  maxWaitTimeMs: number = 300_000, // 5 minutes
+  maxWaitTimeMs: number = 60 * 10 * 1000, // 10 minutes
   pollIntervalMs: number = 20_000 // 20 seconds
 ): Promise<void> {
   const startTime = Date.now();
@@ -497,6 +497,7 @@ async function processWorkspacesFile(
       success: successCount,
       partial: partialCount,
       errors: errorCount,
+      resultFile: RESULTS_FILE,
     },
     "📈 Final results summary"
   );
