@@ -5,18 +5,28 @@ import React from "react";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import type { ExtendedSkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
-}>(async (_, auth) => {
+  extendedSkill?: ExtendedSkillType;
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const { query } = context;
+  const skillToExtend =
+    typeof query.extends === "string"
+      ? await SkillResource.fetchById(auth, query.extends)
+      : null;
+  const extendedSkill = skillToExtend?.isExtendable
+    ? { name: skillToExtend.name }
+    : undefined;
 
   if (!owner || !auth.isBuilder() || !subscription) {
     return {
@@ -38,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       user,
+      extendedSkill,
     },
   };
 });
@@ -45,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateSkill({
   owner,
   user,
+  extendedSkill,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <SkillBuilderProvider owner={owner} user={user}>
@@ -52,12 +64,8 @@ export default function CreateSkill({
         <Head>
           <title>Dust - New Skill</title>
         </Head>
-        <SkillBuilder />
+        <SkillBuilder extendedSkill={extendedSkill} />
       </SpacesProvider>
     </SkillBuilderProvider>
   );
 }
-
-CreateSkill.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
-};
