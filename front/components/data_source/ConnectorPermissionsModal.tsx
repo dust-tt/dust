@@ -271,7 +271,6 @@ function UpdateConnectionOAuthModal({
   const { connectorProvider, editedByUser } = dataSource;
 
   const isSlack = connectorProvider === "slack";
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
@@ -285,6 +284,13 @@ function UpdateConnectionOAuthModal({
     credentialId: slackCredentialId,
     disabled: !isSlack || !slackCredentialId,
   });
+
+  // TODO(slackstorm 2025-12-18): Decide if we want to migrate existing slack connections to the new model. Remove all those flags if it's the case.
+  const MIGRATE_LEGACY_SLACK_APPS = false;
+  const showSlackAppMigrationDisclaimer =
+    MIGRATE_LEGACY_SLACK_APPS && isLegacySlackApp;
+  const showSlackOauthExtraComponent =
+    MIGRATE_LEGACY_SLACK_APPS || !isLegacySlackApp;
 
   if (!connectorProvider || !user) {
     return null;
@@ -314,7 +320,7 @@ function UpdateConnectionOAuthModal({
             />
           </div>
 
-          {isLegacySlackApp && (
+          {showSlackAppMigrationDisclaimer && (
             <div className="mt-4">
               <ContentMessage
                 size="md"
@@ -423,11 +429,7 @@ function UpdateConnectionOAuthModal({
           </div>
         )}
         {connectorUIConfiguration.oauthExtraConfigComponent &&
-          // TODO(slackstorm) fabien: remove flag and rely on isLegacySlackApp
-          !(
-            isSlack &&
-            !featureFlags.includes("self_created_slack_app_connector_rollout")
-          ) && (
+          showSlackOauthExtraComponent && (
             <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
               setExtraConfig={setExtraConfig}
