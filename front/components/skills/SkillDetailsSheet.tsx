@@ -1,6 +1,5 @@
 import {
   ArrowPathIcon,
-  Avatar,
   Button,
   ContentMessage,
   InformationCircleIcon,
@@ -18,11 +17,12 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { hasRelations, SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon, hasRelations } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
@@ -144,7 +144,11 @@ const DescriptionSection = ({
   return (
     <div className="flex flex-col items-center gap-4 pt-4">
       <div className="relative flex items-center justify-center">
-        <Avatar name="Agent avatar" visual={<SKILL_ICON />} size="xl" />
+        <ResourceAvatar
+          icon={getSkillIcon(skill.icon)}
+          name="Skill avatar"
+          size="xl"
+        />
       </div>
 
       {/* Title and edit info */}

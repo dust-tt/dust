@@ -99,7 +99,9 @@ export function AgentBuilderSpacesBlock() {
       const confirmed = await confirmRemoveSpace(
         space,
         actionsToRemove,
-        skillsToRemove
+        allSkills.filter((skill) =>
+          skillsToRemove.some((s) => s.sId === skill.sId)
+        )
       );
 
       if (!confirmed) {

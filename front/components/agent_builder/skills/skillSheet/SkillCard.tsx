@@ -1,7 +1,7 @@
 import { ActionCard } from "@dust-tt/sparkle";
 import React from "react";
 
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillCardProps {
@@ -19,7 +19,7 @@ export function SkillCard({
 }: SkillCardProps) {
   return (
     <ActionCard
-      icon={SKILL_ICON}
+      icon={getSkillIcon(skill.icon)}
       label={skill.name}
       description={skill.userFacingDescription}
       isSelected={isSelected}

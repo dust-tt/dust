@@ -19,10 +19,11 @@ import { AgentBuilderSectionContainer } from "@app/components/agent_builder/Agen
 import { SkillsSheet } from "@app/components/agent_builder/skills/skillSheet/SkillsSheet";
 import type { SkillsSheetMode } from "@app/components/agent_builder/skills/skillSheet/types";
 import { SKILLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/skills/skillSheet/types";
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillIcon } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 
 const BACKGROUND_IMAGE_PATH = "/static/SkillsBar.svg";
@@ -40,7 +41,7 @@ interface SkillCardProps {
 }
 
 function SkillCard({ skill, onRemove }: SkillCardProps) {
-  const SkillIcon = SKILL_ICON;
+  const SkillIcon = getSkillIcon(skill.icon);
 
   return (
     <Card
@@ -59,7 +60,7 @@ function SkillCard({ skill, onRemove }: SkillCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <SkillIcon className="h-4 w-4 shrink-0" />
+          <ResourceAvatar icon={SkillIcon} size="sm" />
           <span className="truncate">{skill.name}</span>
         </div>
 

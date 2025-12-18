@@ -1,11 +1,11 @@
-import { useContext } from "react";
+import React, { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { SKILL_ICON } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
@@ -35,6 +35,10 @@ function getActionIcon(
   return null;
 }
 
+function getSkillIcon(skill: SkillToRemove): React.ReactNode {
+  return React.createElement(getSkillAvatarIcon(skill.icon));
+}
+
 interface ItemToRemove {
   id: string;
   name: string;
@@ -44,6 +48,7 @@ interface ItemToRemove {
 interface SkillToRemove {
   sId: string;
   name: string;
+  icon: string | null;
 }
 
 interface UseRemoveSpaceConfirmParams {
@@ -57,8 +62,6 @@ export function useRemoveSpaceConfirm({
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
-  const SkillIcon = SKILL_ICON;
-
   return async (
     space: SpaceType,
     actions: BuilderAction[],
@@ -68,7 +71,7 @@ export function useRemoveSpaceConfirm({
       ...skills.map((skill) => ({
         id: skill.sId,
         name: skill.name,
-        icon: <SkillIcon className="h-4 w-4 shrink-0" />,
+        icon: getSkillIcon(skill),
       })),
       ...actions.map((action) => ({
         id: action.id,

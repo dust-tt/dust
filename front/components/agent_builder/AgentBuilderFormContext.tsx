@@ -86,6 +86,7 @@ const skillsSchema = z.object({
   sId: z.string(),
   name: z.string(),
   description: z.string(),
+  icon: z.string().nullable(),
 });
 
 // Additional space IDs selected by the user for global skills
