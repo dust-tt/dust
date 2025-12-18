@@ -10,6 +10,7 @@ import {
   Label,
   LightModeIcon,
   MoonIcon,
+  Page,
   PencilSquareIcon,
   Spinner,
   SunIcon,
@@ -20,17 +21,17 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
+import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { usePatchUser } from "@app/lib/swr/user";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
+import { usePatchUser, useUser } from "@app/lib/swr/user";
+import type { WorkspaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 
 interface AccountSettingsProps {
-  user: UserTypeWithWorkspaces | null;
-  isUserLoading: boolean;
   owner: WorkspaceType;
 }
 
@@ -44,11 +45,8 @@ const AccountSettingsSchema = z.object({
 
 type AccountSettingsType = z.infer<typeof AccountSettingsSchema>;
 
-export function AccountSettings({
-  user,
-  isUserLoading,
-  owner,
-}: AccountSettingsProps) {
+export function AccountSettings({ owner }: AccountSettingsProps) {
+  const { user, isUserLoading } = useUser();
   const { theme: currentTheme, setTheme } = useTheme();
 
   const { patchUser } = usePatchUser();
@@ -56,6 +54,9 @@ export function AccountSettings({
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const notificationPreferencesRef =
+    useRef<NotificationPreferencesRefProps>(null);
+  const [hasNotificationChanges, setHasNotificationChanges] = useState(false);
 
   const fileUploaderService = useFileUploaderService({
     owner,
@@ -141,6 +142,12 @@ export function AccountSettings({
       if (typeof window !== "undefined") {
         localStorage.setItem("submitMessageKey", data.submitMessageKey);
       }
+
+      // Save notification preferences if available
+      if (notificationPreferencesRef.current) {
+        await notificationPreferencesRef.current.savePreferences();
+        setHasNotificationChanges(false);
+      }
     }
   };
 
@@ -158,6 +165,20 @@ export function AccountSettings({
       submitMessageKey:
         storedKey && isSubmitMessageKey(storedKey) ? storedKey : "enter",
     });
+
+    // Reset notification preferences
+    if (notificationPreferencesRef.current) {
+      notificationPreferencesRef.current.reset();
+      setHasNotificationChanges(false);
+    }
+  };
+
+  // Check if notification preferences have changed
+  const checkNotificationChanges = () => {
+    if (notificationPreferencesRef.current) {
+      const isDirty = notificationPreferencesRef.current.isDirty();
+      setHasNotificationChanges(isDirty);
+    }
   };
 
   if (isUserLoading) {
@@ -199,6 +220,10 @@ export function AccountSettings({
 
     return input;
   };
+
+  const buttonDisabled =
+    (!form.formState.isDirty && !hasNotificationChanges) ||
+    form.formState.isSubmitting;
 
   return (
     <FormProvider form={form} onSubmit={updateUserProfile}>
@@ -324,19 +349,29 @@ export function AccountSettings({
           </div>
         </div>
 
+        {user?.subscriberHash && (
+          <div className="mt-6 flex flex-col gap-4">
+            <Page.SectionHeader title="Notifications" />
+            <NotificationPreferences
+              ref={notificationPreferencesRef}
+              onChanged={checkNotificationChanges}
+            />
+          </div>
+        )}
+
         <div className="flex justify-end gap-2">
           <Button
             label="Cancel"
             variant="ghost"
             onClick={handleCancel}
             type="button"
-            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+            disabled={buttonDisabled}
           />
           <Button
             label="Save"
             variant="primary"
             type="submit"
-            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+            disabled={buttonDisabled}
             loading={form.formState.isSubmitting}
           />
         </div>

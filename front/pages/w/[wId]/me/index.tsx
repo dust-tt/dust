@@ -13,7 +13,6 @@ import type { InferGetServerSidePropsType } from "next";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
-import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
 import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
@@ -22,7 +21,6 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { useUser } from "@app/lib/swr/user";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
@@ -74,8 +72,6 @@ export default function ProfilePage({
   subscription,
   pendingInvitations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { user, isUserLoading } = useUser();
-
   return (
     <AppCenteredLayout
       subscription={subscription}
@@ -87,24 +83,13 @@ export default function ProfilePage({
         <Page.Header title="Profile Settings" icon={UserIcon} />
         <Page.Layout direction="vertical">
           <Page.SectionHeader title="Account Settings" />
-          <AccountSettings
-            user={user}
-            isUserLoading={isUserLoading}
-            owner={owner}
-          />
+          <AccountSettings owner={owner} />
 
           {pendingInvitations.length > 0 && (
             <>
               <Separator />
               <Page.SectionHeader title="Pending Invitations" />
               <PendingInvitationsTable invitations={pendingInvitations} />
-            </>
-          )}
-          {user?.subscriberHash && (
-            <>
-              <Separator />
-              <Page.SectionHeader title="Notifications" />
-              <NotificationPreferences />
             </>
           )}
 
