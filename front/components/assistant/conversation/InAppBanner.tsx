@@ -76,8 +76,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   const [mentionBannerRef, isMentionBannerHovering] = useHover();
   const [wrappedBannerRef, isWrappedBannerHovering] = useHover();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  // const wrappedUrl = getWrappedUrl(owner);
-  const wrappedUrl = "https://www.google.com";
+  const wrappedUrl = getWrappedUrl(owner);
 
   const isMentionsEnabled = hasFeature("mentions_v2");
 
