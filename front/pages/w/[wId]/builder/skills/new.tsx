@@ -47,7 +47,7 @@ export default function CreateSkill({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <SkillBuilderProvider owner={owner} user={user}>
+    <SkillBuilderProvider owner={owner} user={user} skillConfigurationId={null}>
       <SpacesProvider owner={owner}>
         <Head>
           <title>Dust - New Skill</title>
