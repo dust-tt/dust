@@ -36,6 +36,7 @@ import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
@@ -501,7 +502,14 @@ export function useAddDeleteConversationSkill({
         const result = await response.json();
         return result.success === true;
       } catch (error) {
-        console.error("Error adding skill to conversation:", error);
+        datadogLogger.error(
+          {
+            error: normalizeError(error),
+            conversationId,
+            workspaceId,
+          },
+          "[JIT Skill] Error adding skill to conversation"
+        );
         return false;
       }
     },
@@ -537,7 +545,15 @@ export function useAddDeleteConversationSkill({
         const result = await response.json();
         return result.success === true;
       } catch (error) {
-        console.error("Error removing skill from conversation:", error);
+        datadogLogger.error(
+          {
+            error: normalizeError(error),
+            conversationId,
+            workspaceId,
+            skillId,
+          },
+          "[JIT Skill] Error removing skill from conversation"
+        );
         return false;
       }
     },
