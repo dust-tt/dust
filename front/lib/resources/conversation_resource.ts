@@ -1256,7 +1256,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversation: ConversationWithoutContentType;
       skills: SkillResource[];
       enabled: boolean;
-      agentConfigurationId: string | null | undefined;
+      agentConfigurationId: string | null;
     }
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();

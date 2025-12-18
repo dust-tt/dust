@@ -147,7 +147,7 @@ async function handler(
           conversation: conversationWithoutContent,
           skills: [skillRes],
           enabled: action === "add",
-          agentConfigurationId: agent_configuration_id,
+          agentConfigurationId: agent_configuration_id ?? null,
         });
         if (r.isErr()) {
           logger.error(
