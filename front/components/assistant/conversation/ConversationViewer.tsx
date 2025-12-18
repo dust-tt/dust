@@ -31,8 +31,8 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
-import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -240,23 +240,6 @@ export const ConversationViewer = ({
 
   // Hooks related to conversation events streaming.
 
-  const buildEventSourceURL = useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-      }
-      const url = esURL + "?lastEventId=" + lastEventId;
-
-      return url;
-    },
-    [conversationId, owner.sId]
-  );
-
   const debouncedMarkAsRead = useMemo(
     () => debounce(markAsRead, 2000),
     [markAsRead]
@@ -450,18 +433,15 @@ export const ConversationViewer = ({
     ]
   );
 
-  useEventSource(
-    buildEventSourceURL,
-    onEventCallback,
-    `conversation-${conversationId}`,
-    {
-      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-      isReadyToConsumeStream:
-        !isConversationLoading &&
-        !isLoadingInitialData &&
-        messages.length !== 0,
-    }
-  );
+  useConversationEvents({
+    owner,
+    conversationId,
+    onEvent: onEventCallback,
+    isReadyToConsumeStream:
+      !isConversationLoading &&
+      !isLoadingInitialData &&
+      messages.length !== 0,
+  });
 
   const handleSubmit = useCallback(
     async (
