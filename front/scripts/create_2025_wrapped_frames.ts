@@ -194,7 +194,7 @@ async function createWrappedConversation(
         },
         mentions: [
           {
-            configurationId: GLOBAL_AGENTS_SID.GEMINI_PRO,
+            configurationId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
           },
         ],
       },
