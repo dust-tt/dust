@@ -24,7 +24,7 @@ export interface MCPServerCardProps {
   featureFlags?: WhitelistableFeature[];
 }
 
-function MCPServerCard({
+export function MCPServerCard({
   view,
   isSelected,
   onClick,
