@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { isString } from "@app/types";
@@ -69,20 +70,24 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
     return localStorage.getItem(MENTION_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
   const [ref, isHovering] = useHover();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const isMentionsEnabled = hasFeature("mentions_v2");
 
   return (
     <div className="absolute bottom-0 left-0 z-20 w-full" ref={ref}>
-      <MentionBanner
-        showWrappedInAppBanner={showWrappedInAppBanner}
-        showMentionBanner={showMentionBanner}
-        setShowMentionBanner={setShowMentionBanner}
-        isHovering={isHovering}
-      />
+      {isMentionsEnabled && (
+        <MentionBanner
+          showWrappedInAppBanner={showWrappedInAppBanner}
+          showMentionBanner={showMentionBanner}
+          setShowMentionBanner={setShowMentionBanner}
+          isHovering={isHovering}
+        />
+      )}
       <WrappedInAppBanner
         owner={owner}
         showWrappedInAppBanner={showWrappedInAppBanner}
         setShowWrappedInAppBanner={setShowWrappedInAppBanner}
-        showMentionBanner={showMentionBanner}
+        showMentionBanner={isMentionsEnabled && showMentionBanner}
         isHovering={isHovering}
       />
     </div>
