@@ -379,6 +379,7 @@ describe("POST /api/w/[wId]/skills", () => {
       instructions: "Simple instructions",
       icon: null,
       tools: [],
+      extendedSkillId: null,
     };
 
     await handler(req, res);
@@ -436,6 +437,7 @@ describe("POST /api/w/[wId]/skills", () => {
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
       ],
+      extendedSkillId: null,
     };
 
     await handler(req, res);
@@ -515,6 +517,7 @@ describe("POST /api/w/[wId]/skills", () => {
       instructions: "Instructions",
       icon: null,
       tools: [{ mcpServerViewId: serverView.sId }],
+      extendedSkillId: null,
     };
 
     await handler(req, res);
