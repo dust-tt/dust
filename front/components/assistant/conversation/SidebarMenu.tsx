@@ -607,7 +607,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 conversationsList
               )}
             </>
-            <InAppBanner />
+            <InAppBanner owner={owner} />
           </div>
         </div>
       </div>

@@ -3,54 +3,86 @@ import { cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
-const localStorageKey = "hootl-announcement-dismissed";
-const docLink = "https://docs.dust.tt/docs/triggers#/";
+const BACKGROUND_IMAGE_PATH = "/static/year-in-review-bg.png";
+const BACKGROUND_IMAGE_STYLE_PROPS = {
+  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "center",
+  backgroundSize: "cover",
+};
 
-export function InAppBanner() {
+const YEAR_IN_REVIEW_TITLE = "/static/year-in-review-title.svg";
+
+const LOCAL_STORAGE_KEY_PREFIX = "dust-wrapped-dismissed";
+
+interface InAppBannerProps {
+  owner: WorkspaceType;
+}
+
+function getLocalStorageKey(owner: WorkspaceType) {
+  return `${LOCAL_STORAGE_KEY_PREFIX}-${owner.sId}`;
+}
+
+function getWrappedUrl(owner: WorkspaceType): string | null {
+  const metadata = owner.metadata;
+  if (!metadata) {
+    return null;
+  }
+  const wrappedUrl = metadata.wrappedUrl;
+  if (wrappedUrl && isString(wrappedUrl)) {
+    return wrappedUrl;
+  }
+  return null;
+}
+
+export function InAppBanner({ owner }: InAppBannerProps) {
   const [showInAppBanner, setShowInAppBanner] = useState(
-    localStorage.getItem(localStorageKey) !== "true"
+    localStorage.getItem(getLocalStorageKey(owner)) !== "true"
   );
 
   const onDismiss = () => {
-    localStorage.setItem(localStorageKey, "true");
+    localStorage.setItem(getLocalStorageKey(owner), "true");
     setShowInAppBanner(false);
   };
 
-  const onLearnMore = () => {
-    window.open(docLink, "_blank", "noopener,noreferrer");
-  };
+  const wrappedUrl = getWrappedUrl(owner);
 
-  if (!showInAppBanner) {
+  if (!showInAppBanner || !wrappedUrl) {
     return null;
   }
+
+  const onLearnMore = () => {
+    window.open(wrappedUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div
       className={cn(
         "hidden flex-col sm:flex",
-        "bg-background dark:bg-background-night",
         "rounded-2xl shadow-sm",
         "border border-border/0 dark:border-border-night/0",
         "mx-2 mb-2"
       )}
+      style={BACKGROUND_IMAGE_STYLE_PROPS}
     >
       <div className="relative p-4">
-        <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
-          Introducing Triggers ✨
-        </div>
-        <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-          Make your agents work while you're away.
-        </h4>
+        <img
+          src={YEAR_IN_REVIEW_TITLE}
+          alt="Year in Review"
+          className="mb-4 h-12"
+        />
         <Button
           variant="highlight"
           size="xs"
           onClick={withTracking(
-            TRACKING_AREAS.TRIGGERS,
-            "cta_triggers_banner",
+            TRACKING_AREAS.DUST_WRAPPED,
+            "cta_dust_wrapped_banner",
             onLearnMore
           )}
-          label="Learn more"
+          label="Open your holiday recap"
         />
         <Button
           variant="ghost"
