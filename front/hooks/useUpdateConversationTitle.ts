@@ -2,10 +2,7 @@ import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import {
-  useConversation,
-  useConversations,
-} from "@app/lib/swr/conversations";
+import { useConversation, useConversations } from "@app/lib/swr/conversations";
 import type { LightWorkspaceType } from "@app/types";
 
 export function useUpdateConversationTitle({
@@ -53,6 +50,12 @@ export function useUpdateConversationTitle({
       sendNotification({ type: "success", title: "Title edited" });
       return true;
     },
-    [owner.sId, conversationId, mutateConversation, mutateConversations, sendNotification]
+    [
+      owner.sId,
+      conversationId,
+      mutateConversation,
+      mutateConversations,
+      sendNotification,
+    ]
   );
 }

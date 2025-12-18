@@ -46,8 +46,9 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
         return {
           ...prevState,
           conversations:
-            prevState?.conversations.filter((c) => c.sId !== conversation.sId) ??
-            [],
+            prevState?.conversations.filter(
+              (c) => c.sId !== conversation.sId
+            ) ?? [],
         };
       });
 
