@@ -46,6 +46,12 @@ import type { WithAPIErrorResponse } from "@app/types";
  *               conversationId:
  *                 type: string
  *                 description: Optional conversation ID for context
+ *               serverName:
+ *                 type: string
+ *                 description: Optional name of the MCP server (e.g., "Notion", "GitHub")
+ *               serverIcon:
+ *                 type: string
+ *                 description: Optional icon identifier for the MCP server
  *     responses:
  *       200:
  *         description: File uploaded successfully
@@ -73,7 +79,8 @@ async function handler(
     });
   }
 
-  const { serverViewId, externalId, conversationId } = req.body;
+  const { serverViewId, externalId, conversationId, serverName, serverIcon } =
+    req.body;
 
   if (typeof serverViewId !== "string" || serverViewId.length < 1) {
     return apiError(req, res, {
@@ -105,6 +112,26 @@ async function handler(
     });
   }
 
+  if (serverName !== undefined && typeof serverName !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "serverName must be a string.",
+      },
+    });
+  }
+
+  if (serverIcon !== undefined && typeof serverIcon !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "serverIcon must be a string.",
+      },
+    });
+  }
+
   const tokenResult = await getToolAccessToken({ auth, serverViewId });
   if (tokenResult.isErr()) {
     return apiError(req, res, {
@@ -124,6 +151,8 @@ async function handler(
     externalId,
     conversationId,
     metadata,
+    serverName,
+    serverIcon,
   });
 
   if (result.isErr()) {

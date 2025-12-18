@@ -909,6 +909,8 @@ const FileContentFragmentSchema = z.union([
     generatedTables: z.array(z.string()),
     textUrl: z.string(),
     textBytes: z.number().nullable(),
+    sourceProvider: z.string().nullable(),
+    sourceIcon: z.string().nullable(),
   }),
   BaseContentFragmentSchema.extend({
     contentFragmentType: z.literal("file"),
@@ -918,6 +920,8 @@ const FileContentFragmentSchema = z.union([
     generatedTables: z.array(z.never()),
     textUrl: z.null(),
     textBytes: z.null(),
+    sourceProvider: z.null(),
+    sourceIcon: z.null(),
   }),
 ]);
 
@@ -2662,6 +2666,8 @@ export const FileUploadUrlRequestSchema = z.object({
   useCaseMetadata: z
     .object({
       conversationId: z.string(),
+      sourceProvider: z.string().optional(),
+      sourceIcon: z.string().optional(),
     })
     .optional(),
 });
