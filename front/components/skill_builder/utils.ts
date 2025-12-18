@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
+import type { PostSkillSuggestionsRequestBody } from "@app/pages/api/w/[wId]/builder/skills/suggestions";
 import type { APIError, Result, WorkspaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 interface SkillDescriptionSuggestionResponse {
   suggestion: string;
@@ -27,12 +28,12 @@ export async function getSkillDescriptionSuggestion({
           instructions,
           agentFacingDescription,
           tools,
-        }),
+        } satisfies PostSkillSuggestionsRequestBody),
       }
     );
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
+      const errorData = await res.json();
       return new Err({
         type: "internal_server_error",
         message:
@@ -46,10 +47,7 @@ export async function getSkillDescriptionSuggestion({
   } catch (error) {
     return new Err({
       type: "internal_server_error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Network error while getting description suggestion",
+      message: normalizeError(error).message,
     });
   }
 }
