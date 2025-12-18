@@ -285,6 +285,13 @@ function UpdateConnectionOAuthModal({
     disabled: !isSlack || !slackCredentialId,
   });
 
+  // TODO(slackstorm 2025-12-18): Decide if we want to migrate existing slack connections to the new model. Remove all those flags if it's the case.
+  const MIGRATE_LEGACY_SLACK_APPS = false;
+  const showSlackAppMigrationDisclaimer =
+    MIGRATE_LEGACY_SLACK_APPS && isLegacySlackApp;
+  const showSlackOauthExtraComponent =
+    MIGRATE_LEGACY_SLACK_APPS || !isLegacySlackApp;
+
   if (!connectorProvider || !user) {
     return null;
   }
@@ -313,7 +320,7 @@ function UpdateConnectionOAuthModal({
             />
           </div>
 
-          {isLegacySlackApp && (
+          {showSlackAppMigrationDisclaimer && (
             <div className="mt-4">
               <ContentMessage
                 size="md"
@@ -421,13 +428,14 @@ function UpdateConnectionOAuthModal({
             </ContentMessage>
           </div>
         )}
-        {connectorUIConfiguration.oauthExtraConfigComponent && (
-          <connectorUIConfiguration.oauthExtraConfigComponent
-            extraConfig={extraConfig}
-            setExtraConfig={setExtraConfig}
-            setIsExtraConfigValid={setIsExtraConfigValid}
-          />
-        )}
+        {connectorUIConfiguration.oauthExtraConfigComponent &&
+          showSlackOauthExtraComponent && (
+            <connectorUIConfiguration.oauthExtraConfigComponent
+              extraConfig={extraConfig}
+              setExtraConfig={setExtraConfig}
+              setIsExtraConfigValid={setIsExtraConfigValid}
+            />
+          )}
 
         <div className="flex items-center justify-center">
           <Dialog>
