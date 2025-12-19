@@ -53,6 +53,8 @@ export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
+  static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =
+    ShareableFileModel;
 
   constructor(
     model: ModelStaticWorkspaceAware<FileModel>,
@@ -135,8 +137,11 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    const shareableFile = await ShareableFileModel.findOne({
+    const shareableFile = await this.shareableFileModel.findOne({
       where: { token },
+      // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
+      // point we don't know the workspaceId.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {
       return null;
@@ -223,7 +228,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
-    await ShareableFileModel.destroy({
+    await this.shareableFileModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
@@ -243,7 +248,7 @@ export class FileResource extends BaseResource<FileModel> {
   ) {
     // We don't actually delete, instead we set the userId field to null.
 
-    await ShareableFileModel.update(
+    await this.shareableFileModel.update(
       {
         sharedBy: null,
       },
@@ -285,7 +290,7 @@ export class FileResource extends BaseResource<FileModel> {
           .delete({ ignoreNotFound: true });
 
         // Delete the shareable file record.
-        await ShareableFileModel.destroy({
+        await FileResource.shareableFileModel.destroy({
           where: {
             fileId: this.id,
             workspaceId: this.workspaceId,
@@ -342,7 +347,7 @@ export class FileResource extends BaseResource<FileModel> {
     // For Interactive Content conversation files, automatically create a ShareableFileModel with
     // default workspace scope.
     if (this.isInteractiveContent) {
-      await ShareableFileModel.upsert({
+      await FileResource.shareableFileModel.upsert({
         fileId: this.id,
         shareScope: "workspace",
         sharedBy: this.userId ?? null,
@@ -583,19 +588,21 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing logic.
 
-  private getShareUrlForShareableFile(
-    shareableFile: ShareableFileModel
-  ): string {
+  private getShareUrlForShareableFile({
+    shareableFileToken,
+  }: {
+    shareableFileToken: string;
+  }): string {
     assert(
       this.isInteractiveContent,
       "getShareUrlForShareableFile called on non-interactive content file"
     );
 
     if (this.contentType === frameContentType) {
-      return `${config.getClientFacingUrl()}/share/frame/${shareableFile.token}`;
+      return `${config.getClientFacingUrl()}/share/frame/${shareableFileToken}`;
     }
 
-    return `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`;
+    return `${config.getClientFacingUrl()}/share/file/${shareableFileToken}`;
   }
 
   async setShareScope(
@@ -610,7 +617,7 @@ export class FileResource extends BaseResource<FileModel> {
     const user = auth.getNonNullableUser();
 
     // Always update the existing ShareableFileModel record (never delete).
-    const existingShare = await ShareableFileModel.findOne({
+    const existingShare = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
     });
 
@@ -635,7 +642,7 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    const shareableFile = await ShareableFileModel.findOne({
+    const shareableFile = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
     });
 
@@ -643,7 +650,9 @@ export class FileResource extends BaseResource<FileModel> {
       return {
         scope: shareableFile.shareScope,
         sharedAt: shareableFile.sharedAt,
-        shareUrl: this.getShareUrlForShareableFile(shareableFile),
+        shareUrl: this.getShareUrlForShareableFile({
+          shareableFileToken: shareableFile.token,
+        }),
       };
     }
 
@@ -652,7 +661,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   static async revokePublicSharingInWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    return ShareableFileModel.update(
+    return FileResource.shareableFileModel.update(
       {
         shareScope: "workspace",
       },
