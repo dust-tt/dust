@@ -1,10 +1,5 @@
-import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import {
-  shouldSendNotificationForAgentAnswer,
-  triggerConversationUnreadNotifications,
-} from "@app/lib/notifications/workflows/conversation-unread";
+import type { Authenticator } from "@app/lib/auth";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -13,39 +8,9 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
  * Activity to send conversation unread notifications.
  */
 export async function sendUnreadConversationNotificationActivity(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  // Construct back an authenticator from the auth type.
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.error(
-      { authType, error: authResult.error },
-      "Failed to construct authenticator from auth type"
-    );
-    return;
-  }
-
-  const auth = authResult.value;
-  if (!isUserMessageOrigin(agentLoopArgs.userMessageOrigin)) {
-    logger.info(
-      { userMessageOrigin: agentLoopArgs.userMessageOrigin },
-      "User message origin is not a valid origin."
-    );
-    return;
-  }
-
-  // Check if the user message origin is valid for sending notifications.
-  if (!shouldSendNotificationForAgentAnswer(agentLoopArgs.userMessageOrigin)) {
-    return;
-  }
-
-  // Check if the workspace has notifications enabled.
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("notifications")) {
-    return;
-  }
-
   // Get conversation participants
   const conversation = await ConversationResource.fetchById(
     auth,
