@@ -141,7 +141,13 @@ export abstract class LLM {
           ? `apiKeyId:${this.authenticator.key()?.id}`
           : null,
         `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
-        `operationType:${this.context.operationType}`,
+        // Dynamic tags from all context fields (except userId and workspaceId).
+        ...Object.entries(this.context)
+          .filter(
+            ([key, value]) =>
+              value !== undefined && !["userId", "workspaceId"].includes(key)
+          )
+          .map(([key, value]) => `${key}:${value}`),
       ]),
       metadata: {
         dustTraceId: this.traceId,

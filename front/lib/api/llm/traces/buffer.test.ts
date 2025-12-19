@@ -84,7 +84,7 @@ function createTestBuffer(traceId?: LLMTraceId, workspaceId?: string) {
     workspaceId ?? faker.string.uuid(),
     {
       operationType: "agent_conversation",
-      contextId: faker.string.uuid(),
+      conversationId: faker.string.uuid(),
       userId: faker.string.uuid(),
     }
   );
