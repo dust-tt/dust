@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import type { DisplayMode } from "@app/components/workspace/ProgrammaticCostChart";
 import {
   BaseProgrammaticCostChart,
   formatPeriod,
@@ -26,6 +27,7 @@ export function PokeProgrammaticCostChart({
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
 
   // Initialize selectedPeriod to a date within the current billing cycle.
   // Using just formatPeriod(now) would create a date on the 1st of the month,
@@ -65,6 +67,8 @@ export function PokeProgrammaticCostChart({
       selectedPeriod={selectedPeriod}
       setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
+      displayMode={displayMode}
+      setDisplayMode={setDisplayMode}
     />
   );
 }

@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -48,6 +50,8 @@ interface ProgrammaticCostChartProps {
   billingCycleStartDay: number;
 }
 
+export type DisplayMode = "cumulative" | "daily";
+
 export interface BaseProgrammaticCostChartProps {
   programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
   isProgrammaticCostLoading: boolean;
@@ -61,6 +65,8 @@ export interface BaseProgrammaticCostChartProps {
   selectedPeriod: string;
   setSelectedPeriod: (period: string) => void;
   billingCycleStartDay: number;
+  displayMode: DisplayMode;
+  setDisplayMode: (mode: DisplayMode) => void;
 }
 
 type ChartDataPoint = {
@@ -101,7 +107,9 @@ function getColorClassName(
 function GroupedTooltip(
   props: TooltipContentProps<number, string>,
   groupBy: GroupByType | undefined,
-  availableGroupsArray: { groupKey: string; groupLabel: string }[]
+  availableGroupsArray: { groupKey: string; groupLabel: string }[],
+  displayMode: DisplayMode,
+  shouldShowTotalCredits: boolean
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -118,7 +126,8 @@ function GroupedTooltip(
       (p) =>
         p.dataKey !== "totalCreditsMicroUsd" &&
         p.value != null &&
-        typeof p.value === "number"
+        typeof p.value === "number" &&
+        p.value > 0
     )
     .map((p) => {
       const groupKey = p.name;
@@ -145,16 +154,24 @@ function GroupedTooltip(
       };
     });
 
-  // Add credits row
-  rows.push({
-    label: "Total Credits",
-    value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
-    colorClassName: COST_PALETTE.totalCredits,
-  });
+  // Add credits row only in cumulative mode
+  if (shouldShowTotalCredits) {
+    rows.push({
+      label: "Total Credits",
+      value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
+      colorClassName: COST_PALETTE.totalCredits,
+    });
+  }
+
+  // Don't show tooltip if no data at all (e.g., empty bar), but allow Total Credits-only tooltip
+  if (rows.length === 0) {
+    return null;
+  }
+
   const date = new Date(data.timestamp).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    hour: "numeric",
+    hour: displayMode === "cumulative" ? "numeric" : undefined,
   });
   return <ChartTooltipCard title={date} rows={rows} />;
 }
@@ -167,6 +184,14 @@ export function formatPeriod(date: Date): string {
  * Base chart component that renders the programmatic cost chart.
  * This component is agnostic of how the data is fetched.
  */
+const DISPLAY_MODE_OPTIONS: {
+  value: DisplayMode;
+  label: string;
+}[] = [
+  { value: "cumulative", label: "Cumulative" },
+  { value: "daily", label: "Daily" },
+];
+
 export function BaseProgrammaticCostChart({
   programmaticCostData,
   isProgrammaticCostLoading,
@@ -178,6 +203,8 @@ export function BaseProgrammaticCostChart({
   selectedPeriod,
   setSelectedPeriod,
   billingCycleStartDay,
+  displayMode,
+  setDisplayMode,
 }: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
   const [labelCache, setLabelCache] = useState<
@@ -369,6 +396,10 @@ export function BaseProgrammaticCostChart({
   }, [programmaticCostData]);
 
   const shouldShowTotalCredits = useMemo(() => {
+    // Total credits only make sense in cumulative mode.
+    if (displayMode !== "cumulative") {
+      return false;
+    }
     // Don't show total credits when a filter is applied, since credits are global
     // but the cumulative cost shown would be filtered.
     if (hasFilters) {
@@ -383,7 +414,7 @@ export function BaseProgrammaticCostChart({
       (point) =>
         point.totalRemainingCreditsMicroUsd > 4 * (maxCumulatedCost ?? 0)
     );
-  }, [points, maxCumulatedCost, now, hasFilters]);
+  }, [points, maxCumulatedCost, now, hasFilters, displayMode]);
 
   // Add Total Credits to legend (not clickable)
   if (shouldShowTotalCredits) {
@@ -395,28 +426,61 @@ export function BaseProgrammaticCostChart({
     });
   }
 
-  const chartData = points.map((point) => {
-    const dataPoint: ChartDataPoint = {
-      timestamp: point.timestamp,
-    };
+  const chartData = useMemo(() => {
+    if (displayMode === "cumulative") {
+      // Cumulative mode: use each 4-hour point as-is
+      return points.map((point) => {
+        const dataPoint: ChartDataPoint = {
+          timestamp: point.timestamp,
+        };
 
-    // Compute total credits as present cumulative cost + remaining credits at that timestamp.
-    // This avoids showing a total credits line below cumulative cost when credits expire
-    // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
-    // usage is still in cumulative cost)--and vice versa in the past when credits are created.
-    dataPoint.totalCreditsMicroUsd =
-      (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
+        // Compute total credits as present cumulative cost + remaining credits at that timestamp.
+        // This avoids showing a total credits line below cumulative cost when credits expire
+        // (expired credits are no longer in totalInitialCreditsMicroUsd but their consumed
+        // usage is still in cumulative cost)--and vice versa in the past when credits are created.
+        dataPoint.totalCreditsMicroUsd =
+          (maxCumulatedCost ?? 0) + point.totalRemainingCreditsMicroUsd;
 
-    // Add each group's cumulative cost to the data point using labels from availableGroups
-    // Keep undefined values as-is so Recharts doesn't render those points
-    point.groups.forEach((g) => {
-      dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
-    });
+        // Add each group's cumulative cost
+        point.groups.forEach((g) => {
+          dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
+        });
 
-    return dataPoint;
-  });
+        return dataPoint;
+      });
+    }
 
-  const ChartComponent = groupBy ? AreaChart : LineChart;
+    // Daily mode: aggregate 4-hour points into daily totals
+    const dailyMap = new Map<number, ChartDataPoint>();
+
+    for (const point of points) {
+      // Get start of day (midnight UTC) for this point
+      const date = new Date(point.timestamp);
+      date.setUTCHours(0, 0, 0, 0);
+      const dayTimestamp = date.getTime();
+
+      let dayPoint = dailyMap.get(dayTimestamp);
+      if (!dayPoint) {
+        dayPoint = { timestamp: dayTimestamp };
+        dailyMap.set(dayTimestamp, dayPoint);
+      }
+
+      // Sum up costs for each group
+      for (const g of point.groups) {
+        const currentValue = (dayPoint[g.groupKey] as number) ?? 0;
+        dayPoint[g.groupKey] = currentValue + g.costMicroUsd;
+      }
+    }
+
+    // Convert map to sorted array
+    return Array.from(dailyMap.values()).sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
+  }, [points, displayMode, maxCumulatedCost]);
+
+  // Daily mode uses BarChart, cumulative mode uses AreaChart (grouped) or LineChart (global)
+  const ChartComponent =
+    displayMode === "daily" ? BarChart : groupBy ? AreaChart : LineChart;
 
   // Filter to only show ticks for midnight dates
   const midnightTicks = useMemo(() => {
@@ -527,6 +591,28 @@ export function BaseProgrammaticCostChart({
             <DropdownMenuTrigger asChild>
               <Button
                 label={
+                  DISPLAY_MODE_OPTIONS.find((opt) => opt.value === displayMode)
+                    ?.label ?? "Cumulative"
+                }
+                size="xs"
+                variant="outline"
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {DISPLAY_MODE_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  label={option.label}
+                  onClick={() => setDisplayMode(option.value)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                label={
                   groupBy
                     ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
                         ?.label
@@ -607,7 +693,13 @@ export function BaseProgrammaticCostChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>
-            GroupedTooltip(props, groupBy, availableGroupsArray)
+            GroupedTooltip(
+              props,
+              groupBy,
+              availableGroupsArray,
+              displayMode,
+              shouldShowTotalCredits
+            )
           }
           cursor={false}
           wrapperStyle={{ outline: "none" }}
@@ -624,6 +716,18 @@ export function BaseProgrammaticCostChart({
             groupKey,
             allGroupKeys
           );
+
+          if (displayMode === "daily") {
+            return (
+              <Bar
+                key={groupKey}
+                dataKey={groupKey}
+                stackId={groupBy ? "cost" : undefined}
+                fill="currentColor"
+                className={colorClassName}
+              />
+            );
+          }
 
           return groupBy ? (
             <Area
@@ -681,6 +785,7 @@ export function ProgrammaticCostChart({
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
 
   // Initialize selectedPeriod to a date within the current billing cycle.
   // Using just formatPeriod(now) would create a date on the 1st of the month,
@@ -721,6 +826,8 @@ export function ProgrammaticCostChart({
       selectedPeriod={selectedPeriod}
       setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
+      displayMode={displayMode}
+      setDisplayMode={setDisplayMode}
     />
   );
 }
