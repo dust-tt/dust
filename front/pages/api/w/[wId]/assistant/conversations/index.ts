@@ -61,6 +61,12 @@ async function handler(
       return;
 
     case "POST":
+      // Normalize spaceId: undefined -> null for backward compatibility
+      // (users who haven't refreshed their browser may send undefined)
+      if (req.body && req.body.spaceId === undefined) {
+        req.body.spaceId = null;
+      }
+
       const bodyValidation = InternalPostConversationsRequestBodySchema.decode(
         req.body
       );
