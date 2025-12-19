@@ -1,10 +1,19 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
-import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import {
+  AGENT_TOOL_OUTPUTS_ALIAS_NAME,
+  ANALYTICS_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import {
+  AgentMCPActionOutputItemModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -14,6 +23,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -27,6 +37,7 @@ import type {
   AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
+  AgentRetrievalOutputAnalyticsData,
 } from "@app/types/assistant/analytics";
 
 export async function storeAgentAnalyticsActivity(
@@ -187,6 +198,20 @@ export async function storeAgentAnalytics(
   };
 
   await storeToElasticsearch(document);
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("agent_tool_outputs_analytics")) {
+    const toolOutputs = await extractRetrievalOutputs(auth, {
+      agentMessageRow,
+      agentAgentMessageRow,
+      conversationRow,
+      actions,
+    });
+
+    if (toolOutputs.length > 0) {
+      await storeRetrievalOutputsToElasticsearch(toolOutputs);
+    }
+  }
 }
 
 /**
@@ -278,6 +303,158 @@ async function collectToolUsageFromMessage(
   });
 }
 
+async function extractRetrievalOutputs(
+  auth: Authenticator,
+  {
+    agentMessageRow,
+    agentAgentMessageRow,
+    conversationRow,
+    actions,
+  }: {
+    agentMessageRow: MessageModel;
+    agentAgentMessageRow: AgentMessageModel;
+    conversationRow: ConversationModel;
+    actions: AgentMCPActionResource[];
+  }
+): Promise<AgentRetrievalOutputAnalyticsData[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const searchActions = actions.filter((action) =>
+    isLightServerSideMCPToolConfiguration(action.toolConfiguration)
+  );
+
+  if (searchActions.length === 0) {
+    return [];
+  }
+
+  const outputItems = await AgentMCPActionOutputItemModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      agentMCPActionId: searchActions.map((a) => a.id),
+    },
+  });
+
+  const outputItemsByActionId = new Map<
+    number,
+    AgentMCPActionOutputItemModel[]
+  >();
+  for (const item of outputItems) {
+    const existing = outputItemsByActionId.get(item.agentMCPActionId);
+    if (existing) {
+      existing.push(item);
+    } else {
+      outputItemsByActionId.set(item.agentMCPActionId, [item]);
+    }
+  }
+
+  const configIds = Array.from(
+    new Set(searchActions.map((a) => a.mcpServerConfigurationId))
+  );
+
+  const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      id: configIds,
+    },
+  });
+
+  const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
+
+  const dataSourceViewIds = new Set<string>();
+  for (const action of searchActions) {
+    if (!isLightServerSideMCPToolConfiguration(action.toolConfiguration)) {
+      continue;
+    }
+    const { toolConfiguration } = action;
+    if (toolConfiguration.dataSources) {
+      toolConfiguration.dataSources.forEach((ds) => {
+        dataSourceViewIds.add(ds.dataSourceViewId);
+      });
+    }
+  }
+
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    Array.from(dataSourceViewIds)
+  );
+
+  const dataSourceViewMap = new Map<
+    string,
+    { dataSourceId: string; dataSourceName: string }
+  >();
+
+  for (const dsv of dataSourceViews) {
+    const { dataSource } = dsv;
+    if (dataSource) {
+      dataSourceViewMap.set(dsv.sId, {
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        dataSourceName: dataSource.name,
+      });
+    }
+  }
+
+  const documents: AgentRetrievalOutputAnalyticsData[] = [];
+
+  for (const action of searchActions) {
+    const actionOutputItems = outputItemsByActionId.get(action.id);
+    if (!actionOutputItems) {
+      continue;
+    }
+
+    const config = configMap.get(action.mcpServerConfigurationId);
+    if (!config) {
+      continue;
+    }
+
+    if (!isLightServerSideMCPToolConfiguration(action.toolConfiguration)) {
+      continue;
+    }
+    const toolConfig = action.toolConfiguration;
+
+    if (!toolConfig.dataSources || toolConfig.dataSources.length === 0) {
+      continue;
+    }
+
+    for (const outputItem of actionOutputItems) {
+      if (!isSearchResultResourceType(outputItem.content)) {
+        continue;
+      }
+
+      const searchResult = outputItem.content.resource;
+
+      for (const dsConfig of toolConfig.dataSources) {
+        const dsInfo = dataSourceViewMap.get(dsConfig.dataSourceViewId);
+        if (!dsInfo) {
+          continue;
+        }
+
+        documents.push({
+          message_id: agentMessageRow.sId,
+          workspace_id: workspace.sId,
+          conversation_id: conversationRow.sId,
+          agent_id: agentAgentMessageRow.agentConfigurationId,
+          agent_version:
+            agentAgentMessageRow.agentConfigurationVersion.toString(),
+          timestamp: new Date(agentMessageRow.createdAt).toISOString(),
+          mcp_server_configuration_id: config.sId,
+          mcp_server_name:
+            action.metadata.internalMCPServerName ??
+            action.metadata.mcpServerId ??
+            "unknown",
+          data_source_view_id: dsConfig.dataSourceViewId,
+          data_source_id: dsInfo.dataSourceId,
+          data_source_name: dsInfo.dataSourceName,
+          document_id: searchResult.id,
+        });
+
+        break;
+      }
+    }
+  }
+
+  return documents;
+}
+
 function makeAgentMessageAnalyticsDocumentId({
   messageId,
   version,
@@ -308,6 +485,47 @@ async function storeToElasticsearch(
       id: documentId,
       body: document,
     });
+  });
+}
+
+function makeRetrievalOutputDocumentId({
+  workspaceId,
+  messageId,
+  documentId,
+  dataSourceViewId,
+}: {
+  workspaceId: string;
+  messageId: string;
+  documentId: string;
+  dataSourceViewId: string;
+}): string {
+  return `${workspaceId}_${messageId}_${dataSourceViewId}_${documentId}`;
+}
+
+async function storeRetrievalOutputsToElasticsearch(
+  documents: AgentRetrievalOutputAnalyticsData[]
+): Promise<void> {
+  if (documents.length === 0) {
+    return;
+  }
+
+  await withEs(async (client) => {
+    const bulkBody = documents.flatMap((doc) => [
+      {
+        index: {
+          _index: AGENT_TOOL_OUTPUTS_ALIAS_NAME,
+          _id: makeRetrievalOutputDocumentId({
+            workspaceId: doc.workspace_id,
+            messageId: doc.message_id,
+            documentId: doc.document_id,
+            dataSourceViewId: doc.data_source_view_id,
+          }),
+        },
+      },
+      doc,
+    ]);
+
+    await client.bulk({ body: bulkBody });
   });
 }
 
