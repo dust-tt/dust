@@ -1,8 +1,10 @@
 import {
+  BookOpenIcon,
   Button,
   Card,
   CardActionButton,
   CardGrid,
+  ContentMessage,
   EmptyCTA,
   Spinner,
   ToolsIcon,
@@ -18,21 +20,19 @@ import type {
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
 import type { CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { getSkillIcon } from "@app/lib/skill";
-import type { UserType, WorkspaceType } from "@app/types";
-
-const BACKGROUND_IMAGE_PATH = "/static/SkillsBar.svg";
-const BACKGROUND_IMAGE_STYLE_PROPS = {
-  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 14px",
-  backgroundSize: "auto 60px",
-  paddingTop: "90px",
-};
+import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
+import { pluralize } from "@app/types";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -71,22 +71,37 @@ function SkillCard({ skill, onRemove }: SkillCardProps) {
   );
 }
 
+function ActionButtons({
+  onClickKnowledge,
+  onClickCapability,
+}: {
+  onClickKnowledge: () => void;
+  onClickCapability: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        onClick={onClickKnowledge}
+        label="Add knowledge"
+        icon={BookOpenIcon}
+        variant="primary"
+      />
+      <Button
+        type="button"
+        onClick={onClickCapability}
+        label="Add capabilities"
+        icon={ToolsIcon}
+        variant="outline"
+      />
+    </div>
+  );
+}
+
 interface AgentBuilderSkillsBlockProps {
   isSkillsLoading?: boolean;
   owner: WorkspaceType;
   user: UserType;
-}
-
-function AddSkillsButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button
-      type="button"
-      onClick={onClick}
-      label="Add skills"
-      icon={ToolsIcon}
-      variant="primary"
-    />
-  );
 }
 
 export function AgentBuilderSkillsBlock({
@@ -94,14 +109,27 @@ export function AgentBuilderSkillsBlock({
   owner,
   user,
 }: AgentBuilderSkillsBlockProps) {
-  const { setValue, watch } = useFormContext<AgentBuilderFormData>();
-  const { fields, remove } = useFieldArray<AgentBuilderFormData, "skills">({
+  const { getValues, setValue, watch } = useFormContext<AgentBuilderFormData>();
+  const { fields: skillFields, remove: removeSkill } = useFieldArray<
+    AgentBuilderFormData,
+    "skills"
+  >({
     name: "skills",
+  });
+  const {
+    fields: actionFields,
+    remove: removeAction,
+    append: appendAction,
+    update: updateAction,
+  } = useFieldArray<AgentBuilderFormData, "actions">({
+    name: "actions",
   });
 
   // TODO(skills Jules): make a pass on the way we use reacthookform here
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const { mcpServerViewsWithKnowledge, mcpServerViews } =
+    useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
+  const { spaces } = useSpacesContext();
 
   const actions = watch("actions");
   const selectedSkills = watch("skills");
@@ -130,19 +158,52 @@ export function AgentBuilderSkillsBlock({
     return actionRequestedSpaceIds;
   }, [actions, mcpServerViews, selectedSkills, allSkills]);
 
-  const [sheetMode, setSheetMode] = useState<CapabilitiesSheetMode | null>(
-    null
-  );
+  const spaceIdToActions = useMemo(() => {
+    return getSpaceIdToActionsMap(actions, mcpServerViews);
+  }, [actions, mcpServerViews]);
 
-  const handleOpenSheet = useCallback(() => {
-    setSheetMode({
-      pageId: "selection",
-    });
-  }, []);
+  const nonGlobalSpacesUsedInActions = useMemo(() => {
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
+  }, [spaceIdToActions, spaces]);
 
-  const handleCloseSheet = useCallback(() => {
-    setSheetMode(null);
-  }, []);
+  const [capabillitiesSheetMode, setCapabilitiesSheetMode] =
+    useState<CapabilitiesSheetMode | null>(null);
+  const [knowledgeAction, setKnowledgeAction] = useState<{
+    action: BuilderAction;
+    index: number | null;
+    presetData?: TemplateActionPreset;
+  } | null>(null);
+
+  const handleToolEditSave = (updatedAction: BuilderAction) => {
+    if (capabillitiesSheetMode?.pageId === "tool_edit") {
+      updateAction(capabillitiesSheetMode.index, updatedAction);
+    } else if (knowledgeAction && knowledgeAction.index !== null) {
+      updateAction(knowledgeAction.index, updatedAction);
+    } else {
+      appendAction(updatedAction);
+    }
+    setCapabilitiesSheetMode(null);
+    setKnowledgeAction(null);
+  };
+
+  const handleActionEdit = (action: BuilderAction, index: number) => {
+    const mcpServerView = mcpServerViewsWithKnowledge.find(
+      (view) => view.sId === action.configuration?.mcpServerViewId
+    );
+    const isDataSourceSelectionRequired =
+      action.type === "MCP" && Boolean(mcpServerView);
+
+    if (isDataSourceSelectionRequired) {
+      setKnowledgeAction({ action, index });
+    } else {
+      setCapabilitiesSheetMode(
+        action.configurationRequired
+          ? { pageId: "tool_edit", capability: action, index }
+          : { pageId: "tool_info", capability: action, hasPreviousPage: false }
+      );
+    }
+  };
 
   const handleSaveSkills = useCallback(
     (skills: AgentBuilderSkillsType[], newAdditionalSpaces: string[]) => {
@@ -152,12 +213,42 @@ export function AgentBuilderSkillsBlock({
     [setValue]
   );
 
+  const handleClickKnowledge = () => {
+    // We don't know which action will be selected so we will create a generic MCP action.
+    const action = getDefaultMCPAction();
+
+    setKnowledgeAction({
+      action: {
+        ...action,
+        configurationRequired: true, // it's always required for knowledge
+      },
+      index: null,
+    });
+  };
+
+  const handleClickCapability = () => {
+    setCapabilitiesSheetMode({ pageId: "selection" });
+  };
+
+  const handleCloseSheet = useCallback(() => {
+    setCapabilitiesSheetMode(null);
+    setKnowledgeAction(null);
+  }, []);
+
+  const hasCapabilitiesConfigured =
+    actionFields.length > 0 || skillFields.length > 0;
+
   return (
     <AgentBuilderSectionContainer
       title="Skills"
       description="Give your agent a custom capability for specific tasks"
       headerActions={
-        fields.length > 0 && <AddSkillsButton onClick={handleOpenSheet} />
+        hasCapabilitiesConfigured && (
+          <ActionButtons
+            onClickKnowledge={handleClickKnowledge}
+            onClickCapability={handleClickCapability}
+          />
+        )
       }
     >
       <div className="flex-1">
@@ -165,29 +256,67 @@ export function AgentBuilderSkillsBlock({
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : fields.length === 0 ? (
+        ) : hasCapabilitiesConfigured ? (
+          <>
+            {nonGlobalSpacesUsedInActions.length > 0 && (
+              <div className="mb-4 w-full">
+                <ContentMessage variant="golden" size="lg">
+                  Based on your selection, this agent can only be used by users
+                  with access to space
+                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+                  <strong>
+                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
+                  </strong>
+                  .
+                </ContentMessage>
+              </div>
+            )}
+            <CardGrid>
+              {skillFields.map((field, index) => (
+                <SkillCard
+                  key={field.id}
+                  skill={field}
+                  onRemove={() => removeSkill(index)}
+                />
+              ))}
+              {actionFields.map((field, index) => (
+                <ActionCard
+                  key={field.id}
+                  action={field}
+                  onRemove={() => removeAction(index)}
+                  onEdit={() => handleActionEdit(field, index)}
+                />
+              ))}
+            </CardGrid>
+          </>
+        ) : (
           <EmptyCTA
-            action={<AddSkillsButton onClick={handleOpenSheet} />}
+            action={
+              <ActionButtons
+                onClickKnowledge={handleClickKnowledge}
+                onClickCapability={handleClickCapability}
+              />
+            }
             className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
-        ) : (
-          <CardGrid>
-            {fields.map((field, index) => (
-              <SkillCard
-                key={field.id}
-                skill={field}
-                onRemove={() => remove(index)}
-              />
-            ))}
-          </CardGrid>
         )}
       </div>
+      <KnowledgeConfigurationSheet
+        onClose={handleCloseSheet}
+        onSave={handleToolEditSave}
+        action={knowledgeAction?.action ?? null}
+        actions={actionFields}
+        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
+        mcpServerViews={mcpServerViewsWithKnowledge}
+        getAgentInstructions={() => getValues("instructions")}
+        presetActionData={knowledgeAction?.presetData}
+      />
       <CapabilitiesSheet
-        mode={sheetMode}
+        mode={capabillitiesSheetMode}
         onClose={handleCloseSheet}
         onSave={handleSaveSkills}
-        onModeChange={setSheetMode}
+        onModeChange={setCapabilitiesSheetMode}
         owner={owner}
         user={user}
         initialSelectedSkills={selectedSkills}
