@@ -5,7 +5,6 @@ import debounce from "lodash/debounce";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { isString } from "@app/types";
@@ -75,12 +74,8 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   });
   const [mentionBannerRef, isMentionBannerHovering] = useHover();
   const [wrappedBannerRef, isWrappedBannerHovering] = useHover();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const wrappedUrl = getWrappedUrl(owner);
 
-  const isMentionsEnabled = hasFeature("mentions_v2");
-
-  const canShowMentionBanner = isMentionsEnabled && showMentionBanner;
   const canShowWrappedInAppBanner =
     Boolean(wrappedUrl) && showWrappedInAppBanner;
 
@@ -90,7 +85,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
     <div className="absolute bottom-0 left-0 z-20 w-full">
       <MentionBanner
         showWrappedInAppBanner={canShowWrappedInAppBanner}
-        showMentionBanner={canShowMentionBanner}
+        showMentionBanner={showMentionBanner}
         setShowMentionBanner={setShowMentionBanner}
         isHovering={isHovering}
         mentionBannerRef={mentionBannerRef}
@@ -100,7 +95,7 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
         owner={owner}
         showWrappedInAppBanner={canShowWrappedInAppBanner}
         setShowWrappedInAppBanner={setShowWrappedInAppBanner}
-        showMentionBanner={canShowMentionBanner}
+        showMentionBanner={showMentionBanner}
         isHovering={isHovering}
         wrappedBannerRef={wrappedBannerRef}
       />
