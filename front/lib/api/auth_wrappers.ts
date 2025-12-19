@@ -6,6 +6,7 @@ import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
+  getApiKeyNameFromHeaders,
   getBearerToken,
   getSession,
   isOAuthToken,
@@ -421,6 +422,18 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           )) ?? workspaceAuth;
       }
 
+      // If we have a system key, we can override the key name from http headers.
+      // This is only used for run_agent API call, to keep the original key name and get proper analytics.
+      const apiKeyNameFromHeader = getApiKeyNameFromHeaders(req.headers);
+      const key = workspaceAuth.key();
+      if (apiKeyNameFromHeader && key && key.isSystem) {
+        workspaceAuth = workspaceAuth.exchangeKey({
+          id: key.id,
+          name: apiKeyNameFromHeader,
+          isSystem: key.isSystem,
+          role: key.role,
+        });
+      }
       return handler(
         req,
         res,

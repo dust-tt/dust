@@ -46,6 +46,7 @@ import {
   isAdmin,
   isBuilder,
   isDevelopment,
+  isString,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -54,6 +55,8 @@ import {
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
+
+const DustApiKeyNameHeader = "x-dust-api-key-name";
 
 export type AuthMethodType =
   | "system_api_key"
@@ -673,6 +676,18 @@ export class Authenticator {
     });
   }
 
+  exchangeKey(key: KeyAuthType) {
+    return new Authenticator({
+      authMethod: this.authMethod(),
+      key,
+      role: this._role,
+      groups: this._groups,
+      user: this._user,
+      subscription: this._subscription,
+      workspace: this._workspace,
+    });
+  }
+
   role(): RoleType {
     return this._role;
   }
@@ -1207,4 +1222,25 @@ export async function isRestrictedFromAgentCreation(
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner)
   );
+}
+
+export function getApiKeyNameFromHeaders(headers: {
+  [key: string]: string | string[] | undefined;
+}) {
+  const apiKeyName = headers[DustApiKeyNameHeader];
+  if (isString(apiKeyName)) {
+    return apiKeyName;
+  }
+  return undefined;
+}
+
+export function getApiKeyNameHeader(auth: Authenticator) {
+  const key = auth.key();
+  if (!key || !key.name) {
+    return undefined;
+  }
+
+  return {
+    [DustApiKeyNameHeader]: key.name,
+  };
 }
