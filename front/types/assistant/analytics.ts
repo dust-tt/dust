@@ -49,3 +49,19 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   version: string;
   workspace_id: string;
 }
+
+export interface AgentRetrievalOutputAnalyticsData
+  extends ElasticsearchBaseDocument {
+  message_id: string;
+  workspace_id: string;
+  conversation_id: string;
+  agent_id: string;
+  agent_version: string;
+  timestamp: string; // ISO date string.
+  mcp_server_configuration_id: string;
+  mcp_server_name: string;
+  data_source_view_id: string;
+  data_source_id: string;
+  data_source_name: string;
+  document_id: string;
+}
