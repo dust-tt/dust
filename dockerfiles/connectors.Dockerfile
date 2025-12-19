@@ -17,16 +17,27 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
 COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
-WORKDIR /sdks/js
-COPY /sdks/js/package*.json ./
+# Set up workspace structure
+WORKDIR /app
+COPY /package*.json ./
+COPY /sdks/js/package*.json ./sdks/js/
+COPY /connectors/package*.json ./connectors/
+COPY /sparkle/package*.json ./sparkle/
+COPY /front/package*.json ./front/
+COPY /cli/package*.json ./cli/
+COPY /extension/package*.json ./extension/
+COPY /viz/package*.json ./viz/
+COPY /common/package*.json ./common/
+COPY /eslint-plugin-dust/package*.json ./eslint-plugin-dust/
+RUN npm ci --legacy-peer-deps
+
+# Build SDK (needed by connectors)
+WORKDIR /app/sdks/js
 COPY /sdks/js/ .
-RUN npm ci
 RUN npm run build
 
-WORKDIR /app
-
-COPY /connectors/package*.json ./
-RUN npm ci
+# Copy and build connectors
+WORKDIR /app/connectors
 COPY /connectors/ .
 
 # Remove test files

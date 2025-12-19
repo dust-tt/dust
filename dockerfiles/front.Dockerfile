@@ -8,27 +8,31 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
-WORKDIR /
+WORKDIR /app
 COPY /package*.json ./
-RUN npm ci
+COPY /sdks/js/package*.json ./sdks/js/
+COPY /sparkle/package*.json ./sparkle/
+COPY /front/package*.json ./front/
+COPY /connectors/package*.json ./connectors/
+COPY /cli/package*.json ./cli/
+COPY /extension/package*.json ./extension/
+COPY /viz/package*.json ./viz/
+COPY /common/package*.json ./common/
+COPY /eslint-plugin-dust/package*.json ./eslint-plugin-dust/
+RUN npm ci --legacy-peer-deps
 
 # Build SDK (shared by both front-nextjs and workers)
-WORKDIR /sdks/js
-COPY /sdks/js/package*.json ./
-RUN npm ci
+WORKDIR /app/sdks/js
 COPY /sdks/js/ .
 RUN npm run build
 
-WORKDIR /sparkle
-COPY /sparkle/package*.json ./
-RUN npm ci
+# Build Sparkle (required by front)
+WORKDIR /app/sparkle
 COPY /sparkle/ .
 RUN npm run build
 
-# Install front dependencies and copy source (shared by both)
-WORKDIR /app
-COPY /front/package*.json ./
-RUN npm ci
+# Copy front source
+WORKDIR /app/front
 COPY /front .
 
 # Remove test files (shared optimization)
@@ -116,15 +120,21 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy Next.js standalone output from Next.js-specific build
-COPY --from=front-nextjs-build /app/.next/standalone ./
-COPY --from=front-nextjs-build /app/.next/static ./.next/static
-COPY --from=front-nextjs-build /app/public ./public
+COPY --from=front-nextjs-build /app/front/.next/standalone ./
+COPY --from=front-nextjs-build /app/front/.next/static ./.next/static
+COPY --from=front-nextjs-build /app/front/public ./public
 # Copy admin directory (contains prestop.sh and other scripts)
-COPY --from=base-deps /app/admin ./admin
+COPY --from=base-deps /app/front/admin ./admin
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
-# Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
-COPY --from=base-deps /sdks /sdks
+COPY --from=base-deps /app/front/scripts ./scripts
+# Copy built SDK and Sparkle from base dependencies (maintain workspace paths)
+COPY --from=base-deps /app/sdks/js ./sdks/js
+COPY --from=base-deps /app/sparkle/dist ./sparkle/dist
+COPY --from=base-deps /app/sparkle/package.json ./sparkle/package.json
+# Copy workspace node_modules for module resolution
+COPY --from=base-deps /app/node_modules ./node_modules
+COPY --from=base-deps /app/front/node_modules ./front/node_modules
+COPY --from=base-deps /app/package.json ./package.json
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
@@ -151,14 +161,18 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy worker assets from workers-specific build
-COPY --from=workers-build /app/dist ./dist
-# Copy full dependencies from base dependencies (includes all node_modules)
+COPY --from=workers-build /app/front/dist ./dist
+# Copy workspace structure for proper module resolution
 COPY --from=base-deps /app/node_modules ./node_modules
 COPY --from=base-deps /app/package.json ./package.json
+COPY --from=base-deps /app/front/node_modules ./front/node_modules
+COPY --from=base-deps /app/front/package.json ./front/package.json
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
-# Copy built SDK that workers depend on (maintain absolute path for symlink resolution)
-COPY --from=base-deps /sdks/js /sdks/js
+COPY --from=base-deps /app/front/scripts ./scripts
+# Copy built dependencies (maintain workspace structure)
+COPY --from=base-deps /app/sdks/js ./sdks/js
+COPY --from=base-deps /app/sparkle/dist ./sparkle/dist
+COPY --from=base-deps /app/sparkle/package.json ./sparkle/package.json
 
 # Re-declare build arg needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL

@@ -12,21 +12,19 @@ WORKDIR /dust
 
 COPY . .
 
-# Api client dependencies
-RUN cd sdks/js && npm ci
+# Install all workspace dependencies
+RUN npm ci --legacy-peer-deps
 
-# Connectors dependencies
-RUN cd connectors && npm ci
-
-# Front dependencies
-RUN cd front && npm ci
-
-# Now copy the rest of the code
-
+# Build SDK
 RUN cd sdks/js && npm run build
 
+# Build Sparkle
+RUN cd sparkle && npm run build
+
+# Build connectors
 RUN cd connectors && npm run build
 
+# Build front
 RUN cd front \
   && FRONT_DATABASE_URI="sqlite:foo.sqlite" \
   NODE_OPTIONS="--max-old-space-size=8192" \
