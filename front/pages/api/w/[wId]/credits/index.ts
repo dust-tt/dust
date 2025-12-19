@@ -2,12 +2,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
   CreditDisplayData,
   GetCreditsResponseBody,
+  PendingCreditData,
 } from "@app/types/credits";
 
 async function handler(
@@ -34,13 +37,41 @@ async function handler(
         includeBuyer: true,
       });
 
-      // Transform credits to display format with computed consumed amount.
+      // Transform started credits to display format with computed consumed amount.
       const creditsData: CreditDisplayData[] = credits
-        .filter((credit) => !!credit.startDate)
+        .filter((credit) => credit.startDate !== null)
         .map((credit) => credit.toJSON());
+
+      // Find pending committed credits (not yet started, awaiting payment).
+      const pendingCommittedCredits = credits.filter(
+        (credit) =>
+          credit.startDate === null &&
+          credit.type === "committed" &&
+          credit.invoiceOrLineItemId !== null
+      );
+
+      // Fetch payment URLs for pending credits.
+      const pendingCreditsData: PendingCreditData[] = await concurrentExecutor(
+        pendingCommittedCredits,
+        async (credit) => {
+          const paymentUrl = credit.invoiceOrLineItemId
+            ? await getInvoicePaymentUrl(credit.invoiceOrLineItemId)
+            : null;
+          return {
+            sId: credit.sId,
+            type: credit.type,
+            initialAmountMicroUsd: credit.initialAmountMicroUsd,
+            paymentUrl,
+            createdAt: credit.createdAt.getTime(),
+          };
+        },
+        { concurrency: 8 }
+      );
 
       return res.status(200).json({
         credits: creditsData,
+        pendingCredits:
+          pendingCreditsData.length > 0 ? pendingCreditsData : undefined,
       });
     }
 

@@ -50,6 +50,7 @@ describe("getCreditPurchaseLimits", () => {
   let countEligibleUsersSpy: MockInstance;
   let sumCommittedCreditsSpy: MockInstance;
   let fetchProgrammaticConfigSpy: MockInstance;
+  let listPendingCommittedSpy: MockInstance;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -70,6 +71,10 @@ describe("getCreditPurchaseLimits", () => {
     fetchProgrammaticConfigSpy = vi
       .spyOn(ProgrammaticUsageConfigurationResource, "fetchByWorkspaceId")
       .mockResolvedValue(null);
+
+    listPendingCommittedSpy = vi
+      .spyOn(CreditResource, "listPendingCommitted")
+      .mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -77,6 +82,7 @@ describe("getCreditPurchaseLimits", () => {
     countEligibleUsersSpy.mockRestore();
     sumCommittedCreditsSpy.mockRestore();
     fetchProgrammaticConfigSpy.mockRestore();
+    listPendingCommittedSpy.mockRestore();
   });
 
   describe("Enterprise subscriptions", () => {
@@ -287,6 +293,17 @@ describe("getCreditPurchaseLimits", () => {
       expect(result).toEqual({
         canPurchase: true,
         maxAmountMicroUsd: 0,
+      });
+    });
+
+    it("should not allow purchase when pending committed credits exist", async () => {
+      listPendingCommittedSpy.mockResolvedValue([{ id: 1 } as CreditResource]);
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: false,
+        reason: "pending_payment",
       });
     });
   });

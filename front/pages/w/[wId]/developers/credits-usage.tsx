@@ -331,7 +331,7 @@ export default function CreditsUsagePage({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const { credits, isCreditsLoading } = useCredits({
+  const { credits, pendingCredits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
   });
 
@@ -510,6 +510,41 @@ export default function CreditsUsagePage({
               your payment method is up to date.
             </ContentMessage>
           )}
+
+        {pendingCredits.length > 0 &&
+          (() => {
+            const totalPendingMicroUsd = pendingCredits.reduce(
+              (sum, c) => sum + c.initialAmountMicroUsd,
+              0
+            );
+            const isSingle = pendingCredits.length === 1;
+            const title = isSingle
+              ? `You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} credit purchase awaiting payment.`
+              : `You have ${pendingCredits.length} pending credit purchases totaling ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} awaiting payment.`;
+
+            return (
+              <ContentMessage
+                title={title}
+                variant="info"
+                size="lg"
+                icon={ExclamationCircleIcon}
+              >
+                <div className="flex items-end justify-between">
+                  <p>Complete your payment to activate your credits.</p>
+                  <Button
+                    label={isSingle ? "Complete Payment" : "Manage Invoices"}
+                    variant="primary"
+                    onClick={() => {
+                      window.open(
+                        `/w/${owner.sId}/subscription/manage`,
+                        "_blank"
+                      );
+                    }}
+                  />
+                </div>
+              </ContentMessage>
+            );
+          })()}
 
         {/* Usage Section */}
         <UsageSection
