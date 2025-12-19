@@ -1,7 +1,7 @@
 import { handleAgentMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { Authenticator } from "@app/lib/auth";
 import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isAgentMessageType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
