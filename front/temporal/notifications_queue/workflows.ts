@@ -1,6 +1,6 @@
 import { proxyActivities, sleep } from "@temporalio/workflow";
 
-import type { Authenticator } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/notifications_queue/activities";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
@@ -16,7 +16,7 @@ const { sendUnreadConversationNotificationActivity } = proxyActivities<
 });
 
 export async function sendUnreadConversationNotificationWorkflow(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   {
     agentLoopArgs,
   }: {
@@ -26,5 +26,5 @@ export async function sendUnreadConversationNotificationWorkflow(
   // Wait before triggering the notification.
   await sleep(NOTIFICATION_DELAY_MS);
 
-  await sendUnreadConversationNotificationActivity(auth, agentLoopArgs);
+  await sendUnreadConversationNotificationActivity(authType, agentLoopArgs);
 }
