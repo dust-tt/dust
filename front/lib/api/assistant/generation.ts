@@ -18,7 +18,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -77,7 +77,7 @@ function constructContextSection({
   return context;
 }
 
-function constructToolsSection({
+async function constructToolsSection({
   hasAvailableActions,
   model,
   agentConfiguration,
@@ -87,7 +87,7 @@ function constructToolsSection({
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
-}): string {
+}): Promise<string> {
   let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
@@ -147,16 +147,50 @@ function constructToolsSection({
   return toolsSection;
 }
 
+/**
+ * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
+ */
+async function getEnabledSkillInstructions(
+  skill: SkillResource,
+  auth: Authenticator
+): Promise<string> {
+  const { name, instructions, extendedSkillId } = skill;
+
+  if (!extendedSkillId) {
+    return `<${name}>\n${instructions}\n</${name}>`;
+  }
+
+  // If this skill extends a global skill, fetch and include its instructions
+  const extendedSkill = await SkillResource.fetchById(auth, extendedSkillId);
+
+  if (!extendedSkill) {
+    return `<${name}>\n${instructions}\n</${name}>`;
+  }
+
+  return [
+    `<${name}>`,
+    `Extends skill:`,
+    `<${extendedSkill.name}>`,
+    extendedSkill.instructions,
+    `</${extendedSkill.name}>`,
+    "with instructions:",
+    instructions,
+    `</${name}>`,
+  ].join("\n");
+}
+
 // TODO(skills): add detailed tools per skill
-function constructSkillsSection({
+async function constructSkillsSection({
   enabledSkills,
   equippedSkills,
   featureFlags,
+  auth,
 }: {
   enabledSkills: SkillResource[];
   equippedSkills: SkillResource[];
   featureFlags: WhitelistableFeature[];
-}): string {
+  auth: Authenticator;
+}): Promise<string> {
   if (!featureFlags.includes("skills")) {
     return "";
   }
@@ -173,9 +207,12 @@ function constructSkillsSection({
   if (enabledSkills && enabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
-    for (const { name, instructions } of enabledSkills) {
-      skillsSection += `<${name}>\n${instructions}\n</${name}>\n`;
-    }
+
+    const skillInstructions = await Promise.all(
+      enabledSkills.map((skill) => getEnabledSkillInstructions(skill, auth))
+    );
+
+    skillsSection += skillInstructions.join("\n");
   }
 
   // Equipped but not yet enabled skills - show name and description only
@@ -332,7 +369,7 @@ function constructInstructionsSection({
  * doesn't need that replacement, and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
-export function constructPromptMultiActions(
+export async function constructPromptMultiActions(
   auth: Authenticator,
   {
     userMessage,
@@ -365,15 +402,7 @@ export function constructPromptMultiActions(
   const owner = auth.workspace();
 
   // Construct each section of the prompt individually, then concatenate them.
-  return [
-    constructContextSection({
-      userMessage,
-      agentConfiguration,
-      model,
-      conversationId,
-      owner,
-      errorContext,
-    }),
+  const [toolsSection, skillsSection] = await Promise.all([
     constructToolsSection({
       hasAvailableActions,
       model,
@@ -384,7 +413,21 @@ export function constructPromptMultiActions(
       enabledSkills,
       equippedSkills,
       featureFlags,
+      auth,
     }),
+  ]);
+
+  return [
+    constructContextSection({
+      userMessage,
+      agentConfiguration,
+      model,
+      conversationId,
+      owner,
+      errorContext,
+    }),
+    toolsSection,
+    skillsSection,
     constructAttachmentsSection(),
     constructPastedContentSection(),
     constructGuidelinesSection({

@@ -259,7 +259,7 @@ export async function runModelActivity(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
-  const prompt = constructPromptMultiActions(auth, {
+  const prompt = await constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
     fallbackPrompt,
