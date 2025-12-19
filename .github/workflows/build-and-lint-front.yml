@@ -3,9 +3,13 @@ name: Lint & Build & Test (front)
 on:
   push:
     paths:
+      - package.json
+      - package-lock.json
       - sdks/js/**
+      - sparkle/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
+      - .github/actions/setup-node-deps/**
 
 permissions:
   contents: read
