@@ -174,6 +174,7 @@ WebCrawlerFolderModel.init(
   {
     sequelize: connectorsSequelize,
     indexes: [
+      // Index uses md5(url) in the database (see migration_110.sql)
       {
         unique: true,
         fields: ["url", "connectorId", "webcrawlerConfigurationId"],
@@ -243,6 +244,7 @@ WebCrawlerPageModel.init(
   {
     sequelize: connectorsSequelize,
     indexes: [
+      // Index uses md5(url) in the database (see migration_110.sql)
       {
         unique: true,
         fields: ["url", "connectorId", "webcrawlerConfigurationId"],
