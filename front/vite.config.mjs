@@ -12,6 +12,12 @@ export default defineConfig({
     passWithNoTests: true,
     exclude: ["**/node_modules/**", "**/dist/**"],
 
+    testTimeout: (function getTestTimeout() {
+      const isDebug =
+        process.env.VITEST_DEBUG === "1" ||
+        process.execArgv?.some((a) => a.includes("--inspect")) === true;
+      return isDebug ? Infinity : 5_000;
+    })(),
     // We use forks by default to isolate tests in separate processes that can rely on CLS for
     // transactions isolation. However, when a debugger is attached (Node --inspect), we switch to
     // a single-threaded pool so breakpoints hit reliably. Vitest runs workers in separate
