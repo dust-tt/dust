@@ -14,6 +14,10 @@ import {
   search as googleDriveSearch,
 } from "@app/lib/providers/google_drive/search";
 import {
+  download as jiraDownload,
+  search as jiraSearch,
+} from "@app/lib/providers/jira/search";
+import {
   download as microsoftDownload,
   search as microsoftSearch,
 } from "@app/lib/providers/microsoft/search";
@@ -42,6 +46,7 @@ import { Err, Ok } from "@app/types";
 const SEARCHABLE_TOOLS = {
   github: { search: githubSearch, download: githubDownload },
   google_drive: { search: googleDriveSearch, download: googleDriveDownload },
+  jira: { search: jiraSearch, download: jiraDownload },
   notion: { search: notionSearch, download: notionDownload },
   microsoft_drive: { search: microsoftSearch, download: microsoftDownload },
   zendesk: { search: zendeskSearch, download: zendeskDownload },

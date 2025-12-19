@@ -26,6 +26,7 @@ import {
   ADFDocumentSchema,
   JiraAttachmentsResultSchema,
   JiraCommentSchema,
+  JiraCommentsListSchema,
   JiraCreateMetaSchema,
   JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
@@ -442,6 +443,34 @@ export async function createComment(
   );
 
   return handleResults(result, null);
+}
+
+export async function getIssueComments({
+  baseUrl,
+  accessToken,
+  issueKey,
+  maxResults = 100,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  issueKey: string;
+  maxResults?: number;
+}): Promise<Result<z.infer<typeof JiraCommentsListSchema>, JiraErrorResult>> {
+  const params = new URLSearchParams({
+    maxResults: String(maxResults),
+    orderBy: "created",
+  });
+
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issue/${issueKey}/comment?${params.toString()}`,
+      accessToken,
+    },
+    JiraCommentsListSchema,
+    { baseUrl }
+  );
+
+  return handleResults(result, { comments: [] });
 }
 
 export async function searchIssues(

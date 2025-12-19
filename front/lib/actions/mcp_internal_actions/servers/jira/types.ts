@@ -100,65 +100,6 @@ export const JiraSortSchema = z.object({
     .describe(`Sort direction. Must be one of: ${SORT_DIRECTIONS.join(", ")}.`),
 });
 
-// Jira entity schemas - shared field definitions
-export const JiraIssueFieldsSchema = z
-  .object({
-    project: z.object({
-      key: z.string(),
-    }),
-    summary: z.string(),
-    description: z
-      .object({
-        type: z.string(),
-        version: z.number(),
-        content: z.array(
-          z.object({
-            type: z.string(),
-            content: z.array(
-              z.object({
-                type: z.string(),
-                text: z.string().optional(),
-              })
-            ),
-          })
-        ),
-      })
-      .nullable(),
-    issuetype: z.object({
-      name: z.string(),
-    }),
-    priority: z.object({
-      name: z.string(),
-    }),
-    assignee: z
-      .object({
-        accountId: z.string(),
-      })
-      .nullable(),
-    reporter: z
-      .object({
-        accountId: z.string(),
-      })
-      .nullable(),
-    labels: z.array(z.string()).nullable(),
-    duedate: z.string().nullable().optional(),
-    parent: z
-      .object({
-        key: z.string(),
-      })
-      .nullable(),
-  })
-  .passthrough();
-
-export const JiraIssueSchema = z
-  .object({
-    id: z.string(),
-    key: z.string(),
-    browseUrl: z.string().optional(),
-    fields: JiraIssueFieldsSchema.deepPartial().optional(),
-  })
-  .passthrough();
-
 export const JiraResourceSchema = z.array(
   z.object({
     id: z.string(),
@@ -210,18 +151,6 @@ export const JiraFieldSchema = z.object({
 });
 
 export const JiraFieldsSchema = z.array(JiraFieldSchema);
-
-export const JiraSearchResultSchema = z.object({
-  issues: z.array(
-    z.object({
-      id: z.string(),
-      key: z.string(),
-      fields: JiraIssueFieldsSchema.deepPartial().optional(),
-    })
-  ),
-  isLast: z.boolean().optional(),
-  nextPageToken: z.string().optional(),
-});
 
 export const JiraUserInfoSchema = z
   .object({
@@ -278,14 +207,11 @@ export const ADFRuleNodeSchema = z.object({
 
 export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
 
-// Base content node with recursive structure
 export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
   z.discriminatedUnion("type", [
-    // Text nodes
     ADFTextNodeSchema,
     ADFHardBreakNodeSchema,
 
-    // Block nodes with content
     z.object({
       type: z.enum([
         "paragraph",
@@ -300,7 +226,6 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
       content: z.array(ADFContentNodeSchema).optional(),
     }),
 
-    // Code block (has text content instead of nested content)
     z.object({
       type: z.literal("codeBlock"),
       attrs: z.record(z.any()).optional(),
@@ -314,10 +239,8 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
         .optional(),
     }),
 
-    // Self-closing nodes
     ADFRuleNodeSchema,
 
-    // Table nodes
     z.object({
       type: z.enum(["table", "tableRow", "tableCell", "tableHeader"]),
       attrs: z.record(z.any()).optional(),
@@ -335,19 +258,6 @@ export const ADFDocumentSchema = z.object({
 });
 
 export type ADFDocument = z.infer<typeof ADFDocumentSchema>;
-
-export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
-  description: true,
-  priority: true,
-  assignee: true,
-  reporter: true,
-  labels: true,
-  parent: true,
-})
-  .extend({
-    description: z.union([z.string(), ADFDocumentSchema]).optional(),
-  })
-  .passthrough(); // Allow custom fields
 
 // Schema for update operations that allows ADF format for description and any string field
 export const JiraUpdateIssueRequestSchema = z
@@ -491,6 +401,22 @@ export const JiraUsersSearchResultSchema = z.array(JiraUserSchema);
 export const JiraCommentSchema = z.object({
   id: z.string(),
   body: ADFDocumentSchema,
+  author: z
+    .object({
+      accountId: z.string(),
+      displayName: z.string().optional(),
+    })
+    .optional(),
+  created: z.string().optional(),
+  updated: z.string().optional(),
+});
+
+// Schema for listing comments response
+export const JiraCommentsListSchema = z.object({
+  comments: z.array(JiraCommentSchema),
+  startAt: z.number().optional(),
+  maxResults: z.number().optional(),
+  total: z.number().optional(),
 });
 
 export const JiraAttachmentSchema = z.object({
@@ -517,6 +443,82 @@ export const JiraIssueWithAttachmentsSchema = z.object({
     attachment: z.array(JiraAttachmentSchema).optional(),
   }),
 });
+
+// Jira entity schemas - shared field definitions
+export const JiraIssueFieldsSchema = z
+  .object({
+    project: z.object({
+      key: z.string(),
+    }),
+    summary: z.string(),
+    description: ADFDocumentSchema.nullable(),
+    issuetype: z.object({
+      name: z.string(),
+    }),
+    status: z.object({
+      name: z.string(),
+    }),
+    priority: z.object({
+      name: z.string(),
+    }),
+    assignee: z
+      .object({
+        accountId: z.string(),
+        displayName: z.string().optional(),
+      })
+      .nullable(),
+    reporter: z
+      .object({
+        accountId: z.string(),
+        displayName: z.string().optional(),
+      })
+      .nullable(),
+    labels: z.array(z.string()).nullable(),
+    duedate: z.string().nullable().optional(),
+    parent: z
+      .object({
+        key: z.string(),
+      })
+      .nullable(),
+    created: z.string().optional(),
+    updated: z.string().optional(),
+  })
+  .passthrough();
+
+export const JiraIssueSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    browseUrl: z.string().optional(),
+    fields: JiraIssueFieldsSchema.deepPartial().optional(),
+  })
+  .passthrough();
+
+export const JiraSearchResultSchema = z.object({
+  issues: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      browseUrl: z.string().optional(),
+      fields: JiraIssueFieldsSchema.deepPartial().optional(),
+    })
+  ),
+  isLast: z.boolean().optional(),
+  nextPageToken: z.string().optional(),
+});
+
+export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
+  description: true,
+  priority: true,
+  assignee: true,
+  reporter: true,
+  labels: true,
+  parent: true,
+})
+  .extend({
+    description: z.union([z.string(), ADFDocumentSchema]).optional(),
+  })
+  .passthrough(); // Allow custom fields
 
 // Inferred types
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
