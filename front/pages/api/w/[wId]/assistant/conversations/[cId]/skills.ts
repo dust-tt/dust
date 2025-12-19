@@ -10,7 +10,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type FetchConversationSkillsResponse = {
