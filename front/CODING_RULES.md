@@ -347,6 +347,29 @@ class Conversation extends Model { }
 class ConversationModel extends Model { }
 ```
 
+### [BACK12] Endpoint backward compatibility
+
+When editing an existing endpoint, ensure backward compatibility with clients that haven't refreshed
+their browser yet. In particular, when adding a new field to a request body, it must be optional and
+accept `undefined` as a value even if the frontend always sends a value. This prevents breaking users
+who are still running an older version of the frontend.
+
+Example:
+
+```
+// BAD - breaks clients that haven't refreshed
+interface UpdateResourceBody {
+  name: string;
+  newField: string | null;  // Required field added later
+}
+
+// GOOD - backward compatible
+interface UpdateResourceBody {
+  name: string;
+  newField?: string;  // Optional, with server-side default if needed
+}
+```
+
 ## MCP
 
 ### [MCP1] Single file internal servers
