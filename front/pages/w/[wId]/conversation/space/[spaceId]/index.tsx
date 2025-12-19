@@ -397,9 +397,9 @@ export default function SpaceConversations({
           <ContentMessage title="Experimental feature" variant="info" size="lg">
             <p>
               This feature is currently in alpha, and only available in the Dust
-              workspace ("conversations_groups" feature flag). The goal is to
-              get feedback from internal usage and quickly iterate. Share your
-              feedback in the{" "}
+              workspace ("projects" feature flag). The goal is to get feedback
+              from internal usage and quickly iterate. Share your feedback in
+              the{" "}
               <Link
                 href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
                 target="_blank"

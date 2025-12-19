@@ -58,7 +58,7 @@ export function SpacesList({ owner, summary }: SpacesListProps) {
     workspaceId: owner.sId,
   });
 
-  if (!hasFeature("conversations_groups")) {
+  if (!hasFeature("projects")) {
     return null;
   }
 
