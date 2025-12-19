@@ -139,7 +139,7 @@ export async function getSuggestedAgentsForContent(
       tracingRecords,
       context: {
         operationType: "agent_suggestion",
-        contextId: conversationId,
+        conversationId,
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
       },

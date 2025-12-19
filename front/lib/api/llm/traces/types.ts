@@ -6,9 +6,9 @@ import type {
 } from "@app/types";
 
 /**
- * Context information for LLM operations to aid in debugging and discovery
+ * Context information for LLM operations to help debugging and discovery
  */
-export interface LLMTraceContext {
+interface LLMTraceContextBase {
   /** Type of operation that triggered the LLM call */
   operationType:
     | "agent_builder_description_suggestion"
@@ -29,12 +29,15 @@ export interface LLMTraceContext {
     | "agent_observability_summary"
     | "skills_similarity_checker";
 
-  /** Context-specific identifier (e.g., agentConfigId, conversationId, etc.) */
-  contextId?: string;
   workspaceId?: string;
   /** User who triggered the operation */
   userId?: string;
 }
+
+export type LLMTraceContext = LLMTraceContextBase & {
+  /** Additional context fields for tagging - MUST be camelCase (no underscores, starts lowercase) */
+  [key: string]: string | undefined;
+};
 
 /**
  * Input parameters for an LLM call

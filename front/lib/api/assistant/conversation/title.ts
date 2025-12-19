@@ -200,7 +200,7 @@ async function generateConversationTitle(
     {
       context: {
         operationType: "conversation_title_suggestion",
-        contextId: conversation.sId,
+        conversationId: conversation.sId,
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
       },
