@@ -1,6 +1,5 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -10,6 +9,10 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  getGoogleDriveClient,
+  getGoogleSheetsClient,
+} from "@app/lib/providers/google_drive/utils";
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const GOOGLE_SHEET_TOOL_NAME = "google_sheets";
