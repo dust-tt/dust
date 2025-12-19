@@ -162,8 +162,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
-  private get isGlobal(): boolean {
-    return this.globalSId !== undefined;
+  get isGlobal(): boolean {
+    return this.globalSId !== null;
   }
 
   static async makeNew(
@@ -526,7 +526,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { enabledSkills, equippedSkills };
   }
 
-  static async fetchConversationSkills(
+  static async fetchConversationSkillRecords(
     auth: Authenticator,
     conversationId: ModelId
   ): Promise<
@@ -564,16 +564,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }));
   }
 
-  static async upsertConversationSkills(
+  async upsertToConversation(
     auth: Authenticator,
     {
       conversationId,
-      skills,
       enabled,
       agentConfigurationId,
     }: {
       conversationId: ModelId;
-      skills: SkillResource[];
       enabled: boolean;
       agentConfigurationId: string | null;
     }
@@ -587,8 +585,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let agentConfigurationModelId: ModelId | null = null;
 
-    // For JIT skills (agentConfigurationId is null/undefined), they apply to all agents
-    // For agent-enabled skills, validate the agent configuration exists
     if (agentConfigurationId) {
       const agentConfiguration = await AgentConfigurationModel.findOne({
         where: {
@@ -608,44 +604,60 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfigurationModelId = agentConfiguration.id;
     }
 
-    const existingConversationSkills = await this.fetchConversationSkills(
-      auth,
-      conversationId
-    );
+    const existingConversationSkill = await ConversationSkillModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId,
+        agentConfigurationId: agentConfigurationModelId?.toString() ?? null,
+        ...(this.isGlobal
+          ? { globalSkillId: this.sId }
+          : { customSkillId: this.id }),
+      },
+    });
 
+    if (existingConversationSkill) {
+      if (!enabled) {
+        await existingConversationSkill.destroy();
+      }
+    } else if (enabled) {
+      await ConversationSkillModel.create({
+        conversationId,
+        workspaceId: workspace.id,
+        agentConfigurationId:
+          agentConfigurationModelId?.toString() ?? undefined,
+        customSkillId: this.isGlobal ? null : this.id,
+        globalSkillId: this.isGlobal ? this.sId : null,
+        source: "conversation",
+        addedByUserId: user.id,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  static async upsertConversationSkills(
+    auth: Authenticator,
+    {
+      conversationId,
+      skills,
+      enabled,
+      agentConfigurationId,
+    }: {
+      conversationId: ModelId;
+      skills: SkillResource[];
+      enabled: boolean;
+      agentConfigurationId: string | null;
+    }
+  ): Promise<Result<undefined, Error>> {
     for (const skill of skills) {
-      const skillSId = skill.sId;
-      const isGlobalSkill = !isResourceSId("skill", skillSId);
+      const result = await skill.upsertToConversation(auth, {
+        conversationId,
+        enabled,
+        agentConfigurationId,
+      });
 
-      const existingConversationSkill = existingConversationSkills.find(
-        (cs) =>
-          cs.agentConfigurationId === agentConfigurationModelId &&
-          (isGlobalSkill
-            ? cs.globalSkillId === skillSId
-            : cs.customSkillId === skill.id)
-      );
-
-      if (existingConversationSkill) {
-        if (!enabled) {
-          await ConversationSkillModel.destroy({
-            where: {
-              id: existingConversationSkill.id,
-              workspaceId: workspace.id,
-              conversationId,
-            },
-          });
-        }
-      } else if (enabled) {
-        await ConversationSkillModel.create({
-          conversationId,
-          workspaceId: workspace.id,
-          agentConfigurationId:
-            agentConfigurationModelId?.toString() ?? undefined,
-          customSkillId: isGlobalSkill ? null : skill.id,
-          globalSkillId: isGlobalSkill ? skillSId : null,
-          source: "conversation",
-          addedByUserId: user.id,
-        });
+      if (result.isErr()) {
+        return result;
       }
     }
 

@@ -400,27 +400,6 @@ export type ConversationMCPServerViewType = {
   updatedAt: Date;
 };
 
-type ConversationSkillTypeBase = {
-  id: ModelId;
-  workspaceId: ModelId;
-  conversationId: ModelId;
-  agentConfigurationId: string | null;
-  source: string;
-  addedByUserId: ModelId | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type ConversationSkillType =
-  | (ConversationSkillTypeBase & {
-      customSkillId: ModelId;
-      globalSkillId: null;
-    })
-  | (ConversationSkillTypeBase & {
-      customSkillId: null;
-      globalSkillId: string;
-    });
-
 export type MCPActionValidationRequest = Omit<
   MCPApproveExecutionEvent,
   "type" | "created" | "configurationId"

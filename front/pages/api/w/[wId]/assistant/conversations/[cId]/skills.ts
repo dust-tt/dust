@@ -19,8 +19,8 @@ export type FetchConversationSkillsResponse = {
 
 const ConversationSkillActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
-  skill_id: z.string(),
-  agent_configuration_id: z.string().nullable().optional(),
+  skillId: z.string(),
+  agentConfigurationId: z.string().nullable().optional(),
 });
 
 export type ConversationSkillActionRequest = z.infer<
@@ -59,51 +59,33 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      try {
-        const conversationSkills = await SkillResource.fetchConversationSkills(
+      const conversationSkills =
+        await SkillResource.fetchConversationSkillRecords(
           auth,
           conversationWithoutContent.id
         );
 
-        const skills: SkillType[] = [];
-        for (const conversationSkill of conversationSkills) {
-          let skillId: string;
-          if (conversationSkill.globalSkillId) {
-            skillId = conversationSkill.globalSkillId;
-          } else if (conversationSkill.customSkillId) {
-            skillId = SkillResource.modelIdToSId({
-              id: conversationSkill.customSkillId,
-              workspaceId: conversationSkill.workspaceId,
-            });
-          } else {
-            continue;
-          }
-
-          const skillRes = await SkillResource.fetchById(auth, skillId);
-          if (skillRes) {
-            skills.push(skillRes.toJSON(auth));
-          }
+      const skills: SkillType[] = [];
+      for (const conversationSkill of conversationSkills) {
+        let skillId: string;
+        if (conversationSkill.globalSkillId) {
+          skillId = conversationSkill.globalSkillId;
+        } else if (conversationSkill.customSkillId) {
+          skillId = SkillResource.modelIdToSId({
+            id: conversationSkill.customSkillId,
+            workspaceId: conversationSkill.workspaceId,
+          });
+        } else {
+          continue;
         }
 
-        res.status(200).json({ skills });
-      } catch (error) {
-        logger.error(
-          {
-            error: normalizeError(error),
-            conversationId,
-            workspaceId: req.query.wId,
-          },
-          "Error fetching conversation skills"
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to fetch conversation skills",
-          },
-        });
+        const skillRes = await SkillResource.fetchById(auth, skillId);
+        if (skillRes) {
+          skills.push(skillRes.toJSON(auth));
+        }
       }
-      break;
+
+      return res.status(200).json({ skills });
 
     case "POST":
       const parseResult = ConversationSkillActionRequestSchema.safeParse(
@@ -120,78 +102,56 @@ async function handler(
         });
       }
 
-      const { action, skill_id, agent_configuration_id } = parseResult.data;
+      const { action, skillId, agentConfigurationId } = parseResult.data;
 
-      try {
-        const skillRes = await SkillResource.fetchById(auth, skill_id);
+      const skillRes = await SkillResource.fetchById(auth, skillId);
 
-        if (!skillRes) {
-          logger.error(
-            {
-              skillId: skill_id,
-              conversationId,
-              workspaceId: req.query.wId,
-            },
-            "Skill not found"
-          );
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "skill_not_found",
-              message: "Skill not found",
-            },
-          });
-        }
-
-        const r = await SkillResource.upsertConversationSkills(auth, {
-          conversationId: conversationWithoutContent.id,
-          skills: [skillRes],
-          enabled: action === "add",
-          agentConfigurationId: agent_configuration_id ?? null,
-        });
-        if (r.isErr()) {
-          logger.error(
-            {
-              error: r.error,
-              skillId: skill_id,
-              conversationId,
-              agentConfigurationId: agent_configuration_id,
-              action,
-              workspaceId: req.query.wId,
-            },
-            "Failed to upsert skill to conversation"
-          );
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to add skill to conversation",
-            },
-          });
-        }
-
-        res.status(200).json({ success: true });
-      } catch (error) {
+      if (!skillRes) {
         logger.error(
           {
-            error: normalizeError(error),
-            skillId: skill_id,
+            skillId,
             conversationId,
-            agentConfigurationId: agent_configuration_id,
+            workspaceId: req.query.wId,
+          },
+          "Skill not found"
+        );
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "skill_not_found",
+            message: "Skill not found",
+          },
+        });
+      }
+
+      const r = await SkillResource.upsertConversationSkills(auth, {
+        conversationId: conversationWithoutContent.id,
+        skills: [skillRes],
+        enabled: action === "add",
+        agentConfigurationId: agentConfigurationId ?? null,
+      });
+      if (r.isErr()) {
+        logger.error(
+          {
+            error: r.error,
+            skillId,
+            conversationId,
+            agentConfigurationId,
             action,
             workspaceId: req.query.wId,
           },
-          "Error updating conversation skills"
+          "Failed to upsert skill to conversation"
         );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to update conversation skills",
+            message: "Failed to add skill to conversation",
           },
         });
       }
-      break;
+
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {

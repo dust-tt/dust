@@ -317,13 +317,9 @@ export function useConversationSkills({
   );
 
   return {
-    conversationSkills: useMemo(
-      () =>
-        data
-          ? data.skills
-          : emptyArray<FetchConversationSkillsResponse["skills"][number]>(),
-      [data]
-    ),
+    conversationSkills: data
+      ? data.skills
+      : emptyArray<FetchConversationSkillsResponse["skills"][number]>(),
     isConversationSkillsLoading: !error && !data,
     isConversationSkillsError: error,
     mutateConversationSkills: mutate,
@@ -490,8 +486,8 @@ export function useAddDeleteConversationSkill({
             },
             body: JSON.stringify({
               action: "add",
-              skill_id: skillId,
-              agent_configuration_id: agentConfigurationId,
+              skillId,
+              agentConfigurationId,
             } satisfies ConversationSkillActionRequest),
           }
         );
@@ -539,8 +535,8 @@ export function useAddDeleteConversationSkill({
             },
             body: JSON.stringify({
               action: "delete",
-              skill_id: skillId,
-              agent_configuration_id: agentConfigurationId,
+              skillId,
+              agentConfigurationId,
             } satisfies ConversationSkillActionRequest),
           }
         );
