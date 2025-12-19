@@ -32,7 +32,6 @@ import type {
 
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
-export const NOTIFICATION_DELAY_MS = 30000;
 
 import {
   OpenTelemetryInboundInterceptor,
