@@ -7,7 +7,7 @@ import type {
 import type FirecrawlApp from "@mendable/firecrawl-js";
 import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import path from "path";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
@@ -567,6 +567,7 @@ export async function firecrawlCrawlPage(
       : getFolderForUrl(folder);
     const [webCrawlerFolder] = await WebCrawlerFolderModel.upsert({
       url: folder,
+      urlMd5: createHash("md5").update(folder).digest("hex"),
       parentUrl: logicalParent,
       connectorId: connector.id,
       webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -599,6 +600,7 @@ export async function firecrawlCrawlPage(
 
   await WebCrawlerPageModel.upsert({
     url: sourceUrl,
+    urlMd5: createHash("md5").update(sourceUrl).digest("hex"),
     parentUrl: isTopFolder(sourceUrl) ? null : getFolderForUrl(sourceUrl),
     connectorId: connector.id,
     webcrawlerConfigurationId: webCrawlerConfig.id,

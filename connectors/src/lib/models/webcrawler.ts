@@ -132,6 +132,7 @@ export class WebCrawlerFolderModel extends ConnectorBaseModel<WebCrawlerFolderMo
   declare updatedAt: CreationOptional<Date>;
   declare parentUrl: string | null;
   declare url: string;
+  declare urlMd5: string;
   // Folders are not upserted to the data source but their ids are
   // used as parent to WebCrawlerPage.
   declare internalId: string;
@@ -157,6 +158,10 @@ WebCrawlerFolderModel.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    urlMd5: {
+      type: DataTypes.STRING(32),
+      allowNull: false,
+    },
     parentUrl: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -177,7 +182,7 @@ WebCrawlerFolderModel.init(
       // Index uses md5(url) in the database (see migration_110.sql)
       {
         unique: true,
-        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
+        fields: ["urlMd5", "connectorId", "webcrawlerConfigurationId"],
       },
       {
         unique: true,
@@ -195,6 +200,7 @@ export class WebCrawlerPageModel extends ConnectorBaseModel<WebCrawlerPageModel>
   declare title: string | null;
   declare parentUrl: string | null;
   declare url: string;
+  declare urlMd5: string;
   declare documentId: string;
   declare depth: number;
   declare lastSeenAt: Date;
@@ -217,6 +223,10 @@ WebCrawlerPageModel.init(
     },
     url: {
       type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    urlMd5: {
+      type: DataTypes.STRING(32),
       allowNull: false,
     },
     title: {
@@ -247,7 +257,7 @@ WebCrawlerPageModel.init(
       // Index uses md5(url) in the database (see migration_110.sql)
       {
         unique: true,
-        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
+        fields: ["urlMd5", "connectorId", "webcrawlerConfigurationId"],
       },
       {
         unique: true,
