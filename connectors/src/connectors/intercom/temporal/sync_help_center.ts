@@ -40,6 +40,8 @@ import {
 
 const turndownService = new TurndownService();
 
+const UNTITLED_COLLECTION_NAME = "Untitled Collection";
+
 /**
  * If our rights were revoked or the help center is not on intercom anymore we delete it
  */
@@ -192,7 +194,7 @@ export async function upsertCollectionWithChildren({
 
   if (collectionOnDb) {
     await collectionOnDb.update({
-      name: collection.name,
+      name: collection.name?.trim() ?? UNTITLED_COLLECTION_NAME,
       description: collection.description,
       parentId: collection.parent_id,
       url: collection.url || fallbackCollectionUrl,
@@ -205,7 +207,7 @@ export async function upsertCollectionWithChildren({
       intercomWorkspaceId: collection.workspace_id,
       helpCenterId: helpCenterId,
       parentId: collection.parent_id,
-      name: collection.name,
+      name: collection.name?.trim() ?? UNTITLED_COLLECTION_NAME,
       description: collection.description,
       url: collection.url || fallbackCollectionUrl,
       permission: "read",
@@ -230,7 +232,7 @@ export async function upsertCollectionWithChildren({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
-    title: collection.name.trim() || "Untitled Collection",
+    title: collection.name?.trim() ?? "UNTITLED_COLLECTION_NAME",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
     mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
