@@ -1,9 +1,22 @@
 import { format } from "date-fns";
 
 import type { ADFContentNode, JiraComment, JiraIssue } from "./types";
+import { JiraCommentsListSchema } from "./types";
 
 function formatDateTime(dateString: string): string {
   return format(new Date(dateString), "yyyy-MM-dd HH:mm");
+}
+
+function extractEmbeddedComments(issue: JiraIssue): JiraComment[] {
+  const fields = issue.fields as Record<string, unknown> | undefined;
+  const commentField = fields?.["comment"];
+
+  const parsed = JiraCommentsListSchema.safeParse(commentField);
+  return parsed.success ? parsed.data.comments : [];
+}
+
+export function renderIssueWithEmbeddedComments(issue: JiraIssue): string {
+  return renderIssue(issue, extractEmbeddedComments(issue));
 }
 
 export function renderIssue(issue: JiraIssue, comments: JiraComment[]): string {
@@ -85,7 +98,7 @@ export function renderIssue(issue: JiraIssue, comments: JiraComment[]): string {
         ? formatDateTime(comment.created)
         : "Unknown date";
 
-      lines.push(`### ${authorName} - ${date}`);
+      lines.push(`### ${authorName} - Created on ${date}`);
       lines.push("");
       lines.push(renderADFToMarkdown(comment.body));
       lines.push("");
