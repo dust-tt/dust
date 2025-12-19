@@ -7,6 +7,7 @@ import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
+import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
@@ -34,6 +35,7 @@ export type WorkerName =
   | "hard_delete"
   | "labs"
   | "mentions_count"
+  | "notifications_queue"
   | "poke"
   | "production_checks"
   | "relocation"
@@ -56,6 +58,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
+  notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
   relocation: runRelocationWorker,
