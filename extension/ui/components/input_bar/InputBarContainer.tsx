@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlexSplitButton,
-  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -316,30 +315,26 @@ export const InputBarContainer = ({
           {...(isTabIncluded ? SendWithContentAction : SendAction)}
           variant="highlight"
           splitAction={
-            isSubmitting ? (
-              <Spinner size="xs" />
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="mini"
-                    variant="highlight"
-                    icon={ChevronDownIcon}
-                    disabled={disabled}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    label={SendAction.label}
-                    onClick={() => setIncludeTab(false)}
-                  />
-                  <DropdownMenuItem
-                    label={SendWithContentAction.label}
-                    onClick={() => setIncludeTab(true)}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="mini"
+                  variant="highlight"
+                  icon={ChevronDownIcon}
+                  disabled={disabled}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  label={SendAction.label}
+                  onClick={() => setIncludeTab(false)}
+                />
+                <DropdownMenuItem
+                  label={SendWithContentAction.label}
+                  onClick={() => setIncludeTab(true)}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
           disabled={disabled}
         />
