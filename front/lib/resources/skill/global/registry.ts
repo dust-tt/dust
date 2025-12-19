@@ -1,5 +1,6 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
+import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 
@@ -42,7 +43,10 @@ function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
 }
 
 // Registry is a simple array.
-const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([framesSkill] as const);
+const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
+  framesSkill,
+  goDeepSkill,
+] as const);
 
 // Build lookup map for direct access by sId.
 const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
