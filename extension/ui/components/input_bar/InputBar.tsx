@@ -269,7 +269,7 @@ export function AssistantInputBar({
     const newFiles = getFileBlobs().map((cf) => ({
       title: cf.filename,
       fileId: cf.fileId,
-      url: cf.publicUrl,
+      url: cf.sourceUrl,
       kind: cf.kind,
     }));
 
@@ -290,7 +290,7 @@ export function AssistantInputBar({
           ...files.map((cf) => ({
             title: cf.filename,
             fileId: cf.fileId || "",
-            url: cf.publicUrl,
+            url: cf.sourceUrl,
             kind: cf.kind,
           }))
         );

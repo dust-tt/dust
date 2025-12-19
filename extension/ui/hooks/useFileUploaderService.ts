@@ -185,16 +185,20 @@ export function useFileUploaderService(
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
     const uploadPromises = newFileBlobs.map(async (fileBlob) => {
       // Get upload URL from server.
+      let useCaseMetadata = undefined;
+      if (conversationId) {
+        useCaseMetadata = {
+          conversationId,
+          ...(fileBlob.provider && { sourceProvider: fileBlob.provider }),
+          ...(fileBlob.iconName && { sourceIcon: fileBlob.iconName }),
+        };
+      }
       const fileRes = await dustAPI.uploadFile({
         contentType: fileBlob.contentType,
         fileName: fileBlob.filename,
         fileSize: fileBlob.size,
         useCase: "conversation",
-        useCaseMetadata: conversationId
-          ? {
-              conversationId: conversationId,
-            }
-          : undefined,
+        useCaseMetadata,
         fileObject: fileBlob.file,
       });
       if (fileRes.isErr()) {
