@@ -83,84 +83,101 @@ export function ConversationContainer({
 
   const { serverId } = useMcpServer();
 
-  const handlePostMessage = async (
-    input: string,
-    mentions: AgentMentionType[],
-    contentFragments: ContentFragmentsType
-  ) => {
-    if (!conversationId) {
-      return null;
-    }
-    const messageData = {
-      input,
-      mentions,
-      contentFragments,
-      mcpServerIds: serverId ? [serverId] : [],
-    };
-    try {
-      await mutateConversation(
-        async (currentConversation) => {
-          const result = await postMessage(platform, {
-            dustAPI,
-            conversationId,
-            messageData,
-          });
+  const { submit: handlePostMessage, isSubmitting: isPostingMessage } =
+    useSubmitFunction(
+      useCallback(
+        async (
+          input: string,
+          mentions: AgentMentionType[],
+          contentFragments: ContentFragmentsType
+        ) => {
+          if (!conversationId) {
+            return;
+          }
+          const messageData = {
+            input,
+            mentions,
+            contentFragments,
+            mcpServerIds: serverId ? [serverId] : [],
+          };
+          try {
+            await mutateConversation(
+              async (currentConversation) => {
+                const result = await postMessage(platform, {
+                  dustAPI,
+                  conversationId,
+                  messageData,
+                });
 
-          if (result.isOk()) {
-            const { message, contentFragments: createdContentFragments } =
-              result.value;
+                if (result.isOk()) {
+                  const { message, contentFragments: createdContentFragments } =
+                    result.value;
 
-            // Save content fragment IDs for tab contents to the local storage.
-            await platform.saveFilesContentFragmentIds({
-              conversationId,
-              uploadedFiles: contentFragments.uploaded,
-              createdContentFragments,
-            });
+                  // Save content fragment IDs for tab contents to the local storage.
+                  await platform.saveFilesContentFragmentIds({
+                    conversationId,
+                    uploadedFiles: contentFragments.uploaded,
+                    createdContentFragments,
+                  });
 
-            return updateConversationWithOptimisticData(
-              currentConversation,
-              message
+                  return updateConversationWithOptimisticData(
+                    currentConversation,
+                    message
+                  );
+                }
+
+                if (result.error.type === "plan_limit_reached_error") {
+                  setPlanLimitReached(true);
+                } else {
+                  sendNotification({
+                    title: result.error.title,
+                    description: result.error.message,
+                    type: "error",
+                  });
+                }
+
+                throw result.error;
+              },
+              {
+                optimisticData: (currentConversation) => {
+                  const placeholderMessage = createPlaceholderUserMessage({
+                    input,
+                    mentions,
+                    user,
+                  });
+                  return updateConversationWithOptimisticData(
+                    currentConversation,
+                    placeholderMessage
+                  );
+                },
+                revalidate: false,
+                // Rollback optimistic update on errors.
+                rollbackOnError: true,
+                populateCache: true,
+              }
             );
+          } catch (err) {
+            // If the API errors, the original data will be
+            // rolled back by SWR automatically.
+            console.error("Failed to post message:", err);
           }
-
-          if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: result.error.title,
-              description: result.error.message,
-              type: "error",
-            });
-          }
-
-          throw result.error;
         },
-        {
-          optimisticData: (currentConversation) => {
-            const placeholderMessage = createPlaceholderUserMessage({
-              input,
-              mentions,
-              user,
-            });
-            return updateConversationWithOptimisticData(
-              currentConversation,
-              placeholderMessage
-            );
-          },
-          revalidate: false,
-          // Rollback optimistic update on errors.
-          rollbackOnError: true,
-          populateCache: true,
-        }
-      );
-    } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
-      console.error("Failed to post message:", err);
-    }
-  };
+        [
+          conversationId,
+          platform,
+          dustAPI,
+          mutateConversation,
+          sendNotification,
+          user,
+          serverId,
+        ]
+      )
+    );
 
-  const { submit: handlePostConversation, isSubmitting } = useSubmitFunction(
+  const {
+    submit: handlePostConversation,
+    isSubmitting: isPostingConversation,
+  } = useSubmitFunction(
     useCallback(
       async (
         input: string,
@@ -258,6 +275,7 @@ export function ConversationContainer({
               setIncludeTab={(includeTab) => {
                 setIncludeContent(includeTab);
               }}
+              isSubmitting={isPostingMessage}
               conversation={conversation ?? undefined}
             />
           </div>
@@ -287,7 +305,7 @@ export function ConversationContainer({
             setIncludeTab={(includeTab) => {
               setIncludeContent(includeTab);
             }}
-            isSubmitting={isSubmitting}
+            isSubmitting={isPostingConversation}
             conversation={conversation ?? undefined}
           />
         </div>
