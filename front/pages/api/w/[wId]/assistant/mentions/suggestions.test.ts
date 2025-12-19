@@ -1,31 +1,13 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { mockElasticsearch } from "@app/tests/utils/mocks/elasticsearch";
 
 import handler from "./suggestions";
 
-// Mock Elasticsearch
-vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
-  const actual: any = await importOriginal();
-  return {
-    ...actual,
-    withEs: vi.fn(async (fn: any) => {
-      const mockClient = {
-        search: vi.fn().mockResolvedValue({
-          hits: { hits: [], total: { value: 0 } },
-        }),
-      };
-      // Mock successful result
-      return {
-        isOk: () => true,
-        isErr: () => false,
-        value: await fn(mockClient),
-      };
-    }),
-  };
-});
+mockElasticsearch();
 
 async function setupTest(method: RequestMethod = "GET") {
   const { req, res, workspace, authenticator } =
