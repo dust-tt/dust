@@ -21,28 +21,23 @@ const TARGET_ID: ModelId = 1007;
 const PREFIX = 1;
 const BATCH_SIZE = 100;
 
-async function getMaxWorkspaceId(): Promise<ModelId> {
-  const result = await WorkspaceModel.findOne({
+async function getAllWorkspaceIds(): Promise<ModelId[]> {
+  const workspaces = await WorkspaceModel.findAll({
     attributes: ["id"],
-    order: [["id", "DESC"]],
-    limit: 1,
+    order: [["id", "ASC"]],
   });
-  assert(result, "No workspaces found - cannot proceed");
-  return result.id;
+  assert(workspaces.length > 0, "No workspaces found - cannot proceed");
+  return workspaces.map((w) => w.id);
 }
 
-function generateSIds(maxWorkspaceId: ModelId): string[] {
-  const sIds: string[] = [];
-  for (let workspaceId = 1; workspaceId <= maxWorkspaceId; workspaceId++) {
-    sIds.push(
-      dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
-        id: TARGET_ID,
-        workspaceId,
-        firstPrefix: PREFIX,
-      })
-    );
-  }
-  return sIds;
+function generateSIds(workspaceIds: ModelId[]): string[] {
+  return workspaceIds.map((workspaceId) =>
+    dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
+      id: TARGET_ID,
+      workspaceId,
+      firstPrefix: PREFIX,
+    })
+  );
 }
 
 async function deleteRelatedRecordsForViews(
@@ -216,10 +211,10 @@ makeScript({}, async ({ execute }, logger) => {
     "Starting MCPServerView deletion script"
   );
 
-  const maxWorkspaceId = await getMaxWorkspaceId();
-  logger.info({ maxWorkspaceId }, "Found max workspace ID");
+  const workspaceIds = await getAllWorkspaceIds();
+  logger.info({ workspaceCount: workspaceIds.length }, "Found workspaces");
 
-  const sIds = generateSIds(maxWorkspaceId);
+  const sIds = generateSIds(workspaceIds);
   logger.info(
     {
       totalSIds: sIds.length,
