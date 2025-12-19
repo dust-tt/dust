@@ -6,9 +6,9 @@ import {
   useSkillSelection,
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
-import { SkillWithRelationsDetailsSheetContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillWithRelationsDetailsSheetContent";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
@@ -94,14 +94,18 @@ export function useCapabilitiesPageAndFooter({
         },
       };
     case "skill_info":
+      const title = mode.capability.relations.extendedSkill?.name
+        ? `${mode.capability.name} (extends ${mode.capability.relations.extendedSkill.name})`
+        : mode.capability.name;
+
       return {
         page: {
-          title: mode.capability.name,
+          title,
           description: mode.capability.userFacingDescription,
           id: mode.pageId,
           icon: getSkillIcon(mode.capability.icon),
           content: (
-            <SkillWithRelationsDetailsSheetContent
+            <SkillDetailsSheetContent
               skill={mode.capability}
               owner={owner}
               user={user}

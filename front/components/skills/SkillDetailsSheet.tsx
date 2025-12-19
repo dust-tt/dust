@@ -156,6 +156,12 @@ const DescriptionSection = ({
         <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
           {skill.name}
         </h2>
+        {skill.relations.extendedSkill && (
+          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
+            Extends {skill.relations.extendedSkill.name}
+          </p>
+        )}
+
         {editedDate && (
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Last edited: {editedDate}

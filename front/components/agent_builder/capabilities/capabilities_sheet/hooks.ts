@@ -130,22 +130,10 @@ export const useSkillSelection = ({
     ]
   );
 
-  const handleSkillInfoClick = useCallback(
-    (skill: SkillType) => {
-      onModeChange({
-        pageId: "skill_info",
-        capability: skill,
-        hasPreviousPage: true,
-      });
-    },
-    [onModeChange]
-  );
-
   return {
     localSelectedSkills,
     localAdditionalSpaces,
     handleSkillToggle,
-    handleSkillInfoClick,
     filteredSkills,
     isSkillsLoading: isSkillsWithRelationsLoading,
     selectedSkillIds,

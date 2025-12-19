@@ -12,8 +12,8 @@ import {
 import type {
   GetSkillConfigurationsResponseBody,
   GetSkillConfigurationsWithRelationsResponseBody,
-  GetSkillWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
@@ -244,17 +244,19 @@ export function useSkillWithRelations({
   owner,
   disabled,
   skillId,
+  onSuccess,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   skillId: string;
+  onSuccess?: (data: GetSkillWithRelationsResponseBody) => void;
 }) {
   const skillsFetcher: Fetcher<GetSkillWithRelationsResponseBody> = fetcher;
 
   const { data, isLoading } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills/${skillId}?withRelations=true`,
     skillsFetcher,
-    { disabled }
+    { disabled, onSuccess }
   );
 
   return {
