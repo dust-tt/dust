@@ -1,6 +1,6 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type { Authenticator } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/mentions_queue/activities";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
@@ -12,12 +12,12 @@ const { handleMentionsActivity } = proxyActivities<typeof activities>({
 });
 
 export async function handleMentionsWorkflow(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   {
     agentLoopArgs,
   }: {
     agentLoopArgs: AgentLoopArgs;
   }
 ): Promise<void> {
-  await handleMentionsActivity(auth, agentLoopArgs);
+  await handleMentionsActivity(authType, agentLoopArgs);
 }

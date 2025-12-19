@@ -63,7 +63,7 @@ export async function launchConversationUnreadNotificationWorkflow({
 
   try {
     await client.workflow.start(sendUnreadConversationNotificationWorkflow, {
-      args: [auth, { agentLoopArgs }],
+      args: [authType, { agentLoopArgs }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {

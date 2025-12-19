@@ -1,6 +1,7 @@
 import { handleAgentMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isAgentMessageType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -9,9 +10,17 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
  * Handle mentions in the agent message content.
  */
 export async function handleMentionsActivity(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
+
   const conversationRes = await getConversation(
     auth,
     agentLoopArgs.conversationId

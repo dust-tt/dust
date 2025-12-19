@@ -47,7 +47,7 @@ export async function launchHandleMentionsWorkflow({
 
   try {
     await client.workflow.start(handleMentionsWorkflow, {
-      args: [auth, { agentLoopArgs }],
+      args: [authType, { agentLoopArgs }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {
