@@ -9,6 +9,7 @@ import tracer from "dd-trace";
 import type { Logger } from "@app/logger/logger";
 import type logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { temporalContext } from "@app/lib/temporal_context";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -61,24 +62,34 @@ export class ActivityInboundLogInterceptor
 
     try {
       this.logger.info("Activity started.");
-      return await tracer.trace(
-        `${this.context.info.workflowType}-${this.context.info.activityType}`,
+      // Store workflow context in AsyncLocalStorage for SQL query tagging
+      return await temporalContext.run(
         {
-          resource: this.context.info.activityType,
-          type: "temporal-activity",
+          workflowName: this.context.info.workflowType,
+          workflowId: this.context.info.workflowExecution.workflowId,
+          activityName: this.context.info.activityType,
         },
-        async (span) => {
-          span?.setTag("attempt", this.context.info.attempt);
-          span?.setTag(
-            "workflow_id",
-            this.context.info.workflowExecution.workflowId
-          );
-          span?.setTag(
-            "workflow_run_id",
-            this.context.info.workflowExecution.runId
-          );
+        async () => {
+          return await tracer.trace(
+            `${this.context.info.workflowType}-${this.context.info.activityType}`,
+            {
+              resource: this.context.info.activityType,
+              type: "temporal-activity",
+            },
+            async (span) => {
+              span?.setTag("attempt", this.context.info.attempt);
+              span?.setTag(
+                "workflow_id",
+                this.context.info.workflowExecution.workflowId
+              );
+              span?.setTag(
+                "workflow_run_id",
+                this.context.info.workflowExecution.runId
+              );
 
-          return next(input);
+              return next(input);
+            }
+          );
         }
       );
     } catch (err: unknown) {
