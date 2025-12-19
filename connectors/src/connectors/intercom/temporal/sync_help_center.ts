@@ -1,5 +1,6 @@
 import TurndownService from "turndown";
 
+import { UNTITLED_COLLECTION_NAME } from "@connectors/connectors/intercom/lib/help_center_permissions";
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomCollections } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
@@ -39,8 +40,6 @@ import {
 } from "@connectors/types";
 
 const turndownService = new TurndownService();
-
-const UNTITLED_COLLECTION_NAME = "Untitled Collection";
 
 /**
  * If our rights were revoked or the help center is not on intercom anymore we delete it
