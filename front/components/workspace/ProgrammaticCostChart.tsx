@@ -154,11 +154,6 @@ function GroupedTooltip(
       };
     });
 
-  // Don't show tooltip if no data (e.g., hovering on empty space in bar chart)
-  if (rows.length === 0) {
-    return null;
-  }
-
   // Add credits row only in cumulative mode
   if (shouldShowTotalCredits) {
     rows.push({
@@ -166,6 +161,11 @@ function GroupedTooltip(
       value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
       colorClassName: COST_PALETTE.totalCredits,
     });
+  }
+
+  // Don't show tooltip if no data at all (e.g., empty bar), but allow Total Credits-only tooltip
+  if (rows.length === 0) {
+    return null;
   }
 
   const date = new Date(data.timestamp).toLocaleDateString("en-US", {
