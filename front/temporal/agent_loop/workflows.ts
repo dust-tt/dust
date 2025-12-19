@@ -233,7 +233,6 @@ export async function agentLoopWorkflow({
         },
       });
 
-      // Ensure analytics runs even if workflow is canceled.
       await CancellationScope.nonCancellable(async () => {
         await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
       });
@@ -248,10 +247,8 @@ export async function agentLoopWorkflow({
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
-        // Ensure analytics runs even when workflow is canceled.
         return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
-      // Ensure analytics runs even when workflow errors.
       await finalizeErroredAgentLoopActivity(
         authType,
         agentLoopArgs,
