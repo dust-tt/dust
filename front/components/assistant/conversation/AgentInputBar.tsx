@@ -26,12 +26,9 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
-import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { RichMention } from "@app/types";
 import {
   isRichAgentMention,
-  isRichUserMention,
   pluralize,
   toRichAgentMentionType,
 } from "@app/types";
