@@ -217,7 +217,7 @@ export function BuyCreditDialog({
               </p>
               <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Please complete the payment to finalize your credit purchase or
-                contact support to cancel.
+                contact support to cancel pending invoices.
               </p>
             </div>
           </div>
