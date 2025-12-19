@@ -30,7 +30,7 @@ export function getPageAndFooter(props: PageContentProps): {
     case "selection":
       return {
         page: {
-          title: "Add skills",
+          title: "Add capabilities",
           id: mode.pageId,
           content: (
             <SelectionPageContent
@@ -51,7 +51,11 @@ export function getPageAndFooter(props: PageContentProps): {
           onClick: onClose,
         },
         rightButton: {
-          label: "Add skills",
+          label:
+            skillSelection.selectedSkillIds.size > 0
+              ? `Add ${skillSelection.selectedSkillIds.size} ${skillSelection.selectedSkillIds.size === 1 ? "capability" : "capabilities"}`
+              : "Add capabilities",
+          disabled: skillSelection.selectedSkillIds.size === 0,
           onClick: handleSave,
           variant: "primary",
         },
