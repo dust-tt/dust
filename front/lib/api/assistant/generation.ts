@@ -169,12 +169,10 @@ async function getEnabledSkillInstructions(
 
   return [
     `<${name}>`,
-    `Extends skill:`,
-    `<${extendedSkill.name}>`,
     extendedSkill.instructions,
-    `</${extendedSkill.name}>`,
-    "with instructions:",
+    "<extended_instructions>",
     instructions,
+    "</extended_instructions>",
     `</${name}>`,
   ].join("\n");
 }
