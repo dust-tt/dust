@@ -5,6 +5,7 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
+import { makeTrackProgrammaticUsageWorkflowId } from "@app/temporal/usage_queue/helpers";
 import {
   trackProgrammaticUsageWorkflow,
   updateWorkspaceUsageWorkflow,
@@ -12,8 +13,6 @@ import {
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-
-import { makeTrackProgrammaticUsageWorkflowId } from "./helpers";
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.
@@ -100,6 +99,10 @@ export async function launchTrackProgrammaticUsageWorkflow({
       args: [authType, { agentLoopArgs }],
       taskQueue: QUEUE_NAME,
       workflowId,
+      searchAttributes: {
+        conversationId: [conversationId],
+        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+      },
       memo: {
         agentMessageId,
         workspaceId,
