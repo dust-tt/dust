@@ -40,7 +40,7 @@ const LOGO_SETS = {
   default: {
     us: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "clay", src: "/static/landing/logos/color/clay.png" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
@@ -56,7 +56,7 @@ const LOGO_SETS = {
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "clay", src: "/static/landing/logos/color/clay.png" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
@@ -70,7 +70,7 @@ const LOGO_SETS = {
   landing: {
     us: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "clay", src: "/static/landing/logos/color/clay.png" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
@@ -86,7 +86,7 @@ const LOGO_SETS = {
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "clay", src: "/static/landing/logos/color/clay.png" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
@@ -99,7 +99,7 @@ const LOGO_SETS = {
   },
   b2bSaas: {
     us: [
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "clay", src: "/static/landing/logos/color/clay.png" },
       {
         name: "contentsquare",
         src: "/static/landing/logos/gray/contentsquare.svg",
@@ -110,7 +110,7 @@ const LOGO_SETS = {
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
     ],
     eu: [
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "clay", src: "/static/landing/logos/color/clay.png" },
       {
         name: "contentsquare",
         src: "/static/landing/logos/gray/contentsquare.svg",
