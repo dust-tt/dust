@@ -53,7 +53,7 @@ import {
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
+import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SpacesList } from "@app/components/assistant/conversation/sidebar/SpacesList";
 import {
@@ -388,7 +388,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <div className="flex grow flex-col">
+      <div className="relative flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
@@ -607,7 +607,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 conversationsList
               )}
             </>
-            <InAppBanner owner={owner} />
+            <StackedInAppBanners owner={owner} />
           </div>
         </div>
       </div>
