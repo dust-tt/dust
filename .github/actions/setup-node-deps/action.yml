@@ -1,55 +1,49 @@
-name: 'Setup Node Dependencies'
-description: 'Setup Node.js and cache dependencies for SDK/JS and Front'
+name: "Setup Node Dependencies"
+description: "Setup Node.js and cache dependencies for monorepo workspace"
 outputs:
-  cache-hit-sdkjs:
-    description: 'Whether SDK/JS cache was hit'
-    value: ${{ steps.cache-sdkjs.outputs.cache-hit }}
-  cache-hit-front:
-    description: 'Whether Front cache was hit'
-    value: ${{ steps.cache-front.outputs.cache-hit }}
+  cache-hit:
+    description: "Whether workspace cache was hit"
+    value: ${{ steps.cache-workspace.outputs.cache-hit }}
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
         node-version: 20.13.0
         cache: "npm"
-        cache-dependency-path: |
-          sdks/js/package-lock.json
-          front/package-lock.json
+        cache-dependency-path: package-lock.json
 
-    - name: Cache SDK/JS node_modules
-      id: cache-sdkjs
+    - name: Cache workspace node_modules
+      id: cache-workspace
       uses: actions/cache@v3
       with:
-        path: sdks/js/node_modules
-        key: sdkjs-node-modules-${{ runner.os }}-${{ hashFiles('sdks/js/package-lock.json') }}
+        path: |
+          node_modules
+          front/node_modules
+          sparkle/node_modules
+          sdks/js/node_modules
+          connectors/node_modules
+          cli/node_modules
+          extension/node_modules
+          viz/node_modules
+          common/node_modules
+          eslint-plugin-dust/node_modules
+        key: workspace-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
         restore-keys: |
-          sdkjs-node-modules-${{ runner.os }}-
+          workspace-node-modules-${{ runner.os }}-
 
-    - name: Cache Front node_modules
-      id: cache-front
-      uses: actions/cache@v3
-      with:
-        path: front/node_modules
-        key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
-        restore-keys: |
-          front-node-modules-${{ runner.os }}-
-
-    - name: Install SDK/JS dependencies
-      if: steps.cache-sdkjs.outputs.cache-hit != 'true'
-      working-directory: sdks/js
+    - name: Install workspace dependencies
+      if: steps.cache-workspace.outputs.cache-hit != 'true'
       shell: bash
-      run: npm ci
+      run: npm ci --legacy-peer-deps
+
+    - name: Build Sparkle
+      working-directory: sparkle
+      shell: bash
+      run: npm run build
 
     - name: Build SDK/JS
       working-directory: sdks/js
       shell: bash
       run: npm run build
-
-    - name: Install Front dependencies
-      if: steps.cache-front.outputs.cache-hit != 'true'
-      working-directory: front
-      shell: bash
-      run: npm ci
