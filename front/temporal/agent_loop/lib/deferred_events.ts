@@ -2,6 +2,7 @@ import type {
   MCPApproveExecutionEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import type { ModelId } from "@app/types/shared/model_id";
 
 /**
  * Union type of all events that can be deferred.
@@ -16,9 +17,10 @@ type DeferrableEvent = MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent;
  */
 type DeferredEventContext = {
   agentMessageId: string;
-  agentMessageRowId: number;
+  agentMessageRowId: ModelId;
   conversationId: string;
   step: number;
+  workspaceId: ModelId;
 };
 
 /**
