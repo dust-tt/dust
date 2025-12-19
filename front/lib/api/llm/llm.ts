@@ -145,7 +145,7 @@ export abstract class LLM {
         ...Object.entries(this.context)
           .filter(
             ([key, value]) =>
-              value !== undefined && ["userId", "workspaceId"].includes(key)
+              value !== undefined && !["userId", "workspaceId"].includes(key)
           )
           .map(([key, value]) => `${key}:${value}`),
       ]),
