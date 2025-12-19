@@ -26,10 +26,12 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
-import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { RichMention } from "@app/types";
-import { pluralize, toRichAgentMentionType } from "@app/types";
+import {
+  isRichAgentMention,
+  pluralize,
+  toRichAgentMentionType,
+} from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -82,8 +84,15 @@ export const AgentInputBar = ({
     if (draftAgent) {
       return [toRichAgentMentionType(draftAgent)];
     }
-    if (!lastUserMessage || lastUserMessage.richMentions.length > 1) {
-      return emptyArray<RichMention>();
+
+    // we only prefill if there is only one agent mention in user's previous message
+    const shouldPrefill =
+      lastUserMessage &&
+      lastUserMessage.richMentions.length === 1 &&
+      isRichAgentMention(lastUserMessage.richMentions[0]);
+
+    if (!shouldPrefill) {
+      return [];
     }
 
     return lastUserMessage.richMentions;
