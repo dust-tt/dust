@@ -11,7 +11,7 @@ export type IntercomHelpCenterType = {
 export type IntercomCollectionType = {
   id: string;
   workspace_id: string;
-  name: string;
+  name: string | null;
   url: string | null;
   order: number;
   created_at: number;

@@ -26,9 +26,11 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  ModelId,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+
+export const UNTITLED_COLLECTION_NAME = "Untitled Collection";
 
 // A Help Center contains collections and articles:
 // - Level 1: Collections (parent_id is null)
@@ -212,7 +214,7 @@ export async function allowSyncCollection({
         intercomWorkspaceId: intercomCollection.workspace_id,
         helpCenterId: hpId,
         parentId: intercomCollection.parent_id,
-        name: intercomCollection.name,
+        name: intercomCollection.name?.trim() ?? "Untitled Collection",
         description: intercomCollection.description,
         url:
           intercomCollection.url ||
@@ -459,7 +461,7 @@ export async function retrieveIntercomHelpCentersPermissions({
               )
             : null,
           type: "folder",
-          title: collection.name,
+          title: collection.name?.trim() ?? "Untitled Collection",
           sourceUrl: collection.url,
           expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
           permission: matchingCollectionInDb ? "read" : "none",
