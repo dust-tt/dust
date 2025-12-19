@@ -122,16 +122,6 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!agentConfiguration.canEdit) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can delete triggers for this agent.",
-          },
-        });
-      }
-
       const deleteDecoded = DeleteTriggersRequestBodyCodec.decode(req.body);
       if (isLeft(deleteDecoded)) {
         const pathError = reporter.formatValidationErrors(deleteDecoded.left);
