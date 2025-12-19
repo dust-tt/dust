@@ -97,9 +97,7 @@ async function buildBundles() {
 
       const { code } = await bundleWorkflowCode({
         workflowsPath: require.resolve(workflowsPath),
-        workflowInterceptorModules: [
-          require.resolve(workflowsPath),
-        ],
+        workflowInterceptorModules: [require.resolve(workflowsPath)],
         webpackConfigHook: (config) => {
           const plugins = config.resolve?.plugins ?? [];
           config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
