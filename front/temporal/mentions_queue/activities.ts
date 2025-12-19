@@ -1,7 +1,6 @@
 import { handleAgentMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isAgentMessageType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -10,25 +9,9 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
  * Handle mentions in the agent message content.
  */
 export async function handleMentionsActivity(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  // Construct back an authenticator from the auth type.
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.error(
-      { authType, error: authResult.error },
-      "Failed to construct authenticator from auth type"
-    );
-    return;
-  }
-  const auth = authResult.value;
-
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("mentions_v2")) {
-    return;
-  }
-
   const conversationRes = await getConversation(
     auth,
     agentLoopArgs.conversationId
