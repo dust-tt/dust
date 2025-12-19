@@ -216,7 +216,7 @@ function constructPastedContentSection(): string {
   );
 }
 
-function constructGuidelinesSection({
+export function constructGuidelinesSection({
   agentConfiguration,
   featureFlags,
   userMessage,
