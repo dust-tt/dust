@@ -163,7 +163,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const isMentionsV2Enabled = hasFeature("mentions_v2");
 
-  const hasSpaceConversations = hasFeature("conversations_groups");
+  const hasSpaceConversations = hasFeature("projects");
 
   const { summary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,

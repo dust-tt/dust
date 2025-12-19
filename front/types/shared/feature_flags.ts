@@ -234,8 +234,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Display similar skills when creating a new skill to avoid duplicates",
     stage: "dust_only",
   },
-  conversations_groups: {
-    description: "Enable conversations groups in Spaces",
+  projects: {
+    description: "Enable use Spaces as Projects",
     stage: "dust_only",
   },
   databricks_tool: {

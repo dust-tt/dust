@@ -424,41 +424,38 @@ export function CreateOrEditSpaceModal({
                 }
               }}
             />
-            {hasFeature("conversations_groups") &&
-              space?.kind === "regular" && (
-                <div>
-                  <ContentMessage
-                    title="Alpha: Conversations in Spaces"
-                    variant="info"
-                    action={
-                      <SliderToggle
-                        selected={conversationsEnabled}
-                        onClick={() => {
-                          handleConversationsEnabledChange(
-                            !conversationsEnabled
-                          );
-                        }}
-                      />
-                    }
-                  >
-                    <p>
-                      This feature is currently in internal testing. It is only
-                      available in the Dust workspace ("conversations_groups"
-                      feature flag enabled).
-                      <br />
-                      Enabling this feature will make the space show in the
-                      "Chat" sidebar for all members of the space.
-                      {!isRestricted && (
-                        <>
-                          <br />
-                          Since this space is not restricted, you can pick which
-                          members will see the chat sidebar.
-                        </>
-                      )}
-                    </p>
-                  </ContentMessage>
-                </div>
-              )}
+            {hasFeature("projects") && space?.kind === "regular" && (
+              <div>
+                <ContentMessage
+                  title="Alpha: Use as Project"
+                  variant="info"
+                  action={
+                    <SliderToggle
+                      selected={conversationsEnabled}
+                      onClick={() => {
+                        handleConversationsEnabledChange(!conversationsEnabled);
+                      }}
+                    />
+                  }
+                >
+                  <p>
+                    This feature is currently in internal testing. It is only
+                    available in the Dust workspace ("projects" feature flag
+                    enabled).
+                    <br />
+                    Enabling this feature will make the space show in the "Chat"
+                    sidebar for all members of the space.
+                    {!isRestricted && (
+                      <>
+                        <br />
+                        Since this space is not restricted, you can pick which
+                        members will see the chat sidebar.
+                      </>
+                    )}
+                  </p>
+                </ContentMessage>
+              </div>
+            )}
             <RestrictedAccessBody
               isRestricted={isRestricted}
               isManual={isManual}
@@ -617,10 +614,7 @@ function RestrictedAccessBody({
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  if (
-    isRestricted ||
-    (hasFeature("conversations_groups") && areConversationsEnabled)
-  ) {
+  if (isRestricted || (hasFeature("projects") && areConversationsEnabled)) {
     return (
       <>
         {planAllowsSCIM ? (
