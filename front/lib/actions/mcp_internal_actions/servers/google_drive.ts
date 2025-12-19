@@ -9,12 +9,15 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getGoogleDriveClient,
+  getGoogleSheetsClient,
   MAX_CONTENT_SIZE,
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/providers/google_drive/utils";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+const GOOGLE_DRIVE_TOOL_NAME = "google_drive";
 
 function createServer(
   auth: Authenticator,
@@ -30,6 +33,14 @@ function createServer(
     return getGoogleDriveClient(accessToken);
   }
 
+  async function getSheetsClient(authInfo?: AuthInfo) {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return null;
+    }
+    return getGoogleSheetsClient(accessToken);
+  }
+
   server.tool(
     "list_drives",
     "List all shared drives accessible by the user.",
@@ -39,7 +50,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "google_drive",
+        toolNameForMonitoring: GOOGLE_DRIVE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ pageToken }, { authInfo }) => {
@@ -133,7 +144,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "google_drive",
+        toolNameForMonitoring: GOOGLE_DRIVE_TOOL_NAME,
         agentLoopContext,
       },
       async (
@@ -222,7 +233,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "google_drive",
+        toolNameForMonitoring: GOOGLE_DRIVE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ fileId, offset, limit }, { authInfo }) => {
@@ -339,6 +350,110 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           return new Err(
             new MCPError(
               normalizeError(err).message || "Failed to get file content"
+            )
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "get_spreadsheet",
+    "Get metadata and properties of a specific Google Sheets spreadsheet.",
+    {
+      spreadsheetId: z
+        .string()
+        .describe("The ID of the spreadsheet to retrieve."),
+      includeGridData: z
+        .boolean()
+        .default(false)
+        .describe("Whether to include grid data in the response."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_DRIVE_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ spreadsheetId, includeGridData }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
+
+        try {
+          const res = await sheets.spreadsheets.get({
+            spreadsheetId,
+            includeGridData,
+          });
+
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get spreadsheet"
+            )
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "get_worksheet",
+    "Get data from a specific worksheet in a Google Sheets spreadsheet.",
+    {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      range: z
+        .string()
+        .describe(
+          "The A1 notation of the range to retrieve (e.g., 'Sheet1!A1:D10' or 'A1:D10')."
+        ),
+      majorDimension: z
+        .enum(["ROWS", "COLUMNS"])
+        .default("ROWS")
+        .describe("The major dimension of the values."),
+      valueRenderOption: z
+        .enum(["FORMATTED_VALUE", "UNFORMATTED_VALUE", "FORMULA"])
+        .default("FORMATTED_VALUE")
+        .describe("How values should be represented in the output."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_DRIVE_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (
+        { spreadsheetId, range, majorDimension, valueRenderOption },
+        { authInfo }
+      ) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
+
+        try {
+          const res = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range,
+            majorDimension,
+            valueRenderOption,
+          });
+
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get worksheet data"
             )
           );
         }

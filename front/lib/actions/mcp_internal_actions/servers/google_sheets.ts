@@ -1,6 +1,5 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -8,6 +7,10 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  getGoogleDriveClient,
+  getGoogleSheetsClient,
+} from "@app/lib/providers/google_drive/utils";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -20,32 +23,20 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("google_sheets");
 
-  async function getSheetsClient(authInfo?: AuthInfo) {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return null;
-    }
-
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
-    return google.sheets({
-      version: "v4",
-      auth: oauth2Client,
-    });
-  }
-
   async function getDriveClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return null;
     }
+    return getGoogleDriveClient(accessToken);
+  }
 
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
-    return google.drive({
-      version: "v3",
-      auth: oauth2Client,
-    });
+  async function getSheetsClient(authInfo?: AuthInfo) {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return null;
+    }
+    return getGoogleSheetsClient(accessToken);
   }
 
   server.tool(
