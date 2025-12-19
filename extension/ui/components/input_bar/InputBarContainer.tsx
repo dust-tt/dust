@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlexSplitButton,
-  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
