@@ -11,7 +11,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useMemo, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
   AgentBuilderFormData,
@@ -37,15 +37,17 @@ import { pluralize } from "@app/types";
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
   onRemove: () => void;
+  onClick: () => void;
 }
 
-function SkillCard({ skill, onRemove }: SkillCardProps) {
+function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
   const SkillIcon = getSkillIcon(skill.icon);
 
   return (
     <Card
       variant="primary"
       className="h-28"
+      onClick={onClick}
       action={
         <CardActionButton
           size="mini"
@@ -109,11 +111,12 @@ export function AgentBuilderSkillsBlock({
   owner,
   user,
 }: AgentBuilderSkillsBlockProps) {
-  const { getValues, setValue, watch } = useFormContext<AgentBuilderFormData>();
-  const { fields: skillFields, remove: removeSkill } = useFieldArray<
-    AgentBuilderFormData,
-    "skills"
-  >({
+  const { getValues } = useFormContext<AgentBuilderFormData>();
+  const {
+    fields: skillFields,
+    remove: removeSkill,
+    append: appendSkill,
+  } = useFieldArray<AgentBuilderFormData, "skills">({
     name: "skills",
   });
   const {
@@ -124,6 +127,12 @@ export function AgentBuilderSkillsBlock({
   } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
   });
+  const { field: additionalSpacesField } = useController<
+    AgentBuilderFormData,
+    "additionalSpaces"
+  >({
+    name: "additionalSpaces",
+  });
 
   // TODO(skills Jules): make a pass on the way we use reacthookform here
   const { mcpServerViewsWithKnowledge, mcpServerViews } =
@@ -131,13 +140,17 @@ export function AgentBuilderSkillsBlock({
   const { skills: allSkills } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const actions = watch("actions");
-  const selectedSkills = watch("skills");
-  const additionalSpaces = watch("additionalSpaces");
+  const alreadyAddedSkillIds = useMemo(
+    () => new Set(skillFields.map((s) => s.sId)),
+    [skillFields]
+  );
 
   // Compute space IDs already requested by actions (tools/knowledge)
   const alreadyRequestedSpaceIds = useMemo(() => {
-    const spaceIdToActions = getSpaceIdToActionsMap(actions, mcpServerViews);
+    const spaceIdToActions = getSpaceIdToActionsMap(
+      actionFields,
+      mcpServerViews
+    );
     const actionRequestedSpaceIds = new Set<string>();
     for (const spaceId of Object.keys(spaceIdToActions)) {
       if (spaceIdToActions[spaceId]?.length > 0) {
@@ -146,9 +159,8 @@ export function AgentBuilderSkillsBlock({
     }
 
     // Also include space IDs from custom skills (those with canWrite: true have their own requestedSpaceIds)
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
     for (const skill of allSkills) {
-      if (selectedSkillIds.has(skill.sId) && skill.canWrite) {
+      if (alreadyAddedSkillIds.has(skill.sId) && skill.canWrite) {
         for (const spaceId of skill.requestedSpaceIds) {
           actionRequestedSpaceIds.add(spaceId);
         }
@@ -156,11 +168,11 @@ export function AgentBuilderSkillsBlock({
     }
 
     return actionRequestedSpaceIds;
-  }, [actions, mcpServerViews, selectedSkills, allSkills]);
+  }, [actionFields, mcpServerViews, alreadyAddedSkillIds, allSkills]);
 
   const spaceIdToActions = useMemo(() => {
-    return getSpaceIdToActionsMap(actions, mcpServerViews);
-  }, [actions, mcpServerViews]);
+    return getSpaceIdToActionsMap(actionFields, mcpServerViews);
+  }, [actionFields, mcpServerViews]);
 
   const nonGlobalSpacesUsedInActions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
@@ -205,12 +217,23 @@ export function AgentBuilderSkillsBlock({
     }
   };
 
+  const handleSkillClick = (skill: AgentBuilderSkillsType) => {
+    const capability = allSkills.find((s) => s.sId === skill.sId);
+    if (capability) {
+      setCapabilitiesSheetMode({
+        pageId: "skill_info",
+        capability,
+        hasPreviousPage: false,
+      });
+    }
+  };
+
   const handleSaveSkills = useCallback(
     (skills: AgentBuilderSkillsType[], newAdditionalSpaces: string[]) => {
-      setValue("skills", skills, { shouldDirty: true });
-      setValue("additionalSpaces", newAdditionalSpaces, { shouldDirty: true });
+      appendSkill(skills);
+      additionalSpacesField.onChange(newAdditionalSpaces);
     },
-    [setValue]
+    [appendSkill, additionalSpacesField]
   );
 
   const handleClickKnowledge = () => {
@@ -277,6 +300,7 @@ export function AgentBuilderSkillsBlock({
                   key={field.id}
                   skill={field}
                   onRemove={() => removeSkill(index)}
+                  onClick={() => handleSkillClick(field)}
                 />
               ))}
               {actionFields.map((field, index) => (
@@ -319,9 +343,9 @@ export function AgentBuilderSkillsBlock({
         onModeChange={setCapabilitiesSheetMode}
         owner={owner}
         user={user}
-        initialSelectedSkills={selectedSkills}
-        initialAdditionalSpaces={additionalSpaces}
+        initialAdditionalSpaces={additionalSpacesField.value}
         alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
+        alreadyAddedSkillIds={alreadyAddedSkillIds}
       />
     </AgentBuilderSectionContainer>
   );

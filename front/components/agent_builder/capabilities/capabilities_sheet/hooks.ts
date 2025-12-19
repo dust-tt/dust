@@ -2,7 +2,6 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
   CapabilitiesSheetMode,
   PageContentProps,
@@ -31,6 +30,7 @@ export const useSkillSelection = ({
   setLocalSelectedSkills,
   localAdditionalSpaces,
   setLocalAdditionalSpaces,
+  alreadyAddedSkillIds,
 }: PageContentProps) => {
   const { owner } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,47 +52,50 @@ export const useSkillSelection = ({
   );
 
   const filteredSkills = useMemo(() => {
+    // Filter out already-added skills (same pattern as tools)
+    const notAlreadyAddedSkills = skillsWithRelations.filter(
+      (skill) => !alreadyAddedSkillIds.has(skill.sId)
+    );
+
     if (!searchQuery.trim()) {
-      return skillsWithRelations;
+      return notAlreadyAddedSkills;
     }
     const query = searchQuery.toLowerCase();
-    return skillsWithRelations.filter(
+    return notAlreadyAddedSkills.filter(
       (skill) =>
         skill.name.toLowerCase().includes(query) ||
         skill.userFacingDescription.toLowerCase().includes(query)
     );
-  }, [skillsWithRelations, searchQuery]);
+  }, [skillsWithRelations, searchQuery, alreadyAddedSkillIds]);
 
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
-      const isAlreadySelected = localSelectedSkills.some(
-        (s) => s.sId === skill.sId
-      );
-
-      if (isAlreadySelected) {
+      if (selectedSkillIds.has(skill.sId)) {
         setLocalSelectedSkills((prev) =>
           prev.filter((s) => s.sId !== skill.sId)
         );
-      } else {
-        if (isGlobalSkillWithSpaceSelection(skill)) {
-          onModeChange({
-            pageId: "skill_space_selection",
-            capability: skill,
-          });
-        } else {
-          setLocalSelectedSkills((prev) => [
-            ...prev,
-            {
-              sId: skill.sId,
-              name: skill.name,
-              description: skill.userFacingDescription,
-              icon: skill.icon,
-            },
-          ]);
-        }
+        return;
       }
+
+      if (isGlobalSkillWithSpaceSelection(skill)) {
+        onModeChange({
+          pageId: "skill_space_selection",
+          capability: skill,
+        });
+        return;
+      }
+
+      setLocalSelectedSkills((prev) => [
+        ...prev,
+        {
+          sId: skill.sId,
+          name: skill.name,
+          description: skill.userFacingDescription,
+          icon: skill.icon,
+        },
+      ]);
     },
-    [localSelectedSkills, onModeChange, setLocalSelectedSkills]
+    [selectedSkillIds, onModeChange, setLocalSelectedSkills]
   );
 
   const handleSpaceSelectionSave = useCallback(
@@ -100,7 +103,7 @@ export const useSkillSelection = ({
       // Commit draft spaces to actual state
       setLocalAdditionalSpaces(draftSelectedSpaces);
       // Add the skill
-      setLocalSelectedSkills((prev: AgentBuilderSkillsType[]) => [
+      setLocalSelectedSkills((prev) => [
         ...prev,
         {
           sId: skill.sId,

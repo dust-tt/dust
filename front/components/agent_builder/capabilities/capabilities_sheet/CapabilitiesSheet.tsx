@@ -16,9 +16,9 @@ interface CapabilitiesSheetProps {
   onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   owner: WorkspaceType;
   user: UserType;
-  initialSelectedSkills: AgentBuilderSkillsType[];
   initialAdditionalSpaces: string[];
   alreadyRequestedSpaceIds: Set<string>;
+  alreadyAddedSkillIds: Set<string>;
 }
 
 export function CapabilitiesSheet(props: CapabilitiesSheetProps) {
@@ -41,13 +41,13 @@ function CapabilitiesSheetContent({
   onModeChange,
   owner,
   user,
-  initialSelectedSkills,
   initialAdditionalSpaces,
   alreadyRequestedSpaceIds,
+  alreadyAddedSkillIds,
 }: CapabilitiesSheetProps & { mode: CapabilitiesSheetMode }) {
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
-  >(initialSelectedSkills);
+  >([]);
   const [localAdditionalSpaces, setLocalAdditionalSpaces] = useState<string[]>(
     initialAdditionalSpaces
   );
@@ -65,6 +65,7 @@ function CapabilitiesSheetContent({
     owner,
     user,
     alreadyRequestedSpaceIds,
+    alreadyAddedSkillIds,
     localSelectedSkills,
     setLocalSelectedSkills,
     localAdditionalSpaces,

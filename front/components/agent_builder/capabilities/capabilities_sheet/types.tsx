@@ -75,6 +75,7 @@ export type PageContentProps = {
   owner: WorkspaceType;
   user: UserType;
   alreadyRequestedSpaceIds: Set<string>;
+  alreadyAddedSkillIds: Set<string>;
   localSelectedSkills: AgentBuilderSkillsType[];
   setLocalSelectedSkills: React.Dispatch<
     React.SetStateAction<AgentBuilderSkillsType[]>

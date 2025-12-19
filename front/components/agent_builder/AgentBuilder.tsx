@@ -5,7 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderFormData,
+  AgentBuilderSkillsType,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   AgentBuilderFormContext,
   agentBuilderFormSchema,
@@ -145,11 +148,12 @@ export default function AgentBuilder({
     return processActionsFromStorage(actions ?? emptyArray());
   }, [actions]);
 
-  const processedSkills = useMemo(() => {
+  const processedSkills: AgentBuilderSkillsType[] = useMemo(() => {
     return skills.map((skill) => ({
       sId: skill.sId,
       name: skill.name,
       description: skill.userFacingDescription,
+      icon: skill.icon,
     }));
   }, [skills]);
 
