@@ -259,6 +259,7 @@
     "nodemon": "^3.1.11",
     "prettier": "^3.0",
     "prettier-plugin-tailwindcss": "^0.6.14",
+    "read-pkg-up": "^11.0.0",
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.48.0",
