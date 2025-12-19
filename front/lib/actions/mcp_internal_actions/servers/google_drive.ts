@@ -358,7 +358,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   );
 
   server.tool(
-    "get_spreadsheet_metadata",
+    "get_spreadsheet",
     "Get metadata and properties of a specific Google Sheets spreadsheet.",
     {
       spreadsheetId: z

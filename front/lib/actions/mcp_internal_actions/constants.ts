@@ -607,6 +607,9 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     tools_stakes: {
+      list_spreadsheets: "never_ask",
+      get_spreadsheet: "never_ask",
+      get_worksheet: "never_ask",
       update_cells: "low",
       append_data: "low",
       clear_range: "low",
@@ -917,7 +920,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_drives: "never_ask",
       search_files: "never_ask",
       get_file_content: "never_ask",
-      get_spreadsheet_metadata: "never_ask",
+      get_spreadsheet: "never_ask",
       get_worksheet: "never_ask",
     },
     tools_retry_policies: { default: "retry_on_interrupt" },
