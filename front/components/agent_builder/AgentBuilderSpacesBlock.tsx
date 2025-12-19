@@ -14,6 +14,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { getActionsAndSkillsRequestedSpaceIds } from "@app/components/agent_builder/utils";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
@@ -48,29 +49,19 @@ export function AgentBuilderSpacesBlock() {
     mcpServerViews,
   });
 
-  // Compute requested spaces from tools/knowledge (actions)
   const spaceIdToActions = useMemo(() => {
     return getSpaceIdToActionsMap(actions, mcpServerViews);
   }, [actions, mcpServerViews]);
 
-  // Merge requested spaces from skills, actions, and additional spaces (from global skills)
-  const actionsAndSkillsRequestedSpaceIds = useMemo(() => {
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
-    const skillRequestedSpaceIds = new Set(
-      allSkills
-        .filter((skill) => selectedSkillIds.has(skill.sId))
-        .flatMap((skill) => skill.requestedSpaceIds)
-    );
-
-    const actionRequestedSpaceIds = new Set<string>();
-    for (const spaceId of Object.keys(spaceIdToActions)) {
-      if (spaceIdToActions[spaceId]?.length > 0) {
-        actionRequestedSpaceIds.add(spaceId);
-      }
-    }
-
-    return new Set([...skillRequestedSpaceIds, ...actionRequestedSpaceIds]);
-  }, [selectedSkills, allSkills, spaceIdToActions]);
+  const actionsAndSkillsRequestedSpaceIds = useMemo(
+    () =>
+      getActionsAndSkillsRequestedSpaceIds(
+        selectedSkills,
+        allSkills,
+        spaceIdToActions
+      ),
+    [selectedSkills, allSkills, spaceIdToActions]
+  );
 
   const nonGlobalSpacesWithRestrictions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
