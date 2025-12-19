@@ -525,7 +525,7 @@ export default function CreditsUsagePage({
             return (
               <ContentMessage
                 title={title}
-                variant="warning"
+                variant="info"
                 size="lg"
                 icon={ExclamationCircleIcon}
               >
@@ -535,14 +535,10 @@ export default function CreditsUsagePage({
                     label={isSingle ? "Complete Payment" : "Manage Invoices"}
                     variant="primary"
                     onClick={() => {
-                      if (isSingle && pendingCredits[0].paymentUrl) {
-                        window.open(pendingCredits[0].paymentUrl, "_blank");
-                      } else {
-                        window.open(
-                          `/w/${owner.sId}/subscription/manage`,
-                          "_blank"
-                        );
-                      }
+                      window.open(
+                        `/w/${owner.sId}/subscription/manage`,
+                        "_blank"
+                      );
                     }}
                   />
                 </div>

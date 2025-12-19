@@ -216,7 +216,8 @@ export function BuyCreditDialog({
                 Payment confirmation required
               </p>
               <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Please complete the payment to finalize your credit purchase.
+                Please complete the payment to finalize your credit purchase or
+                contact support to cancel.
               </p>
             </div>
           </div>
@@ -600,8 +601,15 @@ export function BuyCreditDialog({
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
                 Please complete your pending payment before making a new
-                purchase. You can manage your invoices in the subscription
-                settings.
+                purchase or contact support to cancel your pending payments.{" "}
+                <a
+                  href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2ce28599d94180f69e02e90280c309b4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-action-500 hover:underline"
+                >
+                  Learn more
+                </a>
               </p>
             </div>
           </DialogContainer>
