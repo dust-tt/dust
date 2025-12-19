@@ -205,7 +205,7 @@ export async function fetchSkillMCPServerConfigurations(
   }
 
   // Collect extended skill IDs from enabled skills.
-  const extendedSkillIds = compact(
+  const extendedSkillIds = removeNulls(
     uniq(enabledSkills.map((skill) => skill.extendedSkillId))
   );
 
