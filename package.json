@@ -1,0 +1,36 @@
+{
+  "name": "dust-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "front",
+    "sparkle",
+    "connectors",
+    "cli",
+    "extension",
+    "viz",
+    "common",
+    "eslint-plugin-dust",
+    "sdks/js"
+  ],
+  "scripts": {
+    "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
+    "install:all": "npm install"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^5.18.0",
+    "fp-ts": "^2.16.11",
+    "monocle-ts": "^2.3.13",
+    "newtype-ts": "^0.3.5"
+  }
+}

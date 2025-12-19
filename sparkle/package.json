@@ -11,14 +11,32 @@
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "fix:imports": "node scripts/fix-component-imports.js"
   },
   "main": "dist/cjs/index.js",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./dist/esm/*": {
+      "types": "./dist/esm/*.d.ts",
+      "import": "./dist/esm/*.js",
+      "default": "./dist/esm/*.js"
+    },
+    "./dist/cjs/*": {
+      "types": "./dist/esm/*.d.ts",
+      "require": "./dist/cjs/*.js"
+    },
+    "./dist/sparkle.css": "./dist/sparkle.css"
+  },
   "files": [
-    "dist/",
-    "src/"
+    "dist/"
   ],
   "sideEffects": [
     "src/index_with_tw_base.ts",
@@ -49,8 +67,8 @@
     "@svgr/cli": "^8.0.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/forms": "^0.5.3",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^9.0.6",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
@@ -83,8 +101,16 @@
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    },
+    "@types/react-dom": {
+      "optional": true
+    }
   },
   "description": "Sparkle is Dust's Design System",
   "repository": {
@@ -135,6 +161,5 @@
     "tailwind-merge": "^2.5.3",
     "tailwind-scrollbar-hide": "^1.1.7",
     "unist-util-visit": "^5.0.0"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  }
 }

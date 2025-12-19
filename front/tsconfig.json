@@ -35,5 +35,11 @@
     "**/*.mjs",
     "./.eslintrc.js"
   ],
-  "exclude": ["node_modules", ".next", "dist"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "../sparkle/src",
+    "../sparkle/node_modules"
+  ]
 }
