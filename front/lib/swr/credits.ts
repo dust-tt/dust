@@ -3,7 +3,10 @@ import type { Fetcher } from "swr";
 
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetCreditsResponseBody } from "@app/types/credits";
+import type {
+  GetCreditsResponseBody,
+  PendingCreditData,
+} from "@app/types/credits";
 
 // Global state for tracking purchase loading status per workspace
 const purchaseLoadingState = new Map<string, boolean>();
@@ -71,8 +74,11 @@ export function useCredits({
     }
   );
 
+  const pendingCredits: PendingCreditData[] = data?.pendingCredits ?? [];
+
   return {
     credits: data?.credits ?? emptyArray(),
+    pendingCredits,
     isCreditsLoading: !error && !data && !disabled,
     isCreditsValidating: isValidating,
     isCreditsError: error,

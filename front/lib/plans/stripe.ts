@@ -988,6 +988,14 @@ export async function payInvoice(
   });
 }
 
+export async function getInvoicePaymentUrl(
+  invoiceId: string
+): Promise<string | null> {
+  const stripe = getStripeClient();
+  const invoice = await stripe.invoices.retrieve(invoiceId);
+  return invoice.hosted_invoice_url ?? null;
+}
+
 export async function makeAndFinalizeCreditsPAYGInvoice({
   stripeSubscription,
   amountMicroUsd,

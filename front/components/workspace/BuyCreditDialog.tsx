@@ -216,7 +216,8 @@ export function BuyCreditDialog({
                 Payment confirmation required
               </p>
               <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Please complete the payment to finalize your credit purchase.
+                Please complete the payment to finalize your credit purchase or
+                contact support to cancel pending invoices.
               </p>
             </div>
           </div>
@@ -261,7 +262,7 @@ export function BuyCreditDialog({
                 Credits amount
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                <span className="absolute left-3 top-[11px] text-muted-foreground dark:text-muted-foreground-night">
                   $
                 </span>
                 <Input
@@ -456,10 +457,17 @@ export function BuyCreditDialog({
       case "error":
         return (
           <DialogFooter
-            rightButtonProps={{
+            leftButtonProps={{
               label: "Close",
               variant: "outline",
               onClick: resetModalStateAndClose,
+            }}
+            rightButtonProps={{
+              label: "Manage Invoices",
+              variant: "primary",
+              onClick: () => {
+                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+              },
             }}
           />
         );
@@ -567,6 +575,56 @@ export function BuyCreditDialog({
               label: "Close",
               variant: "outline",
               onClick: onClose,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Cannot purchase: pending payment.
+  if (
+    creditPurchaseLimits &&
+    !creditPurchaseLimits.canPurchase &&
+    creditPurchaseLimits.reason === "pending_payment"
+  ) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogDescription>
+              You have pending credit purchases awaiting payment.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Please complete your pending payment before making a new
+                purchase or contact support to cancel your pending payments.{" "}
+                <a
+                  href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2ce28599d94180f69e02e90280c309b4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-action-500 hover:underline"
+                >
+                  Learn more
+                </a>
+              </p>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+            rightButtonProps={{
+              label: "Manage Invoices",
+              variant: "primary",
+              onClick: () => {
+                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+              },
             }}
           />
         </DialogContent>

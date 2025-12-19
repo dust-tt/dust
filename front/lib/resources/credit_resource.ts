@@ -180,6 +180,20 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   /**
+   * Returns pending committed credits (not yet paid/started) for the workspace.
+   * Used to block new purchases when there are unpaid invoices.
+   */
+  static async listPendingCommitted(auth: Authenticator) {
+    return this.baseFetch(auth, {
+      where: {
+        type: "committed",
+        startDate: null,
+        invoiceOrLineItemId: { [Op.ne]: null },
+      },
+    });
+  }
+
+  /**
    * Returns the total amount of committed credits purchased in the given period.
    * Used to enforce per-billing-cycle purchase limits.
    */

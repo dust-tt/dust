@@ -15,7 +15,10 @@ const MAX_PRO_CREDIT_TOTAL_MICRO_USD = 1_000_000_000;
 const MIN_ENTERPRISE_CREDIT_MICRO_USD = 1_000_000_000;
 
 export type CreditPurchaseLimits =
-  | { canPurchase: false; reason: "trialing" | "payment_issue" }
+  | {
+      canPurchase: false;
+      reason: "trialing" | "payment_issue" | "pending_payment";
+    }
   | { canPurchase: true; maxAmountMicroUsd: number };
 
 /**
@@ -75,6 +78,15 @@ export async function getCreditPurchaseLimits(
     return {
       canPurchase: false,
       reason: "payment_issue",
+    };
+  }
+
+  // Check for any pending committed credits first
+  const pendingCredits = await CreditResource.listPendingCommitted(auth);
+  if (pendingCredits.length > 0) {
+    return {
+      canPurchase: false,
+      reason: "pending_payment",
     };
   }
 

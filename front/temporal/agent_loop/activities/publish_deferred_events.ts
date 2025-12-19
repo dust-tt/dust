@@ -1,3 +1,5 @@
+import type { WhereOptions } from "sequelize";
+
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -21,9 +23,18 @@ export async function publishDeferredEventsActivity(
     const { event, context } = deferredEvent;
     const isLastEvent = index === deferredEvents.length - 1;
 
-    const agentMessageRow = await AgentMessageModel.findByPk(
-      context.agentMessageRowId
-    );
+    const where: WhereOptions<AgentMessageModel> = {
+      id: context.agentMessageRowId,
+    };
+
+    // TODO(2025-12-19 FLAV): Remove this check once all ongoing workflows have terminated.
+    if (context.workspaceId) {
+      where.workspaceId = context.workspaceId;
+    }
+
+    const agentMessageRow = await AgentMessageModel.findOne({
+      where,
+    });
     if (!agentMessageRow) {
       throw new Error(
         `Agent message row not found: ${context.agentMessageRowId}`

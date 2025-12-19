@@ -215,6 +215,7 @@ export async function runToolActivity(
             agentMessageRowId: agentMessageRow.id,
             conversationId: conversation.sId,
             step,
+            workspaceId: conversation.owner.id,
           },
           shouldPauseAgentLoop: true,
         });
