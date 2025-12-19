@@ -3,8 +3,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import type { EmojiItem } from "@tiptap/extension-emoji";
-import { emojis } from "@tiptap/extension-emoji";
+import type { EmojiMartData } from "@emoji-mart/data";
+import data from "@emoji-mart/data";
+import { init, SearchIndex } from "emoji-mart";
 import shuffle from "lodash/shuffle";
 import React, {
   forwardRef,
@@ -22,16 +23,19 @@ import type {
 } from "@app/components/editor/input_bar/types";
 import { classNames } from "@app/lib/utils";
 
-// Curated list of commonly used emoji names
-const POPULAR_EMOJI_NAMES = [
-  "smiley",
+// Type the imported data, emoji-mart types are not the best
+const emojiData = data as unknown as EmojiMartData;
+
+// Curated list of commonly used emoji IDs (short codes)
+const POPULAR_EMOJI_IDS = [
+  "grinning",
   "joy",
   "heart",
   "+1",
   "fire",
   "tada",
   "heart_eyes",
-  "thinking",
+  "thinking_face",
   "eyes",
   "rocket",
   "white_check_mark",
@@ -45,42 +49,74 @@ const POPULAR_EMOJI_NAMES = [
   "100",
 ];
 
-const EMOJIS_MAP = new Map(emojis.map((emoji) => [emoji.name, emoji]));
+// Get popular emojis from emoji-mart data
+const POPULAR_EMOJIS = POPULAR_EMOJI_IDS.map((id) => {
+  const emoji = emojiData.emojis[id];
+  return emoji
+    ? {
+        id,
+        name: emoji.name,
+        native: emoji.skins[0].native,
+        shortcodes: emoji.id,
+      }
+    : null;
+}).filter((emoji): emoji is NonNullable<typeof emoji> => emoji !== null);
 
-const POPULAR_EMOJIS = POPULAR_EMOJI_NAMES.map((name) =>
-  EMOJIS_MAP.get(name)
-).filter((emoji): emoji is EmojiItem => emoji !== undefined);
+type EmojiResult = {
+  id: string;
+  name: string;
+  native: string;
+  shortcodes: string;
+};
 
 export const EmojiDropdown = forwardRef<
   EmojiDropdownOnKeyDown,
   EmojiDropdownProps
 >(({ query, clientRect, command, onClose }, ref) => {
+  const [emojiMartInitialized, setEmojiMartInitialized] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [filteredEmojis, setFilteredEmojis] = useState<EmojiResult[]>([]);
   const triggerRect = useMemo(
     () => (clientRect ? clientRect() : null),
     [clientRect]
   );
 
-  // Get popular emojis by matching names from the full emoji list
+  useMemo(() => {
+    // Initialize emoji-mart with data
+    const _init = async () => {
+      await init({ data: emojiData });
+      setEmojiMartInitialized(true);
+    };
 
-  // Filter emojis based on query
-  const filteredEmojis = useMemo(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-render
+    void _init();
+  }, []);
+
+  // Filter emojis based on query using emoji-mart's search
+  useEffect(() => {
     if (!query) {
       // Show curated popular emojis when no query
-      return shuffle(POPULAR_EMOJIS).slice(0, 5);
+      setFilteredEmojis(shuffle(POPULAR_EMOJIS).slice(0, 5));
+      return;
     }
 
-    const lowerQuery = query.toLowerCase();
-    return emojis
-      .filter((emoji) => {
-        // Search in shortcodes and tags
-        return (
-          emoji.shortcodes.some((code) => code.includes(lowerQuery)) ||
-          emoji.tags.some((tag) => tag.includes(lowerQuery))
-        );
-      })
-      .slice(0, 20); // Limit to 20 results
-  }, [query]);
+    const searchEmoji = async () => {
+      // Use emoji-mart's search functionality
+      const results = await SearchIndex.search(query, {
+        maxResults: 20,
+        caller: "EmojiDropdown",
+      });
+      const emojis = (results ?? []).map((result: any) => ({
+        id: result.id,
+        name: result.name,
+        native: result.skins[0].native,
+        shortcodes: result.id,
+      }));
+      setFilteredEmojis(emojis);
+    };
+
+    void searchEmoji();
+  }, [query, emojiMartInitialized]);
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
@@ -90,7 +126,7 @@ export const EmojiDropdown = forwardRef<
   const selectItem = (index: number) => {
     const emoji = filteredEmojis[index];
     if (emoji) {
-      command({ name: emoji.name });
+      command({ name: emoji.id });
     }
   };
 
@@ -181,7 +217,7 @@ export const EmojiDropdown = forwardRef<
         {filteredEmojis.length > 0 ? (
           <div className="flex max-h-60 flex-col gap-y-1 overflow-y-auto p-1">
             {filteredEmojis.map((emoji, index) => (
-              <div key={emoji.name}>
+              <div key={emoji.id}>
                 <button
                   ref={index === selectedIndex ? selectedItemRef : null}
                   className={classNames(
@@ -199,10 +235,8 @@ export const EmojiDropdown = forwardRef<
                   }}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                    <span className="text-2xl">{emoji.emoji}</span>
-                    <span className="truncate">
-                      :{emoji.shortcodes?.[0] || emoji.name}:
-                    </span>
+                    <span className="text-2xl">{emoji.native}</span>
+                    <span className="truncate">:{emoji.shortcodes}:</span>
                   </div>
                 </button>
               </div>

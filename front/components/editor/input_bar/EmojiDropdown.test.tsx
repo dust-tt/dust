@@ -17,17 +17,7 @@ describe("EmojiDropdown", () => {
     toJSON: () => ({}),
   }));
 
-  it("renders without crashing", () => {
-    render(
-      <EmojiDropdown
-        query=""
-        command={mockCommand}
-        clientRect={mockClientRect}
-      />
-    );
-  });
-
-  it("shows popular emojis when query is empty", () => {
+  it("shows popular emojis when query is empty", async () => {
     render(
       <EmojiDropdown
         query=""
@@ -37,12 +27,12 @@ describe("EmojiDropdown", () => {
     );
 
     // Should show curated popular emojis
-    const buttons = screen.getAllByRole("button");
+    const buttons = await screen.findAllByRole("button");
     expect(buttons.length).toBeGreaterThan(0);
     expect(buttons.length).toBeLessThanOrEqual(20);
   });
 
-  it("filters emojis based on query", () => {
+  it("filters emojis based on query", async () => {
     const { rerender } = render(
       <EmojiDropdown
         query="smile"
@@ -52,7 +42,7 @@ describe("EmojiDropdown", () => {
     );
 
     // Should show smile-related emojis
-    const buttons = screen.getAllByRole("button");
+    const buttons = await screen.findAllByRole("button");
     expect(buttons.length).toBeGreaterThan(0);
 
     // Rerender with different query
@@ -65,7 +55,7 @@ describe("EmojiDropdown", () => {
     );
 
     // Should show different emojis
-    const heartButtons = screen.getAllByRole("button");
+    const heartButtons = await screen.findAllByRole("button");
     expect(heartButtons.length).toBeGreaterThan(0);
   });
 
@@ -81,7 +71,7 @@ describe("EmojiDropdown", () => {
     expect(screen.getByText("No emoji found")).toBeDefined();
   });
 
-  it("limits results to 20 emojis when searching", () => {
+  it("limits results to 20 emojis when searching", async () => {
     // Search for a very common term that would match many emojis
     render(
       <EmojiDropdown
@@ -91,7 +81,7 @@ describe("EmojiDropdown", () => {
       />
     );
 
-    const buttons = screen.getAllByRole("button");
+    const buttons = await screen.findAllByRole("button");
     // Should not exceed 20 results
     expect(buttons.length).toBeLessThanOrEqual(20);
   });
