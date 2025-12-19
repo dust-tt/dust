@@ -1,11 +1,8 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
-import type {AuthenticatorType} from "@app/lib/auth";
-import {
-  Authenticator,
-  getFeatureFlags
-} from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { shouldSendNotificationForAgentAnswer } from "@app/lib/notifications/workflows/conversation-unread";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
