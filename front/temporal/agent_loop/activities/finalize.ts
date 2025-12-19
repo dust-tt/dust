@@ -7,7 +7,7 @@ import {
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
-import { launchTrackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
+import { launchTrackProgrammaticUsage } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -17,7 +17,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsage(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
   ]);
@@ -32,7 +32,7 @@ export async function finalizeCancelledAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsage(authType, agentLoopArgs),
   ]);
 }
 
@@ -46,6 +46,6 @@ export async function finalizeErroredAgentLoopActivity(
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsage(authType, agentLoopArgs),
   ]);
 }
