@@ -7,7 +7,7 @@ import {
 import { handleMentionsActivity } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
-import { trackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
+import { launchTrackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -16,7 +16,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
 ): Promise<void> {
   await Promise.all([
     launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-    trackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentionsActivity(authType, agentLoopArgs),
     snapshotAgentMessageSkills(authType, agentLoopArgs),
@@ -29,7 +29,7 @@ export async function finalizeCancelledAgentLoopActivity(
 ): Promise<void> {
   await Promise.all([
     launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-    trackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     finalizeCancellationActivity(authType, agentLoopArgs),
     snapshotAgentMessageSkills(authType, agentLoopArgs),
   ]);
@@ -42,7 +42,7 @@ export async function finalizeErroredAgentLoopActivity(
 ): Promise<void> {
   await Promise.all([
     launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-    trackProgrammaticUsageActivity(authType, agentLoopArgs),
+    launchTrackProgrammaticUsageActivity(authType, agentLoopArgs),
     notifyWorkflowError(authType, {
       conversationId: agentLoopArgs.conversationId,
       agentMessageId: agentLoopArgs.agentMessageId,

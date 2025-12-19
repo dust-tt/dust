@@ -431,6 +431,10 @@ export async function trackProgrammaticCost(
       });
     }
   }
+
+  return {
+    runsCostMicroUsd,
+  };
 }
 
 // First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).

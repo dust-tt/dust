@@ -1,102 +1,39 @@
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  isProgrammaticUsage,
-  trackProgrammaticCost,
-} from "@app/lib/api/programmatic_usage_tracking";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  MessageModel,
-  UserMessageModel,
-} from "@app/lib/models/agent/conversation";
 import logger from "@app/logger/logger";
-import type { UserMessageOrigin } from "@app/types";
+import { launchTrackProgrammaticUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-export async function trackProgrammaticUsageActivity(
+/**
+ * Launch agent message analytics workflow in fire-and-forget mode.
+ */
+export async function launchTrackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
+): Promise<void> {
+  // Use `getWorkspaceInfos` for lightweight workspace info.
+  const owner = await getWorkspaceInfos(authType.workspaceId);
+  if (!owner) {
+    logger.warn(
+      { workspaceId: authType.workspaceId },
+      "Failed to fetch workspace infos for agent message analytics"
     );
+    return;
   }
-  const auth = authResult.value;
-  const workspace = auth.getNonNullableWorkspace();
 
-  const { agentMessageId, userMessageId } = agentLoopArgs;
-
-  // Query the Message/AgentMessage rows.
-  const agentMessageRow = await MessageModel.findOne({
-    where: {
-      sId: agentMessageId,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
+  const result = await launchTrackProgrammaticUsageWorkflow({
+    authType,
+    agentLoopArgs,
   });
 
-  const agentMessage = agentMessageRow?.agentMessage;
-
-  // Query the UserMessage row to get user.
-  const userMessageRow = await MessageModel.findOne({
-    where: {
-      sId: userMessageId,
-      workspaceId: workspace.id,
-    },
-    include: [
+  if (result.isErr()) {
+    logger.warn(
       {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: true,
+        agentMessageId: agentLoopArgs.agentMessageId,
+        error: result.error,
+        workspaceId: authType.workspaceId,
       },
-    ],
-  });
-
-  const userMessage = userMessageRow?.userMessage;
-
-  if (!agentMessage || !userMessage || !agentMessageRow || !userMessageRow) {
-    throw new Error("Agent message or user message not found");
-  }
-
-  const userMessageOrigin = userMessage.userContextOrigin;
-
-  if (
-    AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
-    agentMessage.runIds &&
-    isProgrammaticUsage(auth, { userMessageOrigin })
-  ) {
-    const localLogger = logger.child({
-      workspaceId: workspace.sId,
-      agentMessageId,
-      agentMessageVersion: agentMessageRow.version,
-      conversationId: agentMessageRow.conversationId,
-      userMessageId,
-      userMessageVersion: userMessageRow.version,
-      userMessageOrigin,
-    });
-
-    localLogger.info("[Programmatic Usage Tracking] Starting activity");
-
-    await trackProgrammaticCost(
-      auth,
-      {
-        dustRunIds: agentMessage.runIds,
-        userMessageOrigin,
-      },
-      localLogger
+      "Failed to launch agent message analytics workflow"
     );
-
-    return { tracked: true, origin: userMessageOrigin };
   }
-
-  return { tracked: false, origin: userMessageOrigin };
 }

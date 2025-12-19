@@ -40,6 +40,10 @@ export async function launchStoreAgentAnalyticsWorkflow({
       args: [authType, { agentLoopArgs }],
       taskQueue: QUEUE_NAME,
       workflowId,
+      searchAttributes: {
+        conversationId: [conversationId],
+        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+      },
       memo: {
         agentMessageId,
         workspaceId,
