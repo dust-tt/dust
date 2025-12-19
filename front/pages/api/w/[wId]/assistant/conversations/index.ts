@@ -14,6 +14,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -208,6 +209,31 @@ async function handler(
               api_error: {
                 type: "internal_server_error",
                 message: "Failed to add MCP server views to conversation",
+              },
+            });
+          }
+        }
+
+        // If JIT skills are selected, add them to the conversation before posting the message.
+        if (message.context.selectedSkillIds) {
+          const skills = await SkillResource.fetchByIds(
+            auth,
+            message.context.selectedSkillIds
+          );
+
+          const r = await SkillResource.upsertConversationSkills(auth, {
+            conversationId: conversation.id,
+            skills,
+            enabled: true,
+            agentConfigurationId: null, // JIT skills apply to all agents in conversation
+          });
+
+          if (r.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to add skills to conversation",
               },
             });
           }

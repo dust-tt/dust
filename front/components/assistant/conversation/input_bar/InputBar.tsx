@@ -14,7 +14,9 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
+  useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
+  useConversationSkills,
   useConversationTools,
 } from "@app/lib/swr/conversations";
 import { useIsOnboardingConversation } from "@app/lib/swr/user";
@@ -44,7 +46,8 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    selectedSkillIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: RichMention[];
@@ -169,6 +172,23 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
+  const { conversationSkills } = useConversationSkills({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  // The truth is in the conversationSkills, we need to update the selectedSkills when the conversationSkills change.
+  useEffect(() => {
+    setSelectedSkills(conversationSkills);
+  }, [conversationSkills]);
+
+  // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
+  const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
+    conversationId,
+    workspaceId: owner.sId,
+    agentConfigurationId: null,
+  });
+
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
     setSelectedMCPServerViews((prev) => [...prev, serverView]);
@@ -185,12 +205,12 @@ export const InputBar = React.memo(function InputBar({
 
   const handleSkillSelect = (skill: SkillType) => {
     setSelectedSkills((prev) => [...prev, skill]);
-    // TODO: Handle enabled skill in conversation
+    void addSkill(skill.sId);
   };
 
   const handleSkillDeselect = (skill: SkillType) => {
     setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
-    // TODO: Disabled skill in conversation
+    void deleteSkill(skill.sId);
   };
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -265,7 +285,9 @@ export const InputBar = React.memo(function InputBar({
         },
         // Only send the selectedMCPServerViewIds if we are creating a new conversation.
         // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-        selectedMCPServerViews.map((sv) => sv.sId)
+        selectedMCPServerViews.map((sv) => sv.sId),
+        // JIT skills for new conversations
+        selectedSkills.map((s) => s.sId)
       );
 
       setLoading(false);

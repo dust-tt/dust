@@ -22,6 +22,10 @@ import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/a
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
+  ConversationSkillActionRequest,
+  FetchConversationSkillsResponse,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/skills";
+import type {
   ConversationToolActionRequest,
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
@@ -32,6 +36,7 @@ import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
@@ -291,6 +296,36 @@ export function useConversationTools({
   };
 }
 
+export function useConversationSkills({
+  conversationId,
+  workspaceId,
+  options,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
+  const conversationSkillsFetcher: Fetcher<FetchConversationSkillsResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`
+      : null,
+    conversationSkillsFetcher,
+    { ...options, focusThrottleInterval: 30 * 60 * 1000 } // 30 minutes
+  );
+
+  return {
+    conversationSkills: data
+      ? data.skills
+      : emptyArray<FetchConversationSkillsResponse["skills"][number]>(),
+    isConversationSkillsLoading: !error && !data,
+    isConversationSkillsError: error,
+    mutateConversationSkills: mutate,
+  };
+}
+
 // Cancel message generation for one or multiple messages within a conversation.
 // Returns an async function that accepts a list of message IDs to cancel.
 export function useCancelMessage({
@@ -423,6 +458,118 @@ export function useAddDeleteConversationTool({
   );
 
   return { addTool, deleteTool };
+}
+
+export function useAddDeleteConversationSkill({
+  conversationId,
+  workspaceId,
+  agentConfigurationId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  agentConfigurationId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const addSkill = useCallback(
+    async (skillId: string): Promise<boolean> => {
+      if (!conversationId) {
+        return false;
+      }
+
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "add",
+              skillId,
+              agentConfigurationId,
+            } satisfies ConversationSkillActionRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to add skill to conversation");
+        }
+
+        const result = await response.json();
+        return result.success === true;
+      } catch (err) {
+        const error = normalizeError(err);
+        datadogLogger.error(
+          {
+            error,
+            conversationId,
+            workspaceId,
+          },
+          "[JIT Skill] Error adding skill to conversation"
+        );
+        sendNotification({
+          type: "error",
+          title: "Failed to add skill to conversation",
+          description: error.message,
+        });
+        return false;
+      }
+    },
+    [conversationId, workspaceId, agentConfigurationId, sendNotification]
+  );
+
+  const deleteSkill = useCallback(
+    async (skillId: string): Promise<boolean> => {
+      if (!conversationId) {
+        return false;
+      }
+
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "delete",
+              skillId,
+              agentConfigurationId,
+            } satisfies ConversationSkillActionRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to remove skill from conversation");
+        }
+
+        const result = await response.json();
+        return result.success === true;
+      } catch (err) {
+        const error = normalizeError(err);
+        datadogLogger.error(
+          {
+            error,
+            conversationId,
+            workspaceId,
+            skillId,
+          },
+          "[JIT Skill] Error removing skill from conversation"
+        );
+        sendNotification({
+          type: "error",
+          title: "Failed to remove skill from conversation",
+          description: error.message,
+        });
+        return false;
+      }
+    },
+    [conversationId, workspaceId, agentConfigurationId, sendNotification]
+  );
+
+  return { addSkill, deleteSkill };
 }
 
 export function useVisualizationRevert({

@@ -108,6 +108,7 @@ export type UserMessageContext = {
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  selectedSkillIds?: string[];
 };
 
 export type AgenticMessageData = {

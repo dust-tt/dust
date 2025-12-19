@@ -37,6 +37,7 @@ export function useCreateConversationWithMessage({
         contentFragments: ContentFragmentsType;
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
+        selectedSkillIds?: string[];
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -56,6 +57,7 @@ export function useCreateConversationWithMessage({
         contentFragments,
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
+        selectedSkillIds,
       } = messageData;
 
       const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
@@ -71,6 +73,7 @@ export function useCreateConversationWithMessage({
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
               selectedMCPServerViewIds,
+              selectedSkillIds,
             },
             mentions,
           },

@@ -73,6 +73,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   // User-specific participation fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
+
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
     blob: Attributes<ConversationModel>,
@@ -983,27 +984,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }[]
   > {
     const query = `
-        SELECT
-        rank,
-        "agentMessageId",
-        version
-      FROM (
-        SELECT
-          rank,
-          "agentMessageId",
-          version,
-          ROW_NUMBER() OVER (
+            SELECT rank,
+                   "agentMessageId",
+                   version
+            FROM (SELECT rank,
+                         "agentMessageId",
+                         version,
+                         ROW_NUMBER() OVER (
             PARTITION BY rank
             ORDER BY version DESC
           ) as rn
-        FROM messages
-        WHERE
-          "workspaceId" = :workspaceId
-          AND "conversationId" = :conversationId
-          AND "agentMessageId" IS NOT NULL
-      ) ranked_messages
-      WHERE rn = 1
-  `;
+                  FROM messages
+                  WHERE "workspaceId" = :workspaceId
+                    AND "conversationId" = :conversationId
+                    AND "agentMessageId" IS NOT NULL) ranked_messages
+            WHERE rn = 1
+        `;
 
     // eslint-disable-next-line dust/no-raw-sql
     const results = await frontSequelize.query<{

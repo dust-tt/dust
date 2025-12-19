@@ -162,8 +162,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
-  private get isGlobal(): boolean {
-    return this.globalSId !== undefined;
+  get isGlobal(): boolean {
+    return this.globalSId !== null;
   }
 
   static async makeNew(
@@ -524,6 +524,144 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return { enabledSkills, equippedSkills };
+  }
+
+  static async fetchConversationSkillRecords(
+    auth: Authenticator,
+    conversationId: ModelId
+  ): Promise<
+    Array<{
+      id: ModelId;
+      workspaceId: ModelId;
+      conversationId: ModelId;
+      agentConfigurationId: string | null;
+      source: ConversationSkillOrigin;
+      addedByUserId: ModelId | null;
+      createdAt: Date;
+      updatedAt: Date;
+      customSkillId: ModelId | null;
+      globalSkillId: string | null;
+    }>
+  > {
+    const conversationSkills = await ConversationSkillModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId,
+      },
+    });
+
+    return conversationSkills.map((skill) => ({
+      id: skill.id,
+      workspaceId: skill.workspaceId,
+      conversationId: skill.conversationId,
+      agentConfigurationId: skill.agentConfigurationId,
+      source: skill.source,
+      addedByUserId: skill.addedByUserId,
+      createdAt: skill.createdAt,
+      updatedAt: skill.updatedAt,
+      customSkillId: skill.customSkillId,
+      globalSkillId: skill.globalSkillId,
+    }));
+  }
+
+  async upsertToConversation(
+    auth: Authenticator,
+    {
+      conversationId,
+      enabled,
+      agentConfigurationId,
+    }: {
+      conversationId: ModelId;
+      enabled: boolean;
+      agentConfigurationId: string | null;
+    }
+  ): Promise<Result<undefined, Error>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("User must be authenticated"));
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    let agentConfigurationModelId: ModelId | null = null;
+
+    if (agentConfigurationId) {
+      const agentConfiguration = await AgentConfigurationModel.findOne({
+        where: {
+          sId: agentConfigurationId,
+          workspaceId: workspace.id,
+        },
+      });
+
+      if (!agentConfiguration) {
+        return new Err(
+          new Error(
+            `Agent configuration not found: sId=${agentConfigurationId}, workspaceId=${workspace.id}`
+          )
+        );
+      }
+
+      agentConfigurationModelId = agentConfiguration.id;
+    }
+
+    const existingConversationSkill = await ConversationSkillModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId,
+        agentConfigurationId: agentConfigurationModelId?.toString() ?? null,
+        ...(this.isGlobal
+          ? { globalSkillId: this.sId }
+          : { customSkillId: this.id }),
+      },
+    });
+
+    if (existingConversationSkill) {
+      if (!enabled) {
+        await existingConversationSkill.destroy();
+      }
+    } else if (enabled) {
+      await ConversationSkillModel.create({
+        conversationId,
+        workspaceId: workspace.id,
+        agentConfigurationId:
+          agentConfigurationModelId?.toString() ?? undefined,
+        customSkillId: this.isGlobal ? null : this.id,
+        globalSkillId: this.isGlobal ? this.sId : null,
+        source: "conversation",
+        addedByUserId: user.id,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  static async upsertConversationSkills(
+    auth: Authenticator,
+    {
+      conversationId,
+      skills,
+      enabled,
+      agentConfigurationId,
+    }: {
+      conversationId: ModelId;
+      skills: SkillResource[];
+      enabled: boolean;
+      agentConfigurationId: string | null;
+    }
+  ): Promise<Result<undefined, Error>> {
+    for (const skill of skills) {
+      const result = await skill.upsertToConversation(auth, {
+        conversationId,
+        enabled,
+        agentConfigurationId,
+      });
+
+      if (result.isErr()) {
+        return result;
+      }
+    }
+
+    return new Ok(undefined);
   }
 
   private static async fromGlobalSkill(
