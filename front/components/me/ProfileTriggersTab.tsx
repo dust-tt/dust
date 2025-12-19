@@ -17,6 +17,7 @@ import { useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { classNames } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
 
 interface ProfileTriggersTabProps {
   owner: WorkspaceType;
@@ -111,19 +112,20 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
       {
         header: "Action",
         accessorKey: "actions",
-        cell: ({ row }) => (
-          <DataTable.CellContent>
-            <div className="flex justify-end">
-              <Button
-                label="Manage"
-                href={getEditionURL(row.original.agentConfigurationId)}
-                variant="outline"
-                size="sm"
-                icon={PencilSquareIcon}
-              />
-            </div>
-          </DataTable.CellContent>
-        ),
+        cell: ({ row }) =>
+          !isGlobalAgentId(row.original.agentConfigurationId) && (
+            <DataTable.CellContent>
+              <div className="flex justify-end">
+                <Button
+                  label="Manage"
+                  href={getEditionURL(row.original.agentConfigurationId)}
+                  variant="outline"
+                  size="sm"
+                  icon={PencilSquareIcon}
+                />
+              </div>
+            </DataTable.CellContent>
+          ),
         meta: {
           className: "w-32",
         },
