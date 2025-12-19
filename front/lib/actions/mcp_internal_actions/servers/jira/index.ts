@@ -29,6 +29,7 @@ import {
   uploadAttachmentsToJira,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
+import { renderIssueWithEmbeddedComments } from "@app/lib/actions/mcp_internal_actions/servers/jira/rendering";
 import {
   ADFDocumentSchema,
   JiraCreateIssueLinkRequestSchema,
@@ -132,11 +133,16 @@ function createServer(
                 new MCPError(`Error retrieving issue: ${issue.error}`)
               );
             }
+
+            const issueText = issue.value
+              ? renderIssueWithEmbeddedComments(issue.value)
+              : "";
+
             return new Ok([
               { type: "text" as const, text: "Issue retrieved successfully" },
               {
                 type: "text" as const,
-                text: JSON.stringify({ issue: issue.value }, null, 2),
+                text: issueText,
               },
             ]);
           },
@@ -423,12 +429,27 @@ function createServer(
             const message =
               result.value.issues.length === 0
                 ? "No issues found matching the search criteria"
-                : "Issues retrieved successfully";
+                : `Found ${result.value.issues.length} issue(s)`;
+
+            const issueTexts = result.value.issues.map((issue, index) => {
+              const formatted = renderIssueWithEmbeddedComments(issue);
+              return index > 0
+                ? `\n${"-".repeat(80)}\n\n${formatted}`
+                : formatted;
+            });
+
+            let outputText = message + "\n\n";
+            outputText += issueTexts.join("\n");
+
+            if (result.value.nextPageToken) {
+              outputText += `\n\nNote: More results available. Use nextPageToken: ${result.value.nextPageToken} to fetch the next page.`;
+            }
+
             return new Ok([
               { type: "text" as const, text: message },
               {
                 type: "text" as const,
-                text: JSON.stringify(result.value, null, 2),
+                text: outputText,
               },
             ]);
           },
@@ -489,12 +510,28 @@ function createServer(
             const message =
               result.value.issues.length === 0
                 ? "No issues found matching the JQL query"
-                : "Issues retrieved successfully using JQL";
+                : `Found ${result.value.issues.length} issue(s) using JQL`;
+
+            // Format issues as readable text for LLM
+            const issueTexts = result.value.issues.map((issue, index) => {
+              const formatted = renderIssueWithEmbeddedComments(issue);
+              return index > 0
+                ? `\n${"-".repeat(80)}\n\n${formatted}`
+                : formatted;
+            });
+
+            let outputText = message + "\n\n";
+            outputText += issueTexts.join("\n");
+
+            if (result.value.nextPageToken) {
+              outputText += `\n\nNote: More results available. Use nextPageToken: ${result.value.nextPageToken} to fetch the next page.`;
+            }
+
             return new Ok([
               { type: "text" as const, text: message },
               {
                 type: "text" as const,
-                text: JSON.stringify(result.value, null, 2),
+                text: outputText,
               },
             ]);
           },
