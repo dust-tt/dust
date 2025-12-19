@@ -9,7 +9,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 /**
  * Handle mentions in the agent message content.
  */
-export async function handleMentionsActivity(
+export async function handleMentions(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {

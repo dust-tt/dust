@@ -15,11 +15,6 @@ import {
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
-import {
-  finalizeCancellationActivity,
-  notifyWorkflowError,
-} from "@app/temporal/agent_loop/activities/common";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
@@ -31,12 +26,9 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
-import { handleMentionsActivity } from "@app/temporal/agent_loop/activities/mentions";
-import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
-import { launchTrackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import { isDevelopment, removeNulls } from "@app/types";
@@ -58,22 +50,16 @@ export async function runAgentLoopWorker() {
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities: {
-      conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
       finalizeSuccessfulAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
-      finalizeCancellationActivity,
-      handleMentionsActivity,
-      launchAgentMessageAnalyticsActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,
-      notifyWorkflowError,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
-      launchTrackProgrammaticUsageActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,

@@ -207,17 +207,8 @@ export async function updateResourceAndPublishEvent(
 
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
-  {
-    conversationId,
-    agentMessageId,
-    agentMessageVersion,
-    error,
-  }: {
-    conversationId: string;
-    agentMessageId: string;
-    agentMessageVersion: number;
-    error: Error;
-  }
+  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  error: Error
 ): Promise<void> {
   const authResult = await AuthenticatorClass.fromJSON(authType);
   if (authResult.isErr()) {
@@ -283,7 +274,7 @@ export async function notifyWorkflowError(
 /**
  * Activity executed after a cancel signal
  */
-export async function finalizeCancellationActivity(
+export async function finalizeCancellation(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {

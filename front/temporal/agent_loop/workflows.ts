@@ -5,7 +5,6 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  deprecatePatch,
   proxyActivities,
   setHandler,
   startChild,
@@ -109,8 +108,6 @@ const {
     maximumAttempts: 5,
   },
 });
-
-const PATCH_NAME = "finalize-activity-consolidation";
 
 export async function agentLoopConversationTitleWorkflow({
   authType,
@@ -236,9 +233,7 @@ export async function agentLoopWorkflow({
         },
       });
 
-      // Ensure analytics runs even if workflow is cancelled
       await CancellationScope.nonCancellable(async () => {
-        deprecatePatch(PATCH_NAME);
         await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
       });
     });
@@ -249,22 +244,16 @@ export async function agentLoopWorkflow({
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
 
-    // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
+    // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
-        // Ensure analytics runs even when workflow is cancelled
-        deprecatePatch(PATCH_NAME);
-        await finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
-        return;
-      } else {
-        // Ensure analytics runs even when workflow errors
-        deprecatePatch(PATCH_NAME);
-        await finalizeErroredAgentLoopActivity(
-          authType,
-          agentLoopArgs,
-          workflowError
-        );
+        return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
+      await finalizeErroredAgentLoopActivity(
+        authType,
+        agentLoopArgs,
+        workflowError
+      );
       throw err;
     });
   }
