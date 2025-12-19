@@ -1138,6 +1138,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  static async listByAgentMessageId(
+    auth: Authenticator,
+    agentMessageId: ModelId
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const where: WhereOptions<AgentMessageSkillModel> = {
+      workspaceId: workspace.id,
+      agentMessageId,
+    };
+
+    const agentMessageSkills = await AgentMessageSkillModel.findAll({
+      where,
+    });
+
+    const customSkillIds = removeNulls(
+      agentMessageSkills.map((ams) =>
+        ams.customSkillId
+          ? SkillResource.modelIdToSId({
+              id: ams.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null
+      )
+    );
+
+    const globalSkillIds = removeNulls(
+      agentMessageSkills.map((ams) => ams.globalSkillId)
+    );
+
+    const allSkillIds = [...customSkillIds, ...globalSkillIds];
+
+    if (allSkillIds.length === 0) {
+      return [];
+    }
+
+    return SkillResource.fetchByIds(auth, allSkillIds);
+  }
+
   toJSON(auth: Authenticator): SkillType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {
