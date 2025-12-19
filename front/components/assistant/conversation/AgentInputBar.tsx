@@ -94,10 +94,6 @@ export const AgentInputBar = ({
       lastUserMessage.richMentions.length === 1 &&
       isRichAgentMention(lastUserMessage.richMentions[0]);
 
-    if (!lastUserMessage || lastUserMessage.richMentions.length > 1) {
-      return [];
-    }
-
     if (!shouldPrefill) {
       return [];
     }
