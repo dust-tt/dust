@@ -8,11 +8,21 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
+WORKDIR /
+COPY /package*.json ./
+RUN npm ci
+
 # Build SDK (shared by both front-nextjs and workers)
 WORKDIR /sdks/js
 COPY /sdks/js/package*.json ./
-COPY /sdks/js/ .
 RUN npm ci
+COPY /sdks/js/ .
+RUN npm run build
+
+WORKDIR /sparkle
+COPY /sparkle/package*.json ./
+RUN npm ci
+COPY /sparkle/ .
 RUN npm run build
 
 # Install front dependencies and copy source (shared by both)
