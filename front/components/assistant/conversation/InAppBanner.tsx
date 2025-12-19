@@ -136,7 +136,7 @@ export function WrappedInAppBanner({
 
   return (
     <AnimatePresence>
-      {showWrappedInAppBanner && wrappedUrl ? (
+      {showWrappedInAppBanner ? (
         <motion.div
           ref={wrappedBannerRef}
           transition={{ duration: 0.1, ease: "easeIn" }}
@@ -217,7 +217,7 @@ export function MentionBanner({
           initial={hasBothBanners ? { opacity: 100, translateY: "80%" } : {}}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
-          className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-md dark:bg-background-night sm:flex"
+          className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
           onClick={withTracking(
             TRACKING_AREAS.MENTIONS,
             "cta_collaboration_banner",
@@ -230,7 +230,7 @@ export function MentionBanner({
               alt="Mention your colleagues in your conversations"
               width={300}
               height={98}
-              className="w-full object-cover"
+              className="w-full border-b border-border-dark object-cover dark:border-border-night"
               priority
             />
             <Button
