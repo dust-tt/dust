@@ -4,7 +4,10 @@ import {
   isBotTypeProvider,
   isWebhookBasedProvider,
 } from "@app/lib/connector_providers";
-import type { CheckFunction } from "@app/lib/production_checks/types";
+import type {
+  ActionLink,
+  CheckFunction,
+} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import type { ConnectorProvider } from "@app/types";
 
@@ -89,11 +92,15 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   }
 
   if (stalledLastSyncConnectors.length > 0) {
+    const actionLinks: ActionLink[] = stalledLastSyncConnectors.map((c) => ({
+      label: `${c.provider}: ${c.dataSourceId}`,
+      url: `/poke/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+    }));
     reportFailure(
-      { stalledLastSyncConnectors },
+      { stalledLastSyncConnectors, actionLinks },
       `Connectors have not synced in the last week.`
     );
   } else {
-    reportSuccess({});
+    reportSuccess({ actionLinks: [] });
   }
 };
