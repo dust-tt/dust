@@ -197,7 +197,7 @@ export async function workspaceRelocateFrontTableWorkflow({
       });
     }
 
-    const { dataPath, hasMore, lastId, nextLimit } =
+    const { dataPath, hasMore, lastId, nextLimit }: { dataPath: string | null; hasMore: boolean; lastId: number | undefined; nextLimit: number | null } =
       await sourceRegionActivities.readFrontTableChunk({
         lastId: currentId,
         workspaceId,
@@ -651,7 +651,7 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       });
     }
 
-    const { dataPath, nextPageCursor, nextLimit } =
+    const { dataPath, nextPageCursor, nextLimit }: { dataPath: string | null; nextPageCursor: string | null; nextLimit: number | null } =
       await sourceRegionActivities.getDataSourceDocuments({
         pageCursor,
         dataSourceCoreIds,
@@ -764,7 +764,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
       });
     }
 
-    const { dataPath, nextPageCursor, nextLimit } =
+    const { dataPath, nextPageCursor, nextLimit }: { dataPath: string | null; nextPageCursor: string | null; nextLimit: number | null } =
       await sourceRegionActivities.getDataSourceTables({
         pageCursor,
         dataSourceCoreIds,

@@ -590,7 +590,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const parentMessageId = agentMessage.sId;
 
       // Use a new request to avoid state carry-over. But reuse same workspace and key.
-      childReq.headers = {
+      (childReq.headers as Record<string, string>) = {
         authorization: "Bearer " + key.secret,
       };
       childReq.query.wId = workspace.sId;
@@ -730,7 +730,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         });
 
       // Use a new request to avoid state carry-over. But reuse same workspace and key.
-      conversationBReq.headers = {
+      (conversationBReq.headers as Record<string, string>) = {
         authorization: "Bearer " + key.secret,
       };
       conversationBReq.query.wId = workspace.sId;
