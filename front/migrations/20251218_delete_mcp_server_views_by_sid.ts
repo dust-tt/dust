@@ -1,4 +1,5 @@
 import assert from "assert";
+import type { Attributes, FindOptions, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
@@ -12,10 +13,24 @@ import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/a
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { dangerouslyMakeSIdWithCustomFirstPrefix } from "@app/lib/resources/string_ids";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import type {
+  ModelStaticWorkspaceAware,
+  SoftDeletableWorkspaceAwareModel,
+} from "@app/lib/resources/storage/wrappers/workspace_models";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
+
+type SoftDeletableWithBypass<M extends SoftDeletableWorkspaceAwareModel> =
+  ModelStatic<M> & {
+    findAll(
+      options: FindOptions<Attributes<M>> & {
+        includeDeleted?: boolean;
+        dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
+      }
+    ): Promise<M[]>;
+  };
 
 const TARGET_ID: ModelId = 1007;
 const PREFIX = 1;
@@ -46,6 +61,8 @@ async function deleteRelatedRecordsForViews(
   logger: Logger
 ): Promise<void> {
   const mcpServerViewIds = mcpServerViews.map((view) => view.id);
+  const ConversationMCPServerViewModelTyped: ModelStaticWorkspaceAware<ConversationMCPServerViewModel> =
+    ConversationMCPServerViewModel;
 
   const agentMCPConfigs: AgentMCPServerConfigurationModel[] =
     await AgentMCPServerConfigurationModel.findAll({
@@ -113,11 +130,13 @@ async function deleteRelatedRecordsForViews(
   }
 
   const conversationViews: ConversationMCPServerViewModel[] =
-    await ConversationMCPServerViewModel.findAll({
+    await ConversationMCPServerViewModelTyped.findAll({
       attributes: ["id"],
       where: {
         mcpServerViewId: { [Op.in]: mcpServerViewIds },
       },
+      // WORKSPACE_ISOLATION_BYPASS: Migration script operates across all workspaces to delete orphaned records
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
   logger.info(
@@ -206,6 +225,9 @@ async function deleteMCPServerViews(
 }
 
 makeScript({}, async ({ execute }, logger) => {
+  const MCPServerViewModelTyped: SoftDeletableWithBypass<MCPServerViewModel> =
+    MCPServerViewModel;
+
   logger.info(
     { execute, targetId: TARGET_ID, prefix: PREFIX },
     "Starting MCPServerView deletion script"
@@ -236,12 +258,15 @@ makeScript({}, async ({ execute }, logger) => {
   const results = await concurrentExecutor(
     batches,
     async (sIdBatch, idx) => {
-      const mcpServerViews = await MCPServerViewModel.findAll({
-        where: {
-          internalMCPServerId: { [Op.in]: sIdBatch },
-        },
-        includeDeleted: true,
-      });
+      const mcpServerViews: MCPServerViewModel[] =
+        await MCPServerViewModelTyped.findAll({
+          where: {
+            internalMCPServerId: { [Op.in]: sIdBatch },
+          },
+          includeDeleted: true,
+          // WORKSPACE_ISOLATION_BYPASS: Migration script operates across all workspaces to delete orphaned records
+          dangerouslyBypassWorkspaceIsolationSecurity: true,
+        });
 
       if (mcpServerViews.length === 0) {
         return 0;
