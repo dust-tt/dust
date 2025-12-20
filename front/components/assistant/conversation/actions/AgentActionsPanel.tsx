@@ -251,16 +251,19 @@ function AgentActionsPanelContent({
         </div>
       </div>
       {skills.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
-          {skills.map((skill) => (
-            <Chip
-              key={skill.sId}
-              size="xs"
-              label={skill.name}
-              icon={getSkillIcon(skill.icon)}
-              className="bg-muted-background text-foreground dark:bg-muted-background-night dark:text-foreground-night"
-            />
-          ))}
+        <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
+          <span className="text-sm">Enabled skills</span>
+          <div className="flex flex-wrap items-center gap-1">
+            {skills.map((skill) => (
+              <Chip
+                key={skill.sId}
+                size="xs"
+                label={skill.name}
+                icon={getSkillIcon(skill.icon)}
+                className="bg-muted-background text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
