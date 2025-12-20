@@ -106,7 +106,7 @@ export async function gongSyncTranscriptsWorkflow({
 
   // Do an outer loop to sync all the transcripts. To avoid hitting activity startToCloseTimeout.
   do {
-    const { nextPageCursor, processedRecords } =
+    const { nextPageCursor, processedRecords }: { nextPageCursor: string | null; processedRecords: number } =
       await gongSyncTranscriptsActivity({
         connectorId,
         forceResync,

@@ -62,7 +62,7 @@ export async function upsertPageChildWorkflow({
   let cursor: string | null = null;
   let blockIndexInPage = 0;
   do {
-    const { nextCursor, blocksWithChildren, blocksCount } =
+    const { nextCursor, blocksWithChildren, blocksCount }: { nextCursor: string | null; blocksWithChildren: string[]; blocksCount: number } =
       await cacheBlockChildren({
         connectorId,
         pageId,
@@ -121,7 +121,7 @@ export async function notionProcessBlockChildrenChildWorkflow({
   let blockIndexInParent = 0;
 
   do {
-    const { nextCursor, blocksWithChildren, blocksCount } =
+    const { nextCursor, blocksWithChildren, blocksCount }: { nextCursor: string | null; blocksWithChildren: string[]; blocksCount: number } =
       await cacheBlockChildren({
         connectorId,
         pageId,

@@ -124,7 +124,7 @@ export async function fullSyncWorkflow({
     }
 
     do {
-      const res = await syncFiles({
+      const res: { count: number; childNodes: string[]; nextLink?: string } = await syncFiles({
         connectorId,
         parentInternalId: nodeId,
         startSyncTs,
@@ -228,7 +228,7 @@ export async function incrementalSyncWorkflowV2({
 
     try {
       while (cursor !== null) {
-        const { nextCursor } = await processDeltaChangesFromGCS({
+        const { nextCursor }: { nextCursor: number | null; processedCount: number } = await processDeltaChangesFromGCS({
           connectorId,
           driveId: nodeId,
           gcsFilePath,

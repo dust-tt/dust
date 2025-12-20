@@ -246,7 +246,7 @@ export async function updateOrphanedResourcesParentsWorkflow({
   } | null = null;
 
   do {
-    const { pageIds, databaseIds, nextCursor } = await getAllOrphanedResources({
+    const { pageIds, databaseIds, nextCursor }: { pageIds: string[]; databaseIds: string[]; nextCursor: { pageCursor: ModelId | null; databaseCursor: ModelId | null } | null } = await getAllOrphanedResources({
       connectorId,
       cursor,
     });

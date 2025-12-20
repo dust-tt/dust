@@ -24,7 +24,6 @@ describe("decodeBuffer", () => {
     const content = "Hello, World!";
     const bom = Buffer.from([0xef, 0xbb, 0xbf]);
     const contentBuffer = Buffer.from(content, "utf-8");
-    // @ts-expect-error - we know the length is correct
     const utf8BomBuffer = Buffer.concat([bom, contentBuffer]);
 
     const result = decodeBuffer(bufferToArrayBuffer(utf8BomBuffer));
@@ -52,12 +51,9 @@ describe("decodeBuffer", () => {
     const contentLE = Buffer.from(content, "utf16le");
     const contentBE = Buffer.alloc(contentLE.length);
     for (let i = 0; i < contentLE.length; i += 2) {
-      // @ts-expect-error - we know the length is correct
-      contentBE[i] = contentLE[i + 1];
-      // @ts-expect-error - we know the length is correct
-      contentBE[i + 1] = contentLE[i];
+      contentBE[i] = contentLE[i + 1]!;
+      contentBE[i + 1] = contentLE[i]!;
     }
-    // @ts-expect-error - we know the length is correct
     const utf16BEBuffer = Buffer.concat([bomBE, contentBE]);
 
     const result = decodeBuffer(bufferToArrayBuffer(utf16BEBuffer));

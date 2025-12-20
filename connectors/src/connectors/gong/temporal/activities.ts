@@ -107,7 +107,10 @@ export async function gongSyncTranscriptsActivity({
   connectorId: ModelId;
   pageCursor: string | null;
   currentRecordCount?: number;
-}) {
+}): Promise<{
+  nextPageCursor: string | null;
+  processedRecords: number;
+}> {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);

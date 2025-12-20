@@ -425,7 +425,10 @@ export async function confluenceGetTopLevelContentIdsActivity({
   pageCursor: string | null;
   rootContentId: string;
   space: SpaceBlob;
-}) {
+}): Promise<{
+  topLevelContentRefs: ConfluenceContentRef[];
+  nextPageCursor: string | null;
+}> {
   const { id: spaceId, key: spaceKey } = space;
 
   const localLogger = logger.child({

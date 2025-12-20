@@ -239,7 +239,6 @@ export class GCSRepositoryManager {
           chunks.push(chunk);
         }
 
-        // @ts-expect-error -- migration to tsgo
         const content = Buffer.concat(chunks);
         // Retry logic for small file uploads to handle transient GCS failures.
         let lastError: unknown;

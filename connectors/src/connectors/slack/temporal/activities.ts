@@ -90,7 +90,7 @@ const CONVERSATION_HISTORY_LIMIT = 100;
 // that 1000 messages per week), the information is very likely useless.
 const MAX_SYNC_NON_THREAD_MESSAGES = 1000;
 
-interface SyncChannelRes {
+export interface SyncChannelRes {
   nextCursor?: string;
   weeksSynced: Record<number, boolean>;
 }

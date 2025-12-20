@@ -316,7 +316,7 @@ export async function intercomHelpCenterFullSyncWorkflow({
   // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
   let page: number | null = 1;
   do {
-    const { nextPage } = await syncArticleBatchActivity({
+    const { nextPage }: { nextPage: number | null } = await syncArticleBatchActivity({
       connectorId,
       helpCenterId,
       page,
@@ -460,7 +460,7 @@ async function syncTeamConversations({
 
   // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
   do {
-    const { conversationIds, nextPageCursor } =
+    const { conversationIds, nextPageCursor }: { conversationIds: string[]; nextPageCursor: string | null } =
       await getNextConversationBatchToSyncActivity({
         connectorId,
         teamId,

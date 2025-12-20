@@ -185,7 +185,7 @@ export async function upsertDatabaseInCore({
   const isBatchSync = isNewDatabase;
 
   do {
-    const { pageIds, nextCursor } = await fetchDatabaseChildPages({
+    const { pageIds, nextCursor }: { pageIds: string[]; nextCursor: string | null } = await fetchDatabaseChildPages({
       connectorId,
       databaseId,
       cursor,

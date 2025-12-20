@@ -468,7 +468,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
   let hasMore = true;
   while (hasMore) {
     // not using runZendeskActivityWithPagination because we need to add result.categoriesToUpdate to the Set
-    const result = await syncZendeskCategoryBatchActivity({
+    const result: { categoriesToUpdate: number[]; hasMore: boolean; nextLink: string | null } = await syncZendeskCategoryBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
@@ -476,7 +476,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
     });
     hasMore = result.hasMore || false;
     url = result.nextLink;
-    result.categoriesToUpdate.forEach((categoryId) =>
+    result.categoriesToUpdate.forEach((categoryId: number) =>
       categoryIdsToSync.add(categoryId)
     );
   }

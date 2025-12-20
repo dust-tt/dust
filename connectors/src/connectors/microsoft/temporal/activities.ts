@@ -409,7 +409,11 @@ export async function syncFiles({
   parentInternalId: string;
   startSyncTs: number;
   nextPageLink?: string;
-}) {
+}): Promise<{
+  count: number;
+  childNodes: string[];
+  nextLink?: string;
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);

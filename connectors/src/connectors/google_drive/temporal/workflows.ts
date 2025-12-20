@@ -118,7 +118,7 @@ export async function googleDriveFullSync({
       throw new Error("folderId should be defined");
     }
     do {
-      const res = await syncFiles(
+      const res: { nextPageToken: string | null; count: number; subfolders: string[] } = await syncFiles(
         connectorId,
         folder,
         startSyncTs,
