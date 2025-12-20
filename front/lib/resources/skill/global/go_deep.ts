@@ -19,4 +19,5 @@ export const goDeepSkill = {
   instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
   internalMCPServerNames: ["deep_dive"],
   version: 1,
+  icon: "ActionAtomIcon",
 } as const satisfies GlobalSkillDefinition;

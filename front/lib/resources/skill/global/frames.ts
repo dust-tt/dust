@@ -11,4 +11,5 @@ export const framesSkill = {
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
   internalMCPServerNames: ["interactive_content"],
   version: 1,
+  icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;
