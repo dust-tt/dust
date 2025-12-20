@@ -1169,7 +1169,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const customSkills = await this.fetchByModelIds(
       auth,
-      removeNulls(agentMessageSkills.map((ams) => ams.customSkillId ?? null))
+      removeNulls(agentMessageSkills.map((ams) => ams.customSkillId))
     );
 
     const globalSkills = await this.fetchByIds(
