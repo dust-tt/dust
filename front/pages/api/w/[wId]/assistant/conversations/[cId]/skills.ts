@@ -10,6 +10,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type FetchConversationSkillsResponse = {
@@ -19,7 +20,6 @@ export type FetchConversationSkillsResponse = {
 const ConversationSkillActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
   skillId: z.string(),
-  agentConfigurationId: z.string().nullable().optional(),
 });
 
 export type ConversationSkillActionRequest = z.infer<
@@ -33,7 +33,9 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
+  const conversationId = req.query.cId;
+
+  if (!isString(conversationId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -43,7 +45,6 @@ async function handler(
     });
   }
 
-  const conversationId = req.query.cId;
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -101,7 +102,7 @@ async function handler(
         });
       }
 
-      const { action, skillId, agentConfigurationId } = parseResult.data;
+      const { action, skillId } = parseResult.data;
 
       const skillRes = await SkillResource.fetchById(auth, skillId);
 
@@ -127,7 +128,6 @@ async function handler(
         conversationId: conversationWithoutContent.id,
         skills: [skillRes],
         enabled: action === "add",
-        agentConfigurationId: agentConfigurationId ?? null,
       });
       if (r.isErr()) {
         logger.error(
@@ -135,7 +135,6 @@ async function handler(
             error: r.error,
             skillId,
             conversationId,
-            agentConfigurationId,
             action,
             workspaceId: req.query.wId,
           },

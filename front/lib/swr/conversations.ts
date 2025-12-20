@@ -463,11 +463,9 @@ export function useAddDeleteConversationTool({
 export function useAddDeleteConversationSkill({
   conversationId,
   workspaceId,
-  agentConfigurationId,
 }: {
   conversationId: string | null;
   workspaceId: string;
-  agentConfigurationId: string | null;
 }) {
   const sendNotification = useSendNotification();
   const addSkill = useCallback(
@@ -487,7 +485,6 @@ export function useAddDeleteConversationSkill({
             body: JSON.stringify({
               action: "add",
               skillId,
-              agentConfigurationId,
             } satisfies ConversationSkillActionRequest),
           }
         );
@@ -516,7 +513,7 @@ export function useAddDeleteConversationSkill({
         return false;
       }
     },
-    [conversationId, workspaceId, agentConfigurationId, sendNotification]
+    [conversationId, workspaceId, sendNotification]
   );
 
   const deleteSkill = useCallback(
@@ -536,7 +533,6 @@ export function useAddDeleteConversationSkill({
             body: JSON.stringify({
               action: "delete",
               skillId,
-              agentConfigurationId,
             } satisfies ConversationSkillActionRequest),
           }
         );
@@ -566,7 +562,7 @@ export function useAddDeleteConversationSkill({
         return false;
       }
     },
-    [conversationId, workspaceId, agentConfigurationId, sendNotification]
+    [conversationId, workspaceId, sendNotification]
   );
 
   return { addSkill, deleteSkill };

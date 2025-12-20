@@ -569,11 +569,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       conversationId,
       enabled,
-      agentConfigurationId,
     }: {
       conversationId: ModelId;
       enabled: boolean;
-      agentConfigurationId: string | null;
     }
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();
@@ -583,53 +581,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    let agentConfigurationModelId: ModelId | null = null;
-
-    if (agentConfigurationId) {
-      const agentConfiguration = await AgentConfigurationModel.findOne({
-        where: {
-          sId: agentConfigurationId,
-          workspaceId: workspace.id,
-        },
-      });
-
-      if (!agentConfiguration) {
-        return new Err(
-          new Error(
-            `Agent configuration not found: sId=${agentConfigurationId}, workspaceId=${workspace.id}`
-          )
-        );
-      }
-
-      agentConfigurationModelId = agentConfiguration.id;
-    }
-
     const existingConversationSkill = await ConversationSkillModel.findOne({
       where: {
         workspaceId: workspace.id,
         conversationId,
-        agentConfigurationId,
+        agentConfigurationId: null,
         ...(this.isGlobal
           ? { globalSkillId: this.sId }
           : { customSkillId: this.id }),
       },
     });
 
-    if (existingConversationSkill) {
-      if (!enabled) {
-        await existingConversationSkill.destroy();
-      }
-    } else if (enabled) {
+    if (existingConversationSkill && !enabled) {
+      await existingConversationSkill.destroy();
+      return new Ok(undefined);
+    }
+
+    if (!existingConversationSkill && enabled) {
       await ConversationSkillModel.create({
         conversationId,
         workspaceId: workspace.id,
-        agentConfigurationId:
-          agentConfigurationModelId?.toString() ?? undefined,
-        customSkillId: this.isGlobal ? null : this.id,
-        globalSkillId: this.isGlobal ? this.sId : null,
+        agentConfigurationId: null,
+        customSkillId: this.globalSId ? null : this.id,
+        globalSkillId: this.globalSId ?? null,
         source: "conversation",
         addedByUserId: user.id,
       });
+      return new Ok(undefined);
     }
 
     return new Ok(undefined);
@@ -641,19 +619,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversationId,
       skills,
       enabled,
-      agentConfigurationId,
     }: {
       conversationId: ModelId;
       skills: SkillResource[];
       enabled: boolean;
-      agentConfigurationId: string | null;
     }
   ): Promise<Result<undefined, Error>> {
     for (const skill of skills) {
       const result = await skill.upsertToConversation(auth, {
         conversationId,
         enabled,
-        agentConfigurationId,
       });
 
       if (result.isErr()) {
