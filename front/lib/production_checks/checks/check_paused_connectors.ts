@@ -1,7 +1,10 @@
 import { QueryTypes } from "sequelize";
 
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import type { CheckFunction } from "@app/lib/production_checks/types";
+import type {
+  ActionLink,
+  CheckFunction,
+} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -60,11 +63,15 @@ export const checkPausedConnectors: CheckFunction = async (
 
   // If there are any connectors to report, report a failure.
   if (connectorsToReport.length > 0) {
+    const actionLinks: ActionLink[] = connectorsToReport.map((c) => ({
+      label: `Workspace: ${c.workspaceId}`,
+      url: `/poke/${c.workspaceId}`,
+    }));
     reportFailure(
-      { connectorsToReport },
+      { connectorsToReport, actionLinks },
       "Paused connectors for a workspace with a subscription for more than 15 days."
     );
   } else {
-    reportSuccess({});
+    reportSuccess({ actionLinks: [] });
   }
 };

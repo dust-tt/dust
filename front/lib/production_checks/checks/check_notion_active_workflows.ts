@@ -3,7 +3,10 @@ import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import type { CheckFunction } from "@app/lib/production_checks/types";
+import type {
+  ActionLink,
+  CheckFunction,
+} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -217,11 +220,21 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   }
 
   if (missingActiveWorkflows.length > 0) {
+    const actionLinks: ActionLink[] = [
+      ...missingActiveWorkflows.map((c) => ({
+        label: `Missing: workspace ${c.workspaceId}`,
+        url: `/poke/${c.workspaceId}`,
+      })),
+      ...stalledWorkflows.map((c) => ({
+        label: `Stalled: workspace ${c.workspaceId}`,
+        url: `/poke/${c.workspaceId}`,
+      })),
+    ];
     reportFailure(
-      { missingActiveWorkflows, stalledWorkflows },
+      { missingActiveWorkflows, stalledWorkflows, actionLinks },
       "Missing or stalled Notion temporal workflows"
     );
   } else {
-    reportSuccess({});
+    reportSuccess({ actionLinks: [] });
   }
 };

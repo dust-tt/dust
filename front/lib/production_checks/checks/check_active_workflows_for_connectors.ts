@@ -5,7 +5,10 @@ import type {
 } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
-import type { CheckFunction } from "@app/lib/production_checks/types";
+import type {
+  ActionLink,
+  CheckFunction,
+} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import type { ConnectorProvider } from "@app/types";
@@ -173,12 +176,16 @@ export const checkActiveWorkflows: CheckFunction = async (
     }
 
     if (missingActiveWorkflows.length > 0) {
+      const actionLinks: ActionLink[] = missingActiveWorkflows.map((c) => ({
+        label: `${provider}: ${c.dataSourceId}`,
+        url: `/poke/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+      }));
       reportFailure(
-        { missingActiveWorkflows },
+        { missingActiveWorkflows, actionLinks },
         `Missing ${provider} temporal workflows.`
       );
     } else {
-      reportSuccess({});
+      reportSuccess({ actionLinks: [] });
     }
   }
 };
