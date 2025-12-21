@@ -201,9 +201,10 @@ function constructAttachmentsSection(): string {
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: includable content, that can be retrieved using conversation files tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`\n` +
-    `- isQueryable: queryable content, representing tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
-    `- isSearchable: searchable content, that can be searched alongside other searchable conversation files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
+    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files\' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
+    " contents of this attachment will be considered in the search.\n" +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
 }
