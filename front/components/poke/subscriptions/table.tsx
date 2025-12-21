@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   ConfluenceLogo,
   GithubLogo,
   GlobeAltIcon,
@@ -43,6 +44,56 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { isDevelopment } from "@app/types";
+
+type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
+
+function getSubscriptionDisplayStatus(
+  subscription: SubscriptionType
+): SubscriptionStatus {
+  if (subscription.paymentFailingSince !== null) {
+    return "paymentFailed";
+  }
+  if (subscription.trialing) {
+    return "trialing";
+  }
+  if (
+    subscription.plan.code === FREE_NO_PLAN_CODE ||
+    subscription.endDate !== null
+  ) {
+    return "ended";
+  }
+  return "active";
+}
+
+const STATUS_CONFIG: Record<
+  SubscriptionStatus,
+  {
+    chipColor: "info" | "blue" | "warning" | "success";
+    chipLabel: string;
+    cardClass: string;
+  }
+> = {
+  paymentFailed: {
+    chipColor: "info",
+    chipLabel: "Past Due",
+    cardClass: "border-info-200 bg-info-50",
+  },
+  trialing: {
+    chipColor: "blue",
+    chipLabel: "Trialing",
+    cardClass: "border-blue-200 bg-blue-50",
+  },
+  ended: {
+    chipColor: "warning",
+    chipLabel: "Ended",
+    cardClass: "border-warning-200 bg-warning-50",
+  },
+  active: {
+    chipColor: "success",
+    chipLabel: "Active",
+    cardClass: "border-success-200 bg-success-50",
+  },
+};
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;
@@ -103,13 +154,19 @@ export function ActiveSubscriptionTable({
   subscriptions,
   programmaticUsageConfig,
 }: ActiveSubscriptionTableProps) {
+  const status = getSubscriptionDisplayStatus(subscription);
+  const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
+
   return (
     <div className="flex flex-col">
       <div className="flex justify-between gap-3">
-        <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
+        <div
+          className={`flex flex-grow flex-col rounded-lg border p-4 pb-2 ${cardClass}`}
+        >
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-md flex-grow pb-4 font-bold">
-              Active Subscription
+            <h2 className="text-md flex flex-grow items-center gap-2 pb-4 font-bold">
+              Subscription
+              <Chip color={chipColor} label={chipLabel} size="xs" />
             </h2>
             <SubscriptionsHistoryModal
               owner={owner}
