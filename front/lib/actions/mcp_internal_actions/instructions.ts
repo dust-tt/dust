@@ -1,3 +1,9 @@
+import {
+  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
+
 export const SALESFORCE_SERVER_INSTRUCTIONS = `You have access to the following tools: execute_read_query, list_objects, and describe_object.
 
 # General Workflow for Salesforce Data:
@@ -99,13 +105,16 @@ export const FRESHSERVICE_SERVER_INSTRUCTIONS = `
     `;
 
 export const DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS =
-  "The tools can be used to browse and search content with a filesystem-like navigation.\n" +
-  "Content is structured in nodes. Nodes are identified by a unique ID called `nodeId`.\n" +
+  "This server contains tools to browse and search data in the space denoted by the server name, with a filesystem-like navigation.\n" +
+  "The space's contents are structured in nodes, similar to files and folders in a filesystem. Nodes are identified by a unique ID called `nodeId`.\n" +
   "Node IDs are exposed in the outputs of the tools described below.\n" +
-  "The `list` tool can be used to list the direct content under a node, like 'ls' in Unix.\n" +
-  "Can be used to explore the filesystem structure step by step " +
+  "The `list` tool lists child nodes of a given node, like 'ls' in Unix.\n" +
+  "It can be used to explore the filesystem structure step by step " +
   "by being called recursively with the 'nodeId' output in a step passed to the next step's nodeId.\n" +
-  "The `find` tool can be used to find content based on their title starting from a specific root node, like using 'find' in Unix.\n" +
-  "The `cat` tool can be used to read the actual content in a document node, like 'cat in Unix.\n" +
-  "The `locate_in_tree` tool can be used to find the path to a node in the filesystem tree.\n" +
-  "The `semantic_search` tool can be used to perform a semantic search within the folders and files designated by `nodeIds`.";
+  "The `find` tool finds a node based on its title starting from a specific root node, like using 'find' in Unix.\n" +
+  "The `cat` tool reads the actual content in a document node, like 'cat' in Unix.\n" +
+  "The `locate_in_tree` tool finds the path to a node in the filesystem tree.\n" +
+  "The `semantic_search` tool performs a semantic search within the folders and files designated by `nodeIds`.\n" +
+  "Note: these tools are specific to data in the space denoted by the server name. For attachments and conversation files " +
+  `prefer using the \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\`, \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\` and ` +
+  `\`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` tools instead.`;
