@@ -56,7 +56,6 @@ import {
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
   INTERNAL_SERVERS_WITH_WEBSEARCH,
-  isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -98,11 +97,11 @@ export function MCPActionDetails({
   messageStatus,
 }: MCPActionDetailsProps) {
   const {
-    functionCallName,
     params,
     status,
     output: baseOutput,
-    mcpServerId,
+    internalMCPServerName,
+    toolName,
   } = action;
 
   const [output, setOutput] = useState(baseOutput);
@@ -124,9 +123,6 @@ export function MCPActionDetails({
     }
   }, [status, baseOutput]);
 
-  const parts = functionCallName ? functionCallName.split("__") : [];
-  const toolName = parts[parts.length - 1];
-
   const toolOutputDetailsProps: ToolExecutionDetailsProps = {
     lastNotification,
     messageStatus,
@@ -137,8 +133,8 @@ export function MCPActionDetails({
   };
 
   if (
-    isInternalMCPServerOfName(mcpServerId, "search") ||
-    isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
+    internalMCPServerName === "search" ||
+    internalMCPServerName === "data_sources_file_system"
   ) {
     if (toolName === SEARCH_TOOL_NAME) {
       return (
@@ -192,7 +188,7 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
+  if (internalMCPServerName === "include_data") {
     if (toolName === INCLUDE_TOOL_NAME) {
       return (
         <SearchResultDetails
@@ -211,8 +207,8 @@ export function MCPActionDetails({
   }
 
   if (
-    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-      isInternalMCPServerOfName(mcpServerId, n)
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some(
+      (name) => internalMCPServerName === name
     )
   ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
@@ -233,7 +229,7 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, TABLE_QUERY_V2_SERVER_NAME)) {
+  if (internalMCPServerName === TABLE_QUERY_V2_SERVER_NAME) {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
       return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
     }
@@ -242,21 +238,21 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
+  if (internalMCPServerName === "extract_data") {
     if (toolName === PROCESS_TOOL_NAME) {
       return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+  if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "deep_dive")) {
+  if (internalMCPServerName === "deep_dive") {
     return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "agent_memory")) {
+  if (internalMCPServerName === "agent_memory") {
     if (toolName === "retrieve") {
       return (
         <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
@@ -277,18 +273,18 @@ export function MCPActionDetails({
       );
     }
   }
-  if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
+  if (internalMCPServerName === "toolsets") {
     if (toolName === "enable") {
       return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
     }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
+  if (internalMCPServerName === "agent_management") {
     return <MCPAgentManagementActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "data_warehouses")) {
+  if (internalMCPServerName === "data_warehouses") {
     if (
       [DATA_WAREHOUSES_LIST_TOOL_NAME, DATA_WAREHOUSES_FIND_TOOL_NAME].includes(
         toolName
@@ -304,7 +300,7 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "conversation_files")) {
+  if (internalMCPServerName === "conversation_files") {
     if (toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME) {
       return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
     }
