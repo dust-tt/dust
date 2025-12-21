@@ -640,6 +640,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       functionCallName: this.functionCallName,
       functionCallId: this.stepContent.value.value.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
+      toolName: this.toolConfiguration.originalName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
