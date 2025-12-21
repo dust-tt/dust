@@ -112,7 +112,7 @@ export const DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS =
   "It can be used to explore the filesystem structure step by step " +
   "by being called recursively with the 'nodeId' output in a step passed to the next step's nodeId.\n" +
   "The `find` tool finds a node based on its title starting from a specific root node, like using 'find' in Unix.\n" +
-  "The \`cat\` tool reads the actual content in a document node, like 'cat' in Unix.\n" +
+  "The `cat` tool reads the actual content in a document node, like 'cat' in Unix.\n" +
   "The `locate_in_tree` tool finds the path to a node in the filesystem tree.\n" +
   "The `semantic_search` tool performs a semantic search within the folders and files designated by `nodeIds`.\n" +
   "Note: these tools are specific to data in the space denoted by the server name. For attachments and conversation files " +

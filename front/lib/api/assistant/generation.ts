@@ -203,7 +203,7 @@ function constructAttachmentsSection(): string {
     "Three flags indicate how an attachment can be used:\n\n" +
     `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
-    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files\' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
+    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
     " contents of this attachment will be considered in the search.\n" +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
