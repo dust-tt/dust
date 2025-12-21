@@ -2,6 +2,7 @@ import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type {
+  EmailAttachment,
   EmailTriggerError,
   InboundEmail,
 } from "@app/lib/api/assistant/email_trigger";
@@ -18,7 +19,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, isSupportedFileContentType, Ok, removeNulls } from "@app/types";
 
 const { DUST_CLIENT_FACING_URL = "", EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
@@ -29,12 +30,12 @@ export const config = {
   },
 };
 
-// Parses the Sendgid webhook form data and validates it returning a fully formed InboundEmail.
+// Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
   req: NextApiRequest
 ): Promise<Result<InboundEmail, Error>> => {
   const form = new IncomingForm();
-  const [fields] = await form.parse(req);
+  const [fields, files] = await form.parse(req);
 
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
@@ -59,6 +60,24 @@ const parseSendgridWebhookContent = async (
       return new Err(new Error("Failed to parse from"));
     }
 
+    // Extract attachments from files, filtering to supported content types.
+    const attachments: EmailAttachment[] = [];
+    for (const [key, fileArray] of Object.entries(files)) {
+      if (!fileArray) {
+        continue;
+      }
+      for (const file of fileArray) {
+        if (file.mimetype && isSupportedFileContentType(file.mimetype)) {
+          attachments.push({
+            filepath: file.filepath,
+            filename: file.originalFilename ?? key,
+            contentType: file.mimetype,
+            size: file.size,
+          });
+        }
+      }
+    }
+
     return new Ok({
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       subject: subject || "(no subject)",
@@ -76,6 +95,7 @@ const parseSendgridWebhookContent = async (
         from,
         full,
       },
+      attachments,
     });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {

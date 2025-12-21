@@ -1,6 +1,8 @@
+import fs from "fs";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
+import { Readable } from "stream";
 
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
@@ -10,8 +12,10 @@ import {
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -24,6 +28,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
   Result,
+  SupportedFileContentType,
   UserType,
 } from "@app/types";
 import { Err, isAgentMessageType, isDevelopment, Ok } from "@app/types";
@@ -52,6 +57,13 @@ export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
   ? "run.dust.help"
   : "run.dust.help";
 
+export type EmailAttachment = {
+  filepath: string; // Temp file path from formidable
+  filename: string; // Original filename
+  contentType: string; // MIME type
+  size: number; // File size in bytes
+};
+
 export type InboundEmail = {
   subject: string;
   text: string;
@@ -63,6 +75,7 @@ export type InboundEmail = {
     from: string;
     full: string;
   };
+  attachments: EmailAttachment[];
 };
 
 export type EmailTriggerError = {
@@ -363,6 +376,92 @@ export async function triggerFromEmail({
         });
       }
     } else {
+      conversation = updatedConversationRes.value;
+    }
+  }
+
+  // Process email attachments as content fragments.
+  for (const attachment of email.attachments) {
+    try {
+      const file = await FileResource.makeNew({
+        contentType: attachment.contentType as SupportedFileContentType,
+        fileName: attachment.filename,
+        fileSize: attachment.size,
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        useCase: "conversation",
+        useCaseMetadata: null,
+      });
+
+      const fileStream = fs.createReadStream(attachment.filepath);
+      const processRes = await processAndStoreFile(auth, {
+        file,
+        content: {
+          type: "readable",
+          value: Readable.from(fileStream),
+        },
+      });
+
+      if (processRes.isErr()) {
+        localLogger.warn(
+          {
+            filename: attachment.filename,
+            contentType: attachment.contentType,
+            error: processRes.error.message,
+          },
+          "[email] Failed to process attachment, skipping."
+        );
+        continue;
+      }
+
+      const contentFragmentRes = await postNewContentFragment(
+        auth,
+        conversation,
+        {
+          title: attachment.filename,
+          fileId: file.sId,
+        },
+        {
+          username: user.username,
+          fullName: user.fullName(),
+          email: user.email,
+          profilePictureUrl: user.imageUrl,
+        }
+      );
+
+      if (contentFragmentRes.isErr()) {
+        localLogger.warn(
+          {
+            filename: attachment.filename,
+            error: contentFragmentRes.error.message,
+          },
+          "[email] Failed to create content fragment for attachment, skipping."
+        );
+        continue;
+      }
+
+      localLogger.info(
+        { filename: attachment.filename },
+        "[email] Added attachment as content fragment."
+      );
+    } catch (err) {
+      localLogger.warn(
+        {
+          filename: attachment.filename,
+          error: err instanceof Error ? err.message : "Unknown error",
+        },
+        "[email] Error processing attachment, skipping."
+      );
+    }
+  }
+
+  // Refresh conversation after adding attachments.
+  if (email.attachments.length > 0) {
+    const updatedConversationRes = await getConversation(
+      auth,
+      conversation.sId
+    );
+    if (updatedConversationRes.isOk()) {
       conversation = updatedConversationRes.value;
     }
   }
