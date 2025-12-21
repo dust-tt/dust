@@ -29,7 +29,7 @@
   "author": "Dust",
   "license": "MIT",
   "dependencies": {
-    "@dust-tt/client": "^1.1.22",
+    "@dust-tt/client": "*",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "clipboardy": "^4.0.0",
     "execa": "^9.6.0",
@@ -55,9 +55,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
-    "@types/lodash": "^4.17.16",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
     "@types/update-notifier": "^6.0.8",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
@@ -74,8 +72,6 @@
     "globals": "^14.0.0",
     "prettier": "^3.7.4",
     "ts-node": "^10.9.2",
-    "tsup": "^8.4.0",
-    "typescript": "^5.8.2",
-    "typescript-eslint": "^8.48.0"
+    "tsup": "^8.4.0"
   }
 }
