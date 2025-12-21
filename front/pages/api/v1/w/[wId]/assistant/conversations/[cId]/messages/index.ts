@@ -143,13 +143,16 @@ async function handler(
         ? await hasReachedProgrammaticUsageLimits(auth)
         : false;
       if (hasReachedLimits) {
+        const errorMessage = auth.isAdmin()
+          ? "Your workspace has run out of programmatic usage credits. " +
+            "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
+          : "Your workspace has run out of programmatic usage credits. " +
+            "Please ask a Dust workspace admin to purchase more credits.";
         return apiError(req, res, {
           status_code: 429,
           api_error: {
             type: "rate_limit_error",
-            message:
-              "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
-              "limit resets next billing period.",
+            message: errorMessage,
           },
         });
       }

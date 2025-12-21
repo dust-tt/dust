@@ -193,12 +193,11 @@ export async function sendCreditUsageAlertEmail({
         <li>Consumed: ${formatCents(totalConsumedMicroUsd)}</li>
         <li>Remaining: ${formatCents(remainingMicroUsd)}</li>
       </ul>
-      <p>To avoid service interruption, consider:</p>
+      <p>To avoid service interruption:</p>
       <ul>
-        <li>Purchasing additional credits</li>
-        <li>Reviewing your <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage</a></li>
+        <li><strong><a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">Purchase additional credits</a></strong> in the Developers > Credits section</li>
+        <li>Learn more about <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage at Dust</a></li>
       </ul>
-      <p>View your usage details at: <a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">https://dust.tt/w/${workspaceSId}/developers/credits-usage</a></p>
       <p>Please reply to this email if you have any questions.</p>`,
   });
 }
