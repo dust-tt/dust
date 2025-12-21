@@ -61,6 +61,8 @@
     "@types/yargs": "^17.0.33",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
+    "@typescript/native-preview": "^7.0.0-dev.20251201.1",
+    "autoprefixer": "^10.4.20",
     "esbuild": "^0.27.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
@@ -69,10 +71,13 @@
     "eslint-plugin-storybook": "^0.8.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "lint-staged": "^16.1.6",
+    "knip": "^5.71.0",
+    "postcss": "^8.4.47",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.48.0"
+    "typescript-eslint": "^8.48.0",
+    "vitest": "^4.0.15"
   }
 }
