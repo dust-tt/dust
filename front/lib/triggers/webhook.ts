@@ -277,8 +277,11 @@ async function checkWorkspaceRateLimit({
     }
   } else {
     if (await hasReachedProgrammaticUsageLimits(auth)) {
-      errorMessage =
-        "Workspace has reached its public API limits for the current billing period.";
+      errorMessage = auth.isAdmin()
+        ? "Your workspace has run out of programmatic usage credits. " +
+          "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
+        : "Your workspace has run out of programmatic usage credits. " +
+          "Please ask a Dust workspace admin to purchase more credits.";
     }
   }
 
