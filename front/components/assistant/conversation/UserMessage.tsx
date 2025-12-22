@@ -28,6 +28,8 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
+import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
@@ -59,6 +61,7 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
@@ -163,6 +166,7 @@ interface UserMessageProps {
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
+  onReactionToggle: (emoji: string) => void;
 }
 
 export function UserMessage({
@@ -172,6 +176,7 @@ export function UserMessage({
   isLastMessage,
   message,
   owner,
+  onReactionToggle,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -187,6 +192,9 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
+
+  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
+  const reactionsEnabled = featureFlags.hasFeature("reactions");
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
@@ -425,10 +433,23 @@ export function UserMessage({
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
               />
+              {!isDeleted && reactionsEnabled && (
+                <>
+                  <MessageEmojiPicker
+                    key="emoji-picker"
+                    onEmojiSelect={onReactionToggle}
+                  />
+                  <MessageReactions
+                    reactions={message.reactions ?? []}
+                    onReactionClick={onReactionToggle}
+                  />
+                </>
+              )}
             </ConversationMessageContent>
           </div>
         </ConversationMessageContainer>
       )}
+
       {showAgentSuggestions && (
         <AgentSuggestion
           conversationId={conversationId}

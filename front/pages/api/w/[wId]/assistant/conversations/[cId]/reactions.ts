@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getMessageReactions } from "@app/lib/api/assistant/reaction";
+import { getConversationMessagesReactions } from "@app/lib/api/assistant/reaction";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -43,7 +43,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const reactionsRes = await getMessageReactions(auth, conversation);
+      const reactionsRes = await getConversationMessagesReactions(
+        auth,
+        conversation
+      );
 
       if (reactionsRes.isErr()) {
         return apiErrorForConversation(req, res, reactionsRes.error);

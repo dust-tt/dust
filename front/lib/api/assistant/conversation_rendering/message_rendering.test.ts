@@ -85,6 +85,7 @@ describe("renderAllMessages", () => {
               profilePictureUrl: null,
               origin: "web",
             },
+            reactions: [],
           } satisfies UserMessageType,
         ];
       } else {
@@ -120,6 +121,7 @@ describe("renderAllMessages", () => {
             modelInteractionDurationMs: null,
             richMentions: [],
             completionDurationMs: null,
+            reactions: [],
           } satisfies AgentMessageType,
         ];
       }
