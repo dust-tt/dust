@@ -1,21 +1,13 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { isSkillEnableInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { SKILL_ICON } from "@app/lib/skill";
-
-function isSkillEnableParams(params: unknown): params is { skillName: string } {
-  return (
-    typeof params === "object" &&
-    params !== null &&
-    "skillName" in params &&
-    typeof (params as { skillName: unknown }).skillName === "string"
-  );
-}
 
 export function MCPSkillEnableActionDetails({
   viewType,
   toolParams,
 }: ToolExecutionDetailsProps) {
-  const skillName = isSkillEnableParams(toolParams)
+  const skillName = isSkillEnableInputType(toolParams)
     ? toolParams.skillName
     : null;
 
