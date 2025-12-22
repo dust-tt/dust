@@ -33,6 +33,8 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
+import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
+import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import {
   ConversationMessageAvatar,
   ConversationMessageContent,
@@ -72,6 +74,7 @@ import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -102,6 +105,7 @@ interface AgentMessageProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
+  onReactionToggle: (emoji: string) => void;
 }
 
 export function AgentMessage({
@@ -113,6 +117,7 @@ export function AgentMessage({
   user,
   triggeringUser,
   handleSubmit,
+  onReactionToggle,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
 
@@ -232,6 +237,9 @@ export function AgentMessage({
   const isCancelled = agentMessage.status === "cancelled";
   const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
+
+  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
+  const reactionsEnabled = featureFlags.hasFeature("reactions");
 
   const references = useMemo(
     () =>
@@ -587,6 +595,13 @@ export function AgentMessage({
     }
   }
 
+  // Add reactions button if enabled
+  if (reactionsEnabled) {
+    messageButtons.push(
+      <MessageEmojiPicker key="emoji-picker" onEmojiSelect={onReactionToggle} />
+    );
+  }
+
   const { configuration: agentConfiguration } = agentMessage;
 
   const citations = React.useMemo(
@@ -709,24 +724,33 @@ export function AgentMessage({
           {isDeleted ? (
             <DeletedMessage />
           ) : (
-            <AgentMessageContent
-              onQuickReplySend={handleQuickReply}
-              owner={owner}
-              conversationId={conversationId}
-              retryHandler={retryHandler}
-              isLastMessage={isLastMessage}
-              agentMessage={agentMessage}
-              references={references}
-              streaming={shouldStream}
-              lastTokenClassification={
-                agentMessage.streaming.agentState === "thinking"
-                  ? "tokens"
-                  : null
-              }
-              activeReferences={activeReferences}
-              setActiveReferences={setActiveReferences}
-              triggeringUser={triggeringUser}
-            />
+            <>
+              <AgentMessageContent
+                onQuickReplySend={handleQuickReply}
+                owner={owner}
+                conversationId={conversationId}
+                retryHandler={retryHandler}
+                isLastMessage={isLastMessage}
+                agentMessage={agentMessage}
+                references={references}
+                streaming={shouldStream}
+                lastTokenClassification={
+                  agentMessage.streaming.agentState === "thinking"
+                    ? "tokens"
+                    : null
+                }
+                activeReferences={activeReferences}
+                setActiveReferences={setActiveReferences}
+                triggeringUser={triggeringUser}
+              />
+              {reactionsEnabled && (
+                <MessageReactions
+                  reactions={agentMessage.reactions ?? []}
+                  currentUserId={user.sId}
+                  onReactionClick={onReactionToggle}
+                />
+              )}
+            </>
           )}
         </ConversationMessageContent>
         {!isCancelledOrDeleted &&

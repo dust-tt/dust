@@ -459,6 +459,7 @@ export async function createUserMessage(
     context,
     agenticMessageData: agenticMessageData ?? undefined,
     rank: m.rank,
+    reactions: [],
   };
   return createdUserMessage;
 }
@@ -689,6 +690,7 @@ export const createAgentMessages = async (
         []
       ),
       richMentions: [],
+      reactions: [],
     })
   );
 

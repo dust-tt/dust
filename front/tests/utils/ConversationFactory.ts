@@ -159,6 +159,7 @@ export class ConversationFactory {
           },
         }),
       rank: messageRow.rank,
+      reactions: [],
     };
 
     return { messageRow, userMessage };
