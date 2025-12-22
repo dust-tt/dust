@@ -14,6 +14,7 @@ import { useUser } from "@app/lib/swr/user";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { useAgentBuilderContext } from "../AgentBuilderContext";
 
 function getTriggerIcon(trigger: AgentBuilderTriggerType) {
   switch (trigger.kind) {
@@ -44,31 +45,31 @@ export const TriggerCard = ({
   onRemove,
   onEdit,
 }: TriggerCardProps) => {
+  const { isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
-    try {
-      if (
-        trigger.kind === "schedule" &&
-        trigger.configuration &&
-        "cron" in trigger.configuration
-      ) {
+    if (
+      trigger.kind === "schedule" &&
+      trigger.configuration &&
+      "cron" in trigger.configuration
+    ) {
+      try {
         return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
-      } else if (trigger.kind === "webhook") {
-        return (
-          "Triggered " +
-          (trigger.configuration.event
-            ? "by " + trigger.configuration.event + " events"
-            : "") +
-          " on " +
-          (webhookSourceView?.customName ??
-            webhookSourceView?.webhookSource.name) +
-          "'s source."
-        );
+      } catch {
+        return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      return "";
+    } else if (trigger.kind === "webhook") {
+      return (
+        "Triggered " +
+        (trigger.configuration.event
+          ? "by " + trigger.configuration.event + " events"
+          : "") +
+        " on " +
+        (webhookSourceView?.customName ??
+          webhookSourceView?.webhookSource.name) +
+        "'s source."
+      );
     }
   }, [
     trigger.kind,
@@ -84,7 +85,7 @@ export const TriggerCard = ({
       onClick={onEdit}
       disabled={!trigger.enabled}
       action={
-        isEditor && (
+        (isEditor || isAdmin) && (
           <CardActionButton
             size="mini"
             icon={XMarkIcon}
