@@ -20,8 +20,6 @@ export function MCPSkillEnableActionDetails({
       viewType={viewType}
       actionName={actionName}
       visual={SKILL_ICON}
-    >
-      <></>
-    </ActionDetailsWrapper>
+    />
   );
 }
