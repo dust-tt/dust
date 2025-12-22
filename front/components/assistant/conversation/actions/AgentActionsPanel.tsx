@@ -259,7 +259,6 @@ function AgentActionsPanelContent({
                 size="xs"
                 label={skill.name}
                 icon={getSkillIcon(skill.icon)}
-                className="bg-muted-background text-foreground dark:bg-muted-background-night dark:text-foreground-night"
               />
             ))}
           </div>
