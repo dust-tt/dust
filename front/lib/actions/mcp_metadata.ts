@@ -453,13 +453,13 @@ async function connectToRemoteMCPServer(
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
     await mcpClient.connect(streamableHttpTransport);
   } catch (error) {
-    // Check if error message contains "HTTP 4xx" as suggested by the official doc.
-    // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
+    // Check if the error is an HTTP error with a 4xx status code.
+    // Doc here https://github.com/modelcontextprotocol/typescript-sdk/blob/1.25.1/docs/client.md#transports-and-backwards-compatibility.
     if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
       logger.info(
         {
           url: url.toString(),
-          error,
+          error: normalizeError(error),
         },
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
