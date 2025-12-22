@@ -460,11 +460,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
+    // Fetch the conversation skills for this agent and the ones for all agents.
     const conversationSkills = await ConversationSkillModel.findAll({
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.sId,
+        [Op.or]: [
+          { agentConfigurationId: agentConfiguration.sId },
+          { agentConfigurationId: null },
+        ],
       },
     });
 
