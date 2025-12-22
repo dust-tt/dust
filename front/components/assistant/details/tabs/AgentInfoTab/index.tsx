@@ -44,7 +44,7 @@ export function AgentInfoTab({
               </div>
               <div
                 className={cn(
-                  "rounded-lg border border-border bg-muted-background px-3 py-2 " +
+                  "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2 " +
                     "dark:border-border-night dark:bg-muted-background-night"
                 )}
               >
