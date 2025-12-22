@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
@@ -35,8 +36,6 @@ import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
 export function useCapabilitiesPageAndFooter({
-  owner,
-  user,
   mode,
   onModeChange,
   onClose,
@@ -52,6 +51,7 @@ export function useCapabilitiesPageAndFooter({
   leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
 } {
+  const { owner, user } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
 
   const skillSelection = useSkillSelection({
@@ -153,7 +153,6 @@ export function useCapabilitiesPageAndFooter({
           id: mode.pageId,
           content: (
             <CapabilitiesSelectionPageContent
-              owner={owner}
               isCapabilitiesLoading={
                 skillSelection.isSkillsLoading ||
                 toolSelection.isMCPServerViewsLoading
@@ -293,7 +292,6 @@ export function useCapabilitiesPageAndFooter({
           id: mode.pageId,
           content: (
             <MCPServerConfigurationPage
-              owner={owner}
               form={form}
               action={mode.capability}
               mcpServerView={mode.mcpServerView}
@@ -325,7 +323,6 @@ export function useCapabilitiesPageAndFooter({
           id: mode.pageId,
           content: (
             <MCPServerConfigurationPage
-              owner={owner}
               form={form}
               action={mode.capability}
               mcpServerView={mode.mcpServerView}

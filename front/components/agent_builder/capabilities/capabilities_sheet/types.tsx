@@ -2,7 +2,6 @@ import type { AgentBuilderSkillsType } from "@app/components/agent_builder/Agent
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
@@ -79,8 +78,6 @@ export type CapabilitiesSheetContentProps = {
     tools: SelectedTool[];
   }) => void;
   onToolEditSave: (updatedAction: BuilderAction) => void;
-  owner: WorkspaceType;
-  user: UserType;
   initialAdditionalSpaces: string[];
   alreadyRequestedSpaceIds: Set<string>;
   alreadyAddedSkillIds: Set<string>;

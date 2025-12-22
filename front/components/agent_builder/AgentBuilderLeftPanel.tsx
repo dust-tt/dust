@@ -23,7 +23,6 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
-  isSkillsLoading?: boolean;
   isTriggersLoading?: boolean;
 }
 
@@ -34,10 +33,9 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isActionsLoading,
-  isSkillsLoading,
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
-  const { owner, user } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
@@ -65,14 +63,13 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           {hasFeature("skills") && <AgentBuilderSpacesBlock />}
-          {hasFeature("skills") && (
-            <AgentBuilderSkillsBlock
-              isSkillsLoading={isSkillsLoading}
-              owner={owner}
-              user={user}
+          {hasFeature("skills") ? (
+            <AgentBuilderSkillsBlock />
+          ) : (
+            <AgentBuilderCapabilitiesBlock
+              isActionsLoading={isActionsLoading}
             />
           )}
-          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}
