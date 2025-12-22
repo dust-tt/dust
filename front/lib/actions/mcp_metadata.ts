@@ -459,7 +459,7 @@ async function connectToRemoteMCPServer(
       logger.info(
         {
           url: url.toString(),
-          error: error.message,
+          error,
         },
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
