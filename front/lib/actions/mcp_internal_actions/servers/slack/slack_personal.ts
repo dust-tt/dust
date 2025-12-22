@@ -14,6 +14,7 @@ import {
   executePostMessage,
   executeReadThreadMessages,
   executeScheduleMessage,
+  executeSearchChannels,
   getSlackClient,
   isSlackMissingScope,
   resolveChannelDisplayName,
@@ -964,6 +965,64 @@ async function createServer(
           return new Err(
             new MCPError(`Error getting channel details: ${error}`)
           );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "search_channels",
+    "Search for Slack channels using two strategies. Returns JSON.\n\n" +
+      "1. EXACT QUERY (lookup_type='exact'): ONLY use when you have a Slack channel ID (e.g., 'C01234ABCD'). " +
+      "This does NOT work with channel names - only with channel IDs. Returns full channel object as JSON.\n\n" +
+      "2. SEARCH QUERY (lookup_type='search'): Use for channel names or vague queries. " +
+      "Searches across channel names, topics, and purpose descriptions. Returns top 10 matches as JSON array.\n\n" +
+      "SCOPE BEHAVIOR (only applies to lookup_type='search'):\n" +
+      "IMPORTANT: ALWAYS start with scope='joined' (the default). This searches the user's joined channels (public + private) first, " +
+      "then automatically falls back to all public workspace channels if no results are found.\n\n" +
+      "Only use scope='all' in these two cases:\n" +
+      "1. The user explicitly asks to search non-joined or public workspace channels\n" +
+      "2. You already tried scope='joined' and got no results (though the fallback handles this automatically)\n\n",
+    {
+      query: z
+        .string()
+        .describe(
+          "Channel ID (e.g., 'C01234ABCD'), channel name, or search keywords."
+        ),
+      lookup_type: z
+        .enum(["exact", "search"])
+        .describe(
+          "'exact' for channel ID only (not names), 'search' for names/keywords."
+        ),
+      scope: z
+        .enum(["joined", "all"])
+        .default("joined")
+        .describe(
+          "'joined' (default, always use this), 'all' (only if user explicitly requests non-joined channels)."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ query, lookup_type, scope }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        try {
+          return await executeSearchChannels(query, scope, lookup_type, {
+            accessToken,
+          });
+        } catch (error) {
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
+          }
+          return new Err(new MCPError(`Error searching channels: ${error}`));
         }
       }
     )

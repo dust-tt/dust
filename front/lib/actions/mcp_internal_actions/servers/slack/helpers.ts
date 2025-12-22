@@ -470,6 +470,147 @@ export async function executeListJoinedChannels(
   );
 }
 
+// Helper function to filter channels by substring matching on name, topic, and purpose.
+function filterChannels(
+  channels: ChannelWithIdAndName[],
+  query: string,
+  limit: number = 10
+): ChannelWithIdAndName[] {
+  if (!query || query.trim() === "") {
+    return channels
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, limit);
+  }
+
+  const queryLower = query.toLowerCase();
+
+  const matched = channels.filter((c) => {
+    const nameMatch = c.name.toLowerCase().includes(queryLower);
+    const topicMatch = c.topic?.value?.toLowerCase().includes(queryLower);
+    const purposeMatch = c.purpose?.value?.toLowerCase().includes(queryLower);
+    return nameMatch || topicMatch || purposeMatch;
+  });
+
+  return matched.sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit);
+}
+
+// Execute search_channels: "exact" uses conversations.info, "search" fetches lists and filters locally.
+export async function executeSearchChannels(
+  query: string,
+  scope: "joined" | "all",
+  lookupType: "exact" | "search",
+  {
+    accessToken,
+  }: {
+    accessToken: string;
+  }
+): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const slackClient = await getSlackClient(accessToken);
+
+  // Exact lookup: direct API call to conversations.info
+  if (lookupType === "exact") {
+    try {
+      const response = await slackClient.conversations.info({
+        channel: query.replace(/^[#@]/, ""),
+      });
+
+      if (response.ok && response.channel) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: JSON.stringify(response.channel, null, 2),
+          },
+        ]);
+      }
+    } catch (error) {
+      return new Err(
+        new MCPError(`Channel not found: ${query}. Error: ${error}`)
+      );
+    }
+
+    return new Err(new MCPError(`Channel not found: ${query}`));
+  }
+
+  // Text search: fetch lists and filter locally
+  // scope="joined": search joined first, fallback to all public if no results
+  if (scope === "joined") {
+    try {
+      const joinedChannels = await getChannels({
+        slackClient,
+        scope: "joined",
+      });
+
+      const matchedInJoined = filterChannels(joinedChannels, query, 10);
+
+      if (matchedInJoined.length > 0) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                channels: matchedInJoined.map(cleanChannelPayload),
+                count: matchedInJoined.length,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+
+      // Fallback to all public
+      const allChannels = await getChannels({
+        slackClient,
+        scope: "public",
+      });
+
+      const matchedInAll = filterChannels(allChannels, query, 10);
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              channels: matchedInAll.map(cleanChannelPayload),
+              count: matchedInAll.length,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (error) {
+      return new Err(new MCPError(`Error searching channels: ${error}`));
+    }
+  }
+
+  // scope="all": search all public channels directly
+  try {
+    const allChannels = await getChannels({
+      slackClient,
+      scope: "public",
+    });
+
+    const matched = filterChannels(allChannels, query, 10);
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            channels: matched.map(cleanChannelPayload),
+            count: matched.length,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  } catch (error) {
+    return new Err(new MCPError(`Error searching channels: ${error}`));
+  }
+}
+
 export async function executePostMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
