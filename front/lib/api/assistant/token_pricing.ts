@@ -287,8 +287,8 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
 const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   // Image generation model - not user-selectable, used internally by MCP tools
   "gemini-2.5-flash-image": {
-    input: 0.15,
-    output: 0.6,
+    input: 0.3,
+    output: 30.0,
   },
   "gpt-4-32k": {
     input: 60.0,
