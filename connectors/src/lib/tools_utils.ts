@@ -16,11 +16,8 @@ export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
-export const getActionName = (action: AgentActionPublicType) => {
-  const { functionCallName, internalMCPServerName } = action;
-
-  const parts = functionCallName ? functionCallName.split("__") : [];
-  const toolName = parts[parts.length - 1];
+export function getActionName(action: AgentActionPublicType) {
+  const { toolName, internalMCPServerName } = action;
 
   if (
     internalMCPServerName === "search" ||
@@ -87,4 +84,4 @@ export const getActionName = (action: AgentActionPublicType) => {
   }
 
   return "Running a tool";
-};
+}
