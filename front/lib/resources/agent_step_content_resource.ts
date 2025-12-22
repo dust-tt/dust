@@ -4,7 +4,6 @@ import type {
   Attributes,
   CreationAttributes,
   IncludeOptions,
-  ModelStatic,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -21,6 +20,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -39,10 +39,11 @@ export interface AgentStepContentResource
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentStepContentResource extends BaseResource<AgentStepContentModel> {
-  static model: ModelStatic<AgentStepContentModel> = AgentStepContentModel;
+  static model: ModelStaticWorkspaceAware<AgentStepContentModel> =
+    AgentStepContentModel;
 
   constructor(
-    model: ModelStatic<AgentStepContentModel>,
+    model: ModelStaticWorkspaceAware<AgentStepContentModel>,
     blob: Attributes<AgentStepContentModel> & {
       agentMCPActions?: AgentMCPActionModel[];
     }
@@ -116,7 +117,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     auth: Authenticator,
     ids: ModelId[]
   ): Promise<AgentStepContentResource[]> {
-    const contents = await AgentStepContentModel.findAll({
+    const contents = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: ids },
