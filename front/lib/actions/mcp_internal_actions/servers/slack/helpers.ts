@@ -413,6 +413,7 @@ export async function hasSlackScope(
   );
 }
 
+// Used by slack_bot
 export async function executeListPublicChannels(
   nameFilter: string | undefined,
   accessToken: string,
@@ -442,34 +443,6 @@ export async function executeListPublicChannels(
   );
 }
 
-export async function executeListJoinedChannels(
-  nameFilter: string | undefined,
-  accessToken: string
-) {
-  const slackClient = await getSlackClient(accessToken);
-  const channels = await getChannels({
-    slackClient,
-    scope: "joined",
-  });
-
-  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
-    channels,
-    nameFilter,
-    (channel, normalizedFilter) =>
-      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ) ||
-      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ),
-    (count, hasFilter, filterText) =>
-      hasFilter
-        ? `You are a member of ${count} channels containing "${filterText}"`
-        : `You are a member of ${count} channels`,
-    cleanChannelPayload
-  );
-}
-
 // Helper function to filter channels by substring matching on name, topic, and purpose.
 function filterChannels(
   channels: ChannelWithIdAndName[],
@@ -488,7 +461,7 @@ function filterChannels(
     const nameMatch = c.name.toLowerCase().includes(queryLower);
     const topicMatch = c.topic?.value?.toLowerCase().includes(queryLower);
     const purposeMatch = c.purpose?.value?.toLowerCase().includes(queryLower);
-    return nameMatch || topicMatch || purposeMatch;
+    return nameMatch ?? topicMatch ?? purposeMatch;
   });
 
   return matched.sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit);

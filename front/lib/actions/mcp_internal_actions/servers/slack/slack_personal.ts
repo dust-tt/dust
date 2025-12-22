@@ -8,8 +8,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   executeGetUser,
-  executeListJoinedChannels,
-  executeListPublicChannels,
   executeListUsers,
   executePostMessage,
   executeReadThreadMessages,
@@ -842,129 +840,6 @@ async function createServer(
             return authError;
           }
           return new Err(new MCPError(`Error retrieving user info: ${error}`));
-        }
-      }
-    )
-  );
-
-  server.tool(
-    "list_channels",
-    "List all public channels of the workspace and only the private channels where you are currently a member",
-    {
-      nameFilter: z
-        .string()
-        .optional()
-        .describe("The name of the channel to filter by (optional)"),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ nameFilter }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        try {
-          return await executeListPublicChannels(
-            nameFilter,
-            accessToken,
-            mcpServerId
-          );
-        } catch (error) {
-          const authError = handleSlackAuthError(error);
-          if (authError) {
-            return authError;
-          }
-          return new Err(new MCPError(`Error listing channels: ${error}`));
-        }
-      }
-    )
-  );
-
-  server.tool(
-    "list_joined_channels",
-    "List only public and private channels where you are currently a member",
-    {
-      nameFilter: z
-        .string()
-        .optional()
-        .describe("The name of the channel to filter by (optional)"),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ nameFilter }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        try {
-          return await executeListJoinedChannels(nameFilter, accessToken);
-        } catch (error) {
-          const authError = handleSlackAuthError(error);
-          if (authError) {
-            return authError;
-          }
-          return new Err(new MCPError(`Error listing channels: ${error}`));
-        }
-      }
-    )
-  );
-
-  server.tool(
-    "get_channel_details",
-    "Get detailed information about a specific channel including all metadata, properties, canvas, tabs, and settings. Use this when you need complete channel information beyond the basic fields provided by list_channels.",
-    {
-      channel: z.string().describe("The channel ID or name to get details for"),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        try {
-          const slackClient = await getSlackClient(accessToken);
-          const response = await slackClient.conversations.info({
-            channel,
-          });
-
-          if (!response.ok || !response.channel) {
-            return new Err(new MCPError("Failed to get channel details"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Retrieved detailed information for channel ${channel}`,
-            },
-            {
-              type: "text" as const,
-              text: JSON.stringify(response.channel, null, 2),
-            },
-          ]);
-        } catch (error) {
-          const authError = handleSlackAuthError(error);
-          if (authError) {
-            return authError;
-          }
-          return new Err(
-            new MCPError(`Error getting channel details: ${error}`)
-          );
         }
       }
     )
