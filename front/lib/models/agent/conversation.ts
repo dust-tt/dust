@@ -707,6 +707,8 @@ export class MessageReactionModel extends WorkspaceAwareModel<MessageReactionMod
   declare userContextFullName: string | null;
 
   declare reaction: string;
+
+  declare user: NonAttribute<UserModel> | null;
 }
 
 MessageReactionModel.init(

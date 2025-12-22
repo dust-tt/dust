@@ -211,6 +211,7 @@ async function handler(
         modelInteractionDurationMs: null,
         completionDurationMs: null,
         richMentions: [],
+        reactions: [],
       };
 
       const { serverToolsAndInstructions, error: mcpToolsListingError } =
