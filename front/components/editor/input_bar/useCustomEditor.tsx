@@ -13,7 +13,9 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -205,6 +207,8 @@ export const buildEditorExtensions = ({
         levels: [1],
       },
       blockquote: false, // Disable default blockquote, we use a custom one
+      orderedList: false, // Disable default orderedList, we use custom OrderedListExtension
+      listItem: false, // Disable default listItem, we use custom ListItemExtension
       // Markdown styles configuration.
       code: {
         HTMLAttributes: {
@@ -221,15 +225,16 @@ export const buildEditorExtensions = ({
           class: markdownStyles.unorderedList(),
         },
       },
-      listItem: {
-        HTMLAttributes: {
-          class: markdownStyles.list(),
-        },
+    }),
+    // Custom ordered list and list item extensions to preserve start attribute
+    OrderedListExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.orderedList(),
       },
-      orderedList: {
-        HTMLAttributes: {
-          class: markdownStyles.orderedList(),
-        },
+    }),
+    ListItemExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.list(),
       },
     }),
     // Custom paragraph extension to preserve empty lines in markdown
