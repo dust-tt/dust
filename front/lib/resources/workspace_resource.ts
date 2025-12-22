@@ -85,6 +85,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   ): Promise<WorkspaceResource | null> {
     const workspaceDomain = await this.workspaceDomainModel.findOne({
       where: { domain },
+      // WORKSPACE_ISOLATION_BYPASS: Use to search for existing workspaces by domain.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!workspaceDomain) {
