@@ -584,7 +584,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "slack",
       version: "1.0.0",
-      description: "Slack tools for searching and posting messages.",
+      description:
+        "Search, post, and interact with Slack using your personal credentials. Use this as the Default Slack tool unless explicitly asked to use the workspace bot.",
       authorization: {
         provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -592,7 +593,9 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "This is the default Slack tool. Use this unless the user specifically asks to post as the Slack bot or use workspace credentials. " +
+        "This tool uses your personal Slack credentials and posts messages as you. " +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
@@ -1003,7 +1006,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "slack_bot",
       version: "1.0.0",
-      description: "Post messages and reactions as the workspace Dust bot.",
+      description:
+        "Post messages and interact with Slack using the workspace Slack bot credentials. Direct messages and search operations are not supported. Only use this tool when the user specifically asks to interact as the Slack bot or to use workspace credentials.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,
@@ -1011,7 +1015,12 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: null,
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "ONLY use this tool when the user specifically asks to interact as the Slack bot or to use workspace credentials. " +
+        "Otherwise, prefer the personal Slack tool. " +
+        "This tool uses the Slack bot credentials and posts messages as the bot, not as the user. " +
+        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
+        "Direct messages and search operations are not supported. " +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
