@@ -8,17 +8,23 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
+COPY /sdks/js/package*.json /sdks/js
+COPY /sparkle/package*.json /sparkle
+COPY /front/package*.json /front
+RUN npm ci
+
 # Build SDK (shared by both front-nextjs and workers)
 WORKDIR /sdks/js
-COPY /sdks/js/package*.json ./
 COPY /sdks/js/ .
-RUN npm ci
+RUN npm run build
+
+# Build SDK (shared by both front-nextjs and workers)
+WORKDIR /sparkle
+COPY /sparkle/ .
 RUN npm run build
 
 # Install front dependencies and copy source (shared by both)
-WORKDIR /app
-COPY /front/package*.json ./
-RUN npm ci
+WORKDIR /front
 COPY /front .
 
 # Remove test files (shared optimization)
@@ -79,7 +85,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         --release-version=$COMMIT_HASH \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
-        --minified-path-prefix=/app/.next/server/ \
+        --minified-path-prefix=/front/.next/server/ \
         --repository-url=https://github.com/dust-tt/dust \
         --project-path=front \
         --release-version=$COMMIT_HASH \
@@ -103,16 +109,16 @@ RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
   rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /front
 
 # Copy Next.js standalone output from Next.js-specific build
-COPY --from=front-nextjs-build /app/.next/standalone ./
-COPY --from=front-nextjs-build /app/.next/static ./.next/static
-COPY --from=front-nextjs-build /app/public ./public
+COPY --from=front-nextjs-build /front/.next/standalone ./
+COPY --from=front-nextjs-build /front/.next/static ./.next/static
+COPY --from=front-nextjs-build /front/public ./public
 # Copy admin directory (contains prestop.sh and other scripts)
-COPY --from=base-deps /app/admin ./admin
+COPY --from=base-deps /front/admin ./admin
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
+COPY --from=base-deps /front/scripts ./scripts
 # Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks /sdks
 
@@ -138,15 +144,15 @@ RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
   rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /front
 
 # Copy worker assets from workers-specific build
-COPY --from=workers-build /app/dist ./dist
+COPY --from=workers-build /front/dist ./dist
 # Copy full dependencies from base dependencies (includes all node_modules)
-COPY --from=base-deps /app/node_modules ./node_modules
-COPY --from=base-deps /app/package.json ./package.json
+COPY --from=base-deps /front/node_modules ./node_modules
+COPY --from=base-deps /front/package.json ./package.json
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
+COPY --from=base-deps /front/scripts ./scripts
 # Copy built SDK that workers depend on (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks/js /sdks/js
 
