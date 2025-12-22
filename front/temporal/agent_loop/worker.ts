@@ -70,7 +70,9 @@ export async function runAgentLoopWorker() {
     maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
       workflowModules: removeNulls([
-        isDevelopment() ? require.resolve("./workflows") : null,
+        !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"
+          ? null
+          : require.resolve("./workflows"),
       ]),
       activity: [
         (ctx: Context) => {

@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import path from "path";
 
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import { isDevelopment, normalizeError } from "@app/types";
 
 import type { WorkerName } from "./worker_registry";
 
@@ -20,10 +20,7 @@ export function getWorkflowConfig({
   workerName: WorkerName;
   getWorkflowsPath: () => string;
 }) {
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.USE_TEMPORAL_BUNDLES === "true"
-  ) {
+  if (!isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true") {
     const bundlePath = path.join(
       __dirname,
       "../dist/temporal-bundles",
