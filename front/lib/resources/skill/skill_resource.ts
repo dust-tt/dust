@@ -79,6 +79,19 @@ type SkillVersionCreationAttributes =
     mcpServerConfigurationIds: number[];
   };
 
+type ConversationSkillCreationAttributes =
+  CreationAttributes<ConversationSkillModel> &
+    (
+      | {
+          source: "conversation";
+          agentConfigurationId: null;
+        }
+      | {
+          source: "agent_enabled";
+          agentConfigurationId: string;
+        }
+    );
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -606,7 +619,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         globalSkillId: this.globalSId ?? null,
         source: "conversation",
         addedByUserId: user.id,
-      });
+      } satisfies ConversationSkillCreationAttributes);
       return new Ok(undefined);
     }
 
@@ -1047,14 +1060,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    const conversationSkillBlob = {
+    const conversationSkillBlob: ConversationSkillCreationAttributes = {
       workspaceId: workspace.id,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
-      agentMessageId: agentMessage.agentMessageId,
       conversationId: conversation.id,
-      source: "agent_enabled" as const,
       addedByUserId: null,
+      source: "agent_enabled",
+      agentConfigurationId: agentConfiguration.sId,
     };
 
     await ConversationSkillModel.create(conversationSkillBlob);
