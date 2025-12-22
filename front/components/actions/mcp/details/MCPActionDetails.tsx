@@ -285,10 +285,11 @@ export function MCPActionDetails({
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (internalMCPServerName === SKILL_MANAGEMENT_SERVER_NAME) {
-    if (toolName === ENABLE_SKILL_TOOL_NAME) {
-      return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
-    }
+  if (
+    internalMCPServerName === SKILL_MANAGEMENT_SERVER_NAME &&
+    toolName === ENABLE_SKILL_TOOL_NAME
+  ) {
+    return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "agent_management") {
