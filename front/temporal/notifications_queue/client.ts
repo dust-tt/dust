@@ -2,7 +2,6 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { shouldSendNotificationForAgentAnswer } from "@app/lib/notifications/workflows/conversation-unread";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -31,17 +30,6 @@ export async function launchConversationUnreadNotificationWorkflow({
     workspaceId,
   });
 
-  // Construct back an authenticator from the auth type.
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.error(
-      { authType, error: authResult.error },
-      "Failed to construct authenticator from auth type"
-    );
-    return new Ok(undefined);
-  }
-
-  const auth = authResult.value;
   if (!isUserMessageOrigin(agentLoopArgs.userMessageOrigin)) {
     logger.info(
       { userMessageOrigin: agentLoopArgs.userMessageOrigin },
@@ -52,12 +40,6 @@ export async function launchConversationUnreadNotificationWorkflow({
 
   // Check if the user message origin is valid for sending notifications.
   if (!shouldSendNotificationForAgentAnswer(agentLoopArgs.userMessageOrigin)) {
-    return new Ok(undefined);
-  }
-
-  // Check if the workspace has notifications enabled.
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("notifications")) {
     return new Ok(undefined);
   }
 

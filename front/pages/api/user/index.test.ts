@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { computeSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 
 import handler from "./index";
@@ -43,7 +42,7 @@ describe("GET /api/user", () => {
             workOSOrganizationId: workspace.workOSOrganizationId,
           },
         ],
-        subscriberHash: null,
+        subscriberHash: computeSubscriberHash(user.sId),
       },
     });
   });
@@ -51,8 +50,6 @@ describe("GET /api/user", () => {
   it("returns 200 when the user is authenticated and has a subscriber hash when the feature flag is enabled", async () => {
     const { req, res, user, workspace, membership } =
       await createPrivateApiMockRequest();
-
-    await FeatureFlagFactory.basic("notifications", workspace);
 
     await handler(req, res);
 

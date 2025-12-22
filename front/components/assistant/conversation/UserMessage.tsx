@@ -2,7 +2,6 @@ import {
   BoltIcon,
   Button,
   classNames,
-  ConversationMessage,
   Icon,
   Markdown,
   PencilSquareIcon,
@@ -50,7 +49,6 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
@@ -166,8 +164,6 @@ export function UserMessage({
   owner,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
   const isAdmin = owner.role === "admin";
   const { deleteMessage, isDeleting } = useDeleteMessage({
     owner,
@@ -237,9 +233,8 @@ export function UserMessage({
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
-  const canDelete =
-    (isCurrentUser || isAdmin) && !isDeleted && userMentionsEnabled;
-  const canEdit = isCurrentUser && !isDeleted && userMentionsEnabled;
+  const canDelete = (isCurrentUser || isAdmin) && !isDeleted;
+  const canEdit = isCurrentUser && !isDeleted;
 
   const handleDeleteMessage = useCallback(async () => {
     if (isDeleting || isDeleted) {
@@ -307,108 +302,62 @@ export function UserMessage({
       ]
     : [];
 
-  if (userMentionsEnabled) {
-    const displayChip =
-      message.version > 0 || isTriggeredOrigin(message.context.origin);
-    return (
-      <div className="flex flex-grow flex-col">
-        <div
-          className={classNames(
-            "flex w-full min-w-60 flex-col",
-            isCurrentUser ? "items-end" : "items-start"
-          )}
-        >
-          {shouldShowEditor ? (
-            <UserMessageEditor
-              editor={editor}
-              editorService={editorService}
-              setShouldShowEditor={setShouldShowEditor}
-              onSave={handleSave}
-              isSaving={isSaving}
-            />
-          ) : (
-            <NewConversationMessage
-              pictureUrl={
-                message.context.profilePictureUrl ?? message.user?.image
-              }
-              name={message.context.fullName ?? undefined}
-              renderName={renderName}
-              timestamp={formatTimestring(message.created)}
-              infoChip={
-                displayChip ? (
-                  <>
-                    {isTriggeredOrigin(message.context.origin) && (
-                      <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                        <TriggerChip message={message} />
-                      </span>
-                    )}
-                    {message.version > 0 && (
-                      <span className="text-xs text-faint dark:text-muted-foreground-night">
-                        (edited)
-                      </span>
-                    )}
-                  </>
-                ) : undefined
-              }
-              type="user"
-              isCurrentUser={isCurrentUser}
-              citations={citations}
-              actions={actions}
-            >
-              <UserMessageContent
-                message={message}
-                isDeleted={isDeleted}
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
-            </NewConversationMessage>
-          )}
-        </div>
-        {showAgentSuggestions && (
-          <AgentSuggestion
-            conversationId={conversationId}
-            owner={owner}
-            userMessage={message}
-          />
-        )}
-      </div>
-    );
-  }
-
+  const displayChip =
+    message.version > 0 || isTriggeredOrigin(message.context.origin);
   return (
     <div className="flex flex-grow flex-col">
-      <div className="min-w-60 max-w-full self-end">
-        <ConversationMessage
-          pictureUrl={message.context.profilePictureUrl ?? message.user?.image}
-          name={message.context.fullName ?? undefined}
-          renderName={renderName}
-          timestamp={formatTimestring(message.created)}
-          infoChip={
-            isTriggeredOrigin(message.context.origin) && (
-              <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
-                <TriggerChip message={message} />
-              </span>
-            )
-          }
-          type="user"
-          citations={citations}
-          actions={actions}
-        >
-          {isDeleted ? (
-            <DeletedMessage />
-          ) : (
-            <Markdown
-              content={message.content}
-              isStreaming={false}
+      <div
+        className={classNames(
+          "flex w-full min-w-60 flex-col",
+          isCurrentUser ? "items-end" : "items-start"
+        )}
+      >
+        {shouldShowEditor ? (
+          <UserMessageEditor
+            editor={editor}
+            editorService={editorService}
+            setShouldShowEditor={setShouldShowEditor}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        ) : (
+          <NewConversationMessage
+            pictureUrl={
+              message.context.profilePictureUrl ?? message.user?.image
+            }
+            name={message.context.fullName ?? undefined}
+            renderName={renderName}
+            timestamp={formatTimestring(message.created)}
+            infoChip={
+              displayChip ? (
+                <>
+                  {isTriggeredOrigin(message.context.origin) && (
+                    <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                      <TriggerChip message={message} />
+                    </span>
+                  )}
+                  {message.version > 0 && (
+                    <span className="text-xs text-faint dark:text-muted-foreground-night">
+                      (edited)
+                    </span>
+                  )}
+                </>
+              ) : undefined
+            }
+            type="user"
+            isCurrentUser={isCurrentUser}
+            citations={citations}
+            actions={actions}
+          >
+            <UserMessageContent
+              message={message}
+              isDeleted={isDeleted}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
-              compactSpacing
-              canCopyQuotes={false}
             />
-          )}
-        </ConversationMessage>
+          </NewConversationMessage>
+        )}
       </div>
       {showAgentSuggestions && (
         <AgentSuggestion

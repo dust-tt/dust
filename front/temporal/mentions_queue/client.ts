@@ -1,7 +1,6 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/mentions_queue/config";
@@ -28,22 +27,6 @@ export async function launchHandleMentionsWorkflow({
     conversationId,
     workspaceId,
   });
-
-  // Construct back an authenticator from the auth type.
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.error(
-      { authType, error: authResult.error },
-      "Failed to construct authenticator from auth type"
-    );
-    return new Ok(undefined);
-  }
-  const auth = authResult.value;
-
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (!featureFlags.includes("mentions_v2")) {
-    return new Ok(undefined);
-  }
 
   try {
     await client.workflow.start(handleMentionsWorkflow, {

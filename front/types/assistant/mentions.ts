@@ -28,8 +28,6 @@ export type UserMention = {
 
 /**
  * Union type of all supported mention types.
- * Agent mentions are always supported.
- * User mentions are supported when the mentions_v2 feature flag is enabled.
  */
 export type MentionType = AgentMention | UserMention;
 

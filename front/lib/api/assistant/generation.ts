@@ -219,11 +219,9 @@ function constructPastedContentSection(): string {
 
 export function constructGuidelinesSection({
   agentConfiguration,
-  featureFlags,
   userMessage,
 }: {
   agentConfiguration: AgentConfigurationType;
-  featureFlags: WhitelistableFeature[];
   userMessage: UserMessageType;
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
@@ -257,30 +255,28 @@ export function constructGuidelinesSection({
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  if (featureFlags.includes("mentions_v2")) {
-    const isSlackOrTeams =
-      userMessage.context.origin === "slack" ||
-      userMessage.context.origin === "teams";
-    if (!isSlackOrTeams) {
-      guidelinesSection +=
-        `\n## MENTIONING USERS\n` +
-        "You have the abillity to mention users in a message using the markdown directive." +
-        '\nUsers can also refer to mention as "ping".' +
-        `\nUse the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available to the conversation.` +
-        `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user in a message.` +
-        "\nImportant:" +
-        "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
-        "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
-    } else {
-      guidelinesSection +=
-        `\n## MENTIONING USERS\n` +
-        "You have the abillity to mention users in a message using the markdown directive." +
-        '\nUsers can also refer to mention as "ping".' +
-        `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
-        "\nUse a simple @username to mention users in your messages in this conversation.";
-    }
-  }
+  const isSlackOrTeams =
+    userMessage.context.origin === "slack" ||
+    userMessage.context.origin === "teams";
 
+  if (!isSlackOrTeams) {
+    guidelinesSection +=
+      `\n## MENTIONING USERS\n` +
+      "You have the abillity to mention users in a message using the markdown directive." +
+      '\nUsers can also refer to mention as "ping".' +
+      `\nUse the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available to the conversation.` +
+      `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user in a message.` +
+      "\nImportant:" +
+      "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
+      "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
+  } else {
+    guidelinesSection +=
+      `\n## MENTIONING USERS\n` +
+      "You have the abillity to mention users in a message using the markdown directive." +
+      '\nUsers can also refer to mention as "ping".' +
+      `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
+      "\nUse a simple @username to mention users in your messages in this conversation.";
+  }
   return guidelinesSection;
 }
 
@@ -393,7 +389,6 @@ export function constructPromptMultiActions(
     constructPastedContentSection(),
     constructGuidelinesSection({
       agentConfiguration,
-      featureFlags,
       userMessage,
     }),
     constructInstructionsSection({

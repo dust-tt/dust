@@ -7,7 +7,6 @@ import { getRichMentionsWithStatusForMessage } from "@app/lib/api/assistant/mess
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
 import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import {
@@ -133,11 +132,7 @@ export const createUserMentions = async (
               }
             );
 
-            const featureFlags = await getFeatureFlags(
-              auth.getNonNullableWorkspace()
-            );
-
-            if (status === "added" && featureFlags.includes("notifications")) {
+            if (status === "added") {
               await triggerConversationAddedAsParticipantNotification(auth, {
                 conversation,
                 addedUserId: user.sId,

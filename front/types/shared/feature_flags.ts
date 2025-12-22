@@ -216,14 +216,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  mentions_v2: {
-    description: "Enable mentions v2, aka mention users",
-    stage: "on_demand",
-  },
-  notifications: {
-    description: "Enable notifications",
-    stage: "dust_only",
-  },
   skills: {
     description:
       "Access to Skills, which are packaged sets of instructions and tools",

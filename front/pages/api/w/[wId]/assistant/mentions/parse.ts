@@ -6,7 +6,6 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -69,17 +68,10 @@ async function handler(
     .filter((a) => a.status === "active")
     .map(toRichAgentMentionType);
 
-  // Fetch workspace members if mentions_v2 is enabled.
   const userMentions: RichUserMention[] = [];
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const mentions_v2_enabled = featureFlags.includes("mentions_v2");
+  const { members } = await getMembers(auth, { activeOnly: true });
 
-  if (mentions_v2_enabled) {
-    const { members } = await getMembers(auth, { activeOnly: true });
-
-    userMentions.push(...members.map(toRichUserMentionType));
-  }
+  userMentions.push(...members.map(toRichUserMentionType));
 
   // Combine all mentions for matching.
   const allMentions = [...agentMentions, ...userMentions];

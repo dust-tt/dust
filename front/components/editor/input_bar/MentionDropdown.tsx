@@ -20,7 +20,6 @@ import type {
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 export const MentionDropdown = forwardRef<
@@ -45,9 +44,6 @@ export const MentionDropdown = forwardRef<
     // Call clientRect() on every render to get the latest position.
     // This avoids caching stale coordinates that may be invalid (0,0) when typing @ quickly after refresh.
     const triggerRect = clientRect?.();
-
-    const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-    const mentionsV2 = featureFlags.hasFeature("mentions_v2");
 
     // Fetch suggestions from server using the query.
     // Backend handles all prioritization logic (participants, preferred agent, etc.)
@@ -147,7 +143,7 @@ export const MentionDropdown = forwardRef<
         : `results-${suggestions.length}`;
 
     // Don't render the dropdown if there are no results
-    if (mentionsV2 && suggestions.length === 0 && !isLoading) {
+    if (suggestions.length === 0 && !isLoading) {
       return null;
     }
 

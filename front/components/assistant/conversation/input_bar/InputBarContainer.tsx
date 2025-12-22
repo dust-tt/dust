@@ -38,7 +38,6 @@ import { getSkillIcon } from "@app/lib/skill";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   DataSourceViewContentNode,
@@ -116,9 +115,6 @@ const InputBarContainer = ({
   getDraft,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
-
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -581,11 +577,9 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        {userMentionsEnabled && (
-          <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
-            <Toolbar editor={editor} className="hidden sm:inline-flex" />
-          </BubbleMenu>
-        )}
+        <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
+          <Toolbar editor={editor} className="hidden sm:inline-flex" />
+        </BubbleMenu>
         <div className="flex w-full flex-col py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center px-2">
             {selectedSkills.map((skill) => (
@@ -650,7 +644,7 @@ const InputBarContainer = ({
             ))}
           </div>
           <div className="relative flex w-full items-center justify-between">
-            {!isRecording && userMentionsEnabled && (
+            {!isRecording && (
               <MobileToolbar
                 editor={editor}
                 className={cn(
@@ -673,15 +667,13 @@ const InputBarContainer = ({
             >
               {!isRecording && (
                 <div className="flex items-center">
-                  {userMentionsEnabled && (
-                    <Button
-                      variant="ghost-secondary"
-                      icon={TextIcon}
-                      size={buttonSize}
-                      className="flex sm:hidden"
-                      onClick={setIsToolbarOpen}
-                    />
-                  )}
+                  <Button
+                    variant="ghost-secondary"
+                    icon={TextIcon}
+                    size={buttonSize}
+                    className="flex sm:hidden"
+                    onClick={setIsToolbarOpen}
+                  />
                   {actions.includes("attachment") && (
                     <>
                       <input

@@ -5,11 +5,7 @@ import {
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import { constructGuidelinesSection } from "@app/lib/api/assistant/generation";
-import type {
-  AgentConfigurationType,
-  UserMessageType,
-  WhitelistableFeature,
-} from "@app/types";
+import type { AgentConfigurationType, UserMessageType } from "@app/types";
 
 describe("constructGuidelinesSection", () => {
   describe("MENTIONING USERS section with Slack/Teams origin handling", () => {
@@ -21,8 +17,6 @@ describe("constructGuidelinesSection", () => {
       name: "test-agent",
     };
 
-    const featureFlags: WhitelistableFeature[] = ["mentions_v2"];
-
     it("should include mention tools for web origin", () => {
       const userMessage = {
         context: {
@@ -33,7 +27,6 @@ describe("constructGuidelinesSection", () => {
 
       const result = constructGuidelinesSection({
         agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-        featureFlags,
         userMessage,
       });
 
@@ -60,7 +53,6 @@ describe("constructGuidelinesSection", () => {
 
         const result = constructGuidelinesSection({
           agentConfiguration: baseAgentConfiguration as AgentConfigurationType,
-          featureFlags,
           userMessage,
         });
 
