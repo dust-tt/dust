@@ -40,7 +40,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
-  AgentMessageType,
   AgentsUsageType,
   ConversationType,
   LightAgentConfigurationType,
@@ -78,6 +77,19 @@ type SkillVersionCreationAttributes =
     version: number;
     mcpServerConfigurationIds: number[];
   };
+
+type ConversationSkillCreationAttributes =
+  CreationAttributes<ConversationSkillModel> &
+    (
+      | {
+          source: "conversation";
+          agentConfigurationId: null;
+        }
+      | {
+          source: "agent_enabled";
+          agentConfigurationId: string;
+        }
+    );
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -587,11 +599,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       conversationId,
       enabled,
-      agentConfigurationId,
     }: {
       conversationId: ModelId;
       enabled: boolean;
-      agentConfigurationId: string | null;
     }
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();
@@ -601,53 +611,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    let agentConfigurationModelId: ModelId | null = null;
-
-    if (agentConfigurationId) {
-      const agentConfiguration = await AgentConfigurationModel.findOne({
-        where: {
-          sId: agentConfigurationId,
-          workspaceId: workspace.id,
-        },
-      });
-
-      if (!agentConfiguration) {
-        return new Err(
-          new Error(
-            `Agent configuration not found: sId=${agentConfigurationId}, workspaceId=${workspace.id}`
-          )
-        );
-      }
-
-      agentConfigurationModelId = agentConfiguration.id;
-    }
-
     const existingConversationSkill = await ConversationSkillModel.findOne({
       where: {
         workspaceId: workspace.id,
         conversationId,
-        agentConfigurationId,
+        agentConfigurationId: null,
         ...(this.isGlobal
           ? { globalSkillId: this.sId }
           : { customSkillId: this.id }),
       },
     });
 
-    if (existingConversationSkill) {
-      if (!enabled) {
-        await existingConversationSkill.destroy();
-      }
-    } else if (enabled) {
+    if (existingConversationSkill && !enabled) {
+      await existingConversationSkill.destroy();
+      return new Ok(undefined);
+    }
+
+    if (!existingConversationSkill && enabled) {
       await ConversationSkillModel.create({
         conversationId,
         workspaceId: workspace.id,
-        agentConfigurationId:
-          agentConfigurationModelId?.toString() ?? undefined,
-        customSkillId: this.isGlobal ? null : this.id,
-        globalSkillId: this.isGlobal ? this.sId : null,
+        agentConfigurationId: null,
+        customSkillId: this.globalSId ? null : this.id,
+        globalSkillId: this.globalSId ?? null,
         source: "conversation",
         addedByUserId: user.id,
-      });
+      } satisfies ConversationSkillCreationAttributes);
+      return new Ok(undefined);
     }
 
     return new Ok(undefined);
@@ -659,19 +649,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversationId,
       skills,
       enabled,
-      agentConfigurationId,
     }: {
       conversationId: ModelId;
       skills: SkillResource[];
       enabled: boolean;
-      agentConfigurationId: string | null;
     }
   ): Promise<Result<undefined, Error>> {
     for (const skill of skills) {
       const result = await skill.upsertToConversation(auth, {
         conversationId,
         enabled,
-        agentConfigurationId,
       });
 
       if (result.isErr()) {
@@ -1058,61 +1045,44 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  async enableForMessage(
+  async enableForAgent(
     auth: Authenticator,
     {
       agentConfiguration,
-      agentMessage,
       conversation,
-      source,
     }: {
       agentConfiguration: AgentConfigurationType;
-      agentMessage: AgentMessageType;
       conversation: ConversationType;
-      source: ConversationSkillOrigin;
     }
   ): Promise<Result<void, Error>> {
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.user();
-    if (!user && source === "conversation") {
-      // If enabling from conversation and no user, we cannot track who enabled it.
+
+    const agentSkill = await AgentSkillModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        agentConfigurationId: agentConfiguration.id,
+        ...(this.globalSId
+          ? { globalSkillId: this.globalSId }
+          : { customSkillId: this.id }),
+      },
+    });
+
+    if (!agentSkill) {
       return new Err(
         new Error(
-          "Cannot enable skill from conversation without an authenticated user"
+          `Skill ${this.name} was not added to agent ${agentConfiguration.name}.`
         )
       );
     }
 
-    // For agent_enabled, we need to check that the skill is added to the agent first.
-    if (source === "agent_enabled") {
-      const agentSkill = await AgentSkillModel.findOne({
-        where: {
-          workspaceId: workspace.id,
-          agentConfigurationId: agentConfiguration.id,
-          ...(this.globalSId
-            ? { globalSkillId: this.globalSId }
-            : { customSkillId: this.id }),
-        },
-      });
-
-      if (!agentSkill) {
-        return new Err(
-          new Error(
-            `Skill ${this.name} was not added to agent ${agentConfiguration.name}.`
-          )
-        );
-      }
-    }
-
-    const conversationSkillBlob = {
+    const conversationSkillBlob: ConversationSkillCreationAttributes = {
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.sId,
       customSkillId: this.isGlobal ? null : this.id,
       globalSkillId: this.isGlobal ? this.globalSId : null,
-      agentMessageId: agentMessage.agentMessageId,
       conversationId: conversation.id,
-      source,
-      addedByUserId: user && source === "conversation" ? user.id : null,
+      addedByUserId: null,
+      source: "agent_enabled",
+      agentConfigurationId: agentConfiguration.sId,
     };
 
     await ConversationSkillModel.create(conversationSkillBlob);
