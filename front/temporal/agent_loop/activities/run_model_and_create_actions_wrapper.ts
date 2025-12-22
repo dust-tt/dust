@@ -150,6 +150,7 @@ async function getExistingActionsAndBlobs(
   // Find function_call step contents for this step.
   const stepContents = await AgentStepContentModel.findAll({
     where: {
+      workspaceId: runAgentArgs.agentMessageRow.workspaceId,
       agentMessageId: agentMessage.agentMessageId,
       step,
       type: "function_call",
