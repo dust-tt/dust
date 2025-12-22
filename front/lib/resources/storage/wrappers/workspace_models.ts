@@ -151,7 +151,9 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           );
 
           if (
-            process.env.NODE_ENV === "development" &&
+            // Do not rely on `isDevelopment` since we want to run this check everywhere except
+            // production.
+            process.env.NODE_ENV !== "production" &&
             !TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS.includes(
               this.name
             )
