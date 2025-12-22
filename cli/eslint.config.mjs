@@ -1,6 +1,7 @@
-// eslint.config.js
+// eslint.config.mjs
 
 import js from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
 import globals from "globals";
 import typescriptPlugin from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
@@ -67,4 +68,7 @@ export default [
       "@typescript-eslint/return-await": ["error", "in-try-catch"],
     },
   },
+
+  // Prettier config (must be last)
+  eslintConfigPrettier,
 ];

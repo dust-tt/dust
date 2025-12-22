@@ -35,7 +35,7 @@ async function _getParents(
   pageOrDbId: string,
   seen: string[],
   syncing: boolean = false,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+   
   memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [pageOrDbId];
@@ -104,7 +104,7 @@ async function _getParents(
         // parentId cannot be undefined if parentType is page or database as per
         // Notion API
         //
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+         
         await getParents(
           connectorId,
           pageOrDb.parentId,
@@ -121,7 +121,7 @@ async function _getParents(
 
 export const getParents = cacheWithRedis(
   _getParents,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+   
   (connectorId, pageOrDbId, seen, syncing, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },

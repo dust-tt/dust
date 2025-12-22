@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "./types";
+import type { ConnectorProvider } from "./types";
 
 /**
  * This is a utility type that indicates that we removed all underscores from a string.

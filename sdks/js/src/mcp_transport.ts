@@ -1,8 +1,8 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport";
-import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { EventSourcePolyfill } from "event-source-polyfill";
 
-import { DustAPI } from ".";
+import type { DustAPI } from ".";
 
 const logger = console;
 

@@ -38,7 +38,7 @@ export async function launchSnowflakeSyncWorkflow(
         client.workflow.getHandle(workflowId);
       const description = await wfHandle.describe();
       return description.status.name === "RUNNING";
-    } catch (err) {
+    } catch (_err) {
       return false;
     }
   })();

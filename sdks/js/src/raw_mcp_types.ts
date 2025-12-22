@@ -1,4 +1,5 @@
-import { z, ZodTypeAny } from "zod";
+import type { ZodTypeAny } from "zod";
+import { z } from "zod";
 
 /**
  * Information about a validated access token, provided to request handlers.

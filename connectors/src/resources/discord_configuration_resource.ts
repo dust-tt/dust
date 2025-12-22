@@ -9,7 +9,7 @@ import type { ReadonlyAttributesType } from "@connectors/resources/storage/types
 import type { DiscordBotConfigurationType, ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+ 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DiscordConfigurationResource
   extends ReadonlyAttributesType<DiscordConfigurationModel> {}

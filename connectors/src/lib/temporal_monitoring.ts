@@ -158,7 +158,7 @@ export class ActivityInboundLogInterceptor
         }
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     } catch (err: unknown) {
       error = err;
 

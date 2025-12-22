@@ -400,7 +400,7 @@ export function useFileUploaderService(
         const blobs = await Promise.all(
           tabContent.captures.map(async (c) => {
             const response = await fetch(c);
-            return await response.blob();
+            return response.blob();
           })
         );
 
