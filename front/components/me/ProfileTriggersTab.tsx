@@ -5,19 +5,29 @@ import {
   Chip,
   ClockIcon,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   PencilSquareIcon,
   SearchInput,
   Spinner,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
 import { useCallback, useMemo, useState } from "react";
 
-import { useUserTriggers } from "@app/lib/swr/agent_triggers";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useDeleteTrigger, useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { classNames } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 interface ProfileTriggersTabProps {
   owner: WorkspaceType;
@@ -36,6 +46,41 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     },
     [owner.sId]
   );
+
+  const [triggerToDelete, setTriggerToDelete] = useState<TriggerType | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const deleteTrigger = useDeleteTrigger({
+    workspaceId: owner.sId,
+    agentConfigurationId: triggerToDelete?.agentConfigurationId ?? "",
+  });
+
+  const handleDeleteTrigger = async () => {
+    if (!triggerToDelete) {
+      return;
+    }
+    setIsDeleting(true);
+    const success = await deleteTrigger(triggerToDelete.sId);
+    setIsDeleting(false);
+    setTriggerToDelete(null);
+
+    if (success) {
+      sendNotification({
+        type: "success",
+        title: "Trigger deleted",
+        description: `The trigger "${triggerToDelete.name}" has been deleted.`,
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete trigger",
+        description: "An error occurred while deleting the trigger.",
+      });
+    }
+  };
 
   const filteredTriggers = useMemo(() => {
     return triggers.filter(
@@ -112,20 +157,25 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
       {
         header: "Action",
         accessorKey: "actions",
-        cell: ({ row }) =>
-          !isGlobalAgentId(row.original.agentConfigurationId) && (
+        cell: ({ row }) => {
+          const buttonProps = isGlobalAgentId(row.original.agentConfigurationId)
+            ? {
+                onClick: () => setTriggerToDelete(row.original),
+                icon: TrashIcon,
+                label: "Delete",
+              }
+            : {
+                href: getEditionURL(row.original.agentConfigurationId),
+                icon: PencilSquareIcon,
+                label: "Manage",
+              };
+
+          return (
             <DataTable.CellContent>
-              <div className="flex justify-end">
-                <Button
-                  label="Manage"
-                  href={getEditionURL(row.original.agentConfigurationId)}
-                  variant="outline"
-                  size="sm"
-                  icon={PencilSquareIcon}
-                />
-              </div>
+              <Button variant="outline" size="sm" {...buttonProps} />
             </DataTable.CellContent>
-          ),
+          );
+        },
         meta: {
           className: "w-32",
         },
@@ -164,6 +214,43 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
           No triggers match your search criteria.
         </div>
       )}
+
+      <Dialog
+        open={triggerToDelete !== null}
+        onOpenChange={(open) => !open && setTriggerToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete trigger</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the trigger "
+              {triggerToDelete?.name}"?
+            </DialogDescription>
+          </DialogHeader>
+          {isDeleting ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <>
+              <DialogContainer>
+                <b>This action cannot be undone.</b>
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Delete",
+                  variant: "warning",
+                  onClick: handleDeleteTrigger,
+                }}
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

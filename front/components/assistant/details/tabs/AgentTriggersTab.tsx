@@ -74,6 +74,8 @@ export function AgentTriggersTab({
     }
   };
 
+  const filteredTriggers = triggers.filter((t) => t.isEditor);
+
   return (
     <>
       {isTriggersLoading ? (
@@ -82,12 +84,12 @@ export function AgentTriggersTab({
         </div>
       ) : (
         <div className="flex w-full flex-col gap-2">
-          {triggers.length === 0 && (
+          {filteredTriggers.length === 0 && (
             <div className="text-muted-foreground">
-              No triggers setup for this agent, yet.
+              You have no triggers setup for this agent, yet.
             </div>
           )}
-          {triggers.map((trigger) => (
+          {filteredTriggers.map((trigger) => (
             <div
               key={trigger.sId}
               className="flex w-full flex-row items-center justify-between border-b pb-2"
