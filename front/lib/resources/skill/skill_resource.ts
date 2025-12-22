@@ -40,7 +40,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
-  AgentMessageType,
   AgentsUsageType,
   ConversationType,
   LightAgentConfigurationType,
@@ -1028,15 +1027,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  async enableForAgentMessage(
+  async enableForAgent(
     auth: Authenticator,
     {
       agentConfiguration,
-      agentMessage,
       conversation,
     }: {
       agentConfiguration: AgentConfigurationType;
-      agentMessage: AgentMessageType;
       conversation: ConversationType;
     }
   ): Promise<Result<void, Error>> {
