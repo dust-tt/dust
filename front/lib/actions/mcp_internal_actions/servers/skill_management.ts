@@ -35,7 +35,7 @@ function createServer(
           return new Err(new MCPError("No conversation context available"));
         }
 
-        const { conversation, agentConfiguration, agentMessage } =
+        const { conversation, agentConfiguration } =
           agentLoopContext.runContext;
 
         const skill = await SkillResource.fetchActiveByName(auth, skillName);
