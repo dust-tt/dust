@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Chip, Spinner } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -8,7 +8,11 @@ import { PanelAgentStep } from "@app/components/assistant/conversation/actions/P
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { useConversationMessage } from "@app/lib/swr/conversations";
+import { getSkillIcon } from "@app/lib/skill";
+import {
+  useAgentMessageSkills,
+  useConversationMessage,
+} from "@app/lib/swr/conversations";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
@@ -39,6 +43,12 @@ function AgentActionsPanelContent({
   mutateMessage,
 }: AgentActionsPanelContentProps) {
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
+
+  const { skills } = useAgentMessageSkills({
+    conversation,
+    owner,
+    messageId,
+  });
 
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
     useAgentMessageStreamLegacy({
@@ -239,6 +249,21 @@ function AgentActionsPanelContent({
           <div>&nbsp;</div>
         </div>
       </div>
+      {skills.length > 0 && (
+        <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
+          <span className="text-sm">Enabled skills</span>
+          <div className="flex flex-wrap items-center gap-1">
+            {skills.map((skill) => (
+              <Chip
+                key={skill.sId}
+                size="xs"
+                label={skill.name}
+                icon={getSkillIcon(skill.icon)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
