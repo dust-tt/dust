@@ -160,7 +160,8 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           ) {
             throw new Error(
               `Query attempted without workspaceId on ${this.name}. All workspace-aware model ` +
-                "queries must be scoped to a specific workspaceId for query isolation."
+                "queries must be scoped to a specific workspaceId for query isolation. " +
+                "See Runbook https://www.notion.so/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
             );
           }
         }
