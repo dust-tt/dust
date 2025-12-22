@@ -78,7 +78,6 @@ export default function DataSourcePicker({
         onDataSourcesUpdate([]);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hasDataSourceView,
     selectedDataSourceView,
@@ -86,6 +85,7 @@ export default function DataSourcePicker({
     isSpaceDataSourceViewsLoading,
     isSpaceDataSourceViewsError,
     spaceDataSourceViews,
+    onDataSourcesUpdate,
   ]);
 
   const getEditLink = (dsv: DataSourceViewType) => {
@@ -125,6 +125,7 @@ export default function DataSourcePicker({
       <div className="flex items-center">
         {readOnly ? (
           selectedDataSourceView ? (
+            // eslint-disable-next-line react-hooks/static-components
             <MaybeLink href={getEditLink(selectedDataSourceView)}>
               <div className="max-w-20 mr-1 truncate">
                 {selectedDataSourceView.dataSource.name}
@@ -146,6 +147,7 @@ export default function DataSourcePicker({
                     "focus:outline-none focus:ring-0"
                   )}
                 >
+                  {/* eslint-disable-next-line react-hooks/static-components */}
                   <MaybeLink href={getEditLink(selectedDataSourceView)}>
                     <div className="mr-1 max-w-xs truncate">
                       {selectedDataSourceView.dataSource.name}
