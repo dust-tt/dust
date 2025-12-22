@@ -251,7 +251,7 @@ export const InputBarAttachmentsPicker = ({
       removeNulls(
         searchResultNodes.map((node) => {
           const { dataSourceViews, ...rest } = node;
-          // Backend now returns only the highest priority data source view
+
           const dataSourceView = dataSourceViews.find(
             (view) => spacesMap[view.spaceId]
           );

@@ -463,7 +463,7 @@ const InputBarContainer = ({
     if (searchResultNodes.length > 0) {
       const nodesWithViews = searchResultNodes.flatMap((node) => {
         const { dataSourceViews, ...rest } = node;
-        // Backend now returns only the highest priority data source view
+
         return dataSourceViews.map((view) => ({
           ...rest,
           dataSourceView: view,
@@ -479,7 +479,6 @@ const InputBarContainer = ({
       );
 
       if (nodes.length > 0) {
-        // Backend prioritization means we can just take the first result
         const node = nodes[0];
         onNodeSelect(node);
         setSelectedNode(node);
