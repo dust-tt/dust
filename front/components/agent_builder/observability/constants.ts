@@ -137,4 +137,8 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Onboarding",
     color: "info-muted dark:info-muted-night",
   },
+  agent_reinforcer: {
+    label: "Agent Reinforcer",
+    color: "info-muted dark:info-muted-night",
+  },
 };

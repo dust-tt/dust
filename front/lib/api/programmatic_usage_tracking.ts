@@ -47,6 +47,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   zapier: "programmatic",
   zendesk: "user",
   onboarding_conversation: "user",
+  agent_reinforcer: "user",
 };
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;

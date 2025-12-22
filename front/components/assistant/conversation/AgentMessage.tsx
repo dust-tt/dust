@@ -53,6 +53,7 @@ import {
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
+import { getUpdatePromptPlugin } from "@app/components/markdown/UpdatePromptBlock";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
@@ -813,6 +814,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      updatePrompt: getUpdatePromptPlugin(owner),
     }),
     [
       owner,

@@ -96,7 +96,8 @@ export type UserMessageOrigin =
   | "zendesk"
   // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
   // but should be removed and most likely handled as message metadata (to be created).
-  | "onboarding_conversation";
+  | "onboarding_conversation"
+  | "agent_reinforcer";
 
 export type UserMessageContext = {
   username: string;

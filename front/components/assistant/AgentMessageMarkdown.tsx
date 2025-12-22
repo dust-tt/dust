@@ -14,6 +14,7 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import { toolDirective } from "@app/components/markdown/tool/tool";
+import { updatePromptDirective } from "@app/components/markdown/UpdatePromptBlock";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
 import {
   agentMentionDirective,
@@ -73,6 +74,7 @@ export const AgentMessageMarkdown = ({
       toolDirective,
       quickReplyDirective,
       instructionBlockDirective,
+      updatePromptDirective,
     ],
     []
   );

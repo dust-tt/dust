@@ -89,7 +89,8 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
-      message.context.origin === "onboarding_conversation") ||
+      (message.context.origin === "onboarding_conversation" ||
+        message.context.origin === "agent_reinforcer")) ||
     isHandoverUserMessage(message)
   );
 };

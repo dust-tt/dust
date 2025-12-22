@@ -321,6 +321,7 @@ const UserMessageOriginSchema = z
     "zapier",
     "zendesk",
     "onboarding_conversation",
+    "agent_reinforcer",
   ])
   .catch("api")
   .or(z.null())

@@ -73,3 +73,40 @@ export async function sendOnboardingConversation(
     return { isOk: false, error: "Error sending onboarding conversation" };
   }
 }
+
+export async function sendAgentReinforcerConversation(
+  owner: LightWorkspaceType,
+  featureFlags: WhitelistableFeature[],
+  agentId: string,
+  editInstructions: string
+): Promise<
+  { isOk: true; conversationSId: string } | { isOk: false; error: string }
+> {
+  if (!showDebugTools(featureFlags)) {
+    return { isOk: false, error: "Not allowed" };
+  }
+
+  const response = await clientFetch(
+    `/api/w/${owner.sId}/assistant/conversations/send-agent-reinforcer`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        agentId,
+        editInstructions,
+      }),
+    }
+  );
+
+  if (response.ok) {
+    const data = await response.json();
+    return { isOk: true, conversationSId: data.conversationSId };
+  } else {
+    return {
+      isOk: false,
+      error: "Error sending agent reinforcer conversation",
+    };
+  }
+}

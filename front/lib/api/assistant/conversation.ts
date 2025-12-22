@@ -481,6 +481,7 @@ export function isUserMessageContextValid(
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
+    case "agent_reinforcer":
       return false;
     default:
       assertNever(context.origin);

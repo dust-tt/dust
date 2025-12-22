@@ -19,14 +19,16 @@ import {
   Icon,
   LightbulbIcon,
   LogoutIcon,
+  PencilSquareIcon,
   ShapesIcon,
   StarIcon,
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { AgentReinforcerDialog } from "@app/components/AgentReinforcerDialog";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -60,6 +62,7 @@ export function UserMenu({
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();
+  const [isAgentReinforcerOpen, setIsAgentReinforcerOpen] = useState(false);
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
@@ -120,6 +123,7 @@ export function UserMenu({
   }, [user]);
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger>
         <div className="group flex max-w-[200px] cursor-pointer items-center gap-2">
@@ -266,6 +270,13 @@ export function UserMenu({
                       icon={ChatBubbleBottomCenterPlusIcon}
                     />
                   )}
+                  {owner.role === "admin" && (
+                    <DropdownMenuItem
+                      label="Agent Reinforcer"
+                      onClick={() => setIsAgentReinforcerOpen(true)}
+                      icon={PencilSquareIcon}
+                    />
+                  )}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
@@ -273,5 +284,13 @@ export function UserMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <AgentReinforcerDialog
+      isOpen={isAgentReinforcerOpen}
+      onClose={() => setIsAgentReinforcerOpen(false)}
+      owner={owner}
+      featureFlags={featureFlags}
+    />
+  </>
   );
 }

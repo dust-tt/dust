@@ -69,6 +69,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "triggered":
     case "zapier":
     case "zendesk":
+    case "agent_reinforcer":
     case undefined:
     case null:
       return false;
