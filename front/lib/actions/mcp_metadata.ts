@@ -446,8 +446,7 @@ async function connectToRemoteMCPServer(
   // If the URL path ends with /sse, use SSE transport directly.
   if (url.pathname.endsWith("/sse")) {
     const sseTransport = new SSEClientTransport(url, req);
-    await mcpClient.connect(sseTransport);
-    return;
+    return mcpClient.connect(sseTransport);
   }
 
   try {
