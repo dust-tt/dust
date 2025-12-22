@@ -23,6 +23,10 @@ export type GetSkillConfigurationResponseBody = {
   skillConfiguration: SkillType;
 };
 
+export type GetSkillWithRelationsResponseBody = {
+  skill: SkillWithRelationsType;
+};
+
 export type PatchSkillConfigurationResponseBody = {
   skillConfiguration: Omit<
     SkillType,
@@ -62,6 +66,7 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<
       | GetSkillConfigurationResponseBody
+      | GetSkillWithRelationsResponseBody
       | PatchSkillConfigurationResponseBody
       | DeleteSkillConfigurationResponseBody
     >
@@ -143,8 +148,8 @@ async function handler(
           },
         };
 
-        res.status(200).json({
-          skillConfiguration: skillConfigurationWithRelations,
+        return res.status(200).json({
+          skill: skillConfigurationWithRelations,
         });
       }
       return res.status(200).json({ skillConfiguration });
