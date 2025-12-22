@@ -38,7 +38,6 @@ export const EmailLayout = ({
         </div>
         <div
           style={{
-            margin: "0 auto",
             maxWidth: "600px",
             backgroundColor: "#ffffff",
           }}
