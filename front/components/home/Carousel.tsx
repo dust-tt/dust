@@ -1,10 +1,5 @@
-import type {
-  RegularButtonProps} from "@dust-tt/sparkle";
-import {
-  Button,
-  ChevronLeftIcon,
-  ChevronRightIcon
-} from "@dust-tt/sparkle";
+import type { RegularButtonProps } from "@dust-tt/sparkle";
+import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import useEmblaCarousel from "embla-carousel-react";
 import * as React from "react";
