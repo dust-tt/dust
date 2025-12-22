@@ -23,7 +23,9 @@ import { InstructionBlockExtension } from "@app/components/editor/extensions/age
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -84,19 +86,11 @@ export function AgentBuilderInstructionsEditor({
         heading: false, // we use a custom one, see below
         paragraph: false, // we use custom EmptyLineParagraphExtension instead
         hardBreak: false, // we use custom EmptyLineParagraphExtension instead
+        orderedList: false, // we use custom OrderedListExtension instead
+        listItem: false, // we use custom ListItemExtension instead
         bulletList: {
           HTMLAttributes: {
             class: markdownStyles.unorderedList(),
-          },
-        },
-        orderedList: {
-          HTMLAttributes: {
-            class: markdownStyles.orderedList(),
-          },
-        },
-        listItem: {
-          HTMLAttributes: {
-            class: markdownStyles.list(),
           },
         },
         blockquote: false,
@@ -114,6 +108,17 @@ export function AgentBuilderInstructionsEditor({
           HTMLAttributes: {
             class: markdownStyles.codeBlock(),
           },
+        },
+      }),
+      // Custom ordered list and list item extensions to preserve start attribute
+      OrderedListExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      }),
+      ListItemExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.list(),
         },
       }),
       // Custom paragraph extension to preserve empty lines in markdown

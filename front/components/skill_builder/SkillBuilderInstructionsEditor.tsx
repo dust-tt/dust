@@ -11,6 +11,8 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -68,19 +70,11 @@ export function SkillBuilderInstructionsEditor({
     return [
       Markdown,
       StarterKit.configure({
+        orderedList: false, // we use custom OrderedListExtension instead
+        listItem: false, // we use custom ListItemExtension instead
         bulletList: {
           HTMLAttributes: {
             class: markdownStyles.unorderedList(),
-          },
-        },
-        orderedList: {
-          HTMLAttributes: {
-            class: markdownStyles.orderedList(),
-          },
-        },
-        listItem: {
-          HTMLAttributes: {
-            class: markdownStyles.list(),
           },
         },
         blockquote: false,
@@ -100,6 +94,17 @@ export function SkillBuilderInstructionsEditor({
           HTMLAttributes: {
             class: markdownStyles.paragraph(),
           },
+        },
+      }),
+      // Custom ordered list and list item extensions to preserve start attribute
+      OrderedListExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      }),
+      ListItemExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.list(),
         },
       }),
       AgentInstructionDiffExtension,
