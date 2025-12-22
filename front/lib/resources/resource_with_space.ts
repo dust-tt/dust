@@ -36,6 +36,8 @@ export abstract class ResourceWithSpace<
 > extends BaseResource<M> {
   readonly workspaceId: ModelWithSpace["workspaceId"];
 
+  private static spaceModel: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
+
   protected constructor(
     model: ModelStaticSoftDeletable<M>,
     blob: Attributes<M>,
@@ -62,22 +64,24 @@ export abstract class ResourceWithSpace<
     auth: Authenticator,
     {
       attributes,
+      dangerouslyBypassWorkspaceIsolationSecurity,
+      includeDeleted,
       includes,
       limit,
       order,
       where,
-      includeDeleted,
     }: ResourceFindOptions<M> = {},
     transaction?: Transaction
   ): Promise<T[]> {
     const blobs = await this.model.findAll({
       attributes,
-      where: where as WhereOptions<M>,
+      dangerouslyBypassWorkspaceIsolationSecurity,
       include: includes,
+      includeDeleted,
       limit,
       order,
-      includeDeleted,
       transaction,
+      where: where as WhereOptions<M>,
     });
 
     if (blobs.length === 0) {
@@ -87,7 +91,7 @@ export abstract class ResourceWithSpace<
     // We use the model directly here; it's a very rare case where we don't check the workspace,
     // which in this case is due to the fact that we may need to fetch data from public workspaces
     // as well as the current workspace.
-    const spaces = await SpaceModel.findAll({
+    const spaces = await ResourceWithSpace.spaceModel.findAll({
       where: {
         id: blobs.map((b) => b.vaultId),
       },
@@ -97,6 +101,9 @@ export abstract class ResourceWithSpace<
         },
       ],
       includeDeleted,
+      // WORKSPACE_ISOLATION_BYPASS: Spaces can be public, preventing to enforce a
+      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     return (
