@@ -2,16 +2,14 @@ import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
 import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
 import { InputRule } from "@tiptap/core";
 import { mergeAttributes, Node } from "@tiptap/core";
-import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   CLOSING_TAG_REGEX,
@@ -63,6 +61,24 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(
     node.attrs.isCollapsed ?? false
   );
+  const [isEditingType, setIsEditingType] = useState(false);
+  const [editedType, setEditedType] = useState(
+    node.attrs.type ?? "instructions"
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep editedType in sync with node.attrs.type
+  useEffect(() => {
+    setEditedType(node.attrs.type ?? "instructions");
+  }, [node.attrs.type]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditingType && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditingType]);
 
   const displayType = node.attrs.type ? node.attrs.type.toUpperCase() : " ";
 
@@ -78,6 +94,44 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     if (editor.isFocused) {
       editor.commands.focus();
     }
+  };
+
+  const handleChipClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isCollapsed) {
+      setIsEditingType(true);
+    }
+  };
+
+  const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow valid XML tag characters
+    const value = e.target.value.replace(/[^A-Za-z0-9._:-]/g, "");
+    setEditedType(value);
+  };
+
+  const handleTypeSubmit = () => {
+    const lowercased = editedType.trim().toLowerCase();
+    const newType = lowercased === "" ? "instructions" : lowercased;
+    setIsEditingType(false);
+    if (newType !== node.attrs.type) {
+      updateAttributes({ type: newType });
+    }
+  };
+
+  const handleTypeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleTypeSubmit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setEditedType(node.attrs.type ?? "instructions");
+      setIsEditingType(false);
+    }
+  };
+
+  const handleTypeBlur = () => {
+    handleTypeSubmit();
   };
 
   const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
@@ -98,6 +152,43 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
       : ""
   }`;
 
+  const renderTagChip = (isOpening: boolean) => {
+    const prefix = isOpening ? "<" : "</";
+    const suffix = ">";
+
+    if (isEditingType && isOpening && !isCollapsed) {
+      return (
+        <span
+          contentEditable={false}
+          className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+        >
+          <span className="text-xs font-medium">{prefix}</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={editedType.toUpperCase()}
+            onChange={handleTypeChange}
+            onKeyDown={handleTypeKeyDown}
+            onBlur={handleTypeBlur}
+            className="w-24 border-b border-gray-400 bg-transparent text-xs font-medium uppercase outline-none"
+            style={{ minWidth: "2rem" }}
+          />
+          <span className="text-xs font-medium">{suffix}</span>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        contentEditable={false}
+        onClick={isOpening ? handleChipClick : undefined}
+        className={isOpening && !isCollapsed ? "cursor-pointer" : undefined}
+      >
+        <InstructionBlockChip text={`${prefix}${displayType}${suffix}`} />
+      </span>
+    );
+  };
+
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
@@ -116,16 +207,16 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               className="mt-[0.5px] cursor-pointer"
               onClick={handleToggle}
             >
-              <InstructionBlockChip text={`<${displayType}>`} />
+              {renderTagChip(true)}
             </div>
           ) : (
             <div className="mt-0.5 w-full">
-              <InstructionBlockChip text={`<${displayType}>`} />
+              {renderTagChip(true)}
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
               />
-              <InstructionBlockChip text={`</${displayType}>`} />
+              {renderTagChip(false)}
             </div>
           )}
         </div>
@@ -141,8 +232,6 @@ export const InstructionBlockExtension =
     priority: 1000,
     content: "block+",
     defining: true,
-    // Prevents auto-merging two blocks when they're not separated by a paragraph
-    isolating: true,
     selectable: true,
 
     addAttributes() {
@@ -206,6 +295,7 @@ export const InstructionBlockExtension =
 
     addInputRules() {
       return [
+        // allows typing <instructions> or <customTag> to create the block
         new InputRule({
           find: OPENING_TAG_REGEX,
           handler: ({ range, match, chain }) => {
@@ -395,315 +485,6 @@ export const InstructionBlockExtension =
           return true;
         },
       };
-    },
-
-    addProseMirrorPlugins() {
-      // Helper function to find first and last paragraph nodes in a block
-      const findFirstLastParagraphs = (blockNode: ProseMirrorNode) => {
-        let firstPara: ProseMirrorNode | null = null;
-        let lastPara: ProseMirrorNode | null = null;
-        let firstParaIndex = -1;
-        let lastParaIndex = -1;
-
-        for (let i = 0; i < blockNode.childCount; i++) {
-          const child = blockNode.child(i);
-          if (child.type.name === "paragraph") {
-            if (firstPara === null) {
-              firstPara = child;
-              firstParaIndex = i;
-            }
-            lastPara = child;
-            lastParaIndex = i;
-          }
-        }
-
-        return { firstPara, lastPara, firstParaIndex, lastParaIndex };
-      };
-
-      // Helper function that returns tag name when paragraph is an exact tag line; otherwise null
-      const getTagFromParagraph = (
-        para: ProseMirrorNode | null,
-        isClosing: boolean
-      ) => {
-        if (!para) {
-          return null;
-        }
-        const text = para.textContent.trim();
-        const regex = isClosing ? CLOSING_TAG_REGEX : OPENING_TAG_REGEX;
-        const match = text.match(regex);
-        if (!match) {
-          return null;
-        }
-        const tag = match[1] || "";
-        // Enforce exact-line match to avoid partial matches (e.g., prefixes)
-        const expected = isClosing ? `</${tag}>` : `<${tag}>`;
-        return text === expected ? tag : null;
-      };
-
-      return [
-        // Plugin to style XML tags with chip appearance
-        new Plugin({
-          key: new PluginKey("instructionBlockTagDecoration"),
-          props: {
-            decorations(state) {
-              const decorations: Decoration[] = [];
-
-              state.doc.descendants((node, pos) => {
-                if (node.type.name === "instructionBlock") {
-                  // Use helper to find first and last paragraph tags
-                  const { firstPara, lastPara, firstParaIndex, lastParaIndex } =
-                    findFirstLastParagraphs(node);
-
-                  if (!firstPara || !lastPara) {
-                    return;
-                  }
-
-                  const openingTag = getTagFromParagraph(firstPara, false);
-                  const closingTag = getTagFromParagraph(lastPara, true);
-
-                  // Only decorate if both tags exist and match (case-insensitive)
-                  if (
-                    openingTag !== null &&
-                    closingTag !== null &&
-                    openingTag.toLowerCase() === closingTag.toLowerCase()
-                  ) {
-                    // Calculate positions
-                    let firstPos = pos + 1;
-                    for (let i = 0; i < firstParaIndex; i++) {
-                      firstPos += node.child(i).nodeSize;
-                    }
-
-                    let lastPos = pos + 1;
-                    for (let i = 0; i < lastParaIndex; i++) {
-                      lastPos += node.child(i).nodeSize;
-                    }
-
-                    // Decorate opening tag
-                    decorations.push(
-                      Decoration.node(firstPos, firstPos + firstPara.nodeSize, {
-                        class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase mb-2`,
-                      })
-                    );
-                    // Decorate closing tag
-                    decorations.push(
-                      Decoration.node(lastPos, lastPos + lastPara.nodeSize, {
-                        class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase mt-2`,
-                      })
-                    );
-                  }
-                }
-              });
-
-              return DecorationSet.create(state.doc, decorations);
-            },
-          },
-        }),
-        new Plugin({
-          key: new PluginKey("instructionBlockTagSync"),
-          appendTransaction: (transactions, oldState, newState) => {
-            // Skip if this is already a sync transaction (prevent recursion)
-            if (
-              transactions.some((tr) => tr.getMeta("instructionBlockTagSync"))
-            ) {
-              return null;
-            }
-
-            // Only process if there were doc changes
-            const hasDocChanged = transactions.some((tr) => tr.docChanged);
-            if (!hasDocChanged) {
-              return null;
-            }
-
-            const { selection } = newState;
-            const $from = selection.$from;
-
-            // Check if we're in an instruction block
-            let blockDepth: number | null = null;
-            let blockPos = -1;
-            for (let d = $from.depth; d >= 0; d--) {
-              if ($from.node(d).type.name === this.name) {
-                blockDepth = d;
-                blockPos = $from.before(d);
-                break;
-              }
-            }
-
-            if (blockDepth === null || blockPos === -1) {
-              return null;
-            }
-
-            const blockNode = $from.node(blockDepth);
-            const childIndex = $from.index(blockDepth);
-            const currentNode = blockNode.child(childIndex);
-
-            // Only proceed if we're editing a paragraph
-            if (currentNode.type.name !== "paragraph") {
-              return null;
-            }
-
-            // Use helper to find first and last paragraphs
-            const { firstPara, lastPara, firstParaIndex, lastParaIndex } =
-              findFirstLastParagraphs(blockNode);
-
-            if (!firstPara || !lastPara || firstPara === lastPara) {
-              return null; // Need at least two paragraphs for opening and closing tags
-            }
-
-            // Check if we're editing the opening or closing tag
-            const isEditingOpeningTag = childIndex === firstParaIndex;
-            const isEditingClosingTag = childIndex === lastParaIndex;
-
-            if (!isEditingOpeningTag && !isEditingClosingTag) {
-              return null; // Not editing a tag paragraph
-            }
-
-            // Get current tags
-            const currentOpeningTag = getTagFromParagraph(firstPara, false);
-            const currentClosingTag = getTagFromParagraph(lastPara, true);
-
-            if (currentOpeningTag === null || currentClosingTag === null) {
-              return null; // Not valid XML tags
-            }
-
-            // Check the old state to see if tags were previously in sync
-            if (blockPos < 0 || blockPos >= oldState.doc.content.size) {
-              return null; // Invalid position in old document
-            }
-
-            const oldBlockNode = oldState.doc.nodeAt(blockPos);
-            if (!oldBlockNode) {
-              return null;
-            }
-
-            // Get old tags using helper
-            const oldTags = findFirstLastParagraphs(oldBlockNode);
-            const oldOpeningTag = getTagFromParagraph(oldTags.firstPara, false);
-            const oldClosingTag = getTagFromParagraph(oldTags.lastPara, true);
-
-            if (oldOpeningTag === null || oldClosingTag === null) {
-              return null; // Old state didn't have valid tags
-            }
-
-            // Only sync if tags were previously the same and now they're different
-            if (oldOpeningTag !== oldClosingTag) {
-              return null; // Tags weren't in sync before, don't auto-sync
-            }
-
-            // Check if we need to sync
-            if (currentOpeningTag === currentClosingTag) {
-              return null; // Already in sync
-            }
-
-            // Create transaction to sync the tags
-            const tr = newState.tr;
-            tr.setMeta("instructionBlockTagSync", true);
-            tr.setMeta("addToHistory", false); // Don't add to undo history
-
-            if (isEditingOpeningTag && currentOpeningTag !== oldOpeningTag) {
-              // User changed opening tag, update closing tag to match
-              const newClosingTag = currentOpeningTag
-                ? `</${currentOpeningTag}>`
-                : "</>";
-
-              // Calculate position of last paragraph
-              let pos = blockPos + 1;
-              for (let i = 0; i < lastParaIndex; i++) {
-                pos += blockNode.child(i).nodeSize;
-              }
-
-              tr.replaceWith(
-                pos + 1,
-                pos + lastPara.nodeSize - 1,
-                newState.schema.text(newClosingTag)
-              );
-
-              return tr;
-            }
-
-            if (isEditingClosingTag && currentClosingTag !== oldClosingTag) {
-              // User changed closing tag, update opening tag to match
-              const newOpeningTag = currentClosingTag
-                ? `<${currentClosingTag}>`
-                : "<>";
-
-              // Calculate position of first paragraph
-              let pos = blockPos + 1;
-              for (let i = 0; i < firstParaIndex; i++) {
-                pos += blockNode.child(i).nodeSize;
-              }
-
-              tr.replaceWith(
-                pos + 1,
-                pos + firstPara.nodeSize - 1,
-                newState.schema.text(newOpeningTag)
-              );
-
-              return tr;
-            }
-
-            return null;
-          },
-        }),
-        new Plugin({
-          key: new PluginKey("instructionBlockAutoConvert"),
-          props: {
-            clipboardTextSerializer: (slice: Slice) => {
-              /**
-               * Serializes the content of the text slice into a string format.
-               * This is needed to handle copying the raw content of the XML
-               * instruction blocks and paragraphs correctly.
-               */
-              const parts: string[] = [];
-              for (let i = 0; i < slice.content.childCount; i++) {
-                const child = slice.content.child(i);
-                if (child.type.name === this.name) {
-                  // Serialize instruction block content preserving markdown headings and code blocks
-                  const innerParts: string[] = [];
-                  child.forEach((node) => {
-                    if (node.type.name === "heading") {
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      const level = node.attrs?.level || 1;
-                      const prefix = "#".repeat(level) + " ";
-                      innerParts.push(prefix + node.textContent);
-                    } else if (node.type.name === "codeBlock") {
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      const language = node.attrs?.language || "";
-                      const code = node.textContent;
-                      innerParts.push(`\`\`\`${language}\n${code}\`\`\``);
-                    } else if (node.type.name === "paragraph") {
-                      innerParts.push(node.textContent);
-                    } else {
-                      innerParts.push(node.textContent);
-                    }
-                  });
-                  parts.push(innerParts.join("\n"));
-                } else if (child.type.name === "heading") {
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                  const level = child.attrs?.level || 1;
-                  const prefix = "#".repeat(level) + " ";
-                  parts.push(prefix + child.textContent);
-                } else if (child.type.name === "codeBlock") {
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                  const language = child.attrs?.language || "";
-                  const code = child.textContent;
-                  parts.push(`\`\`\`${language}\n${code}\`\`\``);
-                } else if (child.type.name === "paragraph") {
-                  parts.push(child.textContent);
-                } else if (child.isText) {
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                  parts.push(child.text || "");
-                } else {
-                  parts.push(child.textBetween(0, child.content.size, "\n"));
-                }
-                if (i < slice.content.childCount - 1) {
-                  parts.push("\n");
-                }
-              }
-              return parts.join("");
-            },
-          },
-        }),
-      ];
     },
 
     markdownTokenizer: {
