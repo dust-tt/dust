@@ -254,8 +254,8 @@ export function InviteEmailButtonWithModal({
           }}
           rightButtonProps={{
             label: "Send Invite",
-            disabled: shouldDisableButton,
-            onClick: async (event: MouseEvent) => {
+            disabled: !!shouldDisableButton,
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               if (!inviteEmailsList) {
                 return;

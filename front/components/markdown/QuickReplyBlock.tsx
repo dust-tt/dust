@@ -48,7 +48,7 @@ export function QuickReplyBlock({
       label={label}
       onClick={handleClick}
       disabled={disabled || isSending}
-      loading={isSending}
+      isLoading={isSending}
     />
   );
 }

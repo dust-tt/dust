@@ -78,7 +78,7 @@ export const EditConversationTitleDialog = ({
           }}
           leftButtonProps={{
             label: "Cancel",
-            variant: "secondary",
+            variant: "outline",
           }}
         />
       </DialogContent>

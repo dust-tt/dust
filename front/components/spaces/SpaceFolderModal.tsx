@@ -201,7 +201,7 @@ export default function SpaceFolderModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: async (event: Event) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();
             },
