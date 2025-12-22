@@ -8,6 +8,10 @@ import {
 
 import type * as activities from "./activities";
 import { runScrubFreeEndedWorkspacesSignal } from "./signals";
+import {
+  DATA_RETENTION_PERIOD_IN_DAYS,
+  LAST_EMAIL_BEFORE_SCRUB_IN_DAYS,
+} from "./config";
 
 const { shouldStillScrubData } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minutes",
@@ -43,16 +47,22 @@ export async function scheduleWorkspaceScrubWorkflowV2({
   await pauseAllConnectors({ workspaceId });
   await pauseAllTriggers({ workspaceId });
   await sendDataDeletionEmail({
-    remainingDays: 15,
+    remainingDays: DATA_RETENTION_PERIOD_IN_DAYS,
     workspaceId,
     isLast: false,
   });
-  await sleep("12 days");
+  await sleep(
+    `${DATA_RETENTION_PERIOD_IN_DAYS - LAST_EMAIL_BEFORE_SCRUB_IN_DAYS} days`
+  );
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
   }
-  await sendDataDeletionEmail({ remainingDays: 3, workspaceId, isLast: true });
-  await sleep("3 days");
+  await sendDataDeletionEmail({
+    remainingDays: LAST_EMAIL_BEFORE_SCRUB_IN_DAYS,
+    workspaceId,
+    isLast: true,
+  });
+  await sleep(`${LAST_EMAIL_BEFORE_SCRUB_IN_DAYS} days`);
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
   }

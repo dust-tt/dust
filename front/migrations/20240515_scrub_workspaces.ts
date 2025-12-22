@@ -7,13 +7,17 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import { DATA_RETENTION_PERIOD_IN_DAYS } from "@app/temporal/scrub_workspace/config";
 
 const scrubWorkspaces = async (execute: boolean) => {
   const endedSubs = await SubscriptionModel.findAll({
     where: {
-      // end date at least 14 days ago
+      // end date at least 30 days ago
       endDate: {
-        [Op.lt]: new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000),
+        [Op.lt]: new Date(
+          new Date().getTime() -
+            DATA_RETENTION_PERIOD_IN_DAYS * 24 * 60 * 60 * 1000
+        ),
       },
     },
   });
@@ -46,7 +50,10 @@ const scrubWorkspaces = async (execute: boolean) => {
             (s) =>
               !s.endDate ||
               s.endDate >
-                new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000)
+                new Date(
+                  new Date().getTime() -
+                    DATA_RETENTION_PERIOD_IN_DAYS * 24 * 60 * 60 * 1000
+                )
           )
         ) {
           return;
