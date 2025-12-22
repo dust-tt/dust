@@ -39,6 +39,24 @@ interface TriggerCardProps {
   onEdit?: () => void;
 }
 
+function getWebhookCardDescription({
+  webhookTrigger,
+  webhookSourceView,
+}: {
+  webhookTrigger: AgentBuilderTriggerType & { kind: "webhook" };
+  webhookSourceView: WebhookSourceViewType | undefined;
+}) {
+  return (
+    "Triggered " +
+    (webhookTrigger.configuration.event
+      ? "by " + webhookTrigger.configuration.event + " events"
+      : "") +
+    " on " +
+    (webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name) +
+    "'s source."
+  );
+}
+
 export const TriggerCard = ({
   trigger,
   webhookSourceView,
@@ -49,27 +67,17 @@ export const TriggerCard = ({
   const { user } = useUser();
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
-    if (
-      trigger.kind === "schedule" &&
-      trigger.configuration &&
-      "cron" in trigger.configuration
-    ) {
+    if (trigger.kind === "schedule") {
       try {
         return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
       } catch {
         return;
       }
     } else if (trigger.kind === "webhook") {
-      return (
-        "Triggered " +
-        (trigger.configuration.event
-          ? "by " + trigger.configuration.event + " events"
-          : "") +
-        " on " +
-        (webhookSourceView?.customName ??
-          webhookSourceView?.webhookSource.name) +
-        "'s source."
-      );
+      return getWebhookCardDescription({
+        webhookTrigger: trigger,
+        webhookSourceView,
+      });
     }
   }, [
     trigger.kind,
