@@ -74,6 +74,9 @@ export function AgentTriggersTab({
     }
   };
 
+  // TODO(adrien): for now, we only show the user's triggers.
+  // We might reconsider it, and display a "My triggers" section,
+  // and a "How others automate this" section in the future.
   const filteredTriggers = triggers.filter((t) => t.isEditor);
 
   return (
