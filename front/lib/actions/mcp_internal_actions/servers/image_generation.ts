@@ -10,7 +10,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -30,6 +30,63 @@ const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 w
 
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
+
+// Token pricing is expressed as cost per million tokens (micro-USD per token)
+const MICRO_USD_PER_USD = 1_000_000;
+
+/**
+ * Computes cost details for Gemini image generation from usage metadata.
+ * Returns structured cost information for Langfuse observation updates.
+ *
+ * Uses MODEL_PRICING directly to avoid type casting issues with non-standard model IDs.
+ */
+function computeImageGenerationCostDetails(usageMetadata: {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+}): {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  costUsd: number;
+  costDetails: {
+    input: number;
+    output: number;
+    total: number;
+  };
+} {
+  const inputTokens = usageMetadata.promptTokenCount ?? 0;
+  const outputTokens = usageMetadata.candidatesTokenCount ?? 0;
+  const totalTokens = inputTokens + outputTokens;
+
+  const pricing = MODEL_PRICING[GEMINI_2_5_FLASH_IMAGE_MODEL_ID];
+  if (!pricing) {
+    throw new Error(
+      `Pricing not configured for model: ${GEMINI_2_5_FLASH_IMAGE_MODEL_ID}`
+    );
+  }
+
+  // Cost calculation in micro-USD per million tokens
+  const inputCostMicroUsd = inputTokens * pricing.input;
+  const outputCostMicroUsd = outputTokens * pricing.output;
+  const totalCostMicroUsd = inputCostMicroUsd + outputCostMicroUsd;
+
+  // Convert micro-USD to USD for Langfuse
+  const costUsd = totalCostMicroUsd / MICRO_USD_PER_USD;
+  const inputCostUsd = inputCostMicroUsd / MICRO_USD_PER_USD;
+  const outputCostUsd = outputCostMicroUsd / MICRO_USD_PER_USD;
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    costUsd,
+    costDetails: {
+      input: inputCostUsd,
+      output: outputCostUsd,
+      total: costUsd,
+    },
+  };
+}
 
 // Map tool size parameters to Gemini aspect ratios.
 const SIZE_TO_ASPECT_RATIO: Record<string, string> = {
@@ -334,20 +391,8 @@ function createServer(
           trackGeminiTokenUsage(response, statsDClient);
 
           if (response.usageMetadata) {
-            const inputTokens = response.usageMetadata.promptTokenCount ?? 0;
-            const outputTokens =
-              response.usageMetadata.candidatesTokenCount ?? 0;
-            const totalTokens = inputTokens + outputTokens;
-
-            const costMicroUsd = computeTokensCostForUsageInMicroUsd({
-              modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID as any,
-              promptTokens: inputTokens,
-              completionTokens: outputTokens,
-              cachedTokens: null,
-              cacheCreationTokens: null,
-            });
-
-            const costUsd = costMicroUsd / 1_000_000;
+            const { inputTokens, outputTokens, totalTokens, costDetails } =
+              computeImageGenerationCostDetails(response.usageMetadata);
 
             generation.update({
               usageDetails: {
@@ -355,11 +400,7 @@ function createServer(
                 output: outputTokens,
                 total: totalTokens,
               },
-              costDetails: {
-                input: (costUsd * inputTokens) / totalTokens,
-                output: (costUsd * outputTokens) / totalTokens,
-                total: costUsd,
-              },
+              costDetails,
             });
           }
 
@@ -637,20 +678,8 @@ function createServer(
           trackGeminiTokenUsage(response, statsDClient);
 
           if (response.usageMetadata) {
-            const inputTokens = response.usageMetadata.promptTokenCount ?? 0;
-            const outputTokens =
-              response.usageMetadata.candidatesTokenCount ?? 0;
-            const totalTokens = inputTokens + outputTokens;
-
-            const costMicroUsd = computeTokensCostForUsageInMicroUsd({
-              modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID as any,
-              promptTokens: inputTokens,
-              completionTokens: outputTokens,
-              cachedTokens: null,
-              cacheCreationTokens: null,
-            });
-
-            const costUsd = costMicroUsd / 1_000_000;
+            const { inputTokens, outputTokens, totalTokens, costDetails } =
+              computeImageGenerationCostDetails(response.usageMetadata);
 
             generation.update({
               usageDetails: {
@@ -658,11 +687,7 @@ function createServer(
                 output: outputTokens,
                 total: totalTokens,
               },
-              costDetails: {
-                input: (costUsd * inputTokens) / totalTokens,
-                output: (costUsd * outputTokens) / totalTokens,
-                total: costUsd,
-              },
+              costDetails,
             });
           }
           generation.end();
