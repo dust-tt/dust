@@ -20,6 +20,7 @@ import type {
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
+import type { GetAgentMessageSkillsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/skills";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   ConversationSkillActionRequest,
@@ -718,6 +719,36 @@ export function useConversationMessage({
     isMessageLoading: isLoading,
     isValidating,
     mutateMessage: mutate,
+  };
+}
+
+export function useAgentMessageSkills({
+  owner,
+  conversationId,
+  messageId,
+  options,
+}: {
+  owner: LightWorkspaceType;
+  conversationId: string;
+  messageId: string | null;
+  options?: {
+    disabled: boolean;
+  };
+}) {
+  const skillsFetcher: Fetcher<GetAgentMessageSkillsResponseBody> = fetcher;
+
+  const { data, error, isLoading } = useSWRWithDefaults(
+    messageId
+      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/skills`
+      : null,
+    skillsFetcher,
+    options
+  );
+
+  return {
+    skills: data?.skills ?? emptyArray(),
+    isSkillsLoading: !options?.disabled && isLoading,
+    isSkillsError: error,
   };
 }
 

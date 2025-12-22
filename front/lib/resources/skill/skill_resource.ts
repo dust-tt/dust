@@ -330,6 +330,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+      onlyCustom: true,
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string
@@ -1140,6 +1154,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         addedByUserId: cs.addedByUserId,
       }))
     );
+  }
+
+  static async listByAgentMessageId(
+    auth: Authenticator,
+    agentMessageId: ModelId
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const where: WhereOptions<AgentMessageSkillModel> = {
+      workspaceId: workspace.id,
+      agentMessageId,
+    };
+
+    const agentMessageSkills = await AgentMessageSkillModel.findAll({
+      where,
+    });
+
+    const customSkills = await this.fetchByModelIds(
+      auth,
+      removeNulls(agentMessageSkills.map((ams) => ams.customSkillId))
+    );
+
+    const globalSkills = await this.fetchByIds(
+      auth,
+      removeNulls(agentMessageSkills.map((ams) => ams.globalSkillId))
+    );
+
+    return [...customSkills, ...globalSkills];
   }
 
   toJSON(auth: Authenticator): SkillType {
