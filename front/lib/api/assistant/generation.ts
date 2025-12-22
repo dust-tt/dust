@@ -147,13 +147,35 @@ function constructToolsSection({
   return toolsSection;
 }
 
+/**
+ * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
+ */
+function getEnabledSkillInstructions(
+  skill: SkillResource & { extendedSkill: SkillResource | null }
+): string {
+  const { name, instructions, extendedSkill } = skill;
+
+  if (!extendedSkill) {
+    return `<${name}>\n${instructions}\n</${name}>`;
+  }
+
+  return [
+    `<${name}>`,
+    extendedSkill.instructions,
+    "<additional_guidelines>",
+    instructions,
+    "</additional_guidelines>",
+    `</${name}>`,
+  ].join("\n");
+}
+
 // TODO(skills): add detailed tools per skill
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
   featureFlags,
 }: {
-  enabledSkills: SkillResource[];
+  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
   featureFlags: WhitelistableFeature[];
 }): string {
@@ -173,9 +195,12 @@ function constructSkillsSection({
   if (enabledSkills && enabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
-    for (const { name, instructions } of enabledSkills) {
-      skillsSection += `<${name}>\n${instructions}\n</${name}>\n`;
-    }
+
+    const skillInstructions = enabledSkills.map((skill) =>
+      getEnabledSkillInstructions(skill)
+    );
+
+    skillsSection += skillInstructions.join("\n");
   }
 
   // Equipped but not yet enabled skills - show name and description only
@@ -357,14 +382,13 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    enabledSkills: SkillResource[];
+    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     featureFlags: WhitelistableFeature[];
   }
 ) {
   const owner = auth.workspace();
 
-  // Construct each section of the prompt individually, then concatenate them.
   return [
     constructContextSection({
       userMessage,

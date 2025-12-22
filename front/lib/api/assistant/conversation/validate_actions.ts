@@ -159,9 +159,11 @@ export async function validateAction(
     );
   }
 
-  const agentStepContent = await AgentStepContentResource.fetchByModelId(
-    action.stepContentId
-  );
+  const agentStepContent =
+    await AgentStepContentResource.fetchByModelIdWithAuth(
+      auth,
+      action.stepContentId
+    );
   if (!agentStepContent) {
     return new Err(
       new DustError(

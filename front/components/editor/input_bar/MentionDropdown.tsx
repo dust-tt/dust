@@ -208,7 +208,7 @@ export const MentionDropdown = forwardRef<
                       <Chip
                         size="mini"
                         color="primary"
-                        label="User"
+                        label="Member"
                         className="ml-2 shrink-0"
                       />
                     )}

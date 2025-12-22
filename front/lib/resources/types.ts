@@ -62,6 +62,7 @@ export type ResourceFindOptions<M extends Model> = {
   offset?: number;
   order?: FindOptions<M>["order"];
   where?: WhereOptions<M>;
+  dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
 } & (M extends SoftDeletableWorkspaceAwareModel
   ? { includeDeleted?: boolean }
   : { includeDeleted?: never });

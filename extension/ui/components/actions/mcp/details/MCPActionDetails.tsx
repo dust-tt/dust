@@ -62,12 +62,9 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
-    action: { functionCallName, internalMCPServerName, params },
+    action: { toolName, internalMCPServerName, params },
     viewType,
   } = props;
-
-  const parts = functionCallName ? functionCallName.split("__") : [];
-  const toolName = parts[parts.length - 1];
 
   if (
     internalMCPServerName === "search" ||

@@ -11,6 +11,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -250,7 +251,12 @@ async function handler(
         auth.getNonNullableWorkspace()
       );
 
-      const prompt = constructPromptMultiActions(auth, {
+      const enabledWithExtendedSkills = await augmentSkillsWithExtendedSkills(
+        auth,
+        enabledSkills
+      );
+
+      const prompt = await constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
         fallbackPrompt,
@@ -260,7 +266,7 @@ async function handler(
         agentsList,
         conversationId: conversation.sId,
         serverToolsAndInstructions,
-        enabledSkills,
+        enabledSkills: enabledWithExtendedSkills,
         equippedSkills,
         featureFlags,
       });

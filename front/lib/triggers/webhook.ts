@@ -652,6 +652,7 @@ export async function storePayloadInGCS(
       {
         webhookRequestId: webhookRequest.id,
         error,
+        gcsPath,
       },
       "Failed to store webhook request"
     );

@@ -144,6 +144,9 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         ...this.getOptions(fetchDataSourceOptions),
         ...options,
         includeDeleted,
+        // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
+        // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
       },
       transaction
     );
@@ -302,6 +305,9 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       where: {
         id: ids,
       },
+      // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
+      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }
 
