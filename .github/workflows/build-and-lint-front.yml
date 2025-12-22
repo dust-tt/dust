@@ -5,7 +5,9 @@ on:
     paths:
       - sdks/js/**
       - front/**
+      - sparkle/**
       - .github/workflows/build-and-lint-front.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,8 +27,8 @@ jobs:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [ 1, 2, 3 ]
-        shardTotal: [ 3 ]
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
