@@ -224,20 +224,13 @@ export function AgentBuilderSkillsBlock({
     }
   };
 
-  const [skillIdToFetch, setSkillIdToFetch] = useState<string | null>(null);
-
-  useSkillWithRelations({
-    owner,
-    skillId: skillIdToFetch ?? "",
-    disabled: !skillIdToFetch,
-    onSuccess: ({ skill }) => {
-      setSkillIdToFetch(null);
+  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
+    onSuccess: ({ skill }) =>
       setCapabilitiesSheetMode({
         pageId: "skill_info",
         capability: skill,
         hasPreviousPage: false,
-      });
-    },
+      }),
   });
 
   const handleSaveCapabilities = useCallback(
@@ -343,7 +336,9 @@ export function AgentBuilderSkillsBlock({
                   key={field.id}
                   skill={field}
                   onRemove={() => removeSkill(index)}
-                  onClick={() => setSkillIdToFetch(field.sId)}
+                  onClick={() => {
+                    void fetchSkillWithRelations(field.sId);
+                  }}
                 />
               ))}
               {actionFields.map((field, index) => (

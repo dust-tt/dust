@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
+import type { SWRMutationConfiguration } from "swr/mutation";
+import useSWRMutation from "swr/mutation";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -240,27 +242,25 @@ export function useSkillHistory({
   };
 }
 
-export function useSkillWithRelations({
-  owner,
-  disabled,
-  skillId,
-  onSuccess,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  skillId: string;
-  onSuccess?: (data: GetSkillWithRelationsResponseBody) => void;
-}) {
-  const skillsFetcher: Fetcher<GetSkillWithRelationsResponseBody> = fetcher;
-
-  const { data, isLoading } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills/${skillId}?withRelations=true`,
-    skillsFetcher,
-    { disabled, onSuccess }
+export function useSkillWithRelations(
+  owner: LightWorkspaceType,
+  options?: SWRMutationConfiguration<
+    GetSkillWithRelationsResponseBody,
+    any,
+    string,
+    string
+  >
+) {
+  const { trigger, isMutating } = useSWRMutation(
+    `/api/w/${owner.sId}/skills`,
+    async (url: string, { arg }: { arg: string }) => {
+      return fetcher(`${url}/${arg}?withRelations=true`);
+    },
+    options
   );
 
   return {
-    skillWithRelations: data?.skill ?? null,
-    isSkillWithRelationsLoading: isLoading,
+    fetchSkillWithRelations: trigger,
+    isLoading: isMutating,
   };
 }

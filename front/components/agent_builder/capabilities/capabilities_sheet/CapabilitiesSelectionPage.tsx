@@ -47,12 +47,8 @@ export function CapabilitiesSelectionPageContent({
 }: CapabilitiesSelectionPageProps) {
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
-  const [skillIdToFetch, setSkillIdToFetch] = useState<string | null>(null);
 
-  useSkillWithRelations({
-    owner,
-    skillId: skillIdToFetch ?? "",
-    disabled: !skillIdToFetch,
+  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
     onSuccess: ({ skill }) => {
       onModeChange({
         pageId: "skill_info",
@@ -61,10 +57,6 @@ export function CapabilitiesSelectionPageContent({
       });
     },
   });
-
-  const onSelectedSkill = (skillId: string) => {
-    setSkillIdToFetch(skillId);
-  };
 
   const sortedMCPServerViews = useMemo(
     () => [
@@ -145,7 +137,7 @@ export function CapabilitiesSelectionPageContent({
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
                     onClick={() => handleSkillToggle(skill)}
-                    onMoreInfoClick={() => onSelectedSkill(skill.sId)}
+                    onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
                   />
                 ))}
               </div>
