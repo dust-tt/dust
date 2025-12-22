@@ -65,7 +65,7 @@
     "turndown": "^7.1.2",
     "tweetnacl": "^1.0.3",
     "undici": "^6.21.1",
-    "zod-validation-error": "^3.5.4"
+    "zod-validation-error": "^4.0.2"
   },
   "devDependencies": {
     "@types/eslint": "^8.56.10",
@@ -73,9 +73,7 @@
     "@types/morgan": "^1.9.9",
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",
-    "esbuild": "^0.27.0",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^9.1.0"
+    "tsconfig-paths-webpack-plugin": "^4.1.0"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [

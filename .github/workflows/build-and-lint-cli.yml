@@ -33,8 +33,9 @@ jobs:
         with:
           node-version: 20.17.0
           cache: "npm"
-          cache-dependency-path: |
-            ./cli/package-lock.json
+          cache-dependency-path: ./package-lock.json
+      - name: Install dependencies
+        run: npm ci
       - name: Typecheck and Lint
         working-directory: cli
-        run: npm ci && npx tsc --version && npx tsc && npm run lint
+        run: npx tsc --version && npx tsc && npm run lint

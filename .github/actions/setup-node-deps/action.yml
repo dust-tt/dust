@@ -15,8 +15,7 @@ runs:
       with:
         node-version: 20.13.0
         cache: "npm"
-        cache-dependency-path: |
-          package-lock.json
+        cache-dependency-path: package-lock.json
 
     - name: Cache workspaces node_modules
       id: cache-workspaces

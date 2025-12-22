@@ -40,7 +40,7 @@
     "tslib": "^2.6.2"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
+    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#4a3d6b942e3982c818acd529de9b574c92776a2e",
     "@types/json-schema": "^7.0.15",
     "event-source-polyfill": "^1.0.31",
     "eventsource-parser": "^1.1.1",
