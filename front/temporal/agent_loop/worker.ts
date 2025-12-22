@@ -31,7 +31,7 @@ import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activ
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import { removeNulls } from "@app/types";
+import { isDevelopment, removeNulls } from "@app/types";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -70,8 +70,7 @@ export async function runAgentLoopWorker() {
     maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
       workflowModules: removeNulls([
-        process.env.NODE_ENV === "production" ||
-        process.env.USE_TEMPORAL_BUNDLES === "true"
+        !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"
           ? null
           : require.resolve("./workflows"),
       ]),
