@@ -147,7 +147,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly editorGroup: GroupResource | null = null;
   readonly mcpServerConfigurations: SkillMCPServerAttributes[];
 
-  private readonly globalSId?: string;
+  private readonly globalSId: string | null;
 
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
@@ -158,7 +158,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     super(SkillConfigurationModel, blob);
 
     this.editorGroup = editorGroup ?? null;
-    this.globalSId = globalSId;
+    this.globalSId = globalSId ?? null;
     this.mcpServerConfigurations = mcpServerConfigurations ?? [];
   }
 
@@ -1041,7 +1041,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
       customSkillId: this.globalSId ? null : this.id,
-      globalSkillId: this.globalSId ?? null,
+      globalSkillId: this.globalSId,
     });
   }
 
