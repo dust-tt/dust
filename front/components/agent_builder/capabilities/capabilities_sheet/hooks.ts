@@ -288,5 +288,6 @@ export const useToolSelection = ({
     filteredMCPServerViews,
     isMCPServerViewsLoading,
     selectedMCPServerViewIds,
+    allMcpServerViews,
   };
 };
