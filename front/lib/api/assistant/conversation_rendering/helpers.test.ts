@@ -11,6 +11,11 @@ describe("renderUserMessage", () => {
     // not needed here.
     return {
       content: "",
+      user: {
+        sId: "user_123",
+        fullName: "John Doe",
+        email: "john@example.com",
+      },
       ...overrides,
     } as any;
   }
@@ -35,9 +40,10 @@ describe("renderUserMessage", () => {
     const m = buildMessage({
       content: "Hello!",
       context: {
-        fullName: "John Doe",
-        username: "jdoe",
-        email: "john@example.com",
+        // to be different from the user
+        fullName: "John DoeDoe",
+        username: "jdoedoe",
+        email: "johndoe@example.com",
       },
     });
 
@@ -46,11 +52,11 @@ describe("renderUserMessage", () => {
     const text = (res.content[0] as TextContent).text;
 
     // Should include a dust system block and a Sender line.
-    expect(text.startsWith("<dust_system>\n")).toBe(true);
-    expect(text).toContain("- Sender: John Doe (@jdoe) <john@example.com>");
+    expect(text).toEqual(`<dust_system>
+- Sender: John Doe (:mention_user[John Doe]{sId=user_123}) <john@example.com>
+</dust_system>
 
-    // Name should prefer fullName when available.
-    expect(res.name).toBe("John Doe");
+Hello!`);
   });
 
   it("uses username as name when fullName is not provided", () => {
@@ -66,7 +72,11 @@ describe("renderUserMessage", () => {
     expect(res.name).toBe("jdoe");
     expect(res.content[0].type).toBe("text");
     const text = (res.content[0] as TextContent).text;
-    expect(text).toContain("- Sender: @jdoe");
+    expect(text).toEqual(`<dust_system>
+- Sender: John Doe (:mention_user[John Doe]{sId=user_123}) <john@example.com>
+</dust_system>
+
+Hello!`);
   });
 
   it("adds sent at metadata when created is provided (timezone stable via context)", () => {
@@ -131,13 +141,12 @@ describe("renderUserMessage", () => {
   });
 
   it("does not include system context when no metadata is available", () => {
-    const m = buildMessage({ content: "Just text", context: {} });
+    const m = buildMessage({ content: "Just text", context: {}, user: null });
 
     const res = renderUserMessage(m);
     expect(res.content[0].type).toBe("text");
     const text = (res.content[0] as TextContent).text;
 
-    expect(text.startsWith("<dust_system>")).toBe(false);
-    expect(text).toBe("Just text");
+    expect(text).toEqual(`Just text`);
   });
 });
