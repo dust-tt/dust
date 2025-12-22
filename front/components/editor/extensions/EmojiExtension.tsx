@@ -30,8 +30,16 @@ const emojiMap = new Map(emojiMartEmojis.map((e) => [e.name, e]));
 
 export const EmojiExtension = Emoji.extend({
   renderMarkdown: (node) => {
+    const name = node.attrs?.name;
+
+    // If name is null/undefined, return empty string to avoid displaying :null:
+    if (!name) {
+      return "";
+    }
+
     const emojiItem = emojiMap.get(node.attrs?.name);
-    return emojiItem?.emoji ?? `:${node.attrs?.name}:`;
+
+    return emojiItem?.emoji ?? `:${name}:`;
   },
 }).configure({
   // Enable emoticon conversion (e.g., <3 → ❤️, :) → 😊)
