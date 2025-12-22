@@ -62,7 +62,7 @@ export function MentionValidationRequired({
   }
 
   return (
-    <div className="mx-auto flex w-80 min-w-[500px] flex-col rounded-xl bg-muted-background p-3 dark:bg-muted-background-night">
+    <div className="mx-auto flex w-80 min-w-[300px] flex-col rounded-xl bg-muted-background p-3 dark:bg-muted-background-night sm:min-w-[500px]">
       <div className="flex flex-row gap-3 text-foreground dark:text-foreground-night">
         <Avatar
           visual={pendingMention.pictureUrl}
