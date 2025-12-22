@@ -8,8 +8,8 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   executeGetUser,
-  executeListChannels,
   executeListJoinedChannels,
+  executeListPublicChannels,
   executeListUsers,
   executePostMessage,
   executeReadThreadMessages,
@@ -868,7 +868,7 @@ async function createServer(
         }
 
         try {
-          return await executeListChannels(
+          return await executeListPublicChannels(
             nameFilter,
             accessToken,
             mcpServerId
@@ -906,11 +906,7 @@ async function createServer(
         }
 
         try {
-          return await executeListJoinedChannels(
-            nameFilter,
-            accessToken,
-            mcpServerId
-          );
+          return await executeListJoinedChannels(nameFilter, accessToken);
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
@@ -1020,7 +1016,6 @@ async function createServer(
           channelId = await resolveChannelId({
             channelNameOrId: channel,
             accessToken,
-            mcpServerId,
           });
         } catch (error) {
           const authError = handleSlackAuthError(error);
@@ -1194,7 +1189,6 @@ async function createServer(
           oldest,
           latest,
           accessToken,
-          mcpServerId,
         });
       }
     )
