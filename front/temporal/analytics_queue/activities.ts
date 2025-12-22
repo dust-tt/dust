@@ -4,7 +4,7 @@ import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import {
-  AGENT_TOOL_OUTPUTS_ALIAS_NAME,
+  AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
   ANALYTICS_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
@@ -513,7 +513,7 @@ async function storeRetrievalOutputsToElasticsearch(
     const bulkBody = documents.flatMap((doc) => [
       {
         index: {
-          _index: AGENT_TOOL_OUTPUTS_ALIAS_NAME,
+          _index: AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
           _id: makeRetrievalOutputDocumentId({
             workspaceId: doc.workspace_id,
             messageId: doc.message_id,

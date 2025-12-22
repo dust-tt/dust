@@ -1,7 +1,0 @@
-POST /_aliases
-{
-  "actions": [
-    { "remove": { "index": "front.agent_tool_outputs*", "alias": "front.agent_tool_outputs" } },
-    { "add":    { "index": "front.agent_tool_outputs_1", "alias": "front.agent_tool_outputs", "is_write_index": true } }
-  ]
-}
