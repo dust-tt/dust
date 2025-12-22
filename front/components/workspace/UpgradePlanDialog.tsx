@@ -30,7 +30,7 @@ export function UpgradePlanDialog({
         <DialogHeader>{title}</DialogHeader>
         {description}
         <DialogFooter>
-          <Button label="Cancel" onClick={onClose} />
+          <Button variant="outline" label="Cancel" onClick={onClose} />
           <Button
             label="Check Dust plans"
             onClick={() => {
