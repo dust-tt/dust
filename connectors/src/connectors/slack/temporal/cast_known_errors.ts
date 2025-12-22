@@ -7,9 +7,7 @@ import type {
 
 import { ProviderRateLimitError } from "@connectors/lib/error";
 
-export class SlackCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class SlackCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

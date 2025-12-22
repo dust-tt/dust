@@ -61,9 +61,7 @@ function isGoogleDriveInsufficientPermissionsError(
   );
 }
 
-export class GoogleDriveCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class GoogleDriveCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

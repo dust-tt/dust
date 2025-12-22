@@ -8,7 +8,7 @@ import { getStatsDClient } from "@connectors/types/shared/statsd";
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
 // The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
- 
+
 const types = require("pg").types;
 
 const acquireAttempts = new WeakMap();

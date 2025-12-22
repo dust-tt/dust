@@ -18,9 +18,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 
-export class ZendeskConnectorStrategy
-  implements ConnectorProviderStrategy<"zendesk">
-{
+export class ZendeskConnectorStrategy implements ConnectorProviderStrategy<"zendesk"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<ZendeskConfigurationModel>,

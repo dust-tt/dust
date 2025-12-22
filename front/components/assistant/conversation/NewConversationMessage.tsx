@@ -18,7 +18,8 @@ type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
 
 interface NewConversationMessageProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
   actions?: ConversationMessageAction[];
   avatarBusy?: boolean;
@@ -178,8 +179,7 @@ export const NewConversationMessage = React.forwardRef<
 
 NewConversationMessage.displayName = "NewConversationMessage";
 
-interface ConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
   type: ConversationMessageType;
@@ -208,8 +208,7 @@ const ConversationMessageContent = React.forwardRef<
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
-interface ConversationMessageAvatarProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
   isDisabled?: boolean;
@@ -256,8 +255,7 @@ const ConversationMessageAvatar = React.forwardRef<
 
 ConversationMessageAvatar.displayName = "ConversationMessageAvatar";
 
-interface ConversationMessageTitleProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: ConversationMessageAction[];
   name?: string;
   timestamp?: string;

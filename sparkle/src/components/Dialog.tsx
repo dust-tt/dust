@@ -73,8 +73,9 @@ const dialogVariants = cva(
   }
 );
 
-interface DialogContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+interface DialogContentProps extends React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> {
   size?: DialogSizeType;
   height?: DialogHeightType;
   trapFocusScope?: boolean;

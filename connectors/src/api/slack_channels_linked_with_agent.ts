@@ -241,7 +241,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
       slackChannelId: c.slackChannelId,
       slackChannelName: "#" + c.slackChannelName,
       // We know that agentConfigurationId is not null because of the where clause above
-       
+
       agentConfigurationId: c.agentConfigurationId!,
       autoRespondWithoutMention: c.autoRespondWithoutMention,
     })),

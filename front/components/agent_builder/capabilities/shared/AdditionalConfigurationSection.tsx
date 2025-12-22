@@ -93,8 +93,10 @@ function BooleanConfigurationInput({
   );
 }
 
-interface BooleanConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredBooleans"> {}
+interface BooleanConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredBooleans"
+> {}
 
 function BooleanConfigurationSection({
   requiredBooleans,
@@ -160,8 +162,10 @@ function NumberConfigurationInput({
   );
 }
 
-interface NumberConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredNumbers"> {}
+interface NumberConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredNumbers"
+> {}
 
 function NumberConfigurationSection({
   requiredNumbers,
@@ -227,8 +231,10 @@ function StringConfigurationInput({
   );
 }
 
-interface StringConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredStrings"> {}
+interface StringConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredStrings"
+> {}
 
 function StringConfigurationSection({
   requiredStrings,
@@ -326,8 +332,10 @@ function EnumConfigurationInput({
   );
 }
 
-interface EnumConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredEnums"> {}
+interface EnumConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredEnums"
+> {}
 
 function EnumConfigurationSection({
   requiredEnums,
@@ -446,8 +454,10 @@ function ListConfigurationInput({
   );
 }
 
-interface ListConfigurationSectionProps
-  extends Pick<MCPServerRequirements, "requiredLists"> {}
+interface ListConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  "requiredLists"
+> {}
 
 function ListConfigurationSection({
   requiredLists,
@@ -468,15 +478,14 @@ function ListConfigurationSection({
   );
 }
 
-interface GroupedConfigurationSectionProps
-  extends Pick<
-    MCPServerRequirements,
-    | "requiredStrings"
-    | "requiredNumbers"
-    | "requiredBooleans"
-    | "requiredEnums"
-    | "requiredLists"
-  > {
+interface GroupedConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  | "requiredStrings"
+  | "requiredNumbers"
+  | "requiredBooleans"
+  | "requiredEnums"
+  | "requiredLists"
+> {
   prefix: string;
 }
 
@@ -517,15 +526,14 @@ function GroupedConfigurationSection({
   );
 }
 
-interface AdditionalConfigurationSectionProps
-  extends Pick<
-    MCPServerRequirements,
-    | "requiredStrings"
-    | "requiredNumbers"
-    | "requiredBooleans"
-    | "requiredEnums"
-    | "requiredLists"
-  > {}
+interface AdditionalConfigurationSectionProps extends Pick<
+  MCPServerRequirements,
+  | "requiredStrings"
+  | "requiredNumbers"
+  | "requiredBooleans"
+  | "requiredEnums"
+  | "requiredLists"
+> {}
 
 export function AdditionalConfigurationSection({
   requiredStrings,

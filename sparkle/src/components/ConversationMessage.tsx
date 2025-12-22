@@ -34,7 +34,8 @@ export const ConversationContainer = React.forwardRef<
 ConversationContainer.displayName = "ConversationContainer";
 
 interface ConversationMessageProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
   actions?: ConversationMessageAction[];
   avatarBusy?: boolean;
@@ -141,8 +142,7 @@ export const ConversationMessage = React.forwardRef<
 
 ConversationMessage.displayName = "ConversationMessage";
 
-interface ConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
   type: ConversationMessageType;
@@ -173,8 +173,7 @@ export const ConversationMessageContent = React.forwardRef<
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
-interface ConversationMessageHeaderProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: ConversationMessageAction[];
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;

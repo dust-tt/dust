@@ -40,8 +40,7 @@ type AgentMemoryEntry = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMemoryResource
-  extends ReadonlyAttributesType<AgentMemoryModel> {}
+export interface AgentMemoryResource extends ReadonlyAttributesType<AgentMemoryModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
   static model: ModelStaticWorkspaceAware<AgentMemoryModel> = AgentMemoryModel;

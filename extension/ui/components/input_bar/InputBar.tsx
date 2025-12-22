@@ -316,11 +316,11 @@ export function AssistantInputBar({
         <div className="absolute inset-0 z-50 overflow-hidden">
           <div
             className={classNames(
-              "fixed flex inset-0 backdrop-blur-sm transition-opacity",
+              "fixed inset-0 flex backdrop-blur-sm transition-opacity",
               "bg-muted-background/80 dark:bg-muted-background-night/80"
             )}
           />
-          <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">
+          <div className="fixed left-0 top-0 flex h-full w-full flex-col items-center justify-center gap-4">
             <span className="z-50">
               <Page.Header title="Screen capture in progress..." />
             </span>

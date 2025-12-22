@@ -18,13 +18,13 @@ export function MCPBrowseActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
             {urls.map((url, idx) => (
               <div
                 className="flex max-h-60 flex-col overflow-y-auto overflow-x-hidden pb-1"
                 key={idx}
               >
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-muted-foreground dark:text-muted-foreground-night text-sm">
                   {url}
                 </span>
               </div>

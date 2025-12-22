@@ -126,9 +126,9 @@ export function supportsDocumentsData(
 export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||
-      isRemoteDatabase(ds) ||
-      (ds.connectorProvider &&
-        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+    isRemoteDatabase(ds) ||
+    (ds.connectorProvider &&
+      STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
   );
 }
 

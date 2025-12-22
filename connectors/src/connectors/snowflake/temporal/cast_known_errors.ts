@@ -133,9 +133,7 @@ function isSnowflakeUserAccessDisabledError(
   );
 }
 
-export class SnowflakeCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class SnowflakeCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

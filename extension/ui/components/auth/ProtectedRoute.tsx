@@ -72,7 +72,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   return (
     <div
       className={classNames(
-        "flex h-screen flex-col gap-2 px-4 overflow-y-auto",
+        "flex h-screen flex-col gap-2 overflow-y-auto px-4",
         "bg-background text-foreground",
         "dark:bg-background-night dark:text-foreground-night"
       )}

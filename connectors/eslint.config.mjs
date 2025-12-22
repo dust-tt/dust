@@ -10,7 +10,13 @@ import tseslint from "typescript-eslint";
 export default [
   // Ignores
   {
-    ignores: [".eslintrc.js", "eslint.config.js", "config/", "dist/", "knip.ts"],
+    ignores: [
+      ".eslintrc.js",
+      "eslint.config.js",
+      "config/",
+      "dist/",
+      "knip.ts",
+    ],
   },
 
   // Base configs

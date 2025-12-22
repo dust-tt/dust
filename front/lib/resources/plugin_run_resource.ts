@@ -65,8 +65,7 @@ function trimPluginRunResultOrError(result: PluginResponse | string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface PluginRunResource
-  extends ReadonlyAttributesType<PluginRunModel> {}
+export interface PluginRunResource extends ReadonlyAttributesType<PluginRunModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;

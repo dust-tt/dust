@@ -32,13 +32,12 @@ type ToolPersonalAuthError = {
 
 // Event sent when personal authentication is required for a tool call.
 // This is a non-terminal event that pauses the workflow until authentication is completed.
-export interface ToolPersonalAuthRequiredEvent
-  extends ToolExecution<
-    MCPValidationMetadataType & {
-      mcpServerId: string;
-      mcpServerDisplayName: string;
-    }
-  > {
+export interface ToolPersonalAuthRequiredEvent extends ToolExecution<
+  MCPValidationMetadataType & {
+    mcpServerId: string;
+    mcpServerDisplayName: string;
+  }
+> {
   type: "tool_personal_auth_required";
   authError: ToolPersonalAuthError;
 }

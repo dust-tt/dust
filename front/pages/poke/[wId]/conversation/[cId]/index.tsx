@@ -309,8 +309,9 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   );
 };
 
-interface ConversationPageProps
-  extends InferGetServerSidePropsType<typeof getServerSideProps> {}
+interface ConversationPageProps extends InferGetServerSidePropsType<
+  typeof getServerSideProps
+> {}
 
 const ConversationPage = ({
   workspaceId,

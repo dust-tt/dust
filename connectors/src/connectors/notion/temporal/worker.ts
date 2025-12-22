@@ -37,7 +37,7 @@ export async function runNotionWorker() {
       // Update the webpack config to use aliases from our tsconfig.json.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-         
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },
@@ -72,7 +72,7 @@ export async function runNotionGarbageCollectWorker() {
       // Update the webpack config to use aliases from our tsconfig.json.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-         
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },

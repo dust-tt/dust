@@ -65,8 +65,7 @@ const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SubscriptionResource
-  extends ReadonlyAttributesType<SubscriptionModel> {}
+export interface SubscriptionResource extends ReadonlyAttributesType<SubscriptionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static model: ModelStaticWorkspaceAware<SubscriptionModel> =

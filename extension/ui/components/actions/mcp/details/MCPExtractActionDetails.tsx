@@ -79,7 +79,7 @@ function MCPExtractActionQuery({
 
   if (queryResource) {
     return (
-      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
         {queryResource.text}
       </p>
     );
@@ -95,7 +95,7 @@ function MCPExtractActionQuery({
       : "all time";
 
   return (
-    <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+    <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
       Extracted from documents over {timeFrameAsString}.
     </p>
   );

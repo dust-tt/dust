@@ -111,7 +111,7 @@ export function ActionValidationProvider({
         title: "Tool Validation Required",
         icon: ActionPieChartIcon,
         content: (
-          <div className="flex flex-col gap-4 text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-muted-foreground dark:text-muted-foreground-night flex flex-col gap-4">
             <div>
               Allow{" "}
               <span className="font-semibold">
@@ -132,7 +132,7 @@ export function ActionValidationProvider({
                 triggerChildren={<span className="font-medium">Details</span>}
                 contentChildren={
                   <div>
-                    <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
+                    <div className="bg-muted dark:bg-muted-night max-h-80 overflow-auto rounded-lg">
                       <CodeBlock
                         wrapLongLines
                         className="language-json overflow-y-auto"
@@ -145,7 +145,7 @@ export function ActionValidationProvider({
               />
             )}
             {errorMessage && (
-              <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+              <div className="text-warning-800 dark:text-warning-800-night mt-2 text-sm font-medium">
                 {errorMessage}
               </div>
             )}

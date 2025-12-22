@@ -15,9 +15,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class ConfluenceConnectorStrategy
-  implements ConnectorProviderStrategy<"confluence">
-{
+export class ConfluenceConnectorStrategy implements ConnectorProviderStrategy<"confluence"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<ConfluenceConfigurationModel>,

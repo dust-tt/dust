@@ -32,8 +32,7 @@ const MultiPageDialogRoot = Dialog;
 const MultiPageDialogTrigger = DialogTrigger;
 const MultiPageDialogClose = DialogClose;
 
-interface MultiPageDialogFooterProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface MultiPageDialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   addTopSeparator: boolean;
   leftButton?: React.ComponentProps<typeof Button>;
   centerButton?: React.ComponentProps<typeof Button>;

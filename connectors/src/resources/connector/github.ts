@@ -17,9 +17,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class GithubConnectorStrategy
-  implements ConnectorProviderStrategy<"github">
-{
+export class GithubConnectorStrategy implements ConnectorProviderStrategy<"github"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<GithubConnectorStateModel>,

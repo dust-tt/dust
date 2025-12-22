@@ -73,7 +73,7 @@ export function MCPServerAuthRequired({
       className="flex w-80 min-w-[500px] flex-col gap-3"
       icon={IconComponent}
     >
-      <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+      <div className="font-sm text-foreground dark:text-foreground-night whitespace-normal break-words">
         Your agent is trying to use{" "}
         <span className="font-semibold">
           {formattedDisplayName || "a tool"}

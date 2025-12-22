@@ -61,8 +61,7 @@ export const CONTENT_OUTDATED_MSG =
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ContentFragmentResource
-  extends ReadonlyAttributesType<ContentFragmentModel> {}
+export interface ContentFragmentResource extends ReadonlyAttributesType<ContentFragmentModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ContentFragmentResource extends BaseResource<ContentFragmentModel> {
   static model: ModelStatic<ContentFragmentModel> = ContentFragmentModel;

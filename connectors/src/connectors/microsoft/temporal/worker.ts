@@ -39,7 +39,7 @@ export async function runMicrosoftWorker() {
       // Update the webpack config to use aliases from our tsconfig.json.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-         
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },

@@ -891,7 +891,6 @@ export function getPageOrBlockParent(
         id: "workspace",
       };
     default:
-       
       ((_x: never) => {
         //
       })(type);
