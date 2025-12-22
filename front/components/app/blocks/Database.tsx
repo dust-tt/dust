@@ -160,7 +160,6 @@ export function TablesManager({
                   )}
                   icon={XMarkIcon}
                   size="xs"
-                  variant="secondary"
                 />
               </div>
             )}

@@ -60,7 +60,7 @@ export function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
         <CardActionButton
           size="mini"
           icon={XMarkIcon}
-          onClick={(e: Event) => {
+          onClick={(e) => {
             onRemove();
             e.stopPropagation();
           }}

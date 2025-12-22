@@ -88,7 +88,7 @@ export const TriggerCard = ({
           <CardActionButton
             size="mini"
             icon={XMarkIcon}
-            onClick={(e: Event) => {
+            onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}

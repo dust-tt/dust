@@ -1,11 +1,11 @@
 "use client";
 
-import type { ButtonProps } from "@dust-tt/sparkle";
+import type { RegularButtonProps } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 
 import { appendUTMParams } from "@app/lib/utils/utm";
 
-interface UTMButtonProps extends Omit<ButtonProps, "href"> {
+interface UTMButtonProps extends Omit<RegularButtonProps, "href"> {
   href?: string;
 }
 

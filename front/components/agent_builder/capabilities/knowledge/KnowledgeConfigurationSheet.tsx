@@ -1,4 +1,4 @@
-import type { MultiPageSheetPage } from "@dust-tt/sparkle";
+import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
   Avatar,
   Collapsible,
@@ -321,7 +321,10 @@ function KnowledgeConfigurationSheetContent({
     [setSheetPageId]
   );
 
-  const footerButtons = useMemo(() => {
+  const footerButtons: {
+    leftButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+    rightButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+  } = useMemo(() => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
     const isManageSelectionMode = isDataSourcePage && hasSourceSelection;

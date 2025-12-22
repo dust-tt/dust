@@ -336,7 +336,7 @@ export default function SpaceWebsiteModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: async (event: Event) => {
+            onClick: async (event) => {
               event.preventDefault();
               await handleSubmit();
             },

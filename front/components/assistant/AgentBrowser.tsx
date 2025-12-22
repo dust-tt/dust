@@ -166,7 +166,7 @@ export const AgentGrid = ({
               }}
               action={
                 <AssistantCardMore
-                  onClick={(e: Event) => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     handleMoreClick(agent.sId);
                   }}
@@ -450,7 +450,7 @@ export function AgentBrowser({
                       variant="ghost"
                       size="xs"
                       icon={MoreIcon}
-                      onClick={(e: Event) => {
+                      onClick={(e) => {
                         e.stopPropagation();
                         setQueryParam(router, "agentDetails", agent.sId);
                       }}

@@ -352,7 +352,6 @@ function ContentNodeTreeChildren({
               {`Showing ${filteredNodes.length} of ${totalResourceCount ?? filteredNodes.length} items`}
             </div>
             <Button
-              variant="secondary"
               size="sm"
               label={isLoadingMore ? "Loading..." : "Load More"}
               disabled={isResourcesLoading || isLoadingMore}

@@ -12,6 +12,7 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { pluralize } from "@app/types";
+import { RegularButtonProps } from "@dust-tt/sparkle";
 
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,
@@ -70,7 +71,10 @@ export function getFooterButtons({
   onAddSelectedTools,
   onConfigurationSave,
   resetToSelection,
-}: FooterButtonOptions) {
+}: FooterButtonOptions): {
+  leftButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+  rightButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+} {
   const isToolSelectionPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION;
   const isConfigurationPage =

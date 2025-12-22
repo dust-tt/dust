@@ -52,7 +52,7 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
         <CardActionButton
           size="mini"
           icon={XMarkIcon}
-          onClick={(e: Event) => {
+          onClick={(e) => {
             onRemove();
             e.stopPropagation();
           }}

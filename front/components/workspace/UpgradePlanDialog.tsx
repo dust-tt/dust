@@ -30,16 +30,13 @@ export function UpgradePlanDialog({
         <DialogHeader>{title}</DialogHeader>
         {description}
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <Button label="Cancel" onClick={onClose} />
           <Button
+            label="Check Dust plans"
             onClick={() => {
               void router.push(`/w/${workspaceId}/subscription`);
             }}
-          >
-            Check Dust plans
-          </Button>
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

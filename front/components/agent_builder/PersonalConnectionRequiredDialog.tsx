@@ -210,7 +210,7 @@ export function PersonalConnectionRequiredDialog({
           rightButtonProps={{
             label: "Save",
             variant: disconnectedCount > 0 ? "warning" : "primary",
-            onClick: onClose,
+            onClick: () => onClose(true),
           }}
         />
       </DialogContent>
