@@ -85,7 +85,7 @@ export function MCPServerPersonalAuthenticationRequired({
           : `${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "Personal authentication required"}`
       }
       variant={isConnected ? "success" : "primary"}
-      className="flex w-80 min-w-[500px] flex-col gap-3"
+      className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
       icon={icon}
     >
       {isTriggeredByCurrentUser ? (
