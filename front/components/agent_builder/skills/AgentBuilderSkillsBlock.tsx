@@ -142,8 +142,11 @@ export function AgentBuilderSkillsBlock({
   });
 
   // TODO(skills Jules): make a pass on the way we use reacthookform here
-  const { mcpServerViewsWithKnowledge, mcpServerViews } =
-    useMCPServerViewsContext();
+  const {
+    mcpServerViewsWithKnowledge,
+    mcpServerViewsWithoutKnowledge,
+    mcpServerViews,
+  } = useMCPServerViewsContext();
   const { skills: allSkills } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
@@ -207,21 +210,31 @@ export function AgentBuilderSkillsBlock({
   };
 
   const handleActionEdit = (action: BuilderAction, index: number) => {
-    const mcpServerView = mcpServerViewsWithKnowledge.find(
+    const mcpServerViewWithKnowledge = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
     const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerView);
+      action.type === "MCP" && Boolean(mcpServerViewWithKnowledge);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
-    } else {
-      setCapabilitiesSheetMode(
-        action.configurationRequired
-          ? { pageId: "tool_edit", capability: action, index }
-          : { pageId: "tool_info", capability: action, hasPreviousPage: false }
-      );
+      return;
     }
+
+    const mcpServerViewWithoutKnowledge = mcpServerViewsWithoutKnowledge.find(
+      (view) => view.sId === action.configuration?.mcpServerViewId
+    );
+
+    setCapabilitiesSheetMode(
+      action.configurationRequired && mcpServerViewWithoutKnowledge
+        ? {
+            pageId: "tool_edit",
+            capability: action,
+            mcpServerView: mcpServerViewWithoutKnowledge,
+            index,
+          }
+        : { pageId: "tool_info", capability: action, hasPreviousPage: false }
+    );
   };
 
   const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
@@ -233,7 +246,7 @@ export function AgentBuilderSkillsBlock({
       }),
   });
 
-  const handleSaveCapabilities = useCallback(
+  const handleCapabilitiesSave = useCallback(
     ({
       skills,
       additionalSpaces,
@@ -377,7 +390,8 @@ export function AgentBuilderSkillsBlock({
       <CapabilitiesSheet
         mode={capabillitiesSheetMode}
         onClose={handleCloseSheet}
-        onSave={handleSaveCapabilities}
+        onCapabilitiesSave={handleCapabilitiesSave}
+        onToolEditSave={handleToolEditSave}
         onModeChange={setCapabilitiesSheetMode}
         owner={owner}
         user={user}

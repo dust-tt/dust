@@ -48,15 +48,16 @@ type ToolInfoMode = {
   hasPreviousPage: boolean;
 };
 
-type ToolConfigurationMode = {
+export type ToolConfigurationMode = {
   pageId: "tool_configuration";
   capability: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;
 };
 
-type ToolEditMode = {
+export type ToolEditMode = {
   pageId: "tool_edit";
   capability: BuilderAction;
+  mcpServerView: MCPServerViewTypeWithLabel;
   index: number;
 };
 
@@ -72,11 +73,12 @@ export type CapabilitiesSheetContentProps = {
   mode: CapabilitiesSheetMode;
   onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   onClose: () => void;
-  onSave: (data: {
+  onCapabilitiesSave: (data: {
     skills: AgentBuilderSkillsType[];
     additionalSpaces: string[];
     tools: SelectedTool[];
   }) => void;
+  onToolEditSave: (updatedAction: BuilderAction) => void;
   owner: WorkspaceType;
   user: UserType;
   initialAdditionalSpaces: string[];
@@ -85,3 +87,9 @@ export type CapabilitiesSheetContentProps = {
   selectedActions: BuilderAction[];
   getAgentInstructions: () => string;
 };
+
+export function isToolConfigurationOrEditPage(
+  mode: CapabilitiesSheetMode
+): mode is ToolConfigurationMode | ToolEditMode {
+  return mode.pageId === "tool_configuration" || mode.pageId === "tool_edit";
+}
