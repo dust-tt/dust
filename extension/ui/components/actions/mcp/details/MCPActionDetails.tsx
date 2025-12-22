@@ -17,11 +17,23 @@ import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
 } from "@app/ui/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import {
+  MCPAgentMemoryEditActionDetails,
+  MCPAgentMemoryEraseActionDetails,
+  MCPAgentMemoryRecordActionDetails,
+  MCPAgentMemoryRetrieveActionDetails,
+} from "@app/ui/components/actions/mcp/details/MCPAgentMemoryActionDetails";
+import { MCPAgentManagementActionDetails } from "@app/ui/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import { MCPDataWarehousesBrowseDetails } from "@app/ui/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
+import { MCPDeepDiveActionDetails } from "@app/ui/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/ui/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/ui/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPListToolsActionDetails } from "@app/ui/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPReasoningActionDetails } from "@app/ui/components/actions/mcp/details/MCPReasoningActionDetails";
+import { MCPRunAgentActionDetails } from "@app/ui/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/ui/components/actions/mcp/details/MCPTablesQueryActionDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import { SearchResultDetails } from "@app/ui/components/actions/mcp/details/MCPToolOutputDetails";
 import type {
   AgentActionPublicType,
@@ -44,23 +56,27 @@ export interface MCPActionDetailsProps {
   viewType: "conversation" | "sidebar";
 }
 
-export const SEARCH_TOOL_NAME = "semantic_search";
-export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
-export const WEBSEARCH_TOOL_NAME = "websearch";
-export const WEBBROWSER_TOOL_NAME = "webbrowser";
-export const QUERY_TABLES_TOOL_NAME = "query_tables";
-export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
-export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
-export const PROCESS_TOOL_NAME = "extract_information_from_documents";
-export const RUN_AGENT_TOOL_NAME = "run_agent";
-export const CREATE_AGENT_TOOL_NAME = "create_agent";
-export const FIND_TAGS_TOOL_NAME = "find_tags";
+const SEARCH_TOOL_NAME = "semantic_search";
+const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
+const WEBSEARCH_TOOL_NAME = "websearch";
+const WEBBROWSER_TOOL_NAME = "webbrowser";
+const QUERY_TABLES_TOOL_NAME = "query_tables";
+const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
+const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
+const PROCESS_TOOL_NAME = "extract_information_from_documents";
+const RUN_AGENT_TOOL_NAME = "run_agent";
+const CREATE_AGENT_TOOL_NAME = "create_agent";
+const FIND_TAGS_TOOL_NAME = "find_tags";
 const CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
-export const FILESYSTEM_CAT_TOOL_NAME = "cat";
-export const FILESYSTEM_FIND_TOOL_NAME = "find";
-export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
-export const FILESYSTEM_LIST_TOOL_NAME = "list";
-export const ENABLE_SKILL_TOOL_NAME = "enable_skill";
+const FILESYSTEM_CAT_TOOL_NAME = "cat";
+const FILESYSTEM_FIND_TOOL_NAME = "find";
+const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
+const FILESYSTEM_LIST_TOOL_NAME = "list";
+const ENABLE_SKILL_TOOL_NAME = "enable_skill";
+const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
+const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
+const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
+const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
@@ -182,19 +198,35 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  //TODO: to implement
-  //   if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
-  //     return <MCPRunAgentActionDetails {...props} />;
-  //   }
+  if (internalMCPServerName === "run_agent") {
+    return <MCPRunAgentActionDetails {...props} />;
+  }
 
-  //   if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
-  //     return <MCPAgentManagementActionDetails {...props} />;
-  //   }
+  if (internalMCPServerName === "deep_dive") {
+    return <MCPDeepDiveActionDetails {...props} />;
+  }
 
-  if (internalMCPServerName === "conversation_files") {
-    if (toolName === CONVERSATION_CAT_FILE_ACTION_NAME) {
-      return <MCPConversationCatFileDetails {...props} />;
+  if (internalMCPServerName === "agent_memory") {
+    switch (toolName) {
+      case "retrieve":
+        return <MCPAgentMemoryRetrieveActionDetails {...props} />;
+      case "record_entries":
+        return <MCPAgentMemoryRecordActionDetails {...props} />;
+      case "erase_entries":
+        return <MCPAgentMemoryEraseActionDetails {...props} />;
+      case "compact_memory":
+      case "edit_entries":
+        return (
+          <MCPAgentMemoryEditActionDetails {...props} toolName={toolName} />
+        );
     }
+  }
+
+  if (internalMCPServerName === "toolsets") {
+    if (toolName === "enable") {
+      return <MCPToolsetsEnableActionDetails {...props} />;
+    }
+    return <MCPListToolsActionDetails {...props} />;
   }
 
   if (
@@ -202,6 +234,29 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     toolName === ENABLE_SKILL_TOOL_NAME
   ) {
     return <MCPSkillEnableActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "agent_management") {
+    return <MCPAgentManagementActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "data_warehouses") {
+    switch (toolName) {
+      case DATA_WAREHOUSES_FIND_TOOL_NAME:
+      case DATA_WAREHOUSES_LIST_TOOL_NAME:
+        return <MCPDataWarehousesBrowseDetails {...props} />;
+      case DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME:
+        return <MCPGetDatabaseSchemaActionDetails {...props} />;
+      case DATA_WAREHOUSES_QUERY_TOOL_NAME:
+        return <MCPTablesQueryActionDetails {...props} />;
+    }
+  }
+
+  if (
+    internalMCPServerName === "conversation_files" &&
+    toolName === CONVERSATION_CAT_FILE_ACTION_NAME
+  ) {
+    return <MCPConversationCatFileDetails {...props} />;
   }
 
   return <GenericActionDetails {...props} />;
@@ -222,8 +277,6 @@ export function GenericActionDetails({
       viewType={viewType}
       actionName={actionName}
       visual={BoltIcon}
-    >
-      <></>
-    </ActionDetailsWrapper>
+    />
   );
 }
