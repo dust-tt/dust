@@ -720,12 +720,12 @@ export function useConversationMessage({
 
 export function useAgentMessageSkills({
   owner,
-  conversationId,
+  conversation,
   messageId,
   options,
 }: {
   owner: LightWorkspaceType;
-  conversationId: string;
+  conversation: ConversationWithoutContentType | null;
   messageId: string | null;
   options?: {
     disabled: boolean;
@@ -734,8 +734,8 @@ export function useAgentMessageSkills({
   const skillsFetcher: Fetcher<GetAgentMessageSkillsResponseBody> = fetcher;
 
   const { data, error, isLoading } = useSWRWithDefaults(
-    messageId
-      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/skills`
+    conversation && messageId
+      ? `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/skills`
       : null,
     skillsFetcher,
     options

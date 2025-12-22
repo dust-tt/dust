@@ -45,10 +45,9 @@ function AgentActionsPanelContent({
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
   const { skills } = useAgentMessageSkills({
-    conversationId: conversation?.sId ?? "",
+    conversation,
     owner,
     messageId,
-    options: { disabled: !conversation },
   });
 
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
