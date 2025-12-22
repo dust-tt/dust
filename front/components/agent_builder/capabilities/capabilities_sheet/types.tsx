@@ -83,4 +83,5 @@ export type CapabilitiesSheetContentProps = {
   alreadyRequestedSpaceIds: Set<string>;
   alreadyAddedSkillIds: Set<string>;
   selectedActions: BuilderAction[];
+  getAgentInstructions: () => string;
 };

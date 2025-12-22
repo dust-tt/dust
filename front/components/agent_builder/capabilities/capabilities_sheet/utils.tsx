@@ -1,6 +1,9 @@
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
   useSkillSelection,
@@ -8,12 +11,17 @@ import {
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
+import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
+import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import {
   getInfoPageDescription,
+  getInfoPageIcon,
   getInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
@@ -28,6 +36,7 @@ export function useCapabilitiesPageAndFooter({
   alreadyAddedSkillIds,
   initialAdditionalSpaces,
   selectedActions,
+  getAgentInstructions,
 }: CapabilitiesSheetContentProps): {
   page: MultiPageSheetPage;
   leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
@@ -47,21 +56,61 @@ export function useCapabilitiesPageAndFooter({
     searchQuery,
   });
 
-  const handleSave = useCallback(() => {
+  const handleCapabilitiesSelectionSave = useCallback(() => {
     onSave({
       skills: skillSelection.localSelectedSkills,
       additionalSpaces: skillSelection.localAdditionalSpaces,
       tools: toolSelection.localSelectedTools,
     });
     onClose();
-  }, [skillSelection, toolSelection, onSave, onClose]);
+  }, [
+    skillSelection.localSelectedSkills,
+    skillSelection.localAdditionalSpaces,
+    toolSelection.localSelectedTools,
+    onSave,
+    onClose,
+  ]);
 
   const selectedCapabilitiesCount = useMemo(() => {
     return (
       skillSelection.selectedSkillIds.size +
       toolSelection.selectedMCPServerViewIds.size
     );
-  }, [skillSelection, toolSelection]);
+  }, [skillSelection.selectedSkillIds, toolSelection.selectedMCPServerViewIds]);
+
+  const formSchema = useMemo(
+    () =>
+      getMCPConfigurationFormSchema(
+        toolSelection.localMCPServerViewToConfigure
+      ),
+    [toolSelection.localMCPServerViewToConfigure]
+  );
+
+  const form = useForm<MCPFormData>({
+    resolver: zodResolver(formSchema),
+    mode: "onSubmit",
+    // Prevent form recreation by providing stable shouldUnregister
+    shouldUnregister: false,
+  });
+
+  // Stable form reset handler - no form dependency to prevent re-renders
+  const resetFormValues = useMemo(
+    () =>
+      createFormResetHandler(
+        toolSelection.localActionToConfigure,
+        toolSelection.localMCPServerViewToConfigure,
+        !!mode
+      ),
+    [
+      toolSelection.localActionToConfigure,
+      toolSelection.localMCPServerViewToConfigure,
+      mode,
+    ]
+  );
+
+  useEffect(() => {
+    resetFormValues(form);
+  }, [resetFormValues, form]);
 
   switch (mode.pageId) {
     case "selection":
@@ -95,7 +144,7 @@ export function useCapabilitiesPageAndFooter({
               ? `Add ${selectedCapabilitiesCount} ${selectedCapabilitiesCount === 1 ? "capability" : "capabilities"}`
               : "Add capabilities",
           disabled: selectedCapabilitiesCount === 0,
-          onClick: handleSave,
+          onClick: handleCapabilitiesSelectionSave,
           variant: "primary",
         },
       };
@@ -174,6 +223,7 @@ export function useCapabilitiesPageAndFooter({
         page: {
           title: getInfoPageTitle(mcpServerView),
           description: getInfoPageDescription(mcpServerView),
+          icon: getInfoPageIcon(mcpServerView),
           id: mode.pageId,
           content: mcpServerView ? (
             <MCPServerInfoPage infoMCPServerView={mcpServerView} />
@@ -198,8 +248,39 @@ export function useCapabilitiesPageAndFooter({
             },
       };
     }
+    case "tool_configuration": {
+      return {
+        page: {
+          title: `Configure ${mode.mcpServerView.label}`,
+          icon: () => getAvatar(mode.mcpServerView.server),
+          id: mode.pageId,
+          content: (
+            <MCPServerConfigurationPage
+              owner={owner}
+              form={form}
+              action={mode.capability}
+              mcpServerView={mode.mcpServerView}
+              getAgentInstructions={getAgentInstructions}
+            />
+          ),
+        },
+        leftButton: {
+          label: "Cancel",
+          variant: "outline",
+          onClick: () => {
+            onModeChange({ pageId: "selection" });
+          },
+        },
+        rightButton: {
+          label: "Save",
+          variant: "primary",
+          onClick: form.handleSubmit(
+            toolSelection.handleMCPServerConfigurationSave
+          ),
+        },
+      };
+    }
     // TODO(skills 2025-12-18): placeholder to satisfy type for now, will be implemented in future PRs
-    case "tool_configuration":
     case "tool_edit":
       return {
         page: {

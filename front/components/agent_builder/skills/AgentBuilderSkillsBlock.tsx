@@ -390,6 +390,7 @@ export function AgentBuilderSkillsBlock({
         alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}
         selectedActions={actionFields}
+        getAgentInstructions={() => getValues("instructions")}
       />
     </AgentBuilderSectionContainer>
   );

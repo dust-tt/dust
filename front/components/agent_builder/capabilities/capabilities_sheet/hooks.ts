@@ -1,12 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderSkillsType,
+  MCPFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
   CapabilitiesSheetMode,
   SelectedTool,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import {
+  generateUniqueActionName,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -158,6 +165,10 @@ export const useToolSelection = ({
   const [localSelectedTools, setLocalSelectedTools] = useState<SelectedTool[]>(
     []
   );
+  const [localMCPServerViewToConfigure, setLocalMCPServerViewToConfigure] =
+    useState<MCPServerViewTypeWithLabel | null>(null);
+  const [localActionToConfigure, setLocalActionToConfigure] =
+    useState<BuilderAction | null>(null);
 
   const selectedMCPServerViewIds = useMemo(() => {
     return new Set(localSelectedTools.map((t) => t.view.sId));
@@ -237,6 +248,8 @@ export const useToolSelection = ({
       if (!requirements.noRequirement) {
         const action = getDefaultMCPAction(mcpServerView);
 
+        setLocalMCPServerViewToConfigure(mcpServerView);
+        setLocalActionToConfigure(action);
         onModeChange({
           pageId: "tool_configuration",
           capability: action,
@@ -281,6 +294,58 @@ export const useToolSelection = ({
     [onModeChange]
   );
 
+  const handleMCPServerConfigurationSave = useCallback(
+    (formData: MCPFormData) => {
+      if (!localMCPServerViewToConfigure || !localActionToConfigure) {
+        return;
+      }
+
+      const newActionName = generateUniqueActionName({
+        baseName: nameToStorageFormat(formData.name),
+        existingActions: selectedActions,
+        selectedToolsInSheet: localSelectedTools,
+      });
+
+      const configuredAction: BuilderAction = {
+        ...localActionToConfigure,
+        name: newActionName,
+        description: formData.description,
+        configuration: formData.configuration,
+      };
+
+      const updatedTool: SelectedTool = {
+        type: "MCP",
+        view: localMCPServerViewToConfigure,
+        configuredAction,
+      };
+
+      setLocalSelectedTools((prev) => {
+        const existingToolIndex = prev.findIndex(
+          (tool) =>
+            tool.type === "MCP" &&
+            tool.configuredAction?.name === configuredAction.name
+        );
+
+        if (existingToolIndex !== -1) {
+          const updated = [...prev];
+          updated[existingToolIndex] = updatedTool;
+          return updated;
+        } else {
+          return [...prev, updatedTool];
+        }
+      });
+
+      onModeChange({ pageId: "selection" });
+    },
+    [
+      selectedActions,
+      localSelectedTools,
+      onModeChange,
+      localMCPServerViewToConfigure,
+      localActionToConfigure,
+    ]
+  );
+
   return {
     localSelectedTools,
     handleToolToggle,
@@ -289,5 +354,8 @@ export const useToolSelection = ({
     isMCPServerViewsLoading,
     selectedMCPServerViewIds,
     allMcpServerViews,
+    localMCPServerViewToConfigure,
+    localActionToConfigure,
+    handleMCPServerConfigurationSave,
   };
 };
