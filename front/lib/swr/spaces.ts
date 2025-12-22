@@ -669,6 +669,7 @@ type BaseSearchParams = {
   allowAdminSearch?: boolean;
   dataSourceViewIdsBySpaceId?: Record<string, string[]>;
   parentId?: string;
+  prioritizeSpaceAccess?: boolean;
 };
 
 // Text search variant
@@ -701,6 +702,7 @@ export function useSpacesSearch({
   allowAdminSearch = false,
   dataSourceViewIdsBySpaceId,
   parentId,
+  prioritizeSpaceAccess = false,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -731,6 +733,7 @@ export function useSpacesSearch({
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
     parentId,
+    prioritizeSpaceAccess,
   };
 
   // Only perform a query if we have a valid search

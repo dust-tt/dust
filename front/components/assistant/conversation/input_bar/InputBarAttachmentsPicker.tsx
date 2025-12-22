@@ -39,7 +39,6 @@ import type {
   ToolSearchResult,
   ToolSearchServerResult,
 } from "@app/lib/search/tools/types";
-import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
@@ -233,6 +232,7 @@ export const InputBarAttachmentsPicker = ({
     includeDataSources: true,
     searchSourceUrls: true,
     includeTools: true,
+    prioritizeSpaceAccess: true,
   });
 
   const spacesMap = useMemo(
@@ -251,18 +251,10 @@ export const InputBarAttachmentsPicker = ({
       removeNulls(
         searchResultNodes.map((node) => {
           const { dataSourceViews, ...rest } = node;
-          const dataSourceView = dataSourceViews
-            .filter((view) => spacesMap[view.spaceId])
-            .map((view) => ({
-              ...view,
-              spaceName: spacesMap[view.spaceId].name,
-              spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-            }))
-            .sort(
-              (a, b) =>
-                b.spacePriority - a.spacePriority ||
-                a.spaceName.localeCompare(b.spaceName)
-            )[0];
+          // Backend now returns only the highest priority data source view
+          const dataSourceView = dataSourceViews.find(
+            (view) => spacesMap[view.spaceId]
+          );
 
           if (!dataSourceView) {
             return null;

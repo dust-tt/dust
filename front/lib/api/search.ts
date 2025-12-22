@@ -81,6 +81,12 @@ const BaseSearchBody = t.refinement(
       allowAdminSearch: t.boolean,
       parentId: t.string,
       searchSort: SearchSort,
+      /**
+       * When true, returns only the highest priority data source view per node
+       * based on space access priority (global > non-restricted > restricted).
+       * When false or undefined, returns all matching data source views (default behavior).
+       */
+      prioritizeSpaceAccess: t.boolean,
     }),
   ]),
   ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
@@ -120,22 +126,55 @@ export const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
 
 export type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
 
+function getSpaceAccessPriority(space: SpaceResource) {
+  if (space.isGlobal()) {
+    return 2;
+  }
+
+  if (!space.isRegularAndOpen()) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function selectHighestPriorityDataSourceView(
+  views: DataSourceViewResource[]
+): DataSourceViewResource {
+  if (views.length <= 1) {
+    return views[0];
+  }
+
+  const viewsWithPriority = views.map((view) => ({
+    view,
+    priority: getSpaceAccessPriority(view.space),
+    spaceName: view.space.name,
+  }));
+
+  viewsWithPriority.sort(
+    (a, b) => b.priority - a.priority || a.spaceName.localeCompare(b.spaceName)
+  );
+
+  return viewsWithPriority[0].view;
+}
+
 export async function handleSearch(
   req: NextApiRequest,
   auth: Authenticator,
   searchParams: SearchRequestBodyType
 ): Promise<Result<SearchResult, SearchError>> {
   const {
-    query,
-    includeDataSources,
-    viewType,
-    spaceIds,
-    nodeIds,
-    searchSourceUrls,
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
+    includeDataSources,
+    nodeIds,
     parentId,
+    prioritizeSpaceAccess,
+    query,
     searchSort,
+    searchSourceUrls,
+    spaceIds,
+    viewType,
   } = searchParams;
 
   const spaces = allowAdminSearch
@@ -266,10 +305,14 @@ export async function handleSearch(
         return null;
       }
 
+      const selectedViews = prioritizeSpaceAccess
+        ? [selectHighestPriorityDataSourceView(matchingViews)]
+        : matchingViews;
+
       return {
         ...getContentNodeFromCoreNode(node, viewType),
-        dataSource: matchingViews[0].dataSource.toJSON(),
-        dataSourceViews: matchingViews.map((dsv) => dsv.toJSON()),
+        dataSource: selectedViews[0].dataSource.toJSON(),
+        dataSourceViews: selectedViews.map((dsv) => dsv.toJSON()),
       };
     })
   );

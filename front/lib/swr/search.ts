@@ -35,6 +35,7 @@ export function useUnifiedSearch({
   includeDataSources = true,
   searchSourceUrls = false,
   includeTools = true,
+  prioritizeSpaceAccess = false,
 }: {
   owner: LightWorkspaceType;
   query: string;
@@ -45,6 +46,7 @@ export function useUnifiedSearch({
   includeDataSources?: boolean;
   searchSourceUrls?: boolean;
   includeTools?: boolean;
+  prioritizeSpaceAccess?: boolean;
 }) {
   const [knowledgeResults, setKnowledgeResults] = useState<
     DataSourceViewContentNode[]
@@ -78,6 +80,7 @@ export function useUnifiedSearch({
       params.append("viewType", viewType);
       params.append("includeDataSources", includeDataSources.toString());
       params.append("searchSourceUrls", searchSourceUrls.toString());
+      params.append("prioritizeSpaceAccess", prioritizeSpaceAccess.toString());
       // Only include tools on first page
       params.append(
         "includeTools",
@@ -144,14 +147,15 @@ export function useUnifiedSearch({
     },
     [
       disabled,
-      query,
-      pageSize,
-      viewType,
       includeDataSources,
       includeTools,
+      owner.sId,
+      pageSize,
+      prioritizeSpaceAccess,
+      query,
       searchSourceUrls,
       spaceIds,
-      owner.sId,
+      viewType,
     ]
   );
 
