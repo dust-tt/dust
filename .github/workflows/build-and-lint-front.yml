@@ -7,7 +7,6 @@ on:
       - front/**
       - sparkle/**
       - .github/workflows/build-and-lint-front.yml
-  workflow_dispatch:
 
 permissions:
   contents: read
