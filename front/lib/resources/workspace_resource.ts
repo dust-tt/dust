@@ -8,6 +8,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelId, Result, WorkspaceSegmentationType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -20,6 +21,8 @@ export interface WorkspaceResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static model: ModelStatic<WorkspaceModel> = WorkspaceModel;
+  private static workspaceDomainModel: ModelStaticWorkspaceAware<WorkspaceHasDomainModel> =
+    WorkspaceHasDomainModel;
 
   readonly blob: Attributes<WorkspaceModel>;
 
@@ -75,6 +78,26 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       },
     });
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
+  }
+
+  static async fetchByDomain(
+    domain: string
+  ): Promise<WorkspaceResource | null> {
+    const workspaceDomain = await this.workspaceDomainModel.findOne({
+      where: { domain },
+      // WORKSPACE_ISOLATION_BYPASS: Use to search for existing workspaces by domain.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    if (!workspaceDomain) {
+      return null;
+    }
+
+    const workspace = await this.model.findOne({
+      where: { id: workspaceDomain.workspaceId },
+    });
+
+    return workspace ? new this(this.model, workspace.get()) : null;
   }
 
   static async fetchByWorkOSOrganizationId(
