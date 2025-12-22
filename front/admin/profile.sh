@@ -9,6 +9,6 @@ echo "Main container ready, starting profiler warmup"
 ITERATION_COUNT="${1:-1}"
 for i in ITERATION_COUNT; do
   echo "Triggering profiler warmup $i/$ITERATION_COUNT"
-  wget "http://$(hostname -i):3000/api/debug/profiler?secret=$DEBUG_PROFILER_SECRET"
+  wget -q -O /dev/null "http://$(hostname -i):3000/api/debug/profiler?secret=$DEBUG_PROFILER_SECRET"
 done
 echo "Profiler warmup complete"
