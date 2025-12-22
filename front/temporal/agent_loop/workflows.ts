@@ -102,7 +102,7 @@ const {
   finalizeCancelledAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
-  startToCloseTimeout: "1 minutes",
+  startToCloseTimeout: "1 minute",
 });
 
 export async function agentLoopConversationTitleWorkflow({
