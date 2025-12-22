@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
 use tokio_stream::{self as stream};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 /// Section is used to represent the structure of document to be taken into account during chunking.
@@ -1408,14 +1408,17 @@ impl DataSource {
                         }
                         None => {
                             // document not found should never happen if it unexpectedly does,
-                            // we skip it via returning None to let the search move forward but we
-                            // raise a panic log
-                            error!(
+                            // we skip it via returning None to let the search move forward
+                            // 2025-12-22: We used to error + panic but after a while, we
+                            // reached the conclusion that there is a lag between a doc being
+                            // deleted from index and from store, leading to doc still searchable,
+                            // but retrival returning None. This is a long-runing problem with
+                            // qdrant and we no longer want to panic for it.
+                            warn!(
                                 data_source_id = %data_source_id,
                                 document_id = %document_id,
                                 document_id_hash = %document_id_hash,
                                 data_source_internal_id = data_source.internal_id(),
-                                panic = true,
                                 "Document not found in store"
                             );
                             Ok::<Option<Document>, anyhow::Error>(None)
