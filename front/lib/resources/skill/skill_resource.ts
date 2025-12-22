@@ -714,7 +714,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
-        icon: null,
+        icon: def.icon,
         extendedSkillId: null,
       },
       { globalSId: def.sId, mcpServerConfigurations }

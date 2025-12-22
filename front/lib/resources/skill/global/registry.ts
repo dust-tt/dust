@@ -12,7 +12,7 @@ export interface GlobalSkillDefinition {
   readonly name: string;
   readonly sId: string;
   readonly version: number;
-  readonly icon?: string;
+  readonly icon: string;
 }
 
 // Helper function that enforces unique sIds.
