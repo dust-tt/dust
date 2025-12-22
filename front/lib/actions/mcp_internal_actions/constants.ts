@@ -585,7 +585,7 @@ export const INTERNAL_MCP_SERVERS = {
       name: "slack",
       version: "1.0.0",
       description:
-        "Search, post, and interact with Slack using your personal credentials. Use this as the Default Slack tool unless explicitly asked to use the workspace bot.",
+        "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations.",
       authorization: {
         provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -1007,7 +1007,7 @@ export const INTERNAL_MCP_SERVERS = {
       name: "slack_bot",
       version: "1.0.0",
       description:
-        "Post messages and interact with Slack using the workspace Slack bot credentials. Direct messages and search operations are not supported. Only use this tool when the user specifically asks to interact as the Slack bot or to use workspace credentials.",
+        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,
