@@ -35,7 +35,7 @@ function createServer(
           return new Err(new MCPError("No conversation context available"));
         }
 
-        const { conversation, agentConfiguration, agentMessage } =
+        const { conversation, agentConfiguration } =
           agentLoopContext.runContext;
 
         const skill = await SkillResource.fetchActiveByName(auth, skillName);
@@ -47,11 +47,9 @@ function createServer(
           );
         }
 
-        const enableResult = await skill.enableForMessage(auth, {
+        const enableResult = await skill.enableForAgent(auth, {
           agentConfiguration,
-          agentMessage,
           conversation,
-          source: "agent_enabled",
         });
 
         if (enableResult.isErr()) {

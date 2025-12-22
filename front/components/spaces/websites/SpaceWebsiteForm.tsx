@@ -116,7 +116,6 @@ export function SpaceWebsiteForm({
             />
             <RadioGroupItem
               value="website"
-              iconPosition="center"
               className="gap-2 text-sm"
               label="Follow all the links within the domain"
               id="all-pages"

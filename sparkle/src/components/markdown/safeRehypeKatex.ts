@@ -15,7 +15,7 @@ import type { Transformer } from "unified";
  */
 type RehypeKatexOptions = Parameters<typeof rehypeKatex>[0];
 
-export const safeRehypeKatex = (
+export const safeRehypeKatex: (options?: RehypeKatexOptions) => Transformer = (
   options: RehypeKatexOptions = {}
 ): Transformer => {
   return (tree, file) => {

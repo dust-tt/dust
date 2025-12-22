@@ -225,7 +225,6 @@ async function handler(
             conversationId: conversation.id,
             skills,
             enabled: true,
-            agentConfigurationId: null, // JIT skills apply to all agents in conversation
           });
 
           if (r.isErr()) {

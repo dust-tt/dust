@@ -245,7 +245,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             onClick={() => fileInputRef.current?.click()}
             className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
             disabled={isUploadingImage}
-            loading={isUploadingImage}
+            isLoading={isUploadingImage}
           />
         </div>
       </div>
@@ -372,7 +372,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             variant="primary"
             type="submit"
             disabled={buttonDisabled}
-            loading={form.formState.isSubmitting}
+            isLoading={form.formState.isSubmitting}
           />
         </div>
       </div>

@@ -8,6 +8,11 @@ import {
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
+import {
+  getInfoPageDescription,
+  getInfoPageTitle,
+} from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
@@ -113,13 +118,19 @@ export function useCapabilitiesPageAndFooter({
             />
           ),
         },
-        leftButton: {
-          label: "Back",
-          variant: "outline",
-          onClick: () => {
-            onModeChange({ pageId: "selection" });
-          },
-        },
+        leftButton: mode.hasPreviousPage
+          ? {
+              label: "Back",
+              variant: "outline",
+              onClick: () => {
+                onModeChange({ pageId: "selection" });
+              },
+            }
+          : {
+              label: "Close",
+              variant: "primary",
+              onClick: onClose,
+            },
       };
     case "skill_space_selection":
       return {
@@ -153,8 +164,41 @@ export function useCapabilitiesPageAndFooter({
             skillSelection.handleSpaceSelectionSave(mode.capability),
         },
       };
+    case "tool_info": {
+      const mcpServerView =
+        toolSelection.allMcpServerViews.find(
+          (view) => view.sId === mode.capability.configuration.mcpServerViewId
+        ) ?? null;
+
+      return {
+        page: {
+          title: getInfoPageTitle(mcpServerView),
+          description: getInfoPageDescription(mcpServerView),
+          id: mode.pageId,
+          content: mcpServerView ? (
+            <MCPServerInfoPage infoMCPServerView={mcpServerView} />
+          ) : (
+            <div className="p-4 text-muted-foreground">
+              Tool information not available.
+            </div>
+          ),
+        },
+        leftButton: mode.hasPreviousPage
+          ? {
+              label: "Back",
+              variant: "outline",
+              onClick: () => {
+                onModeChange({ pageId: "selection" });
+              },
+            }
+          : {
+              label: "Close",
+              variant: "primary",
+              onClick: onClose,
+            },
+      };
+    }
     // TODO(skills 2025-12-18): placeholder to satisfy type for now, will be implemented in future PRs
-    case "tool_info":
     case "tool_configuration":
     case "tool_edit":
       return {

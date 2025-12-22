@@ -8,6 +8,7 @@ import {
 import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useUser } from "@app/lib/swr/user";
@@ -38,44 +39,47 @@ interface TriggerCardProps {
   onEdit?: () => void;
 }
 
+function getWebhookCardDescription({
+  webhookTrigger,
+  webhookSourceView,
+}: {
+  webhookTrigger: AgentBuilderTriggerType & { kind: "webhook" };
+  webhookSourceView: WebhookSourceViewType | undefined;
+}) {
+  return (
+    "Triggered " +
+    (webhookTrigger.configuration.event
+      ? "by " + webhookTrigger.configuration.event + " events"
+      : "") +
+    " on " +
+    (webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name) +
+    "'s source."
+  );
+}
+
 export const TriggerCard = ({
   trigger,
   webhookSourceView,
   onRemove,
   onEdit,
 }: TriggerCardProps) => {
+  const { isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
   const isEditor = trigger.editor === user?.id;
   const description = useMemo(() => {
-    try {
-      if (
-        trigger.kind === "schedule" &&
-        trigger.configuration &&
-        "cron" in trigger.configuration
-      ) {
+    if (trigger.kind === "schedule") {
+      try {
         return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
-      } else if (trigger.kind === "webhook") {
-        return (
-          "Triggered " +
-          (trigger.configuration.event
-            ? "by " + trigger.configuration.event + " events"
-            : "") +
-          " on " +
-          (webhookSourceView?.customName ??
-            webhookSourceView?.webhookSource.name) +
-          "'s source."
-        );
+      } catch {
+        return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      return "";
+    } else if (trigger.kind === "webhook") {
+      return getWebhookCardDescription({
+        webhookTrigger: trigger,
+        webhookSourceView,
+      });
     }
-  }, [
-    trigger.kind,
-    trigger.configuration,
-    webhookSourceView?.customName,
-    webhookSourceView?.webhookSource.name,
-  ]);
+  }, [trigger, webhookSourceView]);
 
   return (
     <Card
@@ -84,11 +88,11 @@ export const TriggerCard = ({
       onClick={onEdit}
       disabled={!trigger.enabled}
       action={
-        isEditor && (
+        (isEditor || isAdmin) && (
           <CardActionButton
             size="mini"
             icon={XMarkIcon}
-            onClick={(e: Event) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               onRemove();
             }}

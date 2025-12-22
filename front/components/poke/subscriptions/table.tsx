@@ -411,7 +411,7 @@ function UpgradeDowngradeModal({
                 onClick={onDowngrade}
                 disabled={
                   subscription.plan.code === FREE_NO_PLAN_CODE ||
-                  programmaticUsageConfig?.paygCapMicroUsd
+                  !!programmaticUsageConfig?.paygCapMicroUsd
                 }
                 label="Downgrade to NO PLAN"
               />
