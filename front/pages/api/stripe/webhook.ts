@@ -25,6 +25,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { PlanModel } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -254,7 +255,7 @@ async function handler(
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                 },
-                plan,
+                renderPlanFromModel({ plan }),
                 t
               );
             });
