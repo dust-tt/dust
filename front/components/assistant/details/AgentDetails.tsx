@@ -35,7 +35,6 @@ import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTr
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AgentConfigurationScope,
   UserType,
@@ -86,10 +85,6 @@ export function AgentDetails({
   owner,
   user,
 }: AgentDetailsProps) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   const [selectedTab, setSelectedTab] = useState<
     | "info"
     | "insights"
@@ -120,9 +115,7 @@ export function AgentDetails({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = agentId != null && !isGlobalAgent;
   const showTriggersTabs =
-    agentId != null &&
-    !isGlobalAgent &&
-    featureFlags.includes("hootl_subscriptions");
+    agentId != null && agentId === GLOBAL_AGENTS_SID.DUST;
   const showAgentMemory = !!agentConfiguration?.actions.find(
     isMCPConfigurationForAgentMemory
   );

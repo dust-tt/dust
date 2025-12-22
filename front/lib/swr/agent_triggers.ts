@@ -78,6 +78,50 @@ export function useUserTriggers({
   };
 }
 
+export function useDeleteTrigger({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const deleteTrigger = useCallback(
+    async (triggerId: string): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ triggerIds: [triggerId] }),
+          }
+        );
+
+        if (response.ok) {
+          void mutateTriggers();
+          return true;
+        } else {
+          return false;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, mutateTriggers]
+  );
+
+  return deleteTrigger;
+}
+
 export function useTextAsCronRule({
   workspace,
 }: {
