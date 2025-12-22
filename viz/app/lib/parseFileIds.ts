@@ -39,6 +39,13 @@ export function extractFileIds(code: string): string[] {
           fileIds.add(path.node.value.value);
         }
       },
+      // Extract all fil_xx patterns from string literals.
+      StringLiteral(path) {
+        const value = path.node.value;
+        if (typeof value === "string" && /^fil_[a-zA-Z0-9]{10,}$/.test(value)) {
+          fileIds.add(value);
+        }
+      },
     });
   } catch (err) {
     // If parsing fails, return empty (fail gracefully).
