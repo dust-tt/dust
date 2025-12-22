@@ -269,12 +269,15 @@ async function collectToolUsageFromMessage(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfigurationResource.fetchBySIds(
-    auth,
-    uniqueConfigIds
-  );
+  const serverConfigs =
+    await AgentMCPServerConfigurationResource.fetchByStringIds(
+      auth,
+      uniqueConfigIds
+    );
 
-  const configMap = new Map(serverConfigs.map((cfg) => [cfg.sId, cfg.sId]));
+  const configIdToSId = new Map(
+    serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
+  );
 
   return actionResources.map((actionResource) => {
     return {
@@ -287,7 +290,7 @@ async function collectToolUsageFromMessage(
         actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         actionResource.functionCallName,
       mcp_server_configuration_sid:
-        configMap.get(actionResource.mcpServerConfigurationId) ?? undefined,
+        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
     };
@@ -328,12 +331,10 @@ async function extractRetrievalOutputs(
     new Set(searchActions.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfigurationResource.fetchBySIds(
-    auth,
-    configIds
-  );
+  const serverConfigs =
+    await AgentMCPServerConfigurationResource.fetchByStringIds(auth, configIds);
 
-  const configMap = new Map(serverConfigs.map((c) => [c.sId, c]));
+  const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
 
   const dataSourceViewIds = new Set<string>();
   for (const action of searchActions) {

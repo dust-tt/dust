@@ -25,17 +25,21 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
     super(model, blob);
   }
 
-  static async fetchBySIds(
+  static async fetchByStringIds(
     auth: Authenticator,
-    sIds: string[]
+    stringIds: string[]
   ): Promise<AgentMCPServerConfigurationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const numericIds = stringIds
+      .map((id) => parseInt(id, 10))
+      .filter((id) => !isNaN(id));
 
     const configs = await this.model.findAll({
       where: {
         workspaceId,
-        sId: {
-          [Op.in]: sIds,
+        id: {
+          [Op.in]: numericIds,
         },
       },
     });
