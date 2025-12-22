@@ -3,6 +3,7 @@ import {
   MessageModel,
   MessageReactionModel,
 } from "@app/lib/models/agent/conversation";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   ConversationError,
   ConversationMessageReactions,
@@ -36,6 +37,14 @@ export async function getMessageReactions(
         model: MessageReactionModel,
         as: "reactions",
         required: false,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            attributes: ["sId", "firstName", "lastName", "username"],
+            required: true,
+          },
+        ],
       },
     ],
   });
@@ -43,8 +52,7 @@ export async function getMessageReactions(
   return new Ok(
     messages.map((m) => ({
       messageId: m.sId,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      reactions: _renderMessageReactions(m.reactions || []),
+      reactions: _renderMessageReactions(m.reactions ?? []),
     }))
   );
 }
@@ -54,25 +62,23 @@ function _renderMessageReactions(
 ): MessageReactionType[] {
   return reactions.reduce<MessageReactionType[]>(
     (acc: MessageReactionType[], r: MessageReactionModel) => {
+      if (!r.user) {
+        return acc;
+      }
+
+      const userData = {
+        userId: r.user.sId,
+        username: r.user.username,
+        fullName: r.user.firstName + " " + r.user.lastName,
+      };
+
       const reaction = acc.find((r2) => r2.emoji === r.reaction);
       if (reaction) {
-        reaction.users.push({
-          userId: r.userId,
-          username: r.userContextUsername,
-          fullName: r.userContextFullName,
-        });
+        reaction.users.push(userData);
       } else {
-        acc.push({
-          emoji: r.reaction,
-          users: [
-            {
-              userId: r.userId,
-              username: r.userContextUsername,
-              fullName: r.userContextFullName,
-            },
-          ],
-        });
+        acc.push({ emoji: r.reaction, users: [userData] });
       }
+
       return acc;
     },
     []

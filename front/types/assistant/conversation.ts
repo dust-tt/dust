@@ -28,7 +28,7 @@ export type ConversationMessageReactions = {
 export type MessageReactionType = {
   emoji: string;
   users: {
-    userId: ModelId | null;
+    userId: string | null;
     username: string;
     fullName: string | null;
   }[];
