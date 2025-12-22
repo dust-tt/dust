@@ -10,10 +10,6 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import {
-  AgentMCPActionOutputItemModel,
-  AgentMCPServerConfigurationModel,
-} from "@app/lib/models/agent/actions/mcp";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -22,6 +18,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -268,22 +265,16 @@ async function collectToolUsageFromMessage(
   auth: Authenticator,
   actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
-    where: {
-      workspaceId,
-      id: uniqueConfigIds,
-    },
-  });
+  const serverConfigs = await AgentMCPServerConfigurationResource.fetchBySIds(
+    auth,
+    uniqueConfigIds
+  );
 
-  const configIdToSId = new Map<string, string>();
-  for (const cfg of serverConfigs) {
-    configIdToSId.set(cfg.id.toString(), cfg.sId);
-  }
+  const configMap = new Map(serverConfigs.map((cfg) => [cfg.sId, cfg.sId]));
 
   return actionResources.map((actionResource) => {
     return {
@@ -296,7 +287,7 @@ async function collectToolUsageFromMessage(
         actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         actionResource.functionCallName,
       mcp_server_configuration_sid:
-        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
+        configMap.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
     };
@@ -327,38 +318,22 @@ async function extractRetrievalOutputs(
     return [];
   }
 
-  const outputItems = await AgentMCPActionOutputItemModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      agentMCPActionId: searchActions.map((a) => a.id),
-    },
-  });
-
-  const outputItemsByActionId = new Map<
-    number,
-    AgentMCPActionOutputItemModel[]
-  >();
-  for (const item of outputItems) {
-    const existing = outputItemsByActionId.get(item.agentMCPActionId);
-    if (existing) {
-      existing.push(item);
-    } else {
-      outputItemsByActionId.set(item.agentMCPActionId, [item]);
-    }
-  }
+  const outputItemsByActionId =
+    await AgentMCPActionResource.fetchOutputItemsByActionIds(
+      auth,
+      searchActions.map((a) => a.id)
+    );
 
   const configIds = Array.from(
     new Set(searchActions.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      id: configIds,
-    },
-  });
+  const serverConfigs = await AgentMCPServerConfigurationResource.fetchBySIds(
+    auth,
+    configIds
+  );
 
-  const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
+  const configMap = new Map(serverConfigs.map((c) => [c.sId, c]));
 
   const dataSourceViewIds = new Set<string>();
   for (const action of searchActions) {
