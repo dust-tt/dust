@@ -747,7 +747,7 @@ export function useAgentMessageSkills({
 
   return {
     skills: data?.skills ?? emptyArray(),
-    isSkillsLoading: isLoading,
+    isSkillsLoading: !options?.disabled && isLoading,
     isSkillsError: error,
   };
 }
