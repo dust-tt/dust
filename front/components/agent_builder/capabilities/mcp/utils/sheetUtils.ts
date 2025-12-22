@@ -1,3 +1,4 @@
+import type { RegularButtonProps } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
@@ -12,7 +13,6 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { pluralize } from "@app/types";
-import { RegularButtonProps } from "@dust-tt/sparkle";
 
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,
