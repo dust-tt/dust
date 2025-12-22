@@ -62,7 +62,6 @@ import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
-  SKILL_MANAGEMENT_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
@@ -286,7 +285,7 @@ export function MCPActionDetails({
   }
 
   if (
-    internalMCPServerName === SKILL_MANAGEMENT_SERVER_NAME &&
+    internalMCPServerName === "skill_management" &&
     toolName === ENABLE_SKILL_TOOL_NAME
   ) {
     return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;

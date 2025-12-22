@@ -58,7 +58,6 @@ export const SEARCH_SERVER_NAME = "search";
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
-export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
@@ -123,7 +122,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
-  SKILL_MANAGEMENT_SERVER_NAME,
+  "skill_management",
   "schedules_management",
 ] as const;
 
@@ -1675,7 +1674,7 @@ export const INTERNAL_MCP_SERVERS = {
       developerSecretSelection: "required",
     },
   },
-  [SKILL_MANAGEMENT_SERVER_NAME]: {
+  skill_management: {
     id: 1019,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1687,7 +1686,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: SKILL_MANAGEMENT_SERVER_NAME,
+      name: "skill_management",
       version: "1.0.0",
       description: "",
       // TODO(skill): Add proper skill icon here once in ActionsIcons
