@@ -170,27 +170,12 @@ async function handler(
     ) as [string, string][] // Type assertion to satisfy TypeScript, we've already filtered to strings
   );
 
-  const storeResult = await storePayloadInGCS(auth, {
+  await storePayloadInGCS(auth, {
     webhookSource,
     webhookRequest,
     headers: filteredHeaders,
     body,
   });
-
-  if (storeResult.isErr()) {
-    statsDClient.increment("webhook_error.count", 1, [
-      `provider:${provider}`,
-      `workspace_id:${workspace.sId}`,
-    ]);
-
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "webhook_storage_error",
-        message: storeResult.error.message,
-      },
-    });
-  }
 
   const result = await processWebhookRequest(auth, {
     webhookSource: webhookSource,

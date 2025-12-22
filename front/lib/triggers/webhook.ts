@@ -624,7 +624,7 @@ export async function storePayloadInGCS(
     headers: Record<string, string>;
     body: Record<string, unknown>;
   }
-): Promise<Result<void, Error>> {
+): Promise<void> {
   const content = JSON.stringify({
     headers,
     body,
@@ -646,8 +646,8 @@ export async function storePayloadInGCS(
       filePath: gcsPath,
     });
   } catch (error: unknown) {
-    const normalizedError = normalizeError(error);
-    await webhookRequest.markAsFailed(normalizedError.message);
+    // Log the error, but do not throw, as we want to continue processing the webhook.
+    // The webhook request will be marked as failed later in the processing if needed.
     logger.error(
       {
         webhookRequestId: webhookRequest.id,
@@ -656,10 +656,9 @@ export async function storePayloadInGCS(
       },
       "Failed to store webhook request"
     );
-    return new Err(normalizedError);
   }
 
-  return new Ok(undefined);
+  return;
 }
 
 export async function getWebhookRequestPayloadFromGCS(
