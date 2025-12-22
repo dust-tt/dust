@@ -20,6 +20,7 @@ import {
 import { MCPExtractActionDetails } from "@app/ui/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/ui/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/ui/components/actions/mcp/details/MCPReasoningActionDetails";
+import { MCPSkillEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/ui/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/ui/components/actions/mcp/details/MCPToolOutputDetails";
 import type {
@@ -59,6 +60,7 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+export const ENABLE_SKILL_TOOL_NAME = "enable_skill";
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
@@ -193,6 +195,13 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === CONVERSATION_CAT_FILE_ACTION_NAME) {
       return <MCPConversationCatFileDetails {...props} />;
     }
+  }
+
+  if (
+    internalMCPServerName === "skill_management" &&
+    toolName === ENABLE_SKILL_TOOL_NAME
+  ) {
+    return <MCPSkillEnableActionDetails {...props} />;
   }
 
   return <GenericActionDetails {...props} />;
