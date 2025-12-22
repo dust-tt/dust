@@ -437,11 +437,19 @@ export const connectToMCPServer = async (
 };
 
 // Try to connect via streamableHttpTransport first, and if that fails, fall back to sseTransport.
+// If the URL path ends with /sse, skip HTTP streaming and use SSE directly.
 async function connectToRemoteMCPServer(
   mcpClient: Client,
   url: URL,
   req: SSEClientTransportOptions | StreamableHTTPClientTransportOptions
 ) {
+  // If the URL path ends with /sse, use SSE transport directly.
+  if (url.pathname.endsWith("/sse")) {
+    const sseTransport = new SSEClientTransport(url, req);
+    await mcpClient.connect(sseTransport);
+    return;
+  }
+
   try {
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
     await mcpClient.connect(streamableHttpTransport);
