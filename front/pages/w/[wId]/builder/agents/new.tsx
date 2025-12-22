@@ -36,6 +36,7 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
+  isAdmin: boolean;
   subscription: SubscriptionType;
   plan: PlanType;
   agentConfiguration:
@@ -95,6 +96,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const user = auth.getNonNullableUser().toJSON();
+  const isAdmin = auth.isAdmin();
 
   return {
     props: {
@@ -107,6 +109,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       templateId,
       duplicateAgentId: duplicate,
       user,
+      isAdmin,
     },
   };
 });
@@ -115,6 +118,7 @@ export default function CreateAgent({
   agentConfiguration,
   owner,
   user,
+  isAdmin,
   templateId,
   duplicateAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -132,6 +136,7 @@ export default function CreateAgent({
     <AgentBuilderProvider
       owner={owner}
       user={user}
+      isAdmin={isAdmin}
       assistantTemplate={assistantTemplate}
     >
       <Head>

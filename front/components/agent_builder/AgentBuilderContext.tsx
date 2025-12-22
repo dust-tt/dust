@@ -12,6 +12,7 @@ import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
 type AgentBuilderContextType = {
   owner: WorkspaceType;
   user: UserType;
+  isAdmin: boolean;
   assistantTemplate: FetchAgentTemplateResponse | null;
   presetActionToAdd: TemplateActionPreset | null;
   setPresetActionToAdd: (preset: TemplateActionPreset | null) => void;
@@ -24,6 +25,7 @@ export const AgentBuilderContext = createContext<
 interface AgentBuilderProviderProps {
   owner: WorkspaceType;
   user: UserType;
+  isAdmin: boolean;
   assistantTemplate: FetchAgentTemplateResponse | null;
   children: ReactNode;
 }
@@ -31,6 +33,7 @@ interface AgentBuilderProviderProps {
 export function AgentBuilderProvider({
   owner,
   user,
+  isAdmin,
   assistantTemplate,
   children,
 }: AgentBuilderProviderProps) {
@@ -41,11 +44,12 @@ export function AgentBuilderProvider({
     () => ({
       owner,
       user,
+      isAdmin,
       assistantTemplate,
       presetActionToAdd,
       setPresetActionToAdd,
     }),
-    [owner, user, assistantTemplate, presetActionToAdd]
+    [owner, user, isAdmin, assistantTemplate, presetActionToAdd]
   );
 
   return (
