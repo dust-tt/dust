@@ -1,4 +1,3 @@
-import compact from "lodash/compact";
 import uniq from "lodash/uniq";
 import type { IncludeOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -218,7 +217,7 @@ export async function fetchSkillMCPServerConfigurations(
       skill.mcpServerConfigurations.map((config) => config.mcpServerViewId)
     );
 
-  const uniqMcpServerViewIds = compact(uniq(mcpServerViewIds));
+  const uniqMcpServerViewIds = removeNulls(uniq(mcpServerViewIds));
 
   if (uniqMcpServerViewIds.length === 0) {
     return [];
