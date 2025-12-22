@@ -18,10 +18,12 @@ import {
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 
 // Sorting priority for credit types: free -> committed -> payg
+// Note: excess credits should never be displayed in the UI
 const TYPE_SORT_ORDER: Record<CreditType, number> = {
   free: 1,
   committed: 2,
   payg: 3,
+  excess: 4,
 };
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {

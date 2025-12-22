@@ -34,10 +34,14 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       },
       cell: ({ row }) => {
         const { type } = row.original;
-        const colorMap: Record<CreditType, "blue" | "primary" | "green"> = {
+        const colorMap: Record<
+          CreditType,
+          "blue" | "primary" | "green" | "warning"
+        > = {
           free: "blue",
           payg: "primary",
           committed: "green",
+          excess: "warning",
         };
         return (
           <Chip color={colorMap[type] ?? "highlight"} size="xs">

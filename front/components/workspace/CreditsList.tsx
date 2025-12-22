@@ -22,10 +22,12 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 // Sorting priority for credit types: free -> committed -> payg
+// Note: excess credits should never be displayed in the UI
 const TYPE_SORT_ORDER: Record<CreditType, number> = {
   free: 1,
   committed: 2,
   payg: 3,
+  excess: 4,
 };
 
 // Display labels for credit types
@@ -33,13 +35,18 @@ const TYPE_LABELS: Record<CreditType, string> = {
   free: "Free",
   committed: "Committed",
   payg: "Pay-as-you-go",
+  excess: "Excess",
 };
 
 // Chip colors for credit types
-const TYPE_COLORS: Record<CreditType, "green" | "blue" | "primary"> = {
+const TYPE_COLORS: Record<
+  CreditType,
+  "green" | "blue" | "primary" | "warning"
+> = {
   free: "green",
   committed: "blue",
   payg: "primary",
+  excess: "warning",
 };
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {

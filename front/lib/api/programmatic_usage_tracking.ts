@@ -221,18 +221,30 @@ export async function decreaseProgrammaticCreditsV2(
   while (remainingAmountMicroUsd > 0) {
     const credit = sortedCredits.shift();
     if (!credit) {
-      // A simple warn suffices; tokens have already been consumed.
+      // Create an excess credit to track over-consumption.
+      // This ensures that sum(consumed credits) = total usage.
+      const now = new Date();
+      await CreditResource.makeNew(auth, {
+        type: "excess",
+        initialAmountMicroUsd: remainingAmountMicroUsd,
+        consumedAmountMicroUsd: remainingAmountMicroUsd,
+        startDate: now,
+        expirationDate: now,
+      });
+
       localLogger.warn(
         {
           initialAmountMicroUsd: amountMicroUsd,
           remainingAmountMicroUsd,
         },
-        "[Programmatic Usage Tracking] No more credits available for this message cost."
+        "[Programmatic Usage Tracking] No more credits available, created excess credit."
       );
-      statsDClient.increment("credits.consumption.blocked", 1, [
+      statsDClient.increment("credits.consumption.excess", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
+
+      consumedAmountMicroUsd += remainingAmountMicroUsd;
       break;
     }
     const amountToConsumeMicroUsd = Math.min(
