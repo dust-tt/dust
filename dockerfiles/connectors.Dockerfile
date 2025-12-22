@@ -18,8 +18,8 @@ COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
 COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
 COPY /package*.json /
-COPY /sdks/js/package*.json /sdks/js
-COPY /connectors/package*.json /connectors
+COPY /sdks/js/package*.json /sdks/js/
+COPY /connectors/package*.json /connectors/
 RUN npm ci
 
 WORKDIR /sdks/js

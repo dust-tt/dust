@@ -9,9 +9,10 @@ ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
 COPY /package*.json /
-COPY /sdks/js/package*.json /sdks/js
-COPY /sparkle/package*.json /sparkle
-COPY /front/package*.json /front
+COPY /sdks/js/package*.json /sdks/js/
+COPY /sparkle/package*.json /sparkle/
+COPY /front/package*.json /front/
+
 RUN npm ci
 
 # Build SDK (shared by both front-nextjs and workers)
