@@ -7,11 +7,11 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "./activities";
-import { runScrubFreeEndedWorkspacesSignal } from "./signals";
 import {
   DATA_RETENTION_PERIOD_IN_DAYS,
   LAST_EMAIL_BEFORE_SCRUB_IN_DAYS,
 } from "./config";
+import { runScrubFreeEndedWorkspacesSignal } from "./signals";
 
 const { shouldStillScrubData } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minutes",
