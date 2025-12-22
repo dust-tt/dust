@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { startObservation } from "@langfuse/tracing";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { randomUUID } from "crypto";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -11,13 +10,12 @@ import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
-import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
+import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
 import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   fileSizeToHumanReadable,
@@ -330,7 +328,6 @@ function createServer(
           return rateLimitResult;
         }
 
-        const traceId = createLLMTraceId(randomUUID());
         const generation = startObservation(
           "image-generation",
           {
@@ -347,9 +344,6 @@ function createServer(
             `operationType:image_generation`,
             `tool:generate_image`,
           ],
-          metadata: {
-            dustTraceId: traceId,
-          },
           userId: workspace.sId,
         });
 
@@ -418,7 +412,7 @@ function createServer(
             level: "ERROR",
             statusMessage: "Error generating image",
             metadata: {
-              error: String(error),
+              error: normalizeError(error),
             },
           });
           generation.end();
@@ -595,7 +589,6 @@ function createServer(
 
         const imageBase64 = buffer.toString("base64");
 
-        const traceId = createLLMTraceId(randomUUID());
         const generation = startObservation(
           "image-editing",
           {
@@ -617,13 +610,8 @@ function createServer(
         );
 
         generation.updateTrace({
-          tags: [
-            `workspaceId:${workspace.sId}`,
-            `operationType:image_editing`,
-            `tool:edit_image`,
-          ],
+          tags: [`workspaceId:${workspace.sId}`, `operationType:image_editing`],
           metadata: {
-            dustTraceId: traceId,
             fileId: inputImageFileId,
           },
           userId: workspace.sId,
@@ -704,7 +692,7 @@ function createServer(
             level: "ERROR",
             statusMessage: "Error editing image",
             metadata: {
-              error: String(error),
+              error: normalizeError(error),
             },
           });
           generation.end();

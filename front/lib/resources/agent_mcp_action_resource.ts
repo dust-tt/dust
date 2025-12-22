@@ -625,42 +625,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async fetchOutputItemsByActionIds(
-    auth: Authenticator,
-    actionIds: ModelId[]
-  ): Promise<Map<ModelId, AgentMCPActionOutputItemModel[]>> {
-    if (actionIds.length === 0) {
-      return new Map();
-    }
-
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const outputItems = await AgentMCPActionOutputItemModel.findAll({
-      where: {
-        workspaceId,
-        agentMCPActionId: {
-          [Op.in]: actionIds,
-        },
-      },
-    });
-
-    const outputItemsByActionId = new Map<
-      ModelId,
-      AgentMCPActionOutputItemModel[]
-    >();
-
-    for (const item of outputItems) {
-      const existing = outputItemsByActionId.get(item.agentMCPActionId);
-      if (existing) {
-        existing.push(item);
-      } else {
-        outputItemsByActionId.set(item.agentMCPActionId, [item]);
-      }
-    }
-
-    return outputItemsByActionId;
-  }
-
   toJSON(): AgentMCPActionType {
     assert(
       this.stepContent.value.type === "function_call",
