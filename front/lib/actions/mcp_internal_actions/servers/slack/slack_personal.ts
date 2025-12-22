@@ -15,6 +15,7 @@ import {
   executeSearchChannels,
   getSlackClient,
   isSlackMissingScope,
+  MAX_CHANNEL_SEARCH_RESULTS,
   resolveChannelDisplayName,
   resolveChannelId,
   resolveUserDisplayName,
@@ -847,17 +848,20 @@ async function createServer(
 
   server.tool(
     "search_channels",
-    "Search for Slack channels using two strategies. Returns JSON.\n\n" +
-      "1. EXACT QUERY (lookup_type='exact'): ONLY use when you have a Slack channel ID (e.g., 'C01234ABCD'). " +
-      "This does NOT work with channel names - only with channel IDs. Returns full channel object as JSON.\n\n" +
-      "2. SEARCH QUERY (lookup_type='search'): Use for channel names or vague queries. " +
-      "Searches across channel names, topics, and purpose descriptions. Returns top 10 matches as JSON array.\n\n" +
-      "SCOPE BEHAVIOR (only applies to lookup_type='search'):\n" +
-      "IMPORTANT: ALWAYS start with scope='joined' (the default). This searches the user's joined channels (public + private) first, " +
-      "then automatically falls back to all public workspace channels if no results are found.\n\n" +
-      "Only use scope='all' in these two cases:\n" +
-      "1. The user explicitly asks to search non-joined or public workspace channels\n" +
-      "2. You already tried scope='joined' and got no results (though the fallback handles this automatically)\n\n",
+    `Search for Slack channels using two strategies. Returns JSON.
+
+1. EXACT QUERY (lookup_type='exact'): ONLY use when you have a Slack channel ID (e.g., 'C01234ABCD'). This does NOT work with channel names - only with channel IDs. Returns full channel object as JSON.
+
+2. SEARCH QUERY (lookup_type='search'): Use for channel names or vague queries. Searches across channel names, topics, and purpose descriptions. Returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches as JSON array.
+
+SCOPE BEHAVIOR (only applies to lookup_type='search'):
+IMPORTANT: ALWAYS start with scope='joined' (the default). This searches the user's joined channels (public + private) first, then automatically falls back to all public workspace channels if no results are found.
+
+Only use scope='all' in these two cases:
+1. The user explicitly asks to search non-joined or public workspace channels
+2. You already tried scope='joined' and got no results (though the fallback handles this automatically)
+
+`,
     {
       query: z
         .string()

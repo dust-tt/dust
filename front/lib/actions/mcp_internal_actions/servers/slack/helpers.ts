@@ -19,6 +19,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 // Constants for Slack API limits and pagination.
 export const SLACK_API_PAGE_SIZE = 100;
 export const MAX_CHANNELS_LIMIT = 500;
+export const MAX_CHANNEL_SEARCH_RESULTS = 20;
 export const MAX_THREAD_MESSAGES = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
@@ -513,7 +514,11 @@ export async function executeSearchChannels(
         scope: "joined",
       });
 
-      const matchedInJoined = filterChannels(joinedChannels, query, 10);
+      const matchedInJoined = filterChannels(
+        joinedChannels,
+        query,
+        MAX_CHANNEL_SEARCH_RESULTS
+      );
 
       if (matchedInJoined.length > 0) {
         return new Ok([
@@ -537,7 +542,11 @@ export async function executeSearchChannels(
         scope: "public",
       });
 
-      const matchedInAll = filterChannels(allChannels, query, 10);
+      const matchedInAll = filterChannels(
+        allChannels,
+        query,
+        MAX_CHANNEL_SEARCH_RESULTS
+      );
 
       return new Ok([
         {
@@ -564,7 +573,11 @@ export async function executeSearchChannels(
       scope: "public",
     });
 
-    const matched = filterChannels(allChannels, query, 10);
+    const matched = filterChannels(
+      allChannels,
+      query,
+      MAX_CHANNEL_SEARCH_RESULTS
+    );
 
     return new Ok([
       {
