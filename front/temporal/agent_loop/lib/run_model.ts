@@ -26,6 +26,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
+import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
@@ -259,7 +260,12 @@ export async function runModelActivity(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
-  const prompt = await constructPromptMultiActions(auth, {
+  const enabledWithExtendedSkills = await augmentSkillsWithExtendedSkills(
+    auth,
+    enabledSkills
+  );
+
+  const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
     fallbackPrompt,
@@ -269,7 +275,7 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
-    enabledSkills,
+    enabledSkills: enabledWithExtendedSkills,
     equippedSkills,
     featureFlags,
   });

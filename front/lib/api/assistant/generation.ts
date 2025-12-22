@@ -18,7 +18,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -77,7 +77,7 @@ function constructContextSection({
   return context;
 }
 
-async function constructToolsSection({
+function constructToolsSection({
   hasAvailableActions,
   model,
   agentConfiguration,
@@ -87,7 +87,7 @@ async function constructToolsSection({
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
-}): Promise<string> {
+}): string {
   let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
@@ -150,18 +150,10 @@ async function constructToolsSection({
 /**
  * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
  */
-async function getEnabledSkillInstructions(
-  skill: SkillResource,
-  auth: Authenticator
-): Promise<string> {
-  const { name, instructions, extendedSkillId } = skill;
-
-  if (!extendedSkillId) {
-    return `<${name}>\n${instructions}\n</${name}>`;
-  }
-
-  // If this skill extends a global skill, fetch and include its instructions
-  const extendedSkill = await SkillResource.fetchById(auth, extendedSkillId);
+function getEnabledSkillInstructions(
+  skill: SkillResource & { extendedSkill: SkillResource | null }
+): string {
+  const { name, instructions, extendedSkill } = skill;
 
   if (!extendedSkill) {
     return `<${name}>\n${instructions}\n</${name}>`;
@@ -178,17 +170,15 @@ async function getEnabledSkillInstructions(
 }
 
 // TODO(skills): add detailed tools per skill
-async function constructSkillsSection({
+function constructSkillsSection({
   enabledSkills,
   equippedSkills,
   featureFlags,
-  auth,
 }: {
-  enabledSkills: SkillResource[];
+  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
   featureFlags: WhitelistableFeature[];
-  auth: Authenticator;
-}): Promise<string> {
+}): string {
   if (!featureFlags.includes("skills")) {
     return "";
   }
@@ -206,8 +196,8 @@ async function constructSkillsSection({
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
 
-    const skillInstructions = await Promise.all(
-      enabledSkills.map((skill) => getEnabledSkillInstructions(skill, auth))
+    const skillInstructions = enabledSkills.map((skill) =>
+      getEnabledSkillInstructions(skill)
     );
 
     skillsSection += skillInstructions.join("\n");
@@ -367,7 +357,7 @@ function constructInstructionsSection({
  * doesn't need that replacement, and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
-export async function constructPromptMultiActions(
+export function constructPromptMultiActions(
   auth: Authenticator,
   {
     userMessage,
@@ -392,28 +382,12 @@ export async function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    enabledSkills: SkillResource[];
+    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     featureFlags: WhitelistableFeature[];
   }
 ) {
   const owner = auth.workspace();
-
-  // Construct each section of the prompt individually, then concatenate them.
-  const [toolsSection, skillsSection] = await Promise.all([
-    constructToolsSection({
-      hasAvailableActions,
-      model,
-      agentConfiguration,
-      serverToolsAndInstructions,
-    }),
-    constructSkillsSection({
-      enabledSkills,
-      equippedSkills,
-      featureFlags,
-      auth,
-    }),
-  ]);
 
   return [
     constructContextSection({
@@ -424,8 +398,17 @@ export async function constructPromptMultiActions(
       owner,
       errorContext,
     }),
-    toolsSection,
-    skillsSection,
+    constructToolsSection({
+      hasAvailableActions,
+      model,
+      agentConfiguration,
+      serverToolsAndInstructions,
+    }),
+    constructSkillsSection({
+      enabledSkills,
+      equippedSkills,
+      featureFlags,
+    }),
     constructAttachmentsSection(),
     constructPastedContentSection(),
     constructGuidelinesSection({
