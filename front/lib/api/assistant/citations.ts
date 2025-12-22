@@ -57,7 +57,7 @@ export function getCitationsFromActions(
     AgentMCPActionWithOutputType,
     // TODO(2025-09-22 aubin): add proper typing for the statuses in the SDK (not really needed but
     //  nice to have IMHO).
-    "internalMCPServerName" | "status"
+    "internalMCPServerName" | "toolName" | "status"
   >[]
 ): Record<string, CitationType> {
   const searchResultsWithDocs = removeNulls(

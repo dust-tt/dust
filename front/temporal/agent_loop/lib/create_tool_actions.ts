@@ -208,8 +208,6 @@ async function createActionForTool(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      // TODO: cleanup the type field from the public API users and remove everywhere.
-      // TODO: move the output field to a separate field.
       action: { ...action.toJSON(), output: null, generatedFiles: [] },
       runIds,
     },

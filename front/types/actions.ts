@@ -12,9 +12,8 @@ export type AgentMCPActionType = {
 
   agentMessageId: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
+  toolName: string;
   mcpServerId: string | null;
-  // TODO(MCPActionDetails): prevent exposing the function call name
-  //  currently used in the extension to guess the tool name but quite brittle.
   functionCallName: string;
   functionCallId: string;
 
