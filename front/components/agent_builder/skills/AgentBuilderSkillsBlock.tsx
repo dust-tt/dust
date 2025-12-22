@@ -19,8 +19,12 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
-import type { CapabilitiesSheetMode } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type {
+  CapabilitiesSheetMode,
+  SelectedTool,
+} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
+import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
@@ -30,6 +34,7 @@ import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getSkillIcon } from "@app/lib/skill";
 import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
@@ -112,17 +117,18 @@ export function AgentBuilderSkillsBlock({
   user,
 }: AgentBuilderSkillsBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
+  const sendNotification = useSendNotification();
   const {
     fields: skillFields,
     remove: removeSkill,
-    append: appendSkill,
+    append: appendSkills,
   } = useFieldArray<AgentBuilderFormData, "skills">({
     name: "skills",
   });
   const {
     fields: actionFields,
     remove: removeAction,
-    append: appendAction,
+    append: appendActions,
     update: updateAction,
   } = useFieldArray<AgentBuilderFormData, "actions">({
     name: "actions",
@@ -193,7 +199,7 @@ export function AgentBuilderSkillsBlock({
     } else if (knowledgeAction && knowledgeAction.index !== null) {
       updateAction(knowledgeAction.index, updatedAction);
     } else {
-      appendAction(updatedAction);
+      appendActions(updatedAction);
     }
     setCapabilitiesSheetMode(null);
     setKnowledgeAction(null);
@@ -228,12 +234,43 @@ export function AgentBuilderSkillsBlock({
     }
   };
 
-  const handleSaveSkills = useCallback(
-    (skills: AgentBuilderSkillsType[], newAdditionalSpaces: string[]) => {
-      appendSkill(skills);
-      additionalSpacesField.onChange(newAdditionalSpaces);
+  const handleSaveCapabilities = useCallback(
+    ({
+      skills,
+      additionalSpaces,
+      tools,
+    }: {
+      skills: AgentBuilderSkillsType[];
+      additionalSpaces: string[];
+      tools: SelectedTool[];
+    }) => {
+      // Validate any configured tools before adding
+      for (const tool of tools) {
+        if (tool.type === "MCP" && tool.configuredAction) {
+          const validation = validateMCPActionConfiguration(
+            tool.configuredAction,
+            tool.view
+          );
+
+          if (!validation.isValid) {
+            sendNotification({
+              title: "Configuration validation failed",
+              description: validation.errorMessage!,
+              type: "error",
+            });
+            return;
+          }
+        }
+      }
+      const validatedActions = tools.map(
+        (tool) => tool.configuredAction ?? getDefaultMCPAction(tool.view)
+      );
+
+      appendSkills(skills);
+      additionalSpacesField.onChange(additionalSpaces);
+      appendActions(validatedActions);
     },
-    [appendSkill, additionalSpacesField]
+    [appendSkills, additionalSpacesField, appendActions, sendNotification]
   );
 
   const handleClickKnowledge = () => {
@@ -339,13 +376,14 @@ export function AgentBuilderSkillsBlock({
       <CapabilitiesSheet
         mode={capabillitiesSheetMode}
         onClose={handleCloseSheet}
-        onSave={handleSaveSkills}
+        onSave={handleSaveCapabilities}
         onModeChange={setCapabilitiesSheetMode}
         owner={owner}
         user={user}
         initialAdditionalSpaces={additionalSpacesField.value}
         alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}
+        selectedActions={actionFields}
       />
     </AgentBuilderSectionContainer>
   );

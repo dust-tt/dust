@@ -1,5 +1,3 @@
-import type React from "react";
-
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
@@ -67,19 +65,19 @@ export type CapabilitiesSheetMode =
   | ToolConfigurationMode
   | ToolEditMode;
 
-export type PageContentProps = {
+export type CapabilitiesSheetContentProps = {
   mode: CapabilitiesSheetMode;
   onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   onClose: () => void;
-  handleSave: () => void;
+  onSave: (data: {
+    skills: AgentBuilderSkillsType[];
+    additionalSpaces: string[];
+    tools: SelectedTool[];
+  }) => void;
   owner: WorkspaceType;
   user: UserType;
+  initialAdditionalSpaces: string[];
   alreadyRequestedSpaceIds: Set<string>;
   alreadyAddedSkillIds: Set<string>;
-  localSelectedSkills: AgentBuilderSkillsType[];
-  setLocalSelectedSkills: React.Dispatch<
-    React.SetStateAction<AgentBuilderSkillsType[]>
-  >;
-  localAdditionalSpaces: string[];
-  setLocalAdditionalSpaces: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedActions: BuilderAction[];
 };
