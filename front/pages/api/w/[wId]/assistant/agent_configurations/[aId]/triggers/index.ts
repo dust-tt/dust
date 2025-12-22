@@ -139,7 +139,9 @@ async function handler(
 
       // Batch delete triggers
       for (const triggerId of triggerIds) {
-        const triggerToDelete = userTriggers.find((t) => t.sId === triggerId);
+        const triggerToDelete = auth.isAdmin()
+          ? allTriggers.find((t) => t.sId === triggerId)
+          : userTriggers.find((t) => t.sId === triggerId);
 
         if (!triggerToDelete) {
           // Skip triggers that the user cannot delete
