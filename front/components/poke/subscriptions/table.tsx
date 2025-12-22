@@ -76,22 +76,26 @@ const STATUS_CONFIG: Record<
   paymentFailed: {
     chipColor: "info",
     chipLabel: "Past Due",
-    cardClass: "border-info-200 bg-info-50",
+    cardClass:
+      "border-info-200 bg-info-50 dark:border-info-200-night dark:bg-info-50-night",
   },
   trialing: {
     chipColor: "blue",
     chipLabel: "Trialing",
-    cardClass: "border-blue-200 bg-blue-50",
+    cardClass:
+      "border-blue-200 bg-blue-50 dark:border-blue-200-night dark:bg-blue-50-night",
   },
   ended: {
     chipColor: "warning",
     chipLabel: "Ended",
-    cardClass: "border-warning-200 bg-warning-50",
+    cardClass:
+      "border-warning-200 bg-warning-50 dark:border-warning-200-night dark:bg-warning-50-night",
   },
   active: {
     chipColor: "success",
     chipLabel: "Active",
-    cardClass: "border-success-200 bg-success-50",
+    cardClass:
+      "border-success-200 bg-success-50 dark:border-success-200-night dark:bg-success-50-night",
   },
 };
 
