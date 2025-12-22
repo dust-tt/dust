@@ -9,7 +9,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -35,8 +35,6 @@ const MICRO_USD_PER_USD = 1_000_000;
 /**
  * Computes cost details for Gemini image generation from usage metadata.
  * Returns structured cost information for Langfuse observation updates.
- *
- * Uses MODEL_PRICING directly to avoid type casting issues with non-standard model IDs.
  */
 function computeImageGenerationCostDetails(usageMetadata: {
   promptTokenCount?: number;
@@ -56,22 +54,22 @@ function computeImageGenerationCostDetails(usageMetadata: {
   const outputTokens = usageMetadata.candidatesTokenCount ?? 0;
   const totalTokens = inputTokens + outputTokens;
 
-  const pricing = MODEL_PRICING[GEMINI_2_5_FLASH_IMAGE_MODEL_ID];
-  if (!pricing) {
-    throw new Error(
-      `Pricing not configured for model: ${GEMINI_2_5_FLASH_IMAGE_MODEL_ID}`
-    );
-  }
-
-  // Cost calculation in micro-USD per million tokens
-  const inputCostMicroUsd = inputTokens * pricing.input;
-  const outputCostMicroUsd = outputTokens * pricing.output;
-  const totalCostMicroUsd = inputCostMicroUsd + outputCostMicroUsd;
+  const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+    modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+    promptTokens: inputTokens,
+    completionTokens: outputTokens,
+    cachedTokens: null,
+    cacheCreationTokens: null,
+  });
 
   // Convert micro-USD to USD for Langfuse
   const costUsd = totalCostMicroUsd / MICRO_USD_PER_USD;
-  const inputCostUsd = inputCostMicroUsd / MICRO_USD_PER_USD;
-  const outputCostUsd = outputCostMicroUsd / MICRO_USD_PER_USD;
+
+  // Proportional cost breakdown for input/output
+  const inputCostUsd =
+    totalTokens > 0 ? (costUsd * inputTokens) / totalTokens : 0;
+  const outputCostUsd =
+    totalTokens > 0 ? (costUsd * outputTokens) / totalTokens : 0;
 
   return {
     inputTokens,
