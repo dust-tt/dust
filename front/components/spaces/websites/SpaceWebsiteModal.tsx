@@ -336,7 +336,7 @@ export default function SpaceWebsiteModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: async (event) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await handleSubmit();
             },

@@ -88,7 +88,7 @@ export const TriggerCard = ({
           <CardActionButton
             size="mini"
             icon={XMarkIcon}
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               onRemove();
             }}
