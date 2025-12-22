@@ -608,7 +608,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         workspaceId: workspace.id,
         conversationId,
-        agentConfigurationId: agentConfigurationModelId?.toString() ?? null,
+        agentConfigurationId,
         ...(this.isGlobal
           ? { globalSkillId: this.sId }
           : { customSkillId: this.id }),
