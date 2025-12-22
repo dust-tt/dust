@@ -8,13 +8,13 @@ import {
 import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useUser } from "@app/lib/swr/user";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { useAgentBuilderContext } from "../AgentBuilderContext";
 
 function getTriggerIcon(trigger: AgentBuilderTriggerType) {
   switch (trigger.kind) {
