@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
+import { startObservation } from "@langfuse/tracing";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -8,6 +10,8 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -269,6 +273,29 @@ function createServer(
           return rateLimitResult;
         }
 
+        const traceId = createLLMTraceId(randomUUID());
+        const generation = startObservation(
+          "image-generation",
+          {
+            input: { prompt, size, quality, name },
+            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+            modelParameters: { quality, size, temperature: 0.7 },
+          },
+          { asType: "generation" }
+        );
+
+        generation.updateTrace({
+          tags: [
+            `workspaceId:${workspace.sId}`,
+            `operationType:image_generation`,
+            `tool:generate_image`,
+          ],
+          metadata: {
+            dustTraceId: traceId,
+          },
+          userId: workspace.sId,
+        });
+
         try {
           const gemini = createGeminiClient();
 
@@ -294,12 +321,49 @@ function createServer(
             prompt
           );
           if (validationResult.isErr()) {
+            generation.update({
+              level: "ERROR",
+              statusMessage: validationResult.error.message,
+            });
+            generation.end();
             return validationResult;
           }
 
           const imageParts = validationResult.value;
 
           trackGeminiTokenUsage(response, statsDClient);
+
+          if (response.usageMetadata) {
+            const inputTokens = response.usageMetadata.promptTokenCount ?? 0;
+            const outputTokens =
+              response.usageMetadata.candidatesTokenCount ?? 0;
+            const totalTokens = inputTokens + outputTokens;
+
+            const costMicroUsd = computeTokensCostForUsageInMicroUsd({
+              modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID as any,
+              promptTokens: inputTokens,
+              completionTokens: outputTokens,
+              cachedTokens: null,
+              cacheCreationTokens: null,
+            });
+
+            const costUsd = costMicroUsd / 1_000_000;
+
+            generation.update({
+              usageDetails: {
+                input: inputTokens,
+                output: outputTokens,
+                total: totalTokens,
+              },
+              costDetails: {
+                input: (costUsd * inputTokens) / totalTokens,
+                output: (costUsd * outputTokens) / totalTokens,
+                total: costUsd,
+              },
+            });
+          }
+
+          generation.end();
 
           return formatImageResponse(imageParts, name);
         } catch (error) {
@@ -309,6 +373,14 @@ function createServer(
             },
             "Error generating image."
           );
+          generation.update({
+            level: "ERROR",
+            statusMessage: "Error generating image",
+            metadata: {
+              error: String(error),
+            },
+          });
+          generation.end();
           return new Err(new MCPError("Error generating image."));
         }
       }
@@ -482,6 +554,40 @@ function createServer(
 
         const imageBase64 = buffer.toString("base64");
 
+        const traceId = createLLMTraceId(randomUUID());
+        const generation = startObservation(
+          "image-editing",
+          {
+            input: {
+              editPrompt: editImageInstructions,
+              imageFileId: inputImageFileId,
+              outputName: outputImageFileName,
+              quality,
+              aspectRatio,
+            },
+            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+            modelParameters: {
+              quality,
+              aspectRatio: aspectRatio ?? "original",
+              temperature: 0.7,
+            },
+          },
+          { asType: "generation" }
+        );
+
+        generation.updateTrace({
+          tags: [
+            `workspaceId:${workspace.sId}`,
+            `operationType:image_editing`,
+            `tool:edit_image`,
+          ],
+          metadata: {
+            dustTraceId: traceId,
+            fileId: inputImageFileId,
+          },
+          userId: workspace.sId,
+        });
+
         try {
           const gemini = createGeminiClient();
 
@@ -518,12 +624,48 @@ function createServer(
             editImageInstructions
           );
           if (validationResult.isErr()) {
+            generation.update({
+              level: "ERROR",
+              statusMessage: validationResult.error.message,
+            });
+            generation.end();
             return validationResult;
           }
 
           const imageParts = validationResult.value;
 
           trackGeminiTokenUsage(response, statsDClient);
+
+          if (response.usageMetadata) {
+            const inputTokens = response.usageMetadata.promptTokenCount ?? 0;
+            const outputTokens =
+              response.usageMetadata.candidatesTokenCount ?? 0;
+            const totalTokens = inputTokens + outputTokens;
+
+            const costMicroUsd = computeTokensCostForUsageInMicroUsd({
+              modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID as any,
+              promptTokens: inputTokens,
+              completionTokens: outputTokens,
+              cachedTokens: null,
+              cacheCreationTokens: null,
+            });
+
+            const costUsd = costMicroUsd / 1_000_000;
+
+            generation.update({
+              usageDetails: {
+                input: inputTokens,
+                output: outputTokens,
+                total: totalTokens,
+              },
+              costDetails: {
+                input: (costUsd * inputTokens) / totalTokens,
+                output: (costUsd * outputTokens) / totalTokens,
+                total: costUsd,
+              },
+            });
+          }
+          generation.end();
 
           return formatImageResponse(imageParts, outputImageFileName);
         } catch (error) {
@@ -533,6 +675,14 @@ function createServer(
             },
             "Error editing image."
           );
+          generation.update({
+            level: "ERROR",
+            statusMessage: "Error editing image",
+            metadata: {
+              error: String(error),
+            },
+          });
+          generation.end();
           return new Err(new MCPError("Error editing image."));
         }
       }

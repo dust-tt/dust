@@ -285,6 +285,11 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
 // These are kept to ensure we can still compute token usage for historical runs.
 const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
+  // Image generation model - not user-selectable, used internally by MCP tools
+  "gemini-2.5-flash-image": {
+    input: 0.15,
+    output: 0.6,
+  },
   "gpt-4-32k": {
     input: 60.0,
     output: 120.0,
