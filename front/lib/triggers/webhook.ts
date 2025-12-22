@@ -618,11 +618,13 @@ export async function storePayloadInGCS(
     webhookRequest,
     headers,
     body,
+    provider,
   }: {
     webhookSource: WebhookSourceResource;
     webhookRequest: WebhookRequestResource;
     headers: Record<string, string>;
     body: Record<string, unknown>;
+    provider: string;
   }
 ): Promise<void> {
   const content = JSON.stringify({
@@ -656,6 +658,11 @@ export async function storePayloadInGCS(
       },
       "Failed to store webhook request"
     );
+
+    statsDClient.increment("webhook_error.count", 1, [
+      `provider:${provider}`,
+      `workspace_id:${auth.getNonNullableWorkspace().sId}`,
+    ]);
   }
 
   return;
