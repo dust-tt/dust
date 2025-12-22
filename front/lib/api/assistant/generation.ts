@@ -162,9 +162,9 @@ function getEnabledSkillInstructions(
   return [
     `<${name}>`,
     extendedSkill.instructions,
-    "<extended_instructions>",
+    "<additional_guidelines>",
     instructions,
-    "</extended_instructions>",
+    "</additional_guidelines>",
     `</${name}>`,
   ].join("\n");
 }
