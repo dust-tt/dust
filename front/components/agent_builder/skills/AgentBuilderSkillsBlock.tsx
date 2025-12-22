@@ -36,6 +36,7 @@ import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getSkillIcon } from "@app/lib/skill";
+import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
 
@@ -223,16 +224,21 @@ export function AgentBuilderSkillsBlock({
     }
   };
 
-  const handleSkillClick = (skill: AgentBuilderSkillsType) => {
-    const capability = allSkills.find((s) => s.sId === skill.sId);
-    if (capability) {
+  const [skillIdToFetch, setSkillIdToFetch] = useState<string | null>(null);
+
+  useSkillWithRelations({
+    owner,
+    skillId: skillIdToFetch ?? "",
+    disabled: !skillIdToFetch,
+    onSuccess: ({ skill }) => {
+      setSkillIdToFetch(null);
       setCapabilitiesSheetMode({
         pageId: "skill_info",
-        capability,
+        capability: skill,
         hasPreviousPage: false,
       });
-    }
-  };
+    },
+  });
 
   const handleSaveCapabilities = useCallback(
     ({
@@ -337,7 +343,7 @@ export function AgentBuilderSkillsBlock({
                   key={field.id}
                   skill={field}
                   onRemove={() => removeSkill(index)}
-                  onClick={() => handleSkillClick(field)}
+                  onClick={() => setSkillIdToFetch(field.sId)}
                 />
               ))}
               {actionFields.map((field, index) => (
