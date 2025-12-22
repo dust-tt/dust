@@ -193,6 +193,9 @@ export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
       identifier: any,
       options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
     ): Promise<M | null>;
+    findAndCountAll(
+      options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
+    ): Promise<{ rows: M[]; count: number }>;
   };
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
