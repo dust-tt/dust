@@ -8,6 +8,7 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
+COPY /package*.json /
 COPY /sdks/js/package*.json /sdks/js
 COPY /sparkle/package*.json /sparkle
 COPY /front/package*.json /front

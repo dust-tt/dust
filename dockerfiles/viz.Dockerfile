@@ -2,6 +2,7 @@ FROM node:20.19.2 AS viz
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
+COPY /package*.json /
 COPY /viz/package*.json /viz
 RUN npm ci
 
