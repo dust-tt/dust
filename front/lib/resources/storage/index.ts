@@ -34,7 +34,6 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
 });
 
 export const statsDClient = getStatsDClient();
-const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
 
 export const frontSequelize = new SequelizeWithComments(
   dbConfig.getRequiredFrontDatabaseURI(),
@@ -52,12 +51,11 @@ export const frontSequelize = new SequelizeWithComments(
       },
       afterPoolAcquire: (connection, options) => {
         const elapsedTime = Date.now() - acquireAttempts.get(options);
-        if (elapsedTime > CONNECTION_ACQUISITION_THRESHOLD_MS) {
-          statsDClient.distribution(
-            "sequelize.connection_acquisition.duration",
-            elapsedTime
-          );
-        }
+
+        statsDClient.distribution(
+          "sequelize.connection_acquisition.duration",
+          elapsedTime
+        );
       },
     },
     dialectOptions: {
