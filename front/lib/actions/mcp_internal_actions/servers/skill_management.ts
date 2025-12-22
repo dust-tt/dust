@@ -49,7 +49,6 @@ function createServer(
 
         const enableResult = await skill.enableForAgent(auth, {
           agentConfiguration,
-          agentMessage,
           conversation,
         });
 
