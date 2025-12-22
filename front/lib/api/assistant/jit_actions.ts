@@ -9,7 +9,6 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -157,7 +156,7 @@ export async function getJITServers(
       const skillManagementView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          SKILL_MANAGEMENT_SERVER_NAME
+          "skill_management"
         );
 
       if (!skillManagementView) {
@@ -173,7 +172,7 @@ export async function getJITServers(
           id: -1,
           sId: generateRandomModelSId(),
           type: "mcp_server_configuration",
-          name: SKILL_MANAGEMENT_SERVER_NAME,
+          name: "skill_management",
           description: "Enable skills for the conversation.",
           dataSources: null,
           tables: null,
