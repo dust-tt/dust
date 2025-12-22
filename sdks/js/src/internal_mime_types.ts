@@ -25,7 +25,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  */
 function generateConnectorRelativeMimeTypes<
   P extends ConnectorProvider,
-  T extends Uppercase<string>[]
+  T extends Uppercase<string>[],
 >({
   provider,
   resourceTypes,
@@ -194,7 +194,7 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
 
 function generateToolMimeTypes<
   P extends Uppercase<string>,
-  T extends Uppercase<string>[]
+  T extends Uppercase<string>[],
 >({
   category,
   resourceTypes,

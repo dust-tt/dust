@@ -86,6 +86,18 @@ export default [
     rules: {
       // Import rules
       "import/no-cycle": "error",
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.stories.tsx",
+            "**/*.config.js",
+            "**/*.config.ts",
+            "**/scripts/**",
+            ".storybook/**",
+          ],
+        },
+      ],
 
       // Import sorting
       "simple-import-sort/imports": [
@@ -117,7 +129,8 @@ export default [
         "error",
         {
           argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_|(VARIANTS|SIZES|HEIGHTS|SIDES|STATUS|STATES|DIRECTIONS)$",
+          varsIgnorePattern:
+            "^_|(VARIANTS|SIZES|HEIGHTS|SIDES|STATUS|STATES|DIRECTIONS)$",
           caughtErrorsIgnorePattern: "^_|^(e|error)$",
         },
       ],

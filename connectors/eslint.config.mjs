@@ -54,6 +54,23 @@ export default [
       // Import rules
       "import/no-cycle": "error",
       "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.test.ts",
+            "**/*.test.tsx",
+            "**/*.spec.ts",
+            "**/*.config.js",
+            "**/*.config.ts",
+            "**/scripts/**",
+            "**/migrations/**",
+            "vitest.config.ts",
+            "vite.setup.ts",
+            "esbuild.config.ts",
+          ],
+        },
+      ],
 
       // Import sorting
       "simple-import-sort/imports": [

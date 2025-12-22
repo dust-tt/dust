@@ -55,6 +55,16 @@ export default [
     rules: {
       // Import rules
       "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.config.js",
+            "**/*.config.ts",
+            "esbuild.config.ts",
+          ],
+        },
+      ],
 
       // Import sorting
       "simple-import-sort/imports": [

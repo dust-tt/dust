@@ -32,9 +32,19 @@ export default [
     rules: {
       curly: ["error", "all"],
       "import/no-cycle": "error",
+      "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.config.js",
+            "**/*.config.ts",
+            "tsup.config.ts",
+          ],
+        },
+      ],
       "react/no-unescaped-entities": 0,
       "@typescript-eslint/consistent-type-imports": "error",
-      "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
       "@typescript-eslint/no-explicit-any": 0,
       "@typescript-eslint/no-unused-vars": [
         "error",

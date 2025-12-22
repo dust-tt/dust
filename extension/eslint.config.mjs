@@ -75,6 +75,17 @@ export default [
       // Import rules
       "import/no-cycle": "error",
       "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.config.js",
+            "**/*.config.ts",
+            "**/run/**",
+            "webpack.config.js",
+          ],
+        },
+      ],
 
       // Import sorting
       "simple-import-sort/imports": [
