@@ -13,6 +13,7 @@ import {
 import React, { useCallback, useMemo, useState } from "react";
 import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
   AgentBuilderSkillsType,
@@ -37,7 +38,7 @@ import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picke
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
+import type { TemplateActionPreset } from "@app/types";
 import { pluralize } from "@app/types";
 
 interface SkillCardProps {
@@ -106,19 +107,11 @@ function ActionButtons({
   );
 }
 
-interface AgentBuilderSkillsBlockProps {
-  isSkillsLoading?: boolean;
-  owner: WorkspaceType;
-  user: UserType;
-}
-
-export function AgentBuilderSkillsBlock({
-  isSkillsLoading,
-  owner,
-  user,
-}: AgentBuilderSkillsBlockProps) {
-  const { getValues } = useFormContext<AgentBuilderFormData>();
+export function AgentBuilderSkillsBlock() {
   const sendNotification = useSendNotification();
+  const { owner } = useAgentBuilderContext();
+
+  const { getValues } = useFormContext<AgentBuilderFormData>();
   const {
     fields: skillFields,
     remove: removeSkill,
@@ -142,9 +135,12 @@ export function AgentBuilderSkillsBlock({
   });
 
   // TODO(skills Jules): make a pass on the way we use reacthookform here
-  const { mcpServerViewsWithKnowledge, mcpServerViews } =
-    useMCPServerViewsContext();
-  const { skills: allSkills } = useSkillsContext();
+  const {
+    mcpServerViewsWithKnowledge,
+    mcpServerViewsWithoutKnowledge,
+    mcpServerViews,
+  } = useMCPServerViewsContext();
+  const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
   const alreadyAddedSkillIds = useMemo(
@@ -207,21 +203,31 @@ export function AgentBuilderSkillsBlock({
   };
 
   const handleActionEdit = (action: BuilderAction, index: number) => {
-    const mcpServerView = mcpServerViewsWithKnowledge.find(
+    const mcpServerViewWithKnowledge = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
     const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerView);
+      action.type === "MCP" && Boolean(mcpServerViewWithKnowledge);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
-    } else {
-      setCapabilitiesSheetMode(
-        action.configurationRequired
-          ? { pageId: "tool_edit", capability: action, index }
-          : { pageId: "tool_info", capability: action, hasPreviousPage: false }
-      );
+      return;
     }
+
+    const mcpServerViewWithoutKnowledge = mcpServerViewsWithoutKnowledge.find(
+      (view) => view.sId === action.configuration?.mcpServerViewId
+    );
+
+    setCapabilitiesSheetMode(
+      action.configurationRequired && mcpServerViewWithoutKnowledge
+        ? {
+            pageId: "tool_edit",
+            capability: action,
+            mcpServerView: mcpServerViewWithoutKnowledge,
+            index,
+          }
+        : { pageId: "tool_info", capability: action, hasPreviousPage: false }
+    );
   };
 
   const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
@@ -233,7 +239,7 @@ export function AgentBuilderSkillsBlock({
       }),
   });
 
-  const handleSaveCapabilities = useCallback(
+  const handleCapabilitiesSave = useCallback(
     ({
       skills,
       additionalSpaces,
@@ -377,10 +383,9 @@ export function AgentBuilderSkillsBlock({
       <CapabilitiesSheet
         mode={capabillitiesSheetMode}
         onClose={handleCloseSheet}
-        onSave={handleSaveCapabilities}
+        onCapabilitiesSave={handleCapabilitiesSave}
+        onToolEditSave={handleToolEditSave}
         onModeChange={setCapabilitiesSheetMode}
-        owner={owner}
-        user={user}
         initialAdditionalSpaces={additionalSpacesField.value}
         alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}

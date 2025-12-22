@@ -61,6 +61,7 @@ const TOOL_TO_CONNECTOR_PROVIDER: Partial<
   google_drive: "google_drive",
   notion: "notion",
   microsoft_drive: "microsoft",
+  github: "github",
 };
 
 function _isSearchableTool(

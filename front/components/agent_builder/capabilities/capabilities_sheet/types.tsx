@@ -2,7 +2,6 @@ import type { AgentBuilderSkillsType } from "@app/components/agent_builder/Agent
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
@@ -48,15 +47,16 @@ type ToolInfoMode = {
   hasPreviousPage: boolean;
 };
 
-type ToolConfigurationMode = {
+export type ToolConfigurationMode = {
   pageId: "tool_configuration";
   capability: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;
 };
 
-type ToolEditMode = {
+export type ToolEditMode = {
   pageId: "tool_edit";
   capability: BuilderAction;
+  mcpServerView: MCPServerViewTypeWithLabel;
   index: number;
 };
 
@@ -72,16 +72,21 @@ export type CapabilitiesSheetContentProps = {
   mode: CapabilitiesSheetMode;
   onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   onClose: () => void;
-  onSave: (data: {
+  onCapabilitiesSave: (data: {
     skills: AgentBuilderSkillsType[];
     additionalSpaces: string[];
     tools: SelectedTool[];
   }) => void;
-  owner: WorkspaceType;
-  user: UserType;
+  onToolEditSave: (updatedAction: BuilderAction) => void;
   initialAdditionalSpaces: string[];
   alreadyRequestedSpaceIds: Set<string>;
   alreadyAddedSkillIds: Set<string>;
   selectedActions: BuilderAction[];
   getAgentInstructions: () => string;
 };
+
+export function isToolConfigurationOrEditPage(
+  mode: CapabilitiesSheetMode
+): mode is ToolConfigurationMode | ToolEditMode {
+  return mode.pageId === "tool_configuration" || mode.pageId === "tool_edit";
+}
