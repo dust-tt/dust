@@ -17,7 +17,6 @@ type CapabilitiesSelectionPageProps = {
   onModeChange: (mode: CapabilitiesSheetMode | null) => void;
   owner: LightWorkspaceType;
   handleSkillToggle: (skill: SkillType) => void;
-  handleSkillInfoClick: (skill: SkillType) => void;
   filteredSkills: SkillType[];
   searchQuery: string;
   selectedSkillIds: Set<string>;

@@ -75,6 +75,7 @@ export function useCapabilitiesPageAndFooter({
               setSearchQuery={setSearchQuery}
               {...skillSelection}
               {...toolSelection}
+              onModeChange={onModeChange}
             />
           ),
         },
