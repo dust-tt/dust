@@ -69,6 +69,14 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   };
 });
 
+vi.mock("mermaid", () => ({
+  default: {
+    initialize: vi.fn(),
+    parse: vi.fn().mockResolvedValue(true),
+    run: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 beforeEach(async (c) => {
   vi.clearAllMocks();
 
