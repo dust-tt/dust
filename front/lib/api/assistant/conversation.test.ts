@@ -556,6 +556,7 @@ describe("postUserMessage", () => {
       const mentionsInDb = await MentionModel.findAll({
         where: {
           messageId: userMessage.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionsInDb.length).toBe(2);
@@ -622,6 +623,7 @@ describe("postUserMessage", () => {
         where: {
           messageId: userMessage.id,
           userId: mentionedUser.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionInDb).not.toBeNull();
@@ -690,6 +692,7 @@ describe("postUserMessage", () => {
       const mentionsInDb = await MentionModel.findAll({
         where: {
           messageId: userMessage.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionsInDb.length).toBe(2);
@@ -842,6 +845,7 @@ describe("editUserMessage", () => {
       const mentionsInDb = await MentionModel.findAll({
         where: {
           messageId: userMessage.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionsInDb.length).toBe(2);
@@ -898,6 +902,7 @@ describe("editUserMessage", () => {
         where: {
           messageId: userMessage.id,
           userId: mentionedUser.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionInDb).not.toBeNull();
@@ -956,6 +961,7 @@ describe("editUserMessage", () => {
       const mentionsInDb = await MentionModel.findAll({
         where: {
           messageId: userMessage.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionsInDb.length).toBe(2);
@@ -987,6 +993,7 @@ describe("editUserMessage", () => {
       const mentionsInDb = await MentionModel.findAll({
         where: {
           messageId: userMessage.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionsInDb.length).toBe(0);
