@@ -945,7 +945,7 @@ describe("createUserMentions", () => {
       pictureUrl:
         mentionedUserJson.image ?? "/static/humanavatar/anonymous.png",
       description: mentionedUserJson.email,
-      status: "approved",
+      status: "pending",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -968,10 +968,7 @@ describe("createUserMentions", () => {
         userId: mentionedUser.id,
       },
     });
-    expect(participant).not.toBeNull();
-    expect(participant?.action).toBe("subscribed");
-    expect(participant?.unread).toBe(false);
-    expect(participant?.actionRequired).toBe(false);
+    expect(participant).toBeNull();
   });
 
   it("should handle multiple user mentions", async () => {
@@ -1016,13 +1013,13 @@ describe("createUserMentions", () => {
       id: user1.sId,
       type: "user",
       label: user1Json.fullName,
-      status: "approved",
+      status: "pending",
     });
     expect(user2Mention).toMatchObject({
       id: user2.sId,
       type: "user",
       label: user2Json.fullName,
-      status: "approved",
+      status: "pending",
     });
     expect(isRichUserMention(user1Mention!)).toBe(true);
     expect(isRichUserMention(user2Mention!)).toBe(true);
@@ -1049,10 +1046,7 @@ describe("createUserMentions", () => {
         userId: user1.id,
       },
     });
-    expect(participant1).not.toBeNull();
-    expect(participant1?.action).toBe("subscribed");
-    expect(participant1?.unread).toBe(false);
-    expect(participant1?.actionRequired).toBe(false);
+    expect(participant1).toBeNull();
 
     const participant2 = await ConversationParticipantModel.findOne({
       where: {
@@ -1061,10 +1055,7 @@ describe("createUserMentions", () => {
         userId: user2.id,
       },
     });
-    expect(participant2).not.toBeNull();
-    expect(participant2?.action).toBe("subscribed");
-    expect(participant2?.unread).toBe(false);
-    expect(participant2?.actionRequired).toBe(false);
+    expect(participant2).toBeNull();
   });
 
   it("should handle empty user mentions array", async () => {
@@ -1140,7 +1131,7 @@ describe("createUserMentions", () => {
     expect(result[0]).toMatchObject({
       id: mentionedUser.sId,
       type: "user",
-      status: "approved",
+      status: "pending",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1156,7 +1147,7 @@ describe("createUserMentions", () => {
   });
 
   describe("auto-approval behavior", () => {
-    it("should always auto approve mentions in user messages", async () => {
+    it("should not auto approve mentions in user messages", async () => {
       const mentionedUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, mentionedUser, {
         role: "user",
@@ -1188,7 +1179,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "approved",
+        status: "pending",
       });
       expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1200,7 +1191,7 @@ describe("createUserMentions", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("approved");
+      expect(mentionInDb?.status).toBe("pending");
     });
 
     it("should always auto approve mentions for existing participants", async () => {
