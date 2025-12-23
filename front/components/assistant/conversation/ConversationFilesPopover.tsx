@@ -119,17 +119,17 @@ const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
 );
 
 interface FileGroupSectionProps {
+  conversationId: string;
   group: FileGroup;
   onFileClick: () => void;
   owner: LightWorkspaceType;
-  conversationId: string;
 }
 
 const FileGroupSection = ({
+  conversationId,
   group,
   onFileClick,
   owner,
-  conversationId,
 }: FileGroupSectionProps) => {
   const isInteractiveContent = isInteractiveContentContentType(
     group.contentType

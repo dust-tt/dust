@@ -55,7 +55,8 @@ import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_me
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
+export interface AgentMCPActionResource
+  extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
@@ -616,6 +617,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               title: file.fileName,
               snippet: file.snippet,
               createdAt: file.createdAt.getTime(),
+              updatedAt: file.updatedAt.getTime(),
               ...(hidden ? { hidden: true } : {}),
             };
           })

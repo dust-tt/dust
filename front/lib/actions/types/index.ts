@@ -25,6 +25,7 @@ export type ActionGeneratedFileType = {
   snippet: string | null;
   hidden?: boolean;
   createdAt?: number;
+  updatedAt?: number;
 };
 
 export type AgentLoopRunContextType = {
