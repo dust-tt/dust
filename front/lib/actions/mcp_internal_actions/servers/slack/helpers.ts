@@ -490,11 +490,23 @@ function filterChannels(
 async function searchAndProcessChannels(
   slackClient: WebClient,
   scope: "joined" | "public",
-  query: string
-): Promise<MinimalChannelInfo[]> {
-  const channels = await getChannels({ slackClient, scope });
-  const matched = filterChannels(channels, query, MAX_CHANNEL_SEARCH_RESULTS);
-  return matched.map(cleanChannelPayload);
+  query: string,
+  contextMessage: string
+): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  try {
+    const channels = await getChannels({ slackClient, scope });
+    const matched = filterChannels(channels, query, MAX_CHANNEL_SEARCH_RESULTS);
+    const cleaned = matched.map(cleanChannelPayload);
+    const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
+      },
+    ]);
+  } catch (error) {
+    return new Err(new MCPError(`Error searching channels: ${error}`));
+  }
 }
 
 function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
@@ -510,19 +522,6 @@ function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
     `  - Topic: ${c.topic?.value ?? ""}`,
     `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
   ].join("\n");
-}
-
-function createChannelsResponse(
-  channels: MinimalChannelInfo[],
-  contextMessage: string
-): Ok<Array<{ type: "text"; text: string }>> {
-  const markdown = channels.map(formatChannelAsMarkdown).join("\n");
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `Found ${channels.length} channel(s) ${contextMessage}:\n\n${markdown}`,
-    },
-  ]);
 }
 
 // Execute search_channels: "exact" uses conversations.info, "search" fetches lists and filters locally.
@@ -564,64 +563,53 @@ export async function executeSearchChannels(
   }
 
   // Search lookup.
-  // Scope="auto": search in joined channles; if no match fallback in all public channels.
+  // Scope="auto": search in joined channels; if no match fallback in all public channels.
   if (scope === "auto") {
-    try {
-      const joinedChannels = await searchAndProcessChannels(
-        slackClient,
-        "joined",
-        query
-      );
-      if (joinedChannels.length > 0) {
-        return createChannelsResponse(
-          joinedChannels,
-          "in your joined channels"
-        );
-      }
-
-      // Fallback to all public channels.
-      const publicChannels = await searchAndProcessChannels(
-        slackClient,
-        "public",
-        query
-      );
-      return createChannelsResponse(
-        publicChannels,
-        "in public workspace channels"
-      );
-    } catch (error) {
-      return new Err(new MCPError(`Error searching channels: ${error}`));
+    const joinedResult = await searchAndProcessChannels(
+      slackClient,
+      "joined",
+      query,
+      "in your joined channels"
+    );
+    if (joinedResult.isErr()) {
+      return joinedResult;
     }
+
+    // Check if we have results, otherwise fallback to public
+    const joinedContent = joinedResult.value[0].text;
+    const joinedCount = parseInt(
+      joinedContent.match(/Found (\d+)/)?.[1] ?? "0"
+    );
+    if (joinedCount > 0) {
+      return joinedResult;
+    }
+
+    // Fallback to all public channels.
+    return searchAndProcessChannels(
+      slackClient,
+      "public",
+      query,
+      "in public workspace channels"
+    );
   }
 
   // Scope="joined": search all public, private, im and mpim joined channels.
   if (scope === "joined") {
-    try {
-      const joinedChannels = await searchAndProcessChannels(
-        slackClient,
-        "joined",
-        query
-      );
-      return createChannelsResponse(joinedChannels, "in your joined channels");
-    } catch (error) {
-      return new Err(new MCPError(`Error searching channels: ${error}`));
-    }
+    return searchAndProcessChannels(
+      slackClient,
+      "joined",
+      query,
+      "in your joined channels"
+    );
   }
 
   // Scope="all": search all public channels.
-  try {
-    const publicChannels = await searchAndProcessChannels(
-      slackClient,
-      "public",
-      query
-    );
-    return createChannelsResponse(
-      publicChannels,
-      "in public workspace channels"
-    );
-  } catch (error) {
-    return new Err(new MCPError(`Error searching channels: ${error}`));
-  }
+  return searchAndProcessChannels(
+    slackClient,
+    "public",
+    query,
+    "in public workspace channels"
+  );
 }
 
 // Used by slack_bot
@@ -648,7 +636,6 @@ export async function executeListPublicChannels(
         )
     );
 
-    // Early return if we found a channel.
     if (filteredChannels.length > 0) {
       return new Ok([
         {
@@ -665,8 +652,8 @@ export async function executeListPublicChannels(
         },
       ]);
     }
-  }
-  if (nameFilter) {
+
+    // No channels found matching the filter
     return new Ok([
       {
         type: "text" as const,
@@ -679,6 +666,7 @@ export async function executeListPublicChannels(
     ]);
   }
 
+  // No filter provided, return all channels
   return new Ok([
     {
       type: "text" as const,
