@@ -116,8 +116,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   if (!workspaceResource) {
     throw new Error(`Workspace not found: ${owner.sId}`);
   }
-  const workspaceVerifiedDomains =
-    (await workspaceResource.getVerifiedDomains()) ?? [];
+  const workspaceVerifiedDomains = await workspaceResource.getVerifiedDomains();
 
   const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
 

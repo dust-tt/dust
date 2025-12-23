@@ -40,8 +40,7 @@ async function handler(
         return res.status(200).json({ verified_domains: [] });
       }
 
-      const verifiedDomains =
-        (await workspaceResource.getVerifiedDomains()) ?? [];
+      const verifiedDomains = await workspaceResource.getVerifiedDomains();
 
       return res.status(200).json({ verified_domains: verifiedDomains });
 

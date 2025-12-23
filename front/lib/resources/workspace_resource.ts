@@ -151,7 +151,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     domainAutoJoinEnabled: boolean;
     domain?: string;
   }): Promise<Result<void, Error>> {
-    const [affectedCount] = await WorkspaceHasDomainModel.update(
+    const [affectedCount] = await WorkspaceResource.workspaceDomainModel.update(
       { domainAutoJoinEnabled },
       {
         where: {
@@ -171,12 +171,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   async getVerifiedDomains(): Promise<WorkspaceDomain[]> {
-    const workspaceDomains = await WorkspaceHasDomainModel.findAll({
-      attributes: ["domain", "domainAutoJoinEnabled"],
-      where: {
-        workspaceId: this.id,
-      },
-    });
+    const workspaceDomains =
+      await WorkspaceResource.workspaceDomainModel.findAll({
+        attributes: ["domain", "domainAutoJoinEnabled"],
+        where: {
+          workspaceId: this.id,
+        },
+      });
 
     return workspaceDomains.map((d) => ({
       domain: d.domain,
@@ -189,12 +190,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }: {
     domain: string;
   }): Promise<Result<void, Error>> {
-    const existingDomain = await WorkspaceHasDomainModel.findOne({
-      where: {
-        domain,
-        workspaceId: this.id,
-      },
-    });
+    const existingDomain = await WorkspaceResource.workspaceDomainModel.findOne(
+      {
+        where: {
+          domain,
+          workspaceId: this.id,
+        },
+      }
+    );
 
     if (!existingDomain) {
       return new Err(
@@ -217,20 +220,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const existingDomainInRegion =
       await WorkspaceResource.workspaceDomainModel.findOne({
         where: { domain },
-        include: [
-          {
-            model: WorkspaceModel,
-            as: "workspace",
-            required: true,
-          },
-        ],
         // WORKSPACE_ISOLATION_BYPASS: Need to check domain across all workspaces.
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
 
     if (
       existingDomainInRegion &&
-      existingDomainInRegion.workspace.id === this.id
+      existingDomainInRegion.workspaceId === this.id
     ) {
       return new Ok({
         domain: existingDomainInRegion.domain,
@@ -289,7 +285,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       }
     }
 
-    const d = await WorkspaceHasDomainModel.create({
+    const d = await WorkspaceResource.workspaceDomainModel.create({
       domain,
       domainAutoJoinEnabled: false,
       workspaceId: this.id,

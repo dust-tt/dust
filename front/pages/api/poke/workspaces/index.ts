@@ -316,7 +316,7 @@ async function handler(
             }
 
             const verifiedDomains =
-              (await workspaceResource.getVerifiedDomains()) ?? [];
+              await workspaceResource.getVerifiedDomains();
 
             return {
               ...lightWorkspace,

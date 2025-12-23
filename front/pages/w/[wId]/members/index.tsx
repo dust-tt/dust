@@ -65,8 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     throw new Error(`Workspace not found: ${owner.sId}`);
   }
 
-  const workspaceVerifiedDomains =
-    (await workspaceResource.getVerifiedDomains()) ?? [];
+  const workspaceVerifiedDomains = await workspaceResource.getVerifiedDomains();
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
 
