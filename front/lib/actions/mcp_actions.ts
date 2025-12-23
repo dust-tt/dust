@@ -682,7 +682,6 @@ async function disambiguateServerNamesBySpace(
   );
 
   // Apply space prefix to colliding server-side configs.
-  const collidingNames = new Set(Object.keys(collidingGroups));
   return configs.map((config) => {
     if (
       isServerSideMCPServerConfiguration(config) &&
