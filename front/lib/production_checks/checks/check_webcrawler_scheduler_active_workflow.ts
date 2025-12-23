@@ -37,8 +37,11 @@ export const checkWebcrawlerSchedulerActiveWorkflow: CheckFunction = async (
   );
 
   if (existsAndNotPaused) {
-    reportSuccess({});
+    reportSuccess({ actionLinks: [] });
   } else {
-    reportFailure({}, "Webcrawler scheduler does not exist or is paused");
+    reportFailure(
+      { actionLinks: [] },
+      "Webcrawler scheduler does not exist or is paused"
+    );
   }
 };

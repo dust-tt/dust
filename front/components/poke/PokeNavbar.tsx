@@ -60,6 +60,11 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
           <Button href="/poke/plugins" variant="ghost" label="Plugins" />
           <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
           <Button href="/poke/pokefy" variant="ghost" label="Pokefy URL" />
+          <Button
+            href="/poke/production-checks"
+            variant="ghost"
+            label="Production Checks"
+          />
         </div>
       </div>
       <div className="items-right flex items-center gap-4">
