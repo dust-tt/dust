@@ -668,18 +668,16 @@ export function AgentMessage({
         type="agent"
       />
       <div className="flex w-full min-w-0 flex-col gap-3">
-        <div className="inline-flex justify-between gap-0.5">
-          <ConversationMessageTitle
-            name={agentConfiguration.name}
-            timestamp={timestamp}
-            completionStatus={
-              isDeleted ? undefined : (
-                <AgentMessageCompletionStatus agentMessage={agentMessage} />
-              )
-            }
-            renderName={renderName}
-          />
-        </div>
+        <ConversationMessageTitle
+          name={agentConfiguration.name}
+          timestamp={timestamp}
+          completionStatus={
+            isDeleted ? undefined : (
+              <AgentMessageCompletionStatus agentMessage={agentMessage} />
+            )
+          }
+          renderName={renderName}
+        />
         <ConversationMessageContent
           citations={isDeleted ? undefined : citations}
           type="agent"

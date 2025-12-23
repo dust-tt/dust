@@ -66,7 +66,7 @@ export const ConversationMessageContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+      className={cn("flex min-w-0 flex-col gap-1", className)}
       {...props}
     >
       <div className="text-base text-foreground dark:text-foreground-night">
@@ -157,7 +157,10 @@ export const ConversationMessageTitle = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn("inline-flex justify-between gap-0.5", className)}
+        className={cn(
+          "inline-flex flex-1 items-center justify-between gap-0.5",
+          className
+        )}
         {...props}
       >
         <div className="inline-flex items-center gap-2 text-foreground dark:text-foreground-night">
