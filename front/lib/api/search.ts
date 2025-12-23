@@ -127,14 +127,22 @@ export const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
 export type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
 
 function getSpaceAccessPriority(space: SpaceResource) {
+  // Global spaces have highest priority.
   if (space.isGlobal()) {
+    return 3;
+  }
+
+  // Open spaces have second highest priority.
+  if (space.isRegularAndOpen()) {
     return 2;
   }
 
-  if (!space.isRegularAndOpen()) {
+  // For restricted spaces: provisioned groups get higher priority than manual membership.
+  if (space.groups.some((g) => g.isProvisioned())) {
     return 1;
   }
 
+  // Restriced spaces with manual membership have lowest priority.
   return 0;
 }
 
