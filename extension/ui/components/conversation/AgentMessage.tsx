@@ -449,7 +449,7 @@ export function AgentMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       visualization: () => (
-        <div className="w-full flex justify-center">
+        <div className="flex w-full justify-center">
           <Button
             label="See visualization on Dust website"
             onClick={() => {
@@ -643,7 +643,7 @@ export function AgentMessage({
       if (showFeedbackSection) {
         buttonList.push(
           <div key="separator" className="flex items-center">
-            <div className="h-5 w-px bg-border dark:bg-border-night" />
+            <div className="bg-border dark:bg-border-night h-5 w-px" />
           </div>,
           <FeedbackSelector
             key="feedback-selector"
@@ -889,7 +889,7 @@ function ErrorMessage({
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="whitespace-normal text-sm font-normal text-warning">
+              <div className="text-warning whitespace-normal text-sm font-normal">
                 {debugInfo}
               </div>
               <div className="self-end">

@@ -273,7 +273,8 @@ export async function startMcpServer(
 
       httpServer.listen(port, () => {
         const address = httpServer.address();
-        const boundPort = typeof address === "string" ? 0 : address?.port ?? 0;
+        const boundPort =
+          typeof address === "string" ? 0 : (address?.port ?? 0);
         resolve(boundPort);
       });
     });

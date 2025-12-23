@@ -63,9 +63,8 @@ export class InternalMCPServerInMemoryResource {
 
     // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
     // Bigger refactoring to extract this logic from the resource will come later.
-    const { getCachedMetadata } = await import(
-      "@app/lib/actions/mcp_cached_metadata"
-    );
+    const { getCachedMetadata } =
+      await import("@app/lib/actions/mcp_cached_metadata");
     const cachedMetadata = await getCachedMetadata(auth, id);
     if (!cachedMetadata) {
       return null;

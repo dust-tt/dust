@@ -63,8 +63,7 @@ interface UserParticipation {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ConversationResource
-  extends ReadonlyAttributesType<ConversationModel> {}
+export interface ConversationResource extends ReadonlyAttributesType<ConversationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {

@@ -224,7 +224,7 @@ export function ConversationViewer({
       {conversation &&
         dateGroupedMessages.map((dateGroup, dateIndex) => (
           <div key={`date-group-${dateIndex}`}>
-            <div className="flex w-full justify-center py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-muted-foreground dark:text-muted-foreground-night flex w-full justify-center py-4 text-xs font-medium">
               {dateGroup.date}
             </div>
             {dateGroup.messages.map((typedGroup, index) => {

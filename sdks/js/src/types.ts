@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { FlexibleEnumSchema } from "./helpers";
-import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
+import type { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,

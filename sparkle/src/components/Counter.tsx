@@ -94,7 +94,8 @@ const counterVariants = cva(
 );
 
 export interface CounterProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof counterVariants> {
   value: number;
 }

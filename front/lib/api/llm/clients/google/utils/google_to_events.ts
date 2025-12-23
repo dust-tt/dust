@@ -211,6 +211,7 @@ export async function* streamLLMEvents({
               type: "stop_error",
               isRetryable: false,
               message: "An error occurred during completion",
+              originalError: { finishReason: candidate.finishReason },
             },
             metadata
           ),

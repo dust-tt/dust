@@ -51,8 +51,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-interface LLMTracePageProps
-  extends InferGetServerSidePropsType<typeof getServerSideProps> {}
+interface LLMTracePageProps extends InferGetServerSidePropsType<
+  typeof getServerSideProps
+> {}
 
 const LLMTracePage = ({ owner, runId }: LLMTracePageProps) => {
   const { trace, isLLMTraceLoading, isLLMTraceError } = usePokeLLMTrace({

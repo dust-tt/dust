@@ -57,9 +57,16 @@ function isWhereClauseWithNumericWorkspaceId<TAttributes>(
   return false;
 }
 
+// TODO(2025-12-22): Remove this temporary bypass list after refactoring all models to
+// properly use workspace isolation.
+const TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS = [
+  "subscription",
+];
+
 // Define a custom FindOptions extension with the skipWorkspaceCheck flag.
-interface WorkspaceTenantIsolationSecurityBypassOptions<T>
-  extends FindOptions<T> {
+interface WorkspaceTenantIsolationSecurityBypassOptions<
+  T,
+> extends FindOptions<T> {
   /**
    * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this query.
    *
@@ -144,12 +151,20 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
             "workspace_isolation_violation"
           );
 
-          // TODO: Uncomment this once we've updated all queries to include `workspaceId`.
-          // if (process.env.NODE_ENV === "development") {
-          //   throw new Error(
-          //     `Query attempted without workspaceId on ${this.name}`
-          //   );
-          // }
+          if (
+            // Do not rely on `isDevelopment` since we want to run this check everywhere except
+            // production.
+            process.env.NODE_ENV !== "production" &&
+            !TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS.includes(
+              this.name
+            )
+          ) {
+            throw new Error(
+              `Query attempted without workspaceId on ${this.name}. All workspace-aware model ` +
+                "queries must be scoped to a specific workspaceId for query isolation. " +
+                "See Runbook https://www.notion.so/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
+            );
+          }
         }
       },
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

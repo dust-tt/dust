@@ -367,7 +367,7 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-80 w-80 xs:h-96 xs:w-96"
+        className="xs:h-96 xs:w-96 h-80 w-80"
         collisionPadding={15}
         align="end"
         onInteractOutside={() => setIsOpen(false)}
@@ -495,7 +495,7 @@ export const InputBarAttachmentsPicker = ({
                 </>
               )}
               {availableSources.length === 0 && !showLoader && (
-                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div className="text-muted-foreground dark:text-muted-foreground-night flex items-center justify-center py-4 text-sm">
                   No results found
                 </div>
               )}
@@ -504,7 +504,7 @@ export const InputBarAttachmentsPicker = ({
           </div>
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+            <div className="text-primary-400 flex flex-col items-center justify-center gap-0 text-center text-base font-semibold">
               Search knowledge
             </div>
           </div>

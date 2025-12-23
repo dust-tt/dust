@@ -63,7 +63,8 @@ const NavigationList = React.forwardRef<
 NavigationList.displayName = "NavigationList";
 
 interface NavigationListItemProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
@@ -169,8 +170,7 @@ const NavigationListItem = React.forwardRef<
 );
 NavigationListItem.displayName = "NavigationListItem";
 
-interface NavigationListItemActionProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListItemActionProps extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
 }
 
@@ -219,7 +219,8 @@ const labelStyles = cva(
 );
 
 interface NavigationListLabelProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantStyles> {
   label: string;
 }

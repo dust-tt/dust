@@ -80,7 +80,8 @@ const buttonGroupVariants = cva("s-inline-flex", {
 });
 
 export interface ButtonGroupProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
+  extends
+    Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
     VariantProps<typeof buttonGroupVariants> {
   /**
    * Array of button or dropdown items to render in the group.

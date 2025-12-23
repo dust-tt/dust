@@ -11,8 +11,10 @@ const MESSAGE_STATUS = ["info", "default", "error"] as const;
 
 type MessageStatus = (typeof MESSAGE_STATUS)[number];
 
-export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
+export interface InputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value"
+> {
   message?: string | null;
   messageStatus?: MessageStatus;
   value?: string | null;

@@ -15,9 +15,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class SnowflakeConnectorStrategy
-  implements ConnectorProviderStrategy<"snowflake">
-{
+export class SnowflakeConnectorStrategy implements ConnectorProviderStrategy<"snowflake"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SnowflakeConfigurationModel>,

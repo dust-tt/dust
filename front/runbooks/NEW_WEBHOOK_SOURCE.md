@@ -340,9 +340,7 @@ export class YourProviderClient {
 This implements the `RemoteWebhookService` interface. Here are the method signatures and what each does:
 
 ```typescript
-export class YourProviderWebhookService
-  implements RemoteWebhookService<"your_provider">
-{
+export class YourProviderWebhookService implements RemoteWebhookService<"your_provider"> {
   // Called during OAuth setup to fetch additional configuration data
   // (e.g., list of teams, workspaces, repositories)
   async getServiceData(

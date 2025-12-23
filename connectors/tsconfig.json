@@ -21,6 +21,6 @@
       "*": ["./*"]
     }
   },
-  "include": ["**/*.ts", "**/*.mjs", "./.eslintrc.js"],
-  "exclude": ["node_modules", "dist", ".eslintrc.js", "./knip.ts"]
+  "include": ["**/*.ts", "**/*.mjs"],
+  "exclude": ["node_modules", "dist", "eslint.config.mjs", "./knip.ts"]
 }

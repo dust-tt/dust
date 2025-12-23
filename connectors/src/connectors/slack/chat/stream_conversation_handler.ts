@@ -664,7 +664,7 @@ function safelyPrepareAnswer(text: string): string | null {
 
   try {
     return slackifyMarkdown(rawAnswer);
-  } catch (err) {
+  } catch (_err) {
     // It's safe to swallow the error as we'll catch up once a valid URL is fully received.
     return null;
   }

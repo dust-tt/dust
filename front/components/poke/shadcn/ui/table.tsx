@@ -163,8 +163,7 @@ const TableCellWithCopy = React.forwardRef<
 });
 TableCellWithCopy.displayName = "TableCellWithCopy";
 
-interface TableCellWithLinkProps
-  extends React.TdHTMLAttributes<HTMLTableCellElement> {
+interface TableCellWithLinkProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   href: string;
   content: string;
 }

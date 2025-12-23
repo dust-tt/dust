@@ -63,7 +63,8 @@ const Collapsible = React.forwardRef<
 Collapsible.displayName = "Collapsible";
 
 export interface CollapsibleTriggerProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
+  extends
+    React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
   label?: string;
   isOpen?: boolean;
@@ -130,7 +131,8 @@ const contentVariants = cva("s-overflow-hidden s-transition-all", {
 });
 
 export interface CollapsibleContentProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
+  extends
+    React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
     VariantProps<typeof contentVariants> {}
 
 const CollapsibleContent = React.forwardRef<

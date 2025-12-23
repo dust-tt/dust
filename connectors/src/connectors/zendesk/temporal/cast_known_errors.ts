@@ -13,9 +13,7 @@ import {
   ExternalOAuthTokenError,
 } from "@connectors/lib/error";
 
-export class ZendeskCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ZendeskCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

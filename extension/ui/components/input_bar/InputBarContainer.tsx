@@ -273,7 +273,7 @@ export const InputBarContainer = ({
     fileUploaderService.isCapturing;
 
   return (
-    <div id="InputBarContainer" className="relative flex flex-col w-full">
+    <div id="InputBarContainer" className="relative flex w-full flex-col">
       <div className="flex space-x-2">
         <EditorContent
           editor={editor}
@@ -305,7 +305,7 @@ export const InputBarContainer = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-end space-x-1 mt-2">
+      <div className="mt-2 flex items-center justify-end space-x-1">
         <AttachFragment
           owner={owner}
           fileUploaderService={fileUploaderService}

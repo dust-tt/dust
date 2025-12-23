@@ -11,9 +11,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { DiscordConfigurationResource } from "@connectors/resources/discord_configuration_resource";
 import type { ModelId } from "@connectors/types";
 
-export class DiscordConnectorStrategy
-  implements ConnectorProviderStrategy<"discord_bot">
-{
+export class DiscordConnectorStrategy implements ConnectorProviderStrategy<"discord_bot"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<DiscordConfigurationModel>,

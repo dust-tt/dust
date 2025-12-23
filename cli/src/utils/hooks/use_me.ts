@@ -32,7 +32,7 @@ export function useMe() {
 
       // Check if using API key authentication
       const apiKey = await dustClient.getApiKey();
-      if (apiKey?.startsWith('sk-')) {
+      if (apiKey?.startsWith("sk-")) {
         // For API key auth, create a mock user object since .me() won't work
         // API keys don't have access to user information, so we create a placeholder
         setMe({
@@ -40,13 +40,13 @@ export function useMe() {
           id: 0, // ModelId type, using 0 as placeholder
           createdAt: Date.now(),
           provider: "google", // Default provider
-          username: "api-user", 
+          username: "api-user",
           email: "api-user@workspace",
           firstName: "API",
           lastName: "User",
           fullName: "API User",
           image: null,
-          workspaces: [] // Will be empty for API keys
+          workspaces: [], // Will be empty for API keys
         });
         setIsLoading(false);
         return;

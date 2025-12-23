@@ -28,8 +28,7 @@ import type {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebhookSourcesViewResource
-  extends ReadonlyAttributesType<WebhookSourcesViewModel> {}
+export interface WebhookSourcesViewResource extends ReadonlyAttributesType<WebhookSourcesViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSourcesViewModel> {
   static model: ModelStatic<WebhookSourcesViewModel> = WebhookSourcesViewModel;

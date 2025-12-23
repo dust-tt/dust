@@ -1,14 +1,16 @@
-import * as esbuild from 'esbuild';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import postCssPlugin from 'esbuild-plugin-postcss2';
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
+import * as esbuild from "esbuild";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import postCssPlugin from "esbuild-plugin-postcss2";
+import tailwindcss from "tailwindcss";
+import autoprefixer from "autoprefixer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(__dirname, '..');
-const pkg = JSON.parse(fs.readFileSync(path.resolve(rootDir, 'package.json'), 'utf-8'));
+const rootDir = path.resolve(__dirname, "..");
+const pkg = JSON.parse(
+  fs.readFileSync(path.resolve(rootDir, "package.json"), "utf-8")
+);
 
 // Environment variables
 const disableTerser = !!process.env.DISABLE_TERSER;
@@ -21,13 +23,13 @@ console.log(`- Tailwind Base: ${includeTwBase}`);
 try {
   await esbuild.build({
     // Input
-    entryPoints: ['dist/esm/index.js'],
+    entryPoints: ["dist/esm/index.js"],
 
     // Output
     outfile: pkg.main, // 'dist/cjs/index.js'
-    format: 'cjs',
-    platform: 'node',
-    target: 'es2020',
+    format: "cjs",
+    platform: "node",
+    target: "es2020",
 
     // Bundling
     bundle: true,
@@ -53,10 +55,10 @@ try {
 
     // Loaders for different file types
     loader: {
-      '.css': 'css',
-      '.svg': 'dataurl',
-      '.png': 'dataurl',
-      '.json': 'json',
+      ".css": "css",
+      ".svg": "dataurl",
+      ".png": "dataurl",
+      ".json": "json",
     },
 
     // PostCSS plugin for Tailwind
@@ -64,26 +66,26 @@ try {
       postCssPlugin.default({
         plugins: [
           tailwindcss({
-            config: path.resolve(rootDir, 'tailwind.config.js'),
+            config: path.resolve(rootDir, "tailwind.config.js"),
             corePlugins: {
               preflight: includeTwBase,
             },
           }),
           autoprefixer(),
         ],
-        inject: true,  // Inject CSS into JS (same as Rollup)
+        inject: true, // Inject CSS into JS (same as Rollup)
         extract: false, // Don't extract to separate file
       }),
     ],
 
     // Additional options
-    legalComments: 'none', // Similar to Rollup's comments: false
+    legalComments: "none", // Similar to Rollup's comments: false
     treeShaking: true,
   });
 
-  console.log('✓ CJS bundle built successfully');
+  console.log("✓ CJS bundle built successfully");
   console.log(`  Output: ${pkg.main}`);
 } catch (error) {
-  console.error('✗ CJS build failed:', error);
+  console.error("✗ CJS build failed:", error);
   process.exit(1);
 }

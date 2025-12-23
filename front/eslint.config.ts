@@ -17,7 +17,6 @@ export default defineConfig(
   // Ignores - must come first in flat config
   {
     ignores: [
-      ".prettierrc.js",
       "eslint.config.ts",
       "**/*.config.js",
       "**/node_modules/**",
@@ -108,6 +107,23 @@ export default defineConfig(
 
       // Import rules
       "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.test.ts",
+            "**/*.test.tsx",
+            "**/*.spec.ts",
+            "**/*.spec.tsx",
+            "**/*.config.ts",
+            "**/*.config.js",
+            "**/scripts/**",
+            "**/admin/**",
+            "vitest.config.ts",
+            "esbuild.*.ts",
+          ],
+        },
+      ],
 
       // Import sorting
       "simple-import-sort/imports": [

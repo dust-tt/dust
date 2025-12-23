@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { startObservation } from "@langfuse/tracing";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -8,12 +9,13 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { dustManagedCredentials, Err, Ok } from "@app/types";
+import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
 import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   fileSizeToHumanReadable,
@@ -26,6 +28,61 @@ const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 w
 
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
+
+// Token pricing is expressed as cost per million tokens (micro-USD per token)
+const MICRO_USD_PER_USD = 1_000_000;
+
+/**
+ * Computes cost details for Gemini image generation from usage metadata.
+ * Returns structured cost information for Langfuse observation updates.
+ */
+function computeImageGenerationCostDetails(usageMetadata: {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+}): {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  costUsd: number;
+  costDetails: {
+    input: number;
+    output: number;
+    total: number;
+  };
+} {
+  const inputTokens = usageMetadata.promptTokenCount ?? 0;
+  const outputTokens = usageMetadata.candidatesTokenCount ?? 0;
+  const totalTokens = inputTokens + outputTokens;
+
+  const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+    modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+    promptTokens: inputTokens,
+    completionTokens: outputTokens,
+    cachedTokens: null,
+    cacheCreationTokens: null,
+  });
+
+  // Convert micro-USD to USD for Langfuse
+  const costUsd = totalCostMicroUsd / MICRO_USD_PER_USD;
+
+  // Proportional cost breakdown for input/output
+  const inputCostUsd =
+    totalTokens > 0 ? (costUsd * inputTokens) / totalTokens : 0;
+  const outputCostUsd =
+    totalTokens > 0 ? (costUsd * outputTokens) / totalTokens : 0;
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    costUsd,
+    costDetails: {
+      input: inputCostUsd,
+      output: outputCostUsd,
+      total: costUsd,
+    },
+  };
+}
 
 // Map tool size parameters to Gemini aspect ratios.
 const SIZE_TO_ASPECT_RATIO: Record<string, string> = {
@@ -269,6 +326,25 @@ function createServer(
           return rateLimitResult;
         }
 
+        const generation = startObservation(
+          "image-generation",
+          {
+            input: { prompt, size, quality, name },
+            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+            modelParameters: { quality, size, temperature: 0.7 },
+          },
+          { asType: "generation" }
+        );
+
+        generation.updateTrace({
+          tags: [
+            `workspaceId:${workspace.sId}`,
+            `operationType:image_generation`,
+            `tool:generate_image`,
+          ],
+          userId: workspace.sId,
+        });
+
         try {
           const gemini = createGeminiClient();
 
@@ -294,12 +370,33 @@ function createServer(
             prompt
           );
           if (validationResult.isErr()) {
+            generation.update({
+              level: "ERROR",
+              statusMessage: validationResult.error.message,
+            });
+            generation.end();
             return validationResult;
           }
 
           const imageParts = validationResult.value;
 
           trackGeminiTokenUsage(response, statsDClient);
+
+          if (response.usageMetadata) {
+            const { inputTokens, outputTokens, totalTokens, costDetails } =
+              computeImageGenerationCostDetails(response.usageMetadata);
+
+            generation.update({
+              usageDetails: {
+                input: inputTokens,
+                output: outputTokens,
+                total: totalTokens,
+              },
+              costDetails,
+            });
+          }
+
+          generation.end();
 
           return formatImageResponse(imageParts, name);
         } catch (error) {
@@ -309,6 +406,14 @@ function createServer(
             },
             "Error generating image."
           );
+          generation.update({
+            level: "ERROR",
+            statusMessage: "Error generating image",
+            metadata: {
+              error: normalizeError(error),
+            },
+          });
+          generation.end();
           return new Err(new MCPError("Error generating image."));
         }
       }
@@ -482,6 +587,34 @@ function createServer(
 
         const imageBase64 = buffer.toString("base64");
 
+        const generation = startObservation(
+          "image-editing",
+          {
+            input: {
+              editPrompt: editImageInstructions,
+              imageFileId: inputImageFileId,
+              outputName: outputImageFileName,
+              quality,
+              aspectRatio,
+            },
+            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+            modelParameters: {
+              quality,
+              aspectRatio: aspectRatio ?? "original",
+              temperature: 0.7,
+            },
+          },
+          { asType: "generation" }
+        );
+
+        generation.updateTrace({
+          tags: [`workspaceId:${workspace.sId}`, `operationType:image_editing`],
+          metadata: {
+            fileId: inputImageFileId,
+          },
+          userId: workspace.sId,
+        });
+
         try {
           const gemini = createGeminiClient();
 
@@ -518,12 +651,32 @@ function createServer(
             editImageInstructions
           );
           if (validationResult.isErr()) {
+            generation.update({
+              level: "ERROR",
+              statusMessage: validationResult.error.message,
+            });
+            generation.end();
             return validationResult;
           }
 
           const imageParts = validationResult.value;
 
           trackGeminiTokenUsage(response, statsDClient);
+
+          if (response.usageMetadata) {
+            const { inputTokens, outputTokens, totalTokens, costDetails } =
+              computeImageGenerationCostDetails(response.usageMetadata);
+
+            generation.update({
+              usageDetails: {
+                input: inputTokens,
+                output: outputTokens,
+                total: totalTokens,
+              },
+              costDetails,
+            });
+          }
+          generation.end();
 
           return formatImageResponse(imageParts, outputImageFileName);
         } catch (error) {
@@ -533,6 +686,14 @@ function createServer(
             },
             "Error editing image."
           );
+          generation.update({
+            level: "ERROR",
+            statusMessage: "Error editing image",
+            metadata: {
+              error: normalizeError(error),
+            },
+          });
+          generation.end();
           return new Err(new MCPError("Error editing image."));
         }
       }

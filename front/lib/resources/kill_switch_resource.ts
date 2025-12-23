@@ -11,8 +11,7 @@ import { Ok } from "@app/types";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface KillSwitchResource
-  extends ReadonlyAttributesType<KillSwitchModel> {}
+export interface KillSwitchResource extends ReadonlyAttributesType<KillSwitchModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class KillSwitchResource extends BaseResource<KillSwitchModel> {
   static model: ModelStatic<KillSwitchModel> = KillSwitchModel;

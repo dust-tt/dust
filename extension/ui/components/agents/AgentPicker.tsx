@@ -63,7 +63,7 @@ export function AgentPicker({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-96 w-64 xs:w-96"
+        className="xs:w-96 h-96 w-64"
         align="end"
         dropdownHeaders={
           <>
@@ -85,7 +85,7 @@ export function AgentPicker({
           </>
         }
       >
-        <ScrollArea className="flex flex-col mt-1 max-h-[300px] overflow-y-auto">
+        <ScrollArea className="mt-1 flex max-h-[300px] flex-col overflow-y-auto">
           {searchedAgents.map((c) => (
             <DropdownMenuItem
               key={`agent-picker-${c.sId}`}
