@@ -57,23 +57,41 @@ export interface MCPActionDetailsProps {
 }
 
 const SEARCH_TOOL_NAME = "semantic_search";
+
 const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
+
 const WEBSEARCH_TOOL_NAME = "websearch";
 const WEBBROWSER_TOOL_NAME = "webbrowser";
+
 const QUERY_TABLES_TOOL_NAME = "query_tables";
+
 const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
+
 const PROCESS_TOOL_NAME = "extract_information_from_documents";
+
 const CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
+
 const FILESYSTEM_CAT_TOOL_NAME = "cat";
 const FILESYSTEM_FIND_TOOL_NAME = "find";
 const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 const FILESYSTEM_LIST_TOOL_NAME = "list";
+
 const ENABLE_SKILL_TOOL_NAME = "enable_skill";
+
 const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+
+const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
+const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
+const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
+const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
+const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
+
+const TOOLSETS_ENABLE_TOOL_NAME = "enable";
+const TOOLSETS_LIST_TOOL_NAME = "list";
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
@@ -205,14 +223,14 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 
   if (internalMCPServerName === "agent_memory") {
     switch (toolName) {
-      case "retrieve":
+      case AGENT_MEMORY_RETRIEVE_TOOL_NAME:
         return <MCPAgentMemoryRetrieveActionDetails {...props} />;
-      case "record_entries":
+      case AGENT_MEMORY_RECORD_TOOL_NAME:
         return <MCPAgentMemoryRecordActionDetails {...props} />;
-      case "erase_entries":
+      case AGENT_MEMORY_ERASE_TOOL_NAME:
         return <MCPAgentMemoryEraseActionDetails {...props} />;
-      case "compact_memory":
-      case "edit_entries":
+      case AGENT_MEMORY_COMPACT_TOOL_NAME:
+      case AGENT_MEMORY_EDIT_TOOL_NAME:
         return (
           <MCPAgentMemoryEditActionDetails {...props} toolName={toolName} />
         );
@@ -220,10 +238,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   }
 
   if (internalMCPServerName === "toolsets") {
-    if (toolName === "enable") {
+    if (toolName === TOOLSETS_ENABLE_TOOL_NAME) {
       return <MCPToolsetsEnableActionDetails {...props} />;
     }
-    if (toolName === "list") {
+    if (toolName === TOOLSETS_LIST_TOOL_NAME) {
       return <MCPListToolsActionDetails {...props} />;
     }
   }
