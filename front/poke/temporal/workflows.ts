@@ -70,6 +70,7 @@ export async function deleteWorkspaceWorkflow({
   }
 
   await deleteConversationsActivity({ workspaceId });
+  await deleteSkillsActivity({ workspaceId });
   await deleteRemoteMCPServersActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
@@ -81,7 +82,6 @@ export async function deleteWorkspaceWorkflow({
   await deleteWebhookSourcesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
-  await deleteSkillsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });
   await deleteWorkOSOrganization({ workspaceId, workspaceHasBeenRelocated });
 }
