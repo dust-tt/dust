@@ -487,6 +487,44 @@ function filterChannels(
   return matched.sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit);
 }
 
+async function searchAndProcessChannels(
+  slackClient: WebClient,
+  scope: "joined" | "public",
+  query: string
+): Promise<MinimalChannelInfo[]> {
+  const channels = await getChannels({ slackClient, scope });
+  const matched = filterChannels(channels, query, MAX_CHANNEL_SEARCH_RESULTS);
+  return matched.map(cleanChannelPayload);
+}
+
+function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
+  return [
+    `- **#${c.name}**`,
+    `  - ID: ${c.id}`,
+    `  - Created: ${c.created}`,
+    `  - Creator: ${c.creator}`,
+    `  - Updated: ${c.updated ?? ""}`,
+    `  - Type: ${c.type.join(", ")}`,
+    `  - Member: ${c.is_member ? "Yes" : "No"}`,
+    `  - Purpose: ${c.purpose?.value ?? ""}`,
+    `  - Topic: ${c.topic?.value ?? ""}`,
+    `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
+  ].join("\n");
+}
+
+function createChannelsResponse(
+  channels: MinimalChannelInfo[],
+  contextMessage: string
+): Ok<Array<{ type: "text"; text: string }>> {
+  const markdown = channels.map(formatChannelAsMarkdown).join("\n");
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Found ${channels.length} channel(s) ${contextMessage}:\n\n${markdown}`,
+    },
+  ]);
+}
+
 // Execute search_channels: "exact" uses conversations.info, "search" fetches lists and filters locally.
 export async function executeSearchChannels(
   query: string,
@@ -509,23 +547,10 @@ export async function executeSearchChannels(
 
       if (response.ok && response.channel) {
         const c = cleanChannelPayload(response.channel);
-        const markdown = [
-          `- **#${c.name}**`,
-          `  - ID: ${c.id}`,
-          `  - Created: ${c.created}`,
-          `  - Creator: ${c.creator}`,
-          `  - Updated: ${c.updated ?? ""}`,
-          `  - Type: ${c.type.join(", ")}`,
-          `  - Member: ${c.is_member ? "Yes" : "No"}`,
-          `  - Purpose: ${c.purpose?.value ?? ""}`,
-          `  - Topic: ${c.topic?.value ?? ""}`,
-          `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
-        ].join("\n");
-
         return new Ok([
           {
             type: "text" as const,
-            text: markdown,
+            text: formatChannelAsMarkdown(c),
           },
         ]);
       }
@@ -539,83 +564,30 @@ export async function executeSearchChannels(
   }
 
   // Text search: fetch lists and filter locally
-  // scope="joined": search joined first, fallback to all public if no results
   if (scope === "joined") {
     try {
-      const joinedChannels = await getChannels({
+      const joinedChannels = await searchAndProcessChannels(
         slackClient,
-        scope: "joined",
-      });
-
-      const matchedInJoined = filterChannels(
-        joinedChannels,
-        query,
-        MAX_CHANNEL_SEARCH_RESULTS
+        "joined",
+        query
       );
-
-      if (matchedInJoined.length > 0) {
-        const cleanedChannels = matchedInJoined.map(cleanChannelPayload);
-        const markdown = cleanedChannels
-          .map((c) =>
-            [
-              `- **#${c.name}**`,
-              `  - ID: ${c.id}`,
-              `  - Created: ${c.created}`,
-              `  - Creator: ${c.creator}`,
-              `  - Updated: ${c.updated ?? ""}`,
-              `  - Type: ${c.type.join(", ")}`,
-              `  - Member: ${c.is_member ? "Yes" : "No"}`,
-              `  - Purpose: ${c.purpose?.value ?? ""}`,
-              `  - Topic: ${c.topic?.value ?? ""}`,
-              `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
-            ].join("\n")
-          )
-          .join("\n");
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Found ${cleanedChannels.length} channel(s) in your joined channels:\n\n${markdown}`,
-          },
-        ]);
+      if (joinedChannels.length > 0) {
+        return createChannelsResponse(
+          joinedChannels,
+          "in your joined channels"
+        );
       }
 
       // Fallback to all public
-      const allChannels = await getChannels({
+      const publicChannels = await searchAndProcessChannels(
         slackClient,
-        scope: "public",
-      });
-
-      const matchedInAll = filterChannels(
-        allChannels,
-        query,
-        MAX_CHANNEL_SEARCH_RESULTS
+        "public",
+        query
       );
-
-      const cleanedChannels = matchedInAll.map(cleanChannelPayload);
-      const markdown = cleanedChannels
-        .map((c) =>
-          [
-            `- **#${c.name}**`,
-            `  - ID: ${c.id}`,
-            `  - Created: ${c.created}`,
-            `  - Creator: ${c.creator}`,
-            `  - Updated: ${c.updated ?? ""}`,
-            `  - Type: ${c.type.join(", ")}`,
-            `  - Member: ${c.is_member ? "Yes" : "No"}`,
-            `  - Purpose: ${c.purpose?.value ?? ""}`,
-            `  - Topic: ${c.topic?.value ?? ""}`,
-            `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
-          ].join("\n")
-        )
-        .join("\n");
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Found ${cleanedChannels.length} channel(s) in public workspace channels:\n\n${markdown}`,
-        },
-      ]);
+      return createChannelsResponse(
+        publicChannels,
+        "in public workspace channels"
+      );
     } catch (error) {
       return new Err(new MCPError(`Error searching channels: ${error}`));
     }
@@ -623,41 +595,15 @@ export async function executeSearchChannels(
 
   // scope="all": search all public channels directly
   try {
-    const allChannels = await getChannels({
+    const publicChannels = await searchAndProcessChannels(
       slackClient,
-      scope: "public",
-    });
-
-    const matched = filterChannels(
-      allChannels,
-      query,
-      MAX_CHANNEL_SEARCH_RESULTS
+      "public",
+      query
     );
-
-    const cleanedChannels = matched.map(cleanChannelPayload);
-    const markdown = cleanedChannels
-      .map((c) =>
-        [
-          `- **#${c.name}**`,
-          `  - ID: ${c.id}`,
-          `  - Created: ${c.created}`,
-          `  - Creator: ${c.creator}`,
-          `  - Updated: ${c.updated ?? ""}`,
-          `  - Type: ${c.type.join(", ")}`,
-          `  - Member: ${c.is_member ? "Yes" : "No"}`,
-          `  - Purpose: ${c.purpose?.value ?? ""}`,
-          `  - Topic: ${c.topic?.value ?? ""}`,
-          `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
-        ].join("\n")
-      )
-      .join("\n");
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${cleanedChannels.length} channel(s) in public workspace channels:\n\n${markdown}`,
-      },
-    ]);
+    return createChannelsResponse(
+      publicChannels,
+      "in public workspace channels"
+    );
   } catch (error) {
     return new Err(new MCPError(`Error searching channels: ${error}`));
   }
