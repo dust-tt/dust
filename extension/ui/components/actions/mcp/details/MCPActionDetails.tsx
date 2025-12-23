@@ -103,103 +103,98 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     internalMCPServerName === "search" ||
     internalMCPServerName === "data_sources_file_system"
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation" ? "Searching data" : "Search data"
-          }
-          visual={MagnifyingGlassIcon}
-          query={
-            isSearchInputType(params)
-              ? makeQueryTextForDataSourceSearch(params)
-              : null
-          }
-        />
-      );
-    }
-
-    if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
-    ) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation"
-              ? "Browsing data sources"
-              : "Browse data sources"
-          }
-          query={
-            isDataSourceFilesystemFindInputType(params)
-              ? makeQueryTextForFind(params)
-              : isDataSourceFilesystemListInputType(params)
-                ? makeQueryTextForList(params)
+    switch (toolName) {
+      case SEARCH_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            actionName={
+              viewType === "conversation" ? "Searching data" : "Search data"
+            }
+            visual={MagnifyingGlassIcon}
+            query={
+              isSearchInputType(params)
+                ? makeQueryTextForDataSourceSearch(params)
                 : null
-          }
-          visual={ActionDocumentTextIcon}
-        />
-      );
-    }
-
-    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
-      return <DataSourceNodeContentDetails {...props} />;
-    }
-
-    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
-      return <FilesystemPathDetails {...props} />;
+            }
+          />
+        );
+      case FILESYSTEM_LIST_TOOL_NAME:
+      case FILESYSTEM_FIND_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            actionName={
+              viewType === "conversation"
+                ? "Browsing data sources"
+                : "Browse data sources"
+            }
+            query={
+              isDataSourceFilesystemFindInputType(params)
+                ? makeQueryTextForFind(params)
+                : isDataSourceFilesystemListInputType(params)
+                  ? makeQueryTextForList(params)
+                  : null
+            }
+            visual={ActionDocumentTextIcon}
+          />
+        );
+      case FILESYSTEM_CAT_TOOL_NAME:
+        return <DataSourceNodeContentDetails {...props} />;
+      case FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME:
+        return <FilesystemPathDetails {...props} />;
     }
   }
 
-  if (internalMCPServerName === "include_data") {
-    if (toolName === INCLUDE_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation" ? "Including data" : "Include data"
-          }
-          visual={ClockIcon}
-          query={
-            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
-          }
-        />
-      );
-    }
+  if (
+    internalMCPServerName === "include_data" &&
+    toolName === INCLUDE_TOOL_NAME
+  ) {
+    return (
+      <SearchResultDetails
+        viewType={viewType}
+        actionName={
+          viewType === "conversation" ? "Including data" : "Include data"
+        }
+        visual={ClockIcon}
+        query={
+          isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+        }
+      />
+    );
   }
 
   if (internalMCPServerName === "web_search_&_browse") {
-    if (toolName === WEBSEARCH_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          query={isWebsearchInputType(params) ? params.query : null}
-          actionName={
-            viewType === "conversation" ? "Searching the web" : "Web search"
-          }
-          visual={GlobeAltIcon}
-        />
-      );
-    }
-    if (toolName === WEBBROWSER_TOOL_NAME) {
-      return <MCPBrowseActionDetails {...props} />;
+    switch (toolName) {
+      case WEBSEARCH_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            query={isWebsearchInputType(params) ? params.query : null}
+            actionName={
+              viewType === "conversation" ? "Searching the web" : "Web search"
+            }
+            visual={GlobeAltIcon}
+          />
+        );
+      case WEBBROWSER_TOOL_NAME:
+        return <MCPBrowseActionDetails {...props} />;
     }
   }
 
-  if (internalMCPServerName === "query_tables") {
-    if (toolName === QUERY_TABLES_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...props} />;
-    }
+  if (
+    internalMCPServerName === "query_tables" &&
+    toolName === QUERY_TABLES_TOOL_NAME
+  ) {
+    return <MCPTablesQueryActionDetails {...props} />;
   }
 
   if (internalMCPServerName === "query_tables_v2") {
-    if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...props} />;
-    }
-    if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...props} />;
+    switch (toolName) {
+      case GET_DATABASE_SCHEMA_TOOL_NAME:
+        return <MCPGetDatabaseSchemaActionDetails {...props} />;
+      case EXECUTE_DATABASE_QUERY_TOOL_NAME:
+        return <MCPTablesQueryActionDetails {...props} />;
     }
   }
 
@@ -207,10 +202,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     return <MCPReasoningActionDetails {...props} />;
   }
 
-  if (internalMCPServerName === "extract_data") {
-    if (toolName === PROCESS_TOOL_NAME) {
-      return <MCPExtractActionDetails {...props} />;
-    }
+  if (
+    internalMCPServerName === "extract_data" &&
+    toolName === PROCESS_TOOL_NAME
+  ) {
+    return <MCPExtractActionDetails {...props} />;
   }
 
   if (internalMCPServerName === "run_agent") {
@@ -238,11 +234,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   }
 
   if (internalMCPServerName === "toolsets") {
-    if (toolName === TOOLSETS_ENABLE_TOOL_NAME) {
-      return <MCPToolsetsEnableActionDetails {...props} />;
-    }
-    if (toolName === TOOLSETS_LIST_TOOL_NAME) {
-      return <MCPListToolsActionDetails {...props} />;
+    switch (toolName) {
+      case TOOLSETS_ENABLE_TOOL_NAME:
+        return <MCPToolsetsEnableActionDetails {...props} />;
+      case TOOLSETS_LIST_TOOL_NAME:
+        return <MCPListToolsActionDetails {...props} />;
     }
   }
 
