@@ -12,8 +12,6 @@ import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import groupBy from "lodash/groupBy";
-import pickBy from "lodash/pickBy";
 
 import {
   calculateContentSize,
@@ -652,17 +650,24 @@ async function disambiguateServerNamesBySpace(
   auth: Authenticator,
   configs: MCPServerConfigurationType[]
 ): Promise<MCPServerConfigurationType[]> {
-  const serverSideConfigs = configs.filter(isServerSideMCPServerConfiguration);
+  // Build a map of name -> unique viewIds for server-side configs.
+  const viewIdsByName = configs
+    .filter(isServerSideMCPServerConfiguration)
+    .reduce((map, config) => {
+      const viewIds = map.get(config.name) ?? new Set<string>();
+      viewIds.add(config.mcpServerViewId);
+      return map.set(config.name, viewIds);
+    }, new Map<string, Set<string>>());
 
-  // Group by name, keep only groups with collisions (multiple unique viewIds).
-  const collidingGroups = pickBy(
-    groupBy(serverSideConfigs, "name"),
-    (group) => new Set(group.map((c) => c.mcpServerViewId)).size > 1
-  );
-
-  const viewIdsToFetch = Object.values(collidingGroups).flatMap((group) =>
-    group.map((c) => c.mcpServerViewId)
-  );
+  // Find collisions (multiple viewIds for the same name) and collect viewIds to fetch.
+  const collidingNames = new Set<string>();
+  const viewIdsToFetch: string[] = [];
+  for (const [name, viewIds] of viewIdsByName) {
+    if (viewIds.size > 1) {
+      collidingNames.add(name);
+      viewIdsToFetch.push(...viewIds);
+    }
+  }
 
   if (viewIdsToFetch.length === 0) {
     return configs;
