@@ -548,6 +548,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    // Fetch existing synced folders to avoid re-syncing already synced folders.
+    const existingFolders = await GoogleDriveFoldersModel.findAll({
+      where: { connectorId: this.connectorId },
+      attributes: ["folderId"],
+    });
+    const existingFolderIds = new Set(existingFolders.map((f) => f.folderId));
+
     const addedFolderIds: string[] = [];
     const removedFolderIds: string[] = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
@@ -561,7 +568,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           },
         });
       } else if (permission === "read") {
-        addedFolderIds.push(id);
+        // Only trigger sync for folders that are not already synced.
+        if (!existingFolderIds.has(id)) {
+          addedFolderIds.push(id);
+        }
         await GoogleDriveFoldersModel.upsert({
           connectorId: this.connectorId,
           folderId: id,
