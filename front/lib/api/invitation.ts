@@ -184,7 +184,7 @@ interface MembershipInvitationBlob {
   role: ActiveRoleType;
 }
 
-interface HandleMembershipInvitationResult {
+export interface HandleMembershipInvitationResult {
   success: boolean;
   email: string;
   error_message?: string;
