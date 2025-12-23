@@ -116,7 +116,9 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
-export type RichMentionWithStatus = RichMention & { status: MentionStatusType };
+export type RichMentionWithStatus = RichMention & {
+  status: MentionStatusType;
+};
 
 export type UserMessageType = {
   id: ModelId;

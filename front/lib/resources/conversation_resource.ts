@@ -10,7 +10,7 @@ import type {
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
@@ -350,6 +350,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return "conversation_not_found";
     }
     return "allowed";
+  }
+
+  static async canUserAccess(
+    auth: Authenticator,
+    { conversationId, userId }: { conversationId: string; userId: string }
+  ): Promise<
+    "allowed" | "conversation_not_found" | "conversation_access_restricted"
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+    const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userId,
+      workspace.sId
+    );
+
+    return ConversationResource.canAccess(fakeAuth, conversationId);
   }
 
   static async listAll(
