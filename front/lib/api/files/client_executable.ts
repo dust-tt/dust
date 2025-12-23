@@ -403,7 +403,7 @@ export async function revertClientExecutableFileChanges(
 > {
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
-    return new Err({ tracked: false, message: "File not found" });
+    return new Err({ tracked: true, message: "File not found" });
   }
 
   // Get the GCS path for this file
@@ -419,7 +419,7 @@ export async function revertClientExecutableFileChanges(
     });
   } catch (error) {
     return new Err({
-      tracked: false,
+      tracked: true,
       message: `Failed to retrieve file versions: ${normalizeError(error)}`,
     });
   }
@@ -428,7 +428,7 @@ export async function revertClientExecutableFileChanges(
   // case but just in case
   if (versions.length < MIN_VERSIONS_FOR_REVERT) {
     return new Err({
-      tracked: false,
+      tracked: true,
       message: "No previous version available to revert to",
     });
   }
@@ -443,7 +443,7 @@ export async function revertClientExecutableFileChanges(
     revertedContent = content.toString("utf8");
   } catch (error) {
     return new Err({
-      tracked: false,
+      tracked: true,
       message: `Failed to download previous version: ${normalizeError(error)}`,
     });
   }

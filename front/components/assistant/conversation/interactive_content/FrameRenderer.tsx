@@ -153,7 +153,6 @@ export function FrameRenderer({
   const { fileMetadata } = useFileMetadata({
     fileId,
     owner,
-    cacheKey: contentHash,
   });
 
   const { handleVisualizationRevert } = useVisualizationRevert({
