@@ -1,3 +1,4 @@
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -9,12 +10,11 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@sparkle/components/";
-import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
   CollapsibleContent,
 } from "@sparkle/components/Collapsible";
-import { Button } from "@sparkle/components/Button";
 import { ArrowDownSIcon, ArrowRightSIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -379,9 +379,9 @@ NavigationListCollapsibleSection.displayName =
 
 export {
   NavigationList,
+  NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
   NavigationListLabelButton,
-  NavigationListCollapsibleSection,
 };
