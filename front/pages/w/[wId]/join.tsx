@@ -69,8 +69,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     throw new Error(`Workspace not found: ${wId}`);
   }
 
-  const workspaceDomains =
-    (await workspaceResource?.getVerifiedDomains()) ?? [];
+  const workspaceDomains = (await workspaceResource.getVerifiedDomains()) ?? [];
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
