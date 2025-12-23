@@ -48,7 +48,7 @@ import { isDevelopment } from "@app/types";
 type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
 
 function getSubscriptionDisplayStatus(
-  subscription: SubscriptionType
+  subscription: SubscriptionType,
 ): SubscriptionStatus {
   if (subscription.paymentFailingSince !== null) {
     return "paymentFailed";
@@ -58,7 +58,7 @@ function getSubscriptionDisplayStatus(
   }
   if (
     subscription.plan.code === FREE_NO_PLAN_CODE ||
-    subscription.endDate !== null
+    (subscription.endDate !== null && subscription.endDate >= Date.now())
   ) {
     return "ended";
   }
@@ -106,7 +106,7 @@ interface SubscriptionsDataTableProps {
 
 function prepareSubscriptionsForDisplay(
   owner: WorkspaceType,
-  subscriptions: SubscriptionType[]
+  subscriptions: SubscriptionType[],
 ): SubscriptionsDisplayType[] {
   return subscriptions.map((s) => {
     return {
@@ -116,13 +116,13 @@ function prepareSubscriptionsForDisplay(
       stripeSubscriptionId: s.stripeSubscriptionId,
       startDate: s.startDate
         ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
-            s.startDate
-          ).toLocaleTimeString()}`
+          s.startDate,
+        ).toLocaleTimeString()}`
         : null,
       endDate: s.endDate
         ? `${new Date(s.endDate).toLocaleDateString()} ${new Date(
-            s.endDate
-          ).toLocaleTimeString()}`
+          s.endDate,
+        ).toLocaleTimeString()}`
         : null,
       startDateValue: s.startDate ? new Date(s.startDate).getTime() : null,
       endDateValue: s.endDate ? new Date(s.endDate).getTime() : null,
@@ -383,7 +383,7 @@ function UpgradeDowngradeModal({
   const { submit: onDowngrade } = useSubmitFunction(async () => {
     if (
       !window.confirm(
-        "Confirm workspace downgrade to no plan? This action will pause all connectors and delete data after the retention period expires."
+        "Confirm workspace downgrade to no plan? This action will pause all connectors and delete data after the retention period expires.",
       )
     ) {
       return;
@@ -396,7 +396,7 @@ function UpgradeDowngradeModal({
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
       if (!r.ok) {
         throw new Error("Failed to downgrade workspace.");
@@ -412,7 +412,7 @@ function UpgradeDowngradeModal({
     async (plan: PlanType) => {
       if (
         !window.confirm(
-          `Are you sure you want to upgrade ${owner.name} (${owner.sId}) to plan ${plan.name} (${plan.code}) ?.`
+          `Are you sure you want to upgrade ${owner.name} (${owner.sId}) to plan ${plan.name} (${plan.code}) ?.`,
         )
       ) {
         return;
@@ -428,7 +428,7 @@ function UpgradeDowngradeModal({
             body: JSON.stringify({
               planCode: plan.code,
             }),
-          }
+          },
         );
         if (!r.ok) {
           throw new Error("Failed to upgrade workspace to plan.");
@@ -437,10 +437,10 @@ function UpgradeDowngradeModal({
       } catch (e) {
         console.error(e);
         window.alert(
-          "An error occurred while upgrading the workspace to plan."
+          "An error occurred while upgrading the workspace to plan.",
         );
       }
-    }
+    },
   );
 
   return (
