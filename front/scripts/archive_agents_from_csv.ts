@@ -3,9 +3,8 @@ import { readFileSync } from "fs";
 
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-
-import type { ArgumentSpecs } from "./helpers";
-import { makeScript } from "./helpers";
+import type { ArgumentSpecs } from "@app/scripts/helpers";
+import { makeScript } from "@app/scripts/helpers";
 
 type AgentRecord = {
   name: string;
@@ -48,11 +47,11 @@ makeScript(
 
     for (const record of records) {
       const agentName = record.name;
-      const agentSid = record.AGENT_SID;
+      const agentId = record.AGENT_SID;
 
-      if (!agentName || !agentSid) {
+      if (!agentName || !agentId) {
         scriptLogger.warn(
-          { agentName, agentSid },
+          { agentName, agentId },
           "Missing name or AGENT_SID, skipping"
         );
         skipCount++;
@@ -60,36 +59,36 @@ makeScript(
       }
 
       scriptLogger.info(
-        { agentName, agentSid, execute },
+        { agentName, agentId, execute },
         "Processing agent archival"
       );
 
       if (execute) {
         try {
-          const archived = await archiveAgentConfiguration(auth, agentSid);
+          const archived = await archiveAgentConfiguration(auth, agentId);
           if (archived) {
             scriptLogger.info(
-              { agentName, agentSid },
+              { agentName, agentId },
               "Successfully archived agent"
             );
             successCount++;
           } else {
             scriptLogger.warn(
-              { agentName, agentSid },
+              { agentName, agentId },
               "Agent not found or already archived"
             );
             skipCount++;
           }
         } catch (error) {
           scriptLogger.error(
-            { agentName, agentSid, error },
+            { agentName, agentId, error },
             "Failed to archive agent"
           );
           errorCount++;
         }
       } else {
         scriptLogger.info(
-          { agentName, agentSid },
+          { agentName, agentId },
           "Dry run: would archive agent"
         );
       }
