@@ -26,7 +26,8 @@ makeScript(
     connectorId: {
       type: "number",
       demandOption: false,
-      describe: "Optional connector ID to sync. If not provided, syncs all Slack connectors.",
+      describe:
+        "Optional connector ID to sync. If not provided, syncs all Slack connectors.",
     },
   },
   async ({ connectorId, execute }, logger) => {
