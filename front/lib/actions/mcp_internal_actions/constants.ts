@@ -850,10 +850,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 26,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("freshservice_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Read operations - never ask
       list_tickets: "never_ask",
@@ -906,7 +904,7 @@ export const INTERNAL_MCP_SERVERS = {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/freshservice",
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
     },
   },
@@ -989,7 +987,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       list_public_channels: "never_ask" as const,
       list_users: "never_ask" as const,
@@ -1054,7 +1052,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("confluence_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
@@ -1254,7 +1252,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("ashby_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       search_candidates: "never_ask",
       get_report_data: "never_ask",

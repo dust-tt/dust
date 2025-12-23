@@ -658,7 +658,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
   | "fireworks_new_model_feature"
-  | "freshservice_tool"
   | "front_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
