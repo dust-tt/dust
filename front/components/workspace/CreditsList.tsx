@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 import type { EditedByUser } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 
@@ -21,31 +22,30 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
-// Sorting priority for credit types: free -> committed -> payg
-const TYPE_SORT_ORDER: Record<CreditType, number> = {
-  free: 1,
-  committed: 2,
-  payg: 3,
-};
-
 // Display labels for credit types
 const TYPE_LABELS: Record<CreditType, string> = {
   free: "Free",
   committed: "Committed",
   payg: "Pay-as-you-go",
+  excess: "Excess",
 };
 
 // Chip colors for credit types
-const TYPE_COLORS: Record<CreditType, "green" | "blue" | "primary"> = {
+export const TYPE_COLORS: Record<
+  CreditType,
+  "green" | "blue" | "primary" | "warning"
+> = {
   free: "green",
   committed: "blue",
   payg: "primary",
+  excess: "warning",
 };
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   return [...credits].sort((a, b) => {
     // First sort by type priority
-    const typeDiff = TYPE_SORT_ORDER[a.type] - TYPE_SORT_ORDER[b.type];
+    const typeDiff =
+      CREDIT_TYPE_SORT_ORDER[a.type] - CREDIT_TYPE_SORT_ORDER[b.type];
     if (typeDiff !== 0) {
       return typeDiff;
     }

@@ -616,6 +616,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               title: file.fileName,
               snippet: file.snippet,
               createdAt: file.createdAt.getTime(),
+              updatedAt: file.updatedAt.getTime(),
               ...(hidden ? { hidden: true } : {}),
             };
           })

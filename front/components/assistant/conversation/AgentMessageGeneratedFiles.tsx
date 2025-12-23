@@ -65,11 +65,23 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             </div>
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
-                {variant === "grid" && file.createdAt && (
+                {variant === "grid" && (file.updatedAt ?? file.createdAt) && (
                   <div>
-                    <span>{formatCalendarDate(file.createdAt)}</span>
-                    <span className="mx-1">{"\u00B7"}</span>
-                    <time>{getTime(file.createdAt)}</time>
+                    {file.updatedAt && file.updatedAt !== file.createdAt ? (
+                      <>
+                        <span>
+                          Updated {formatCalendarDate(file.updatedAt)}
+                        </span>
+                        <span className="mx-1">{"\u00B7"}</span>
+                        <time>{getTime(file.updatedAt)}</time>
+                      </>
+                    ) : file.createdAt ? (
+                      <>
+                        <span>{formatCalendarDate(file.createdAt)}</span>
+                        <span className="mx-1">{"\u00B7"}</span>
+                        <time>{getTime(file.createdAt)}</time>
+                      </>
+                    ) : null}
                   </div>
                 )}
                 {variant === "list" && description && (
