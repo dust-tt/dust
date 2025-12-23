@@ -112,6 +112,7 @@ export function AssistantToolsSection({
                       <div className="truncate">{action.title}</div>
                     </div>
                   }
+                  tooltipTriggerAsChild
                 />
               ))
             )}
@@ -129,6 +130,7 @@ export function AssistantToolsSection({
                       <div className="truncate">{displayName}</div>
                     </div>
                   }
+                  tooltipTriggerAsChild
                 />
               );
             })}
