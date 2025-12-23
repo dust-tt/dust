@@ -145,6 +145,31 @@ export class FileStorage {
     return files;
   }
 
+  async getFileVersions({
+    filePath,
+    maxResults,
+  }: {
+    filePath: string;
+    maxResults?: number;
+  }) {
+    const [files] = await this.bucket.getFiles({
+      prefix: filePath,
+      versions: true,
+      maxResults,
+    });
+
+    // Filter to only the exact file path and sort by generation (newest first)
+    const versions = files
+      .filter((file) => file.name === filePath)
+      .sort((a, b) => {
+        const genA = parseInt(a.metadata.generation || "0");
+        const genB = parseInt(b.metadata.generation || "0");
+        return genB - genA;
+      });
+
+    return versions;
+  }
+
   get name() {
     return this.bucket.name;
   }
