@@ -1,9 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { SkillEnableInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -15,15 +14,13 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(SKILL_MANAGEMENT_SERVER_NAME);
+  const server = makeInternalMCPServer("skill_management");
 
   server.tool(
     ENABLE_SKILL_TOOL_NAME,
     "Enable a skill for the current conversation. " +
       "The skill will be available for subsequent messages from the same agent in this conversation.",
-    {
-      skillName: z.string().describe("The name of the skill to enable"),
-    },
+    SkillEnableInputSchema.shape,
     withToolLogging(
       auth,
       {
@@ -35,7 +32,7 @@ function createServer(
           return new Err(new MCPError("No conversation context available"));
         }
 
-        const { conversation, agentConfiguration, agentMessage } =
+        const { conversation, agentConfiguration } =
           agentLoopContext.runContext;
 
         const skill = await SkillResource.fetchActiveByName(auth, skillName);
@@ -47,11 +44,9 @@ function createServer(
           );
         }
 
-        const enableResult = await skill.enableForMessage(auth, {
+        const enableResult = await skill.enableForAgent(auth, {
           agentConfiguration,
-          agentMessage,
           conversation,
-          source: "agent_enabled",
         });
 
         if (enableResult.isErr()) {

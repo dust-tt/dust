@@ -36,12 +36,16 @@ import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCP
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
+import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import { DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
+  ENABLE_SKILL_TOOL_NAME,
+} from "@app/lib/actions/constants";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -278,6 +282,13 @@ export function MCPActionDetails({
       return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
     }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (
+    internalMCPServerName === "skill_management" &&
+    toolName === ENABLE_SKILL_TOOL_NAME
+  ) {
+    return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "agent_management") {

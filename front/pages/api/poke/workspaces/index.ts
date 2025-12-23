@@ -19,9 +19,9 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
@@ -189,14 +189,11 @@ async function handler(
 
         let isSearchByDomain = false;
         if (isDomain(searchTerm)) {
-          const workspaceDomain = await WorkspaceHasDomainModel.findOne({
-            where: { domain: searchTerm },
-          });
-
-          if (workspaceDomain) {
+          const workspace = await WorkspaceResource.fetchByDomain(searchTerm);
+          if (workspace) {
             isSearchByDomain = true;
             conditions.push({
-              id: workspaceDomain.workspaceId,
+              id: workspace.id,
             });
           }
         }

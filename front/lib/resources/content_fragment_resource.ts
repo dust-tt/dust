@@ -27,9 +27,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   generateRandomModelSId,
@@ -401,35 +398,21 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       });
       const nodeType: ContentNodeType = this.nodeType;
 
-      const dsView = await DataSourceViewModel.findByPk(
+      const dsViews = await DataSourceViewResource.fetchByModelIds(auth, [
         this.nodeDataSourceViewId,
-        {
-          attributes: [],
-          include: [
-            {
-              model: DataSourceModel,
-              as: "dataSourceForView",
-              attributes: ["connectorProvider"],
-            },
-            {
-              model: SpaceModel,
-              as: "space",
-              foreignKey: "vaultId",
-              attributes: ["name"],
-            },
-          ],
-        }
-      );
+      ]);
       assert(
-        dsView,
+        dsViews.length === 1,
         `Data source view not found for content node content fragment (sId: ${this.sId})`
       );
+
+      const [dsView] = dsViews;
 
       const contentNodeData = {
         nodeId,
         nodeDataSourceViewId,
         nodeType: this.nodeType,
-        provider: dsView.dataSourceForView.connectorProvider,
+        provider: dsView.dataSource.connectorProvider,
         spaceName: dsView.space.name,
       };
 

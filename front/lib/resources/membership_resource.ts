@@ -287,7 +287,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Get all the memberships matching the criteria.
-    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
+    const { rows, count } = await this.model.findAndCountAll({
+      ...findOptions,
+      // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
+      // optional.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
       string,

@@ -1,4 +1,4 @@
-import type { MultiPageSheetPage } from "@dust-tt/sparkle";
+import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
   Button,
   InformationCircleIcon,
@@ -488,7 +488,10 @@ function WebhookSourceSheetContent({
     onClose,
   ]);
 
-  const footerButtons = useMemo(() => {
+  const footerButtons: {
+    leftButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+    rightButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+  } = useMemo(() => {
     if (currentPageId === "create") {
       return {
         leftButton: {

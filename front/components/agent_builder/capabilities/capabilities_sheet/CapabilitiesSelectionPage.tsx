@@ -1,6 +1,7 @@
 import { Button, SearchInput, Spinner } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import type {
   CapabilitiesSheetMode,
@@ -10,12 +11,10 @@ import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MC
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type CapabilitiesSelectionPageProps = {
   onModeChange: (mode: CapabilitiesSheetMode | null) => void;
-  owner: LightWorkspaceType;
   handleSkillToggle: (skill: SkillType) => void;
   filteredSkills: SkillType[];
   searchQuery: string;
@@ -32,7 +31,6 @@ type CapabilitiesSelectionPageProps = {
 };
 
 export function CapabilitiesSelectionPageContent({
-  owner,
   handleSkillToggle,
   filteredSkills,
   searchQuery,
@@ -45,14 +43,11 @@ export function CapabilitiesSelectionPageContent({
   handleToolInfoClick,
   onModeChange,
 }: CapabilitiesSelectionPageProps) {
+  const { owner } = useAgentBuilderContext();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
-  const [skillIdToFetch, setSkillIdToFetch] = useState<string | null>(null);
 
-  useSkillWithRelations({
-    owner,
-    skillId: skillIdToFetch ?? "",
-    disabled: !skillIdToFetch,
+  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
     onSuccess: ({ skill }) => {
       onModeChange({
         pageId: "skill_info",
@@ -61,10 +56,6 @@ export function CapabilitiesSelectionPageContent({
       });
     },
   });
-
-  const onSelectedSkill = (skillId: string) => {
-    setSkillIdToFetch(skillId);
-  };
 
   const sortedMCPServerViews = useMemo(
     () => [
@@ -145,7 +136,7 @@ export function CapabilitiesSelectionPageContent({
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
                     onClick={() => handleSkillToggle(skill)}
-                    onMoreInfoClick={() => onSelectedSkill(skill.sId)}
+                    onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
                   />
                 ))}
               </div>

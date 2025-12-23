@@ -1,12 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderSkillsType,
+  MCPFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
   CapabilitiesSheetMode,
   SelectedTool,
+  ToolConfigurationMode,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import {
+  generateUniqueActionName,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -281,6 +289,48 @@ export const useToolSelection = ({
     [onModeChange]
   );
 
+  const handleToolConfigurationSave = useCallback(
+    (mode: ToolConfigurationMode) => (formData: MCPFormData) => {
+      const newActionName = generateUniqueActionName({
+        baseName: nameToStorageFormat(formData.name),
+        existingActions: selectedActions,
+        selectedToolsInSheet: localSelectedTools,
+      });
+
+      const configuredAction: BuilderAction = {
+        ...mode.capability,
+        name: newActionName,
+        description: formData.description,
+        configuration: formData.configuration,
+      };
+
+      const updatedTool: SelectedTool = {
+        type: "MCP",
+        view: mode.mcpServerView,
+        configuredAction,
+      };
+
+      setLocalSelectedTools((prev) => {
+        const existingToolIndex = prev.findIndex(
+          (tool) =>
+            tool.type === "MCP" &&
+            tool.configuredAction?.name === configuredAction.name
+        );
+
+        if (existingToolIndex !== -1) {
+          const updated = [...prev];
+          updated[existingToolIndex] = updatedTool;
+          return updated;
+        } else {
+          return [...prev, updatedTool];
+        }
+      });
+
+      onModeChange({ pageId: "selection" });
+    },
+    [selectedActions, localSelectedTools, onModeChange]
+  );
+
   return {
     localSelectedTools,
     handleToolToggle,
@@ -288,5 +338,7 @@ export const useToolSelection = ({
     filteredMCPServerViews,
     isMCPServerViewsLoading,
     selectedMCPServerViewIds,
+    allMcpServerViews,
+    handleToolConfigurationSave,
   };
 };

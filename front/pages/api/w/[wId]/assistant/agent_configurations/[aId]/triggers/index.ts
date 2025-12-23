@@ -122,16 +122,6 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!agentConfiguration.canEdit) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can delete triggers for this agent.",
-          },
-        });
-      }
-
       const deleteDecoded = DeleteTriggersRequestBodyCodec.decode(req.body);
       if (isLeft(deleteDecoded)) {
         const pathError = reporter.formatValidationErrors(deleteDecoded.left);
@@ -149,7 +139,9 @@ async function handler(
 
       // Batch delete triggers
       for (const triggerId of triggerIds) {
-        const triggerToDelete = userTriggers.find((t) => t.sId === triggerId);
+        const triggerToDelete = auth.isAdmin()
+          ? allTriggers.find((t) => t.sId === triggerId)
+          : userTriggers.find((t) => t.sId === triggerId);
 
         if (!triggerToDelete) {
           // Skip triggers that the user cannot delete

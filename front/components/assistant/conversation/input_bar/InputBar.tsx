@@ -186,7 +186,6 @@ export const InputBar = React.memo(function InputBar({
   const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
     conversationId,
     workspaceId: owner.sId,
-    agentConfigurationId: null,
   });
 
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {

@@ -1,33 +1,57 @@
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
   useSkillSelection,
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
-import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type {
+  CapabilitiesSheetContentProps,
+  ToolEditMode,
+} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { isToolConfigurationOrEditPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
+import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
+import {
+  generateUniqueActionName,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
+import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import {
+  getInfoPageDescription,
+  getInfoPageIcon,
+  getInfoPageTitle,
+} from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
 export function useCapabilitiesPageAndFooter({
-  owner,
-  user,
   mode,
   onModeChange,
   onClose,
-  onSave,
+  onCapabilitiesSave,
+  onToolEditSave,
   alreadyRequestedSpaceIds,
   alreadyAddedSkillIds,
   initialAdditionalSpaces,
   selectedActions,
+  getAgentInstructions,
 }: CapabilitiesSheetContentProps): {
   page: MultiPageSheetPage;
   leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
 } {
+  const { owner, user } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
 
   const skillSelection = useSkillSelection({
@@ -42,21 +66,84 @@ export function useCapabilitiesPageAndFooter({
     searchQuery,
   });
 
-  const handleSave = useCallback(() => {
-    onSave({
+  const handleCapabilitiesSelectionSave = useCallback(() => {
+    onCapabilitiesSave({
       skills: skillSelection.localSelectedSkills,
       additionalSpaces: skillSelection.localAdditionalSpaces,
       tools: toolSelection.localSelectedTools,
     });
     onClose();
-  }, [skillSelection, toolSelection, onSave, onClose]);
+  }, [
+    skillSelection.localSelectedSkills,
+    skillSelection.localAdditionalSpaces,
+    toolSelection.localSelectedTools,
+    onCapabilitiesSave,
+    onClose,
+  ]);
+
+  const handleToolEditSave = useCallback(
+    (mode: ToolEditMode) => (formData: MCPFormData) => {
+      const nameChanged = mode.capability.name !== formData.name;
+      const newActionName = nameChanged
+        ? generateUniqueActionName({
+            baseName: nameToStorageFormat(formData.name),
+            existingActions: selectedActions,
+            selectedToolsInSheet: toolSelection.localSelectedTools,
+          })
+        : mode.capability.name;
+
+      onToolEditSave({
+        ...mode.capability,
+        name: newActionName,
+        description: formData.description,
+        configuration: formData.configuration,
+      });
+      onClose();
+    },
+    [selectedActions, toolSelection.localSelectedTools, onToolEditSave, onClose]
+  );
 
   const selectedCapabilitiesCount = useMemo(() => {
     return (
       skillSelection.selectedSkillIds.size +
       toolSelection.selectedMCPServerViewIds.size
     );
-  }, [skillSelection, toolSelection]);
+  }, [skillSelection.selectedSkillIds, toolSelection.selectedMCPServerViewIds]);
+
+  const formSchema = useMemo(
+    () =>
+      isToolConfigurationOrEditPage(mode)
+        ? getMCPConfigurationFormSchema(mode.mcpServerView)
+        : null,
+    [mode]
+  );
+
+  const form = useForm<MCPFormData>({
+    resolver: formSchema ? zodResolver(formSchema) : undefined,
+    mode: "onSubmit",
+    // Prevent form recreation by providing stable shouldUnregister
+    shouldUnregister: false,
+  });
+
+  // Stable form reset handler - no form dependency to prevent re-renders
+  const resetFormValues = useMemo(
+    () => (form: UseFormReturn<MCPFormData>) => {
+      if (isToolConfigurationOrEditPage(mode)) {
+        form.reset({
+          name: mode.capability.name,
+          description: mode.capability.description,
+          configuration: mode.capability.configuration,
+        });
+      } else {
+        form.reset(getDefaultFormValues(null));
+      }
+    },
+    [mode]
+  );
+
+  useEffect(() => {
+    resetFormValues(form);
+  }, [resetFormValues, form]);
 
   switch (mode.pageId) {
     case "selection":
@@ -66,7 +153,6 @@ export function useCapabilitiesPageAndFooter({
           id: mode.pageId,
           content: (
             <CapabilitiesSelectionPageContent
-              owner={owner}
               isCapabilitiesLoading={
                 skillSelection.isSkillsLoading ||
                 toolSelection.isMCPServerViewsLoading
@@ -90,10 +176,11 @@ export function useCapabilitiesPageAndFooter({
               ? `Add ${selectedCapabilitiesCount} ${selectedCapabilitiesCount === 1 ? "capability" : "capabilities"}`
               : "Add capabilities",
           disabled: selectedCapabilitiesCount === 0,
-          onClick: handleSave,
+          onClick: handleCapabilitiesSelectionSave,
           variant: "primary",
         },
       };
+
     case "skill_info":
       const title = mode.capability.relations.extendedSkill?.name
         ? `${mode.capability.name} (extends ${mode.capability.relations.extendedSkill.name})`
@@ -113,14 +200,21 @@ export function useCapabilitiesPageAndFooter({
             />
           ),
         },
-        leftButton: {
-          label: "Back",
-          variant: "outline",
-          onClick: () => {
-            onModeChange({ pageId: "selection" });
-          },
-        },
+        leftButton: mode.hasPreviousPage
+          ? {
+              label: "Back",
+              variant: "outline",
+              onClick: () => {
+                onModeChange({ pageId: "selection" });
+              },
+            }
+          : {
+              label: "Close",
+              variant: "primary",
+              onClick: onClose,
+            },
       };
+
     case "skill_space_selection":
       return {
         page: {
@@ -153,15 +247,57 @@ export function useCapabilitiesPageAndFooter({
             skillSelection.handleSpaceSelectionSave(mode.capability),
         },
       };
-    // TODO(skills 2025-12-18): placeholder to satisfy type for now, will be implemented in future PRs
-    case "tool_info":
-    case "tool_configuration":
-    case "tool_edit":
+
+    case "tool_info": {
+      const mcpServerView =
+        toolSelection.allMcpServerViews.find(
+          (view) => view.sId === mode.capability.configuration.mcpServerViewId
+        ) ?? null;
+
       return {
         page: {
-          title: "Tool",
+          title: getInfoPageTitle(mcpServerView),
+          description: getInfoPageDescription(mcpServerView),
+          icon: getInfoPageIcon(mcpServerView),
           id: mode.pageId,
-          content: <div>Tool configuration coming soon</div>,
+          content: mcpServerView ? (
+            <MCPServerInfoPage infoMCPServerView={mcpServerView} />
+          ) : (
+            <div className="p-4 text-muted-foreground">
+              Tool information not available.
+            </div>
+          ),
+        },
+        leftButton: mode.hasPreviousPage
+          ? {
+              label: "Back",
+              variant: "outline",
+              onClick: () => {
+                onModeChange({ pageId: "selection" });
+              },
+            }
+          : {
+              label: "Close",
+              variant: "primary",
+              onClick: onClose,
+            },
+      };
+    }
+
+    case "tool_configuration":
+      return {
+        page: {
+          title: `Configure ${mode.mcpServerView.label}`,
+          icon: () => getAvatar(mode.mcpServerView.server),
+          id: mode.pageId,
+          content: (
+            <MCPServerConfigurationPage
+              form={form}
+              action={mode.capability}
+              mcpServerView={mode.mcpServerView}
+              getAgentInstructions={getAgentInstructions}
+            />
+          ),
         },
         leftButton: {
           label: "Cancel",
@@ -170,7 +306,42 @@ export function useCapabilitiesPageAndFooter({
             onModeChange({ pageId: "selection" });
           },
         },
+        rightButton: {
+          label: "Save",
+          variant: "primary",
+          onClick: form.handleSubmit(
+            toolSelection.handleToolConfigurationSave(mode)
+          ),
+        },
       };
+
+    case "tool_edit":
+      return {
+        page: {
+          title: `Edit ${mode.mcpServerView.label} Configuration`,
+          icon: () => getAvatar(mode.mcpServerView.server),
+          id: mode.pageId,
+          content: (
+            <MCPServerConfigurationPage
+              form={form}
+              action={mode.capability}
+              mcpServerView={mode.mcpServerView}
+              getAgentInstructions={getAgentInstructions}
+            />
+          ),
+        },
+        leftButton: {
+          label: "Close",
+          variant: "outline",
+          onClick: onClose,
+        },
+        rightButton: {
+          label: "Save",
+          variant: "primary",
+          onClick: form.handleSubmit(handleToolEditSave(mode)),
+        },
+      };
+
     default:
       assertNever(mode);
   }

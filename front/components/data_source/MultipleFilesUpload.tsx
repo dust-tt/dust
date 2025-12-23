@@ -337,7 +337,6 @@ export const MultipleFilesUpload = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant="tertiary"
               label="Cancel"
               onClick={() => handleDuplicateConfirmation(false)}
             />

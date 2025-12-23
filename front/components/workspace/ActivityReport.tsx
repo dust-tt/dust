@@ -65,7 +65,7 @@ export function ActivityReport({
             </Page.P>
             <div className="flex flex-row items-center gap-2">
               <Checkbox
-                label="Include inactive users and assistants"
+                aria-label="Include inactive users and assistants"
                 checked={includeInactive}
                 onCheckedChange={() => {
                   onIncludeInactiveChange(!includeInactive);

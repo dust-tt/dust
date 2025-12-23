@@ -1,3 +1,4 @@
+import type { RegularButtonProps } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
@@ -70,7 +71,10 @@ export function getFooterButtons({
   onAddSelectedTools,
   onConfigurationSave,
   resetToSelection,
-}: FooterButtonOptions) {
+}: FooterButtonOptions): {
+  leftButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+  rightButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+} {
   const isToolSelectionPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION;
   const isConfigurationPage =

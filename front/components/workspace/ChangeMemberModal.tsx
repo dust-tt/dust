@@ -212,7 +212,7 @@ export function ChangeMemberModal({
                   selectedRole === member.workspace.role ||
                   isSaving ||
                   hasActiveRoleProvisioningGroups(),
-                loading: isSaving,
+                isLoading: isSaving,
               }}
             />
           </>

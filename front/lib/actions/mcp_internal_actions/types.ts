@@ -262,3 +262,15 @@ export const DataSourceFilesystemLocateTreeInputSchema = z.object({
 export type DataSourceFilesystemLocateTreeInputType = z.infer<
   typeof DataSourceFilesystemLocateTreeInputSchema
 >;
+
+export const SkillEnableInputSchema = z.object({
+  skillName: z.string().describe("The name of the skill to enable"),
+});
+
+export type SkillEnableInputType = z.infer<typeof SkillEnableInputSchema>;
+
+export function isSkillEnableInputType(
+  input: Record<string, unknown>
+): input is SkillEnableInputType {
+  return SkillEnableInputSchema.safeParse(input).success;
+}

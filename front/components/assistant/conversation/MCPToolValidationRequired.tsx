@@ -91,7 +91,7 @@ export function MCPToolValidationRequired({
     <ContentMessage
       title={title}
       variant="primary"
-      className="flex w-80 min-w-[500px] flex-col gap-3"
+      className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
       icon={icon}
     >
       {isTriggeredByCurrentUser ? (
@@ -115,7 +115,7 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="mt-3 flex flex-row gap-3">
+          <div className="mt-3 flex flex-row items-center gap-3">
             {blockedAction.stake === "low" && (
               <div className="flex flex-row justify-end gap-2">
                 <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 text-xs">
