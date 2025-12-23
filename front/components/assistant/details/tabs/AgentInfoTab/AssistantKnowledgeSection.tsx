@@ -2,7 +2,6 @@ import {
   BracesIcon,
   Button,
   Chip,
-  DocumentIcon,
   ExternalLinkIcon,
   FolderIcon,
   IconButton,
@@ -33,6 +32,7 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
+  isRemoteDatabase,
 } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
@@ -169,39 +169,95 @@ export function AssistantKnowledgeSection({
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 
-  const hasDocuments = Object.values(retrievalByDataSources).length > 0;
-  const hasTables = Object.values(queryTableByDataSources).length > 0;
+  // Separate data sources into folders, connections, and warehouses for readability.
+  const { folders, connections, warehouses } = useMemo(() => {
+    const folderConfigs: DataSourceConfiguration[] = [];
+    const connectionConfigs: DataSourceConfiguration[] = [];
+    const warehouseConfigs: DataSourceConfiguration[] = [];
+
+    Object.values(retrievalByDataSources).forEach((dsConfig) => {
+      const dataSourceView = dataSourceViews.find(
+        (dsv) => dsv.sId === dsConfig.dataSourceViewId
+      );
+      if (!dataSourceView) {
+        return;
+      }
+      if (isRemoteDatabase(dataSourceView.dataSource)) {
+        warehouseConfigs.push(dsConfig);
+      } else if (dataSourceView.dataSource.connectorProvider) {
+        connectionConfigs.push(dsConfig);
+      } else {
+        folderConfigs.push(dsConfig);
+      }
+    });
+
+    return {
+      folders: folderConfigs,
+      connections: connectionConfigs,
+      warehouses: warehouseConfigs,
+    };
+  }, [retrievalByDataSources, dataSourceViews]);
+
+  const hasFolders = folders.length > 0;
+  const hasConnections = connections.length > 0;
+  const hasWarehouses = warehouses.length > 0;
+  const hasDocuments = hasFolders || hasConnections;
+  const hasQueryTables = Object.values(queryTableByDataSources).length > 0;
+  const hasTables = hasQueryTables || hasWarehouses;
 
   if (!hasDocuments && !hasTables) {
     return null;
   }
 
-  const dataSourcesDocuments = Object.values(retrievalByDataSources).map(
-    (dataSources, index) => (
-      <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
+  const renderDataSourceConfigs = (
+    configs: DataSourceConfiguration[],
+    keyPrefix: string,
+    viewType: "document" | "table"
+  ) =>
+    configs.map((dsConfig, index) => (
+      <div className="flex flex-col gap-2" key={`${keyPrefix}-${index}`}>
         <DataSourceViewsSection
           owner={owner}
           dataSourceViews={dataSourceViews}
           isLoading={isDataSourceViewsLoading}
-          dataSourceConfigurations={[dataSources]}
-          viewType="document"
+          dataSourceConfigurations={[dsConfig]}
+          viewType={viewType}
         />
       </div>
-    )
+    ));
+
+  const folderItems = renderDataSourceConfigs(folders, "folder", "document");
+  const connectionItems = renderDataSourceConfigs(
+    connections,
+    "connection",
+    "document"
+  );
+  const queryTableItems = renderDataSourceConfigs(
+    Object.values(queryTableByDataSources),
+    "table",
+    "table"
+  );
+  const warehouseItems = renderDataSourceConfigs(
+    warehouses,
+    "warehouse",
+    "table"
   );
 
-  const dataSourcesTables = Object.values(queryTableByDataSources).map(
-    (dataSources, index) => (
-      <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
-        <DataSourceViewsSection
-          owner={owner}
-          dataSourceViews={dataSourceViews}
-          isLoading={isDataSourceViewsLoading}
-          dataSourceConfigurations={[dataSources]}
-          viewType="table"
-        />
-      </div>
-    )
+  const documentItems = (
+    <>
+      {hasConnections && connectionItems}
+      {hasFolders && (
+        <Tree.Item label="Folders" visual={FolderIcon}>
+          {folderItems}
+        </Tree.Item>
+      )}
+    </>
+  );
+  const tableItems = (
+    <>
+      {hasQueryTables && queryTableItems}
+      {hasWarehouses && warehouseItems}
+    </>
   );
 
   return (
@@ -211,17 +267,17 @@ export function AssistantKnowledgeSection({
       </div>
       {hasDocuments && hasTables ? (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
-          <Tree.Item label="Documents" visual={DocumentIcon}>
-            {dataSourcesDocuments}
+          <Tree.Item label="Documents" visual={FolderIcon}>
+            {documentItems}
           </Tree.Item>
           <Tree.Item label="Tables" visual={TableIcon}>
-            {dataSourcesTables}
+            {tableItems}
           </Tree.Item>
         </Tree>
       ) : (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
-          {hasDocuments && dataSourcesDocuments}
-          {hasTables && dataSourcesTables}
+          {hasDocuments && documentItems}
+          {hasTables && tableItems}
         </Tree>
       )}
     </div>
