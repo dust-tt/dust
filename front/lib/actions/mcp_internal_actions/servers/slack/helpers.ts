@@ -671,26 +671,63 @@ export async function executeListPublicChannels(
 ) {
   const slackClient = await getSlackClient(accessToken);
   const channels = await getCachedPublicChannels({
-    slackClient,
     mcpServerId,
+    slackClient,
   });
 
-  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
-    channels,
-    nameFilter,
-    (channel, normalizedFilter) =>
-      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ) ||
-      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ),
-    (count, hasFilter, filterText) =>
-      hasFilter
-        ? `The workspace has ${count} channels containing "${filterText}"`
-        : `The workspace has ${count} channels`,
-    cleanChannelPayload
-  );
+  if (nameFilter) {
+    const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
+    const filteredChannels = channels.filter(
+      (channel) =>
+        removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+          normalizedNameFilter
+        ) ||
+        removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
+          normalizedNameFilter
+        )
+    );
+
+    // Early return if we found a channel.
+    if (filteredChannels.length > 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            filteredChannels.map(cleanChannelPayload),
+            null,
+            2
+          ),
+        },
+      ]);
+    }
+  }
+  if (nameFilter) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+      },
+      {
+        type: "text" as const,
+        text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
+      },
+    ]);
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `The workspace has ${channels.length} channels`,
+    },
+    {
+      type: "text" as const,
+      text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
+    },
+  ]);
 }
 
 export async function executePostMessage(
