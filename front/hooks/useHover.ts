@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-export function useHover(): [(node: HTMLElement | null) => void, boolean] {
+export function useHover() {
   const [hovering, setHovering] = useState(false);
   const previousNode = useRef<HTMLElement | null>(null);
 
@@ -35,5 +35,5 @@ export function useHover(): [(node: HTMLElement | null) => void, boolean] {
     [handleMouseEnter, handleMouseLeave]
   );
 
-  return [customRef, hovering];
+  return { ref: customRef, isHovering: hovering };
 }
