@@ -644,7 +644,7 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 
 /**
  * When multiple server-side configs share the same name but have different viewIds (e.g.,
- * same server in different spaces), prepends the space name to disambiguate them.
+ * the same server in different spaces), prepends the space name to disambiguate them.
  */
 async function disambiguateServerNamesBySpace(
   auth: Authenticator,
