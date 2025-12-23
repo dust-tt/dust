@@ -63,8 +63,8 @@ import type {
 } from "@app/types/assistant/conversation";
 
 export function getCompletionDuration(
-  completedTs: number | null,
   created: number,
+  completedTs: number | null,
   actions: AgentMCPActionWithOutputType[]
 ) {
   if (!completedTs) {
@@ -593,12 +593,14 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentConfigurationsById
       );
 
+      const created = message.createdAt.getTime();
+      const completedTs = agentMessage.completedAt?.getTime() ?? null;
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
         sId: message.sId,
-        created: message.createdAt.getTime(),
-        completedTs: agentMessage.completedAt?.getTime() ?? null,
+        created,
+        completedTs,
         type: "agent_message" as const,
         visibility: message.visibility,
         version: message.version,
@@ -621,8 +623,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
         richMentions,
         completionDurationMs: getCompletionDuration(
-          m.completedTs,
-          m.created,
+          created,
+          completedTs,
           actions
         ),
       };

@@ -643,8 +643,8 @@ export const createAgentMessages = async (
       parsedContents: {},
       modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
       completionDurationMs: getCompletionDuration(
-        agentMessageRow.completedAt?.getTime() ?? null,
         agentMessageRow.createdAt.getTime(),
+        agentMessageRow.completedAt?.getTime() ?? null,
         []
       ),
       richMentions: [],
