@@ -10,11 +10,12 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@sparkle/components/";
-import { Button } from "@sparkle/components/Button";
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import {
   Collapsible,
   CollapsibleContent,
 } from "@sparkle/components/Collapsible";
+import { Button } from "@sparkle/components/Button";
 import { ArrowDownSIcon, ArrowRightSIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
