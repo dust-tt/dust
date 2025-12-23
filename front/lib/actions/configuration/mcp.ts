@@ -25,7 +25,11 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import type { AgentFetchVariant, ModelId } from "@app/types";
+import type {
+  AgentFetchVariant,
+  LightAgentConfigurationType,
+  ModelId,
+} from "@app/types";
 import { removeNulls } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations(
@@ -197,7 +201,8 @@ export async function fetchMCPServerActionConfigurations(
 
 export async function fetchSkillMCPServerConfigurations(
   auth: Authenticator,
-  enabledSkills: SkillResource[]
+  enabledSkills: SkillResource[],
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   if (enabledSkills.length === 0) {
     return [];
@@ -209,23 +214,14 @@ export async function fetchSkillMCPServerConfigurations(
   );
 
   // Fetch extended skills if any.
-  const extendedSkills = await SkillResource.fetchByIds(auth, extendedSkillIds);
-
-  const mcpServerViewIds = enabledSkills
-    .concat(extendedSkills)
-    .flatMap((skill) =>
-      skill.mcpServerConfigurations.map((config) => config.mcpServerViewId)
-    );
-
-  const uniqMcpServerViewIds = removeNulls(uniq(mcpServerViewIds));
-
-  if (uniqMcpServerViewIds.length === 0) {
-    return [];
-  }
-
-  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+  const extendedSkills = await SkillResource.fetchByIds(
     auth,
-    uniqMcpServerViewIds
+    extendedSkillIds,
+    { agentConfiguration }
+  );
+
+  const mcpServerViews = [...extendedSkills, ...enabledSkills].flatMap(
+    (skill) => skill.mcpServerViews
   );
 
   const configurations: ServerSideMCPServerConfigurationType[] = [];

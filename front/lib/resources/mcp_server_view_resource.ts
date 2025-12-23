@@ -412,6 +412,22 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return views.find((view) => view.space.kind === "global") ?? null;
   }
 
+  static async listMCPServerViewsAutoInternalForSpaces(
+    auth: Authenticator,
+    name: AutoInternalMCPServerNameType,
+    spaceModelIds: ModelId[]
+  ) {
+    const views = await this.listByMCPServer(
+      auth,
+      autoInternalMCPServerNameToSId({
+        name,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    );
+
+    return views.filter((view) => spaceModelIds.includes(view.vaultId));
+  }
+
   static async getMCPServerViewForSystemSpace(
     auth: Authenticator,
     mcpServerId: string
