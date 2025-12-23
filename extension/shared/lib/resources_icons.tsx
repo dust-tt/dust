@@ -53,6 +53,7 @@ import {
   StripeLogo,
   SupabaseLogo,
   ValTownLogo,
+  VantaLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
@@ -132,6 +133,7 @@ export const InternalActionIcons = {
   StripeLogo,
   SupabaseLogo,
   ValTownLogo,
+  VantaLogo,
   ZendeskLogo,
 };
 

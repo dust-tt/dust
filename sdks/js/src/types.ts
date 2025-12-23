@@ -2918,6 +2918,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "SupabaseLogo"
   | "ValTownLogo"
+  | "VantaLogo"
   | "ZendeskLogo"
 >();
 
