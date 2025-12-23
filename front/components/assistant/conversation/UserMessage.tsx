@@ -379,10 +379,10 @@ export function UserMessage({
                       variant="ghost-secondary"
                       aria-label="Message actions"
                       className={cn(
-                        "hidden transition-opacity duration-200 sm:block",
+                        "transition-opacity duration-200",
                         isUserMessageHovered || isMenuOpen
                           ? "opacity-100"
-                          : "opacity-0"
+                          : "opacity-100 sm:opacity-0" // always show on small screens
                       )}
                     />
                   </DropdownMenuTrigger>
