@@ -153,6 +153,22 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     authMethod: "oauth-dynamic",
     toolStakes: {},
   },
+  {
+    id: 10008,
+    name: "Guru",
+    description: "Guru tools for knowledge management and team collaboration.",
+    url: "https://mcp.api.getguru.com/mcp",
+    icon: "GuruLogo",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      guru_answer_generation: "never_ask",
+      guru_create_draft: "low",
+      guru_search_documents: "never_ask",
+      guru_update_card: "low",
+      guru_list_knowledge_agents: "never_ask",
+      guru_get_card_by_id: "never_ask",
+    },
+  },
   //Removed temporaly gitlab server
   /*
   {

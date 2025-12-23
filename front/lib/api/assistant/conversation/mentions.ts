@@ -3,7 +3,10 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getRichMentionsWithStatusForMessage } from "@app/lib/api/assistant/messages";
+import {
+  getCompletionDuration,
+  getRichMentionsWithStatusForMessage,
+} from "@app/lib/api/assistant/messages";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -87,8 +90,8 @@ export const createUserMentions = async (
               user: user.toJSON(),
             });
 
-          // Always auto approve mentions for user messages & existing participants.
-          let autoApprove = isParticipant || message.type === "user_message";
+          // Always auto approve mentions for existing participants.
+          let autoApprove = isParticipant;
           // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
           if (
             !autoApprove &&
@@ -96,13 +99,13 @@ export const createUserMentions = async (
             message.type === "agent_message" &&
             message.configuration.instructions
           ) {
-            const isUserMentionnedInInstructions = extractFromString(
+            const isUserMentionedInInstructions = extractFromString(
               message.configuration.instructions
             )
               .filter(isUserMention)
               .some((mention) => mention.userId === user.sId);
 
-            if (isUserMentionnedInInstructions) {
+            if (isUserMentionedInInstructions) {
               autoApprove = true;
             }
           }
@@ -639,6 +642,11 @@ export const createAgentMessages = async (
       contents: [],
       parsedContents: {},
       modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
+      completionDurationMs: getCompletionDuration(
+        agentMessageRow.createdAt.getTime(),
+        agentMessageRow.completedAt?.getTime() ?? null,
+        []
+      ),
       richMentions: [],
     })
   );

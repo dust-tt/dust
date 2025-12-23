@@ -121,7 +121,6 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
-            const mcpServerViews = await sc.listMCPServerViews(auth);
             const author = await sc.fetchAuthor(auth);
             const extendedSkill = sc.extendedSkillId
               ? await SkillResource.fetchById(auth, sc.extendedSkillId)
@@ -132,7 +131,7 @@ async function handler(
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
-                mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
+                mcpServerViews: sc.mcpServerViews.map((view) => view.toJSON()),
                 author: author ? author.toJSON() : null,
                 extendedSkill: extendedSkill
                   ? extendedSkill.toJSON(auth)

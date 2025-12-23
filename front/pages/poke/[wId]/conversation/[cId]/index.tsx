@@ -433,11 +433,11 @@ const ConversationPage = ({
               variant="primary"
               size="xs"
               target="_blank"
-              enabled={!!conversationDataSourceId}
+              disabled={!conversationDataSourceId}
             />
             <Button
               label={useMarkdown ? "Plain Text" : "Preview Markdown"}
-              variant="secondary"
+              variant="outline"
               size="xs"
               icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
               onClick={() => setUseMarkdown(!useMarkdown)}
@@ -453,7 +453,7 @@ const ConversationPage = ({
                 }
                 void handleRenderConversation();
               }}
-              enabled={!isRendering}
+              disabled={isRendering}
             />
             {isRendering && <Spinner size="xs" />}
             {showRenderControls && (
@@ -469,7 +469,7 @@ const ConversationPage = ({
                             }`
                           : "Select Agent"
                       }
-                      variant="secondary"
+                      variant="outline"
                       size="xs"
                     />
                   </DropdownMenuTrigger>
@@ -523,7 +523,7 @@ const ConversationPage = ({
                     />
                     <Button
                       label={isCopiedJSON ? "Copied" : "Copy JSON"}
-                      variant="secondary"
+                      variant="outline"
                       size="xs"
                       icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
                       onClick={() =>
@@ -538,7 +538,7 @@ const ConversationPage = ({
                     />
                     <Button
                       label="Close"
-                      variant="secondary"
+                      variant="outline"
                       size="xs"
                       icon={XMarkIcon}
                       onClick={() => {

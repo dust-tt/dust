@@ -101,7 +101,7 @@ export default function WorkspaceAdmin({
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const onInviteClick = useCallback(
-    (event: MouseEvent) => {
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       if (!isUpgraded(plan)) {
         setInviteBlockedPopupReason("cant_invite_free_plan");
         event.preventDefault();

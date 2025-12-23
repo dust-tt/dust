@@ -270,9 +270,9 @@ export function constructGuidelinesSection({
 
   guidelinesSection +=
     "\n## GENERATING LATEX FORMULAS\n" +
-    "Every latex formula should be inside double dollars $$ blocks." +
-    " Parentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$." +
-    " To avoid ambiguity, make sure to escape the $ sign when not used as an escape sequence (examples: currency or env variable prefix).\n";
+    "When generating LaTeX formulas exclusively rely on the double dollars $$ escape sequence. " +
+    "Single dollar $ escape sequences are not supported. " +
+    "Parentheses are not sufficient to denote mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +

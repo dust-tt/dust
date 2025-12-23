@@ -119,6 +119,7 @@ describe("renderAllMessages", () => {
             parsedContents: {},
             modelInteractionDurationMs: null,
             richMentions: [],
+            completionDurationMs: null,
           } satisfies AgentMessageType,
         ];
       }

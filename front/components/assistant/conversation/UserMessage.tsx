@@ -176,7 +176,8 @@ export function UserMessage({
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } = useHover();
+  const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
+    useHover();
   const isAdmin = owner.role === "admin";
   const { deleteMessage, isDeleting } = useDeleteMessage({
     owner,
@@ -382,10 +383,8 @@ export function UserMessage({
                       variant="ghost-secondary"
                       aria-label="Message actions"
                       className={cn(
-                        "transition-opacity duration-200",
-                        isUserMessageHovered || isMenuOpen
-                          ? "opacity-100"
-                          : "opacity-100 sm:opacity-0" // always show on small screens
+                        "opacity-100 transition-opacity duration-200",
+                        !isUserMessageHovered && !isMenuOpen && "sm:opacity-0" // always show on small screens
                       )}
                     />
                   </DropdownMenuTrigger>

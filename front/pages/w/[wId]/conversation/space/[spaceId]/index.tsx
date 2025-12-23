@@ -392,81 +392,87 @@ export default function SpaceConversations({
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
     >
-      <div className="max-h-dvh flex w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
-        <div className="flex w-full flex-col gap-4">
-          <ContentMessage title="Experimental feature" variant="info" size="lg">
-            <p>
-              This feature is currently in alpha, and only available in the Dust
-              workspace ("projects" feature flag). The goal is to get feedback
-              from internal usage and quickly iterate. Share your feedback in
-              the{" "}
-              <Link
-                href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:text-blue-600"
-              >
-                initiative slack channel
-              </Link>
-              .
-            </p>
-          </ContentMessage>
-          <div className="heading-lg">New conversation</div>
-          <InputBar
-            owner={owner}
-            user={user}
-            onSubmit={handleConversationCreation}
-            conversationId={null}
-            disableAutoFocus={false}
-          />
-        </div>
-        {/* Space conversations section */}
-        <div className="w-full">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="heading-lg">
-              Conversations in "{spaceInfo?.name ?? ""}"
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              label="Mark all as read"
-              onClick={() => markAllAsRead(unreadConversations)}
-              isLoading={isMarkingAllAsRead}
-              disabled={unreadConversations.length === 0}
+      <div className="flex w-full items-center justify-center overflow-auto">
+        <div className="max-h-dvh flex w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
+          <div className="flex w-full flex-col gap-4">
+            <ContentMessage
+              title="Experimental feature"
+              variant="info"
+              size="lg"
+            >
+              <p>
+                This feature is currently in alpha, and only available in the
+                Dust workspace ("projects" feature flag). The goal is to get
+                feedback from internal usage and quickly iterate. Share your
+                feedback in the{" "}
+                <Link
+                  href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600"
+                >
+                  initiative slack channel
+                </Link>
+                .
+              </p>
+            </ContentMessage>
+            <div className="heading-lg">New conversation</div>
+            <InputBar
+              owner={owner}
+              user={user}
+              onSubmit={handleConversationCreation}
+              conversationId={null}
+              disableAutoFocus={false}
             />
           </div>
-
-          {conversations.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-              No conversations yet. Start a new conversation above.
+          {/* Space conversations section */}
+          <div className="w-full">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="heading-lg">
+                Conversations in "{spaceInfo?.name ?? ""}"
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                label="Mark all as read"
+                onClick={() => markAllAsRead(unreadConversations)}
+                isLoading={isMarkingAllAsRead}
+                disabled={unreadConversations.length === 0}
+              />
             </div>
-          ) : (
-            <NavigationList className="dd-privacy-mask h-full w-full">
-              {Object.keys(conversationsByDate).map((dateLabel) => {
-                const dateConversations =
-                  conversationsByDate[dateLabel as GroupLabel];
-                if (dateConversations.length === 0) {
-                  return null;
-                }
 
-                return (
-                  <div key={dateLabel} className="flex flex-col gap-1">
-                    <NavigationListLabel label={dateLabel} />
-                    {dateConversations
-                      .toSorted((a, b) => b.updated - a.updated)
-                      .map((conversation) => (
-                        <SpaceConversationListItem
-                          key={conversation.sId}
-                          conversation={conversation}
-                          owner={owner}
-                          router={router}
-                        />
-                      ))}
-                  </div>
-                );
-              })}
-            </NavigationList>
-          )}
+            {conversations.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                No conversations yet. Start a new conversation above.
+              </div>
+            ) : (
+              <NavigationList className="dd-privacy-mask h-full w-full">
+                {Object.keys(conversationsByDate).map((dateLabel) => {
+                  const dateConversations =
+                    conversationsByDate[dateLabel as GroupLabel];
+                  if (dateConversations.length === 0) {
+                    return null;
+                  }
+
+                  return (
+                    <div key={dateLabel} className="flex flex-col gap-1">
+                      <NavigationListLabel label={dateLabel} />
+                      {dateConversations
+                        .toSorted((a, b) => b.updated - a.updated)
+                        .map((conversation) => (
+                          <SpaceConversationListItem
+                            key={conversation.sId}
+                            conversation={conversation}
+                            owner={owner}
+                            router={router}
+                          />
+                        ))}
+                    </div>
+                  );
+                })}
+              </NavigationList>
+            )}
+          </div>
         </div>
       </div>
     </DropzoneContainer>

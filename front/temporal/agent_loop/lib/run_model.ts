@@ -1,3 +1,4 @@
+import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
@@ -25,7 +26,10 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
+import {
+  fetchMessageInConversation,
+  getCompletionDuration,
+} from "@app/lib/api/assistant/messages";
 import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
@@ -206,7 +210,8 @@ export async function runModelActivity(
   // Fetch MCP server configurations from enabled skills.
   const skillServers = await fetchSkillMCPServerConfigurations(
     auth,
-    enabledSkills
+    enabledSkills,
+    agentConfiguration
   );
 
   const {
@@ -487,6 +492,11 @@ export async function runModelActivity(
 
   const modelInteractionStartDate = performance.now();
 
+  // Heartbeat before starting the LLM stream to ensure the activity is still
+  // considered alive after potentially long setup operations (MCP tools
+  // listing, conversation rendering, etc.).
+  heartbeat();
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
@@ -597,6 +607,11 @@ export async function runModelActivity(
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
     agentMessage.completedTs = Date.now();
+    agentMessage.completionDurationMs = getCompletionDuration(
+      agentMessage.created,
+      agentMessage.completedTs,
+      agentMessage.actions
+    );
 
     await updateResourceAndPublishEvent(auth, {
       event: {

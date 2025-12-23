@@ -160,10 +160,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Monday MCP tool",
     stage: "rolling_out",
   },
-  freshservice_tool: {
-    description: "Freshservice MCP tool",
-    stage: "rolling_out",
-  },
   front_tool: {
     description:
       "Front MCP tool for managing support conversations, messages, and customer interactions.",

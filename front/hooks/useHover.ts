@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 
-export function useHover() {
+export function useHover(): {
+  ref: (node: HTMLElement | null) => void;
+  isHovering: boolean;
+} {
   const [hovering, setHovering] = useState(false);
   const previousNode = useRef<HTMLElement | null>(null);
 

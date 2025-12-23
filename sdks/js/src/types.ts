@@ -658,7 +658,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
   | "fireworks_new_model_feature"
-  | "freshservice_tool"
   | "front_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
@@ -766,6 +765,7 @@ const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
   createdAt: z.number(),
+  updatedAt: z.number(),
   mcpServerId: z.string().nullable(),
   internalMCPServerName: z.string().nullable(),
   toolName: z.string(),
@@ -775,6 +775,7 @@ const AgentActionTypeSchema = z.object({
   status: z.string(),
   params: z.record(z.any()),
   step: z.number(),
+  executionDurationMs: z.number().nullable(),
   citationsAllocated: z.number(),
   output: CallToolResultSchema.shape.content.nullable(),
   generatedFiles: z.array(ActionGeneratedFileSchema),
@@ -2901,6 +2902,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
+  | "GuruLogo"
   | "HubspotLogo"
   | "JiraLogo"
   | "LinearLogo"

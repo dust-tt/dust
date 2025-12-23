@@ -425,6 +425,85 @@ export const AvatarStackExample: Story = {
           ]}
         />
       </div>
+
+      <div className="s-mt-8 s-text-lg s-font-semibold">
+        Vertical Orientation
+      </div>
+      <div className="s-flex s-flex-row s-items-start s-gap-4">
+        <Avatar.Stack
+          size="xs"
+          nbVisibleItems={3}
+          isRounded
+          orientation="vertical"
+          avatars={[
+            {
+              name: "Isabelle Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+            },
+            {
+              name: "Rafael Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+            },
+            {
+              name: "Aria Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+            },
+            {
+              name: "Omar Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+            },
+          ]}
+        />
+
+        <Avatar.Stack
+          size="sm"
+          nbVisibleItems={4}
+          isRounded
+          orientation="vertical"
+          avatars={[
+            {
+              name: "Isabelle Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+            },
+            {
+              name: "Rafael Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+            },
+            {
+              name: "Aria Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+            },
+            {
+              name: "Omar Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+            },
+          ]}
+        />
+
+        <Avatar.Stack
+          nbVisibleItems={3}
+          size="md"
+          orientation="vertical"
+          avatars={[
+            {
+              name: "Isabelle Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+            },
+            {
+              name: "Rafael Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+            },
+            {
+              name: "Aria Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+            },
+            {
+              name: "Omar Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+            },
+          ]}
+        />
+      </div>
     </div>
   ),
 };

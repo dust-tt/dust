@@ -1,20 +1,16 @@
 import { QueryTypes } from "sequelize";
 
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import {
-  getConnectorsPrimaryDbConnection,
-  getFrontPrimaryDbConnection,
-} from "@app/lib/production_checks/utils";
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 interface PausedConnector {
   id: number;
   workspaceId: string;
   pausedAt: Date | null;
-}
-
-interface WorkspaceSubscription {
-  workspaceId: string;
-  planCode: string;
 }
 
 export const checkPausedConnectors: CheckFunction = async (
@@ -24,7 +20,6 @@ export const checkPausedConnectors: CheckFunction = async (
   reportFailure
 ) => {
   const connectorsDb = getConnectorsPrimaryDbConnection();
-  const frontDb = getFrontPrimaryDbConnection();
   const connectorsToReport: PausedConnector[] = [];
 
   // Get all paused connectors that have been paused for more than 15 days.
@@ -35,21 +30,14 @@ export const checkPausedConnectors: CheckFunction = async (
     }
   );
 
-  // Get all workspace subscriptions for the paused connectors workspaces.
-  const workspaceSubscriptions: WorkspaceSubscription[] = await frontDb.query(
-    `SELECT "workspaces"."sId" AS "workspaceId",
-        COALESCE("plans"."code", 'NO_PLAN') AS "planCode"
-        FROM "workspaces"
-        LEFT JOIN "subscriptions" ON "workspaces"."id" = "subscriptions"."workspaceId"
-        LEFT JOIN "plans" ON "subscriptions"."planId" = "plans"."id" AND "subscriptions"."status" = 'active'
-        WHERE ("workspaces"."metadata" ->> 'maintenance' IS NULL)`, // Exclude workspaces in maintenance mode (relocation or relocation done).
-    {
-      type: QueryTypes.SELECT,
-      replacements: {
-        workspaceIds: pausedConnectors.map((c) => c.workspaceId),
-      },
-    }
-  );
+  const workspaceIds = [...new Set(pausedConnectors.map((c) => c.workspaceId))];
+  const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
+  const workspaces = workspaceResources
+    .map((w) => renderLightWorkspaceType({ workspace: w }))
+    .filter((w) => !w.metadata?.maintenance); // Exclude workspaces in maintenance mode (relocation or relocation done).
+
+  const subscriptionByWorkspaceSId =
+    await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
 
   // If the connector is paused and the workspace has a valid subscription, add it to the report.
   for (const connector of pausedConnectors) {
@@ -58,11 +46,9 @@ export const checkPausedConnectors: CheckFunction = async (
       "Connector is paused. Checking if workspace has a valid subscription."
     );
 
-    const workspaceSubscription = workspaceSubscriptions.find(
-      (s) => s.workspaceId === connector.workspaceId
-    );
+    const subscription = subscriptionByWorkspaceSId[connector.workspaceId];
 
-    if (workspaceSubscription && workspaceSubscription.planCode !== "NO_PLAN") {
+    if (subscription && isUpgraded(subscription.getPlan())) {
       connectorsToReport.push(connector);
     } else {
       logger.info(

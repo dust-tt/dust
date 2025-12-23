@@ -357,6 +357,8 @@ export default function CreditsUsagePage({
       free: { consumed: 0, total: 0, expirationDate: null },
       committed: { consumed: 0, total: 0, expirationDate: null },
       payg: { consumed: 0, total: 0, expirationDate: null },
+      // Excess credits are filtered out in the API and should never appear here.
+      excess: { consumed: 0, total: 0, expirationDate: null },
     };
 
     for (const credit of activeCredits) {

@@ -584,7 +584,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "slack",
       version: "1.0.0",
-      description: "Slack tools for searching and posting messages.",
+      description:
+        "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations.",
       authorization: {
         provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -592,7 +593,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
@@ -849,10 +850,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 26,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("freshservice_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Read operations - never ask
       list_tickets: "never_ask",
@@ -905,7 +904,7 @@ export const INTERNAL_MCP_SERVERS = {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/freshservice",
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
     },
   },
@@ -988,7 +987,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       list_public_channels: "never_ask" as const,
       list_users: "never_ask" as const,
@@ -1005,7 +1004,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "slack_bot",
       version: "1.0.0",
-      description: "Post messages and reactions as the workspace Dust bot.",
+      description:
+        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,
@@ -1013,7 +1013,9 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: null,
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
+        "Direct messages and search operations are not supported. " +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
@@ -1050,7 +1052,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("confluence_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
@@ -1250,7 +1252,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("ashby_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       search_candidates: "never_ask",
       get_report_data: "never_ask",
