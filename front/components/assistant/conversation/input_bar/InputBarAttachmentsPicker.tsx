@@ -26,7 +26,7 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useToolFileUpload } from "@app/hooks/useToolFileUpload";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
-  getLocationForDataSourceViewContentNode,
+  getLocationForDataSourceViewContentNodeWithSpace,
   getVisualForContentNodeType,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -45,6 +45,7 @@ import type {
   DataSourceType,
   DataSourceViewContentNode,
   LightWorkspaceType,
+  SpaceType,
 } from "@app/types";
 import {
   asDisplayToolName,
@@ -82,6 +83,7 @@ interface KnowledgeNodeCheckboxItemProps {
   attachedNodes: DataSourceViewContentNode[];
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
+  spacesMap?: Record<string, SpaceType>;
 }
 
 const KnowledgeNodeCheckboxItem = ({
@@ -90,6 +92,7 @@ const KnowledgeNodeCheckboxItem = ({
   attachedNodes,
   onNodeSelect,
   onNodeUnselect,
+  spacesMap,
 }: KnowledgeNodeCheckboxItemProps) => {
   return (
     <NodePathTooltip node={item} owner={owner}>
@@ -112,7 +115,10 @@ const KnowledgeNodeCheckboxItem = ({
             />
           )
         }
-        description={getLocationForDataSourceViewContentNode(item)}
+        description={getLocationForDataSourceViewContentNodeWithSpace(
+          item,
+          spacesMap
+        )}
         checked={attachedNodes.some(
           (attachedNode) =>
             attachedNode.internalId === item.internalId &&
@@ -462,7 +468,7 @@ export const InputBarAttachmentsPicker = ({
               )}
             </div>
             {Object.keys(serversWithResults).length === 0 ? (
-              // No tools results - show knowledge nodes as returned by the search
+              // No tools results, show knowledge nodes as returned by the search.
               dataSourcesNodes
                 .filter(
                   (item) =>
@@ -479,10 +485,11 @@ export const InputBarAttachmentsPicker = ({
                     attachedNodes={attachedNodes}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
+                    spacesMap={spacesMap}
                   />
                 ))
             ) : (
-              // Show grouped results - first knowledge nodes, then tools
+              // Show grouped results, first knowledge nodes, then tools.
               <>
                 {Object.entries(dataSourcesWithResults).map(([key, r]) => {
                   const isSelected =

@@ -1,4 +1,11 @@
-import { Avatar, Button, CheckIcon, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckIcon,
+  ContentMessage,
+  Icon,
+  InformationCircleIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -62,51 +69,46 @@ export function MentionValidationRequired({
   }
 
   return (
-    <div className="mx-auto flex w-80 min-w-[300px] flex-col rounded-xl bg-muted-background p-3 dark:bg-muted-background-night sm:min-w-[500px]">
-      <div className="flex flex-row gap-3 text-foreground dark:text-foreground-night">
-        <Avatar
-          visual={pendingMention.pictureUrl}
-          name={pendingMention.label}
-          size="md"
-        />
-
-        <div className="-mt-1">
+    <ContentMessage variant="info" className="my-3 w-full max-w-full">
+      <div className="flex flex-col items-center gap-2 sm:flex-row">
+        <Icon visual={InformationCircleIcon} className="hidden sm:block" />
+        <div>
           {isMessageTemporayState(message) ? (
             <>
-              <span className="font-semibold">{pendingMention.label}</span> has
-              been mentioned by{" "}
               <span className="font-semibold">
                 @{message.configuration.name}
-              </span>
-              . Do you want to let them know ?
+              </span>{" "}
+              mentioned
+              <span className="font-semibold">{pendingMention.label}</span>. Do
+              you want to invite them? They’ll see the full history and be able
+              to reply.
             </>
           ) : (
             <>
-              <b>{pendingMention.label}</b> has been mentioned. Do you want to
-              let them know ?
+              Invite <b>{pendingMention.label}</b> to this conversation? They’ll
+              see the full history and be able to reply.
             </>
           )}
         </div>
+        <div className="ml-auto flex gap-2">
+          <Button
+            label="No"
+            variant="outline"
+            size="xs"
+            icon={XMarkIcon}
+            disabled={isSubmitting}
+            onClick={handleReject}
+          />
+          <Button
+            label="Yes"
+            variant="highlight"
+            size="xs"
+            icon={CheckIcon}
+            disabled={isSubmitting}
+            onClick={handleApprove}
+          />
+        </div>
       </div>
-      <div className="mt-3 flex flex-row gap-3">
-        <div className="flex-grow" />
-        <Button
-          label="No"
-          variant="outline"
-          size="xs"
-          icon={XMarkIcon}
-          disabled={isSubmitting}
-          onClick={handleReject}
-        />
-        <Button
-          label="Yes"
-          variant="highlight"
-          size="xs"
-          icon={CheckIcon}
-          disabled={isSubmitting}
-          onClick={handleApprove}
-        />
-      </div>
-    </div>
+    </ContentMessage>
   );
 }
