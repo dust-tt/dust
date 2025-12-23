@@ -36,29 +36,38 @@ export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 
 export const SEARCH_TOOL_NAME = "semantic_search";
 export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
+export const PROCESS_TOOL_NAME = "extract_information_from_documents";
+
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
+
 export const QUERY_TABLES_TOOL_NAME = "query_tables";
+
 export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
-export const PROCESS_TOOL_NAME = "extract_information_from_documents";
+
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
+
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+
 export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+
 export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
 export const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
 export const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
 export const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
 export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
+
 export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
 export const TOOLSETS_LIST_TOOL_NAME = "list";
+
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
 export const SEARCH_SERVER_NAME = "search";
