@@ -176,7 +176,8 @@ export function UserMessage({
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [userMessageHoveredRef, isUserMessageHovered] = useHover();
+  const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
+    useHover();
   const isAdmin = owner.role === "admin";
   const { deleteMessage, isDeleting } = useDeleteMessage({
     owner,
@@ -397,7 +398,7 @@ export function UserMessage({
                 </DropdownMenu>
               )}
             </div>
-            <ConversationMessageContent citations={citations} type={"user"}>
+            <ConversationMessageContent citations={citations} type="user">
               <UserMessageContent
                 message={message}
                 isDeleted={isDeleted}
