@@ -317,11 +317,6 @@ export function MCPActionDetails({
     }
   }
 
-  // TODO: to implement
-  //   if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
-  //     return <MCPRunAgentActionDetails {...props} />;
-  //   }
-
   return (
     <GenericActionDetails
       owner={owner}
