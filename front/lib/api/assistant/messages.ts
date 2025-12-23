@@ -68,7 +68,7 @@ export function getCompletionDuration(
   actions: AgentMCPActionWithOutputType[]
 ) {
   if (!completedTs) {
-    return 0;
+    return null;
   }
   // Estimate wait time for the agent message by checking the difference
   // between action execution duration and full completion time.
