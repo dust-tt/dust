@@ -426,13 +426,14 @@ function getActiveIdsFile(args: parseArgs.ParsedArgs) {
 }
 
 const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
+  const auth = await Authenticator.internalAdminForWorkspace(args.wId);
   switch (command) {
     case "stop": {
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -456,7 +457,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --cId argument");
       }
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -523,8 +524,10 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         process.exit(1);
       }
       for (const sId of activeConfigSIds) {
-        const config =
-          await LabsTranscriptsConfigurationResource.fetchById(sId);
+        const config = await LabsTranscriptsConfigurationResource.fetchById(
+          auth,
+          sId
+        );
         if (!config) {
           logger.warn(`Config sId=${sId} not found, skipping.`);
           continue;

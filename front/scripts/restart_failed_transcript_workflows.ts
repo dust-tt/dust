@@ -1,5 +1,6 @@
 import { WorkflowNotFoundError } from "@temporalio/client";
 
+import { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -85,9 +86,15 @@ async function restartFailedWorkflows(
       continue;
     }
 
+    const [owner] = await WorkspaceResource.fetchByModelIds([
+      status.workspaceId,
+    ]);
+    const auth = await Authenticator.internalAdminForWorkspace(owner.sId);
+
     try {
       // Fetch the config fresh to ensure we have the latest state
       const config = await LabsTranscriptsConfigurationResource.fetchById(
+        auth,
         status.configSId
       );
 
