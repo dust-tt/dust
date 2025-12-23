@@ -14,9 +14,9 @@ import React, { useMemo, useState } from "react";
 import {
   creditColumns,
   getTableRows,
-  TYPE_SORT_ORDER,
 } from "@app/components/workspace/CreditsList";
 import type { CreditDisplayData } from "@app/types/credits";
+import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 
 function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
   return [...credits].sort((a, b) => {
@@ -29,7 +29,7 @@ function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
     }
 
     // Then sort by type priority
-    return TYPE_SORT_ORDER[a.type] - TYPE_SORT_ORDER[b.type];
+    return CREDIT_TYPE_SORT_ORDER[a.type] - CREDIT_TYPE_SORT_ORDER[b.type];
   });
 }
 
