@@ -224,21 +224,37 @@ export async function decreaseProgrammaticCreditsV2(
       // Create an excess credit to track over-consumption.
       // This ensures that sum(consumed credits) = total usage.
       const now = new Date();
-      await CreditResource.makeNew(auth, {
-        type: "excess",
-        initialAmountMicroUsd: remainingAmountMicroUsd,
-        consumedAmountMicroUsd: remainingAmountMicroUsd,
-        startDate: now,
-        expirationDate: now,
-      });
+      try {
+        await CreditResource.makeNew(auth, {
+          type: "excess",
+          initialAmountMicroUsd: remainingAmountMicroUsd,
+          consumedAmountMicroUsd: remainingAmountMicroUsd,
+          startDate: now,
+          expirationDate: now,
+        });
+        localLogger.warn(
+          {
+            initialAmountMicroUsd: amountMicroUsd,
+            remainingAmountMicroUsd,
+          },
+          "[Programmatic Usage Tracking] No more credits available, created excess credit."
+        );
+      } catch (err) {
+        localLogger.error(
+          {
+            initialAmountMicroUsd: amountMicroUsd,
+            remainingAmountMicroUsd,
+            error: err,
+          },
+          "[Programmatic Usage Tracking] Failed to create excess credit."
+        );
+      }
 
-      localLogger.warn(
-        {
-          initialAmountMicroUsd: amountMicroUsd,
-          remainingAmountMicroUsd,
-        },
-        "[Programmatic Usage Tracking] No more credits available, created excess credit."
-      );
+      // Emit both metrics for backwards compatibility with existing dashboards.
+      statsDClient.increment("credits.consumption.blocked", 1, [
+        `workspace_id:${workspace.sId}`,
+        `origin:${userMessageOrigin}`,
+      ]);
       statsDClient.increment("credits.consumption.excess", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
