@@ -35,7 +35,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSkillIcon } from "@app/lib/skill";
-import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -436,6 +435,7 @@ const InputBarContainer = ({
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
+          prioritizeSpaceAccess: true,
         }
       : {
           // TextSearchParams
@@ -446,6 +446,7 @@ const InputBarContainer = ({
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
+          prioritizeSpaceAccess: true,
         }
   );
 
@@ -462,11 +463,10 @@ const InputBarContainer = ({
     if (searchResultNodes.length > 0) {
       const nodesWithViews = searchResultNodes.flatMap((node) => {
         const { dataSourceViews, ...rest } = node;
+
         return dataSourceViews.map((view) => ({
           ...rest,
           dataSourceView: view,
-          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-          spaceName: spacesMap[view.spaceId]?.name,
         }));
       });
 
@@ -479,12 +479,7 @@ const InputBarContainer = ({
       );
 
       if (nodes.length > 0) {
-        const sortedNodes = nodes.sort(
-          (a, b) =>
-            b.spacePriority - a.spacePriority ||
-            a.spaceName.localeCompare(b.spaceName)
-        );
-        const node = sortedNodes[0];
+        const node = nodes[0];
         onNodeSelect(node);
         setSelectedNode(node);
         return;

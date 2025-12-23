@@ -138,13 +138,3 @@ export const CATEGORY_DETAILS: {
     icon: BoltIcon,
   },
 };
-
-export const getSpaceAccessPriority = (space: SpaceType) => {
-  if (space.kind === "global") {
-    return 2;
-  }
-  if (!space.isRestricted) {
-    return 1;
-  }
-  return 0;
-};
