@@ -9,8 +9,13 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@sparkle/components/";
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+} from "@sparkle/components/Collapsible";
 import { Button } from "@sparkle/components/Button";
-import { MoreIcon } from "@sparkle/icons/app";
+import { ArrowDownSIcon, ArrowRightSIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 const NavigationListItemStyles = cva(
@@ -63,8 +68,7 @@ const NavigationList = React.forwardRef<
 NavigationList.displayName = "NavigationList";
 
 interface NavigationListItemProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
@@ -170,7 +174,8 @@ const NavigationListItem = React.forwardRef<
 );
 NavigationListItem.displayName = "NavigationListItem";
 
-interface NavigationListItemActionProps extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListItemActionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
 }
 
@@ -215,38 +220,168 @@ const variantStyles = cva("", {
 });
 
 const labelStyles = cva(
-  "s-pt-4 s-pb-2 s-pl-3 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
+interface NavigationListLabelButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  icon?: React.ComponentType;
+  children?: React.ReactNode;
+}
+
+const NavigationListLabelButton = React.forwardRef<
+  HTMLButtonElement,
+  NavigationListLabelButtonProps
+>(({ className, icon, children, disabled, ...props }, ref) => {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      disabled={disabled}
+      className={cn(
+        "s-inline-flex s-flex-shrink-0 s-items-center s-justify-center",
+        "s-rounded-md s-transition-colors s-duration-200",
+        "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        "hover:s-text-foreground dark:hover:s-text-foreground-night",
+        "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+        "active:s-bg-primary-200 dark:active:s-bg-primary-200-night",
+        "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-1",
+        "disabled:s-cursor-not-allowed disabled:s-opacity-50",
+        "disabled:hover:s-text-muted-foreground dark:disabled:hover:s-text-muted-foreground-night",
+        "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
+        className
+      )}
+      {...props}
+    >
+      {icon ? <Icon visual={icon} size="xs" /> : children}
+    </button>
+  );
+});
+
+NavigationListLabelButton.displayName = "NavigationListLabelButton";
+
 interface NavigationListLabelProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantStyles> {
   label: string;
+  isCollapsible?: boolean;
+  isOpen?: boolean;
+  action?: React.ReactNode;
 }
 
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
->(({ className, variant, label, isSticky, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      labelStyles(),
-      variantStyles({ variant, isSticky }),
-      className
-    )}
-    {...props}
-  >
-    {label}
-  </div>
-));
+>(
+  (
+    {
+      className,
+      variant,
+      label,
+      isSticky,
+      isCollapsible,
+      isOpen,
+      action,
+      ...props
+    },
+    ref
+  ) => (
+    <div
+      ref={ref}
+      className={cn(
+        labelStyles(),
+        variantStyles({ variant, isSticky }),
+        isCollapsible ? "s-pl-1.5" : "s-pl-3",
+        className
+      )}
+      {...props}
+    >
+      <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
+        {isCollapsible && (
+          <NavigationListLabelButton
+            icon={isOpen ? ArrowDownSIcon : ArrowRightSIcon}
+            aria-label={isOpen ? "Collapse section" : "Expand section"}
+          />
+        )}
+        <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+      </div>
+      {action}
+    </div>
+  )
+);
 
 NavigationListLabel.displayName = "NavigationListLabel";
+
+interface NavigationListCollapsibleSectionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  label: string;
+  action?: React.ReactNode;
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+const NavigationListCollapsibleSection = React.forwardRef<
+  React.ElementRef<typeof Collapsible>,
+  NavigationListCollapsibleSectionProps
+>(
+  (
+    {
+      label,
+      action,
+      defaultOpen,
+      open,
+      onOpenChange,
+      children,
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    const [internalOpen, setInternalOpen] = React.useState(
+      defaultOpen ?? false
+    );
+    const isControlled = open !== undefined;
+    const isOpen = isControlled ? open : internalOpen;
+
+    const handleOpenChange = (newOpen: boolean) => {
+      if (!isControlled) {
+        setInternalOpen(newOpen);
+      }
+      onOpenChange?.(newOpen);
+    };
+
+    return (
+      <Collapsible
+        ref={ref}
+        open={isOpen}
+        onOpenChange={handleOpenChange}
+        className={className}
+        {...props}
+      >
+        <CollapsiblePrimitive.Trigger asChild>
+          <NavigationListLabel
+            label={label}
+            isCollapsible={true}
+            isOpen={isOpen}
+            action={action}
+          />
+        </CollapsiblePrimitive.Trigger>
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </Collapsible>
+    );
+  }
+);
+
+NavigationListCollapsibleSection.displayName =
+  "NavigationListCollapsibleSection";
 
 export {
   NavigationList,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
+  NavigationListLabelButton,
+  NavigationListCollapsibleSection,
 };
