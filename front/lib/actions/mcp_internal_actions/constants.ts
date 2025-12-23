@@ -1388,7 +1388,7 @@ export const INTERNAL_MCP_SERVERS = {
         provider: "vanta" as const,
         supported_use_cases: ["platform_actions"] as const,
       },
-      icon: "ActionScanIcon",
+      icon: "VantaLogo",
       documentationUrl: null,
       instructions: null,
     },
