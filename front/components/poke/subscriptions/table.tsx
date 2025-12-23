@@ -58,7 +58,7 @@ function getSubscriptionDisplayStatus(
   }
   if (
     subscription.plan.code === FREE_NO_PLAN_CODE ||
-    subscription.endDate !== null
+    (subscription.endDate !== null && subscription.endDate <= Date.now())
   ) {
     return "ended";
   }
