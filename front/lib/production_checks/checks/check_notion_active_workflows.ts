@@ -169,9 +169,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 ) => {
   const notionConnectors = await listAllNotionConnectors();
 
-  const workspaceIds = [
-    ...new Set(notionConnectors.map((c) => c.workspaceId)),
-  ];
+  const workspaceIds = [...new Set(notionConnectors.map((c) => c.workspaceId))];
   const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
   const workspaces = workspaceResources.map((w) =>
     renderLightWorkspaceType({ workspace: w })
@@ -191,7 +189,8 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
       continue;
     }
 
-    const subscription = subscriptionByWorkspaceSId[notionConnector.workspaceId];
+    const subscription =
+      subscriptionByWorkspaceSId[notionConnector.workspaceId];
     if (!subscription || !isUpgraded(subscription.getPlan())) {
       continue;
     }
