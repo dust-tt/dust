@@ -16,9 +16,10 @@ const emojiMartToTipTapEmojis = (): EmojiItem[] => {
     emojis.push({
       name: id,
       emoji: emoji.skins[0].native,
-      fallbackImage: "",
       shortcodes: [id],
       tags: emoji.keywords ?? [],
+      version: emoji.version,
+      emoticons: emoji.emoticons ?? [],
     });
   }
 
