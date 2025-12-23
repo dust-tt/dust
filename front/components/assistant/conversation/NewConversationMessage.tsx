@@ -29,8 +29,7 @@ const messageVariants = cva("flex rounded-2xl max-w-full", {
   },
 });
 
-interface NewConversationMessageContainerProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NewConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   messageType: MessageType;
   type: ConversationMessageType;
 }
@@ -48,8 +47,7 @@ export const NewConversationMessageContainer = React.forwardRef<
   );
 });
 
-interface ConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
   type: ConversationMessageType;
@@ -78,8 +76,7 @@ export const ConversationMessageContent = React.forwardRef<
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
-interface ConversationMessageAvatarProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
   isDisabled?: boolean;
@@ -126,8 +123,7 @@ export const ConversationMessageAvatar = React.forwardRef<
 
 ConversationMessageAvatar.displayName = "ConversationMessageAvatar";
 
-interface ConversationMessageTitleProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   name?: string;
   timestamp?: string;
   infoChip?: React.ReactNode;
