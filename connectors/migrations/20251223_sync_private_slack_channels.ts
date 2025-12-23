@@ -2,22 +2,22 @@
  * Script to sync all private Slack channels for a given connector or all Slack connectors.
  *
  * Usage:
- *   DRY RUN (single connector):   npx tsx scripts/sync_private_slack_channels.ts --connectorId 123
- *   DRY RUN (all connectors):     npx tsx scripts/sync_private_slack_channels.ts
- *   EXECUTE (single connector):   npx tsx scripts/sync_private_slack_channels.ts --connectorId 123 -e
- *   EXECUTE (all connectors):     npx tsx scripts/sync_private_slack_channels.ts -e
+ *   DRY RUN (single connector):   npx tsx migrations/20251223_sync_private_slack_channels.ts --connectorId 123
+ *   DRY RUN (all connectors):     npx tsx migrations/20251223_sync_private_slack_channels.ts
+ *   EXECUTE (single connector):   npx tsx migrations/20251223_sync_private_slack_channels.ts --connectorId 123 -e
+ *   EXECUTE (all connectors):     npx tsx migrations/20251223_sync_private_slack_channels.ts -e
  *
  * The script will:
- * 1. Find all private channels with permission "read" or "read_write"
+ * 1. Find all private channels with permission "read" or "read_write" (and no skipReason)
  * 2. Launch a sync workflow for each channel
  */
 import { Op } from "sequelize";
 
+import { makeScript } from "scripts/helpers";
+
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-
-import { makeScript } from "./helpers";
 
 const SLACK_CONNECTOR_TYPE = "slack";
 
@@ -44,6 +44,7 @@ makeScript(
     );
 
     let totalChannelsSynced = 0;
+    let totalFailures = 0;
 
     for (const connector of connectors) {
       logger.info(
@@ -55,6 +56,7 @@ makeScript(
         where: {
           connectorId: connector.id,
           private: true,
+          skipReason: null,
           permission: {
             [Op.in]: ["read", "read_write"],
           },
@@ -101,6 +103,7 @@ makeScript(
               },
               "Failed to launch sync workflow"
             );
+            totalFailures++;
           } else {
             logger.info(
               {
@@ -127,14 +130,23 @@ makeScript(
       }
     }
 
-    logger.info(
-      {
-        totalChannelsSynced,
-        execute,
-      },
-      execute
-        ? "Sync workflows launched successfully"
-        : "DRY RUN: Would have synced channels"
-    );
+    if (execute) {
+      if (totalFailures > 0) {
+        logger.warn(
+          { totalChannelsSynced, totalFailures },
+          "Sync completed with failures"
+        );
+      } else {
+        logger.info(
+          { totalChannelsSynced },
+          "Sync workflows launched successfully"
+        );
+      }
+    } else {
+      logger.info(
+        { totalChannelsSynced },
+        "DRY RUN: Would have synced channels"
+      );
+    }
   }
 );
