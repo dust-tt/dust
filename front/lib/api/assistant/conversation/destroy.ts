@@ -12,6 +12,10 @@ import {
   MessageReactionModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessageSkillModel,
+  ConversationSkillModel,
+} from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -23,6 +27,7 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
+import { WhereOptions } from "sequelize";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -192,6 +197,14 @@ export async function destroyConversation(
     await AgentMessageFeedbackModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
+
+    const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
+      agentMessageId: agentMessageIds,
+    };
+    await AgentMessageSkillModel.destroy({
+      where: whereAgentMessageSkill,
+    });
+
     await AgentMessageModel.destroy({
       where: { id: agentMessageIds },
     });
@@ -204,6 +217,10 @@ export async function destroyConversation(
   }
 
   await destroyConversationDataSource(auth, { conversation });
+
+  await ConversationSkillModel.destroy({
+    where: { conversationId: conversation.id },
+  });
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,

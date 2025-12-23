@@ -1157,14 +1157,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    await AgentMessageSkillModel.destroy({
-      where: { workspaceId },
-    });
-
-    await ConversationSkillModel.destroy({
-      where: { workspaceId },
-    });
-
     await AgentSkillModel.destroy({
       where: { workspaceId },
     });
