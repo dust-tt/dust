@@ -904,7 +904,7 @@ export const INTERNAL_MCP_SERVERS = {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/freshservice",
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
     },
   },
