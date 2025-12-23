@@ -27,7 +27,6 @@ import {
   ConversationParticipantModel,
   MentionModel,
   MessageModel,
-  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -131,13 +130,11 @@ describe("createAgentMessages", () => {
     });
     expect(mentionInDb).not.toBeNull();
 
-    const agentMessageInDb = await AgentMessageModel.findByPk(
-      result[0].agentMessageId
-    );
+    const { agentMessage: agentMessageInDb, message: messageInDb } =
+      await ConversationFactory.getMessage(auth, result[0].id);
     expect(agentMessageInDb).not.toBeNull();
     expect(agentMessageInDb?.status).toBe("created");
 
-    const messageInDb = await MessageModel.findByPk(result[0].id);
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.rank).toBe(1);
     expect(messageInDb?.parentId).toBe(messageRow.id);
@@ -1914,15 +1911,13 @@ describe("createUserMessage", () => {
     expect(userMessage.agenticMessageData).toBeUndefined();
 
     // Verify database records were created
-    const messageInDb = await MessageModel.findByPk(userMessage.id);
+    const { message: messageInDb, userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, userMessage.id);
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.rank).toBe(rank);
     expect(messageInDb?.version).toBe(0);
     expect(messageInDb?.parentId).toBeNull();
 
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
     expect(userMessageInDb).not.toBeNull();
     expect(userMessageInDb?.content).toBe(content);
     expect(userMessageInDb?.userId).toBe(user.id);
@@ -2030,10 +2025,8 @@ describe("createUserMessage", () => {
     expect(userMessage.agenticMessageData).toEqual(agenticMessageData);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.agenticMessageType).toBe("agent_handover");
     expect(userMessageInDb?.agenticOriginMessageId).toBe(originMessage.sId);
   });
@@ -2079,10 +2072,8 @@ describe("createUserMessage", () => {
 
     // Verify database records - both fields should be null since origin message doesn't exist
     // The model validation requires agenticMessageType and agenticOriginMessageId to be set together
-    const messageInDb = await MessageModel.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.agenticMessageType).toBeNull();
     expect(userMessageInDb?.agenticOriginMessageId).toBeNull();
   });
@@ -2136,14 +2127,12 @@ describe("createUserMessage", () => {
     expect(editedMessage.context).toEqual(originalMessage.context);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(editedMessage.id);
+    const { message: messageInDb, userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, editedMessage.id);
     expect(messageInDb).not.toBeNull();
     expect(messageInDb?.version).toBe(originalMessage.version + 1);
     expect(messageInDb?.parentId).toBe(originalMessage.id);
 
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
     expect(userMessageInDb?.content).toBe(editedContent);
   });
 
@@ -2225,10 +2214,8 @@ describe("createUserMessage", () => {
     expect(editedMessage.rank).toBe(originalMessage.rank);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, editedMessage.id);
     expect(userMessageInDb?.agenticMessageType).toBe("agent_handover");
     expect(userMessageInDb?.agenticOriginMessageId).toBe(originMessage.sId);
   });
@@ -2296,10 +2283,8 @@ describe("createUserMessage", () => {
     );
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, editedMessage.id);
     expect(userMessageInDb?.userContextTimezone).toBe(originalContext.timezone);
     expect(userMessageInDb?.userContextFullName).toBe(originalContext.fullName);
     expect(userMessageInDb?.userContextProfilePictureUrl).toBe(
@@ -2356,7 +2341,8 @@ describe("createUserMessage", () => {
     expect(firstEdit.rank).toBe(originalMessage.rank);
 
     // Verify parentId points to original message
-    const firstEditMessageInDb = await MessageModel.findByPk(firstEdit.id);
+    const { message: firstEditMessageInDb } =
+      await ConversationFactory.getMessage(auth, firstEdit.id);
     expect(firstEditMessageInDb?.parentId).toBe(originalMessage.id);
 
     // Second edit
@@ -2376,7 +2362,8 @@ describe("createUserMessage", () => {
     expect(secondEdit.rank).toBe(originalMessage.rank);
 
     // Verify parentId points to first edit
-    const secondEditMessageInDb = await MessageModel.findByPk(secondEdit.id);
+    const { message: secondEditMessageInDb } =
+      await ConversationFactory.getMessage(auth, secondEdit.id);
     expect(secondEditMessageInDb?.parentId).toBe(firstEdit.id);
 
     // Third edit
@@ -2396,7 +2383,8 @@ describe("createUserMessage", () => {
     expect(thirdEdit.rank).toBe(originalMessage.rank);
 
     // Verify parentId points to second edit
-    const thirdEditMessageInDb = await MessageModel.findByPk(thirdEdit.id);
+    const { message: thirdEditMessageInDb } =
+      await ConversationFactory.getMessage(auth, thirdEdit.id);
     expect(thirdEditMessageInDb?.parentId).toBe(secondEdit.id);
   });
 
@@ -2448,10 +2436,8 @@ describe("createUserMessage", () => {
     expect(editedMessage.rank).toBe(originalMessage.rank);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, editedMessage.id);
     expect(userMessageInDb?.userId).toBeNull();
   });
 
@@ -2503,10 +2489,8 @@ describe("createUserMessage", () => {
     expect(editedMessage.user?.username).toBe(userJson.username);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(editedMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, editedMessage.id);
     expect(userMessageInDb?.userId).toBe(userJson.id);
   });
 
@@ -2546,10 +2530,8 @@ describe("createUserMessage", () => {
     expect(userMessage.context).toEqual(context);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.userContextTimezone).toBe(context.timezone);
     expect(userMessageInDb?.userContextFullName).toBe(context.fullName);
     expect(userMessageInDb?.userContextProfilePictureUrl).toBe(
@@ -2595,10 +2577,8 @@ describe("createUserMessage", () => {
     expect(userMessage.context).toEqual(context);
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.userContextFullName).toBeNull();
     expect(userMessageInDb?.userContextEmail).toBeNull();
     expect(userMessageInDb?.userContextProfilePictureUrl).toBeNull();
@@ -2684,18 +2664,8 @@ describe("createUserMessage", () => {
     expect(userMessage.user).toBeNull();
 
     // Verify database records
-    const messageInDb = await MessageModel.findOne({
-      where: {
-        id: userMessage.id,
-        workspaceId: workspace.id,
-      },
-    });
-    const userMessageInDb = await UserMessageModel.findOne({
-      where: {
-        id: messageInDb!.userMessageId!,
-        workspaceId: workspace.id,
-      },
-    });
+    const { userMessage: userMessageInDb } =
+      await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.userId).toBeNull();
   });
 });
