@@ -528,7 +528,7 @@ function createChannelsResponse(
 // Execute search_channels: "exact" uses conversations.info, "search" fetches lists and filters locally.
 export async function executeSearchChannels(
   query: string,
-  scope: "joined" | "all",
+  scope: "auto" | "joined" | "all",
   lookupType: "exact" | "search",
   {
     accessToken,
@@ -563,8 +563,9 @@ export async function executeSearchChannels(
     return new Err(new MCPError(`Channel not found: ${query}`));
   }
 
-  // Text search: fetch lists and filter locally
-  if (scope === "joined") {
+  // Search lookup.
+  // Scope="auto": search in joined channles; if no match fallback in all public channels.
+  if (scope === "auto") {
     try {
       const joinedChannels = await searchAndProcessChannels(
         slackClient,
@@ -578,7 +579,7 @@ export async function executeSearchChannels(
         );
       }
 
-      // Fallback to all public
+      // Fallback to all public channels.
       const publicChannels = await searchAndProcessChannels(
         slackClient,
         "public",
@@ -593,7 +594,21 @@ export async function executeSearchChannels(
     }
   }
 
-  // scope="all": search all public channels directly
+  // Scope="joined": search all public, private, im and mpim joined channels.
+  if (scope === "joined") {
+    try {
+      const joinedChannels = await searchAndProcessChannels(
+        slackClient,
+        "joined",
+        query
+      );
+      return createChannelsResponse(joinedChannels, "in your joined channels");
+    } catch (error) {
+      return new Err(new MCPError(`Error searching channels: ${error}`));
+    }
+  }
+
+  // Scope="all": search all public channels.
   try {
     const publicChannels = await searchAndProcessChannels(
       slackClient,
