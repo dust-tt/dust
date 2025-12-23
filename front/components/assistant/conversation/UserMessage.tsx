@@ -332,86 +332,84 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <div>
-          <NewConversationMessageContainer
-            messageType={isCurrentUser ? "me" : "user"}
+        <NewConversationMessageContainer
+          messageType={isCurrentUser ? "me" : "user"}
+          type="user"
+          className={isCurrentUser ? "ml-auto" : undefined}
+          ref={userMessageHoveredRef}
+        >
+          <ConversationMessageAvatar
+            className="flex"
+            avatarUrl={pictureUrl}
+            name={name}
             type="user"
-            className={isCurrentUser ? "ml-auto" : undefined}
-            ref={userMessageHoveredRef}
-          >
-            <ConversationMessageAvatar
-              className="flex"
-              avatarUrl={pictureUrl}
-              name={name}
-              type="user"
-            />
-            <div className="flex w-full min-w-0 flex-col gap-1">
-              <div className="inline-flex justify-between gap-0.5">
-                <ConversationMessageTitle
-                  name={name}
-                  timestamp={timestamp}
-                  infoChip={
-                    displayChip ? (
-                      <>
-                        {isTriggeredOrigin(message.context.origin) && (
-                          <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                            <TriggerChip message={message} />
-                          </span>
-                        )}
-                        {message.version > 0 && (
-                          <span className="text-xs text-faint dark:text-muted-foreground-night">
-                            (edited)
-                          </span>
-                        )}
-                      </>
-                    ) : undefined
-                  }
-                  renderName={renderName}
-                />
-                {actions && actions.length > 0 && (
-                  <DropdownMenu
-                    open={isMenuOpen}
-                    onOpenChange={(open) => setIsMenuOpen(open)}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        icon={MoreIcon}
-                        size="xs"
-                        variant="ghost-secondary"
-                        aria-label="Message actions"
-                        className={cn(
-                          "hidden transition-opacity duration-200 sm:block",
-                          isUserMessageHovered || isMenuOpen
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
+          />
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="inline-flex items-center justify-between gap-0.5">
+              <ConversationMessageTitle
+                name={name}
+                timestamp={timestamp}
+                infoChip={
+                  displayChip ? (
+                    <>
+                      {isTriggeredOrigin(message.context.origin) && (
+                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                          <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {message.version > 0 && (
+                        <span className="text-xs text-faint dark:text-muted-foreground-night">
+                          (edited)
+                        </span>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                renderName={renderName}
+              />
+              {actions && actions.length > 0 && (
+                <DropdownMenu
+                  open={isMenuOpen}
+                  onOpenChange={(open) => setIsMenuOpen(open)}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={MoreIcon}
+                      size="xs"
+                      variant="ghost-secondary"
+                      aria-label="Message actions"
+                      className={cn(
+                        "hidden transition-opacity duration-200 sm:block",
+                        isUserMessageHovered || isMenuOpen
+                          ? "opacity-100"
+                          : "opacity-0"
+                      )}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {actions.map((action, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        icon={action.icon}
+                        label={action.label}
+                        onClick={action.onClick}
                       />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {actions.map((action, index) => (
-                        <DropdownMenuItem
-                          key={index}
-                          icon={action.icon}
-                          label={action.label}
-                          onClick={action.onClick}
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              <ConversationMessageContent citations={citations} type={"user"}>
-                <UserMessageContent
-                  message={message}
-                  isDeleted={isDeleted}
-                  isLastMessage={isLastMessage}
-                  additionalMarkdownComponents={additionalMarkdownComponents}
-                  additionalMarkdownPlugins={additionalMarkdownPlugins}
-                />
-              </ConversationMessageContent>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
-          </NewConversationMessageContainer>
-        </div>
+            <ConversationMessageContent citations={citations} type={"user"}>
+              <UserMessageContent
+                message={message}
+                isDeleted={isDeleted}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            </ConversationMessageContent>
+          </div>
+        </NewConversationMessageContainer>
       )}
       {showAgentSuggestions && (
         <AgentSuggestion
