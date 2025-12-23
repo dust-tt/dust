@@ -210,7 +210,7 @@ export function AssistantKnowledgeSection({
         Knowledge
       </div>
       {hasDocuments && hasTables ? (
-        <Tree isBoxed>
+        <Tree isBoxed className="max-h-[400px] overflow-y-auto">
           <Tree.Item label="Documents" visual={DocumentIcon}>
             {dataSourcesDocuments}
           </Tree.Item>
@@ -219,7 +219,7 @@ export function AssistantKnowledgeSection({
           </Tree.Item>
         </Tree>
       ) : (
-        <Tree isBoxed>
+        <Tree isBoxed className="max-h-[400px] overflow-y-auto">
           {hasDocuments && dataSourcesDocuments}
           {hasTables && dataSourcesTables}
         </Tree>

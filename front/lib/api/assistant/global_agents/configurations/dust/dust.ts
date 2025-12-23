@@ -351,7 +351,10 @@ function _getDustLikeGlobalAgent(
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const description = "An agent with context on your company data.";
+  const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
+- Find and analyze data across your company knowledge
+- Research topics by searching the web
+- Create content like documents, presentations, images, and dashboards`;
   const pictureUrl = DUST_AVATAR_URL;
 
   let isPreferredModel = false;
