@@ -173,7 +173,8 @@ async function handler(
       // Fetch MCP server configurations from enabled skills.
       const skillServers = await fetchSkillMCPServerConfigurations(
         auth,
-        enabledSkills
+        enabledSkills,
+        agentConfiguration
       );
 
       const clientSideMCPActionConfigurations =
