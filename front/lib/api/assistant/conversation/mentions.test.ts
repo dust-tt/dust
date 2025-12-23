@@ -2684,10 +2684,18 @@ describe("createUserMessage", () => {
     expect(userMessage.user).toBeNull();
 
     // Verify database records
-    const messageInDb = await MessageModel.findByPk(userMessage.id);
-    const userMessageInDb = await UserMessageModel.findByPk(
-      messageInDb!.userMessageId!
-    );
+    const messageInDb = await MessageModel.findOne({
+      where: {
+        id: userMessage.id,
+        workspaceId: workspace.id,
+      },
+    });
+    const userMessageInDb = await UserMessageModel.findOne({
+      where: {
+        id: messageInDb!.userMessageId!,
+        workspaceId: workspace.id,
+      },
+    });
     expect(userMessageInDb?.userId).toBeNull();
   });
 });
