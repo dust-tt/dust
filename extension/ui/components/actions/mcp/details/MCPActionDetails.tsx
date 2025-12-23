@@ -11,19 +11,19 @@ import {
 } from "@app/shared/lib/tool_inputs";
 import { asDisplayName } from "@app/shared/lib/utils";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
-import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
-import { MCPConversationCatFileDetails } from "@app/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
-import {
-  DataSourceNodeContentDetails,
-  FilesystemPathDetails,
-} from "@app/ui/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import { MCPAgentManagementActionDetails } from "@app/ui/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import {
   MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
   MCPAgentMemoryRecordActionDetails,
   MCPAgentMemoryRetrieveActionDetails,
 } from "@app/ui/components/actions/mcp/details/MCPAgentMemoryActionDetails";
-import { MCPAgentManagementActionDetails } from "@app/ui/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPConversationCatFileDetails } from "@app/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
+import {
+  DataSourceNodeContentDetails,
+  FilesystemPathDetails,
+} from "@app/ui/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/ui/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
 import { MCPDeepDiveActionDetails } from "@app/ui/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/ui/components/actions/mcp/details/MCPExtractActionDetails";
@@ -33,8 +33,8 @@ import { MCPReasoningActionDetails } from "@app/ui/components/actions/mcp/detail
 import { MCPRunAgentActionDetails } from "@app/ui/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/ui/components/actions/mcp/details/MCPTablesQueryActionDetails";
-import { MCPToolsetsEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import { SearchResultDetails } from "@app/ui/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type {
   AgentActionPublicType,
   LightWorkspaceType,
