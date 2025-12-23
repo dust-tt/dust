@@ -2,6 +2,10 @@ import type { Transaction } from "sequelize";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
+import {
+  listWorkOSOrganizationsWithDomain,
+  removeWorkOSOrganizationDomain,
+} from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -9,13 +13,21 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { ModelId, Result, WorkspaceSegmentationType } from "@app/types";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
+import type {
+  ModelId,
+  Result,
+  WorkspaceDomain,
+  WorkspaceSegmentationType,
+} from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource
+  extends ReadonlyAttributesType<WorkspaceModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
@@ -157,6 +169,137 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     return new Ok(undefined);
+  }
+
+  async getVerifiedDomains(): Promise<WorkspaceDomain[]> {
+    const workspaceDomains = await WorkspaceHasDomainModel.findAll({
+      attributes: ["domain", "domainAutoJoinEnabled"],
+      where: {
+        workspaceId: this.id,
+      },
+    });
+
+    return workspaceDomains.map((d) => ({
+      domain: d.domain,
+      domainAutoJoinEnabled: d.domainAutoJoinEnabled,
+    }));
+  }
+
+  async deleteDomain({
+    domain,
+  }: {
+    domain: string;
+  }): Promise<Result<void, Error>> {
+    const existingDomain = await WorkspaceHasDomainModel.findOne({
+      where: {
+        domain,
+        workspaceId: this.id,
+      },
+    });
+
+    if (!existingDomain) {
+      return new Err(
+        new Error(`Domain ${domain} not found for workspace ${this.sId}`)
+      );
+    }
+
+    await existingDomain.destroy();
+
+    return new Ok(undefined);
+  }
+
+  async upsertWorkspaceDomain({
+    domain,
+    dropExistingDomain = false,
+  }: {
+    domain: string;
+    dropExistingDomain?: boolean;
+  }): Promise<Result<WorkspaceDomain, Error>> {
+    const existingDomainInRegion =
+      await WorkspaceResource.workspaceDomainModel.findOne({
+        where: { domain },
+        include: [
+          {
+            model: WorkspaceModel,
+            as: "workspace",
+            required: true,
+          },
+        ],
+        // WORKSPACE_ISOLATION_BYPASS: Need to check domain across all workspaces.
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
+      });
+
+    if (
+      existingDomainInRegion &&
+      existingDomainInRegion.workspace.id === this.id
+    ) {
+      return new Ok({
+        domain: existingDomainInRegion.domain,
+        domainAutoJoinEnabled: existingDomainInRegion.domainAutoJoinEnabled,
+      });
+    }
+
+    if (existingDomainInRegion) {
+      if (dropExistingDomain) {
+        logger.info(
+          {
+            domain,
+            workspaceId: existingDomainInRegion.workspace.id,
+          },
+          "Dropping existing domain"
+        );
+
+        const { workspace } = existingDomainInRegion;
+
+        // Delete the domain from the DB.
+        await existingDomainInRegion.destroy();
+
+        // Delete the domain from WorkOS.
+        await removeWorkOSOrganizationDomain(
+          renderLightWorkspaceType({ workspace }),
+          {
+            domain,
+          }
+        );
+      } else {
+        return new Err(
+          new Error(
+            `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspace.id}`
+          )
+        );
+      }
+    }
+
+    // Ensure the domain is not already in use by another workspace in another region.
+    const organizationsWithDomain =
+      await listWorkOSOrganizationsWithDomain(domain);
+
+    if (organizationsWithDomain.length > 0) {
+      const otherOrganizationsWithDomain = organizationsWithDomain.filter(
+        (o) => o.id !== this.workOSOrganizationId
+      );
+
+      const [otherOrganizationWithDomain] = otherOrganizationsWithDomain;
+      if (otherOrganizationWithDomain) {
+        return new Err(
+          new Error(
+            `Domain ${domain} already associated with organization ` +
+              `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
+          )
+        );
+      }
+    }
+
+    const d = await WorkspaceHasDomainModel.create({
+      domain,
+      domainAutoJoinEnabled: false,
+      workspaceId: this.id,
+    });
+
+    return new Ok({
+      domain: d.domain,
+      domainAutoJoinEnabled: d.domainAutoJoinEnabled,
+    });
   }
 
   static async updateName(

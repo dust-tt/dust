@@ -11,9 +11,9 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getSignInUrl } from "@app/lib/signup";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -64,7 +64,13 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     };
   }
 
-  const workspaceDomains = await getWorkspaceVerifiedDomains(workspace);
+  const workspaceResource = await WorkspaceResource.fetchById(wId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${wId}`);
+  }
+
+  const workspaceDomains =
+    (await workspaceResource?.getVerifiedDomains()) ?? [];
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;

@@ -3,7 +3,6 @@ import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -311,8 +310,13 @@ async function handler(
                 activeOnly: true,
               });
 
+            const workspaceResource = await WorkspaceResource.fetchById(ws.sId);
+            if (!workspaceResource) {
+              throw new Error(`Workspace not found: ${ws.sId}`);
+            }
+
             const verifiedDomains =
-              await getWorkspaceVerifiedDomains(lightWorkspace);
+              (await workspaceResource.getVerifiedDomains()) ?? [];
 
             return {
               ...lightWorkspace,

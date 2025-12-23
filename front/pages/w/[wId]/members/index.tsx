@@ -24,9 +24,9 @@ import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -60,7 +60,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   // TODO(workos 2025-06-09): Remove this once fully migrated to WorkOS.
-  const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
+  const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${owner.sId}`);
+  }
+
+  const workspaceVerifiedDomains =
+    (await workspaceResource.getVerifiedDomains()) ?? [];
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
 
