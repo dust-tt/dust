@@ -404,7 +404,7 @@ export function UserMessage({
             </div>
             <ConversationMessageContent
               citations={citations}
-              type={"user"}
+              type="user"
               className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
             >
               <UserMessageContent
