@@ -23,6 +23,7 @@ export type PokeCreditType = {
 
 export type PokeListCreditsResponseBody = {
   credits: PokeCreditType[];
+  excessCreditsLast30DaysMicroUsd: number;
 };
 
 async function handler(
@@ -57,10 +58,21 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const credits = await CreditResource.listAll(auth);
+      const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - DAYS_30_MS);
+
+      const [credits, excessCreditsLast30DaysMicroUsd] = await Promise.all([
+        CreditResource.listAll(auth),
+        CreditResource.sumExcessCreditsInPeriod(auth, {
+          periodStart: thirtyDaysAgo,
+          periodEnd: now,
+        }),
+      ]);
 
       return res.status(200).json({
         credits: credits.map((credit) => credit.toJSONForAdmin()),
+        excessCreditsLast30DaysMicroUsd,
       });
 
     default:
