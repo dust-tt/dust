@@ -25,7 +25,10 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
+import {
+  fetchMessageInConversation,
+  getCompletionDuration,
+} from "@app/lib/api/assistant/messages";
 import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
@@ -597,6 +600,11 @@ export async function runModelActivity(
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
     agentMessage.completedTs = Date.now();
+    agentMessage.completionDurationMs = getCompletionDuration(
+      agentMessage.created,
+      agentMessage.completedTs,
+      agentMessage.actions
+    );
 
     await updateResourceAndPublishEvent(auth, {
       event: {

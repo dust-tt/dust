@@ -3,7 +3,10 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getRichMentionsWithStatusForMessage } from "@app/lib/api/assistant/messages";
+import {
+  getCompletionDuration,
+  getRichMentionsWithStatusForMessage,
+} from "@app/lib/api/assistant/messages";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
@@ -639,6 +642,11 @@ export const createAgentMessages = async (
       contents: [],
       parsedContents: {},
       modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
+      completionDurationMs: getCompletionDuration(
+        agentMessageRow.createdAt.getTime(),
+        agentMessageRow.completedAt?.getTime() ?? null,
+        []
+      ),
       richMentions: [],
     })
   );

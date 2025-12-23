@@ -194,6 +194,7 @@ export type BaseAgentMessageType = {
   error: GenericErrorContent | null;
   visibility: MessageVisibility;
   richMentions: RichMentionWithStatus[];
+  completionDurationMs: number | null;
 };
 
 export type ParsedContentItem =

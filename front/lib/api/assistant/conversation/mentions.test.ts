@@ -1251,6 +1251,7 @@ describe("createUserMentions", () => {
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        completionDurationMs: null,
         rank: messageRow.rank,
       };
 
@@ -1341,6 +1342,7 @@ describe("createUserMentions", () => {
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        completionDurationMs: null,
         rank: messageRow.rank,
       };
 
@@ -1497,6 +1499,7 @@ describe("createUserMentions", () => {
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        completionDurationMs: null,
         rank: messageRow.rank,
       };
 
@@ -1652,6 +1655,7 @@ describe("createUserMentions", () => {
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        completionDurationMs: null,
         rank: messageRow.rank,
       };
 
@@ -1807,6 +1811,7 @@ describe("createUserMentions", () => {
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        completionDurationMs: null,
         rank: messageRow.rank,
       };
 

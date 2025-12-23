@@ -175,5 +175,6 @@ export function getLightAgentMessageFromAgentMessage(
         ...(f.hidden ? { hidden: true } : {}),
       })),
     richMentions: agentMessage.richMentions,
+    completionDurationMs: agentMessage.completionDurationMs,
   };
 }

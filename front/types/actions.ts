@@ -9,6 +9,7 @@ export type AgentMCPActionType = {
   id: ModelId;
   sId: string;
   createdAt: number;
+  updatedAt: number;
 
   agentMessageId: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
@@ -21,6 +22,7 @@ export type AgentMCPActionType = {
   citationsAllocated: number;
   status: ToolExecutionStatus;
   step: number;
+  executionDurationMs: number | null;
 };
 
 export type AgentMCPActionWithOutputType = AgentMCPActionType & {

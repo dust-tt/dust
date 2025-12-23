@@ -635,6 +635,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
       agentMessageId: this.agentMessageId,
       citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
@@ -645,6 +646,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       params: this.augmentedInputs,
       status: this.status,
       step: this.stepContent.step,
+      executionDurationMs: this.executionDurationMs,
     };
   }
 

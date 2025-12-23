@@ -62,6 +62,26 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
+export function getCompletionDuration(
+  created: number,
+  completedTs: number | null,
+  actions: AgentMCPActionWithOutputType[]
+) {
+  if (!completedTs) {
+    return null;
+  }
+  // Estimate wait time for the agent message by checking the difference
+  // between action execution duration and full completion time.
+  const waitTime = actions.reduce(
+    (acc, a) =>
+      a.executionDurationMs
+        ? acc + a.updatedAt - a.createdAt - a.executionDurationMs
+        : acc,
+    0
+  );
+  return completedTs - created - waitTime;
+}
+
 export function getRichMentionsWithStatusForMessage(
   messageId: ModelId,
   mentionRows: MentionModel[],
@@ -573,12 +593,14 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentConfigurationsById
       );
 
+      const created = message.createdAt.getTime();
+      const completedTs = agentMessage.completedAt?.getTime() ?? null;
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
         sId: message.sId,
-        created: message.createdAt.getTime(),
-        completedTs: agentMessage.completedAt?.getTime() ?? null,
+        created,
+        completedTs,
         type: "agent_message" as const,
         visibility: message.visibility,
         version: message.version,
@@ -600,7 +622,12 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         skipToolsValidation: agentMessage.skipToolsValidation,
         modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
         richMentions,
-      } satisfies AgentMessageType;
+        completionDurationMs: getCompletionDuration(
+          created,
+          completedTs,
+          actions
+        ),
+      };
 
       if (viewType === "full") {
         return new Ok(m);

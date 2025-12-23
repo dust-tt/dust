@@ -162,6 +162,7 @@ export function createPlaceholderAgentMessage({
     generatedFiles: [],
     actions: [],
     richMentions: [],
+    completionDurationMs: null,
 
     streaming: {
       agentState: "placeholder",
