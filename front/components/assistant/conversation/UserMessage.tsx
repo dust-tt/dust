@@ -405,7 +405,7 @@ export function UserMessage({
             <ConversationMessageContent
               citations={citations}
               type={"user"}
-              className={cn(shouldShowBiggerUserMessage && "@sm:min-w-[400px]")}
+              className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
             >
               <UserMessageContent
                 message={message}
