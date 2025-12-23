@@ -41,6 +41,7 @@ import {
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
 } from "./fireworks";
 import {
+  GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
   GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -192,6 +193,11 @@ export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
+
+// Image generation model IDs (internal-only, not user-selectable)
+export const IMAGE_MODEL_IDS = [GEMINI_2_5_FLASH_IMAGE_MODEL_ID] as const;
+
+export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,

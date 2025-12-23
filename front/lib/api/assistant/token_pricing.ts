@@ -1,5 +1,8 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
-import type { ModelIdType as BaseModelIdType, ModelIdType } from "@app/types";
+import type {
+  ImageModelIdType,
+  ModelIdType as BaseModelIdType,
+} from "@app/types";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
 type PricingEntry = {
@@ -282,6 +285,13 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   },
 };
 
+const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
+  "gemini-2.5-flash-image": {
+    input: 0.3,
+    output: 30.0,
+  },
+};
+
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
 // These are kept to ensure we can still compute token usage for historical runs.
 const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
@@ -427,10 +437,11 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   },
 };
 
-// Combined pricing record for all models (current + legacy).
+// Combined pricing record for all models (current + legacy + image).
 // This is the exported record used throughout the codebase.
 export const MODEL_PRICING: Record<string, PricingEntry> = {
   ...CURRENT_MODEL_PRICING,
+  ...IMAGE_MODEL_PRICING,
   ...LEGACY_MODEL_PRICING,
 };
 
@@ -451,7 +462,7 @@ export function computeTokensCostForUsageInMicroUsd({
   cachedTokens,
   cacheCreationTokens,
 }: {
-  modelId: ModelIdType;
+  modelId: BaseModelIdType | ImageModelIdType;
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number | null;
