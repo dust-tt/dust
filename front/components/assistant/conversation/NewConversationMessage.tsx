@@ -5,7 +5,7 @@ import React from "react";
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
 
-const wrapperVariants = cva("flex flex-col @container", {
+const wrapperVariants = cva("flex flex-col @container @sm:flex-row", {
   variants: {
     messageType: {
       agent: "pr-0",
@@ -21,7 +21,7 @@ const messageVariants = cva("flex rounded-2xl max-w-full", {
   variants: {
     type: {
       user: "bg-muted-background dark:bg-muted-background-night px-3 py-3 gap-2 w-fit",
-      agent: "w-full gap-3 p-4",
+      agent: "w-full gap-3 p-4 @sm:flex-row flex-col",
     },
   },
   defaultVariants: {
@@ -41,10 +41,7 @@ export const NewConversationMessageContainer = React.forwardRef<
 >(({ children, className, messageType, type, ...props }, ref) => {
   return (
     <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
-      <div
-        className={cn(messageVariants({ type, className }), "flex-row")}
-        {...props}
-      >
+      <div className={cn(messageVariants({ type, className }))} {...props}>
         {children}
       </div>
     </div>
