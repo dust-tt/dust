@@ -137,19 +137,13 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
   node: DataSourceViewContentNode,
   spacesMap?: Record<string, SpaceType>
 ) {
-  const { dataSource, spaceId } = node.dataSourceView;
-  const { connectorProvider } = dataSource;
-  const providerName = connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[connectorProvider].name
-    : "Folders";
+  const { spaceId } = node.dataSourceView;
 
   // Get space name if available.
   const spaceName = spacesMap?.[spaceId]?.name;
+  const locationWithoutSpace = getLocationForDataSourceViewContentNode(node);
 
-  if (!node.parentTitle) {
-    return spaceName ? `${spaceName} › ${providerName}` : providerName;
-  }
-
-  const location = `${providerName} › ... › ${node.parentTitle}`;
-  return spaceName ? `${spaceName} › ${location}` : location;
+  return spaceName
+    ? `${spaceName} › ${locationWithoutSpace}`
+    : locationWithoutSpace;
 }
