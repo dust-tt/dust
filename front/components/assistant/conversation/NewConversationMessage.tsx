@@ -20,7 +20,7 @@ const wrapperVariants = cva("flex flex-col @container", {
 const messageVariants = cva("flex rounded-2xl max-w-full", {
   variants: {
     type: {
-      user: "bg-muted-background dark:bg-muted-background-night px-3 py-3 gap-2",
+      user: "bg-muted-background dark:bg-muted-background-night px-3 py-3 gap-2 w-fit",
       agent: "w-full gap-3 p-4",
     },
   },
