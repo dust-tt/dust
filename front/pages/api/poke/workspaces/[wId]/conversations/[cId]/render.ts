@@ -208,6 +208,7 @@ async function handler(
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,
+        completionDurationMs: null,
         richMentions: [],
       };
 

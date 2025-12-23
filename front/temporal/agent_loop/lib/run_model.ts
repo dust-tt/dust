@@ -601,7 +601,8 @@ export async function runModelActivity(
     agentMessage.status = "succeeded";
     agentMessage.completedTs = Date.now();
     agentMessage.completionDurationMs = getCompletionDuration(
-      agentMessage,
+      agentMessage.completedTs,
+      agentMessage.created,
       agentMessage.actions
     );
 

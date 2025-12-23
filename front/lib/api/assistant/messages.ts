@@ -63,9 +63,13 @@ import type {
 } from "@app/types/assistant/conversation";
 
 export function getCompletionDuration(
-  agentMessage: AgentMessageType,
+  completedTs: number | null,
+  created: number,
   actions: AgentMCPActionWithOutputType[]
 ) {
+  if (!completedTs) {
+    return 0;
+  }
   // Estimate wait time for the agent message by checking the difference
   // between action execution duration and full completion time.
   const waitTime = actions.reduce(
@@ -75,9 +79,7 @@ export function getCompletionDuration(
         : acc,
     0
   );
-  return agentMessage.completedTs
-    ? agentMessage.completedTs - agentMessage.created - waitTime
-    : 0;
+  return completedTs - created - waitTime;
 }
 
 export function getRichMentionsWithStatusForMessage(
@@ -618,10 +620,12 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         skipToolsValidation: agentMessage.skipToolsValidation,
         modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
         richMentions,
-        completionDurationMs: 0,
+        completionDurationMs: getCompletionDuration(
+          m.completedTs,
+          m.created,
+          actions
+        ),
       };
-
-      m.completionDurationMs = getCompletionDuration(m, actions);
 
       if (viewType === "full") {
         return new Ok(m);
