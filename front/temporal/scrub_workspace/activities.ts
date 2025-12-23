@@ -88,6 +88,54 @@ export async function shouldStillScrubData({
   ).isUpgraded();
 }
 
+const MIN_DATA_DELETION_DAYS = 30;
+const MAX_DATA_DELETION_DAYS = 120;
+const DEFAULT_DATA_DELETION_DAYS = 30;
+
+export async function getDataDeletionDays({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<number> {
+  const workspace = await getWorkspaceInfos(workspaceId);
+  if (!workspace) {
+    return DEFAULT_DATA_DELETION_DAYS;
+  }
+
+  const dataDeletionDays = workspace.metadata?.dataDeletionDays;
+
+  if (dataDeletionDays === undefined || dataDeletionDays === null) {
+    return DEFAULT_DATA_DELETION_DAYS;
+  }
+
+  // Enforce min/max bounds
+  if (dataDeletionDays < MIN_DATA_DELETION_DAYS) {
+    logger.warn(
+      {
+        workspaceId,
+        dataDeletionDays,
+        min: MIN_DATA_DELETION_DAYS,
+      },
+      "Data deletion days below minimum, using minimum value"
+    );
+    return MIN_DATA_DELETION_DAYS;
+  }
+
+  if (dataDeletionDays > MAX_DATA_DELETION_DAYS) {
+    logger.warn(
+      {
+        workspaceId,
+        dataDeletionDays,
+        max: MAX_DATA_DELETION_DAYS,
+      },
+      "Data deletion days above maximum, using maximum value"
+    );
+    return MAX_DATA_DELETION_DAYS;
+  }
+
+  return dataDeletionDays;
+}
+
 export async function scrubWorkspaceData({
   workspaceId,
 }: {

@@ -19,6 +19,7 @@ export * from "./reset_message_rate_limit";
 export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
 export * from "./revoke_users";
+export * from "./set_data_deletion_days";
 export * from "./send_onboarding_conversation";
 export * from "./sync_missing_transcripts_date_range";
 export * from "./toggle_auto_create_space";
