@@ -1,9 +1,15 @@
 import {
   BoltIcon,
   Button,
-  classNames,
+  cn,
+  ConversationMessageContent,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   Markdown,
+  MoreIcon,
   PencilSquareIcon,
   Tooltip,
   TrashIcon,
@@ -19,7 +25,11 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
-import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
+import {
+  ConversationMessageAvatar,
+  ConversationMessageTitle,
+  NewConversationMessageContainer,
+} from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
@@ -43,6 +53,7 @@ import {
 } from "@app/components/markdown/PastedAttachmentBlock";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
+import { useHover } from "@app/hooks/useHover";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -77,7 +88,7 @@ function UserMessageEditor({
 
   return (
     <div
-      className="dark:focus-within:ring-highlight/30-night w-full rounded-2xl bg-muted-background py-2 pl-4 pr-2 focus-within:ring-1 focus-within:ring-highlight/30 dark:bg-muted-background-night dark:ring-border-dark-night dark:focus-within:ring-1 sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+      className="dark:focus-within:ring-highlight/30-night w-full rounded-2xl bg-muted-background py-3 pl-4 pr-3 focus-within:ring-1 focus-within:ring-highlight/30 dark:bg-muted-background-night dark:ring-border-dark-night dark:focus-within:ring-1 sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
       onClick={(e) => {
         // If e.target is not a child of a div with class "tiptap", then focus on the editor
         if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
@@ -164,6 +175,9 @@ export function UserMessage({
   owner,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
+    useHover();
   const isAdmin = owner.role === "admin";
   const { deleteMessage, isDeleting } = useDeleteMessage({
     owner,
@@ -304,61 +318,98 @@ export function UserMessage({
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
+  const pictureUrl = message.context.profilePictureUrl ?? message.user?.image;
+  const timestamp = formatTimestring(message.created);
+  const name = message.context.fullName ?? undefined;
+
   return (
-    <div className="flex flex-grow flex-col">
-      <div
-        className={classNames(
-          "flex w-full min-w-60 flex-col",
-          isCurrentUser ? "items-end" : "items-start"
-        )}
-      >
-        {shouldShowEditor ? (
-          <UserMessageEditor
-            editor={editor}
-            editorService={editorService}
-            setShouldShowEditor={setShouldShowEditor}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        ) : (
-          <NewConversationMessage
-            pictureUrl={
-              message.context.profilePictureUrl ?? message.user?.image
-            }
-            name={message.context.fullName ?? undefined}
-            renderName={renderName}
-            timestamp={formatTimestring(message.created)}
-            infoChip={
-              displayChip ? (
-                <>
-                  {isTriggeredOrigin(message.context.origin) && (
-                    <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                      <TriggerChip message={message} />
-                    </span>
-                  )}
-                  {message.version > 0 && (
-                    <span className="text-xs text-faint dark:text-muted-foreground-night">
-                      (edited)
-                    </span>
-                  )}
-                </>
-              ) : undefined
-            }
+    <>
+      {shouldShowEditor ? (
+        <UserMessageEditor
+          editor={editor}
+          editorService={editorService}
+          setShouldShowEditor={setShouldShowEditor}
+          onSave={handleSave}
+          isSaving={isSaving}
+        />
+      ) : (
+        <NewConversationMessageContainer
+          messageType={isCurrentUser ? "me" : "user"}
+          type="user"
+          className={isCurrentUser ? "ml-auto" : undefined}
+          ref={userMessageHoveredRef}
+        >
+          <ConversationMessageAvatar
+            className="flex"
+            avatarUrl={pictureUrl}
+            name={name}
             type="user"
-            isCurrentUser={isCurrentUser}
-            citations={citations}
-            actions={actions}
-          >
-            <UserMessageContent
-              message={message}
-              isDeleted={isDeleted}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
-          </NewConversationMessage>
-        )}
-      </div>
+          />
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="inline-flex items-center justify-between gap-0.5">
+              <ConversationMessageTitle
+                name={name}
+                timestamp={timestamp}
+                infoChip={
+                  displayChip ? (
+                    <>
+                      {isTriggeredOrigin(message.context.origin) && (
+                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                          <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {message.version > 0 && (
+                        <span className="text-xs text-faint dark:text-muted-foreground-night">
+                          (edited)
+                        </span>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                renderName={renderName}
+              />
+              {actions && actions.length > 0 && (
+                <DropdownMenu
+                  open={isMenuOpen}
+                  onOpenChange={(open) => setIsMenuOpen(open)}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={MoreIcon}
+                      size="xs"
+                      variant="ghost-secondary"
+                      aria-label="Message actions"
+                      className={cn(
+                        "opacity-100 transition-opacity duration-200",
+                        !isUserMessageHovered && !isMenuOpen && "sm:opacity-0" // always show on small screens
+                      )}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {actions.map((action, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        icon={action.icon}
+                        label={action.label}
+                        onClick={action.onClick}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <ConversationMessageContent citations={citations} type="user">
+              <UserMessageContent
+                message={message}
+                isDeleted={isDeleted}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            </ConversationMessageContent>
+          </div>
+        </NewConversationMessageContainer>
+      )}
       {showAgentSuggestions && (
         <AgentSuggestion
           conversationId={conversationId}
@@ -366,7 +417,7 @@ export function UserMessage({
           userMessage={message}
         />
       )}
-    </div>
+    </>
   );
 }
 
