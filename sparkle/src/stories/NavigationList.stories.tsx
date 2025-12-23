@@ -9,9 +9,12 @@ import {
   NavigationList,
   NavigationListItem,
   NavigationListItemAction,
+  NavigationListCollapsibleSection,
   NavigationListLabel,
+  NavigationListLabelButton,
   PencilSquareIcon,
   TrashIcon,
+  MoreIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -148,6 +151,151 @@ export const Demo = () => {
                 );
               })}
             </React.Fragment>
+          ))}
+        </NavigationList>
+      </div>
+    </div>
+  );
+};
+
+export const CollapsibleSection = () => {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [conversationTitles, setConversationTitles] = useState<
+    { label: string; items: string[] }[]
+  >([]);
+
+  useEffect(() => {
+    setConversationTitles([
+      { label: "Today", items: getRandomTitles(5) },
+      { label: "Yesterday", items: getRandomTitles(10) },
+      { label: "Last Week", items: getRandomTitles(8) },
+    ]);
+  }, []);
+
+  const allItems = conversationTitles.flatMap((section) => section.items);
+
+  const getMoreMenu = (title: string) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <NavigationListItemAction />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          label={`Rename ${title}`}
+          icon={PencilSquareIcon}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        />
+        <DropdownMenuItem
+          label="Delete"
+          icon={TrashIcon}
+          variant="warning"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <div className="s-flex s-h-[500px] s-w-full s-flex-row s-gap-12 s-bg-muted">
+      <div className="s-h-[500px] s-w-[240px]">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
+          {conversationTitles.map((section, sectionIndex) => (
+            <>
+              <NavigationListLabel label="Hello" key={0} />
+              <NavigationListCollapsibleSection
+                key={sectionIndex}
+                label={section.label}
+                defaultOpen={sectionIndex === 0}
+              >
+                {section.items.map((title, index) => {
+                  const itemIndex = allItems.indexOf(title);
+                  const getStatus = (idx: number) => {
+                    if (idx % 5 === 0) {
+                      return "unread";
+                    }
+                    if (idx % 3 === 0) {
+                      return "blocked";
+                    }
+                    return "idle";
+                  };
+                  return (
+                    <NavigationListItem
+                      key={index}
+                      href={index % 2 === 0 ? "#" : undefined}
+                      selected={itemIndex === selectedIndex}
+                      onClick={(e) => {
+                        if (!e.defaultPrevented) {
+                          e.preventDefault();
+                          setSelectedIndex(itemIndex);
+                        }
+                      }}
+                      label={title}
+                      className="s-w-full"
+                      moreMenu={getMoreMenu(title)}
+                      status={getStatus(index)}
+                    />
+                  );
+                })}
+              </NavigationListCollapsibleSection>
+            </>
+          ))}
+        </NavigationList>
+      </div>
+      <div className="s-h-[500px] s-w-[240px]">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
+          {conversationTitles.map((section, sectionIndex) => (
+            <NavigationListCollapsibleSection
+              key={sectionIndex}
+              label={section.label}
+              defaultOpen={sectionIndex === 0}
+              action={
+                <NavigationListLabelButton
+                  icon={MoreIcon}
+                  aria-label="Add new item"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+              }
+            >
+              {section.items.map((title, index) => {
+                const itemIndex = allItems.indexOf(title);
+                const getStatus = (idx: number) => {
+                  if (idx % 5 === 0) {
+                    return "unread";
+                  }
+                  if (idx % 3 === 0) {
+                    return "blocked";
+                  }
+                  return "idle";
+                };
+                return (
+                  <NavigationListItem
+                    key={index}
+                    href={index % 2 === 0 ? "#" : undefined}
+                    selected={itemIndex === selectedIndex}
+                    onClick={(e) => {
+                      if (!e.defaultPrevented) {
+                        e.preventDefault();
+                        setSelectedIndex(itemIndex);
+                      }
+                    }}
+                    label={title}
+                    className="s-w-full"
+                    moreMenu={getMoreMenu(title)}
+                    status={getStatus(index)}
+                  />
+                );
+              })}
+            </NavigationListCollapsibleSection>
           ))}
         </NavigationList>
       </div>

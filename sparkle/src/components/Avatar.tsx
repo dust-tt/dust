@@ -257,6 +257,7 @@ interface AvatarStackProps {
   isRounded?: boolean;
   hasMagnifier?: boolean;
   tooltipTriggerAsChild?: boolean;
+  orientation?: "horizontal" | "vertical";
 }
 
 const sizeClassesPx: Record<AvatarStackSizeType, number> = {
@@ -272,6 +273,7 @@ Avatar.Stack = function ({
   isRounded = false,
   hasMagnifier = true,
   tooltipTriggerAsChild = false,
+  orientation = "horizontal",
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -294,6 +296,8 @@ Avatar.Stack = function ({
     marginLeft: 0,
     widthHovered: sizeClassesPx[size] * 0.6,
     width: sizeClassesPx[size] * 0.25,
+    heightHovered: sizeClassesPx[size] * 0.6,
+    height: sizeClassesPx[size] * 0.25,
   };
 
   const collapsedWidth =
@@ -306,7 +310,20 @@ Avatar.Stack = function ({
       (visibleAvatars.length + Number(Boolean(remainingCount))) +
     (sizeClassesPx[size] - sizeSetting.widthHovered);
 
-  const transitionSettings = "width 200ms ease-out";
+  const collapsedHeight =
+    sizeSetting.height *
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
+    (sizeClassesPx[size] - sizeSetting.height);
+
+  const openedHeight =
+    sizeSetting.heightHovered *
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
+    (sizeClassesPx[size] - sizeSetting.heightHovered);
+
+  const transitionSettings =
+    orientation === "vertical"
+      ? "height 200ms ease-out"
+      : "width 200ms ease-out";
 
   return (
     <Tooltip
@@ -315,13 +332,24 @@ Avatar.Stack = function ({
       trigger={
         <>
           <div
-            className="s-flex s-flex-row"
+            className={cn(
+              "s-flex",
+              orientation === "vertical" ? "s-flex-col" : "s-flex-row"
+            )}
             onMouseEnter={() => visibleAvatars.length > 1 && setIsHovered(true)}
             onMouseLeave={() =>
               visibleAvatars.length > 1 && setIsHovered(false)
             }
             style={{
-              width: `${isHovered ? openedWidth : collapsedWidth}px`,
+              [orientation === "vertical" ? "height" : "width"]: `${
+                isHovered
+                  ? orientation === "vertical"
+                    ? openedHeight
+                    : openedWidth
+                  : orientation === "vertical"
+                    ? collapsedHeight
+                    : collapsedWidth
+              }px`,
               transition: transitionSettings,
             }}
           >
@@ -330,9 +358,13 @@ Avatar.Stack = function ({
                 key={i}
                 className="s-cursor-pointer s-drop-shadow-md"
                 style={{
-                  width: isHovered
-                    ? sizeSetting.widthHovered
-                    : sizeSetting.width,
+                  [orientation === "vertical" ? "height" : "width"]: isHovered
+                    ? orientation === "vertical"
+                      ? sizeSetting.heightHovered
+                      : sizeSetting.widthHovered
+                    : orientation === "vertical"
+                      ? sizeSetting.height
+                      : sizeSetting.width,
                   transition: transitionSettings,
                 }}
               >
@@ -359,9 +391,13 @@ Avatar.Stack = function ({
               <div
                 className="s-cursor-pointer s-drop-shadow-md"
                 style={{
-                  width: isHovered
-                    ? sizeSetting.widthHovered
-                    : sizeSetting.width,
+                  [orientation === "vertical" ? "height" : "width"]: isHovered
+                    ? orientation === "vertical"
+                      ? sizeSetting.heightHovered
+                      : sizeSetting.widthHovered
+                    : orientation === "vertical"
+                      ? sizeSetting.height
+                      : sizeSetting.width,
                   transition: transitionSettings,
                 }}
               >
