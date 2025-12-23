@@ -1153,6 +1153,30 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return [...customSkills, ...globalSkills];
   }
 
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await AgentSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await GroupSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillMCPServerConfigurationModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillVersionModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillConfigurationModel.destroy({
+      where: { workspaceId },
+    });
+  }
+
   toJSON(auth: Authenticator): SkillType {
     const tools = this.mcpServerConfigurations.map((config) => ({
       mcpServerViewId: makeSId("mcp_server_view", {

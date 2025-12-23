@@ -43,6 +43,7 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
@@ -484,6 +485,18 @@ export async function deleteMembersActivity({
       await membership.delete(auth, {});
     }
   }
+}
+
+export async function deleteSkillsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  await SkillResource.deleteAllForWorkspace(auth);
+
+  hardDeleteLogger.info({ workspaceId }, "Deleted all skills");
 }
 
 export async function deleteWebhookSourcesActivity({
