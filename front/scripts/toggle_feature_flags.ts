@@ -1,4 +1,4 @@
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types";
@@ -9,32 +9,25 @@ async function enableFeatureFlag(
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
-  const { id: workspaceId, name } = workspace;
-
-  const existingFlag = await FeatureFlagModel.findOne({
-    where: {
-      workspaceId,
-      name: featureFlag,
-    },
-  });
-  if (existingFlag) {
+  const isEnabled = await FeatureFlagResource.isEnabledForWorkspace(
+    workspace,
+    featureFlag
+  );
+  if (isEnabled) {
     console.log(
-      `Workspace ${name}(${workspaceId}) already has ${featureFlag} enabled -- Skipping.`
+      `Workspace ${workspace.sId} already has ${featureFlag} enabled -- Skipping.`
     );
     return;
   }
 
   if (execute) {
-    await FeatureFlagModel.create({
-      workspaceId,
-      name: featureFlag satisfies WhitelistableFeature,
-    });
+    await FeatureFlagResource.enable(workspace, featureFlag);
   }
 
   console.log(
     `${
       execute ? "" : "[DRYRUN]:"
-    } Feature flag ${featureFlag} enabled for workspace: ${name}(${workspaceId}).`
+    } Feature flag ${featureFlag} enabled for workspace: ${workspace.sId}.`
   );
 }
 
@@ -43,29 +36,25 @@ async function disableFeatureFlag(
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
-  const { id: workspaceId, name } = workspace;
-
   if (execute) {
-    const existingFlag = await FeatureFlagModel.findOne({
-      where: {
-        workspaceId,
-        name: featureFlag,
-      },
-    });
-    if (!existingFlag) {
+    const isEnabled = await FeatureFlagResource.isEnabledForWorkspace(
+      workspace,
+      featureFlag
+    );
+    if (!isEnabled) {
       console.log(
-        `Workspace ${name}(${workspaceId}) does not have ${featureFlag} enabled -- Skipping.`
+        `Workspace ${workspace.sId} does not have ${featureFlag} enabled -- Skipping.`
       );
       return;
     }
 
-    await existingFlag.destroy();
+    await FeatureFlagResource.disable(workspace, featureFlag);
   }
 
   console.log(
     `${
       execute ? "" : "[DRYRUN]:"
-    } Feature flag ${featureFlag} disabled for workspace: ${name}(${workspaceId}).`
+    } Feature flag ${featureFlag} disabled for workspace: ${workspace.sId}.`
   );
 }
 
