@@ -2903,6 +2903,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
+  | "GuruLogo"
   | "HubspotLogo"
   | "JiraLogo"
   | "LinearLogo"
