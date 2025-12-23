@@ -244,12 +244,24 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
           "Dropping existing domain"
         );
 
+        const domainWorkspace = await WorkspaceResource.fetchById(
+          existingDomainInRegion.workspace.sId
+        );
+
+        if (!domainWorkspace) {
+          return new Err(
+            new Error(
+              `Failed to fetch workspace ${existingDomainInRegion.workspace.sId} while dropping domain ${domain}`
+            )
+          );
+        }
+
         // Delete the domain from the DB.
         await existingDomainInRegion.destroy();
 
         // Delete the domain from WorkOS.
         await removeWorkOSOrganizationDomain(
-          renderLightWorkspaceType({ workspace: this }),
+          renderLightWorkspaceType({ workspace: domainWorkspace }),
           {
             domain,
           }
