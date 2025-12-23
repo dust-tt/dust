@@ -41,7 +41,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
       configurations,
       async (config) => {
         const hasHistory = await config.hasAnyHistory();
-        const mostRecentDate = await config.getMostRecentHistoryDate(auth);
+        const mostRecentDate = await config.getMostRecentHistoryDate();
         const user = await config.getUser();
 
         // Check if datasource exists
@@ -68,7 +68,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
 
         return {
           label: `[${config.provider}] ${statusParts.join(" | ")}`,
-          value: config.sId,
+          value: String(config.id),
         };
       },
       { concurrency: 8 }
@@ -80,16 +80,17 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const configurationId = args.transcriptsConfigurationId[0];
+    const configurationIdStr = args.transcriptsConfigurationId[0];
 
-    if (!configurationId.trim()) {
+    if (!configurationIdStr) {
       return new Err(new Error("No transcripts configuration selected"));
     }
 
-    const configuration = await LabsTranscriptsConfigurationResource.fetchById(
-      auth,
-      configurationId
-    );
+    const configurationId = parseInt(configurationIdStr, 10);
+    const configuration =
+      await LabsTranscriptsConfigurationResource.fetchByModelId(
+        configurationId
+      );
 
     if (!configuration) {
       return new Err(
