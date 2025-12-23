@@ -52,6 +52,14 @@ export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
+export const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
+export const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
+export const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
+export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
+export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
+export const TOOLSETS_LIST_TOOL_NAME = "list";
+export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
 export const SEARCH_SERVER_NAME = "search";
 

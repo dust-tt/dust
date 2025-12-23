@@ -47,6 +47,11 @@ import {
   ENABLE_SKILL_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import {
+  AGENT_MEMORY_COMPACT_TOOL_NAME,
+  AGENT_MEMORY_EDIT_TOOL_NAME,
+  AGENT_MEMORY_ERASE_TOOL_NAME,
+  AGENT_MEMORY_RECORD_TOOL_NAME,
+  AGENT_MEMORY_RETRIEVE_TOOL_NAME,
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
@@ -62,7 +67,10 @@ import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
+  SKILL_MANAGEMENT_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  TOOLSETS_ENABLE_TOOL_NAME,
+  TOOLSETS_LIST_TOOL_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -140,74 +148,68 @@ export function MCPActionDetails({
     internalMCPServerName === "search" ||
     internalMCPServerName === "data_sources_file_system"
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation" ? "Searching data" : "Search data"
-          }
-          actionOutput={output}
-          visual={MagnifyingGlassIcon}
-          query={
-            isSearchInputType(params)
-              ? makeQueryTextForDataSourceSearch(params)
-              : null
-          }
-        />
-      );
-    }
-
-    if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
-    ) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation"
-              ? "Browsing data sources"
-              : "Browse data sources"
-          }
-          actionOutput={output}
-          query={
-            isDataSourceFilesystemFindInputType(params)
-              ? makeQueryTextForFind(params)
-              : isDataSourceFilesystemListInputType(params)
-                ? makeQueryTextForList(params)
+    switch (toolName) {
+      case SEARCH_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            actionName={
+              viewType === "conversation" ? "Searching data" : "Search data"
+            }
+            actionOutput={output}
+            visual={MagnifyingGlassIcon}
+            query={
+              isSearchInputType(params)
+                ? makeQueryTextForDataSourceSearch(params)
                 : null
-          }
-          visual={ActionDocumentTextIcon}
-        />
-      );
-    }
-
-    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
-      return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
-    }
-
-    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
-      return <FilesystemPathDetails {...toolOutputDetailsProps} />;
+            }
+          />
+        );
+      case FILESYSTEM_LIST_TOOL_NAME:
+      case FILESYSTEM_FIND_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            actionName={
+              viewType === "conversation"
+                ? "Browsing data sources"
+                : "Browse data sources"
+            }
+            actionOutput={output}
+            query={
+              isDataSourceFilesystemFindInputType(params)
+                ? makeQueryTextForFind(params)
+                : isDataSourceFilesystemListInputType(params)
+                  ? makeQueryTextForList(params)
+                  : null
+            }
+            visual={ActionDocumentTextIcon}
+          />
+        );
+      case FILESYSTEM_CAT_TOOL_NAME:
+        return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
+      case FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME:
+        return <FilesystemPathDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  if (internalMCPServerName === "include_data") {
-    if (toolName === INCLUDE_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation" ? "Including data" : "Include data"
-          }
-          actionOutput={output}
-          visual={ClockIcon}
-          query={
-            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
-          }
-        />
-      );
-    }
+  if (
+    internalMCPServerName === "include_data" &&
+    toolName === INCLUDE_TOOL_NAME
+  ) {
+    return (
+      <SearchResultDetails
+        viewType={viewType}
+        actionName={
+          viewType === "conversation" ? "Including data" : "Include data"
+        }
+        actionOutput={output}
+        visual={ClockIcon}
+        query={
+          isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+        }
+      />
+    );
   }
 
   if (
@@ -215,37 +217,40 @@ export function MCPActionDetails({
       (name) => internalMCPServerName === name
     )
   ) {
-    if (toolName === WEBSEARCH_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          query={isWebsearchInputType(params) ? params.query : null}
-          actionName={
-            viewType === "conversation" ? "Searching the web" : "Web search"
-          }
-          actionOutput={output}
-          visual={GlobeAltIcon}
-        />
-      );
-    }
-    if (toolName === WEBBROWSER_TOOL_NAME) {
-      return <MCPBrowseActionDetails {...toolOutputDetailsProps} />;
+    switch (toolName) {
+      case WEBSEARCH_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            query={isWebsearchInputType(params) ? params.query : null}
+            actionName={
+              viewType === "conversation" ? "Searching the web" : "Web search"
+            }
+            actionOutput={output}
+            visual={GlobeAltIcon}
+          />
+        );
+      case WEBBROWSER_TOOL_NAME:
+        return <MCPBrowseActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === TABLE_QUERY_V2_SERVER_NAME) {
-    if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
+    switch (toolName) {
+      case GET_DATABASE_SCHEMA_TOOL_NAME:
+        return (
+          <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />
+        );
+      case EXECUTE_DATABASE_QUERY_TOOL_NAME:
+        return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  if (internalMCPServerName === "extract_data") {
-    if (toolName === PROCESS_TOOL_NAME) {
-      return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
-    }
+  if (
+    internalMCPServerName === "extract_data" &&
+    toolName === PROCESS_TOOL_NAME
+  ) {
+    return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "run_agent") {
@@ -257,35 +262,39 @@ export function MCPActionDetails({
   }
 
   if (internalMCPServerName === "agent_memory") {
-    if (toolName === "retrieve") {
-      return (
-        <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
-      );
-    }
-    if (toolName === "record_entries") {
-      return <MCPAgentMemoryRecordActionDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === "erase_entries") {
-      return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === "edit_entries" || toolName === "compact_memory") {
-      return (
-        <MCPAgentMemoryEditActionDetails
-          {...toolOutputDetailsProps}
-          toolName={toolName}
-        />
-      );
+    switch (toolName) {
+      case AGENT_MEMORY_RETRIEVE_TOOL_NAME:
+        return (
+          <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
+        );
+      case AGENT_MEMORY_RECORD_TOOL_NAME:
+        return (
+          <MCPAgentMemoryRecordActionDetails {...toolOutputDetailsProps} />
+        );
+      case AGENT_MEMORY_ERASE_TOOL_NAME:
+        return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
+      case AGENT_MEMORY_EDIT_TOOL_NAME:
+      case AGENT_MEMORY_COMPACT_TOOL_NAME:
+        return (
+          <MCPAgentMemoryEditActionDetails
+            {...toolOutputDetailsProps}
+            toolName={toolName}
+          />
+        );
     }
   }
+
   if (internalMCPServerName === "toolsets") {
-    if (toolName === "enable") {
-      return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+    switch (toolName) {
+      case TOOLSETS_ENABLE_TOOL_NAME:
+        return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+      case TOOLSETS_LIST_TOOL_NAME:
+        return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
     }
-    return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (
-    internalMCPServerName === "skill_management" &&
+    internalMCPServerName === SKILL_MANAGEMENT_SERVER_NAME &&
     toolName === ENABLE_SKILL_TOOL_NAME
   ) {
     return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
@@ -296,25 +305,24 @@ export function MCPActionDetails({
   }
 
   if (internalMCPServerName === "data_warehouses") {
-    if (
-      [DATA_WAREHOUSES_LIST_TOOL_NAME, DATA_WAREHOUSES_FIND_TOOL_NAME].includes(
-        toolName
-      )
-    ) {
-      return <MCPDataWarehousesBrowseDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
+    switch (toolName) {
+      case DATA_WAREHOUSES_LIST_TOOL_NAME:
+      case DATA_WAREHOUSES_FIND_TOOL_NAME:
+        return <MCPDataWarehousesBrowseDetails {...toolOutputDetailsProps} />;
+      case DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME:
+        return (
+          <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />
+        );
+      case DATA_WAREHOUSES_QUERY_TOOL_NAME:
+        return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  if (internalMCPServerName === "conversation_files") {
-    if (toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME) {
-      return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
-    }
+  if (
+    internalMCPServerName === "conversation_files" &&
+    toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME
+  ) {
+    return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
   }
 
   return (
