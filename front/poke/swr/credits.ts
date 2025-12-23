@@ -8,6 +8,11 @@ import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
+export type PokeCreditsData = {
+  credits: PokeListCreditsResponseBody["credits"];
+  excessCreditsLast30DaysMicroUsd: number;
+};
+
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
   const creditsFetcher: Fetcher<PokeListCreditsResponseBody> = fetcher;
 
@@ -17,8 +22,13 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
     { disabled }
   );
 
+  const creditsData: PokeCreditsData = {
+    credits: data?.credits ?? emptyArray(),
+    excessCreditsLast30DaysMicroUsd: data?.excessCreditsLast30DaysMicroUsd ?? 0,
+  };
+
   return {
-    data: data?.credits ?? emptyArray(),
+    data: creditsData,
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
