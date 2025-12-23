@@ -659,16 +659,38 @@ export function AgentMessage({
 
   return (
     <NewConversationMessageContainer messageType="agent" type="agent">
+      <div className="inline-flex items-center gap-2 @sm:hidden">
+        <ConversationMessageAvatar
+          avatarUrl={agentConfiguration.pictureUrl}
+          name={agentConfiguration.name}
+          isBusy={agentMessage.status === "created"}
+          isDisabled={isArchived}
+          type="agent"
+        />
+        <ConversationMessageTitle
+          name={agentConfiguration.name}
+          timestamp={timestamp}
+          completionStatus={
+            isDeleted ? undefined : (
+              <AgentMessageCompletionStatus agentMessage={agentMessage} />
+            )
+          }
+          renderName={renderName}
+        />
+      </div>
+
       <ConversationMessageAvatar
-        className="flex"
+        className="hidden @sm:flex"
         avatarUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         isBusy={agentMessage.status === "created"}
         isDisabled={isArchived}
         type="agent"
       />
+
       <div className="flex w-full min-w-0 flex-col gap-3">
         <ConversationMessageTitle
+          className="hidden @sm:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
           completionStatus={
