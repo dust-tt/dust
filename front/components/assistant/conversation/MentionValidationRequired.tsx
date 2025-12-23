@@ -70,22 +70,23 @@ export function MentionValidationRequired({
 
   return (
     <ContentMessage variant="info" className="my-3 w-full max-w-full">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col items-center gap-2 sm:flex-row">
         <Icon visual={InformationCircleIcon} className="hidden sm:block" />
-        <div className="text-xs sm:text-sm">
+        <div>
           {isMessageTemporayState(message) ? (
             <>
               <span className="font-semibold">
                 @{message.configuration.name}
               </span>{" "}
               mentioned
-              <span className="font-semibold">{pendingMention.label}</span> but
-              they are not in this conversation. Do you want to invite them?
+              <span className="font-semibold">{pendingMention.label}</span>. Do
+              you want to invite them? They’ll see the full history and be able
+              to reply.
             </>
           ) : (
             <>
-              You mentioned <b>{pendingMention.label}</b> but they are not in
-              this conversation. Do you want to invite them?
+              Invite <b>{pendingMention.label}</b> to this conversation? They’ll
+              see the full history and be able to reply.
             </>
           )}
         </div>
