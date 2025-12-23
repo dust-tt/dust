@@ -2,9 +2,13 @@ import type { Client } from "@temporalio/client";
 import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { getNotionWorkflowId } from "@app/types";
 import { withRetries } from "@app/types";
 
@@ -165,17 +169,32 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 ) => {
   const notionConnectors = await listAllNotionConnectors();
 
+  const workspaceIds = [...new Set(notionConnectors.map((c) => c.workspaceId))];
+  const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
+  const workspaces = workspaceResources.map((w) =>
+    renderLightWorkspaceType({ workspace: w })
+  );
+  const subscriptionByWorkspaceSId =
+    await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
+
   const client = await getTemporalClientForConnectorsNamespace();
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
-  const missingActiveWorkflows: any[] = [];
-  const stalledWorkflows: any[] = [];
+  const missingActiveWorkflows: unknown[] = [];
+  const stalledWorkflows: unknown[] = [];
 
   for (const notionConnector of notionConnectors) {
     if (notionConnector.pausedAt) {
       continue;
     }
+
+    const subscription =
+      subscriptionByWorkspaceSId[notionConnector.workspaceId];
+    if (!subscription || !isUpgraded(subscription.getPlan())) {
+      continue;
+    }
+
     heartbeat();
 
     const { isRunning, isNotStalled, details } =
