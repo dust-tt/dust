@@ -54,6 +54,8 @@ export function preserveLineBreaks(content: string): string {
  * Preprocesses content to escape dollar signs that are likely NOT inlione LaTeX math. This helps
  * prevent false positives when enabling single $ math rendering.
  *
+ * Currrently not used as this was causing issues. See https://github.com/dust-tt/tasks/issues/5739
+ *
  * Patterns that are escaped:
  * 1. Solo dollar signs: `$` (not part of a pair)
  * 1. Currency amounts: $100, $5.99, $1,000, $50k, $2.5M, $1 billion
