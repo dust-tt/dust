@@ -130,7 +130,8 @@ export const suggestionsOfMentions = async (
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
-  const currentUserSId = auth.getNonNullableUser().sId;
+  // can be called from the public API, so user may be null
+  const currentUser = auth.user();
 
   // Id of the last user or agent mentioned by the current user in the conversation
   let lastMentionedId: string | null = null;
@@ -160,7 +161,7 @@ export const suggestionsOfMentions = async (
 
         // Convert participants to RichMention format
         participantUsers = participants.users
-          .filter((u) => current || u.sId !== currentUserSId)
+          .filter((u) => current || u.sId !== currentUser?.sId)
           .map((u) => ({
             type: "user" as const,
             id: u.sId,
@@ -232,7 +233,7 @@ export const suggestionsOfMentions = async (
       const { users } = res.value;
 
       const filteredUsers: RichUserMentionInConversation[] = users
-        .filter((u) => current || u.sId !== currentUserSId)
+        .filter((u) => current || u.sId !== currentUser?.sId)
         .map((u) => ({
           ...toRichUserMentionType(u.toJSON()),
           isParticipant: participantUsers.some((pu) => pu.id === u.sId),
