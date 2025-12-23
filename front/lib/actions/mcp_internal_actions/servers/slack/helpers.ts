@@ -463,36 +463,6 @@ export async function hasSlackScope(
   );
 }
 
-// Used by slack_bot
-export async function executeListPublicChannels(
-  nameFilter: string | undefined,
-  accessToken: string,
-  mcpServerId: string
-) {
-  const slackClient = await getSlackClient(accessToken);
-  const channels = await getCachedPublicChannels({
-    slackClient,
-    mcpServerId,
-  });
-
-  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
-    channels,
-    nameFilter,
-    (channel, normalizedFilter) =>
-      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ) ||
-      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ),
-    (count, hasFilter, filterText) =>
-      hasFilter
-        ? `The workspace has ${count} channels containing "${filterText}"`
-        : `The workspace has ${count} channels`,
-    cleanChannelPayload
-  );
-}
-
 // Helper function to filter channels by substring matching on name, topic, and purpose.
 function filterChannels(
   channels: ChannelWithIdAndName[],
@@ -691,6 +661,36 @@ export async function executeSearchChannels(
   } catch (error) {
     return new Err(new MCPError(`Error searching channels: ${error}`));
   }
+}
+
+// Used by slack_bot
+export async function executeListPublicChannels(
+  nameFilter: string | undefined,
+  accessToken: string,
+  mcpServerId: string
+) {
+  const slackClient = await getSlackClient(accessToken);
+  const channels = await getCachedPublicChannels({
+    slackClient,
+    mcpServerId,
+  });
+
+  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
+    channels,
+    nameFilter,
+    (channel, normalizedFilter) =>
+      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ) ||
+      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ),
+    (count, hasFilter, filterText) =>
+      hasFilter
+        ? `The workspace has ${count} channels containing "${filterText}"`
+        : `The workspace has ${count} channels`,
+    cleanChannelPayload
+  );
 }
 
 export async function executePostMessage(
