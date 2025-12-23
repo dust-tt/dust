@@ -1,4 +1,5 @@
 import chunk from "lodash/chunk";
+import type { WhereOptions } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -27,7 +28,6 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-import { WhereOptions } from "sequelize";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
