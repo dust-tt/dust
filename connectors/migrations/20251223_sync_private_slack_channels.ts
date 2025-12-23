@@ -11,9 +11,8 @@
  * 1. Find all private channels with permission "read" or "read_write" (and no skipReason)
  * 2. Launch a sync workflow for each channel
  */
-import { Op } from "sequelize";
-
 import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { SlackChannelModel } from "@connectors/lib/models/slack";
