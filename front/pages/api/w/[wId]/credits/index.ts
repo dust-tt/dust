@@ -38,8 +38,11 @@ async function handler(
       });
 
       // Transform started credits to display format with computed consumed amount.
+      // Exclude excess credits as they are internal accounting records.
       const creditsData: CreditDisplayData[] = credits
-        .filter((credit) => credit.startDate !== null)
+        .filter(
+          (credit) => credit.startDate !== null && credit.type !== "excess"
+        )
         .map((credit) => credit.toJSON());
 
       // Find pending committed credits (not yet started, awaiting payment).

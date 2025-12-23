@@ -2,9 +2,9 @@ import { Chip, IconButton } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import { dateToHumanReadable } from "@app/types";
-import type { CreditType } from "@app/types/credits";
 
 function formatMicroUsdToUsd(microUsdAmount: number): string {
   return `$${(microUsdAmount / 1_000_000).toFixed(2)}`;
@@ -34,13 +34,8 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       },
       cell: ({ row }) => {
         const { type } = row.original;
-        const colorMap: Record<CreditType, "blue" | "primary" | "green"> = {
-          free: "blue",
-          payg: "primary",
-          committed: "green",
-        };
         return (
-          <Chip color={colorMap[type] ?? "highlight"} size="xs">
+          <Chip color={TYPE_COLORS[type] ?? "highlight"} size="xs">
             {type}
           </Chip>
         );
