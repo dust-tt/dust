@@ -684,7 +684,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         )
       : [];
 
-    // TODO(SKILLS 2025-12-12): Consider doing on single call with all ids.
     if (def.internalMCPServerNames) {
       const mcpServerViewsByName = await concurrentExecutor(
         def.internalMCPServerNames,

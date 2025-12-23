@@ -425,7 +425,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       })
     );
 
-    return views.filter((view) => spaceModelIds.includes(view.vaultId));
+    // We include the global space, which is omitted from the requested space IDs of an agent.
+    return views.filter(
+      (view) =>
+        spaceModelIds.includes(view.vaultId) || view.space.kind === "global"
+    );
   }
 
   static async getMCPServerViewForSystemSpace(
