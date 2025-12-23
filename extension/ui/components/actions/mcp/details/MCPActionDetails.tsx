@@ -267,6 +267,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     return <MCPConversationCatFileDetails {...props} />;
   }
 
+  // TODO: to implement
+  //   if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+  //     return <MCPRunAgentActionDetails {...props} />;
+  //   }
+
   return <GenericActionDetails {...props} />;
 }
 
