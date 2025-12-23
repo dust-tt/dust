@@ -27,7 +27,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import {
   fetchMessageInConversation,
-  getCompletionTime,
+  getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
 import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
 import config from "@app/lib/api/config";
@@ -600,7 +600,7 @@ export async function runModelActivity(
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
     agentMessage.completedTs = Date.now();
-    agentMessage.completionDurationMs = getCompletionTime(
+    agentMessage.completionDurationMs = getCompletionDuration(
       agentMessage,
       agentMessage.actions
     );

@@ -62,7 +62,7 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
-export function getCompletionTime(
+export function getCompletionDuration(
   agentMessage: AgentMessageType,
   actions: AgentMCPActionWithOutputType[]
 ) {
@@ -621,7 +621,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         completionDurationMs: 0,
       };
 
-      m.completionDurationMs = getCompletionTime(m, actions);
+      m.completionDurationMs = getCompletionDuration(m, actions);
 
       if (viewType === "full") {
         return new Ok(m);
