@@ -311,12 +311,10 @@ function createServer(
           );
         }
 
-        const { conversation, agentConfiguration } =
-          agentLoopContext.runContext;
+        const { agentConfiguration } = agentLoopContext.runContext;
 
         const result = await revertClientExecutableFileChanges(auth, {
           fileId: file_id,
-          conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
         });
 

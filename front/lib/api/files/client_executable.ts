@@ -15,20 +15,14 @@ import {
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItemModel,
-} from "@app/lib/models/agent/actions/mcp";
-import {
-  AgentMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   InteractiveContentFileContentType,
-  ModelId,
   Result,
   WorkspaceType,
 } from "@app/types";
@@ -215,15 +209,20 @@ export async function editClientExecutableFile(
     });
   }
 
-  if (
-    editedByAgentConfigurationId &&
-    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-      editedByAgentConfigurationId
-  ) {
-    await fileResource.setUseCaseMetadata({
-      ...fileResource.useCaseMetadata,
-      lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
-    });
+  // Update metadata to track the editing agent and set hasPreviousVersion flag
+  if (editedByAgentConfigurationId) {
+    const needsMetadataUpdate =
+      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+        editedByAgentConfigurationId ||
+      !fileResource.useCaseMetadata?.hasPreviousVersion;
+
+    if (needsMetadataUpdate) {
+      await fileResource.setUseCaseMetadata({
+        ...fileResource.useCaseMetadata,
+        lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+        hasPreviousVersion: true, // Original version is now a previous version
+      });
+    }
   }
 
   // Validate the Tailwind classes in the resulting code.
@@ -660,18 +659,22 @@ export function getRevertedFileName(
   return createFileAction.augmentedInputs.file_name;
 }
 
+// Number of file versions to fetch when checking for revert capability.
+// We fetch 3 to determine: current (0), previous (1), and if there's another older version (2).
+const FILE_VERSIONS_TO_FETCH_FOR_REVERT = 3;
+
+// Minimum number of versions required to perform a revert (current + previous).
+const MIN_VERSIONS_FOR_REVERT = 2;
+
 // Revert the changes made to the Interactive Content file in the last agent message.
-// This reconstructs the previous file content and name by replaying edit and rename
-// operations chronologically from the create action.
+// Uses GCS versioning to restore the previous version of the file.
 export async function revertClientExecutableFileChanges(
   auth: Authenticator,
   {
     fileId,
-    conversationId,
     revertedByAgentConfigurationId,
   }: {
     fileId: string;
-    conversationId: ModelId;
     revertedByAgentConfigurationId: string;
   }
 ): Promise<
@@ -682,112 +685,78 @@ export async function revertClientExecutableFileChanges(
 > {
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
-    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+    return new Err({ tracked: false, message: "File not found" });
   }
 
-  if (!isInteractiveContentFileContentType(fileResource.contentType)) {
-    return new Err({
-      message: `File '${fileId}' is not an interactive content file (content type: ${fileResource.contentType})`,
-      tracked: true,
-    });
-  }
+  // Get the GCS path for this file
+  const filePath = fileResource.getCloudStoragePath(auth, "original");
+  const fileStorage = getPrivateUploadBucket();
 
+  // Get all versions of the file (sorted newest to oldest)
+  let versions;
   try {
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Fetch all the successful actions from the given conversation id
-    // (we only update the file when action succeeded).
-    const conversationActions = await AgentMCPActionModel.findAll({
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              required: true,
-              where: {
-                conversationId,
-                workspaceId: workspace.id,
-              },
-            },
-          ],
-        },
-      ],
-      where: {
-        workspaceId: workspace.id,
-        status: "succeeded",
-      },
+    versions = await fileStorage.getFileVersions({
+      filePath,
+      maxResults: FILE_VERSIONS_TO_FETCH_FOR_REVERT,
     });
-
-    if (!conversationActions.length) {
-      return new Err({
-        message: `No file actions found for: ${fileId}`,
-        tracked: true,
-      });
-    }
-
-    const { createFileAction, nonCreateFileActions } =
-      await getFileActionsByType(conversationActions, fileId, workspace);
-
-    if (createFileAction === null) {
-      return new Err({
-        message: `Cannot find the create file action for ${fileId}`,
-        tracked: true,
-      });
-    }
-
-    const editAndRenameActionsToApply =
-      getEditAndRenameActionsToApply(nonCreateFileActions);
-
-    const revertedContent = getRevertedContent(
-      createFileAction,
-      editAndRenameActionsToApply
-    );
-
-    const revertedFileName = getRevertedFileName(
-      createFileAction,
-      editAndRenameActionsToApply
-    );
-
-    // Validate the reverted content before uploading.
-    const tailwindValidation = validateTailwindCode(revertedContent);
-    if (tailwindValidation.isErr()) {
-      return new Err({
-        message: `Reverted content has validation errors: ${tailwindValidation.error.message}`,
-        tracked: false,
-      });
-    }
-
-    const syntaxValidation = validateTypeScriptSyntax(revertedContent);
-    if (syntaxValidation.isErr()) {
-      return new Err({
-        message: `Reverted content has syntax errors: ${syntaxValidation.error.message}`,
-        tracked: false,
-      });
-    }
-
-    // Apply the reverted file name if it differs from the current name
-    if (fileResource.fileName !== revertedFileName) {
-      await fileResource.rename(revertedFileName);
-    }
-
-    await fileResource.setUseCaseMetadata({
-      ...fileResource.useCaseMetadata,
-      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
-    });
-
-    await fileResource.uploadContent(auth, revertedContent);
-
-    return new Ok({ fileResource, revertedContent });
   } catch (error) {
     return new Err({
-      message: `Failed to revert ${fileId}: ${normalizeError(error)}`,
-      tracked: true,
+      tracked: false,
+      message: `Failed to retrieve file versions: ${normalizeError(error)}`,
     });
   }
+
+  // Check if there's a previous version available, button should be hidden in this
+  // case but just in case
+  if (versions.length < MIN_VERSIONS_FOR_REVERT) {
+    return new Err({
+      tracked: false,
+      message: "No previous version available to revert to",
+    });
+  }
+
+  const currentVersion = versions[0];
+  const previousVersion = versions[1];
+
+  // Download the previous version's content
+  let revertedContent: string;
+  try {
+    const [content] = await previousVersion.download();
+    revertedContent = content.toString("utf8");
+  } catch (error) {
+    return new Err({
+      tracked: false,
+      message: `Failed to download previous version: ${normalizeError(error)}`,
+    });
+  }
+
+  // Update metadata BEFORE upload (following the pattern from editClientExecutableFile)
+  const stillHasPreviousVersion = versions.length > MIN_VERSIONS_FOR_REVERT;
+  await fileResource.setUseCaseMetadata({
+    ...fileResource.useCaseMetadata,
+    lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    hasPreviousVersion: stillHasPreviousVersion,
+  });
+
+  // Upload the reverted content
+  await fileResource.uploadContent(auth, revertedContent);
+
+  // Delete old versions to prevent accumulation and infinite loops
+  try {
+    await currentVersion.delete();
+    await previousVersion.delete();
+  } catch (error) {
+    // Log but don't fail the revert if deletion fails
+    logger.error(
+      {
+        fileId,
+        error,
+      },
+      "Failed to clean up old file versions after revert"
+    );
+  }
+
+  return new Ok({ fileResource, revertedContent });
 }
 
 export async function getClientExecutableFileShareUrl(
