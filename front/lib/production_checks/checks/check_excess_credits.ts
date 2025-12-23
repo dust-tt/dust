@@ -32,7 +32,7 @@ export const checkExcessCredits: CheckFunction = async (
         w."sId" as "workspaceSId",
         w."name" as "workspaceName",
         SUM(c."consumedAmountMicroUsd") as "totalExcessMicroUsd"
-      FROM credit c
+      FROM credits c
       JOIN workspaces w ON c."workspaceId" = w.id
       WHERE c."type" = 'excess'
         AND c."startDate" >= :thirtyDaysAgo
