@@ -65,7 +65,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             </div>
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
-                {variant === "grid" && (file.updatedAt || file.createdAt) && (
+                {variant === "grid" && (file.updatedAt ?? file.createdAt) && (
                   <div>
                     {file.updatedAt && file.updatedAt !== file.createdAt ? (
                       <>
