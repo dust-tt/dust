@@ -584,7 +584,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "slack",
       version: "1.0.0",
-      description: "Slack tools for searching and posting messages.",
+      description:
+        "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations.",
       authorization: {
         provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -592,7 +593,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
@@ -1005,7 +1006,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "slack_bot",
       version: "1.0.0",
-      description: "Post messages and reactions as the workspace Dust bot.",
+      description:
+        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,
@@ -1013,7 +1015,9 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: null,
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
+        "Direct messages and search operations are not supported. " +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
