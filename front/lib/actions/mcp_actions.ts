@@ -12,6 +12,8 @@ import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import groupBy from "lodash/groupBy";
+import pickBy from "lodash/pickBy";
 
 import {
   calculateContentSize,
@@ -643,65 +645,43 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
 >;
 
 /**
- * When multiple server-side configs have the same name but different viewIds (same server in
- * different spaces), prepends the space name to disambiguate them.
+ * When multiple server-side configs share the same name but have different viewIds (e.g.,
+ * same server in different spaces), prepends the space name to disambiguate them.
  */
 async function disambiguateServerNamesBySpace(
   auth: Authenticator,
   configs: MCPServerConfigurationType[]
 ): Promise<MCPServerConfigurationType[]> {
-  // Identify names that appear with different viewIds (name collisions across spaces).
-  const nameToViewIds = new Map<string, Set<string>>();
-  for (const config of configs) {
-    const viewId = isServerSideMCPServerConfiguration(config)
-      ? config.mcpServerViewId
-      : config.clientSideMcpServerId;
+  const serverSideConfigs = configs.filter(isServerSideMCPServerConfiguration);
 
-    if (!nameToViewIds.has(config.name)) {
-      nameToViewIds.set(config.name, new Set());
-    }
-    nameToViewIds.get(config.name)?.add(viewId);
-  }
+  // Group by name, keep only groups with collisions (multiple unique viewIds).
+  const collidingGroups = pickBy(
+    groupBy(serverSideConfigs, "name"),
+    (group) => new Set(group.map((c) => c.mcpServerViewId)).size > 1
+  );
 
-  // Names with multiple different viewIds need space prefix disambiguation.
-  const collidingNames = new Set<string>();
-  for (const [name, viewIds] of nameToViewIds) {
-    if (viewIds.size > 1) {
-      collidingNames.add(name);
-    }
-  }
+  const viewIdsToFetch = Object.values(collidingGroups).flatMap((group) =>
+    group.map((c) => c.mcpServerViewId)
+  );
 
-  // If no collisions, return as-is.
-  if (collidingNames.size === 0) {
+  if (viewIdsToFetch.length === 0) {
     return configs;
   }
 
-  // Collect view IDs that need space name lookup (only colliding server-side configs).
-  const viewIdsNeedingSpaceName = new Set<string>();
-  for (const config of configs) {
-    if (
-      collidingNames.has(config.name) &&
-      isServerSideMCPServerConfiguration(config)
-    ) {
-      viewIdsNeedingSpaceName.add(config.mcpServerViewId);
-    }
-  }
-
-  // Batch fetch the MCPServerViews to get space names.
   const mcpServerViews = await MCPServerViewResource.fetchByIds(
     auth,
-    Array.from(viewIdsNeedingSpaceName)
+    viewIdsToFetch
   );
-  const viewIdToSpaceName = new Map<string, string>();
-  for (const view of mcpServerViews) {
-    viewIdToSpaceName.set(view.sId, view.space.name);
-  }
+  const viewIdToSpaceName = new Map(
+    mcpServerViews.map((v) => [v.sId, v.space.name])
+  );
 
   // Apply space prefix to colliding server-side configs.
+  const collidingNames = new Set(Object.keys(collidingGroups));
   return configs.map((config) => {
     if (
-      collidingNames.has(config.name) &&
-      isServerSideMCPServerConfiguration(config)
+      isServerSideMCPServerConfiguration(config) &&
+      collidingNames.has(config.name)
     ) {
       const spaceName = viewIdToSpaceName.get(config.mcpServerViewId);
       if (spaceName) {
