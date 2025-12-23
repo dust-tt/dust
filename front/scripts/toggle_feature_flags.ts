@@ -9,13 +9,15 @@ async function enableFeatureFlag(
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
+  const { id: workspaceId, name } = workspace;
+
   const isEnabled = await FeatureFlagResource.isEnabledForWorkspace(
     workspace,
     featureFlag
   );
   if (isEnabled) {
     console.log(
-      `Workspace ${workspace.sId} already has ${featureFlag} enabled -- Skipping.`
+      `Workspace ${name}(${workspaceId}) already has ${featureFlag} enabled -- Skipping.`
     );
     return;
   }
@@ -27,7 +29,7 @@ async function enableFeatureFlag(
   console.log(
     `${
       execute ? "" : "[DRYRUN]:"
-    } Feature flag ${featureFlag} enabled for workspace: ${workspace.sId}.`
+    } Feature flag ${featureFlag} enabled for workspace: ${name}(${workspaceId}).`
   );
 }
 
@@ -36,6 +38,8 @@ async function disableFeatureFlag(
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
+  const { id: workspaceId, name } = workspace;
+
   if (execute) {
     const isEnabled = await FeatureFlagResource.isEnabledForWorkspace(
       workspace,
@@ -43,7 +47,7 @@ async function disableFeatureFlag(
     );
     if (!isEnabled) {
       console.log(
-        `Workspace ${workspace.sId} does not have ${featureFlag} enabled -- Skipping.`
+        `Workspace ${name}(${workspaceId}) does not have ${featureFlag} enabled -- Skipping.`
       );
       return;
     }
@@ -54,7 +58,7 @@ async function disableFeatureFlag(
   console.log(
     `${
       execute ? "" : "[DRYRUN]:"
-    } Feature flag ${featureFlag} disabled for workspace: ${workspace.sId}.`
+    } Feature flag ${featureFlag} disabled for workspace: ${name}(${workspaceId}).`
   );
 }
 
