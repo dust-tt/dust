@@ -25,14 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: ./extension/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - working-directory: extension
         run: npm install && npm run lint && npm run format:check && npm run package:chrome:production
         env:

@@ -17,16 +17,21 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
 COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
-WORKDIR /sdks/js
-COPY /sdks/js/package*.json ./
-COPY /sdks/js/ .
-RUN npm ci
-RUN npm run build
+COPY /package*.json /app/
+COPY /connectors/package*.json /app/connectors/
+COPY /sdks/js/package*.json /app/sdks/js/
 
 WORKDIR /app
 
-COPY /connectors/package*.json ./
-RUN npm ci
+RUN npm ci --workspace sdks/js
+RUN npm ci --workspace connectors
+
+# Build SDK (shared by both front-nextjs and workers)
+WORKDIR /app/sdks/js
+COPY /sdks/js/ .
+RUN npm run build
+
+WORKDIR /app/connectors
 COPY /connectors/ .
 
 # Remove test files

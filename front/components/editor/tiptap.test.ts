@@ -17,5 +17,5 @@ it("should fail when upgrading tiptap", () => {
     cwd: require.resolve("@tiptap/core"),
   });
 
-  expect(result?.packageJson.version, MESSAGE).toEqual("3.13.0");
+  expect(result?.packageJson.version, MESSAGE).toEqual("3.14.0");
 });
