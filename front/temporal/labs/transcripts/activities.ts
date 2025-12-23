@@ -54,23 +54,13 @@ export interface RetrieveTranscriptsResult {
   isFirstSync: boolean;
 }
 
-export async function retrieveNewTranscriptsActivity({
-  modjoCursor = null,
-  modjoIsFirstSync = null,
-  transcriptsConfigurationId,
-  workspaceId,
-}: {
-  modjoCursor?: number | null;
-  modjoIsFirstSync?: boolean | null;
-  transcriptsConfigurationId: string;
-  workspaceId: string;
-}): Promise<RetrieveTranscriptsResult> {
-  const workspaceAuth =
-    await Authenticator.internalAdminForWorkspace(workspaceId);
-
+export async function retrieveNewTranscriptsActivity(
+  transcriptsConfigurationId: string,
+  modjoCursor: number | null = null,
+  modjoIsFirstSync: boolean | null = null
+): Promise<RetrieveTranscriptsResult> {
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
-      workspaceAuth,
       transcriptsConfigurationId
     );
 
@@ -109,7 +99,6 @@ export async function retrieveNewTranscriptsActivity({
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
   }
-
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
@@ -192,15 +181,10 @@ export async function retrieveNewTranscriptsActivity({
   }
 }
 
-export async function processTranscriptActivity({
-  fileId,
-  transcriptsConfigurationId,
-  workspaceId,
-}: {
-  fileId: string;
-  transcriptsConfigurationId: string;
-  workspaceId: string;
-}) {
+export async function processTranscriptActivity(
+  transcriptsConfigurationId: string,
+  fileId: string
+) {
   function convertCitationsToLinks(
     markdown: string,
     conversationData: any
@@ -255,12 +239,8 @@ export async function processTranscriptActivity({
     });
   }
 
-  const workspaceAuth =
-    await Authenticator.internalAdminForWorkspace(workspaceId);
-
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
-      workspaceAuth,
       transcriptsConfigurationId
     );
 
