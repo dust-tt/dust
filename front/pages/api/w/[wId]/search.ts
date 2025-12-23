@@ -53,6 +53,7 @@ async function handleStreamingSearch(
     includeDataSources = "true",
     searchSourceUrls,
     includeTools = "true",
+    prioritizeSpaceAccess = "false",
   } = req.query;
 
   // Transform query parameters to match SearchRequestBodySchema format
@@ -79,6 +80,7 @@ async function handleStreamingSearch(
     includeDataSources: includeDataSources === "true",
     limit,
     searchSourceUrls: searchSourceUrls === "true" ? true : undefined,
+    prioritizeSpaceAccess: prioritizeSpaceAccess === "true",
   };
 
   // Validate using SearchRequestBody
