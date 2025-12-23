@@ -8,6 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type GetConversationFilesResponseBody = {
   files: ActionGeneratedFileType[];
@@ -29,7 +30,7 @@ async function handler(
   }
 
   const { cId } = req.query;
-  if (typeof cId !== "string") {
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

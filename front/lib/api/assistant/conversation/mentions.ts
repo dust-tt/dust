@@ -87,8 +87,8 @@ export const createUserMentions = async (
               user: user.toJSON(),
             });
 
-          // Always auto approve mentions for user messages & existing participants.
-          let autoApprove = isParticipant || message.type === "user_message";
+          // Always auto approve mentions for existing participants.
+          let autoApprove = isParticipant;
           // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
           if (
             !autoApprove &&
@@ -96,13 +96,13 @@ export const createUserMentions = async (
             message.type === "agent_message" &&
             message.configuration.instructions
           ) {
-            const isUserMentionnedInInstructions = extractFromString(
+            const isUserMentionedInInstructions = extractFromString(
               message.configuration.instructions
             )
               .filter(isUserMention)
               .some((mention) => mention.userId === user.sId);
 
-            if (isUserMentionnedInInstructions) {
+            if (isUserMentionedInInstructions) {
               autoApprove = true;
             }
           }
