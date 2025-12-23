@@ -66,27 +66,76 @@ export type MinimalChannelInfo = {
   name: string;
   created: number;
   creator: string;
-  is_channel: boolean;
-  is_private: boolean;
+  updated?: number;
+  type: string[];
   is_member: boolean;
+  purpose?: {
+    value: string;
+    creator: string;
+    last_set: number;
+  };
+  topic?: {
+    value: string;
+    creator: string;
+    last_set: number;
+  };
   previous_names: string[];
-  num_members?: number;
-  topic?: string;
 };
 
 // Clean channel payload to keep only essential fields.
 export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
+  const types: string[] = [];
+  if (channel.is_channel) {
+    types.push("channel");
+  }
+  if (channel.is_group) {
+    types.push("group");
+  }
+  if (channel.is_mpim) {
+    types.push("mpim");
+  }
+  if (channel.is_im) {
+    types.push("im");
+  }
+  if (channel.is_private) {
+    types.push("private");
+  }
+  if (channel.is_archived) {
+    types.push("archived");
+  }
+  if (channel.is_general) {
+    types.push("general");
+  }
+  if (channel.is_shared) {
+    types.push("shared");
+  }
+  if (channel.is_ext_shared) {
+    types.push("ext_shared");
+  }
+
   return {
     id: channel.id ?? "",
     name: channel.name ?? "",
     created: channel.created ?? 0,
     creator: channel.creator ?? "",
-    is_channel: channel.is_channel ?? false,
-    is_private: channel.is_private ?? false,
+    updated: channel.updated,
+    type: types,
     is_member: channel.is_member ?? false,
+    purpose: channel.purpose
+      ? {
+          value: channel.purpose.value ?? "",
+          creator: channel.purpose.creator ?? "",
+          last_set: channel.purpose.last_set ?? 0,
+        }
+      : undefined,
+    topic: channel.topic
+      ? {
+          value: channel.topic.value ?? "",
+          creator: channel.topic.creator ?? "",
+          last_set: channel.topic.last_set ?? 0,
+        }
+      : undefined,
     previous_names: channel.previous_names ?? [],
-    num_members: channel.num_members,
-    topic: channel.topic?.value,
   };
 }
 
@@ -489,10 +538,24 @@ export async function executeSearchChannels(
       });
 
       if (response.ok && response.channel) {
+        const c = cleanChannelPayload(response.channel);
+        const markdown = [
+          `- **#${c.name}**`,
+          `  - ID: ${c.id}`,
+          `  - Created: ${c.created}`,
+          `  - Creator: ${c.creator}`,
+          `  - Updated: ${c.updated ?? ""}`,
+          `  - Type: ${c.type.join(", ")}`,
+          `  - Member: ${c.is_member ? "Yes" : "No"}`,
+          `  - Purpose: ${c.purpose?.value ?? ""}`,
+          `  - Topic: ${c.topic?.value ?? ""}`,
+          `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
+        ].join("\n");
+
         return new Ok([
           {
             type: "text" as const,
-            text: JSON.stringify(response.channel, null, 2),
+            text: markdown,
           },
         ]);
       }
@@ -521,17 +584,28 @@ export async function executeSearchChannels(
       );
 
       if (matchedInJoined.length > 0) {
+        const cleanedChannels = matchedInJoined.map(cleanChannelPayload);
+        const markdown = cleanedChannels
+          .map((c) =>
+            [
+              `- **#${c.name}**`,
+              `  - ID: ${c.id}`,
+              `  - Created: ${c.created}`,
+              `  - Creator: ${c.creator}`,
+              `  - Updated: ${c.updated ?? ""}`,
+              `  - Type: ${c.type.join(", ")}`,
+              `  - Member: ${c.is_member ? "Yes" : "No"}`,
+              `  - Purpose: ${c.purpose?.value ?? ""}`,
+              `  - Topic: ${c.topic?.value ?? ""}`,
+              `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
+            ].join("\n")
+          )
+          .join("\n");
+
         return new Ok([
           {
             type: "text" as const,
-            text: JSON.stringify(
-              {
-                channels: matchedInJoined.map(cleanChannelPayload),
-                count: matchedInJoined.length,
-              },
-              null,
-              2
-            ),
+            text: `Found ${cleanedChannels.length} channel(s) in your joined channels:\n\n${markdown}`,
           },
         ]);
       }
@@ -548,17 +622,28 @@ export async function executeSearchChannels(
         MAX_CHANNEL_SEARCH_RESULTS
       );
 
+      const cleanedChannels = matchedInAll.map(cleanChannelPayload);
+      const markdown = cleanedChannels
+        .map((c) =>
+          [
+            `- **#${c.name}**`,
+            `  - ID: ${c.id}`,
+            `  - Created: ${c.created}`,
+            `  - Creator: ${c.creator}`,
+            `  - Updated: ${c.updated ?? ""}`,
+            `  - Type: ${c.type.join(", ")}`,
+            `  - Member: ${c.is_member ? "Yes" : "No"}`,
+            `  - Purpose: ${c.purpose?.value ?? ""}`,
+            `  - Topic: ${c.topic?.value ?? ""}`,
+            `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
+          ].join("\n")
+        )
+        .join("\n");
+
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              channels: matchedInAll.map(cleanChannelPayload),
-              count: matchedInAll.length,
-            },
-            null,
-            2
-          ),
+          text: `Found ${cleanedChannels.length} channel(s) in public workspace channels:\n\n${markdown}`,
         },
       ]);
     } catch (error) {
@@ -579,17 +664,28 @@ export async function executeSearchChannels(
       MAX_CHANNEL_SEARCH_RESULTS
     );
 
+    const cleanedChannels = matched.map(cleanChannelPayload);
+    const markdown = cleanedChannels
+      .map((c) =>
+        [
+          `- **#${c.name}**`,
+          `  - ID: ${c.id}`,
+          `  - Created: ${c.created}`,
+          `  - Creator: ${c.creator}`,
+          `  - Updated: ${c.updated ?? ""}`,
+          `  - Type: ${c.type.join(", ")}`,
+          `  - Member: ${c.is_member ? "Yes" : "No"}`,
+          `  - Purpose: ${c.purpose?.value ?? ""}`,
+          `  - Topic: ${c.topic?.value ?? ""}`,
+          `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
+        ].join("\n")
+      )
+      .join("\n");
+
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            channels: matched.map(cleanChannelPayload),
-            count: matched.length,
-          },
-          null,
-          2
-        ),
+        text: `Found ${cleanedChannels.length} channel(s) in public workspace channels:\n\n${markdown}`,
       },
     ]);
   } catch (error) {
