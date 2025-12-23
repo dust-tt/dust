@@ -321,6 +321,9 @@ export function UserMessage({
   const timestamp = formatTimestring(message.created);
   const name = message.context.fullName ?? undefined;
 
+  // When there are multiple citations, we want to show the message bigger even if the message itself is short
+  const shouldShowBiggerUserMessage = citations && citations.length > 2;
+
   return (
     <>
       {shouldShowEditor ? (
@@ -399,7 +402,11 @@ export function UserMessage({
                 </DropdownMenu>
               )}
             </div>
-            <ConversationMessageContent citations={citations} type={"user"}>
+            <ConversationMessageContent
+              citations={citations}
+              type={"user"}
+              className={cn(shouldShowBiggerUserMessage && "@sm:min-w-[400px]")}
+            >
               <UserMessageContent
                 message={message}
                 isDeleted={isDeleted}
