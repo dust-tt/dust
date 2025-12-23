@@ -289,7 +289,9 @@ function createServer(
   );
   server.tool(
     REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Reverts a Interactive Content file by canceling the edits and file renames in the last agent message.",
+    "Resets an Interactive Content file to its previous version from GCS versioning. " +
+      "Each revert goes back one version in the file's history. " +
+      "Use retrieve to see the current content after reverting.",
     {
       file_id: z
         .string()
@@ -327,7 +329,7 @@ function createServer(
         }
 
         const {
-          value: { fileResource },
+          value: { fileResource, revertedContent },
         } = result;
 
         if (_meta?.progressToken) {
@@ -345,7 +347,9 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text: `File '${fileResource.sId}' reverted successfully.`,
+            text:
+              `File '${fileResource.sId}' (${fileResource.fileName}) reverted successfully to previous version. ` +
+              `The file has been restored to the state from the previous agent message. Current content:\n\n${revertedContent}`,
           },
         ]);
       }

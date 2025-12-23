@@ -158,13 +158,18 @@ export class FileStorage {
       maxResults,
     });
 
-    // Filter to only the exact file path and sort by generation (newest first)
+    // Filter to only the exact file path and sort by updated timestamp (newest first)
+    // Fall back to timeCreated if updated is not available
     const versions = files
       .filter((file) => file.name === filePath)
       .sort((a, b) => {
-        const genA = parseInt(a.metadata.generation || "0");
-        const genB = parseInt(b.metadata.generation || "0");
-        return genB - genA;
+        const timeA = new Date(
+          a.metadata.updated ?? a.metadata.timeCreated ?? 0
+        ).getTime();
+        const timeB = new Date(
+          b.metadata.updated ?? b.metadata.timeCreated ?? 0
+        ).getTime();
+        return timeB - timeA;
       });
 
     return versions;
