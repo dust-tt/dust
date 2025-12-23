@@ -34,8 +34,7 @@ import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_c
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentStepContentResource
-  extends ReadonlyAttributesType<AgentStepContentModel> {}
+export interface AgentStepContentResource extends ReadonlyAttributesType<AgentStepContentModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentStepContentResource extends BaseResource<AgentStepContentModel> {

@@ -21,9 +21,7 @@ const checkRateLimitError = (err: unknown) => {
   }
 };
 
-export class GithubCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class GithubCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

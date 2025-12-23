@@ -333,8 +333,9 @@ export function DataTable<TData extends TBaseData>({
   );
 }
 
-export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends DataTableProps<TData> {
+export interface ScrollableDataTableProps<
+  TData extends TBaseData,
+> extends DataTableProps<TData> {
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
@@ -871,8 +872,7 @@ interface BaseMenuItem {
 }
 
 interface RegularMenuItem
-  extends BaseMenuItem,
-    Omit<DropdownMenuItemProps, "children" | "label"> {
+  extends BaseMenuItem, Omit<DropdownMenuItemProps, "children" | "label"> {
   kind: "item";
 }
 

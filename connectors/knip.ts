@@ -8,7 +8,14 @@ const config: KnipConfig = {
     binaries: "off",
     exports: "off",
   },
-  ignoreDependencies: ["@dust-tt/client", "lint-staged", "pino-pretty"],
+  ignoreDependencies: [
+    "@types/eslint",
+    "@typescript-eslint/parser",
+    "@dust-tt/client",
+    "@eslint/js",
+    "lint-staged",
+    "pino-pretty",
+  ],
   paths: {
     "@connectors/*": ["./src/*"],
   },

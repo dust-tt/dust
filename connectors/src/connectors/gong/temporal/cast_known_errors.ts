@@ -8,9 +8,7 @@ import type {
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import { DustConnectorWorkflowError } from "@connectors/lib/error";
 
-export class GongCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class GongCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

@@ -4,9 +4,7 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-export class SalesforceCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class SalesforceCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

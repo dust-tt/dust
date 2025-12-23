@@ -15,9 +15,7 @@ import {
   SalesforceSyncedQueryResource,
 } from "../salesforce_resources";
 
-export class SalesforceConnectorStrategy
-  implements ConnectorProviderStrategy<"salesforce">
-{
+export class SalesforceConnectorStrategy implements ConnectorProviderStrategy<"salesforce"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SalesforceConfigurationModel>,

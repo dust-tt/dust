@@ -23,8 +23,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface TemplateResource
-  extends ReadonlyAttributesType<TemplateModel> {}
+export interface TemplateResource extends ReadonlyAttributesType<TemplateModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TemplateResource extends BaseResource<TemplateModel> {

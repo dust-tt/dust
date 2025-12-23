@@ -17,9 +17,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class NotionConnectorStrategy
-  implements ConnectorProviderStrategy<"notion">
-{
+export class NotionConnectorStrategy implements ConnectorProviderStrategy<"notion"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<NotionConnectorStateModel>,

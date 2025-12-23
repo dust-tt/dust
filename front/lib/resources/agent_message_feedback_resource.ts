@@ -39,8 +39,7 @@ import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMessageFeedbackResource
-  extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
+export interface AgentMessageFeedbackResource extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedbackModel> {
   static model: ModelStatic<AgentMessageFeedbackModel> =

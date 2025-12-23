@@ -36,7 +36,7 @@ export function getUserMentionPlugin() {
     return (
       <span
         className={classNames(
-          "inline-block cursor-pointer font-medium text-highlight",
+          "text-highlight inline-block cursor-pointer font-medium",
           "dark:text-highlight-night"
         )}
       >

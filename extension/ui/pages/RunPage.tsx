@@ -61,7 +61,7 @@ export const RunPage = () => {
     void run();
   }, []);
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className="flex h-full w-full items-center justify-center">
       <Spinner size="xl" />
     </div>
   );

@@ -16,9 +16,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class GoogleDriveConnectorStrategy
-  implements ConnectorProviderStrategy<"google_drive">
-{
+export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy<"google_drive"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<GoogleDriveConfigModel>,

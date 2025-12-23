@@ -9,8 +9,9 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverPortal = PopoverPrimitive.Portal;
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
-export interface PopoverContentProps
-  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+export interface PopoverContentProps extends React.ComponentPropsWithoutRef<
+  typeof PopoverPrimitive.Content
+> {
   fullWidth?: boolean;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;

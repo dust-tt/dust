@@ -16,6 +16,8 @@
     "build": "NODE_ENV=development tsup",
     "dev": "NODE_ENV=development tsup --watch",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "start": "node dist/index.js"
   },
   "keywords": [
@@ -58,20 +60,22 @@
     "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
     "@types/update-notifier": "^6.0.8",
-    "@typescript-eslint/eslint-plugin": "^8.32.0",
-    "@typescript-eslint/parser": "^8.32.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.0",
+    "@typescript-eslint/parser": "^8.48.0",
     "diff": "^8.0.2",
     "dotenv-flow": "^4.1.0",
-    "eslint": "^9.26.0",
-    "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-import": "^2.31.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "eslint-plugin-unused-imports": "^4.1.4",
+    "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^14.0.0",
+    "prettier": "^3.7.4",
     "ts-node": "^10.9.2",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.48.0"
   }
 }

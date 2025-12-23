@@ -13,8 +13,10 @@ import { isToolChartUsagePayload } from "@app/components/agent_builder/observabi
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
-export interface ToolUsageTooltipProps
-  extends TooltipContentProps<number, string> {
+export interface ToolUsageTooltipProps extends TooltipContentProps<
+  number,
+  string
+> {
   topTools: string[];
   hoveredTool?: string | null;
 }

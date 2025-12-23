@@ -16,7 +16,7 @@ interface ThinkingBlockProps {
 export function ThinkingBlock({ resource }: ThinkingBlockProps) {
   return (
     resource.text && (
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
         <ContentMessage
           title="Reasoning"
           variant="primary"
@@ -45,7 +45,7 @@ export function ReasoningSuccessBlock({
 }: ReasoningSuccessBlockProps) {
   return (
     resource.text && (
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
         <Markdown
           content={resource.text}
           textColor="text-muted-foreground dark:text-muted-foreground-night"
@@ -77,7 +77,7 @@ export function SearchResultDetails({
       actionName={actionName}
       visual={visual}
     >
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
         {query ?? "No query provided"}
       </div>
     </ActionDetailsWrapper>

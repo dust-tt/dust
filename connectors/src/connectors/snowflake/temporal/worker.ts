@@ -38,7 +38,7 @@ export async function runSnowflakeWorker() {
       // Update the webpack config to use aliases from our tsconfig.json.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },

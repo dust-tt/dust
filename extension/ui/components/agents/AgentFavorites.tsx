@@ -41,7 +41,7 @@ export function AgentFavorites({ user }: AgentFavoritesProps) {
   const hasFavorites = agentConfigurations.length > 0;
 
   return (
-    <div className="h-full w-full pt-2 pb-12">
+    <div className="h-full w-full pb-12 pt-2">
       <Page.SectionHeader title="Favorites" />
       {hasFavorites ? (
         <CardGrid className="mb-12">
@@ -59,7 +59,7 @@ export function AgentFavorites({ user }: AgentFavoritesProps) {
           )}
         </CardGrid>
       ) : (
-        <div className="flex flex-col items-center pt-20 gap-4">
+        <div className="flex flex-col items-center gap-4 pt-20">
           <p className="text-muted-foreground dark:text-muted-foreground-night">
             Your favorite agents will appear here
           </p>

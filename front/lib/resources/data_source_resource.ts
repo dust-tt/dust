@@ -61,8 +61,7 @@ export type FetchDataSourceOptions = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceResource
-  extends ReadonlyAttributesType<DataSourceModel> {}
+export interface DataSourceResource extends ReadonlyAttributesType<DataSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;

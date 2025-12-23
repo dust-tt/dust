@@ -28,13 +28,13 @@ async function main() {
           LIVE ? "LIVE" : "DRY"
         })`
       );
-      // eslint-disable-next-line no-unused-expressions
-      LIVE &&
-        (await launchGithubFullSyncWorkflow({
+      if (LIVE) {
+        await launchGithubFullSyncWorkflow({
           connectorId: connector.id,
           syncCodeOnly: true,
           forceCodeResync: true,
-        }));
+        });
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }

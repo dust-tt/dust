@@ -1,5 +1,5 @@
 import esbuild from "esbuild";
-import { rm, writeFile } from "fs/promises";
+import { writeFile } from "fs/promises";
 import path from "path";
 
 const entryPoint = "src/index.ts";

@@ -47,9 +47,7 @@ export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-export class ActivityInboundLogInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
   public readonly logger: Logger;
   private readonly context: Context;
   private readonly provider: ConnectorProvider;
@@ -157,8 +155,6 @@ export class ActivityInboundLogInterceptor
           return next(input);
         }
       );
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
       error = err;
 

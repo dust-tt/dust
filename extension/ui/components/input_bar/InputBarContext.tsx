@@ -13,9 +13,9 @@ export const InputBarContext = createContext<{
 }>({
   animate: false,
   selectedAgent: null,
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
+
   setAnimate: () => {},
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
+
   setSelectedAgent: () => {},
   attachPageBlinking: false,
   setAttachPageBlinking: () => {},

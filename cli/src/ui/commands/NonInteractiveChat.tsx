@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
-import type {FC} from "react";
-import React, {  useEffect, useState } from "react";
+import type { FC } from "react";
+import React, { useEffect, useState } from "react";
 
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";

@@ -1,6 +1,7 @@
-// eslint.config.js
+// eslint.config.mjs
 
 import js from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
 import globals from "globals";
 import typescriptPlugin from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
@@ -31,9 +32,19 @@ export default [
     rules: {
       curly: ["error", "all"],
       "import/no-cycle": "error",
+      "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+      "import/no-extraneous-dependencies": [
+        "warn",
+        {
+          devDependencies: [
+            "**/*.config.js",
+            "**/*.config.ts",
+            "tsup.config.ts",
+          ],
+        },
+      ],
       "react/no-unescaped-entities": 0,
       "@typescript-eslint/consistent-type-imports": "error",
-      "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
       "@typescript-eslint/no-explicit-any": 0,
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -67,4 +78,7 @@ export default [
       "@typescript-eslint/return-await": ["error", "in-try-catch"],
     },
   },
+
+  // Prettier config (must be last)
+  eslintConfigPrettier,
 ];

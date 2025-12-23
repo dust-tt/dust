@@ -250,7 +250,7 @@ export function ConversationContainer({
   if (conversationId) {
     return (
       <GenerationContextProvider>
-        <div className="h-full flex flex-col">
+        <div className="flex h-full flex-col">
           <div className="flex-1">
             <ConversationViewer
               conversationId={conversationId}
@@ -262,7 +262,7 @@ export function ConversationContainer({
           <div
             id="agent-input-header"
             className={cn(
-              "sticky bottom-0 pb-4 z-20  w-full",
+              "sticky bottom-0 z-20 w-full pb-4",
               "bg-background text-foreground",
               "dark:bg-background-night dark:text-foreground-night"
             )}
@@ -292,8 +292,8 @@ export function ConversationContainer({
 
   return (
     <GenerationContextProvider>
-      <div className="h-full flex flex-col">
-        <div className="pb-4 w-full">
+      <div className="flex h-full flex-col">
+        <div className="w-full pb-4">
           <Page.Header title={greeting} />
         </div>
         <div id="agent-input-header" className="w-full pb-4">
