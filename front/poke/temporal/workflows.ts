@@ -16,6 +16,7 @@ const {
   deleteMembersActivity,
   deletePluginRunsActivity,
   deleteRemoteMCPServersActivity,
+  deleteSkillsActivity,
   deleteSpacesActivity,
   deleteWebhookSourcesActivity,
   deleteTagsActivity,
@@ -68,6 +69,7 @@ export async function deleteWorkspaceWorkflow({
     return;
   }
 
+  await deleteSkillsActivity({ workspaceId });
   await deleteConversationsActivity({ workspaceId });
   await deleteRemoteMCPServersActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });

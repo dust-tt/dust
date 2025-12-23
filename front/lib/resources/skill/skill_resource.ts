@@ -94,7 +94,8 @@ type ConversationSkillCreationAttributes =
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillResource extends ReadonlyAttributesType<SkillConfigurationModel> {}
+export interface SkillResource
+  extends ReadonlyAttributesType<SkillConfigurationModel> {}
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -1151,6 +1152,38 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return [...customSkills, ...globalSkills];
+  }
+
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await AgentMessageSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await ConversationSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await AgentSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await GroupSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillMCPServerConfigurationModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillVersionModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillConfigurationModel.destroy({
+      where: { workspaceId },
+    });
   }
 
   toJSON(auth: Authenticator): SkillType {
