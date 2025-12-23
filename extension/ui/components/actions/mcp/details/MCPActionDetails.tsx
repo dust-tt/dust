@@ -223,7 +223,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === "enable") {
       return <MCPToolsetsEnableActionDetails {...props} />;
     }
-    return <MCPListToolsActionDetails {...props} />;
+    if (toolName === "list") {
+      return <MCPListToolsActionDetails {...props} />;
+    }
   }
 
   if (
