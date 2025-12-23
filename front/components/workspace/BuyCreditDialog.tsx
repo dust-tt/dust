@@ -262,7 +262,7 @@ export function BuyCreditDialog({
                 Credits amount
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-[11px] text-muted-foreground dark:text-muted-foreground-night">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
                   $
                 </span>
                 <Input
