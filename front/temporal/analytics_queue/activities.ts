@@ -270,7 +270,7 @@ async function collectToolUsageFromMessage(
   );
 
   const serverConfigs =
-    await AgentMCPServerConfigurationResource.fetchByStringIds(
+    await AgentMCPServerConfigurationResource.fetchByModelIdsAsStrings(
       auth,
       uniqueConfigIds
     );
@@ -332,7 +332,10 @@ async function extractRetrievalOutputs(
   );
 
   const serverConfigs =
-    await AgentMCPServerConfigurationResource.fetchByStringIds(auth, configIds);
+    await AgentMCPServerConfigurationResource.fetchByModelIdsAsStrings(
+      auth,
+      configIds
+    );
 
   const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
 

@@ -6,7 +6,7 @@ import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -25,26 +25,37 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
     super(model, blob);
   }
 
-  static async fetchByStringIds(
+  /**
+   * Fetch configurations by their numeric ModelIds.
+   * Note: AgentMCPActionModel.mcpServerConfigurationId stores IDs as strings
+   */
+  static async fetchByModelIds(
     auth: Authenticator,
-    stringIds: string[]
+    modelIds: ModelId[]
   ): Promise<AgentMCPServerConfigurationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const numericIds = stringIds
-      .map((id) => parseInt(id, 10))
-      .filter((id) => !isNaN(id));
 
     const configs = await this.model.findAll({
       where: {
         workspaceId,
         id: {
-          [Op.in]: numericIds,
+          [Op.in]: modelIds,
         },
       },
     });
 
     return configs.map((c) => new this(this.model, c.get()));
+  }
+
+  static async fetchByModelIdsAsStrings(
+    auth: Authenticator,
+    stringIds: string[]
+  ): Promise<AgentMCPServerConfigurationResource[]> {
+    const modelIds = stringIds
+      .map((id) => parseInt(id, 10))
+      .filter((id) => !isNaN(id));
+
+    return this.fetchByModelIds(auth, modelIds);
   }
 
   async delete(
