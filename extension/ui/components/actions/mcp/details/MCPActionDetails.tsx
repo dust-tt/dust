@@ -30,6 +30,7 @@ import { MCPExtractActionDetails } from "@app/ui/components/actions/mcp/details/
 import { MCPGetDatabaseSchemaActionDetails } from "@app/ui/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPListToolsActionDetails } from "@app/ui/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPReasoningActionDetails } from "@app/ui/components/actions/mcp/details/MCPReasoningActionDetails";
+import { MCPRunAgentActionDetails } from "@app/ui/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/ui/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/ui/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/ui/components/actions/mcp/details/MCPToolOutputDetails";
@@ -206,6 +207,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     toolName === PROCESS_TOOL_NAME
   ) {
     return <MCPExtractActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "run_agent") {
+    return <MCPRunAgentActionDetails {...props} />;
   }
 
   if (internalMCPServerName === "deep_dive") {
