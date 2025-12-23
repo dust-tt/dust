@@ -1,3 +1,4 @@
+import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
@@ -490,6 +491,11 @@ export async function runModelActivity(
   }
 
   const modelInteractionStartDate = performance.now();
+
+  // Heartbeat before starting the LLM stream to ensure the activity is still
+  // considered alive after potentially long setup operations (MCP tools
+  // listing, conversation rendering, etc.).
+  heartbeat();
 
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
