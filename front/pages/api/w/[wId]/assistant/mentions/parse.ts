@@ -4,16 +4,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  RichAgentMention,
-  RichUserMention,
-  WithAPIErrorResponse,
-} from "@app/types";
-import { toRichAgentMentionType, toRichUserMentionType } from "@app/types";
+import type { RichAgentMention, WithAPIErrorResponse } from "@app/types";
+import { toRichAgentMentionType } from "@app/types";
 
 const ParseMentionsRequestBodySchema = t.type({
   markdown: t.string,
@@ -68,13 +63,15 @@ async function handler(
     .filter((a) => a.status === "active")
     .map(toRichAgentMentionType);
 
-  const userMentions: RichUserMention[] = [];
-  const { members } = await getMembers(auth, { activeOnly: true });
-
-  userMentions.push(...members.map(toRichUserMentionType));
+  // Disabling user mentions for now, as it may lead to customer pinging users unintentionally.
+  //
+  // const userMentions: RichUserMention[] = [];
+  // const { members } = await getMembers(auth, { activeOnly: true });
+  //
+  // userMentions.push(...members.map(toRichUserMentionType));
 
   // Combine all mentions for matching.
-  const allMentions = [...agentMentions, ...userMentions];
+  const allMentions = [...agentMentions /*, ...userMentions*/];
 
   // Sort mentions by label length (descending) to match longer names first.
   // This prevents "AI Assistant Pro" from being matched as "AI" when both exist.
