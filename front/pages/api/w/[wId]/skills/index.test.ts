@@ -433,10 +433,7 @@ describe("POST /api/w/[wId]/skills", () => {
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       icon: null,
-      tools: [
-        { mcpServerViewId: serverView1.sId },
-        { mcpServerViewId: serverView2.sId },
-      ],
+      tools: [serverView1.toJSON(), serverView2.toJSON()],
       extendedSkillId: null,
     };
 
@@ -450,10 +447,7 @@ describe("POST /api/w/[wId]/skills", () => {
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
-      tools: [
-        { mcpServerViewId: serverView1.sId },
-        { mcpServerViewId: serverView2.sId },
-      ],
+      tools: [serverView1.toJSON(), serverView2.toJSON()],
     });
 
     // Verify skill was created in the database
