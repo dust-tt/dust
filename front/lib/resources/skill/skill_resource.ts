@@ -176,14 +176,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">
+    blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
+    {
+      mcpServerViews,
+    }: {
+      mcpServerViews: MCPServerViewResource[];
+    }
   ): Promise<SkillResource> {
-    // Use a transaction to ensure all creates succeed or all are rolled back.
-    const skillResource = await withTransaction(async (transaction) => {
+    const owner = auth.getNonNullableWorkspace();
+
+    // Use a transaction to ensure all creations succeed or all are rolled back.
+    return withTransaction(async (transaction) => {
       const skill = await this.model.create(
         {
           ...blob,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: owner.id,
         },
         {
           transaction,
@@ -198,13 +205,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
+      await SkillMCPServerConfigurationModel.bulkCreate(
+        mcpServerViews.map((mcpServerView) => ({
+          workspaceId: owner.id,
+          skillConfigurationId: skill.id,
+          mcpServerViewId: mcpServerView.id,
+        })),
+        { transaction }
+      );
+
       return new this(this.model, skill.get(), {
         editorGroup,
-        mcpServerViews: [],
+        mcpServerViews,
       });
     });
-
-    return skillResource;
   }
 
   private static async baseFetch(
