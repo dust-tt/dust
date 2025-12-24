@@ -158,7 +158,7 @@ export async function handler(
         auditLog(
           {
             author: user ? user.toJSON() : "no-author",
-            workspaceId: auth.getNonNullableWorkspace().id,
+            workspaceId: auth.getNonNullableWorkspace().sId,
             spaceId: space.sId,
             spaceName: space.name,
             action: "space_permissions_updated_by_non_member",
