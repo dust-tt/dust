@@ -265,6 +265,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: this.workspaceId,
         },
         transaction,
       });
