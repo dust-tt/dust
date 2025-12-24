@@ -1,10 +1,12 @@
 import {
+  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InformationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
@@ -102,6 +104,20 @@ export function SpaceLayout({
     >
       <div className="flex w-full flex-col">
         <Page.Vertical gap="lg" align="stretch">
+          {
+            // Message to admins that are not members of the space.
+            // No need to show it for system space since it's a no-member space.
+            !canReadInSpace && space.kind !== "system" && (
+              <div>
+                <Chip
+                  color="rose"
+                  label="You are not a member of this space."
+                  size="sm"
+                  icon={InformationCircleIcon}
+                />
+              </div>
+            )
+          }
           <SpaceSearchInput
             category={category}
             canReadInSpace={canReadInSpace}

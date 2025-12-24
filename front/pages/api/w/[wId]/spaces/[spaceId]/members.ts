@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types";
@@ -149,6 +150,21 @@ export async function handler(
           default:
             assertNever(updateRes.error.code);
         }
+      }
+
+      // Audit log when an admin who is not a member of the space updates its permissions.
+      if (!space.canRead(auth)) {
+        const user = auth.user();
+        auditLog(
+          {
+            author: user ? user.toJSON() : "no-author",
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+            spaceName: space.name,
+            action: "space_permissions_updated_by_non_member",
+          },
+          "[Security] Admin updated space permissions without being a member"
+        );
       }
 
       return res.status(200).json({ space: space.toJSON() });
