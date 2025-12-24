@@ -369,7 +369,7 @@ export function CreateMCPServerDialog({
                 <>
                   {defaultServerConfig && (
                     <div className="mb-4">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                         {defaultServerConfig.description}
                         {defaultServerConfig.documentationUrl && (
                           <>
@@ -378,7 +378,7 @@ export function CreateMCPServerDialog({
                               href={defaultServerConfig.documentationUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary hover:underline"
+                              className="text-primary hover:underline dark:text-primary-night"
                             >
                               See {defaultServerConfig.name} documentation.
                             </a>
@@ -386,7 +386,7 @@ export function CreateMCPServerDialog({
                         )}
                       </p>
                       {defaultServerConfig.connectionInstructions && (
-                        <p className="mt-2 text-sm text-muted-foreground">
+                        <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {defaultServerConfig.connectionInstructions}
                         </p>
                       )}
@@ -491,7 +491,7 @@ export function CreateMCPServerDialog({
                       {(authMethod === "oauth-dynamic" ||
                         defaultServerConfig?.authMethod ===
                           "oauth-dynamic") && (
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                           Dust will automatically discover if OAuth
                           authentication is required. If OAuth is not needed,
                           the server will be accessed without authentication.
@@ -523,7 +523,7 @@ export function CreateMCPServerDialog({
                       )}
                       {!defaultServerConfig &&
                         authMethod === "oauth-static" && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                             The redirect URI to allow is{" "}
                             <strong>
                               {window.origin + "/oauth/mcp_static/finalize"}
