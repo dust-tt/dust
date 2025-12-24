@@ -1,7 +1,7 @@
 import { parse } from "csv-parse/sync";
 import { readFileSync } from "fs";
 
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { restoreAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
@@ -19,7 +19,7 @@ const argumentSpecs: ArgumentSpecs = {
   },
   workspaceId: {
     type: "string",
-    description: "Workspace ID to archive agents from",
+    description: "Workspace ID to restore agents from",
     demandOption: true,
   },
 };
@@ -65,31 +65,31 @@ makeScript(
 
       if (execute) {
         try {
-          const archived = await archiveAgentConfiguration(auth, agentId);
-          if (archived) {
+          const restored = await restoreAgentConfiguration(auth, agentId);
+          if (restored) {
             scriptLogger.info(
               { agentName, agentId },
-              "Successfully archived agent"
+              "Successfully restored agent"
             );
             successCount++;
           } else {
             scriptLogger.warn(
               { agentName, agentId },
-              "Agent not found or already archived"
+              "Agent not found or already restored"
             );
             skipCount++;
           }
         } catch (error) {
           scriptLogger.error(
             { agentName, agentId, error },
-            "Failed to archive agent"
+            "Failed to restore agent"
           );
           errorCount++;
         }
       } else {
         scriptLogger.info(
           { agentName, agentId },
-          "Dry run: would archive agent"
+          "Dry run: would restore agent"
         );
       }
     }
