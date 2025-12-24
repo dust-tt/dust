@@ -261,7 +261,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.deleteHistory(auth, transaction);
+      await this.deleteHistory(transaction);
       await this.model.destroy({
         where: {
           id: this.id,
@@ -301,13 +301,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async setConversationHistory(
-    auth: Authenticator,
-    { conversationId, fileId }: { conversationId: string; fileId: string }
-  ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
+  async setConversationHistory({
+    conversationId,
+    fileId,
+  }: {
+    conversationId: string;
+    fileId: string;
+  }): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: this.workspaceId,
         configurationId: this.id,
         fileId,
       },
@@ -322,14 +325,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async deleteHistoryByFileId(
-    auth: Authenticator,
-    fileId: string
-  ): Promise<Result<boolean, Error>> {
+  async deleteHistoryByFileId(fileId: string): Promise<Result<boolean, Error>> {
     try {
       const deletedCount = await LabsTranscriptsHistoryModel.destroy({
         where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: this.workspaceId,
           configurationId: this.id,
           fileId,
         },
@@ -378,24 +378,22 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async hasAnyHistory(auth: Authenticator): Promise<boolean> {
-    const workspace = auth.getNonNullableWorkspace();
+  async hasAnyHistory(): Promise<boolean> {
     const count = await LabsTranscriptsHistoryModel.count({
       where: {
         configurationId: this.id,
-        workspaceId: workspace.id,
+        workspaceId: this.workspaceId,
       },
     });
 
     return count > 0;
   }
 
-  async getMostRecentHistoryDate(auth: Authenticator): Promise<Date | null> {
-    const workspace = auth.getNonNullableWorkspace();
+  async getMostRecentHistoryDate(): Promise<Date | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
         configurationId: this.id,
-        workspaceId: workspace.id,
+        workspaceId: this.workspaceId,
       },
       order: [["createdAt", "DESC"]],
     });
@@ -404,13 +402,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   private async deleteHistory(
-    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
       await LabsTranscriptsHistoryModel.destroy({
         where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: this.workspaceId,
           configurationId: this.id,
         },
         transaction,

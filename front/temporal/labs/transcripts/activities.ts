@@ -737,7 +737,7 @@ export async function processTranscriptActivity(
       allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
     });
 
-    await transcriptsConfiguration.setConversationHistory(auth, {
+    await transcriptsConfiguration.setConversationHistory({
       conversationId: conversation.sId,
       fileId,
     });

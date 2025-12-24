@@ -59,8 +59,8 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
     const options = await concurrentExecutor(
       modjoConfigurations,
       async (config) => {
-        const hasHistory = await config.hasAnyHistory(auth);
-        const mostRecentDate = await config.getMostRecentHistoryDate(auth);
+        const hasHistory = await config.hasAnyHistory();
+        const mostRecentDate = await config.getMostRecentHistoryDate();
         const user = await config.getUser();
 
         const statusParts = [];
@@ -282,7 +282,6 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
           // If force resync is enabled, delete the existing history record first
           if (forceResync) {
             const deleteRes = await configuration.deleteHistoryByFileId(
-              auth,
               transcript.callId
             );
             if (deleteRes.isErr()) {

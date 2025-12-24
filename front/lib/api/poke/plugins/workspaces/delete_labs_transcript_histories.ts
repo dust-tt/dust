@@ -40,8 +40,8 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
     const options = await concurrentExecutor(
       configurations,
       async (config) => {
-        const hasHistory = await config.hasAnyHistory(auth);
-        const mostRecentDate = await config.getMostRecentHistoryDate(auth);
+        const hasHistory = await config.hasAnyHistory();
+        const mostRecentDate = await config.getMostRecentHistoryDate();
         const user = await config.getUser();
 
         // Check if datasource exists

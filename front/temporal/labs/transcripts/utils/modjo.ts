@@ -221,7 +221,7 @@ export async function retrieveModjoTranscripts(
       "[retrieveModjoTranscripts] Using explicit isFirstSync from workflow"
     );
   } else {
-    const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory(auth);
+    const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
     isFirstSync = !hasAnyHistory;
   }
 
@@ -236,7 +236,7 @@ export async function retrieveModjoTranscripts(
   } else {
     // Subsequent syncs: get the most recent history date and use it as the starting point
     const mostRecentHistoryDate =
-      await transcriptsConfiguration.getMostRecentHistoryDate(auth);
+      await transcriptsConfiguration.getMostRecentHistoryDate();
     if (mostRecentHistoryDate) {
       // Calculate lookback time with buffer for long calls
       const bufferMs = CALL_BUFFER_HOURS * 60 * 60 * 1000;
