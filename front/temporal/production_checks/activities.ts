@@ -5,6 +5,7 @@ import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_ac
 import { checkActiveWorkflowsForFront } from "@app/lib/production_checks/checks/check_active_workflows_for_front";
 import { checkConnectorsLastSyncSuccess } from "@app/lib/production_checks/checks/check_connectors_last_sync_success";
 import { checkDataSourcesConsistency } from "@app/lib/production_checks/checks/check_data_sources_consistency";
+import { checkExcessCredits } from "@app/lib/production_checks/checks/check_excess_credits";
 import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/check_extraneous_workflows_for_paused_connectors";
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
 import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
@@ -58,6 +59,11 @@ export const REGISTERED_CHECKS: Check[] = [
     name: "checked_paused_connectors",
     check: checkPausedConnectors,
     everyHour: 8,
+  },
+  {
+    name: "check_excess_credits",
+    check: checkExcessCredits,
+    everyHour: 24,
   },
 ];
 
