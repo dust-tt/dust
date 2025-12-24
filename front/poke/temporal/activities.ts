@@ -23,7 +23,6 @@ import {
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
@@ -32,6 +31,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -659,11 +659,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
-  await FeatureFlagModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
+  await FeatureFlagResource.deleteAllForWorkspace(auth);
   await AgentMemoryResource.deleteAllForWorkspace(auth);
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
   await RemoteMCPServerToolMetadataModel.destroy({

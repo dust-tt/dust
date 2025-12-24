@@ -1,7 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { Ok } from "@app/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
   isWhitelistableFeature,
@@ -30,11 +29,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const enabledFlags = await FeatureFlagModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
+    const enabledFlags = await FeatureFlagResource.listForWorkspace(workspace);
 
     const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
 
@@ -60,11 +55,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const existingFlags = await FeatureFlagModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
+    const existingFlags = await FeatureFlagResource.listForWorkspace(workspace);
     const featureFlags = args.features.filter((feature) =>
       isWhitelistableFeature(feature)
     );
@@ -76,18 +67,12 @@ export const toggleFeatureFlagPlugin = createPlugin({
       .filter((flag) => !featureFlags.includes(flag.name))
       .map((flag) => flag.name);
 
-    await FeatureFlagModel.bulkCreate(
-      toAdd.map((feature) => ({
-        workspaceId: workspace.id,
-        name: feature as WhitelistableFeature,
-      }))
-    );
-    await FeatureFlagModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        name: toRemove,
-      },
-    });
+    if (toAdd.length > 0) {
+      await FeatureFlagResource.enableMany(workspace, toAdd);
+    }
+    if (toRemove.length > 0) {
+      await FeatureFlagResource.disableMany(workspace, toRemove);
+    }
 
     const actions: string[] = [];
 
