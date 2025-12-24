@@ -34,6 +34,7 @@ import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/deta
 import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
@@ -251,6 +252,10 @@ export function MCPActionDetails({
     toolName === PROCESS_TOOL_NAME
   ) {
     return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (internalMCPServerName === "image_generation") {
+    return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "run_agent") {
