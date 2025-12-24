@@ -65,10 +65,6 @@ export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
 export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
-export type MCPToolWithStakeLevelType =
-  | ServerSideMCPToolTypeWithStakeAndRetryPolicy
-  | ClientSideMCPToolTypeWithStakeLevel;
-
 export type MCPServerType = {
   sId: string;
   name: string;
@@ -81,7 +77,7 @@ export type MCPServerType = {
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
   developerSecretSelection?: DeveloperSecretSelectionType | null;
-  developerSecretSelectionDescription?: string;
+  developerSecretSelectionDescription?: string | null;
   sharedSecret?: string | null;
   customHeaders?: Record<string, string> | null;
 };

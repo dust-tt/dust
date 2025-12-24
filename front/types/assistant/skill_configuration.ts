@@ -17,7 +17,7 @@ export type SkillType = {
   instructions: string | null;
   icon: string | null;
   requestedSpaceIds: string[];
-  tools: { mcpServerViewId: string }[];
+  tools: MCPServerViewType[];
   canWrite: boolean;
   isExtendable: boolean;
   extendedSkillId: string | null;

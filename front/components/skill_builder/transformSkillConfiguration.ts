@@ -1,11 +1,11 @@
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { UserType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 /**
  * Transforms a skill configuration (server-side) into skill builder form data (client-side).
- * Dynamic values (editors, tools) are intentionally set to empty defaults
- * as they will be populated reactively in the component.
+ * Editors are intentionally set to empty defaults as they will be populated reactively.
  */
 export function transformSkillConfigurationToFormData(
   skillConfiguration: SkillType
@@ -16,7 +16,7 @@ export function transformSkillConfigurationToFormData(
     userFacingDescription: skillConfiguration.userFacingDescription,
     instructions: skillConfiguration.instructions ?? "",
     editors: [], // Will be populated reactively from useEditors hook
-    tools: [], // Will be populated reactively from MCP server views context
+    tools: skillConfiguration.tools.map(getDefaultMCPAction),
     icon: skillConfiguration.icon ?? null,
     extendedSkillId: skillConfiguration.extendedSkillId,
   };

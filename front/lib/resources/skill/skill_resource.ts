@@ -1255,10 +1255,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.globalSId ? null : this.instructions,
       requestedSpaceIds: requestedSpaceIds,
       icon: this.icon ?? null,
-      // TODO(skills: 2025-12-23): return entire MCPServerViewType here and update call sites.
-      tools: this.mcpServerViews.map((view) => ({
-        mcpServerViewId: view.sId,
-      })),
+      tools: this.mcpServerViews.map((view) => {
+        const serializedView = view.toJSON();
+        const server = serializedView.server;
+        return {
+          ...serializedView,
+          server: {
+            ...server,
+            // This object may be used in server side props so we need to make it serializable.
+            // TODO(mcp 2025-12-24): make MCPServerType serverSideProps-serializable (no undefined).
+            developerSecretSelection: server.developerSecretSelection ?? null,
+            developerSecretSelectionDescription:
+              server.developerSecretSelectionDescription ?? null,
+            sharedSecret: server.sharedSecret ?? null,
+            customHeaders: server.customHeaders ?? null,
+          },
+        };
+      }),
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable(),
       extendedSkillId: this.extendedSkillId,
