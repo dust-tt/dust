@@ -28,7 +28,7 @@ export type ConversationMessageReactions = {
 export type MessageReactionType = {
   emoji: string;
   users: {
-    userId: ModelId | null;
+    userId: string | null;
     username: string;
     fullName: string | null;
   }[];
@@ -132,6 +132,7 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
+  reactions: MessageReactionType[];
 };
 
 export type UserMessageTypeWithoutMentions = Omit<
@@ -216,6 +217,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
+  reactions: MessageReactionType[];
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -233,6 +235,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
+  reactions: MessageReactionType[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events

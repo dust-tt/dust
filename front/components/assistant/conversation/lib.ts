@@ -49,6 +49,7 @@ export function createPlaceholderUserMessage({
       username,
       origin: "web",
     },
+    reactions: [],
     contentFragments: [
       ...(contentFragments?.uploaded ?? []).map(
         (cf) =>
@@ -163,6 +164,7 @@ export function createPlaceholderAgentMessage({
     actions: [],
     richMentions: [],
     completionDurationMs: null,
+    reactions: [],
 
     streaming: {
       agentState: "placeholder",
