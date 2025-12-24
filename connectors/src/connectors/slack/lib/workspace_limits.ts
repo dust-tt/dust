@@ -345,6 +345,7 @@ export async function notifyIfSlackUserIsNotAllowed(
         connectorId: connector.id,
         slackInfos,
         slackUserEmail: getSlackUserEmailFromProfile(slackUserInfo),
+        slackUserInfo,
       },
       "Unauthorized Slack user attempted to access webhook."
     );
