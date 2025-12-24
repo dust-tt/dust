@@ -6,6 +6,7 @@ import {
   CardGrid,
   ContentMessage,
   EmptyCTA,
+  Hoverable,
   Spinner,
   ToolsIcon,
   XMarkIcon,
@@ -305,8 +306,21 @@ export function AgentBuilderSkillsBlock() {
 
   return (
     <AgentBuilderSectionContainer
-      title="Skills"
-      description="Give your agent a custom capability for specific tasks"
+      title="Knowledge and capabilities"
+      description={
+        <>
+          "Add knowledge, tools and skills to enhance your agent’s abilities.
+          Need help? Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/tools"
+            target="_blank"
+          >
+            guide
+          </Hoverable>
+          .
+        </>
+      }
       headerActions={
         hasCapabilitiesConfigured && (
           <ActionButtons
