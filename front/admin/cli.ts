@@ -1,3 +1,4 @@
+import assert from "assert";
 import fs from "fs/promises";
 import parseArgs from "minimist";
 import path from "path";
@@ -20,7 +21,10 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getIdsFromSId,
+} from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -524,6 +528,26 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         process.exit(1);
       }
       for (const sId of activeConfigSIds) {
+        const res = getIdsFromSId(sId);
+        if (res.isErr()) {
+          logger.warn(`Invalid sId=${sId}, skipping.`);
+          continue;
+        }
+        const { workspaceModelId } = res.value;
+        console.log(
+          ">> Restarting workflow for config sId=",
+          sId,
+          workspaceModelId
+        );
+
+        const workspace =
+          await WorkspaceResource.fetchByModelId(workspaceModelId);
+        assert(workspace, "Workspace not found");
+
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+
         const config = await LabsTranscriptsConfigurationResource.fetchById(
           auth,
           sId
