@@ -30,7 +30,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         required: true
  *         schema:
  *           type: string
- *         description: Conversation ID
+ *         description: Conversation sId
  *     security:
  *       - BearerAuth: []
  *     requestBody:

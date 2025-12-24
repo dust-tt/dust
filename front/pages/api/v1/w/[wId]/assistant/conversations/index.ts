@@ -61,7 +61,7 @@ export const MAX_CONVERSATION_DEPTH = 4;
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *     security:
