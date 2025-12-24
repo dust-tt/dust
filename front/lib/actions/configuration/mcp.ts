@@ -1,4 +1,3 @@
-import uniq from "lodash/uniq";
 import type { IncludeOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
@@ -11,7 +10,6 @@ import {
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -21,15 +19,10 @@ import {
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import type {
-  AgentFetchVariant,
-  LightAgentConfigurationType,
-  ModelId,
-} from "@app/types";
+import type { AgentFetchVariant, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations(
@@ -197,59 +190,4 @@ export async function fetchMCPServerActionConfigurations(
   }
 
   return actionsByConfigurationId;
-}
-
-export async function fetchSkillMCPServerConfigurations(
-  auth: Authenticator,
-  enabledSkills: SkillResource[],
-  agentConfiguration: LightAgentConfigurationType
-): Promise<ServerSideMCPServerConfigurationType[]> {
-  if (enabledSkills.length === 0) {
-    return [];
-  }
-
-  // Collect extended skill IDs from enabled skills.
-  const extendedSkillIds = removeNulls(
-    uniq(enabledSkills.map((skill) => skill.extendedSkillId))
-  );
-
-  // Fetch extended skills if any.
-  const extendedSkills = await SkillResource.fetchByIds(
-    auth,
-    extendedSkillIds,
-    { agentConfiguration }
-  );
-
-  const mcpServerViews = [...extendedSkills, ...enabledSkills].flatMap(
-    (skill) => skill.mcpServerViews
-  );
-
-  const configurations: ServerSideMCPServerConfigurationType[] = [];
-
-  for (const mcpServerView of mcpServerViews) {
-    const { server } = mcpServerView.toJSON();
-
-    configurations.push({
-      id: -1,
-      sId: `mcp_${server.sId}`,
-      type: "mcp_server_configuration",
-      name: mcpServerView.name ?? server.name,
-      description: mcpServerView.description ?? server.description,
-      icon: server.icon,
-      mcpServerViewId: mcpServerView.sId,
-      internalMCPServerId: mcpServerView.internalMCPServerId ?? null,
-      // Skills don't have configurations, yet.
-      // TODO(skills): support configuring skills.
-      dataSources: null,
-      tables: null,
-      dustAppConfiguration: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      secretName: null,
-    });
-  }
-
-  return configurations;
 }

@@ -1,5 +1,6 @@
 import groupBy from "lodash/groupBy";
 import omit from "lodash/omit";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -24,6 +25,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
@@ -524,9 +526,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills for a conversation, returning both enabled and equipped skills.
+   * List skills for the agent loop, returning both (extended) enabled skills and equipped skills.
    */
-  static async listForConversation(
+  static async listForAgentLoop(
     auth: Authenticator,
     {
       agentConfiguration,
@@ -536,25 +538,69 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation: ConversationType;
     }
   ): Promise<{
-    enabledSkills: SkillResource[];
+    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }> {
-    const enabledSkills = await this.listEnabledForConversation(auth, {
-      agentConfiguration,
-      conversation,
-    });
+    const conversationEnabledSkills = await this.listEnabledForConversation(
+      auth,
+      {
+        agentConfiguration,
+        conversation,
+      }
+    );
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration
     );
 
+    // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
+    const autoEnabledSkills = allAgentSkills.filter((s) =>
+      GlobalSkillsRegistry.isSkillAutoEnabled(s.sId)
+    );
+
+    const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
     // Skills that are already enabled are not equipped.
     const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
     const equippedSkills = allAgentSkills.filter(
       (s) => !enabledSkillIds.has(s.sId)
     );
 
-    return { enabledSkills, equippedSkills };
+    // TODO(skills 2025-12-23): refactor to retrieve extended skills from baseFetch
+    const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
+      auth,
+      enabledSkills
+    );
+
+    return {
+      enabledSkills: augmentedEnabledSkills,
+      equippedSkills,
+    };
+  }
+
+  private static async augmentSkillsWithExtendedSkills(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<(SkillResource & { extendedSkill: SkillResource | null })[]> {
+    const extendedSkillIds = removeNulls(
+      uniq(skills.map((skill) => skill.extendedSkillId))
+    );
+    const extendedSkills = await SkillResource.fetchByIds(
+      auth,
+      extendedSkillIds
+    );
+
+    // Create a map for quick lookup of extended skills.
+    const extendedSkillsMap = new Map(
+      extendedSkills.map((skill) => [skill.sId, skill])
+    );
+
+    return skills.map((skill) =>
+      Object.assign(skill, {
+        extendedSkill: skill.extendedSkillId
+          ? (extendedSkillsMap.get(skill.extendedSkillId) ?? null)
+          : null,
+      })
+    );
   }
 
   static async fetchConversationSkillRecords(
@@ -845,6 +891,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return shouldReturnAuthor ? author : null;
+  }
+
+  async listInheritedDataSourceViews(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType
+  ): Promise<DataSourceViewResource[] | null> {
+    if (!this.globalSId) {
+      return null;
+    }
+
+    if (
+      !GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      )
+    ) {
+      return null;
+    }
+
+    return DataSourceViewResource.listBySpaceIds(
+      auth,
+      agentConfiguration.requestedSpaceIds,
+      { includeGlobalSpace: true }
+    );
   }
 
   async archive(

@@ -334,6 +334,21 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  static async listBySpaceIds(
+    auth: Authenticator,
+    spaceIds: string[],
+    { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
+  ) {
+    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+
+    if (includeGlobalSpace) {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      requestedSpaces.push(globalSpace);
+    }
+
+    return this.listBySpaces(auth, requestedSpaces);
+  }
+
   static async listAssistantDefaultSelected(auth: Authenticator) {
     const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     assert(globalGroup.isOk(), "Failed to fetch global group");
