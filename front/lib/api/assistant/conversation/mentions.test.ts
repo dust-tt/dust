@@ -1079,6 +1079,7 @@ describe("createUserMentions", () => {
     // Verify no mentions were stored
     const allMentionsInDb = await MentionModel.findAll({
       where: {
+        workspaceId: workspace.id,
         messageId: userMessage.id,
       },
     });
