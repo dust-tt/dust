@@ -10,9 +10,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { DATA_WAREHOUSE_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -32,10 +29,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
-import {
-  AUTO_ENABLED_SKILL_IDS,
-  GlobalSkillsRegistry,
-} from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -429,7 +423,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
-  private static async listByAgentConfiguration(
+  static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
   ): Promise<SkillResource[]> {
@@ -560,9 +554,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration
     );
 
-    // Auto-enabled skills are always treated as enabled when present in the agent configuration.
+    // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) =>
-      AUTO_ENABLED_SKILL_IDS.has(s.sId)
+      GlobalSkillsRegistry.isSkillAutoEnabled(s.sId)
     );
 
     const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
@@ -900,57 +894,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return shouldReturnAuthor ? author : null;
   }
 
-  async listMCPServerConfigurations(
+  async listInheritedDataSourceViews(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
-  ): Promise<ServerSideMCPServerConfigurationType[]> {
-    let inheritedDataSources: DataSourceConfiguration[] | null = null;
-
-    if (this.globalSId !== null) {
-      const globalSkill = GlobalSkillsRegistry.getById(this.globalSId);
-      if (globalSkill?.inheritAgentConfigurationDataSources) {
-        const dataSourceViews =
-          await DataSourceViewResource.listBySpaceIdsAndGlobal(
-            auth,
-            agentConfiguration.requestedSpaceIds
-          );
-
-        inheritedDataSources = dataSourceViews.map((dsView) => ({
-          dataSourceViewId: dsView.sId,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          filter: { parents: null, tags: null },
-        }));
-      }
+  ): Promise<DataSourceViewResource[] | null> {
+    if (!this.globalSId) {
+      return null;
     }
 
-    return this.mcpServerViews.map((mcpServerView) => {
-      const { server } = mcpServerView.toJSON();
-      const dataSources = [
-        "data_sources_file_system",
-        DATA_WAREHOUSE_SERVER_NAME,
-      ].includes(server.name)
-        ? inheritedDataSources
-        : null;
+    if (
+      !GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      )
+    ) {
+      return null;
+    }
 
-      return {
-        id: -1,
-        sId: `mcp_${server.sId}`,
-        type: "mcp_server_configuration",
-        name: mcpServerView.name ?? server.name,
-        description: mcpServerView.description ?? server.description,
-        icon: server.icon,
-        mcpServerViewId: mcpServerView.sId,
-        internalMCPServerId: mcpServerView.internalMCPServerId ?? null,
-        dataSources,
-        tables: null,
-        dustAppConfiguration: null,
-        childAgentId: null,
-        timeFrame: null,
-        jsonSchema: null,
-        additionalConfiguration: {},
-        secretName: null,
-      } satisfies ServerSideMCPServerConfigurationType;
-    });
+    return DataSourceViewResource.listBySpaceIds(
+      auth,
+      agentConfiguration.requestedSpaceIds,
+      { includeGlobalSpace: true }
+    );
   }
 
   async archive(

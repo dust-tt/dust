@@ -87,7 +87,8 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceViewResource extends ReadonlyAttributesType<DataSourceViewModel> {}
+export interface DataSourceViewResource
+  extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
@@ -334,14 +335,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
-  static async listBySpaceIdsAndGlobal(
+  static async listBySpaceIds(
     auth: Authenticator,
-    spaceIds: string[]
+    spaceIds: string[],
+    { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
   ) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
 
-    return this.listBySpaces(auth, requestedSpaces.concat([globalSpace]));
+    if (includeGlobalSpace) {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      requestedSpaces.push(globalSpace);
+    }
+
+    return this.listBySpaces(auth, requestedSpaces);
   }
 
   static async listAssistantDefaultSelected(auth: Authenticator) {

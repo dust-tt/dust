@@ -15,6 +15,7 @@ export interface GlobalSkillDefinition {
   readonly icon: string;
   readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly inheritAgentConfigurationDataSources?: boolean;
+  readonly isAutoEnabled?: boolean;
 }
 
 // Helper function that enforces unique sIds.
@@ -59,12 +60,6 @@ const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
 // Type derived from the actual array.
 export type GlobalSkillId = (typeof GLOBAL_SKILLS_ARRAY)[number]["sId"];
 
-// Skills listed here are automatically enabled when equipped by an agent. Unlike regular skills
-// that require explicit enabling during a conversation, auto-enabled skills are considered
-// active as soon as they are part of an agent's configuration.
-export const AUTO_ENABLED_SKILL_IDS: ReadonlySet<string> =
-  new Set<GlobalSkillId>(["discover_knowledge"]);
-
 function matchesFilter<T>(value: T, filter: T | T[]): boolean {
   return Array.isArray(filter) ? filter.includes(value) : value === filter;
 }
@@ -100,5 +95,13 @@ export class GlobalSkillsRegistry {
 
       return true;
     });
+  }
+
+  static isSkillAutoEnabled(sId: string): boolean {
+    return this.getById(sId)?.isAutoEnabled ?? false;
+  }
+
+  static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
+    return this.getById(sId)?.inheritAgentConfigurationDataSources ?? false;
   }
 }

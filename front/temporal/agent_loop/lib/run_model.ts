@@ -29,6 +29,7 @@ import {
   fetchMessageInConversation,
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
+import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
@@ -41,7 +42,6 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -206,11 +206,10 @@ export async function runModelActivity(
       conversation,
     });
 
-  const skillServers = await concurrentExecutor(
-    enabledSkills,
-    (skill) => skill.listMCPServerConfigurations(auth, agentConfiguration),
-    { concurrency: 5 }
-  );
+  const skillServers = await getSkillServers(auth, {
+    agentConfiguration,
+    skills: enabledSkills,
+  });
 
   const {
     serverToolsAndInstructions: mcpActions,
@@ -225,7 +224,7 @@ export async function runModelActivity(
     },
     {
       jitServers,
-      skillServers: skillServers.flat(),
+      skillServers,
     }
   );
 

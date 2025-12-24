@@ -10,6 +10,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -17,7 +18,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
@@ -169,11 +169,10 @@ async function handler(
           conversation,
         });
 
-      const skillServers = await concurrentExecutor(
-        enabledSkills,
-        (skill) => skill.listMCPServerConfigurations(auth, agentConfiguration),
-        { concurrency: 5 }
-      );
+      const skillServers = await getSkillServers(auth, {
+        agentConfiguration,
+        skills: enabledSkills,
+      });
 
       const clientSideMCPActionConfigurations =
         await createClientSideMCPServerConfigurations(
@@ -222,7 +221,7 @@ async function handler(
           },
           {
             jitServers,
-            skillServers: skillServers.flat(),
+            skillServers,
           }
         );
 

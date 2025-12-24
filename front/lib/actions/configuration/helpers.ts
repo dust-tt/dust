@@ -1,3 +1,4 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   DataSourceConfiguration,
   DataSourceFilter,
@@ -6,6 +7,7 @@ import type {
 import type { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import type { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
 export type RetrievalTimeframe =
@@ -71,5 +73,34 @@ export function renderTableConfiguration(
     }),
     workspaceId: dataSourceView.workspace.sId,
     tableId: table.tableId,
+  };
+}
+
+export function buildServerSideMCPServerConfiguration({
+  mcpServerView,
+  dataSources = null,
+}: {
+  mcpServerView: MCPServerViewResource;
+  dataSources?: DataSourceConfiguration[] | null;
+}): ServerSideMCPServerConfigurationType {
+  const { server } = mcpServerView.toJSON();
+
+  return {
+    id: -1,
+    sId: `mcp_${server.sId}`,
+    type: "mcp_server_configuration",
+    name: mcpServerView.name ?? server.name,
+    description: mcpServerView.description ?? server.description,
+    icon: server.icon,
+    mcpServerViewId: mcpServerView.sId,
+    internalMCPServerId: mcpServerView.internalMCPServerId,
+    dataSources,
+    tables: null,
+    childAgentId: null,
+    additionalConfiguration: {},
+    timeFrame: null,
+    dustAppConfiguration: null,
+    jsonSchema: null,
+    secretName: null,
   };
 }
