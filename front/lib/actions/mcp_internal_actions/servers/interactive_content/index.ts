@@ -347,9 +347,7 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text:
-              `File '${fileResource.sId}' (${fileResource.fileName}) reverted successfully to previous version. ` +
-              `The file has been restored to the state from the previous agent message. Current content:\n\n${revertedContent}`,
+            text: `File '${fileResource.sId}' successfully reverted to previous version. `,
           },
         ]);
       }

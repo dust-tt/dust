@@ -145,7 +145,7 @@ export class FileStorage {
     return files;
   }
 
-  async getFileVersions({
+  async getSortedFileVersions({
     filePath,
     maxResults,
   }: {

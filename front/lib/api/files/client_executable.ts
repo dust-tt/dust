@@ -379,7 +379,7 @@ export async function revertClientExecutableFileChanges(
   // Get all versions of the file (sorted newest to oldest)
   let versions;
   try {
-    versions = await fileStorage.getFileVersions({
+    versions = await fileStorage.getSortedFileVersions({
       filePath,
       maxResults: FILE_VERSIONS_TO_FETCH_FOR_REVERT,
     });
