@@ -1,10 +1,12 @@
 import {
+  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InformationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
@@ -102,6 +104,16 @@ export function SpaceLayout({
     >
       <div className="flex w-full flex-col">
         <Page.Vertical gap="lg" align="stretch">
+          {!canReadInSpace && (
+            <div>
+              <Chip
+                color="rose"
+                label="You are not a member of this space."
+                size="sm"
+                icon={InformationCircleIcon}
+              />
+            </div>
+          )}
           <SpaceSearchInput
             category={category}
             canReadInSpace={canReadInSpace}
