@@ -87,8 +87,7 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceViewResource
-  extends ReadonlyAttributesType<DataSourceViewModel> {}
+export interface DataSourceViewResource extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
