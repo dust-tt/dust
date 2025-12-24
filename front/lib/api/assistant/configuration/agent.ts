@@ -1015,7 +1015,7 @@ export async function archiveAgentConfiguration(
   }
 
   const updated = await AgentConfigurationModel.update(
-    { status: "archived" },
+    { status: "active", scope: "hidden" },
     {
       where: {
         sId: agentConfigurationId,
