@@ -343,10 +343,6 @@ export async function getClientExecutableFileContent(
   }
 }
 
-// Number of file versions to fetch when checking for revert capability.
-// We fetch 3 to determine: current (0), previous (1), and if there's another older version (2).
-const FILE_VERSIONS_TO_FETCH_FOR_REVERT = 3;
-
 // Minimum number of versions required to perform a revert (current + previous).
 const MIN_VERSIONS_FOR_REVERT = 2;
 
@@ -377,11 +373,11 @@ export async function revertClientExecutableFileChanges(
   const fileStorage = getPrivateUploadBucket();
 
   // Get all versions of the file (sorted newest to oldest)
+  // No maxResults limit - we need all versions to ensure correct sorting
   let versions;
   try {
     versions = await fileStorage.getSortedFileVersions({
       filePath,
-      maxResults: FILE_VERSIONS_TO_FETCH_FOR_REVERT,
     });
   } catch (error) {
     return new Err({
@@ -398,6 +394,16 @@ export async function revertClientExecutableFileChanges(
       message: "No previous version available to revert to",
     });
   }
+
+  // Log version generations for debugging
+  logger.info(
+    {
+      fileId,
+      versionGenerations: versions.map((v) => v.metadata.generation),
+      versionCount: versions.length,
+    },
+    "File versions retrieved for revert"
+  );
 
   const currentVersion = versions[0];
   const previousVersion = versions[1];

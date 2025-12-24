@@ -158,18 +158,21 @@ export class FileStorage {
       maxResults,
     });
 
-    // Filter to only the exact file path and sort by updated timestamp (newest first)
-    // Fall back to timeCreated if updated is not available
+    // Filter to only the exact file path and sort by generation (newest first)
+    // Generation represents the version order in GCS
+    // can be string or number per GCS types, though in practice it seems to always be a number
     const versions = files
       .filter((file) => file.name === filePath)
       .sort((a, b) => {
-        const timeA = new Date(
-          a.metadata.updated ?? a.metadata.timeCreated ?? 0
-        ).getTime();
-        const timeB = new Date(
-          b.metadata.updated ?? b.metadata.timeCreated ?? 0
-        ).getTime();
-        return timeB - timeA;
+        const genA =
+          typeof a.metadata.generation === "number"
+            ? a.metadata.generation
+            : Number(a.metadata.generation ?? 0);
+        const genB =
+          typeof b.metadata.generation === "number"
+            ? b.metadata.generation
+            : Number(b.metadata.generation ?? 0);
+        return genB - genA;
       });
 
     return versions;
