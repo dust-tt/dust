@@ -70,6 +70,9 @@ export const TOOLSETS_LIST_TOOL_NAME = "list";
 
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
+export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
+export const EDIT_IMAGE_TOOL_NAME = "edit_image";
+
 export const SEARCH_SERVER_NAME = "search";
 
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
