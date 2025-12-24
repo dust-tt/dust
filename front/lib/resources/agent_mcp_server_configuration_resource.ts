@@ -10,8 +10,7 @@ import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPServerConfigurationResource
-  extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
+export interface AgentMCPServerConfigurationResource extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPServerConfigurationModel> {

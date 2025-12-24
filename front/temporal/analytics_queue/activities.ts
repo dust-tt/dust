@@ -24,6 +24,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
@@ -321,78 +322,56 @@ async function extractRetrievalOutputs(
     return [];
   }
 
-  const outputItemsByActionId =
-    await AgentMCPActionResource.fetchOutputItemsByActionIds(
-      auth,
-      searchActions.map((a) => a.id)
-    );
-
   const configIds = Array.from(
     new Set(searchActions.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs =
-    await AgentMCPServerConfigurationResource.fetchByModelIdsAsStrings(
+  const [outputItemsByActionId, serverConfigs] = await Promise.all([
+    AgentMCPActionResource.fetchOutputItemsByActionIds(
+      auth,
+      searchActions.map((a) => a.id)
+    ),
+    AgentMCPServerConfigurationResource.fetchByModelIdsAsStrings(
       auth,
       configIds
-    );
+    ),
+  ]);
 
   const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
 
+  const baseDocument = {
+    message_id: agentMessageRow.sId,
+    workspace_id: workspace.sId,
+    conversation_id: conversationRow.sId,
+    agent_id: agentAgentMessageRow.agentConfigurationId,
+    agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
+  };
+
+  const partialDocuments: (typeof baseDocument & {
+    mcp_server_configuration_id: string;
+    mcp_server_name: string;
+    data_source_view_id: string;
+    data_source_id: string;
+    document_id: string;
+  })[] = [];
   const dataSourceViewIds = new Set<string>();
-  for (const action of searchActions) {
-    if (!isLightServerSideMCPToolConfiguration(action.toolConfiguration)) {
-      continue;
-    }
-    const { toolConfiguration } = action;
-    if (toolConfiguration.dataSources) {
-      toolConfiguration.dataSources.forEach((ds) => {
-        dataSourceViewIds.add(ds.dataSourceViewId);
-      });
-    }
-  }
-
-  const dataSourceViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    Array.from(dataSourceViewIds)
-  );
-
-  const dataSourceViewMap = new Map<
-    string,
-    { dataSourceId: string; dataSourceName: string }
-  >();
-
-  for (const dsv of dataSourceViews) {
-    const { dataSource } = dsv;
-    if (dataSource) {
-      dataSourceViewMap.set(dsv.sId, {
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        dataSourceName: dataSource.name,
-      });
-    }
-  }
-
-  const documents: AgentRetrievalOutputAnalyticsData[] = [];
 
   for (const action of searchActions) {
-    const actionOutputItems = outputItemsByActionId.get(action.id);
-    if (!actionOutputItems) {
-      continue;
-    }
-
     const config = configMap.get(action.mcpServerConfigurationId);
     if (!config) {
       continue;
     }
 
-    if (!isLightServerSideMCPToolConfiguration(action.toolConfiguration)) {
+    const actionOutputItems = outputItemsByActionId.get(action.id);
+    if (!actionOutputItems) {
       continue;
     }
-    const toolConfig = action.toolConfiguration;
 
-    if (!toolConfig.dataSources || toolConfig.dataSources.length === 0) {
-      continue;
-    }
+    const mcpServerName =
+      action.metadata.internalMCPServerName ??
+      action.metadata.mcpServerId ??
+      "unknown";
 
     for (const outputItem of actionOutputItems) {
       if (!isSearchResultResourceType(outputItem.content)) {
@@ -400,35 +379,68 @@ async function extractRetrievalOutputs(
       }
 
       const searchResult = outputItem.content.resource;
+      const dataSourceViewId = searchResult.source.data_source_view_id;
+      const dataSourceId = searchResult.source.data_source_id;
 
-      for (const dsConfig of toolConfig.dataSources) {
-        const dsInfo = dataSourceViewMap.get(dsConfig.dataSourceViewId);
-        if (!dsInfo) {
-          continue;
-        }
-
-        documents.push({
-          message_id: agentMessageRow.sId,
-          workspace_id: workspace.sId,
-          conversation_id: conversationRow.sId,
-          agent_id: agentAgentMessageRow.agentConfigurationId,
-          agent_version:
-            agentAgentMessageRow.agentConfigurationVersion.toString(),
-          timestamp: new Date(agentMessageRow.createdAt).toISOString(),
-          mcp_server_configuration_id: config.sId,
-          mcp_server_name:
-            action.metadata.internalMCPServerName ??
-            action.metadata.mcpServerId ??
-            "unknown",
-          data_source_view_id: dsConfig.dataSourceViewId,
-          data_source_id: dsInfo.dataSourceId,
-          data_source_name: dsInfo.dataSourceName,
-          document_id: searchResult.id,
-        });
-
-        break;
+      if (!dataSourceViewId || !dataSourceId) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            messageId: agentMessageRow.sId,
+            documentId: searchResult.id,
+          },
+          "[extractRetrievalOutputs] Search result missing data source IDs"
+        );
+        continue;
       }
+
+      dataSourceViewIds.add(dataSourceViewId);
+
+      partialDocuments.push({
+        ...baseDocument,
+        mcp_server_configuration_id: config.sId,
+        mcp_server_name: mcpServerName,
+        data_source_view_id: dataSourceViewId,
+        data_source_id: dataSourceId,
+        document_id: searchResult.id,
+      });
     }
+  }
+
+  // Fetch only the data source views that actually appear in results
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    Array.from(dataSourceViewIds)
+  );
+
+  const dataSourceViewMap = new Map<string, string>();
+  for (const dsv of dataSourceViews) {
+    if (dsv.dataSource) {
+      dataSourceViewMap.set(dsv.sId, dsv.dataSource.name);
+    }
+  }
+
+  // Enrich partial documents with data source names
+  const documents: AgentRetrievalOutputAnalyticsData[] = [];
+  for (const partial of partialDocuments) {
+    const dataSourceName = dataSourceViewMap.get(partial.data_source_view_id);
+    if (!dataSourceName) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          messageId: agentMessageRow.sId,
+          dataSourceViewId: partial.data_source_view_id,
+          documentId: partial.document_id,
+        },
+        "[extractRetrievalOutputs] Data source view not found"
+      );
+      continue;
+    }
+
+    documents.push({
+      ...partial,
+      data_source_name: dataSourceName,
+    });
   }
 
   return documents;

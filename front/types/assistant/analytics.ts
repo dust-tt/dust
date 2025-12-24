@@ -50,8 +50,7 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   workspace_id: string;
 }
 
-export interface AgentRetrievalOutputAnalyticsData
-  extends ElasticsearchBaseDocument {
+export interface AgentRetrievalOutputAnalyticsData extends ElasticsearchBaseDocument {
   message_id: string;
   workspace_id: string;
   conversation_id: string;
