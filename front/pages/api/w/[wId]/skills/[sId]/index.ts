@@ -268,7 +268,7 @@ async function handler(
 
         return new Ok({
           updatedSkill,
-          createdTools: mcpServerViews.map((t) => ({ mcpServerViewId: t.sId })),
+          createdTools: mcpServerViews.map((view) => view.toJSON()),
         });
       });
 

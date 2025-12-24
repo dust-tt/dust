@@ -244,10 +244,7 @@ async function handler(
       );
 
       return res.status(200).json({
-        skillConfiguration: {
-          ...skillResource.toJSON(auth),
-          tools: body.tools,
-        },
+        skillConfiguration: skillResource.toJSON(auth),
       });
     }
 
