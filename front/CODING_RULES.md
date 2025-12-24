@@ -138,6 +138,33 @@ logger.info({ user }, "User created");
 logger.error({ err: error }, "Failed to fetch data");
 ```
 
+### [GEN9] Use unit suffixes for money and time variables
+
+Variables representing monetary amounts or time durations must include a unit suffix in their name.
+This prevents conversion errors (e.g., cents vs dollars, milliseconds vs seconds) such as the one
+that caused [this incident](https://dust4ai.slack.com/archives/C05B529FHV1/p1764835038528229).
+
+Common suffixes:
+- Money: `Cents`, `Dollars` (e.g., `priceCents`, `amountDollars`)
+- Time: `Ms`, `Seconds`, `Minutes`, `Hours` (e.g., `timeoutMs`, `durationSeconds`)
+
+Reviewer: If you detect a variable representing money or time without a unit suffix, require the
+author to rename it with the appropriate suffix.
+
+Example:
+
+```
+// BAD
+const price = 1999;
+const timeout = 5000;
+const delay = 30;
+
+// GOOD
+const priceCents = 1999;
+const timeoutMs = 5000;
+const delaySeconds = 30;
+```
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers
