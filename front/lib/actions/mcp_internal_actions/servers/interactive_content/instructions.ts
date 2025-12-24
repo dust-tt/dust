@@ -36,8 +36,8 @@ This toolset is called Frame in the product, users may refer to it as such.
 
 ### Reverting Files:
 - Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version from GCS versioning.
-- Each revert moves back one version in the file's history.
-- Use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to see the current content after reverting.
+- Each revert moves back one version in the file's history. Reverting multiple times in sequence moves progressively backward through versions (not a toggle).
+- Each edit creates a new version. If you made multiple edits in a single message, one revert will only undo the most recent edit.
 
 ### Renaming Files:
 - Use \`${RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to rename an existing Interactive Content file

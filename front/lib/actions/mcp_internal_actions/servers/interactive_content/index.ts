@@ -347,7 +347,7 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text: `File '${fileResource.sId}' (${fileResource.fileName}) successfully reverted to previous version.`,
+            text: `File '${fileResource.sId}' reverted successfully.`,
           },
         ]);
       }
