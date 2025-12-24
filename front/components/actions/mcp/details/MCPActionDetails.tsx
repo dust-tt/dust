@@ -34,7 +34,10 @@ import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/deta
 import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
-import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
+import {
+  MCPImageEditingActionDetails,
+  MCPImageGenerationActionDetails,
+} from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
@@ -57,11 +60,13 @@ import {
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
+  EDIT_IMAGE_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
   FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  GENERATE_IMAGE_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
@@ -255,7 +260,12 @@ export function MCPActionDetails({
   }
 
   if (internalMCPServerName === "image_generation") {
-    return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
+    switch (toolName) {
+      case GENERATE_IMAGE_TOOL_NAME:
+        return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
+      case EDIT_IMAGE_TOOL_NAME:
+        return <MCPImageEditingActionDetails {...toolOutputDetailsProps} />;
+    }
   }
 
   if (internalMCPServerName === "run_agent") {

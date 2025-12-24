@@ -16,3 +16,15 @@ export function MCPImageGenerationActionDetails({
     />
   );
 }
+
+export function MCPImageEditingActionDetails({
+  viewType,
+}: ToolExecutionDetailsProps) {
+  return (
+    <ActionDetailsWrapper
+      viewType={viewType}
+      actionName={viewType === "conversation" ? "Editing image" : "Edit image"}
+      visual={ActionImageIcon}
+    />
+  );
+}
