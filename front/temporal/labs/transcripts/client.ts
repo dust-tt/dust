@@ -5,6 +5,7 @@ import {
 } from "@temporalio/client";
 
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
@@ -19,17 +20,26 @@ function makeScheduleId(
   return `retrieve-transcripts-${transcriptsConfiguration.workspaceId}-${transcriptsConfiguration.id}`;
 }
 
-function getScheduleOptions(
+async function getScheduleOptions(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   scheduleId: string
-): ScheduleOptions {
+): Promise<ScheduleOptions> {
+  const workspace = await WorkspaceResource.fetchByModelId(
+    transcriptsConfiguration.workspaceId
+  );
+  if (!workspace) {
+    throw new Error(
+      `Workspace not found for transcriptsConfiguration ${transcriptsConfiguration.sId}`
+    );
+  }
+
   return {
     action: {
       type: "startWorkflow",
       workflowType: retrieveNewTranscriptsWorkflow,
       args: [
         {
-          workspaceId: transcriptsConfiguration.workspaceId,
+          workspaceId: workspace.sId,
           transcriptsConfigurationId: transcriptsConfiguration.sId,
         },
       ],
@@ -57,7 +67,7 @@ export async function launchRetrieveTranscriptsWorkflow(
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const scheduleId = makeScheduleId(transcriptsConfiguration);
-  const scheduleOptions = getScheduleOptions(
+  const scheduleOptions = await getScheduleOptions(
     transcriptsConfiguration,
     scheduleId
   );
