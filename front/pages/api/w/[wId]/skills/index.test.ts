@@ -433,7 +433,10 @@ describe("POST /api/w/[wId]/skills", () => {
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       icon: null,
-      tools: [serverView1.toJSON(), serverView2.toJSON()],
+      tools: [
+        { mcpServerViewId: serverView1.sId },
+        { mcpServerViewId: serverView2.sId },
+      ],
       extendedSkillId: null,
     };
 
