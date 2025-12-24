@@ -269,10 +269,10 @@ export function constructGuidelinesSection({
   }
 
   guidelinesSection +=
-    "\n## GENERATING LATEX FORMULAS\n" +
-    "When generating LaTeX formulas exclusively rely on the double dollars $$ escape sequence. " +
-    "Single dollar $ escape sequences are not supported. " +
-    "Parentheses are not sufficient to denote mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
+    "\n## MATH FORMULAS\n" +
+    "When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. " +
+    "Single dollar $ escape sequences are not supported and " +
+    "parentheses are not sufficient to denote mathematical formulas:\nBAD: \\( \\Delta \\)\nGOOD: $$ \\Delta $$.\n";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
