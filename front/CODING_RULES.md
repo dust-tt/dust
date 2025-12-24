@@ -145,6 +145,7 @@ This prevents conversion errors (e.g., cents vs dollars, milliseconds vs seconds
 that caused [this incident](https://dust4ai.slack.com/archives/C05B529FHV1/p1764835038528229).
 
 Common suffixes:
+
 - Money: `Cents`, `Dollars` (e.g., `priceCents`, `amountDollars`)
 - Time: `Ms`, `Seconds`, `Minutes`, `Hours` (e.g., `timeoutMs`, `durationSeconds`)
 
