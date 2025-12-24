@@ -25,6 +25,8 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { sha256 } from "@app/types/shared/utils/hashing";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
@@ -199,7 +201,7 @@ export async function storeAgentAnalytics(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   if (featureFlags.includes("agent_tool_outputs_analytics")) {
-    const toolOutputs = await extractRetrievalOutputs(auth, {
+    const toolOutputs = await extractRetrievalDocuments(auth, {
       agentMessageRow,
       agentAgentMessageRow,
       conversationRow,
@@ -270,10 +272,15 @@ async function collectToolUsageFromMessage(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
 
+  // Convert string IDs to numeric ModelIds at call site.
+  const configModelIds: ModelId[] = uniqueConfigIds
+    .map((id) => parseInt(id, 10))
+    .filter((id) => !isNaN(id));
+
   const serverConfigs =
-    await AgentMCPServerConfigurationResource.fetchByModelIdsAsStrings(
+    await AgentMCPServerConfigurationResource.fetchByModelIds(
       auth,
-      uniqueConfigIds
+      configModelIds
     );
 
   const configIdToSId = new Map(
@@ -298,7 +305,7 @@ async function collectToolUsageFromMessage(
   });
 }
 
-async function extractRetrievalOutputs(
+async function extractRetrievalDocuments(
   auth: Authenticator,
   {
     agentMessageRow,
@@ -326,15 +333,19 @@ async function extractRetrievalOutputs(
     new Set(searchActions.map((a) => a.mcpServerConfigurationId))
   );
 
+  // Convert string IDs to numeric ModelIds at call site.
+  const configModelIds: ModelId[] = configIds
+    .map((id) => parseInt(id, 10))
+    .filter((id) => !isNaN(id));
+
+  // Fetch MCP server configurations for analytics tracking.
+  // Using standalone resource allows independent querying for reporting purposes.
   const [outputItemsByActionId, serverConfigs] = await Promise.all([
     AgentMCPActionResource.fetchOutputItemsByActionIds(
       auth,
       searchActions.map((a) => a.id)
     ),
-    AgentMCPServerConfigurationResource.fetchByModelIdsAsStrings(
-      auth,
-      configIds
-    ),
+    AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds),
   ]);
 
   const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
@@ -389,7 +400,7 @@ async function extractRetrievalOutputs(
             messageId: agentMessageRow.sId,
             documentId: searchResult.id,
           },
-          "[extractRetrievalOutputs] Search result missing data source IDs"
+          "[extractRetrievalDocuments] Search result missing data source IDs"
         );
         continue;
       }
@@ -432,7 +443,7 @@ async function extractRetrievalOutputs(
           dataSourceViewId: partial.data_source_view_id,
           documentId: partial.document_id,
         },
-        "[extractRetrievalOutputs] Data source view not found"
+        "[extractRetrievalDocuments] Data source view not found"
       );
       continue;
     }
@@ -490,7 +501,10 @@ function makeRetrievalOutputDocumentId({
   documentId: string;
   dataSourceViewId: string;
 }): string {
-  return `${workspaceId}_${messageId}_${dataSourceViewId}_${documentId}`;
+  // Hash the raw document ID to ensure safe Elasticsearch _id.
+  // Document IDs from data sources may contain special characters or be very long.
+  const normalizedDocId = sha256(documentId);
+  return `${workspaceId}_${messageId}_${dataSourceViewId}_${normalizedDocId}`;
 }
 
 async function storeRetrievalOutputsToElasticsearch(
