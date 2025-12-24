@@ -198,3 +198,61 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
     getMCPServerRequirements(view).noRequirement
   );
 }
+
+// Converts a JSON object to Markdown format with bullet points.
+// Recursively handles nested objects and arrays.
+export function jsonToMarkdown(data: any, indent: number = 0): string {
+  const indentStr = "  ".repeat(indent);
+
+  if (data === null || data === undefined) {
+    return `${indentStr}- (empty)`;
+  }
+
+  if (
+    typeof data === "string" ||
+    typeof data === "number" ||
+    typeof data === "boolean"
+  ) {
+    return `${indentStr}- ${data}`;
+  }
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return `${indentStr}- []`;
+    }
+    return data.map((item) => jsonToMarkdown(item, indent)).join("\n");
+  }
+
+  if (typeof data === "object") {
+    return Object.entries(data)
+      .map(([key, value]) => {
+        if (value === null || value === undefined) {
+          return `${indentStr}- **${key}:** (empty)`;
+        }
+
+        if (
+          typeof value === "string" ||
+          typeof value === "number" ||
+          typeof value === "boolean"
+        ) {
+          return `${indentStr}- **${key}:** ${value}`;
+        }
+
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            return `${indentStr}- **${key}:** []`;
+          }
+          return `${indentStr}- **${key}:**\n${jsonToMarkdown(value, indent + 1)}`;
+        }
+
+        if (typeof value === "object") {
+          return `${indentStr}- **${key}:**\n${jsonToMarkdown(value, indent + 1)}`;
+        }
+
+        return `${indentStr}- **${key}:** ${String(value)}`;
+      })
+      .join("\n");
+  }
+
+  return `${indentStr}- ${String(data)}`;
+}

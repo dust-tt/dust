@@ -4,7 +4,10 @@ import { escape } from "html-escaper";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  jsonToMarkdown,
+  makeInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -350,7 +353,7 @@ function createServer(
           result.messages ?? [],
           async (message: { id: string }) => {
             const messageResponse = await fetchFromGmail(
-              `/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=In-Reply-To&metadataHeaders=References`,
+              `/gmail/v1/users/me/messages/${message.id}?format=full`,
               accessToken,
               { method: "GET" }
             );
@@ -364,10 +367,33 @@ function createServer(
               };
             }
 
-            const messageData = await messageResponse.json();
+            const messageData: GmailMessage = await messageResponse.json();
+
+            // Extract headers for easy access
+            const headers = messageData.payload?.headers ?? [];
+            const from = getHeaderValue(headers, "From");
+            const to = getHeaderValue(headers, "To");
+            const cc = getHeaderValue(headers, "Cc");
+            const subject = getHeaderValue(headers, "Subject");
+            const date = getHeaderValue(headers, "Date");
+
+            // Decode the full email body
+            const body = decodeMessageBody(messageData.payload);
+
             return {
               success: true,
-              data: messageData,
+              data: {
+                id: messageData.id,
+                threadId: messageData.threadId,
+                labelIds: messageData.labelIds,
+                internalDate: messageData.internalDate,
+                from,
+                to,
+                cc,
+                subject,
+                date,
+                body,
+              },
             };
           },
           { concurrency: 10 }
@@ -390,29 +416,28 @@ function createServer(
         const totalSuccessful = successfulMessages.length;
         const totalFailed = failedMessages.length;
 
-        let message = "Messages fetched successfully";
+        const responseData = {
+          messages: successfulMessages,
+          failedMessages,
+          summary: {
+            totalRequested,
+            totalSuccessful,
+            totalFailed,
+          },
+        };
+
+        const markdownOutput = jsonToMarkdown(responseData);
+
+        let statusMessage = "Messages fetched successfully";
         if (totalFailed > 0) {
-          message = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
+          statusMessage = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
         }
 
         return new Ok([
-          { type: "text" as const, text: message },
+          { type: "text" as const, text: statusMessage },
           {
             type: "text" as const,
-            text: JSON.stringify(
-              {
-                messages: successfulMessages,
-                failedMessages,
-                summary: {
-                  totalRequested,
-                  totalSuccessful,
-                  totalFailed,
-                },
-                nextPageToken: result.nextPageToken,
-              },
-              null,
-              2
-            ),
+            text: markdownOutput,
           },
         ]);
       }
