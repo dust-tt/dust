@@ -602,7 +602,11 @@ export function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): Result<string, Error> {
-  const slugifiedConfigName = slugify(config.name);
+  // Slugify each part separately to preserve __ separators (used for space disambiguation notably).
+  const slugifiedConfigName = config.name
+    .split(TOOL_NAME_SEPARATOR)
+    .map(slugify)
+    .join(TOOL_NAME_SEPARATOR);
   const slugifiedOriginalName = slugify(originalName).replaceAll(
     // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
     /[^a-zA-Z0-9_.-]/g,
