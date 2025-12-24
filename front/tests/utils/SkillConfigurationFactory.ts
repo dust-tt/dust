@@ -27,15 +27,21 @@ export class SkillConfigurationFactory {
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
 
-    return SkillResource.makeNew(auth, {
-      authorId: user.id,
-      agentFacingDescription,
-      userFacingDescription,
-      instructions,
-      name,
-      requestedSpaceIds: [],
-      status,
-    });
+    return SkillResource.makeNew(
+      auth,
+      {
+        authorId: user.id,
+        agentFacingDescription,
+        userFacingDescription,
+        instructions,
+        name,
+        requestedSpaceIds: [],
+        status,
+      },
+      {
+        mcpServerViews: [],
+      }
+    );
   }
 
   static async linkToAgent(
