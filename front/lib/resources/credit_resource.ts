@@ -476,7 +476,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<number | undefined, Error>> {
+  ): Promise<Result<number, Error>> {
     assert(
       this.startDate === null || this.type === "free",
       "Cannot delete a credit that has been started. Use freeze() instead."
@@ -486,6 +486,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       where: { id: this.id, workspaceId: auth.getNonNullableWorkspace().id },
       transaction,
     });
+
     return new Ok(deletedCount);
   }
 }
