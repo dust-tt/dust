@@ -135,8 +135,21 @@ export function AgentBuilderInstructionsEditor({
         suggestion: suggestionHandler,
       }),
       Placeholder.configure({
-        placeholder:
-          "What does this agent do? How should it behave? What should it avoid doing?",
+        placeholder: ({ editor }) => {
+          // Don't show placeholder inside instruction blocks
+          const { state } = editor;
+          const { selection } = state;
+          const $pos = selection.$anchor;
+
+          // Check if we're inside an instruction block
+          for (let depth = $pos.depth; depth > 0; depth--) {
+            if ($pos.node(depth).type.name === "instructionBlock") {
+              return "";
+            }
+          }
+
+          return "What does this agent do? How should it behave? What should it avoid doing?";
+        },
         emptyNodeClass:
           "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
       }),

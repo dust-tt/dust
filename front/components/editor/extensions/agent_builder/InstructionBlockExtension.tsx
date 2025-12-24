@@ -31,14 +31,7 @@ declare module "@tiptap/core" {
 }
 
 // Define consistent heading styles to match the main editor
-const instructionBlockContentStyles = cn(
-  "prose prose-sm",
-  // Override for all headings to match the editor's heading style
-  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:text-xl",
-  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-semibold",
-  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:mt-4",
-  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:mb-3"
-);
+const instructionBlockContentStyles = cn("prose prose-sm");
 
 const InstructionBlockChip = ({ text }: { text: string }) => {
   return (
