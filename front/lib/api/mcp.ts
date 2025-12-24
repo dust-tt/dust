@@ -77,7 +77,7 @@ export type MCPServerType = {
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
   developerSecretSelection?: DeveloperSecretSelectionType | null;
-   developerSecretSelectionDescription?: string | null;
+  developerSecretSelectionDescription?: string | null;
   sharedSecret?: string | null;
   customHeaders?: Record<string, string> | null;
 };
