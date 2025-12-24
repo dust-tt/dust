@@ -1,7 +1,10 @@
 import { parse } from "csv-parse/sync";
 import { readFileSync } from "fs";
 
-import { restoreAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  restoreAgentConfiguration,
+  updateAgentConfigurationScope,
+} from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
@@ -71,6 +74,22 @@ makeScript(
               { agentName, agentId },
               "Successfully restored agent"
             );
+            const updated = await updateAgentConfigurationScope(
+              auth,
+              agentId,
+              "hidden"
+            );
+            if (updated) {
+              scriptLogger.info(
+                { agentName, agentId },
+                "Successfully updated agent scope to hidden"
+              );
+            } else {
+              scriptLogger.warn(
+                { agentName, agentId },
+                "Failed to update agent scope to hidden"
+              );
+            }
             successCount++;
           } else {
             scriptLogger.warn(
