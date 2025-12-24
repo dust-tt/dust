@@ -673,6 +673,7 @@ async function disambiguateServerNamesBySpace(
     return configs;
   }
 
+  // We fetch the views to get the space names.
   const mcpServerViews = await MCPServerViewResource.fetchByIds(
     auth,
     viewIdsToFetch
@@ -691,7 +692,7 @@ async function disambiguateServerNamesBySpace(
       if (spaceName) {
         return {
           ...config,
-          name: `${spaceName}${TOOL_NAME_SEPARATOR}${config.name}`,
+          name: `${slugify(spaceName)}${TOOL_NAME_SEPARATOR}${config.name}`,
         };
       }
     }
