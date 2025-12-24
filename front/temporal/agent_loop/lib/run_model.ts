@@ -359,8 +359,8 @@ export async function runModelActivity(
       await publishAgentError({
         code: "duplicate_specification_name",
         message:
-          `Duplicate action name in agent configuration: ${spec.name}. ` +
-          "Your agents actions must have unique names.",
+          `Found multiple tools named "${spec.name}". ` +
+          "Each tool needs a unique name so the agent can specify which one to use.",
         metadata: null,
       });
 
