@@ -79,7 +79,7 @@ makeScript(
               agentId,
               "hidden"
             );
-            if (updated) {
+            if (updated.isOk()) {
               scriptLogger.info(
                 { agentName, agentId },
                 "Successfully updated agent scope to hidden"
