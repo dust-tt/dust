@@ -361,4 +361,88 @@ Toto:
 
 <br>`);
   });
+
+  describe("type editing", () => {
+    it("should update block type when attribute is changed", () => {
+      editor.commands.setContent("<instructions>\n\nhello\n\n</instructions>", {
+        contentType: "markdown",
+      });
+
+      // Find the instruction block and update its type
+      const { state } = editor;
+      let blockPos = -1;
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === "instructionBlock") {
+          blockPos = pos;
+          return false;
+        }
+      });
+
+      expect(blockPos).toBeGreaterThanOrEqual(0);
+
+      // Update the type attribute
+      editor.commands.command(({ tr }) => {
+        tr.setNodeAttribute(blockPos, "type", "examples");
+        return true;
+      });
+
+      const json = editor.getJSON();
+      expect(json.content?.[0].attrs?.type).toBe("examples");
+    });
+
+    it("should serialize updated type to markdown", () => {
+      editor.commands.setContent("<instructions>\n\nhello\n\n</instructions>", {
+        contentType: "markdown",
+      });
+
+      // Update the type
+      const { state } = editor;
+      let blockPos = -1;
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === "instructionBlock") {
+          blockPos = pos;
+          return false;
+        }
+      });
+
+      editor.commands.command(({ tr }) => {
+        tr.setNodeAttribute(blockPos, "type", "examples");
+        return true;
+      });
+
+      const markdown = editor.getMarkdown();
+      expect(markdown).toContain("<examples>");
+      expect(markdown).toContain("</examples>");
+    });
+
+    it("should handle type change from default to custom", () => {
+      editor.commands.insertInstructionBlock();
+
+      // Verify initial type is "instructions"
+      const initialJson = editor.getJSON();
+      expect(initialJson.content?.[0].attrs?.type).toBe("instructions");
+
+      // Change to custom type
+      const { state } = editor;
+      let blockPos = -1;
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === "instructionBlock") {
+          blockPos = pos;
+          return false;
+        }
+      });
+
+      editor.commands.command(({ tr }) => {
+        tr.setNodeAttribute(blockPos, "type", "custom_type");
+        return true;
+      });
+
+      const updatedJson = editor.getJSON();
+      expect(updatedJson.content?.[0].attrs?.type).toBe("custom_type");
+
+      const markdown = editor.getMarkdown();
+      expect(markdown).toContain("<custom_type>");
+      expect(markdown).toContain("</custom_type>");
+    });
+  });
 });
