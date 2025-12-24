@@ -292,6 +292,8 @@ export const SearchResultResourceSchema = z.object({
   chunks: z.array(z.string()),
   source: z.object({
     provider: z.string().optional(),
+    data_source_id: z.string().optional(),
+    data_source_view_id: z.string().optional(),
   }),
 });
 
