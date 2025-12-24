@@ -33,4 +33,5 @@ export const discoverKnowledgeSkill = {
   version: 1,
   icon: "ActionBookOpenIcon",
   inheritAgentConfigurationDataSources: true,
+  isAutoEnabled: true,
 } as const satisfies GlobalSkillDefinition;
