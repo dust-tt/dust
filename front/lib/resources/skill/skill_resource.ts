@@ -1255,10 +1255,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.globalSId ? null : this.instructions,
       requestedSpaceIds: requestedSpaceIds,
       icon: this.icon ?? null,
-      // TODO(skills: 2025-12-23): return entire MCPServerViewType here and update call sites.
-      tools: this.mcpServerViews.map((view) => ({
-        mcpServerViewId: view.sId,
-      })),
+      tools: this.mcpServerViews.map((view) => view.toJSON()),
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable(),
       extendedSkillId: this.extendedSkillId,
