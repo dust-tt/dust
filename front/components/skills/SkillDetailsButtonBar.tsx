@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Button,
   ClipboardIcon,
   DropdownMenu,
@@ -8,23 +7,29 @@ import {
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface SkillDetailsButtonBarProps {
-  skill: SkillType;
+  skill: SkillWithRelationsType;
   owner: WorkspaceType;
+  onClose: () => void;
 }
 
 export function SkillDetailsButtonBar({
   skill,
   owner,
+  onClose,
 }: SkillDetailsButtonBarProps) {
   const router = useRouter();
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   if (!skill.canWrite && !skill.isExtendable) {
     return null;
