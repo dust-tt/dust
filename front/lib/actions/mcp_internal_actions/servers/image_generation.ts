@@ -9,6 +9,10 @@ import {
   GENERATE_IMAGE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  EditImageInputSchema,
+  GenerateImageInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -274,35 +278,7 @@ function createServer(
     "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
       " better the result will be. You can customize the output through various parameters to" +
       " match your needs.",
-    {
-      prompt: z
-        .string()
-        .max(4000)
-        .describe(
-          "A text description of the desired image. The maximum length is 32000 characters."
-        ),
-      name: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the generated image. Must be 64 characters or less."
-        ),
-      quality: z
-        .enum(["auto", "low", "medium", "high"])
-        .optional()
-        .default("auto")
-        .describe(
-          "The quality of the generated image. Must be one of auto, low, medium, or high. Auto" +
-            " will automatically choose the best quality for the size."
-        ),
-      size: z
-        .enum(["1024x1024", "1536x1024", "1024x1536"])
-        .optional()
-        .default("1024x1024")
-        .describe(
-          "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
-        ),
-    },
+    GenerateImageInputSchema.shape,
     withToolLogging(
       auth,
       { toolNameForMonitoring: GENERATE_IMAGE_TOOL_NAME, agentLoopContext },
