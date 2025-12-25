@@ -198,14 +198,12 @@ export default function WorkspaceSkills({
 
   return (
     <>
-      {!!selectedSkill && (
-        <SkillDetailsSheet
-          skill={selectedSkill}
-          onClose={() => setSelectedSkill(null)}
-          user={user}
-          owner={owner}
-        />
-      )}
+      <SkillDetailsSheet
+        skill={selectedSkill}
+        onClose={() => setSelectedSkill(null)}
+        user={user}
+        owner={owner}
+      />
 
       <AgentDetails
         owner={owner}
