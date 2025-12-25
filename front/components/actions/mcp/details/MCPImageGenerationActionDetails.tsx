@@ -1,4 +1,4 @@
-import { ActionImageIcon, Chip } from "@dust-tt/sparkle";
+import { ActionImageIcon, Chip, cn } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -41,7 +41,12 @@ export function MCPImageGenerationActionDetails({
             <Chip label={`${quality} quality`} color="success" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p
+          className={cn(
+            "text-sm text-muted-foreground dark:text-muted-foreground-night",
+            viewType === "conversation" ? "line-clamp-3" : ""
+          )}
+        >
           {prompt}
         </p>
       </div>
@@ -81,7 +86,12 @@ export function MCPImageEditingActionDetails({
             <Chip label={`${quality} quality`} color="success" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p
+          className={cn(
+            "text-sm text-muted-foreground dark:text-muted-foreground-night",
+            viewType === "conversation" ? "line-clamp-3" : ""
+          )}
+        >
           {editPrompt}
         </p>
       </div>
