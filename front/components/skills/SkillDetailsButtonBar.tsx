@@ -31,43 +31,61 @@ export function SkillDetailsButtonBar({
   }
 
   return (
-    <div className="flex flex-row items-center gap-2 px-1.5">
-      {skill.canWrite && (
-        <Button
-          size="sm"
-          tooltip="Edit agent"
-          href={getSkillBuilderRoute(owner.sId, skill.sId)}
-          variant="outline"
-          icon={PencilSquareIcon}
-        />
-      )}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button icon={MoreIcon} size="sm" variant="ghost" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            label="Copy skill ID"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await navigator.clipboard.writeText(skill.sId);
-            }}
-            icon={BracesIcon}
+    <>
+      <ArchiveSkillDialog
+        owner={owner}
+        isOpen={showArchiveDialog}
+        skillConfiguration={skill}
+        onClose={() => {
+          setShowArchiveDialog(false);
+          onClose();
+        }}
+      />
+      <div className="flex flex-row items-center gap-2 px-1.5">
+        {skill.canWrite && (
+          <Button
+            size="sm"
+            tooltip="Edit agent"
+            href={getSkillBuilderRoute(owner.sId, skill.sId)}
+            variant="outline"
+            icon={PencilSquareIcon}
           />
-          {skill.isExtendable && (
-            <DropdownMenuItem
-              label="Extend (New)"
-              icon={ClipboardIcon}
-              onClick={async (e) => {
-                e.stopPropagation();
-                await router.push(
-                  getSkillBuilderRoute(owner.sId, "new", `extends=${skill.sId}`)
-                );
-              }}
-            />
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button icon={MoreIcon} size="sm" variant="ghost" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {skill.isExtendable && (
+              <DropdownMenuItem
+                label="Extend (New)"
+                icon={ClipboardIcon}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await router.push(
+                    getSkillBuilderRoute(
+                      owner.sId,
+                      "new",
+                      `extends=${skill.sId}`
+                    )
+                  );
+                }}
+              />
+            )}
+            {skill.canWrite && (
+              <DropdownMenuItem
+                label="Archive"
+                icon={TrashIcon}
+                variant="warning"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowArchiveDialog(true);
+                }}
+              />
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
   );
 }
