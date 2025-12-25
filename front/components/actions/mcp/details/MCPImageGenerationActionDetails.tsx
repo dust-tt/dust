@@ -1,11 +1,30 @@
-import { ActionImageIcon } from "@dust-tt/sparkle";
+import { ActionImageIcon, Chip } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import {
+  isEditImageInputType,
+  isGenerateImageInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 
 export function MCPImageGenerationActionDetails({
   viewType,
+  toolParams,
 }: ToolExecutionDetailsProps) {
+  if (!isGenerateImageInputType(toolParams)) {
+    return (
+      <ActionDetailsWrapper
+        viewType={viewType}
+        actionName={
+          viewType === "conversation" ? "Generating image" : "Generate image"
+        }
+        visual={ActionImageIcon}
+      />
+    );
+  }
+
+  const { prompt, name, quality, size } = toolParams;
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
@@ -13,18 +32,59 @@ export function MCPImageGenerationActionDetails({
         viewType === "conversation" ? "Generating image" : "Generate image"
       }
       visual={ActionImageIcon}
-    />
+    >
+      <div className="flex flex-col gap-3 pl-6 pt-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip label={name} color="primary" />
+          {size && <Chip label={size} color="highlight" />}
+          {quality && quality !== "auto" && (
+            <Chip label={`${quality} quality`} color="success" />
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {prompt}
+        </p>
+      </div>
+    </ActionDetailsWrapper>
   );
 }
 
 export function MCPImageEditingActionDetails({
   viewType,
+  toolParams,
 }: ToolExecutionDetailsProps) {
+  if (!isEditImageInputType(toolParams)) {
+    return (
+      <ActionDetailsWrapper
+        viewType={viewType}
+        actionName={
+          viewType === "conversation" ? "Editing image" : "Edit image"
+        }
+        visual={ActionImageIcon}
+      />
+    );
+  }
+
+  const { editPrompt, outputName, quality, aspectRatio } = toolParams;
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
       actionName={viewType === "conversation" ? "Editing image" : "Edit image"}
       visual={ActionImageIcon}
-    />
+    >
+      <div className="flex flex-col gap-3 pl-6 pt-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip label={outputName} color="primary" />
+          {aspectRatio && <Chip label={aspectRatio} color="highlight" />}
+          {quality && quality !== "auto" && (
+            <Chip label={`${quality} quality`} color="success" />
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {editPrompt}
+        </p>
+      </div>
+    </ActionDetailsWrapper>
   );
 }
