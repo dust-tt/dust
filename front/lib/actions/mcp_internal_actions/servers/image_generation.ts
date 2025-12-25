@@ -405,40 +405,7 @@ function createServer(
     "Edit an existing image using text instructions. Provide the file ID of an image from Dust" +
       " file storage and describe the changes you want to make. The tool preserves the original" +
       " image's aspect ratio by default, but you can optionally change it.",
-    {
-      imageFileId: z
-        .string()
-        .describe(
-          "The ID of the image file to edit (e.g. fil_abc1234) from conversation attachments. Must be a valid image file (PNG, JPEG, etc.)."
-        ),
-      editPrompt: z
-        .string()
-        .max(4000)
-        .describe(
-          "A text description of the desired edits. Be specific about what should change and what should remain unchanged. The maximum length is 4000 characters."
-        ),
-      outputName: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the edited image. Must be 64 characters or less."
-        ),
-      quality: z
-        .enum(["auto", "low", "medium", "high"])
-        .optional()
-        .default("auto")
-        .describe(
-          "The quality of the edited image. Must be one of auto, low, medium, or high. Auto" +
-            " will automatically choose the best quality."
-        ),
-      aspectRatio: z
-        .enum(["1:1", "3:2", "2:3"])
-        .optional()
-        .describe(
-          "Optional aspect ratio override for the edited image. If not specified, preserves the" +
-            " original image's aspect ratio. Must be one of 1:1, 3:2, or 2:3."
-        ),
-    },
+    EditImageInputSchema.shape,
     withToolLogging(
       auth,
       { toolNameForMonitoring: EDIT_IMAGE_TOOL_NAME, agentLoopContext },
