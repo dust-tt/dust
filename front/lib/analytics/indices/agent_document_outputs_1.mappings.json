@@ -21,6 +21,9 @@
     "mcp_server_configuration_id": {
       "type": "keyword"
     },
+    "mcp_server_name": {
+      "type": "keyword"
+    },
     "data_source_view_id": {
       "type": "keyword"
     },

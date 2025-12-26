@@ -543,6 +543,37 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
+  static async fetchOutputItemsByActionIds(
+    auth: Authenticator,
+    actionIds: ModelId[]
+  ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const outputItems = await AgentMCPActionOutputItemModel.findAll({
+      where: {
+        workspaceId,
+        agentMCPActionId: {
+          [Op.in]: actionIds,
+        },
+      },
+    });
+
+    const outputItemsByActionId = new Map<
+      number,
+      AgentMCPActionOutputItemModel[]
+    >();
+    for (const item of outputItems) {
+      const existing = outputItemsByActionId.get(item.agentMCPActionId);
+      if (existing) {
+        existing.push(item);
+      } else {
+        outputItemsByActionId.set(item.agentMCPActionId, [item]);
+      }
+    }
+
+    return outputItemsByActionId;
+  }
+
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     actions: AgentMCPActionResource[]
@@ -550,14 +581,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const outputItemsByActionId = _.groupBy(
-      await AgentMCPActionOutputItemModel.findAll({
-        where: {
-          workspaceId,
-          agentMCPActionId: {
-            [Op.in]: actions.map((a) => a.id),
-          },
-        },
-      }),
+      Array.from(
+        (
+          await this.fetchOutputItemsByActionIds(
+            auth,
+            actions.map((a) => a.id)
+          )
+        ).values()
+      ).flat(),
       "agentMCPActionId"
     );
 
