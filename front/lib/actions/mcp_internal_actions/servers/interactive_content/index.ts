@@ -289,7 +289,9 @@ function createServer(
   );
   server.tool(
     REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Reverts a Interactive Content file by canceling the edits and file renames in the last agent message.",
+    "Resets an Interactive Content file to its previous version from GCS versioning. " +
+      "Each revert goes back one version in the file's history. " +
+      "Use retrieve to see the current content after reverting.",
     {
       file_id: z
         .string()
@@ -311,12 +313,10 @@ function createServer(
           );
         }
 
-        const { conversation, agentConfiguration } =
-          agentLoopContext.runContext;
+        const { agentConfiguration } = agentLoopContext.runContext;
 
         const result = await revertClientExecutableFileChanges(auth, {
           fileId: file_id,
-          conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
         });
 

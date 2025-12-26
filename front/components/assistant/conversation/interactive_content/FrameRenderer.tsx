@@ -150,10 +150,11 @@ export function FrameRenderer({
     cacheKey: contentHash,
   });
 
-  const { fileMetadata } = useFileMetadata({ fileId, owner });
+  const { fileMetadata } = useFileMetadata({
+    fileId,
+    owner,
+  });
 
-  // Ideally we should not show the revert button when it's not applicable (e.g. there is no edit)
-  // but it's not easy to compute here so we show the button all the time for now.
   const { handleVisualizationRevert } = useVisualizationRevert({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
@@ -313,6 +314,9 @@ export function FrameRenderer({
               lastEditedByAgentConfigurationId={
                 lastEditedByAgentConfigurationId
               }
+              hasPreviousVersion={
+                fileMetadata?.useCaseMetadata?.hasPreviousVersion ?? false
+              }
               onRevert={onRevert}
               isFullScreen={isFullScreen}
               exitFullScreen={exitFullScreen}
@@ -330,6 +334,7 @@ interface PreviewActionButtonsProps {
   owner: LightWorkspaceType;
   conversation: ConversationWithoutContentType;
   lastEditedByAgentConfigurationId?: string;
+  hasPreviousVersion: boolean;
   onRevert: () => void;
   isFullScreen: boolean;
   enterFullScreen: () => void;
@@ -339,6 +344,7 @@ interface PreviewActionButtonsProps {
 
 function PreviewActionButtons({
   lastEditedByAgentConfigurationId,
+  hasPreviousVersion,
   onRevert,
   isFullScreen,
   enterFullScreen,
@@ -360,7 +366,7 @@ function PreviewActionButtons({
           />
         }
       />
-      {lastEditedByAgentConfigurationId && (
+      {lastEditedByAgentConfigurationId && hasPreviousVersion && (
         <Tooltip
           label="Revert the last change"
           side="left"
