@@ -783,11 +783,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      // TODO(skills-GA 2025-12-24): change availability to auto_hidden_builder and remove this.
-      // We hide interactive_content as a tool and expose it only through a skill.
-      return featureFlags.includes("skills");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
@@ -985,11 +981,7 @@ export const INTERNAL_MCP_SERVERS = {
   deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ isDeepDiveDisabled, featureFlags }) => {
-      // TODO(skills-GA 2025-12-24): change availability to auto_hidden_builder and remove this.
-      // We hide deep dive as a tool and expose it only through a skill.
-      return isDeepDiveDisabled || featureFlags.includes("skills");
-    },
+    isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
     allowMultipleInstances: false,
     isPreview: false,
     tools_stakes: undefined,
@@ -1823,19 +1815,41 @@ export const isAutoInternalMCPServerName = (
 };
 
 export const getAvailabilityOfInternalMCPServerByName = (
-  name: InternalMCPServerNameType
+  name: InternalMCPServerNameType,
+  {
+    featureFlags,
+  }: {
+    featureFlags?: WhitelistableFeature[];
+  } = {}
 ): MCPServerAvailability => {
+  // TODO(skills-GA): Remove this temporary override once skills are GA.
+  // When skills feature flag is enabled, hide interactive_content and deep_dive from the builder
+  // since they are exposed through skills instead.
+  if (
+    (name === "interactive_content" || name === "deep_dive") &&
+    featureFlags?.includes("skills")
+  ) {
+    return "auto_hidden_builder";
+  }
+
   return INTERNAL_MCP_SERVERS[name].availability;
 };
 
 export const getAvailabilityOfInternalMCPServerById = (
-  sId: string
+  sId: string,
+  {
+    featureFlags,
+  }: {
+    featureFlags?: WhitelistableFeature[];
+  } = {}
 ): MCPServerAvailability => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isErr()) {
     return "manual";
   }
-  return getAvailabilityOfInternalMCPServerByName(r.value.name);
+  return getAvailabilityOfInternalMCPServerByName(r.value.name, {
+    featureFlags,
+  });
 };
 
 export const allowsMultipleInstancesOfInternalMCPServerByName = (
