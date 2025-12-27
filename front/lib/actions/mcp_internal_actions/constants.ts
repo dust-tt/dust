@@ -783,11 +783,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      // TODO(skills-GA 2025-12-24): change availability to auto_hidden_builder and remove this.
-      // We hide interactive_content as a tool and expose it only through a skill.
-      return featureFlags.includes("skills");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
@@ -985,11 +981,7 @@ export const INTERNAL_MCP_SERVERS = {
   deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ isDeepDiveDisabled, featureFlags }) => {
-      // TODO(skills-GA 2025-12-24): change availability to auto_hidden_builder and remove this.
-      // We hide deep dive as a tool and expose it only through a skill.
-      return isDeepDiveDisabled || featureFlags.includes("skills");
-    },
+    isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
     allowMultipleInstances: false,
     isPreview: false,
     tools_stakes: undefined,
