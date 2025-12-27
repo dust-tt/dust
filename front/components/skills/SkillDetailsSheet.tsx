@@ -171,7 +171,7 @@ const DescriptionSection = ({
       </div>
 
       {skill.status === "active" && (
-        <SkillDetailsButtonBar owner={owner} skill={skill} />
+        <SkillDetailsButtonBar owner={owner} skill={skill} onClose={onClose} />
       )}
 
       {skill.status === "archived" && (
