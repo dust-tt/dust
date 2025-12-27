@@ -224,7 +224,7 @@ export function AgentDetails({
 
   return (
     <Sheet open={!!agentId} onOpenChange={onClose}>
-      <SheetContent size="lg">
+      <SheetContent size="lg" className="outline-none">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
