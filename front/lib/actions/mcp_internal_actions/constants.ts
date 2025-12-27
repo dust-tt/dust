@@ -1815,41 +1815,19 @@ export const isAutoInternalMCPServerName = (
 };
 
 export const getAvailabilityOfInternalMCPServerByName = (
-  name: InternalMCPServerNameType,
-  {
-    featureFlags,
-  }: {
-    featureFlags?: WhitelistableFeature[];
-  } = {}
+  name: InternalMCPServerNameType
 ): MCPServerAvailability => {
-  // TODO(skills-GA): Remove this temporary override once skills are GA.
-  // When skills feature flag is enabled, hide interactive_content and deep_dive from the builder
-  // since they are exposed through skills instead.
-  if (
-    (name === "interactive_content" || name === "deep_dive") &&
-    featureFlags?.includes("skills")
-  ) {
-    return "auto_hidden_builder";
-  }
-
   return INTERNAL_MCP_SERVERS[name].availability;
 };
 
 export const getAvailabilityOfInternalMCPServerById = (
-  sId: string,
-  {
-    featureFlags,
-  }: {
-    featureFlags?: WhitelistableFeature[];
-  } = {}
+  sId: string
 ): MCPServerAvailability => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isErr()) {
     return "manual";
   }
-  return getAvailabilityOfInternalMCPServerByName(r.value.name, {
-    featureFlags,
-  });
+  return getAvailabilityOfInternalMCPServerByName(r.value.name);
 };
 
 export const allowsMultipleInstancesOfInternalMCPServerByName = (

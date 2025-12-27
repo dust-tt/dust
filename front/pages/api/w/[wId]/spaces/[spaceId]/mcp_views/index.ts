@@ -2,10 +2,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -65,9 +67,34 @@ async function handler(
 
       const { availability = "manual" } = r.right;
 
+      // TODO(skills-GA): Remove this temporary override once skills are GA.
+      // When skills feature flag is enabled, hide interactive_content and deep_dive from the builder
+      // since they are exposed through skills instead.
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      const hasSkillsFlag = featureFlags.includes("skills");
+
       const serverViews = (
         await MCPServerViewResource.listBySpace(auth, space)
-      ).map((view) => view.toJSON());
+      ).map((view) => {
+        const json = view.toJSON();
+        const serverName = getInternalMCPServerNameFromSId(json.server.sId);
+        if (
+          hasSkillsFlag &&
+          (serverName === "interactive_content" || serverName === "deep_dive")
+        ) {
+          return {
+            ...json,
+            server: {
+              ...json.server,
+              availability: "auto_hidden_builder" as const,
+            },
+          };
+        }
+        return json;
+      });
+
       return res.status(200).json({
         success: true,
         serverViews: serverViews.filter(
