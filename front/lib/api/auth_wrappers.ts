@@ -32,6 +32,7 @@ function getMaintenanceError(
   // During relocation, we return 503, but once relocation is done, we return 404 since
   // at that point, the workspace should be treated as if it did not exist in this region anymore.
   // And that matches what will happen it gets purged later.
+  // This also avoids getting constant alerts if the user is still sending requests to the old endpoint.
   if (maintenance === "relocation-done") {
     return {
       status_code: 404,
