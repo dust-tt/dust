@@ -26,6 +26,30 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+function getMaintenanceError(
+  maintenance: "relocation" | "relocation-done"
+): APIErrorWithStatusCode {
+  // During relocation, we return 503, but once relocation is done, we return 404 since
+  // at that point, the workspace should be treated as if it did not exist in this region anymore.
+  // And that matches what will happen it gets purged later.
+  if (maintenance === "relocation-done") {
+    return {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: `The workspace was not found. [${maintenance}]`,
+      },
+    };
+  }
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message: `Service is currently unavailable. [${maintenance}]`,
+    },
+  };
+}
+
 /**
  * This function is a wrapper for API routes that require session authentication.
  *
@@ -163,13 +187,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       const maintenance = owner.metadata?.maintenance;
       if (maintenance) {
-        return apiError(req, res, {
-          status_code: 503,
-          api_error: {
-            type: "service_unavailable",
-            message: `Service is currently unavailable. [${maintenance}]`,
-          },
-        });
+        return apiError(req, res, getMaintenanceError(maintenance));
       }
 
       const user = auth.user();
@@ -316,13 +334,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
           const maintenance = auth.workspace()?.metadata?.maintenance;
           if (maintenance) {
-            return apiError(req, res, {
-              status_code: 503,
-              api_error: {
-                type: "service_unavailable",
-                message: `Service is currently unavailable. [${maintenance}]`,
-              },
-            });
+            return apiError(req, res, getMaintenanceError(maintenance));
           }
 
           return await handler(
@@ -384,13 +396,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
       const maintenance = owner.metadata?.maintenance;
       if (maintenance) {
-        return apiError(req, res, {
-          status_code: 503,
-          api_error: {
-            type: "service_unavailable",
-            message: `Service is currently unavailable. [${maintenance}]`,
-          },
-        });
+        return apiError(req, res, getMaintenanceError(maintenance));
       }
 
       // Authenticator created from the a key has the builder role if the key is associated with
