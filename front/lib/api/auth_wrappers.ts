@@ -27,7 +27,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 function getMaintenanceError(
-  maintenance: "relocation" | "relocation-done"
+  maintenance: string | number | true | object
 ): APIErrorWithStatusCode {
   // During relocation, we return 503, but once relocation is done, we return 404 since
   // at that point, the workspace should be treated as if it did not exist in this region anymore.
@@ -42,6 +42,7 @@ function getMaintenanceError(
       },
     };
   }
+
   return {
     status_code: 503,
     api_error: {
