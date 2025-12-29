@@ -540,10 +540,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             <>
               {hasSpaceConversations && summary.length > 0 ? (
                 <>
-                  <NavigationListCollapsibleSection label="Projects">
+                  <NavigationListCollapsibleSection
+                    label="Projects"
+                    defaultOpen
+                  >
                     <SpacesList owner={owner} summary={summary} />
                   </NavigationListCollapsibleSection>
-                  <NavigationListCollapsibleSection label="My conversations">
+                  <NavigationListCollapsibleSection
+                    label="My conversations"
+                    defaultOpen
+                  >
                     {conversationsList}
                   </NavigationListCollapsibleSection>
                 </>
