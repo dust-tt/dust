@@ -23,6 +23,7 @@ import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -36,6 +37,7 @@ export function AgentObservability({
   isCustomAgent,
 }: AgentObservabilityProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
+  const { featureFlags } = useFeatureFlags({ workspaceId });
 
   const isTimeRangeMode = mode === "timeRange";
 
@@ -190,11 +192,15 @@ export function AgentObservability({
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
         />
-        <Separator />
-        <DatasourceRetrievalTreemapChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-        />
+        {featureFlags.includes("agent_tool_outputs_analytics") && (
+          <>
+            <Separator />
+            <DatasourceRetrievalTreemapChart
+              workspaceId={workspaceId}
+              agentConfigurationId={agentConfigurationId}
+            />
+          </>
+        )}
         <Separator />
         <ToolUsageChart
           workspaceId={workspaceId}
