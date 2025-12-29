@@ -1,5 +1,6 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  ClipboardIcon,
   DataTable,
   EyeIcon,
   PencilSquareIcon,
@@ -185,6 +186,22 @@ export function SkillsTable({
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     onSkillClick(skill);
+                  },
+                  kind: "item" as const,
+                },
+                {
+                  label: "Extend (New)",
+                  icon: ClipboardIcon,
+                  disabled: !skill.isExtendable,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    void router.push(
+                      getSkillBuilderRoute(
+                        owner.sId,
+                        "new",
+                        `extends=${skill.sId}`
+                      )
+                    );
                   },
                   kind: "item" as const,
                 },
