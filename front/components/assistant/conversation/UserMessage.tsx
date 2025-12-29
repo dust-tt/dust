@@ -1,4 +1,5 @@
 import {
+  ArrowUpIcon,
   BoltIcon,
   Button,
   cn,
@@ -17,7 +18,10 @@ import {
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import {
+  useVirtuosoLocation,
+  useVirtuosoMethods,
+} from "@virtuoso.dev/message-list";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -66,6 +70,8 @@ import type {
   UserMessageTypeWithContentFragments,
   WorkspaceType,
 } from "@app/types";
+
+const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -236,6 +242,43 @@ export function UserMessage({
   }, []);
 
   const methods = useVirtuosoMethods<VirtuosoMessage>();
+  const { listOffset } = useVirtuosoLocation();
+
+  const scrollToPreviousUserMessage = useCallback(() => {
+    const messages = methods.data.get();
+    const currentIndex = messages.findIndex((m) => m.sId === message.sId);
+    if (currentIndex <= 0) {
+      return;
+    }
+
+    // Find the previous user message (before the current one)
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (isUserMessage(messages[i])) {
+        const distance = Math.abs(listOffset);
+        methods.scrollToItem({
+          index: i,
+          align: "start",
+          behavior:
+            distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+        });
+        break;
+      }
+    }
+  }, [methods, message.sId, listOffset]);
+
+  const hasPreviousUserMessage = useMemo(() => {
+    const messages = methods.data.get();
+    const currentIndex = messages.findIndex((m) => m.sId === message.sId);
+    if (currentIndex <= 0) {
+      return false;
+    }
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (isUserMessage(messages[i])) {
+        return true;
+      }
+    }
+    return false;
+  }, [methods.data, message.sId]);
 
   const showAgentSuggestions = useMemo(() => {
     return (
@@ -371,6 +414,15 @@ export function UserMessage({
                 }
                 renderName={renderName}
               />
+              {hasPreviousUserMessage && (
+                <Button
+                  icon={ArrowUpIcon}
+                  size="xs"
+                  variant="ghost-secondary"
+                  aria-label="Go to previous user message"
+                  onClick={scrollToPreviousUserMessage}
+                />
+              )}
               {actions && actions.length > 0 && (
                 <DropdownMenu
                   open={isMenuOpen}
