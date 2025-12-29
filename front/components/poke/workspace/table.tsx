@@ -8,6 +8,7 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { DataRetentionConfig } from "@app/lib/data_retention";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
@@ -22,14 +23,14 @@ export function WorkspaceInfoTable({
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
-  workspaceRetention,
+  dataRetention,
   workosEnvironmentId,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
-  workspaceRetention: number | null;
+  dataRetention: DataRetentionConfig | undefined;
   workosEnvironmentId: string;
 }) {
   const { dsyncStatus } = usePokeWorkOSDSyncStatus({ owner });
@@ -41,9 +42,9 @@ export function WorkspaceInfoTable({
       case "configuring":
         return "warning";
       case "not_configured":
-        return "primary";
+        return "info";
       default:
-        return "primary";
+        return "info";
     }
   };
 
@@ -60,9 +61,13 @@ export function WorkspaceInfoTable({
       case "draft":
         return "blue";
       default:
-        return "primary";
+        return "info";
     }
   };
+
+  const nbAgentsWithRetention = dataRetention
+    ? Object.entries(dataRetention.agents).length
+    : 0;
 
   return (
     <div className="flex justify-between gap-3">
@@ -109,12 +114,6 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
-            </PokeTableRow>
-            <PokeTableRow>
-              <PokeTableCell>Conversations retention</PokeTableCell>
-              <PokeTableCell>
-                {workspaceRetention ? `${workspaceRetention} days` : "❌"}
-              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
@@ -176,6 +175,32 @@ export function WorkspaceInfoTable({
                   </Chip>
                 </PokeTableCell>
               </PokeTableRow>
+            )}
+            {dataRetention !== undefined && (
+              <>
+                <PokeTableRow>
+                  <PokeTableCell>✂️ Conversations retention</PokeTableCell>
+                  <PokeTableCell>
+                    {dataRetention.conversations !== null
+                      ? `${dataRetention.conversations} days inactive`
+                      : "No retention policy"}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>✂️ Workspace retention</PokeTableCell>
+                  <PokeTableCell>
+                    {dataRetention.workspace} days post downgrade
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>✂️ Agents retention</PokeTableCell>
+                  <PokeTableCell>
+                    {nbAgentsWithRetention === 0
+                      ? "No agents with policies"
+                      : `${nbAgentsWithRetention} with policies`}
+                  </PokeTableCell>
+                </PokeTableRow>
+              </>
             )}
           </PokeTableBody>
         </PokeTable>

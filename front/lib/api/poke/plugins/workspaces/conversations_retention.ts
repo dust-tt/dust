@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { getWorkspaceDataRetention } from "@app/lib/data_retention";
+import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types";
 
@@ -20,7 +20,7 @@ export const conversationsRetentionPlugin = createPlugin({
     },
   },
   populateAsyncArgs: async (auth) => {
-    const retentionDays = await getWorkspaceDataRetention(auth);
+    const retentionDays = await getConversationsDataRetention(auth);
 
     return new Ok({
       retentionDays: retentionDays ?? -1,
