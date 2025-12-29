@@ -7,14 +7,14 @@ const NAME_FIELD_NAME = "name";
 
 export function SkillBuilderNameSection() {
   return (
-    <BaseFormFieldSection
-      title="Name"
-      fieldName={NAME_FIELD_NAME}
-      triggerValidationOnChange={false}
-    >
-      {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
-        <div className="flex space-x-2">
-          <div className="flex-grow">
+    <div className="flex items-end gap-4">
+      <div className="flex-grow">
+        <BaseFormFieldSection
+          title="Name"
+          fieldName={NAME_FIELD_NAME}
+          triggerValidationOnChange={false}
+        >
+          {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
             <Input
               ref={registerRef}
               placeholder="Enter skill name"
@@ -23,12 +23,10 @@ export function SkillBuilderNameSection() {
               messageStatus={hasError ? "error" : "default"}
               {...registerProps}
             />
-          </div>
-          <div className="flex flex-col gap-2">
-            <SkillBuilderIconSection />
-          </div>
-        </div>
-      )}
-    </BaseFormFieldSection>
+          )}
+        </BaseFormFieldSection>
+      </div>
+      <SkillBuilderIconSection />
+    </div>
   );
 }
