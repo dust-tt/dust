@@ -415,12 +415,22 @@ export function UserMessage({
                 renderName={renderName}
               />
               {hasPreviousUserMessage && (
-                <Button
-                  icon={ArrowUpIcon}
-                  size="xs"
-                  variant="ghost-secondary"
-                  aria-label="Go to previous user message"
-                  onClick={scrollToPreviousUserMessage}
+                <Tooltip
+                  label="Go to previous message"
+                  side="top"
+                  trigger={
+                    <Button
+                      icon={ArrowUpIcon}
+                      size="xs"
+                      variant="ghost-secondary"
+                      aria-label="Go to previous user message"
+                      onClick={scrollToPreviousUserMessage}
+                      className={cn(
+                        "opacity-100 transition-opacity duration-200",
+                        !isUserMessageHovered && "sm:opacity-0"
+                      )}
+                    />
+                  }
                 />
               )}
               {actions && actions.length > 0 && (
