@@ -124,6 +124,7 @@ describe("createAgentMessages", () => {
     // Verify database records were created
     const mentionInDb = await MentionModel.findOne({
       where: {
+        workspaceId: workspace.id,
         messageId: messageRow.id,
         agentConfigurationId: agentConfig1.sId,
       },
@@ -189,6 +190,7 @@ describe("createAgentMessages", () => {
     // Verify both mentions were created
     const mentionsInDb = await MentionModel.findAll({
       where: {
+        workspaceId: workspace.id,
         messageId: messageRow.id,
       },
     });
@@ -949,6 +951,7 @@ describe("createUserMentions", () => {
     // Verify user mention was stored in the database
     const userMentionInDb = await MentionModel.findOne({
       where: {
+        workspaceId: workspace.id,
         messageId: userMessage.id,
         userId: mentionedUser.id,
       },
@@ -1137,6 +1140,7 @@ describe("createUserMentions", () => {
     // Verify only user mention was stored, agent mention should be ignored
     const allMentionsInDb = await MentionModel.findAll({
       where: {
+        workspaceId: workspace.id,
         messageId: userMessage.id,
       },
     });
@@ -1185,6 +1189,7 @@ describe("createUserMentions", () => {
       // Verify mention was auto-approved
       const mentionInDb = await MentionModel.findOne({
         where: {
+          workspaceId: workspace.id,
           messageId: userMessage.id,
           userId: mentionedUser.id,
         },
@@ -1283,9 +1288,9 @@ describe("createUserMentions", () => {
       // Verify mention was auto-approved because user is already a participant
       const mentionInDb = await MentionModel.findOne({
         where: {
+          workspaceId: workspace.id,
           messageId: messageRow.id,
           userId: mentionedUser.id,
-          workspaceId: workspace.id,
         },
       });
       expect(mentionInDb).not.toBeNull();
@@ -1375,6 +1380,7 @@ describe("createUserMentions", () => {
       // Verify mention requires approval (pending status)
       const mentionInDb = await MentionModel.findOne({
         where: {
+          workspaceId: workspace.id,
           messageId: messageRow.id,
           userId: mentionedUser.id,
         },
@@ -1532,6 +1538,7 @@ describe("createUserMentions", () => {
       // Verify mention was auto-approved because user is mentioned in instructions
       const mentionInDb = await MentionModel.findOne({
         where: {
+          workspaceId: workspace.id,
           messageId: messageRow.id,
           userId: mentionedUser.id,
         },
@@ -1688,6 +1695,7 @@ describe("createUserMentions", () => {
       // Verify mention requires approval (pending status) because user is NOT mentioned in instructions
       const mentionInDb = await MentionModel.findOne({
         where: {
+          workspaceId: workspace.id,
           messageId: messageRow.id,
           userId: mentionedUser.id,
         },
@@ -1844,6 +1852,7 @@ describe("createUserMentions", () => {
       // Verify mention requires approval (pending status) because instructions are null
       const mentionInDb = await MentionModel.findOne({
         where: {
+          workspaceId: workspace.id,
           messageId: messageRow.id,
           userId: mentionedUser.id,
         },
