@@ -68,6 +68,15 @@ async function addGlobalSkillToAgentsWithTool(
   });
 
   if (agentsWithTool.length === 0) {
+    logger.info(
+      {
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        agentCount: agentsWithTool.length,
+        mcpServerViewId: mcpServerView.id,
+      },
+      `No agents found with tool ${mcpServerName}`
+    );
     return;
   }
 
@@ -76,10 +85,9 @@ async function addGlobalSkillToAgentsWithTool(
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       agentCount: agentsWithTool.length,
-      mcpServerName,
       mcpServerViewId: mcpServerView.id,
     },
-    "Found agents with tool"
+    `Found agents with tool ${mcpServerName}`
   );
 
   // 3. Get existing agent-skill links to avoid duplicates (chunked for large IN clauses).
@@ -122,7 +130,7 @@ async function addGlobalSkillToAgentsWithTool(
       toCreate: agentsToCreate.length,
       alreadyHasSkill: agentsWithSkill.size,
     },
-    "Creating skills"
+    "Creating skills for agents"
   );
 
   if (execute) {
