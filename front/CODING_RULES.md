@@ -349,7 +349,7 @@ class ConversationModel extends Model { }
 
 ### [BACK12] Endpoint backward compatibility
 
-When updating an existing endpoint and its expected payload, ensure backward compatibility with clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must be optional and accept `undefined` as a value even if the latest client code always sends a value. 
+When updating an existing endpoint and its expected payload, ensure backward compatibility with clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must be optional and accept `undefined` as a value even if the latest client code always sends a value.
 This prevents breaking clients who are still running an older version.
 
 Example:
