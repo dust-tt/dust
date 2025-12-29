@@ -285,6 +285,7 @@ export async function finalizeCancellation(
       runAgentDataRes.error instanceof ConversationError &&
       runAgentDataRes.error.type === "conversation_not_found"
     ) {
+      // We ignore conversation_not_found errors; the conversation might have been deleted since.
       return;
     }
 
