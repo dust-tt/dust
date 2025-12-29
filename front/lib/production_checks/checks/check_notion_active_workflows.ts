@@ -243,6 +243,6 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
       "Missing or stalled Notion temporal workflows"
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };

@@ -71,6 +71,6 @@ export const checkExcessCredits: CheckFunction = async (
       `${workspacesWithExcessCredits.length} workspace(s) have excess credits > $50 in the last 30 days`
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };

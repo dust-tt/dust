@@ -182,7 +182,7 @@ export const checkActiveWorkflows: CheckFunction = async (
         `Missing ${provider} temporal workflows.`
       );
     } else {
-      reportSuccess({ actionLinks: [] });
+      reportSuccess();
     }
   }
 };

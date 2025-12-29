@@ -26,10 +26,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
     );
 
   if (GdriveDataSources.length === 0) {
-    reportSuccess({
-      message: "No Google Drive data sources to check",
-      actionLinks: [],
-    });
+    reportSuccess({ message: "No Google Drive data sources to check" });
     return;
   }
 
@@ -117,10 +114,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
           "Google Drive documents not properly Garbage collected"
         );
       } else {
-        reportSuccess({
-          connectorId: ds.connectorId,
-          actionLinks: [],
-        });
+        reportSuccess({ connectorId: ds.connectorId });
       }
     },
     { concurrency: CONCURRENCY }

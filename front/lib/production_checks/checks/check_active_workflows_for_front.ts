@@ -45,6 +45,6 @@ export const checkActiveWorkflowsForFront: CheckFunction = async (
       `Missing global front workflows: ${missingWorkflows.join(", ")}.`
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };

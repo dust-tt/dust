@@ -32,6 +32,6 @@ export const checkDataSourcesConsistency: CheckFunction = async (
       "Inconsistent data sources or data source views"
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };

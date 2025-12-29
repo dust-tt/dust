@@ -69,6 +69,6 @@ export const checkPausedConnectors: CheckFunction = async (
       "Paused connectors for a workspace with a subscription for more than 15 days."
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };

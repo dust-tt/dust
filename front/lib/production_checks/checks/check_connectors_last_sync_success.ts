@@ -98,6 +98,6 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
       `Connectors have not synced in the last week.`
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };

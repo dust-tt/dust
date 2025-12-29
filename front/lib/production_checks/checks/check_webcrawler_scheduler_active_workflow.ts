@@ -37,7 +37,7 @@ export const checkWebcrawlerSchedulerActiveWorkflow: CheckFunction = async (
   );
 
   if (existsAndNotPaused) {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   } else {
     reportFailure(
       { actionLinks: [] },

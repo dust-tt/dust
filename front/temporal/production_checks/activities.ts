@@ -13,23 +13,11 @@ import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_chec
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import mainLogger from "@app/logger/logger";
 import type {
-  ActionLink,
   Check,
   CheckActivityResult,
-  CheckHeartbeat,
+  CheckFailurePayload,
+  CheckSuccessPayload,
 } from "@app/types";
-
-function extractActionLinks(payload: unknown): ActionLink[] {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "actionLinks" in payload &&
-    Array.isArray((payload as { actionLinks: unknown }).actionLinks)
-  ) {
-    return (payload as { actionLinks: ActionLink[] }).actionLinks;
-  }
-  return [];
-}
 
 export const REGISTERED_CHECKS: Check[] = [
   {
@@ -107,12 +95,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           currentHour,
           everyHour: check.everyHour,
         });
-        const skipHeartbeat: CheckHeartbeat = {
-          type: "skip",
-          name: check.name,
-          uuid: uuid,
-        };
-        Context.current().heartbeat(skipHeartbeat);
+        Context.current().heartbeat({ type: "skip", name: check.name, uuid });
 
         results.push({
           checkName: check.name,
@@ -125,37 +108,32 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       } else {
         logger.info("Check starting");
         let checkSucceeded = false;
-        let lastPayload: unknown = null;
+        let lastSuccessPayload: CheckSuccessPayload | undefined;
+        let lastFailurePayload: CheckFailurePayload | undefined;
         let lastErrorMessage: string | null = null;
 
-        const reportSuccess = (reportPayload: unknown) => {
-          logger.info({ reportPayload }, "Check succeeded");
+        const reportSuccess = (payload?: CheckSuccessPayload) => {
+          logger.info({ payload }, "Check succeeded");
           checkSucceeded = true;
-          lastPayload = reportPayload;
+          lastSuccessPayload = payload;
         };
-        const reportFailure = (reportPayload: unknown, message: string) => {
+        const reportFailure = (payload: CheckFailurePayload, message: string) => {
           logger.error(
-            { reportPayload, errorMessage: message },
+            { payload, errorMessage: message },
             "Production check failed"
           );
           checkSucceeded = false;
-          lastPayload = reportPayload;
+          lastFailurePayload = payload;
           lastErrorMessage = message;
         };
         const heartbeat = async () => {
-          const processingHeartbeat: CheckHeartbeat = {
+          return Context.current().heartbeat({
             type: "processing",
             name: check.name,
-            uuid: uuid,
-          };
-          return Context.current().heartbeat(processingHeartbeat);
+            uuid,
+          });
         };
-        const startHeartbeat: CheckHeartbeat = {
-          type: "start",
-          name: check.name,
-          uuid: uuid,
-        };
-        Context.current().heartbeat(startHeartbeat);
+        Context.current().heartbeat({ type: "start", name: check.name, uuid });
         await check.check(
           check.name,
           logger,
@@ -164,27 +142,22 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           heartbeat
         );
 
-        const resultHeartbeat: CheckHeartbeat = {
+        Context.current().heartbeat({
           type: checkSucceeded ? "success" : "failure",
           name: check.name,
-          uuid: uuid,
-        };
-        Context.current().heartbeat(resultHeartbeat);
-
-        const finishHeartbeat: CheckHeartbeat = {
-          type: "finish",
-          name: check.name,
-          uuid: uuid,
-        };
-        Context.current().heartbeat(finishHeartbeat);
+          uuid,
+        });
+        Context.current().heartbeat({ type: "finish", name: check.name, uuid });
 
         results.push({
           checkName: check.name,
           status: checkSucceeded ? "success" : "failure",
           timestamp: new Date().toISOString(),
-          payload: lastPayload,
+          payload: checkSucceeded
+            ? lastSuccessPayload ?? null
+            : lastFailurePayload ?? null,
           errorMessage: lastErrorMessage,
-          actionLinks: extractActionLinks(lastPayload),
+          actionLinks: checkSucceeded ? [] : (lastFailurePayload?.actionLinks ?? []),
         });
 
         logger.info("Check done");
@@ -223,40 +196,35 @@ export async function runSingleCheckActivity(
   logger.info("Manual check starting");
 
   let checkSucceeded = false;
-  let lastPayload: unknown = null;
+  let lastSuccessPayload: CheckSuccessPayload | undefined;
+  let lastFailurePayload: CheckFailurePayload | undefined;
   let lastErrorMessage: string | null = null;
 
-  const reportSuccess = (reportPayload: unknown) => {
-    logger.info({ reportPayload }, "Check succeeded");
+  const reportSuccess = (payload?: CheckSuccessPayload) => {
+    logger.info({ payload }, "Check succeeded");
     checkSucceeded = true;
-    lastPayload = reportPayload;
+    lastSuccessPayload = payload;
   };
 
-  const reportFailure = (reportPayload: unknown, message: string) => {
+  const reportFailure = (payload: CheckFailurePayload, message: string) => {
     logger.error(
-      { reportPayload, errorMessage: message },
+      { payload, errorMessage: message },
       "Production check failed"
     );
     checkSucceeded = false;
-    lastPayload = reportPayload;
+    lastFailurePayload = payload;
     lastErrorMessage = message;
   };
 
   const heartbeat = async () => {
-    const processingHeartbeat: CheckHeartbeat = {
+    return Context.current().heartbeat({
       type: "processing",
       name: check.name,
-      uuid: uuid,
-    };
-    return Context.current().heartbeat(processingHeartbeat);
+      uuid,
+    });
   };
 
-  const startHeartbeat: CheckHeartbeat = {
-    type: "start",
-    name: check.name,
-    uuid: uuid,
-  };
-  Context.current().heartbeat(startHeartbeat);
+  Context.current().heartbeat({ type: "start", name: check.name, uuid });
 
   await check.check(
     check.name,
@@ -266,19 +234,12 @@ export async function runSingleCheckActivity(
     heartbeat
   );
 
-  const resultHeartbeat: CheckHeartbeat = {
+  Context.current().heartbeat({
     type: checkSucceeded ? "success" : "failure",
     name: check.name,
-    uuid: uuid,
-  };
-  Context.current().heartbeat(resultHeartbeat);
-
-  const finishHeartbeat: CheckHeartbeat = {
-    type: "finish",
-    name: check.name,
-    uuid: uuid,
-  };
-  Context.current().heartbeat(finishHeartbeat);
+    uuid,
+  });
+  Context.current().heartbeat({ type: "finish", name: check.name, uuid });
 
   logger.info("Manual check done");
 
@@ -286,8 +247,10 @@ export async function runSingleCheckActivity(
     checkName: check.name,
     status: checkSucceeded ? "success" : "failure",
     timestamp: new Date().toISOString(),
-    payload: lastPayload,
+    payload: checkSucceeded
+      ? lastSuccessPayload ?? null
+      : lastFailurePayload ?? null,
     errorMessage: lastErrorMessage,
-    actionLinks: extractActionLinks(lastPayload),
+    actionLinks: checkSucceeded ? [] : (lastFailurePayload?.actionLinks ?? []),
   };
 }

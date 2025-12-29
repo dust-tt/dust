@@ -84,6 +84,6 @@ export const checkExtraneousWorkflows: CheckFunction = async (
       `Extraneous temporal workflows (connector is paused but workflows are running). Potential resolution: unpause the connector.`
     );
   } else {
-    reportSuccess({ actionLinks: [] });
+    reportSuccess();
   }
 };
