@@ -26,7 +26,6 @@ export type SkillType = {
 export type SkillRelations = {
   usage: AgentsUsageType;
   editors: UserType[] | null;
-  mcpServerViews: MCPServerViewType[];
   author: UserType | null;
   extendedSkill: SkillType | null;
 };

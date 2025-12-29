@@ -126,7 +126,6 @@ async function handler(
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
-                mcpServerViews: sc.mcpServerViews.map((view) => view.toJSON()),
                 author: author ? author.toJSON() : null,
                 extendedSkill: extendedSkill
                   ? extendedSkill.toJSON(auth)
