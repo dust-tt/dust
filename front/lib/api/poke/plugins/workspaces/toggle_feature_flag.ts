@@ -1,5 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import type { WhitelistableFeature } from "@app/types";
 import { Ok } from "@app/types";
 import {
   FEATURE_FLAG_STAGE_LABELS,
@@ -56,8 +57,9 @@ export const toggleFeatureFlagPlugin = createPlugin({
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
     const existingFlags = await FeatureFlagResource.listForWorkspace(workspace);
-    const featureFlags = args.features.filter((feature) =>
-      isWhitelistableFeature(feature)
+    const featureFlags = args.features.filter(
+      (feature): feature is WhitelistableFeature =>
+        isWhitelistableFeature(feature)
     );
 
     const toAdd = featureFlags.filter(
