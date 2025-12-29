@@ -242,6 +242,11 @@ export function AgentObservability({
           </>
         )}
         <Separator />
+        <DatasourceRetrievalTreemapChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+        />
+        <Separator />
         <ToolUsageChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}

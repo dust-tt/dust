@@ -103,7 +103,6 @@ export function DatasourceRetrievalTreemapChart({
         ? selectedVersion?.version
         : undefined,
   });
-
   const { treemapData, legendItems } = useMemo(() => {
     if (!datasourceRetrieval.length) {
       return { treemapData: null, legendItems: [] };
