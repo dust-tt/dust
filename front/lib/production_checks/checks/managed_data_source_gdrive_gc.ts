@@ -1,12 +1,12 @@
 import { QueryTypes } from "sequelize";
 
 import { getCoreDocuments } from "@app/lib/production_checks/managed_ds";
-import type { CheckFunction } from "@app/lib/production_checks/types";
 import {
   getConnectorsReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ActionLink, CheckFunction } from "@app/types";
 import { withRetries } from "@app/types";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
@@ -24,6 +24,11 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
       { type: QueryTypes.SELECT }
     );
+
+  if (GdriveDataSources.length === 0) {
+    reportSuccess({ message: "No Google Drive data sources to check" });
+    return;
+  }
 
   const CONCURRENCY = 8;
   await concurrentExecutor(
@@ -86,7 +91,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       const coreDocumentsRes = await getCoreDocuments(ds.id);
       if (coreDocumentsRes.isErr()) {
         reportFailure(
-          { frontDataSourceId: ds.id },
+          { frontDataSourceId: ds.id, actionLinks: [] },
           "Could not get core documents"
         );
         return;
@@ -98,14 +103,18 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         (coreId) => !connectorDocumentIds.has(coreId)
       );
       if (notDeleted.length > 0) {
+        const actionLinks: ActionLink[] = [
+          {
+            label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
+            url: `/poke/connectors/${ds.connectorId}`,
+          },
+        ];
         reportFailure(
-          { notDeleted, connectorId: ds.connectorId },
+          { notDeleted, connectorId: ds.connectorId, actionLinks },
           "Google Drive documents not properly Garbage collected"
         );
       } else {
-        reportSuccess({
-          connectorId: ds.connectorId,
-        });
+        reportSuccess({ connectorId: ds.connectorId });
       }
     },
     { concurrency: CONCURRENCY }

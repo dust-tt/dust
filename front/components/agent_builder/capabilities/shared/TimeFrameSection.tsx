@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -46,10 +45,7 @@ interface TimeFrameSectionProps {
 }
 
 export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
-  const { setValue, getValues } = useFormContext();
-  const [isChecked, setIsChecked] = useState(
-    () => !!getValues("configuration.timeFrame")
-  );
+  const { setValue } = useFormContext();
 
   const { field: timeFrameField } = useController<
     CapabilityFormData,
@@ -58,6 +54,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
     name: "configuration.timeFrame",
   });
 
+  const isChecked = timeFrameField.value !== null;
   const { actionText, contextText } = ACTION_CONFIG[actionType];
 
   return (
@@ -75,7 +72,6 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
         <Checkbox
           checked={isChecked}
           onCheckedChange={(checked) => {
-            setIsChecked(Boolean(checked));
             setValue(
               "configuration.timeFrame",
               checked ? DEFAULT_TIME_FRAME : null
@@ -85,7 +81,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
         <div
           className={classNames(
             "text-sm font-semibold",
-            !getValues("configuration.timeFrame")
+            !isChecked
               ? "text-muted-foreground dark:text-muted-foreground-night"
               : "text-foreground dark:text-foreground-night"
           )}

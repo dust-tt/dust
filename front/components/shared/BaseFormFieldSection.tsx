@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactNode } from "react";
-import type { UseFormRegisterReturn } from "react-hook-form";
+import type { ControllerFieldState } from "react-hook-form";
 import { useController, useFormContext } from "react-hook-form";
 
 interface BaseFormFieldSectionProps<
@@ -13,10 +13,14 @@ interface BaseFormFieldSectionProps<
   triggerValidationOnChange?: boolean;
   children: (args: {
     registerRef: (e: E | null) => void;
-    registerProps: Omit<UseFormRegisterReturn, "onChange" | "ref">;
+    registerProps: {
+      name: string;
+      onBlur: () => void;
+    };
     onChange: (e: ChangeEvent<E>) => void;
     errorMessage?: string;
     hasError: boolean;
+    fieldState: ControllerFieldState;
   }) => ReactNode;
 }
 
@@ -31,24 +35,11 @@ export function BaseFormFieldSection<
   triggerValidationOnChange = false,
   children,
 }: BaseFormFieldSectionProps<E>) {
-  const { register, trigger } = useFormContext();
-  const { fieldState } = useController({ name: fieldName });
-
-  const {
-    ref: registerRef,
-    onChange: registerOnChange,
-    ...restRegisterProps
-  } = register(fieldName);
-
-  const registerRefCallback = (e: E | null) => {
-    registerRef(e);
-  };
-
-  const registerProps: Omit<UseFormRegisterReturn, "onChange" | "ref"> =
-    restRegisterProps;
+  const { trigger } = useFormContext();
+  const { field, fieldState } = useController({ name: fieldName });
 
   const onChange = (e: ChangeEvent<E>) => {
-    void registerOnChange?.(e);
+    field.onChange(e);
     if (triggerValidationOnChange) {
       void trigger(fieldName);
     }
@@ -80,11 +71,15 @@ export function BaseFormFieldSection<
 
       <div className="space-y-2">
         {children({
-          registerRef: registerRefCallback,
-          registerProps,
+          registerRef: field.ref,
+          registerProps: {
+            name: field.name,
+            onBlur: field.onBlur,
+          },
           onChange,
           errorMessage: fieldState.error?.message,
           hasError: !!fieldState.error,
+          fieldState,
         })}
         {helpText && (
           <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">

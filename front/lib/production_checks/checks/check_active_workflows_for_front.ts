@@ -1,7 +1,7 @@
 import type { Client, WorkflowHandle } from "@temporalio/client";
 
-import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import type { ActionLink, CheckFunction } from "@app/types";
 
 const WORKFLOW_IDS = ["data-retention-workflow", "tracker-notify-workflow"];
 
@@ -36,11 +36,15 @@ export const checkActiveWorkflowsForFront: CheckFunction = async (
   }
 
   if (missingWorkflows.length > 0) {
+    const actionLinks: ActionLink[] = missingWorkflows.map((workflowId) => ({
+      label: `Missing workflow: ${workflowId}`,
+      url: "#",
+    }));
     reportFailure(
-      { missingWorkflows },
+      { missingWorkflows, actionLinks },
       `Missing global front workflows: ${missingWorkflows.join(", ")}.`
     );
   } else {
-    reportSuccess({});
+    reportSuccess();
   }
 };
