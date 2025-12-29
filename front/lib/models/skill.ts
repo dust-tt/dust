@@ -64,7 +64,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare instructions: string;
   declare icon: string | null;
 
-  declare authorId: ForeignKey<UserModel["id"]>;
+  declare authorId: ForeignKey<UserModel["id"]> | null;
   // Not a foreign key, only global skills can be extended.
   declare extendedSkillId: string | null;
 
@@ -116,11 +116,11 @@ SkillVersionModel.init(
 
 // Skill config <> Author
 UserModel.hasMany(SkillConfigurationModel, {
-  foreignKey: { name: "authorId", allowNull: false },
+  foreignKey: { name: "authorId", allowNull: true },
   onDelete: "RESTRICT",
 });
 SkillConfigurationModel.belongsTo(UserModel, {
-  foreignKey: { name: "authorId", allowNull: false },
+  foreignKey: { name: "authorId", allowNull: true },
   as: "author",
 });
 

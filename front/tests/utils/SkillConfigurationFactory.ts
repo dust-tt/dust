@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ModelId } from "@app/types";
+import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 
 export class SkillConfigurationFactory {
   static async create(
@@ -13,7 +14,7 @@ export class SkillConfigurationFactory {
       agentFacingDescription: string;
       userFacingDescription: string;
       instructions: string;
-      status: "active" | "archived";
+      status: SkillStatus;
     }> = {}
   ): Promise<SkillResource> {
     const user = auth.user();
@@ -26,11 +27,12 @@ export class SkillConfigurationFactory {
       overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
+    const authorId = overrides.status === "suggested" ? null : user.id;
 
     return SkillResource.makeNew(
       auth,
       {
-        authorId: user.id,
+        authorId,
         agentFacingDescription,
         userFacingDescription,
         instructions,

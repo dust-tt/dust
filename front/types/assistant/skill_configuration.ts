@@ -2,7 +2,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { UserType } from "@app/types/user";
 
-export type SkillStatus = "active" | "archived";
+export type SkillStatus = "active" | "archived" | "suggested";
 
 export type SkillType = {
   id: number;

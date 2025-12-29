@@ -898,6 +898,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async fetchAuthor(auth: Authenticator): Promise<UserResource | null> {
+    if (this.authorId === null) {
+      return null;
+    }
+
     const author = await UserResource.fetchByModelId(this.authorId);
 
     if (!author) {
