@@ -67,7 +67,7 @@ export type MinimalChannelInfo = {
   created: number;
   creator: string;
   updated?: number;
-  type: string[];
+  channel_types: string[];
   is_member: boolean;
   purpose?: {
     value: string;
@@ -84,34 +84,21 @@ export type MinimalChannelInfo = {
 
 // Clean channel payload to keep only essential fields.
 export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
-  const types: string[] = [];
-  if (channel.is_channel) {
-    types.push("channel");
-  }
-  if (channel.is_group) {
-    types.push("group");
-  }
-  if (channel.is_mpim) {
-    types.push("mpim");
-  }
-  if (channel.is_im) {
-    types.push("im");
-  }
-  if (channel.is_private) {
-    types.push("private");
-  }
-  if (channel.is_archived) {
-    types.push("archived");
-  }
-  if (channel.is_general) {
-    types.push("general");
-  }
-  if (channel.is_shared) {
-    types.push("shared");
-  }
-  if (channel.is_ext_shared) {
-    types.push("ext_shared");
-  }
+  const typeFlags: Array<[boolean | undefined, string]> = [
+    [channel.is_channel, "public channel"],
+    [channel.is_group, "private group"],
+    [channel.is_mpim, "multi-person direct message"],
+    [channel.is_im, "direct message"],
+    [channel.is_private, "private"],
+    [channel.is_archived, "archived"],
+    [channel.is_general, "general"],
+    [channel.is_shared, "shared workspace"],
+    [channel.is_ext_shared, "externally shared"],
+  ];
+  // Push 1 channel_types list with clearer description instead of pushing 9 boolean per channel in the LLM context.
+  const channel_types = typeFlags
+    .filter(([flag]) => flag)
+    .map(([, label]) => label);
 
   return {
     id: channel.id ?? "",
@@ -119,7 +106,7 @@ export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
     created: channel.created ?? 0,
     creator: channel.creator ?? "",
     updated: channel.updated,
-    type: types,
+    channel_types: channel_types,
     is_member: channel.is_member ?? false,
     purpose: channel.purpose
       ? {
@@ -516,7 +503,7 @@ function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
     `  - Created: ${c.created}`,
     `  - Creator: ${c.creator}`,
     `  - Updated: ${c.updated ?? ""}`,
-    `  - Type: ${c.type.join(", ")}`,
+    `  - Channel types: ${c.channel_types.join(", ")}`,
     `  - Member: ${c.is_member ? "Yes" : "No"}`,
     `  - Purpose: ${c.purpose?.value ?? ""}`,
     `  - Topic: ${c.topic?.value ?? ""}`,
