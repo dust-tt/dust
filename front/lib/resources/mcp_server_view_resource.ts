@@ -13,9 +13,7 @@ import {
   getServerTypeAndIdFromSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import type {
-  AutoInternalMCPServerNameType,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerByName,
