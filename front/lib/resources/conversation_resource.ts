@@ -1438,6 +1438,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok({ wasLastMember: remaining <= 1, affectedCount });
   }
 
+  async isUserCreator(auth: Authenticator): Promise<Result<boolean, Error>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+
+    // Get the first participant added to the conversation (the creator)
+    const firstParticipants = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    const firstParticipant = firstParticipants[0];
+
+    if (!firstParticipant) {
+      return new Err(new Error("No participants found for conversation"));
+    }
+    return new Ok(firstParticipant.userId === user.id);
+  }
+
   async listParticipants(
     auth: Authenticator,
     unreadOnly: boolean = false
