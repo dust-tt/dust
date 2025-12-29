@@ -106,7 +106,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         const actionLinks: ActionLink[] = [
           {
             label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
-            url: "#",
+            url: `/poke/connectors/${ds.connectorId}`,
           },
         ];
         reportFailure(

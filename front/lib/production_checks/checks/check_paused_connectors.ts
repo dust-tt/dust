@@ -61,8 +61,8 @@ export const checkPausedConnectors: CheckFunction = async (
   // If there are any connectors to report, report a failure.
   if (connectorsToReport.length > 0) {
     const actionLinks: ActionLink[] = connectorsToReport.map((c) => ({
-      label: `Workspace: ${c.workspaceId}`,
-      url: `/poke/${c.workspaceId}`,
+      label: `Connector: ${c.id} (workspace: ${c.workspaceId})`,
+      url: `/poke/connectors/${c.id}`,
     }));
     reportFailure(
       { connectorsToReport, actionLinks },

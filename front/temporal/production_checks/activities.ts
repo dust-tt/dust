@@ -117,7 +117,10 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           checkSucceeded = true;
           lastSuccessPayload = payload;
         };
-        const reportFailure = (payload: CheckFailurePayload, message: string) => {
+        const reportFailure = (
+          payload: CheckFailurePayload,
+          message: string
+        ) => {
           logger.error(
             { payload, errorMessage: message },
             "Production check failed"
@@ -154,10 +157,12 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           status: checkSucceeded ? "success" : "failure",
           timestamp: new Date().toISOString(),
           payload: checkSucceeded
-            ? lastSuccessPayload ?? null
-            : lastFailurePayload ?? null,
+            ? (lastSuccessPayload ?? null)
+            : (lastFailurePayload ?? null),
           errorMessage: lastErrorMessage,
-          actionLinks: checkSucceeded ? [] : (lastFailurePayload?.actionLinks ?? []),
+          actionLinks: checkSucceeded
+            ? []
+            : (lastFailurePayload?.actionLinks ?? []),
         });
 
         logger.info("Check done");
@@ -207,10 +212,7 @@ export async function runSingleCheckActivity(
   };
 
   const reportFailure = (payload: CheckFailurePayload, message: string) => {
-    logger.error(
-      { payload, errorMessage: message },
-      "Production check failed"
-    );
+    logger.error({ payload, errorMessage: message }, "Production check failed");
     checkSucceeded = false;
     lastFailurePayload = payload;
     lastErrorMessage = message;
@@ -248,8 +250,8 @@ export async function runSingleCheckActivity(
     status: checkSucceeded ? "success" : "failure",
     timestamp: new Date().toISOString(),
     payload: checkSucceeded
-      ? lastSuccessPayload ?? null
-      : lastFailurePayload ?? null,
+      ? (lastSuccessPayload ?? null)
+      : (lastFailurePayload ?? null),
     errorMessage: lastErrorMessage,
     actionLinks: checkSucceeded ? [] : (lastFailurePayload?.actionLinks ?? []),
   };

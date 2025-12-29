@@ -230,12 +230,12 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   if (missingActiveWorkflows.length > 0) {
     const actionLinks: ActionLink[] = [
       ...missingActiveWorkflows.map((c) => ({
-        label: `Missing: workspace ${c.workspaceId}`,
-        url: `/poke/${c.workspaceId}`,
+        label: `Missing: connector ${c.connectorId}`,
+        url: `/poke/connectors/${c.connectorId}`,
       })),
       ...stalledWorkflows.map((c) => ({
-        label: `Stalled: workspace ${c.workspaceId}`,
-        url: `/poke/${c.workspaceId}`,
+        label: `Stalled: connector ${c.connectorId}`,
+        url: `/poke/connectors/${c.connectorId}`,
       })),
     ];
     reportFailure(
