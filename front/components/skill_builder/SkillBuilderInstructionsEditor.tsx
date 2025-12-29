@@ -13,6 +13,7 @@ import { useController } from "react-hook-form";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -138,6 +139,11 @@ export function SkillBuilderInstructionsEditor({
         if (transaction.docChanged) {
           debouncedUpdate(editor);
         }
+      },
+      onBlur: () => {
+        window.dispatchEvent(
+          new CustomEvent(SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT)
+        );
       },
       immediatelyRender: false,
     },

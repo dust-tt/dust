@@ -35,7 +35,7 @@ export function getDefaultSkillFormData({
   return {
     name: "",
     agentFacingDescription: "",
-    userFacingDescription: null,
+    userFacingDescription: "",
     instructions: "",
     editors: [user],
     tools: [],

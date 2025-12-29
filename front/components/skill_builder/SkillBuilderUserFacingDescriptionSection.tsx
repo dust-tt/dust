@@ -1,12 +1,18 @@
 import { Button, Input, SparklesIcon, Spinner } from "@dust-tt/sparkle";
-import { useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useMemo, useState } from "react";
+import { useController, useWatch } from "react-hook-form";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import {
+  SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT,
+  SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT,
+} from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/utils";
+import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { isEmptyString } from "@app/types";
 
 const USER_FACING_DESCRIPTION_FIELD_NAME = "userFacingDescription";
 const MIN_INSTRUCTIONS_LENGTH = 20;
@@ -15,7 +21,13 @@ export function SkillBuilderUserFacingDescriptionSection() {
   const { owner } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const [isGenerating, setIsGenerating] = useState(false);
-  const { setValue } = useFormContext<SkillBuilderFormData>();
+
+  const { field } = useController<
+    SkillBuilderFormData,
+    typeof USER_FACING_DESCRIPTION_FIELD_NAME
+  >({
+    name: USER_FACING_DESCRIPTION_FIELD_NAME,
+  });
 
   const instructions = useWatch<SkillBuilderFormData, "instructions">({
     name: "instructions",
@@ -30,15 +42,18 @@ export function SkillBuilderUserFacingDescriptionSection() {
     name: "tools",
   });
 
-  const canGenerate =
-    instructions &&
-    instructions.length >= MIN_INSTRUCTIONS_LENGTH &&
-    agentFacingDescription &&
-    agentFacingDescription.length > 0;
+  const canGenerate = useMemo(
+    () =>
+      instructions &&
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH &&
+      agentFacingDescription &&
+      agentFacingDescription.length > 0,
+    [instructions, agentFacingDescription]
+  );
 
-  const handleGenerateDescription = async () => {
+  const generateDescription = async (): Promise<boolean> => {
     if (isGenerating || !canGenerate) {
-      return;
+      return false;
     }
 
     setIsGenerating(true);
@@ -50,20 +65,33 @@ export function SkillBuilderUserFacingDescriptionSection() {
       tools: tools.map((t) => ({ name: t.name, description: t.description })),
     });
 
+    setIsGenerating(false);
+
     if (result.isErr()) {
       sendNotification({
         type: "error",
         title: "Failed to generate description",
         description: result.error.message,
       });
-    } else if (result.value.suggestion) {
-      setValue(USER_FACING_DESCRIPTION_FIELD_NAME, result.value.suggestion, {
-        shouldDirty: true,
-      });
+      return false;
     }
 
-    setIsGenerating(false);
+    if (isEmptyString(result.value.suggestion)) {
+      return false;
+    }
+
+    field.onChange(result.value.suggestion);
+    return true;
   };
+
+  const { markAsUserEdited, generate } = useAutoGenerateOnBlur({
+    fieldValue: field.value,
+    onGenerate: generateDescription,
+    blurEventNames: [
+      SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT,
+      SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT,
+    ],
+  });
 
   const getTooltip = () => {
     if (isGenerating) {
@@ -89,7 +117,10 @@ export function SkillBuilderUserFacingDescriptionSection() {
           <Input
             ref={registerRef}
             placeholder="Enter skill description"
-            onChange={onChange}
+            onChange={(e) => {
+              markAsUserEdited();
+              onChange(e);
+            }}
             message={errorMessage}
             messageStatus={hasError ? "error" : "default"}
             className="pr-10"
@@ -101,7 +132,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
             size="xs"
             className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
             disabled={isGenerating || !canGenerate}
-            onClick={handleGenerateDescription}
+            onClick={generate}
             tooltip={getTooltip()}
           />
         </div>
