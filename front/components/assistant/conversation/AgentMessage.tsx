@@ -935,10 +935,15 @@ function AgentMessageContent({
       progress: progress.progress?.progress,
     }));
 
-  // Get completed images.
-  const completedImages = agentMessage.generatedFiles.filter((file) =>
-    isSupportedImageContentType(file.contentType)
+  // Extract file IDs already referenced inline (to avoid duplicate rendering).
+  const referencedFileIds = new Set(
+    (agentMessage.content ?? "").match(/\bfil_[A-Za-z0-9]{10,}\b/g) ?? []
   );
+
+  // Get completed images that are not already referenced in the Markdown content.
+  const completedImages = agentMessage.generatedFiles
+    .filter((file) => isSupportedImageContentType(file.contentType))
+    .filter((file) => !referencedFileIds.has(file.fileId));
 
   const generatedFiles = agentMessage.generatedFiles
     .filter((file) => !file.hidden)
@@ -990,7 +995,7 @@ function AgentMessageContent({
               isStreaming={streaming && lastTokenClassification === "tokens"}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
-            ></AgentMessageMarkdown>
+            />
           </CitationsContext.Provider>
         </div>
       )}
