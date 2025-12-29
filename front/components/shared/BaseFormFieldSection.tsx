@@ -16,6 +16,7 @@ interface BaseFormFieldSectionProps<
     registerProps: {
       name: string;
       onBlur: () => void;
+      value: string;
     };
     onChange: (e: ChangeEvent<E>) => void;
     errorMessage?: string;
@@ -75,6 +76,7 @@ export function BaseFormFieldSection<
           registerProps: {
             name: field.name,
             onBlur: field.onBlur,
+            value: field.value ?? "",
           },
           onChange,
           errorMessage: fieldState.error?.message,
