@@ -4,10 +4,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { Result, WhitelistableFeature, WorkspaceType } from "@app/types";
+import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type {
+  LightWorkspaceType,
+  Result,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
 import { Ok } from "@app/types";
-
-import type { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -25,7 +29,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   static async listForWorkspace(
-    workspace: WorkspaceResource | WorkspaceType
+    workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType
   ): Promise<FeatureFlagResource[]> {
     const flags = await FeatureFlagModel.findAll({
       where: { workspaceId: workspace.id },
@@ -49,7 +53,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   static async enable(
-    workspace: WorkspaceResource | WorkspaceType,
+    workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
     name: WhitelistableFeature
   ): Promise<void> {
     await FeatureFlagModel.create({
@@ -59,7 +63,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   static async disable(
-    workspace: WorkspaceResource | WorkspaceType,
+    workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
     name: WhitelistableFeature
   ): Promise<boolean> {
     const count = await FeatureFlagModel.destroy({
@@ -73,7 +77,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   static async enableMany(
-    workspace: WorkspaceResource | WorkspaceType,
+    workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
     names: WhitelistableFeature[]
   ): Promise<void> {
     const existingFlags = await FeatureFlagModel.findAll({
@@ -94,7 +98,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   static async disableMany(
-    workspace: WorkspaceResource | WorkspaceType,
+    workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
     names: WhitelistableFeature[]
   ): Promise<void> {
     await FeatureFlagModel.destroy({
