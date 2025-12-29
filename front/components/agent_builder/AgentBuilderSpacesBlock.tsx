@@ -19,7 +19,6 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -84,9 +83,7 @@ export function AgentBuilderSpacesBlock() {
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
-    const actionsToRemove = (spaceIdToActions[space.sId] || []).filter(
-      (action): action is BuilderAction => action.type === "MCP"
-    );
+    const actionsToRemove = spaceIdToActions[space.sId] || [];
 
     const skillsToRemove = selectedSkills.filter((skill) =>
       allSkills

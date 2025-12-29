@@ -399,7 +399,7 @@ export async function submitAgentBuilderForm({
     formData.agentSettings.pictureUrl ?? getRandomDefaultAvatar();
 
   // Process actions asynchronously to handle folder-to-table expansion
-  const mcpActions = formData.actions.filter((action) => action.type === "MCP");
+  const mcpActions = formData.actions;
 
   let processedActions;
   try {

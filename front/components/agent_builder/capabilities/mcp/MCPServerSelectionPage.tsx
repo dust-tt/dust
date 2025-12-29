@@ -105,9 +105,7 @@ export function MCPServerSelectionPage({
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
     selectedToolsInSheet.forEach((tool) => {
-      if (tool.type === "MCP") {
-        mcpIds.add(tool.view.sId);
-      }
+      mcpIds.add(tool.view.sId);
     });
     return mcpIds;
   }, [selectedToolsInSheet]);
@@ -145,7 +143,7 @@ export function MCPServerSelectionPage({
             onClick={() => onItemClick(view)}
             onToolInfoClick={() => {
               if (onToolDetailsClick) {
-                onToolDetailsClick({ type: "MCP", view });
+                onToolDetailsClick({ view });
               }
             }}
             featureFlags={featureFlags}
@@ -164,7 +162,7 @@ export function MCPServerSelectionPage({
             onClick={() => onItemClick(view)}
             onToolInfoClick={() => {
               if (onToolDetailsClick) {
-                onToolDetailsClick({ type: "MCP", view });
+                onToolDetailsClick({ view });
               }
             }}
             featureFlags={featureFlags}

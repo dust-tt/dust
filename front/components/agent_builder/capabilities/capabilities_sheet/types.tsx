@@ -5,7 +5,7 @@ import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/
 import type {
   SkillType,
   SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+} from "@app/types/assistant/skill_configuration"; // TODO(skills 2025-12-18): duplicated from MCPServerViewsSheet, to cleanup later
 
 // TODO(skills 2025-12-18): duplicated from MCPServerViewsSheet, to cleanup later
 export const TOP_MCP_SERVER_VIEWS = [
@@ -19,7 +19,6 @@ export const TOP_MCP_SERVER_VIEWS = [
   "google_calendar",
 ];
 export type SelectedTool = {
-  type: "MCP";
   view: MCPServerViewTypeWithLabel;
   configuredAction?: BuilderAction;
 };

@@ -186,7 +186,6 @@ function KnowledgeConfigurationSheetForm({
 
     const newAction: BuilderAction = {
       id: uniqueId(),
-      type: "MCP",
       name: newName,
       description,
       configuration: {
