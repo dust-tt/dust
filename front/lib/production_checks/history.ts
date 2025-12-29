@@ -6,6 +6,7 @@ import logger from "@app/logger/logger";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import {
   isProductionCheckWorkflowType,
+  MANUAL_CHECK_WORKFLOW_ID_PREFIX,
   WORKFLOW_TYPE_RUN_ALL_CHECKS,
   WORKFLOW_TYPE_RUN_SINGLE_CHECK,
 } from "@app/temporal/production_checks/config";
@@ -24,7 +25,8 @@ import { assertNever } from "@app/types";
 const COMPLETED_CHECKS_QUERY = `(WorkflowType = "${WORKFLOW_TYPE_RUN_ALL_CHECKS}" OR WorkflowType = "${WORKFLOW_TYPE_RUN_SINGLE_CHECK}") AND ExecutionStatus = "Completed"`;
 
 const WORKFLOW_LIST_BATCH_SIZE = 50;
-const MAX_SEARCH_BREADTH = 200;
+const DEFAULT_SEARCH_BREADTH = 200;
+const DEFAULT_RUN_LIMIT = 10;
 
 export function statusToSummaryStatus(
   status: CheckResultStatus
@@ -115,7 +117,11 @@ async function* fetchWorkflowResultsBatched(client: Client): AsyncGenerator<{
 
 export async function getLatestProductionCheckResults(
   client: Client,
-  limit: number = MAX_SEARCH_BREADTH
+  {
+    searchBreadth = DEFAULT_SEARCH_BREADTH,
+  }: {
+    searchBreadth?: number;
+  } = {}
 ): Promise<Map<string, CheckActivityResult>> {
   const checkResultsByName = new Map<string, CheckActivityResult>();
   const registeredCheckCount = REGISTERED_CHECKS.length;
@@ -137,10 +143,10 @@ export async function getLatestProductionCheckResults(
       break;
     }
 
-    if (processedCount >= limit) {
+    if (processedCount >= searchBreadth) {
       logger.warn(
         {
-          limit,
+          searchBreadth,
           foundChecks: checkResultsByName.size,
           registeredChecks: registeredCheckCount,
         },
@@ -156,18 +162,27 @@ export async function getLatestProductionCheckResults(
 export async function getProductionCheckHistory(
   client: Client,
   checkName: string,
-  limit: number = MAX_SEARCH_BREADTH
+  {
+    runsLimit = DEFAULT_RUN_LIMIT,
+    searchBreadth = DEFAULT_SEARCH_BREADTH,
+  }: {
+    runsLimit?: number;
+    searchBreadth?: number;
+  } = {}
 ): Promise<CheckHistoryRun[]> {
   const runs: CheckHistoryRun[] = [];
+  let processedCount = 0;
 
   for await (const { workflow, checks } of fetchWorkflowResultsBatched(
     client
   )) {
+    processedCount++;
+
     const checkResult = checks.find((c) => c.checkName === checkName);
 
-    if (checkResult) {
+    if (checkResult && checkResult.status !== "skipped") {
       const isManual = workflow.workflowId.startsWith(
-        "production_check_manual_"
+        MANUAL_CHECK_WORKFLOW_ID_PREFIX
       );
       runs.push({
         workflowId: workflow.workflowId,
@@ -179,9 +194,22 @@ export async function getProductionCheckHistory(
         actionLinks: checkResult.actionLinks,
         workflowType: isManual ? "manual" : "scheduled",
       });
+
+      if (runs.length >= runsLimit) {
+        break;
+      }
     }
 
-    if (runs.length >= limit) {
+    if (processedCount >= searchBreadth) {
+      logger.warn(
+        {
+          searchBreadth,
+          foundRuns: runs.length,
+          requestedRuns: runsLimit,
+          checkName,
+        },
+        "Reached workflow limit before finding requested number of check runs"
+      );
       break;
     }
   }
