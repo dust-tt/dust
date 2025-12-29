@@ -205,7 +205,7 @@ export function useCapabilitiesPageAndFooter({
               label: "Back",
               variant: "outline",
               onClick: () => {
-                onModeChange({ pageId: "selection" });
+                onModeChange({ pageId: "selection", open: true });
               },
             }
           : {
@@ -237,7 +237,7 @@ export function useCapabilitiesPageAndFooter({
             skillSelection.setDraftSelectedSpaces(
               skillSelection.localAdditionalSpaces
             );
-            onModeChange({ pageId: "selection" });
+            onModeChange({ pageId: "selection", open: true });
           },
         },
         rightButton: {
@@ -273,7 +273,7 @@ export function useCapabilitiesPageAndFooter({
               label: "Back",
               variant: "outline",
               onClick: () => {
-                onModeChange({ pageId: "selection" });
+                onModeChange({ pageId: "selection", open: true });
               },
             }
           : {
@@ -303,7 +303,7 @@ export function useCapabilitiesPageAndFooter({
           label: "Cancel",
           variant: "outline",
           onClick: () => {
-            onModeChange({ pageId: "selection" });
+            onModeChange({ pageId: "selection", open: true });
           },
         },
         rightButton: {

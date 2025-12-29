@@ -26,39 +26,41 @@ export type SelectedTool = {
 
 export type CapabilityFilterType = "all" | "tools" | "skills";
 
-type SelectionMode = {
-  pageId: "selection";
-};
+type OpenState = { open: boolean };
 
-type SkillInfoMode = {
+interface SelectionMode extends OpenState {
+  pageId: "selection";
+}
+
+interface SkillInfoMode extends OpenState {
   pageId: "skill_info";
   capability: SkillWithRelationsType;
   hasPreviousPage: boolean;
-};
+}
 
-type SkillSpaceSelectionMode = {
+interface SkillSpaceSelectionMode extends OpenState {
   pageId: "skill_space_selection";
   capability: SkillType;
-};
+}
 
-type ToolInfoMode = {
+interface ToolInfoMode extends OpenState {
   pageId: "tool_info";
   capability: BuilderAction;
   hasPreviousPage: boolean;
-};
+}
 
-export type ToolConfigurationMode = {
+export interface ToolConfigurationMode extends OpenState {
   pageId: "tool_configuration";
   capability: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;
-};
+}
 
-export type ToolEditMode = {
+export interface ToolEditMode extends OpenState {
   pageId: "tool_edit";
   capability: BuilderAction;
   mcpServerView: MCPServerViewTypeWithLabel;
   index: number;
-};
+}
 
 export type CapabilitiesSheetMode =
   | SelectionMode
@@ -70,7 +72,7 @@ export type CapabilitiesSheetMode =
 
 export type CapabilitiesSheetContentProps = {
   mode: CapabilitiesSheetMode;
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode) => void;
   onClose: () => void;
   onCapabilitiesSave: (data: {
     skills: AgentBuilderSkillsType[];

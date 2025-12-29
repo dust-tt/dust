@@ -32,7 +32,7 @@ function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
 }
 
 type UseSkillSelectionProps = {
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode) => void;
   alreadyAddedSkillIds: Set<string>;
   initialAdditionalSpaces: string[];
   searchQuery: string;
@@ -97,6 +97,7 @@ export const useSkillSelection = ({
         onModeChange({
           pageId: "skill_space_selection",
           capability: skill,
+          open: true,
         });
         return;
       }
@@ -128,7 +129,7 @@ export const useSkillSelection = ({
           icon: skill.icon,
         },
       ]);
-      onModeChange({ pageId: "selection" });
+      onModeChange({ pageId: "selection", open: true });
     },
     [
       onModeChange,
@@ -157,7 +158,7 @@ export const useToolSelection = ({
   searchQuery,
 }: {
   selectedActions: BuilderAction[];
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode) => void;
   searchQuery: string;
 }) => {
   const { owner } = useBuilderContext();
@@ -249,6 +250,7 @@ export const useToolSelection = ({
           pageId: "tool_configuration",
           capability: action,
           mcpServerView,
+          open: true,
         });
         return;
       }
@@ -284,6 +286,7 @@ export const useToolSelection = ({
         pageId: "tool_info",
         capability: action,
         hasPreviousPage: true,
+        open: true,
       });
     },
     [onModeChange]
@@ -326,7 +329,7 @@ export const useToolSelection = ({
         }
       });
 
-      onModeChange({ pageId: "selection" });
+      onModeChange({ pageId: "selection", open: true });
     },
     [selectedActions, localSelectedTools, onModeChange]
   );
