@@ -65,3 +65,28 @@ export interface CheckActivityResult {
   errorMessage: string | null;
   actionLinks: ActionLink[];
 }
+
+export type CheckSummaryStatus = "ok" | "alert" | "no-data";
+
+export interface CheckSummary {
+  name: string;
+  everyHour: number;
+  status: CheckSummaryStatus;
+  lastRun: {
+    timestamp: string;
+    errorMessage: string | null;
+    payload: unknown;
+    actionLinks: ActionLink[];
+  } | null;
+}
+
+export interface CheckHistoryRun {
+  workflowId: string;
+  runId: string;
+  timestamp: string;
+  status: CheckResultStatus;
+  errorMessage: string | null;
+  payload: unknown;
+  actionLinks: ActionLink[];
+  workflowType: "manual" | "scheduled";
+}
