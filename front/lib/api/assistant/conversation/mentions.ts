@@ -9,7 +9,7 @@ import {
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
 import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import {
@@ -36,17 +36,15 @@ import type {
   ContentFragmentInputWithContentNode,
   ConversationType,
   ConversationWithoutContentType,
+  LightAgentConfigurationType,
   MentionType,
   MessageVisibility,
   ModelId,
   RichMentionWithStatus,
   UserMessageContext,
+  UserMessageType,
   UserMessageTypeWithoutMentions,
   UserType,
-} from "@app/types";
-import type {
-  LightAgentConfigurationType,
-  UserMessageType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -57,6 +55,34 @@ import {
 } from "@app/types";
 
 import { runAgentLoopWorkflow } from "./agent_loop";
+
+/**
+ * Check if a user can access a conversation based on space permissions.
+ * Returns true if the user has read access to all required spaces.
+ */
+async function canUserAccessConversation(
+  auth: Authenticator,
+  {
+    userId,
+    conversationId,
+  }: {
+    userId: string;
+    conversationId: string;
+  }
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+  const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    workspace.sId
+  );
+
+  const canAccess = await ConversationResource.canAccess(
+    fakeAuth,
+    conversationId
+  );
+
+  return canAccess === "allowed";
+}
 
 export const createUserMentions = async (
   auth: Authenticator,
@@ -155,7 +181,22 @@ export const createUserMentions = async (
     new Map() // No agent configurations in the users mentions.
   );
 
-  return richMentions;
+  return Promise.all(
+    richMentions.map(async (mention) => {
+      // For user mentions, check if they can access the conversation.
+      if (mention.type === "user") {
+        const canAccess = await canUserAccessConversation(auth, {
+          userId: mention.id,
+          conversationId: conversation.sId,
+        });
+        return {
+          ...mention,
+          userConversationAccessStatus: canAccess ? "accessible" : "restricted",
+        };
+      }
+      return mention;
+    })
+  );
 };
 
 async function attributeUserFromWorkspaceAndEmail(

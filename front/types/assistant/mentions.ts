@@ -35,19 +35,20 @@ export type MentionType = AgentMention | UserMention;
  * Rich mention type with full display metadata.
  * Used in UI components and the editor where we need display information.
  */
-export interface RichMention {
+export type RichMention = RichAgentMention | RichUserMention;
+
+interface BaseRichMention {
   id: string; // configurationId for agents, userId for users
   type: "agent" | "user";
   label: string; // Display name
   pictureUrl: string;
   description: string;
-  userFavorite?: boolean;
 }
 
 /**
  * Agent-specific rich mention with additional metadata.
  */
-export interface RichAgentMention extends RichMention {
+export interface RichAgentMention extends BaseRichMention {
   type: "agent";
   userFavorite?: boolean;
 }
@@ -60,8 +61,9 @@ export interface RichAgentMentionInConversation extends RichAgentMention {
 /**
  * User-specific rich mention.
  */
-export interface RichUserMention extends RichMention {
+export interface RichUserMention extends BaseRichMention {
   type: "user";
+  userConversationAccessStatus?: "accessible" | "restricted";
 }
 
 export interface RichUserMentionInConversation extends RichUserMention {
@@ -125,7 +127,7 @@ export function toMentionType(rich: RichMention): MentionType {
       } satisfies UserMention;
     }
     default:
-      assertNever(rich.type);
+      assertNever(rich);
   }
 }
 

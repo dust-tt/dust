@@ -105,11 +105,12 @@ export function getRichMentionsWithStatusForMessage(
             };
           }
         } else if (m.userId) {
-          const mentionnedUser = usersById.get(m.userId);
-          if (mentionnedUser) {
+          const mentionedUser = usersById.get(m.userId);
+          if (mentionedUser) {
             return {
-              ...toRichUserMentionType(mentionnedUser),
+              ...toRichUserMentionType(mentionedUser),
               status: m.status,
+              userConversationAccessStatus: "accessible",
             };
           }
         } else {
