@@ -82,11 +82,13 @@ function constructToolsSection({
   model,
   agentConfiguration,
   serverToolsAndInstructions,
+  featureFlags,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
+  featureFlags: WhitelistableFeature[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -126,6 +128,15 @@ function constructToolsSection({
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
+      if (
+        featureFlags.includes("skills") &&
+        (serverData.serverName === "interactive_content" ||
+          serverData.serverName === "deep_dive")
+      ) {
+        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions from being duplicated in the prompt, they are already included in the skills section.
+        continue;
+      }
+
       toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
       if (serverData.instructions) {
         toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
@@ -403,6 +414,7 @@ export function constructPromptMultiActions(
       model,
       agentConfiguration,
       serverToolsAndInstructions,
+      featureFlags,
     }),
     constructSkillsSection({
       enabledSkills,
