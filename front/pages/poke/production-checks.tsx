@@ -96,11 +96,15 @@ function ActionLinksList({ links }: ActionLinksListProps) {
         {visibleLinks.map((link, idx) => (
           <div key={idx}>
             {link.url === "#" ? (
-              <span className="text-sm text-gray-500">{link.label}</span>
+              <span className="text-sm text-gray-500 dark:text-muted-foreground-night">
+                {link.label}
+              </span>
             ) : (
               <Link
                 href={link.url}
-                className="text-sm text-blue-600 hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:underline dark:text-blue-400"
               >
                 {link.label}
               </Link>
@@ -111,7 +115,7 @@ function ActionLinksList({ links }: ActionLinksListProps) {
       {hiddenCount > 0 && (
         <button
           onClick={() => setShowAll(!showAll)}
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
         >
           {showAll ? "Show less" : `Show ${hiddenCount} more...`}
         </button>
@@ -123,12 +127,12 @@ function ActionLinksList({ links }: ActionLinksListProps) {
 function getStatusCardClasses(status: CheckSummaryStatus): string {
   switch (status) {
     case "alert":
-      return "border-red-200 bg-red-50";
+      return "border-red-200 bg-red-50 dark:border-warning-500 dark:bg-warning-900/20";
     case "ok":
-      return "border-green-200 bg-green-50";
+      return "border-green-200 bg-green-50 dark:border-success-500 dark:bg-success-900/20";
     case "no-data":
     default:
-      return "border-gray-200 bg-gray-50";
+      return "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-muted-background-night";
   }
 }
 
@@ -151,14 +155,14 @@ function HistoryRunRow({ run }: HistoryRunRowProps) {
   const timestamp = new Date(run.timestamp);
 
   return (
-    <div className="border-b border-gray-100 py-2 last:border-b-0">
+    <div className="border-b border-gray-100 py-2 last:border-b-0 dark:border-gray-700">
       <div
         className={`flex items-center justify-between ${hasDetails ? "cursor-pointer" : ""}`}
         onClick={() => hasDetails && setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2">
           {hasDetails && (
-            <span className="text-gray-400">
+            <span className="text-gray-400 dark:text-gray-500">
               {expanded ? (
                 <ChevronDownIcon className="h-4 w-4" />
               ) : (
@@ -166,25 +170,29 @@ function HistoryRunRow({ run }: HistoryRunRowProps) {
               )}
             </span>
           )}
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 dark:text-muted-foreground-night">
             {timestamp.toLocaleDateString()} {timestamp.toLocaleTimeString()}
           </span>
-          <span className="text-xs text-gray-400">({run.workflowType})</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            ({run.workflowType})
+          </span>
         </div>
         <HistoryStatusChip status={run.status} />
       </div>
       {expanded && (
         <div className="ml-6 mt-2 space-y-2">
           {run.errorMessage && (
-            <p className="text-sm text-red-600">{run.errorMessage}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {run.errorMessage}
+            </p>
           )}
           <ActionLinksList links={links} />
           {run.payload !== null && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-sm text-gray-500">
+              <summary className="cursor-pointer text-sm text-gray-500 dark:text-muted-foreground-night">
                 Raw payload
               </summary>
-              <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-xs">
+              <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
                 {JSON.stringify(run.payload, null, 2)}
               </pre>
             </details>
@@ -211,7 +219,11 @@ function PastRunsSection({ checkName }: PastRunsSectionProps) {
   }
 
   if (runs.length === 0) {
-    return <p className="text-sm text-gray-500">No past runs found.</p>;
+    return (
+      <p className="text-sm text-gray-500 dark:text-muted-foreground-night">
+        No past runs found.
+      </p>
+    );
   }
 
   return (
@@ -244,11 +256,11 @@ function ProductionCheckCard({
       className={`rounded-lg border p-4 ${getStatusCardClasses(check.status)}`}
     >
       <div
-        className="flex cursor-pointer items-center justify-between"
+        className="flex cursor-pointer items-center justify-between gap-4"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3">
-          <span className="text-gray-400">
+          <span className="text-gray-400 dark:text-gray-500">
             {expanded ? (
               <ChevronDownIcon className="h-5 w-5" />
             ) : (
@@ -257,8 +269,10 @@ function ProductionCheckCard({
           </span>
           <StatusChip status={check.status} />
           <div>
-            <div className="font-mono text-sm font-medium">{check.name}</div>
-            <div className="text-xs text-gray-500">
+            <div className="break-all font-mono text-sm font-medium">
+              {check.name}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-muted-foreground-night">
               {lastRunDate
                 ? `Last run: ${lastRunDate.toLocaleDateString()} ${lastRunDate.toLocaleTimeString()}`
                 : "Never run"}
@@ -270,7 +284,7 @@ function ProductionCheckCard({
         <Button
           variant="outline"
           size="xs"
-          icon={PlayIcon}
+          icon={isRunning ? Spinner : PlayIcon}
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             onRun();
@@ -281,14 +295,14 @@ function ProductionCheckCard({
       </div>
 
       {expanded && (
-        <div className="mt-4 space-y-4 border-t border-gray-200 pt-4">
+        <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
           {check.status === "alert" && (
             <div className="flex items-center gap-2">
               <a
                 href={getDatadogLogsUrl(check.name)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-purple-600 hover:underline"
+                className="text-sm text-purple-600 hover:underline dark:text-purple-400"
               >
                 View logs in Datadog →
               </a>
@@ -296,13 +310,13 @@ function ProductionCheckCard({
           )}
 
           {check.status === "alert" && links.length > 0 && (
-            <div className="rounded-md bg-white p-3">
-              <h4 className="mb-2 text-sm font-medium text-red-800">
+            <div className="rounded-md bg-white p-3 dark:bg-background-night">
+              <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
                 Action Items
               </h4>
               <ActionLinksList links={links} />
               {check.lastRun?.errorMessage && (
-                <p className="mt-2 text-sm text-red-600">
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
                   {check.lastRun.errorMessage}
                 </p>
               )}
@@ -312,19 +326,21 @@ function ProductionCheckCard({
           {check.status === "alert" &&
             check.lastRun?.errorMessage &&
             links.length === 0 && (
-              <div className="rounded-md bg-white p-3">
-                <h4 className="mb-2 text-sm font-medium text-red-800">Error</h4>
-                <p className="text-sm text-red-600">
+              <div className="rounded-md bg-white p-3 dark:bg-background-night">
+                <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
+                  Error
+                </h4>
+                <p className="text-sm text-red-600 dark:text-red-400">
                   {check.lastRun.errorMessage}
                 </p>
               </div>
             )}
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-gray-700">
+            <h4 className="mb-2 text-sm font-medium text-gray-700 dark:text-muted-foreground-night">
               Past Runs
             </h4>
-            <div className="rounded-md bg-white p-3">
+            <div className="rounded-md bg-white p-3 dark:bg-background-night">
               <PastRunsSection checkName={check.name} />
             </div>
           </div>
@@ -389,10 +405,10 @@ const ProductionChecksPage = () => {
       <div className="py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground-night">
               Production Checks
             </h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
               {alertCount > 0
                 ? `${alertCount} check${alertCount > 1 ? "s" : ""} need${alertCount === 1 ? "s" : ""} attention`
                 : "All checks passing"}
