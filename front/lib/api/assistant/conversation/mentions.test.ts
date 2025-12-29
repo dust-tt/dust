@@ -1285,6 +1285,7 @@ describe("createUserMentions", () => {
         where: {
           messageId: messageRow.id,
           userId: mentionedUser.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionInDb).not.toBeNull();
