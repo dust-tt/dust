@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import { visit } from "unist-util-visit";
 
@@ -42,14 +42,18 @@ export function QuickReplyBlock({
   };
 
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      label={label}
-      onClick={handleClick}
-      disabled={disabled || isSending}
-      isLoading={isSending}
-    />
+    <span className="float-left clear-left my-0.5">
+      <Button
+        size="sm"
+        variant="outline"
+        label={label}
+        icon={ChatBubbleLeftRightIcon}
+        onClick={handleClick}
+        disabled={disabled || isSending}
+        isLoading={isSending}
+        className="h-auto whitespace-normal py-1.5 text-left" // Prevent whitespace-nowrap from Button: here we want to go on multiple lines if needed.
+      />
+    </span>
   );
 }
 
