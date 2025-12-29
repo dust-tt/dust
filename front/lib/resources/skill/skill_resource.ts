@@ -479,12 +479,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listSkills(
     auth: Authenticator,
-    { status = "active", limit }: { status?: SkillStatus; limit?: number } = {}
+    {
+      status = "active",
+      limit,
+      spaceIds,
+    }: { status?: SkillStatus; limit?: number; spaceIds?: string[] } = {}
   ): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
+    const skills = await this.baseFetch(auth, {
       where: { status },
       ...(limit ? { limit } : {}),
     });
+
+    if (spaceIds && spaceIds.length > 0) {
+      const spaceModelIds = new Set(
+        removeNulls(spaceIds.map(getResourceIdFromSId))
+      );
+      return skills.filter((skill) =>
+        skill.requestedSpaceIds.every((id) => spaceModelIds.has(id))
+      );
+    }
+
+    return skills;
   }
 
   /**

@@ -18,7 +18,7 @@ import type {
 import type { GetSkillWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { Ok } from "@app/types";
 import type {
   SkillStatus,
@@ -29,17 +29,26 @@ export function useSkills({
   owner,
   disabled,
   status,
+  spaces,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
+  spaces?: SpaceType[];
 }) {
   const skillsFetcher: Fetcher<GetSkillConfigurationsResponseBody> = fetcher;
 
-  const statusQueryParam = status ? `?status=${status}` : "";
+  const queryParams = new URLSearchParams();
+  if (status) {
+    queryParams.set("status", status);
+  }
+  if (spaces && spaces.length > 0) {
+    queryParams.set("spaceIds", spaces.map((s) => s.sId).join(","));
+  }
+  const queryString = queryParams.toString();
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills${statusQueryParam}`,
+    `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
     skillsFetcher,
     { disabled }
   );
