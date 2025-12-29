@@ -200,59 +200,96 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
 }
 
 // Converts a JSON object to Markdown format with bullet points.
-// Recursively handles nested objects and arrays.
-export function jsonToMarkdown(data: any, indent: number = 0): string {
+// Recursively handles nested objects and arrays with proper indentation.
+// Includes protections against circular references and excessive depth.
+export function jsonToMarkdown(
+  data: any,
+  indent: number = 0,
+  visited: WeakSet<object> = new WeakSet(),
+  maxDepth: number = 15
+): string {
   const indentStr = "  ".repeat(indent);
 
-  if (data === null || data === undefined) {
-    return `${indentStr}- (empty)`;
+  // Max depth protection
+  if (indent >= maxDepth) {
+    return `${indentStr}- [Max depth reached]`;
   }
 
-  if (
-    typeof data === "string" ||
-    typeof data === "number" ||
-    typeof data === "boolean"
-  ) {
-    return `${indentStr}- ${data}`;
+  // Helper to format primitive values
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return "(empty)";
+    }
+    if (typeof value === "string") {
+      return (
+        value
+          // Remove newlines
+          .replace(/[\r\n]+/g, " ")
+          // Remove Markdown bold/italic patterns
+          .replace(/\*\*\*/g, "") // Bold+italic (***text***)
+          .replace(/\*\*/g, "") // Bold (**text**)
+          .replace(/___/g, "") // Bold+italic (___text___)
+          .replace(/__/g, "") // Bold (__text__)
+          // Remove backticks for code
+          .replace(/```/g, "") // Code blocks (```code```)
+          .replace(/`/g, "") // Inline code (`code`)
+          .trim()
+      );
+    }
+    // Numbers and booleans
+    return String(value);
+  };
+
+  // Handle primitives and special types
+  if (typeof data !== "object" || data === null) {
+    return `${indentStr}- ${formatValue(data)}`;
   }
 
+  // Handle arrays
   if (Array.isArray(data)) {
     if (data.length === 0) {
       return `${indentStr}- []`;
     }
-    return data.map((item) => jsonToMarkdown(item, indent)).join("\n");
-  }
+    if (visited.has(data)) {
+      return `${indentStr}- [Circular Reference]`;
+    }
 
-  if (typeof data === "object") {
-    return Object.entries(data)
-      .map(([key, value]) => {
-        if (value === null || value === undefined) {
-          return `${indentStr}- **${key}:** (empty)`;
-        }
-
-        if (
-          typeof value === "string" ||
-          typeof value === "number" ||
-          typeof value === "boolean"
-        ) {
-          return `${indentStr}- **${key}:** ${value}`;
-        }
-
-        if (Array.isArray(value)) {
-          if (value.length === 0) {
-            return `${indentStr}- **${key}:** []`;
-          }
-          return `${indentStr}- **${key}:**\n${jsonToMarkdown(value, indent + 1)}`;
-        }
-
-        if (typeof value === "object") {
-          return `${indentStr}- **${key}:**\n${jsonToMarkdown(value, indent + 1)}`;
-        }
-
-        return `${indentStr}- **${key}:** ${String(value)}`;
-      })
+    visited.add(data);
+    const result = data
+      .map((item) => jsonToMarkdown(item, indent, visited, maxDepth))
       .join("\n");
+    visited.delete(data);
+    return result;
   }
 
-  return `${indentStr}- ${String(data)}`;
+  // Handle objects
+  const entries = Object.entries(data);
+  if (entries.length === 0) {
+    return `${indentStr}- {}`;
+  }
+  if (visited.has(data)) {
+    return `${indentStr}- [Circular Reference]`;
+  }
+
+  visited.add(data);
+  const result = entries
+    .map(([key, value]) => {
+      // Handle nested objects and arrays
+      if (value !== null && typeof value === "object") {
+        if (Array.isArray(value) && value.length === 0) {
+          return `${indentStr}- **${key}:** []`;
+        }
+        if (!Array.isArray(value) && Object.entries(value).length === 0) {
+          return `${indentStr}- **${key}:** {}`;
+        }
+        return `${indentStr}- **${key}:**\n${jsonToMarkdown(value, indent + 1, visited, maxDepth)}`;
+      }
+
+      // Handle primitives
+      return `${indentStr}- **${key}:** ${formatValue(value)}`;
+    })
+    .join("\n");
+
+  visited.delete(data);
+  return result;
 }
