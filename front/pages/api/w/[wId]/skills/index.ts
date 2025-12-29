@@ -92,7 +92,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status, spaceIds } = req.query;
+      const { withRelations, status, globalSpaceOnly } = req.query;
 
       const statusValidation = SkillStatusSchema.decode(status);
       if (isLeft(statusValidation)) {
@@ -106,14 +106,9 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
-      const spaceIdsList =
-        typeof spaceIds === "string" && spaceIds.length > 0
-          ? spaceIds.split(",")
-          : undefined;
-
       const skillConfigurations = await SkillResource.listSkills(auth, {
         status: skillStatus,
-        spaceIds: spaceIdsList,
+        globalSpaceOnly: globalSpaceOnly === "true",
       });
 
       if (withRelations === "true") {

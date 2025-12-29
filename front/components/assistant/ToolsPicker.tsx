@@ -227,7 +227,7 @@ export function ToolsPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    spaces: globalSpaces,
+    globalSpaceOnly: true,
     disabled: !shouldFetchToolsData || !hasSkillsFeature,
   });
 

@@ -18,7 +18,7 @@ import type {
 import type { GetSkillWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
 import type {
   SkillStatus,
@@ -29,12 +29,12 @@ export function useSkills({
   owner,
   disabled,
   status,
-  spaces,
+  globalSpaceOnly,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
-  spaces?: SpaceType[];
+  globalSpaceOnly?: boolean;
 }) {
   const skillsFetcher: Fetcher<GetSkillConfigurationsResponseBody> = fetcher;
 
@@ -42,8 +42,8 @@ export function useSkills({
   if (status) {
     queryParams.set("status", status);
   }
-  if (spaces && spaces.length > 0) {
-    queryParams.set("spaceIds", spaces.map((s) => s.sId).join(","));
+  if (globalSpaceOnly) {
+    queryParams.set("globalSpaceOnly", "true");
   }
   const queryString = queryParams.toString();
 
