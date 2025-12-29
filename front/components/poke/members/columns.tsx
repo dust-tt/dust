@@ -12,6 +12,7 @@ import { ACTIVE_ROLES } from "@app/types";
 
 export type MemberDisplayType = {
   createdAt: number;
+  lastLoginAt: number | null;
   email: string;
   name: string;
   role: RoleType;
@@ -72,15 +73,28 @@ export function makeColumnsForMembers({
     },
     {
       accessorKey: "lastLoginAt",
-      header: "Last login",
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Last login</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
       cell: ({ row }) => {
-        const lastLoginAt: string | null = row.getValue("lastLoginAt");
+        const lastLoginAt: number | null = row.getValue("lastLoginAt");
 
         if (!lastLoginAt) {
           return "never logged in";
         }
 
-        return formatTimestampToFriendlyDate(new Date(lastLoginAt).getTime());
+        return formatTimestampToFriendlyDate(lastLoginAt);
       },
     },
     {
