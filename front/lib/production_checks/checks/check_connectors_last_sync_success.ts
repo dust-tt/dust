@@ -4,11 +4,8 @@ import {
   isBotTypeProvider,
   isWebhookBasedProvider,
 } from "@app/lib/connector_providers";
-import type {
-  ActionLink,
-  CheckFunction,
-} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import type { ActionLink, CheckFunction } from "@app/types";
 import type { ConnectorProvider } from "@app/types";
 
 interface ConnectorBlob {

@@ -14,16 +14,16 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import {
+  usePokeCheckHistory,
+  usePokeProductionChecks,
+} from "@app/poke/swr/production_checks";
 import type {
   ActionLink,
   CheckHistoryRun,
   CheckSummary,
   CheckSummaryStatus,
-} from "@app/lib/production_checks/types";
-import {
-  usePokeCheckHistory,
-  usePokeProductionChecks,
-} from "@app/poke/swr/production_checks";
+} from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {

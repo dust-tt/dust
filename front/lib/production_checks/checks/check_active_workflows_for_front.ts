@@ -1,10 +1,7 @@
 import type { Client, WorkflowHandle } from "@temporalio/client";
 
-import type {
-  ActionLink,
-  CheckFunction,
-} from "@app/lib/production_checks/types";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import type { ActionLink, CheckFunction } from "@app/types";
 
 const WORKFLOW_IDS = ["data-retention-workflow", "tracker-notify-workflow"];
 

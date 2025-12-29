@@ -11,13 +11,13 @@ import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/ch
 import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
+import mainLogger from "@app/logger/logger";
 import type {
   ActionLink,
   Check,
   CheckActivityResult,
   CheckHeartbeat,
-} from "@app/lib/production_checks/types";
-import mainLogger from "@app/logger/logger";
+} from "@app/types";
 
 function extractActionLinks(payload: unknown): ActionLink[] {
   if (

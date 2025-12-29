@@ -7,13 +7,10 @@ import {
   getLatestCheckResults,
   statusToSummaryStatus,
 } from "@app/lib/production_checks/history";
-import type {
-  CheckSummary,
-  CheckSummaryStatus,
-} from "@app/lib/production_checks/types";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
+import type { CheckSummary, CheckSummaryStatus } from "@app/types";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetProductionChecksResponseBody = {

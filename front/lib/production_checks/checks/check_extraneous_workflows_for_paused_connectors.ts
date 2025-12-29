@@ -1,12 +1,9 @@
 import type { Client } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
-import type {
-  ActionLink,
-  CheckFunction,
-} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import type { ActionLink, CheckFunction } from "@app/types";
 import type { ConnectorProvider } from "@app/types";
 
 interface ConnectorBlob {

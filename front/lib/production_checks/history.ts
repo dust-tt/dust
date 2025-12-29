@@ -1,16 +1,16 @@
 import type { Client, WorkflowExecutionInfo } from "@temporalio/client";
 
-import type {
-  CheckActivityResult,
-  CheckHistoryRun,
-  CheckResultStatus,
-  CheckSummaryStatus,
-} from "@app/lib/production_checks/types";
 import logger from "@app/logger/logger";
 import type {
   runAllChecksWorkflow,
   runSingleCheckWorkflow,
 } from "@app/temporal/production_checks/workflows";
+import type {
+  CheckActivityResult,
+  CheckHistoryRun,
+  CheckResultStatus,
+  CheckSummaryStatus,
+} from "@app/types";
 
 const COMPLETED_CHECKS_QUERY = `(WorkflowType = "runAllChecksWorkflow" OR WorkflowType = "runSingleCheckWorkflow") AND ExecutionStatus = "Completed"`;
 

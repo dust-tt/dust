@@ -1,7 +1,7 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type { CheckActivityResult } from "@app/lib/production_checks/types";
 import type * as activities from "@app/temporal/production_checks/activities";
+import type { CheckActivityResult } from "@app/types";
 
 const { runAllChecksActivity, runSingleCheckActivity } = proxyActivities<
   typeof activities

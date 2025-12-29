@@ -1,7 +1,7 @@
 import { QueryTypes } from "sequelize";
 
-import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getFrontReplicaDbConnection } from "@app/lib/production_checks/utils";
+import type { ActionLink, CheckFunction } from "@app/types";
 
 const FIFTY_DOLLARS_MICRO_USD = 50_000_000;
 const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
@@ -56,16 +56,21 @@ export const checkExcessCredits: CheckFunction = async (
       totalExcessUsd: (Number(w.totalExcessMicroUsd) / 1_000_000).toFixed(2),
     }));
 
+    const actionLinks: ActionLink[] = workspacesWithExcessCredits.map((w) => ({
+      label: `${w.workspaceName} ($${(Number(w.totalExcessMicroUsd) / 1_000_000).toFixed(2)})`,
+      url: `/poke/${w.workspaceSId}`,
+    }));
+
     logger.warn(
       { workspaces: formattedWorkspaces },
       `Found ${workspacesWithExcessCredits.length} workspace(s) with excess credits > $50 in the last 30 days`
     );
 
     reportFailure(
-      { workspaces: formattedWorkspaces },
+      { workspaces: formattedWorkspaces, actionLinks },
       `${workspacesWithExcessCredits.length} workspace(s) have excess credits > $50 in the last 30 days`
     );
   } else {
-    reportSuccess({});
+    reportSuccess({ actionLinks: [] });
   }
 };

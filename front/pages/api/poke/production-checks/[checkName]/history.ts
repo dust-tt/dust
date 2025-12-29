@@ -4,10 +4,10 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getCheckHistory } from "@app/lib/production_checks/history";
-import type { CheckHistoryRun } from "@app/lib/production_checks/types";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
+import type { CheckHistoryRun } from "@app/types";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 

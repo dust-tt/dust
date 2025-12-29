@@ -3,15 +3,12 @@ import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import type {
-  ActionLink,
-  CheckFunction,
-} from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { ActionLink, CheckFunction } from "@app/types";
 import { getNotionWorkflowId } from "@app/types";
 import { withRetries } from "@app/types";
 
@@ -184,8 +181,19 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
-  const missingActiveWorkflows: unknown[] = [];
-  const stalledWorkflows: unknown[] = [];
+  type MissingWorkflow = {
+    connectorId: number;
+    workspaceId: string;
+    details: string;
+  };
+
+  type StalledWorkflow = {
+    connectorId: number;
+    workspaceId: string;
+  };
+
+  const missingActiveWorkflows: MissingWorkflow[] = [];
+  const stalledWorkflows: StalledWorkflow[] = [];
 
   for (const notionConnector of notionConnectors) {
     if (notionConnector.pausedAt) {
