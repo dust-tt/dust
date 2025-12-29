@@ -59,7 +59,22 @@ async function getProductionCheckWorkflowResults(
         workflowInfo.workflowId,
         workflowInfo.runId
       );
-      return handle.result();
+      const result = await handle.result();
+
+      if (!Array.isArray(result)) {
+        logger.warn(
+          {
+            workflowId: workflowInfo.workflowId,
+            runId: workflowInfo.runId,
+            resultType: typeof result,
+            result,
+          },
+          "runAllChecksWorkflow returned non-array result - skipping historical workflow data"
+        );
+        return [];
+      }
+
+      return result;
     }
     case WORKFLOW_TYPE_RUN_SINGLE_CHECK: {
       const handle = client.workflow.getHandle<typeof runSingleCheckWorkflow>(
