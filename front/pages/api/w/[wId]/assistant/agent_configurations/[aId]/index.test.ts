@@ -148,6 +148,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - additionalRe
       where: {
         sId: data.agentConfiguration.sId,
         version: data.agentConfiguration.version,
+        workspaceId: workspace.id,
       },
     });
     expect(agentConfigurationModel).not.toBeNull();
