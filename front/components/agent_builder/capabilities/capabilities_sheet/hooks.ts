@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderSkillsType,
   MCPFormData,
@@ -16,6 +15,7 @@ import {
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
@@ -23,7 +23,6 @@ import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -44,8 +43,6 @@ export const useSkillSelection = ({
   initialAdditionalSpaces,
   searchQuery,
 }: UseSkillSelectionProps) => {
-  const { owner } = useAgentBuilderContext();
-
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
   >([]);
@@ -58,10 +55,7 @@ export const useSkillSelection = ({
     localAdditionalSpaces
   );
 
-  const { skills, isSkillsLoading } = useSkills({
-    owner,
-    status: "active",
-  });
+  const { skills, isSkillsLoading } = useSkillsContext();
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),

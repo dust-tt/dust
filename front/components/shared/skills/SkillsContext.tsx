@@ -33,6 +33,7 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
 
   const { skills, isSkillsLoading, isSkillsError } = useSkills({
     owner,
+    status: "active",
     disabled: !hasSkillsFeature,
   });
 
