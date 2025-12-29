@@ -2,16 +2,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
@@ -31,24 +29,8 @@ export type GetMCPServerViewsListResponseBody = {
 
 // We don't allow to fetch "auto_hidden_builder".
 const isAllowedAvailability = (
-  availability: string,
-  serverView: MCPServerViewType,
-  {
-    featureFlags,
-  }: {
-    featureFlags: WhitelistableFeature[];
-  }
+  availability: string
 ): availability is MCPViewsRequestAvailabilityType => {
-  // TODO(skills-GA): Remove this check once skills are GA.
-  // When skills feature flag is enabled, treat interactive_content and deep_dive as auto_hidden_builder
-  // since they are exposed through skills instead.
-  if (featureFlags.includes("skills")) {
-    const serverName = getInternalMCPServerNameFromSId(serverView.server.sId);
-    if (serverName === "interactive_content" || serverName === "deep_dive") {
-      return false;
-    }
-  }
-
   return availability === "manual" || availability === "auto";
 };
 
@@ -93,10 +75,6 @@ async function handler(
 
       const query = r.data;
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-
       const serverViews = await concurrentExecutor(
         query.spaceIds,
         async (spaceId) => {
@@ -115,7 +93,7 @@ async function handler(
         .filter((v): v is MCPServerViewType => v !== null)
         .filter(
           (v) =>
-            isAllowedAvailability(v.server.availability, v, { featureFlags }) &&
+            isAllowedAvailability(v.server.availability) &&
             query.availabilities.includes(v.server.availability)
         );
 
