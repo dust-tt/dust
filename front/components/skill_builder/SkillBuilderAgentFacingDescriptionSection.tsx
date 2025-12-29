@@ -98,6 +98,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
             showErrorLabel={hasError}
             {...registerProps}
             onBlur={() => {
+              registerProps.onBlur();
               window.dispatchEvent(
                 new CustomEvent(SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT)
               );
