@@ -1,9 +1,14 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameFromSId,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type {
   APIErrorWithStatusCode,
@@ -140,6 +145,8 @@ function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
   favoritePlatforms: FavoritePlatform[];
+  configuredTools: InternalMCPServerNameType[];
+  username: string;
 }): string {
   const tools = getToolsForOnboarding(
     options.favoritePlatforms,
@@ -149,6 +156,12 @@ function buildOnboardingPrompt(options: {
 
   // Build the tool setup directives for the first message (max 2, on same line).
   const initialTools = tools.slice(0, 2);
+
+  // Check if any of the initial tools are already configured
+  const alreadyConfiguredTool = initialTools.find((tool) =>
+    options.configuredTools.includes(tool)
+  );
+
   const toolSetupDirectives = initialTools
     .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
@@ -177,6 +190,35 @@ function buildOnboardingPrompt(options: {
     }
   }
 
+  // Build suggested tool names for reference
+  const suggestedToolNames = initialTools
+    .map((sId) => asDisplayName(sId))
+    .join(", ");
+
+  // Build quick replies for "connect more tools" flow
+  const topPriorityQuickReplies = initialTools
+    .map(
+      (sId) =>
+        `:quickReply[${asDisplayName(sId)}]{message="Connect ${asDisplayName(sId)}"}`
+    )
+    .join(" ");
+  const otherTools = tools.slice(2);
+  const otherToolsQuickReplies = otherTools
+    .map(
+      (sId) =>
+        `:quickReply[${asDisplayName(sId)}]{message="Connect ${asDisplayName(sId)}"}`
+    )
+    .join(" ");
+
+  // Build the first message section based on whether a tool is already configured
+  const firstMessageSection = alreadyConfiguredTool
+    ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTool)
+    : buildFirstMessageWithToolSetup(
+        toolsWithDescriptions,
+        toolSetupDirectives,
+        suggestedToolNames
+      );
+
   return `<dust_system>
 You are onboarding a brand-new user to Dust.
 ${userContext}
@@ -184,17 +226,54 @@ ${userContext}
 ## CRITICAL RULES
 
 1. EVERY message MUST end with at least one interactive element (toolSetup or quickReply)
-2. Keep messages SHORT - 3-4 lines maximum for the first message
+2. Keep messages SHORT - 3-4 lines maximum
 3. Be direct and action-focused - get to the tool connection quickly
 
-## CRITICAL: Do not hallucinate use cases
-
-- NEVER suggest cross-tool queries like "get answers from multiple sources" or "search across X and Y"
-- NEVER assume what data the user has (no "find your design docs", "search your specs", "find feedback on the checkout redesign", etc.)
+### Do not hallucinate
+- NEVER suggest cross-tool queries like "get answers from multiple sources"
+- NEVER assume what data the user has (no "find your design docs", "search your specs", etc.)
 - NEVER invent role-specific scenarios (no "as a designer, you can search design feedback...")
-- ONLY suggest simple, generic tasks that work with a SINGLE tool (e.g., "search your emails", "find a page in Notion")
+- ONLY suggest simple, generic tasks that work with a SINGLE tool
+
+### Quick reply format
+:quickReply[Label]{message="message to send"}
+- All quick replies MUST be on a SINGLE line at the end
+- 2-3 buttons maximum
+- End with standard buttons on next line:
+  :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+
+### Response guidance
+- Use actual names, titles, dates from the data you fetch
+- Make suggestions that are immediately actionable
+- Don't be vague or generic
+- If you can't find data, admit it and pivot to general suggestions
 - Keep task suggestions universal - they should work for ANY user of that tool
 - When describing tools, use only their official descriptions provided below
+
+## Quick replies must match the data found
+
+After showing results from any tool use:
+1. Present the results with specific names/titles/dates
+2. Offer 2-3 **actionable quick replies based on the actual data** (e.g., "Reply to [person]", "Summarize [specific item]", "Show more about [topic]")
+3. Include "Automate this" as ONE option among the actions - not the main focus
+
+**Quick replies should be specific to what you found:**
+- Found emails from Sarah and Mike → :quickReply[Reply to Sarah]{...} :quickReply[Summarize Mike's email]{...}
+- Found PR reviews pending → :quickReply[Show PR details]{...} :quickReply[List my open PRs]{...}
+- Found Notion pages → :quickReply[Open recent page]{...} :quickReply[Search for...]{...}
+
+**Always include automation as an option**, but as part of the action menu, not as the primary call-to-action.
+
+## Automation flow
+
+When user wants to automate (clicks "Automate this" or asks for it):
+1. Ask for timezone:
+   :quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
+2. Call create_schedule_trigger with:
+   - name: Short description (e.g., "Daily email summary")
+   - schedule: Natural language (e.g., "every weekday at 9am")
+   - prompt: Start with @${options.username} so user gets pinged
+   - timezone: The IANA timezone provided
 
 ## Directive reference
 
@@ -205,13 +284,6 @@ Rules:
 - Maximum 2 per message
 - **CRITICAL: Multiple toolSetup directives MUST be on the SAME line, separated by a space.**
 
-### Quick reply buttons
-:quickReply[Label]{message="message to send"}
-
-Rules:
-- All quick replies MUST be on a SINGLE line at the end
-- 2-3 buttons maximum
-
 ## Available tools
 
 ${buildAvailableToolsList()}
@@ -220,27 +292,7 @@ ${buildAvailableToolsList()}
 
 ---
 
-## YOUR FIRST MESSAGE (respond now)
-
-Recommended tools to setup for this user:
-${toolsWithDescriptions}
-
-Write a SHORT welcome message (3-4 lines max):
-1. "# Welcome to Dust 👋" (or similar short greeting)
-2. One sentence inviting them to connect their tools
-3. Briefly mention the recommended tool(s) above
-4. End with the tool setup cards and skip option
-
-You MUST end your message EXACTLY like this:
-${toolSetupDirectives}
-:quickReply[Skip for now]{message="I'd like to skip connecting tools for now"}
-
-**DO NOT:**
-- Explain what Dust is at length
-- List features or capabilities beyond the tools
-- Invent use cases or scenarios specific to their role
-- Promise cross-tool functionality
-- Write more than 4 lines before the buttons
+${firstMessageSection}
 
 ---
 
@@ -269,10 +321,82 @@ Example ending:
 :quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
 
 ### When user asks to connect more tools
-1. Show 1-2 relevant toolSetup directives (on same line)
-2. Include a skip option
+Present available tools as quick replies sorted by relevance:
+
+**Top priority (already suggested):**
+${topPriorityQuickReplies}
+
+${otherToolsQuickReplies ? `**Other available tools:**\n${otherToolsQuickReplies}` : ""}
+
+### When user says they already connected a tool
+If the user says they already connected a tool (e.g., "I already connected Gmail", "It's already set up", "I connected it"):
+1. Acknowledge briefly (e.g., "Great!")
+2. Use the toolset_listConfiguredTools tool to discover which tools are configured
+3. Look for any of the suggested tools (${suggestedToolNames}) in the configured list
+4. Once you find a matching tool, immediately use it to fetch data and show personalized suggestions
+5. Follow the same flow as if the tool was just connected (confirm + show data + quick replies)
+
+**Important:** Don't assume which specific tool they connected - use toolset_listConfiguredTools to discover it from the suggested list.
 
 </dust_system>`;
+}
+
+function buildFirstMessageWithToolSetup(
+  toolsWithDescriptions: string,
+  toolSetupDirectives: string,
+  suggestedToolNames: string
+): string {
+  return `## YOUR FIRST MESSAGE (respond now)
+
+**Suggested tools for this user:** ${suggestedToolNames}
+
+Recommended tools to setup for this user:
+${toolsWithDescriptions}
+
+Write a SHORT welcome message (3-4 lines max):
+1. "# Welcome to Dust 👋" (or similar short greeting)
+2. One sentence inviting them to connect their tools
+3. Briefly mention the recommended tool(s) above
+4. End with the tool setup cards and skip option
+
+You MUST end your message EXACTLY like this:
+${toolSetupDirectives}
+:quickReply[Skip for now]{message="I'd like to skip connecting tools for now"}
+
+**DO NOT:**
+- Explain what Dust is at length
+- List features or capabilities beyond the tools
+- Invent use cases or scenarios specific to their role
+- Promise cross-tool functionality
+- Write more than 4 lines before the buttons`;
+}
+
+function buildFirstMessageWithConfiguredTool(
+  toolId: InternalMCPServerNameType
+): string {
+  const toolName = asDisplayName(toolId);
+  const queryGuidance =
+    TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
+
+  return `## YOUR FIRST MESSAGE (respond now)
+
+The user already has ${toolName} connected. **Immediately use the ${toolId} tool** to fetch real data and provide a personalized welcome.
+
+Query guidance: ${queryGuidance}
+
+1. Welcome the user to Dust and mention you noticed ${toolName} was already connected, so you went ahead and checked it
+   (e.g., "Welcome to Dust! 👋 I noticed you already have ${toolName} connected, so I took a look...")
+2. Share what you found in a conversational way (e.g., "I see you have an email from Roger 2 days ago...")
+3. End with **actionable quick replies based on the actual data found** (e.g., "Reply to Roger", "Summarize this email")
+4. Include "Automate this" as one option among the quick replies
+
+Example quick replies for Gmail with emails from Sarah and a Datadog digest:
+:quickReply[Reply to Sarah]{message="Help me reply to Sarah's email"} :quickReply[Summarize Datadog digest]{message="Summarize the Datadog digest"} :quickReply[Automate daily summary]{message="Send me a daily email summary every morning"}
+
+If you don't find relevant data:
+- Still welcome the user and mention the tool is connected
+- Suggest 2 general things they can try with actionable quick replies
+- Include automation as one option`;
 }
 
 // Tool-specific task suggestions for the follow-up prompt after connecting a tool.
@@ -307,93 +431,19 @@ const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
 
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
-export function buildOnboardingFollowUpPrompt(
-  toolId: string,
-  options: { username: string }
-): string {
+export function buildOnboardingFollowUpPrompt(toolId: string): string {
   const queryGuidance =
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
+  const toolName = asDisplayName(toolId);
 
   return `<dust_system>
-The user just connected a tool (${toolId}). Your task is to AUTOMATICALLY use this tool to provide a personalized, helpful suggestion.
+The user just connected ${toolName}.
 
-## Instructions:
+**Immediately use the ${toolId} tool** to fetch real data and show personalized suggestions.
 
-1. **Immediately use the ${toolId} tool** to fetch real data (don't ask permission, just do it)
-2. **Query guidance**: ${queryGuidance}
-3. **If you find relevant data**:
-   - Briefly confirm the connection (one line + emoji)
-   - Share what you found in a conversational way (e.g., "I see you have an email from Roger 2 days ago that you haven't replied to")
-   - Suggest 1-2 specific, actionable things the user can do with this data
-   - End with quick reply buttons for those specific actions
+Query guidance: ${queryGuidance}
 
-4. **If you don't find relevant data or get an error**:
-   - Briefly confirm the connection (one line + emoji)
-   - Mention you checked but didn't find urgent items
-   - Suggest 2 general things they can try with this tool
-   - End with quick reply buttons for general actions
-
-## After showing the results:
-1. Show the results of their request
-2. Ask if they'd like to automate this task
-3. Explain it would run automatically (e.g., "every weekday morning")
-4. End with quick reply options
-
-Example response:
-"Here's your summary: [content]
-
-Would you like me to send you this automatically every weekday morning?"
-:quickReply[Yes, automate this]{message="Yes, please automate this for me"} :quickReply[No thanks]{message="No thanks"}
-
-### When user wants to automate a task
-When the user confirms they want to automate a task:
-
-1. **First, ask for their timezone** so the schedule runs at the right time for them:
-   - Ask: "What timezone are you in?"
-   - Provide quick replies for common timezones:
-
-:quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
-
-2. **Once you have the timezone**, call create_schedule_trigger with the timezone parameter:
-   - name: A short descriptive name (e.g., "Daily email summary")
-   - schedule: The schedule in natural language (e.g., "every weekday at 9am")
-   - prompt: What @dust should do. Start with @${options.username} so the user gets pinged (e.g., "@${options.username} Summarize the important emails I received since yesterday")
-   - timezone: The IANA timezone the user provided (e.g., "America/New_York", "Europe/Paris")
-
-The tool will create the schedule and return a confirmation message.
-
-## Response format:
-
-Keep your response SHORT (4-5 lines max). Structure it like:
-- Connection confirmed + emoji
-- What you found (specific names/titles/dates)
-- Suggestion(s)
-- Quick reply buttons
-
-## Quick reply format:
-
-End with 2-3 quick reply buttons on a single line:
-:quickReply[Button 1 Label]{message="The exact message to send"} :quickReply[Button 2 Label]{message="The exact message to send"}
-
-Then add these standard buttons on the next line:
-:quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
-
-## CRITICAL: Be specific and actionable
-
-- Use actual names, titles, dates from the data you fetch
-- Make suggestions that are immediately actionable
-- Don't be vague or generic
-- If you can't find data, admit it and pivot to general suggestions
-
-## Example (Gmail):
-
-Great! Your Gmail is connected ✅
-
-I see you have an unread email from Sarah Chen from 2 days ago about the Q4 planning meeting, and one from Mike Rodriguez about reviewing the proposal draft.
-
-:quickReply[Draft reply to Sarah]{message="Help me draft a reply to Sarah Chen's email about Q4 planning"} :quickReply[Summarize today's emails]{message="Summarize my emails from today"}
-:quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
-
+Briefly confirm the connection (one line + emoji), share what you found, end with **actionable quick replies based on the data** (include automation as one option).
 </dust_system>`;
 }
 
@@ -485,6 +535,16 @@ export async function createOnboardingConversationIfNeeded(
     }
   }
 
+  // Check for tools with views in the global space (matches what UI considers "configured")
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  const globalSpaceViews = await MCPServerViewResource.listBySpace(
+    auth,
+    globalSpace
+  );
+  const configuredTools = globalSpaceViews
+    .map((v) => getInternalMCPServerNameFromSId(v.internalMCPServerId))
+    .filter((name): name is InternalMCPServerNameType => name !== null);
+
   const conversation = await createConversation(auth, {
     title: "Welcome to Dust",
     visibility: "unlisted",
@@ -495,6 +555,8 @@ export async function createOnboardingConversationIfNeeded(
     emailProvider,
     userJobType,
     favoritePlatforms,
+    configuredTools,
+    username: userJson.username,
   });
 
   const context: UserMessageContext = {
