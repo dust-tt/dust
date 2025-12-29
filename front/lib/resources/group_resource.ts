@@ -133,15 +133,17 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * Creates a new skill editors group for the given skill and adds the creating
-   * user to it.
+   * user to it (unless skipUserMembership is true).
    */
   // TODO(SKILLS 2025-12-11): Move this to SkillResource.
   static async makeNewSkillEditorsGroup(
     auth: Authenticator,
     skill: SkillConfigurationModel,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      transaction,
+      skipUserMembership = false,
+    }: { transaction?: Transaction; skipUserMembership?: boolean } = {}
   ) {
-    const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
     if (skill.workspaceId !== workspace.id) {
@@ -160,16 +162,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
-    await GroupMembershipModel.create(
-      {
-        groupId: defaultGroup.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: new Date(),
-        status: "active" as const,
-      },
-      { transaction }
-    );
+    if (!skipUserMembership) {
+      const user = auth.getNonNullableUser();
+      await GroupMembershipModel.create(
+        {
+          groupId: defaultGroup.id,
+          userId: user.id,
+          workspaceId: workspace.id,
+          startAt: new Date(),
+          status: "active" as const,
+        },
+        { transaction }
+      );
+    }
 
     await GroupSkillModel.create(
       {

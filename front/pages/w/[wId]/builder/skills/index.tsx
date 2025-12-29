@@ -219,6 +219,7 @@ export default function WorkspaceSkills({
           <SuggestedSkillDetailsSheet
             skill={selectedSkill}
             onClose={() => setSelectedSkill(null)}
+            owner={owner}
           />
         ) : (
           <SkillDetailsSheet

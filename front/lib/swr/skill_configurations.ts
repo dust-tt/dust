@@ -264,3 +264,113 @@ export function useSkillWithRelations(
     isLoading: isMutating,
   };
 }
+
+export function useAcceptSuggestion({
+  owner,
+  skill,
+}: {
+  owner: LightWorkspaceType;
+  skill: SkillType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSkillsWithRelations: mutateSuggestedSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "suggested",
+      disabled: true,
+    });
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+
+  const doAccept = async (agentSIds: string[]) => {
+    if (!skill.sId) {
+      return false;
+    }
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/skills/${skill.sId}/suggestions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ agentSIds }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateSuggestedSkills();
+      void mutateActiveSkills();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully accepted ${skill.name}`,
+        description: `${skill.name} is now active.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error accepting ${skill.name}`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doAccept;
+}
+
+export function useDeclineSuggestion({
+  owner,
+  skill,
+}: {
+  owner: LightWorkspaceType;
+  skill: SkillType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSkillsWithRelations: mutateSuggestedSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "suggested",
+      disabled: true,
+    });
+
+  const doDecline = async () => {
+    if (!skill.sId) {
+      return false;
+    }
+    // Decline uses the DELETE endpoint which archives the skill
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/skills/${skill.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (res.ok) {
+      void mutateSuggestedSkills();
+
+      sendNotification({
+        type: "success",
+        title: `Declined ${skill.name}`,
+        description: `${skill.name} has been declined.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error declining ${skill.name}`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doDecline;
+}

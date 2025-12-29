@@ -179,8 +179,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
     {
       mcpServerViews,
+      skipEditorGroupMembership = false,
     }: {
       mcpServerViews: MCPServerViewResource[];
+      skipEditorGroupMembership?: boolean;
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
@@ -202,6 +204,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         skill,
         {
           transaction,
+          skipUserMembership: skipEditorGroupMembership,
         }
       );
 
@@ -976,6 +979,66 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return { affectedCount };
+  }
+
+  /**
+   * Accept a suggested skill by activating it and optionally limiting which agents can use it.
+   * @param auth The authenticator
+   * @param agentConfigurationIdsToKeep Array of agent configuration model IDs that should keep the skill.
+   *        If empty, all agent links will be removed.
+   * @param transaction Optional transaction
+   */
+  async acceptSuggestion(
+    auth: Authenticator,
+    {
+      agentConfigurationIdsToKeep,
+      transaction,
+    }: {
+      agentConfigurationIdsToKeep: ModelId[];
+      transaction?: Transaction;
+    }
+  ): Promise<Result<{ affectedCount: number }, Error>> {
+    if (this.status !== "suggested") {
+      return new Err(new Error("Only suggested skills can be accepted."));
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const userId = auth.user()?.id;
+
+    // Remove agent-skill links for agents not in the keep list.
+    if (agentConfigurationIdsToKeep.length === 0) {
+      // Remove all links.
+      await AgentSkillModel.destroy({
+        where: {
+          customSkillId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+    } else {
+      // Remove links for agents NOT in the keep list.
+      await AgentSkillModel.destroy({
+        where: {
+          customSkillId: this.id,
+          workspaceId: workspace.id,
+          agentConfigurationId: {
+            [Op.notIn]: agentConfigurationIdsToKeep,
+          },
+        },
+        transaction,
+      });
+    }
+
+    // Update skill status to active and set the author to the accepting user.
+    const [affectedCount] = await this.update(
+      {
+        status: "active",
+        authorId: userId ?? null,
+      },
+      transaction
+    );
+
+    return new Ok({ affectedCount });
   }
 
   async updateSkill(
