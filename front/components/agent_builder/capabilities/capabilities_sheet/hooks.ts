@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderSkillsType,
   MCPFormData,
@@ -16,6 +15,7 @@ import {
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
@@ -23,7 +23,6 @@ import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -32,7 +31,7 @@ function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
 }
 
 type UseSkillSelectionProps = {
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode) => void;
   alreadyAddedSkillIds: Set<string>;
   initialAdditionalSpaces: string[];
   searchQuery: string;
@@ -44,8 +43,6 @@ export const useSkillSelection = ({
   initialAdditionalSpaces,
   searchQuery,
 }: UseSkillSelectionProps) => {
-  const { owner } = useAgentBuilderContext();
-
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
   >([]);
@@ -58,10 +55,7 @@ export const useSkillSelection = ({
     localAdditionalSpaces
   );
 
-  const { skills, isSkillsLoading } = useSkills({
-    owner,
-    status: "active",
-  });
+  const { skills, isSkillsLoading } = useSkillsContext();
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
@@ -97,6 +91,7 @@ export const useSkillSelection = ({
         onModeChange({
           pageId: "skill_space_selection",
           capability: skill,
+          open: true,
         });
         return;
       }
@@ -128,7 +123,7 @@ export const useSkillSelection = ({
           icon: skill.icon,
         },
       ]);
-      onModeChange({ pageId: "selection" });
+      onModeChange({ pageId: "selection", open: true });
     },
     [
       onModeChange,
@@ -157,7 +152,7 @@ export const useToolSelection = ({
   searchQuery,
 }: {
   selectedActions: BuilderAction[];
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode) => void;
   searchQuery: string;
 }) => {
   const { owner } = useBuilderContext();
@@ -249,6 +244,7 @@ export const useToolSelection = ({
           pageId: "tool_configuration",
           capability: action,
           mcpServerView,
+          open: true,
         });
         return;
       }
@@ -284,6 +280,7 @@ export const useToolSelection = ({
         pageId: "tool_info",
         capability: action,
         hasPreviousPage: true,
+        open: true,
       });
     },
     [onModeChange]
@@ -326,7 +323,7 @@ export const useToolSelection = ({
         }
       });
 
-      onModeChange({ pageId: "selection" });
+      onModeChange({ pageId: "selection", open: true });
     },
     [selectedActions, localSelectedTools, onModeChange]
   );

@@ -31,7 +31,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skill: SkillWithRelationsType;
+  skill: SkillWithRelationsType | null;
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
@@ -44,24 +44,29 @@ export function SkillDetailsSheet({
   owner,
 }: SkillDetailsProps) {
   return (
-    <Sheet
-      open={!!skill}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Sheet open={skill !== null} onOpenChange={onClose}>
       <SheetContent size="lg">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          <DescriptionSection skill={skill} owner={owner} onClose={onClose} />
-        </SheetHeader>
-        <SheetContainer className="pb-4">
-          <SkillDetailsSheetContent skill={skill} user={user} owner={owner} />
-        </SheetContainer>
+        {skill && (
+          <>
+            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+              <DescriptionSection
+                skill={skill}
+                owner={owner}
+                onClose={onClose}
+              />
+            </SheetHeader>
+            <SheetContainer className="pb-4">
+              <SkillDetailsSheetContent
+                skill={skill}
+                user={user}
+                owner={owner}
+              />
+            </SheetContainer>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

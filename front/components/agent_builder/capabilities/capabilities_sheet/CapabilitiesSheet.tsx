@@ -1,25 +1,18 @@
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import React from "react";
 
-import type {
-  CapabilitiesSheetContentProps,
-  CapabilitiesSheetMode,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { useCapabilitiesPageAndFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/utils";
 
-export function CapabilitiesSheet(
-  props: Omit<CapabilitiesSheetContentProps, "mode"> & {
-    mode: CapabilitiesSheetMode | null;
-  }
-) {
+export function CapabilitiesSheet(props: CapabilitiesSheetContentProps) {
   const { mode, onClose } = props;
 
   return (
     <MultiPageSheet
-      open={mode !== null}
+      open={mode.open}
       onOpenChange={(open) => !open && onClose()}
     >
-      {mode && <CapabilitiesSheetContent {...props} mode={mode} />}
+      <CapabilitiesSheetContent {...props} mode={mode} />
     </MultiPageSheet>
   );
 }

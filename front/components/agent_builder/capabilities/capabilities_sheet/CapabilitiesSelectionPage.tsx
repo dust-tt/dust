@@ -14,7 +14,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type CapabilitiesSelectionPageProps = {
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onModeChange: (mode: CapabilitiesSheetMode) => void;
   handleSkillToggle: (skill: SkillType) => void;
   filteredSkills: SkillType[];
   searchQuery: string;
@@ -53,6 +53,7 @@ export function CapabilitiesSelectionPageContent({
         pageId: "skill_info",
         capability: skill,
         hasPreviousPage: true,
+        open: true,
       });
     },
   });

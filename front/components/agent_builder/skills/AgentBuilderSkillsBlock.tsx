@@ -184,7 +184,7 @@ export function AgentBuilderSkillsBlock() {
   }, [spaceIdToActions, spaces]);
 
   const [capabillitiesSheetMode, setCapabilitiesSheetMode] =
-    useState<CapabilitiesSheetMode | null>(null);
+    useState<CapabilitiesSheetMode>({ open: false, pageId: "selection" });
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: BuilderAction;
     index: number | null;
@@ -199,7 +199,7 @@ export function AgentBuilderSkillsBlock() {
     } else {
       appendActions(updatedAction);
     }
-    setCapabilitiesSheetMode(null);
+    setCapabilitiesSheetMode((prevMode) => ({ ...prevMode, open: false }));
     setKnowledgeAction(null);
   };
 
@@ -226,8 +226,14 @@ export function AgentBuilderSkillsBlock() {
             capability: action,
             mcpServerView: mcpServerViewWithoutKnowledge,
             index,
+            open: true,
           }
-        : { pageId: "tool_info", capability: action, hasPreviousPage: false }
+        : {
+            pageId: "tool_info",
+            capability: action,
+            hasPreviousPage: false,
+            open: true,
+          }
     );
   };
 
@@ -237,6 +243,7 @@ export function AgentBuilderSkillsBlock() {
         pageId: "skill_info",
         capability: skill,
         hasPreviousPage: false,
+        open: true,
       }),
   });
 
@@ -293,11 +300,11 @@ export function AgentBuilderSkillsBlock() {
   };
 
   const handleClickCapability = () => {
-    setCapabilitiesSheetMode({ pageId: "selection" });
+    setCapabilitiesSheetMode({ pageId: "selection", open: true });
   };
 
   const handleCloseSheet = useCallback(() => {
-    setCapabilitiesSheetMode(null);
+    setCapabilitiesSheetMode((prevMode) => ({ ...prevMode, open: false }));
     setKnowledgeAction(null);
   }, []);
 
