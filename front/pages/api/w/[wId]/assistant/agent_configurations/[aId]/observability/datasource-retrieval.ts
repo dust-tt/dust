@@ -13,7 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
 const QuerySchema = z.object({
-  days: z.coerce.number().positive().default(DEFAULT_PERIOD_DAYS),
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
 });
 
@@ -70,7 +70,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${fromError(q.error).toString()}`,
+            message: `Invalid query parameters: ${q.error.message}`,
           },
         });
       }
