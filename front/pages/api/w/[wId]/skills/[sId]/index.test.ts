@@ -2,7 +2,6 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -243,7 +242,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   });
 
   it("should successfully update the description", async () => {
-    const { req, res, skill } = await setupTest({
+    const { req, res, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
       method: "PATCH",
     });
@@ -267,14 +266,17 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(data.skillConfiguration.sId).toBe(skill.sId);
     expect(data.skillConfiguration.agentFacingDescription).toBe(newDescription);
 
-    // Verify the update persisted by fetching directly from the model
-    const updatedSkillModel = await SkillConfigurationModel.findByPk(skill.id);
-    expect(updatedSkillModel).not.toBeNull();
-    expect(updatedSkillModel!.agentFacingDescription).toBe(newDescription);
+    // Verify the update persisted by fetching the resource
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
   });
 
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {
-    const { req, res, skill, workspace } = await setupTest({
+    const { req, res, skill, workspace, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
       method: "PATCH",
     });
@@ -326,9 +328,12 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(data.skillConfiguration.requestedSpaceIds).toContain(space2.sId);
 
     // Verify the update persisted in the database
-    const updatedSkillModel = await SkillConfigurationModel.findByPk(skill.id);
-    expect(updatedSkillModel).not.toBeNull();
-    expect(updatedSkillModel!.requestedSpaceIds).toHaveLength(2);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.requestedSpaceIds).toHaveLength(2);
   });
 });
 
