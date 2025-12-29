@@ -79,14 +79,6 @@ export async function buildInitialActions({
     );
 
     if (builderAction) {
-      // TODO(durable agents, 2025-06-24): remove this once we have a proper
-      // type for the builder action. Namely, initializeBuilderAction return
-      // type should be AgentBuilderMCPConfiguration.
-      assert(
-        builderAction.type === "MCP",
-        "Builder action is not a MCP server configuration"
-      );
-
       if (action.name) {
         builderAction.name = action.name;
       }
@@ -109,10 +101,6 @@ async function getMCPServerActionConfiguration(
   assert(isServerSideMCPServerConfiguration(action));
 
   const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
-  if (builderAction.type !== "MCP") {
-    throw new Error("MCP action configuration is not valid");
-  }
-
   builderAction.configuration.mcpServerViewId = action.mcpServerViewId;
 
   builderAction.name = "";

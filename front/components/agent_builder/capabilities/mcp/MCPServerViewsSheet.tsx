@@ -56,8 +56,10 @@ import {
 import { ConfirmContext } from "@app/components/Confirm";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
+import type {
+  BuilderAction,
+  MCPServerConfigurationType,
+} from "@app/components/shared/tools_picker/types";
 import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -79,7 +81,6 @@ const TOP_MCP_SERVER_VIEWS = [
 ];
 
 export type SelectedTool = {
-  type: "MCP";
   view: MCPServerViewTypeWithLabel;
   configuredAction?: BuilderAction;
 };
@@ -107,7 +108,6 @@ function isMCPActionWithConfiguration(
   action: BuilderAction
 ): action is MCPActionWithConfiguration {
   return (
-    action.type === "MCP" &&
     action.configuration !== null &&
     action.configuration !== undefined &&
     typeof action.configuration === "object" &&
@@ -170,7 +170,6 @@ export function MCPServerViewsSheet({
       const selectedServerIds = new Set<string>();
       for (const action of actions) {
         if (
-          action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
           !action.configurationRequired
@@ -305,18 +304,12 @@ export function MCPServerViewsSheet({
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
       const isAlreadySelected = prev.some((selected) => {
-        if (tool.type === "MCP" && selected.type === "MCP") {
-          return tool.view.sId === selected.view.sId;
-        }
-        return false;
+        return tool.view.sId === selected.view.sId;
       });
 
       if (isAlreadySelected) {
         return prev.filter((selected) => {
-          if (tool.type === "MCP" && selected.type === "MCP") {
-            return tool.view.sId !== selected.view.sId;
-          }
-          return true;
+          return tool.view.sId !== selected.view.sId;
         });
       }
 
@@ -325,7 +318,7 @@ export function MCPServerViewsSheet({
   }, []);
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
-    const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
+    const tool = { view: mcpServerView } satisfies SelectedTool;
     const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
 
     if (!requirements.noRequirement) {
@@ -358,7 +351,7 @@ export function MCPServerViewsSheet({
   const handleAddSelectedTools = useCallback(() => {
     // Validate any configured tools before adding
     for (const tool of selectedToolsInSheet) {
-      if (tool.type === "MCP" && tool.configuredAction) {
+      if (tool.configuredAction) {
         const validation = validateMCPActionConfiguration(
           tool.configuredAction,
           tool.view
@@ -395,7 +388,7 @@ export function MCPServerViewsSheet({
 
   // Memoize default values to prevent form recreation
   const defaultFormValues = useMemo<MCPFormData>(() => {
-    if (configurationTool?.type === "MCP") {
+    if (configurationTool) {
       return {
         name: configurationTool.name ?? "",
         description: configurationTool.description ?? "",
@@ -473,9 +466,7 @@ export function MCPServerViewsSheet({
             onItemClick={onClickMCPServer}
             selectedToolsInSheet={selectedToolsInSheet}
             onToolDetailsClick={(tool) => {
-              if (tool.type === "MCP") {
-                handleToolInfoClick(tool.view);
-              }
+              handleToolInfoClick(tool.view);
             }}
             featureFlags={featureFlags}
           />
@@ -583,11 +574,6 @@ export function MCPServerViewsSheet({
     }
 
     try {
-      // Ensure we're working with an MCP action
-      if (configurationTool.type !== "MCP") {
-        throw new Error("Expected MCP action for configuration save");
-      }
-
       const isNewActionOrNameChanged = shouldGenerateUniqueName(
         mode,
         defaultFormValues,

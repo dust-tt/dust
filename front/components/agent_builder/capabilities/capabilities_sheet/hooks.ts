@@ -178,7 +178,6 @@ export const useToolSelection = ({
       const selectedServerIds = new Set<string>();
       for (const action of actions) {
         if (
-          action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
           !action.configurationRequired
@@ -231,7 +230,7 @@ export const useToolSelection = ({
 
   const handleToolToggle = useCallback(
     (mcpServerView: MCPServerViewTypeWithLabel) => {
-      const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
+      const tool = { view: mcpServerView } satisfies SelectedTool;
       const requirements = getMCPServerRequirements(
         mcpServerView,
         featureFlags
@@ -252,18 +251,12 @@ export const useToolSelection = ({
       // No configuration required, add to selected tools
       setLocalSelectedTools((prev) => {
         const isAlreadySelected = prev.some((selected) => {
-          if (tool.type === "MCP" && selected.type === "MCP") {
-            return tool.view.sId === selected.view.sId;
-          }
-          return false;
+          return tool.view.sId === selected.view.sId;
         });
 
         if (isAlreadySelected) {
           return prev.filter((selected) => {
-            if (tool.type === "MCP" && selected.type === "MCP") {
-              return tool.view.sId !== selected.view.sId;
-            }
-            return true;
+            return tool.view.sId !== selected.view.sId;
           });
         }
 
@@ -302,16 +295,13 @@ export const useToolSelection = ({
       };
 
       const updatedTool: SelectedTool = {
-        type: "MCP",
         view: mode.mcpServerView,
         configuredAction,
       };
 
       setLocalSelectedTools((prev) => {
         const existingToolIndex = prev.findIndex(
-          (tool) =>
-            tool.type === "MCP" &&
-            tool.configuredAction?.name === configuredAction.name
+          (tool) => tool.configuredAction?.name === configuredAction.name
         );
 
         if (existingToolIndex !== -1) {

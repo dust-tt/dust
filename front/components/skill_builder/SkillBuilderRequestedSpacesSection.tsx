@@ -6,7 +6,6 @@ import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActio
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
@@ -35,9 +34,7 @@ export function SkillBuilderRequestedSpacesSection() {
   }, [spaceIdToActions, spaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
-    const actionsToRemove = (spaceIdToActions[space.sId] || []).filter(
-      (action): action is BuilderAction => action.type === "MCP"
-    );
+    const actionsToRemove = spaceIdToActions[space.sId] || [];
 
     const confirmed = await confirmRemoveSpace(space, actionsToRemove);
 

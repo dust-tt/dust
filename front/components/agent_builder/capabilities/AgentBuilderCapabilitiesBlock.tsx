@@ -79,8 +79,7 @@ export function AgentBuilderCapabilitiesBlock({
     const mcpServerView = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
-    const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerView);
+    const isDataSourceSelectionRequired = Boolean(mcpServerView);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });

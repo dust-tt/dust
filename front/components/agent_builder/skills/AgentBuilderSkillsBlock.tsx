@@ -207,8 +207,7 @@ export function AgentBuilderSkillsBlock() {
     const mcpServerViewWithKnowledge = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
-    const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerViewWithKnowledge);
+    const isDataSourceSelectionRequired = Boolean(mcpServerViewWithKnowledge);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
@@ -259,7 +258,7 @@ export function AgentBuilderSkillsBlock() {
     }) => {
       // Validate any configured tools before adding
       for (const tool of tools) {
-        if (tool.type === "MCP" && tool.configuredAction) {
+        if (tool.configuredAction) {
           const validation = validateMCPActionConfiguration(
             tool.configuredAction,
             tool.view

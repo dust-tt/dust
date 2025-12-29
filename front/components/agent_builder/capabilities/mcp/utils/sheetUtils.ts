@@ -209,16 +209,13 @@ export function handleConfigurationSave({
 
   setSelectedToolsInSheet((prev) => {
     const existingToolIndex = prev.findIndex(
-      (tool) =>
-        tool.type === "MCP" &&
-        tool.configuredAction?.name === configuredAction.name
+      (tool) => tool.configuredAction?.name === configuredAction.name
     );
 
     if (existingToolIndex >= 0) {
       // Update existing tool with configuration
       const updated = [...prev];
       updated[existingToolIndex] = {
-        type: "MCP",
         view: mcpServerView,
         configuredAction,
       };
@@ -228,7 +225,6 @@ export function handleConfigurationSave({
       return [
         ...prev,
         {
-          type: "MCP",
           view: mcpServerView,
           configuredAction,
         },

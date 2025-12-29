@@ -8,10 +8,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-function actionIcon(
-  action: BuilderAction,
-  mcpServerView: MCPServerViewType | null
-) {
+function actionIcon(mcpServerView: MCPServerViewType | null) {
   if (mcpServerView?.server) {
     return getAvatar(mcpServerView.server, "xs");
   }
@@ -21,7 +18,7 @@ function actionDisplayName(
   action: BuilderAction,
   mcpServerView: MCPServerViewType | null
 ) {
-  if (mcpServerView && action.type === "MCP") {
+  if (mcpServerView) {
     return getMcpServerViewDisplayName(mcpServerView, action);
   }
 
@@ -40,13 +37,12 @@ export function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  const mcpServerView =
-    action.type === "MCP" && !isMCPServerViewsLoading
-      ? (mcpServerViews.find(
-          (mcpServerView) =>
-            mcpServerView.sId === action.configuration.mcpServerViewId
-        ) ?? null)
-      : null;
+  const mcpServerView = !isMCPServerViewsLoading
+    ? (mcpServerViews.find(
+        (mcpServerView) =>
+          mcpServerView.sId === action.configuration.mcpServerViewId
+      ) ?? null)
+    : null;
 
   const displayName = actionDisplayName(action, mcpServerView);
   const description = action.description ?? "";
@@ -69,7 +65,7 @@ export function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {actionIcon(action, mcpServerView)}
+          {actionIcon(mcpServerView)}
           <span className="truncate">{displayName}</span>
         </div>
 

@@ -32,8 +32,10 @@ import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_b
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
+import type {
+  AdditionalConfigurationInBuilderType,
+  BuilderAction,
+} from "@app/components/shared/tools_picker/types";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
@@ -55,18 +57,15 @@ function processActionsFromStorage(
 ): BuilderAction[] {
   return [
     ...actions.map((action) => {
-      if (action.type === "MCP") {
-        return {
-          ...action,
-          configuration: {
-            ...action.configuration,
-            additionalConfiguration: processAdditionalConfigurationFromStorage(
-              action.configuration.additionalConfiguration
-            ),
-          },
-        };
-      }
-      return action;
+      return {
+        ...action,
+        configuration: {
+          ...action.configuration,
+          additionalConfiguration: processAdditionalConfigurationFromStorage(
+            action.configuration.additionalConfiguration
+          ),
+        },
+      };
     }),
   ];
 }
@@ -277,9 +276,7 @@ export default function AgentBuilder({
   const { showDialog, ...dialogProps } = useAwaitableDialog({
     owner,
     mcpServerViewToCheckIds: removeNulls(
-      form
-        .getValues("actions")
-        .map((a) => (a.type === "MCP" ? a.configuration.mcpServerViewId : null))
+      form.getValues("actions").map((a) => a.configuration.mcpServerViewId)
     ),
     mcpServerViews,
   });

@@ -10,8 +10,10 @@ import type { ComponentType } from "react";
 import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { nameToDisplayFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
-import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
-import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
+import {
+  CONFIGURATION_SHEET_PAGE_IDS,
+  DESCRIPTION_MAX_LENGTH,
+} from "@app/components/agent_builder/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import {
@@ -126,9 +128,9 @@ export function getKnowledgeDefaultValues({
       : { in: [], notIn: [] };
 
   const selectedMCPServerView = (() => {
-    if (isEditing && action?.type === "MCP") {
+    if (isEditing) {
       return mcpServerViews.find(
-        (view) => view.sId === action.configuration.mcpServerViewId
+        (view) => view.sId === action?.configuration.mcpServerViewId
       );
     }
 

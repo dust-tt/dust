@@ -36,8 +36,7 @@ export function generateUniqueActionName({
     (action) => action.name === newActionName
   );
   let isNameUsedInNonSavedActions = selectedToolsInSheet.some(
-    (action) =>
-      action.type === "MCP" && action.configuredAction?.name === newActionName
+    (action) => action.configuredAction?.name === newActionName
   );
 
   while (isNameUsedInAddedActions || isNameUsedInNonSavedActions) {
@@ -47,8 +46,7 @@ export function generateUniqueActionName({
       (action) => action.name === newActionName
     );
     isNameUsedInNonSavedActions = selectedToolsInSheet.some(
-      (action) =>
-        action.type === "MCP" && action.configuredAction?.name === newActionName
+      (action) => action.configuredAction?.name === newActionName
     );
   }
 
