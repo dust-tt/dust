@@ -120,6 +120,45 @@ export function SkillDetailsSheetContent({
   return <SkillInfoTab skill={skill} />;
 }
 
+type SkillHeaderSectionProps = {
+  skill: SkillWithRelationsType;
+  subtitle?: string;
+};
+
+export const SkillHeaderSection = ({
+  skill,
+  subtitle,
+}: SkillHeaderSectionProps) => {
+  return (
+    <div className="flex flex-col items-center gap-4 pt-4">
+      <div className="relative flex items-center justify-center">
+        <ResourceAvatar
+          icon={getSkillIcon(skill.icon)}
+          name="Skill avatar"
+          size="xl"
+        />
+      </div>
+
+      <div className="flex flex-col items-center gap-1">
+        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+          {skill.name}
+        </h2>
+        {skill.relations.extendedSkill && (
+          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
+            Extends {skill.relations.extendedSkill.name}
+          </p>
+        )}
+
+        {subtitle && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {subtitle}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 type DescriptionSectionProps = {
   skill: SkillWithRelationsType;
   owner: WorkspaceType;
@@ -141,34 +180,13 @@ const DescriptionSection = ({
       day: "2-digit",
     });
 
+  const subtitle = editedDate
+    ? `Last edited: ${editedDate}${author ? ` by ${author.fullName}` : ""}`
+    : undefined;
+
   return (
-    <div className="flex flex-col items-center gap-4 pt-4">
-      <div className="relative flex items-center justify-center">
-        <ResourceAvatar
-          icon={getSkillIcon(skill.icon)}
-          name="Skill avatar"
-          size="xl"
-        />
-      </div>
-
-      {/* Title and edit info */}
-      <div className="flex flex-col items-center gap-1">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
-          {skill.name}
-        </h2>
-        {skill.relations.extendedSkill && (
-          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
-            Extends {skill.relations.extendedSkill.name}
-          </p>
-        )}
-
-        {editedDate && (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Last edited: {editedDate}
-            {author && ` by ${author.fullName}`}
-          </p>
-        )}
-      </div>
+    <>
+      <SkillHeaderSection skill={skill} subtitle={subtitle} />
 
       {skill.status === "active" && (
         <SkillDetailsButtonBar owner={owner} skill={skill} onClose={onClose} />
@@ -208,6 +226,6 @@ const DescriptionSection = ({
           />
         </>
       )}
-    </div>
+    </>
   );
 };

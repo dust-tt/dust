@@ -17,6 +17,7 @@ import { AgentSidebarMenu } from "@app/components/assistant/conversation/Sidebar
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
+import { SuggestedSkillDetailsSheet } from "@app/components/skills/SuggestedSkillDetailsSheet";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -213,14 +214,20 @@ export default function WorkspaceSkills({
 
   return (
     <>
-      {!!selectedSkill && (
-        <SkillDetailsSheet
-          skill={selectedSkill}
-          onClose={() => setSelectedSkill(null)}
-          user={user}
-          owner={owner}
-        />
-      )}
+      {!!selectedSkill &&
+        (selectedSkill.status === "suggested" ? (
+          <SuggestedSkillDetailsSheet
+            skill={selectedSkill}
+            onClose={() => setSelectedSkill(null)}
+          />
+        ) : (
+          <SkillDetailsSheet
+            skill={selectedSkill}
+            onClose={() => setSelectedSkill(null)}
+            user={user}
+            owner={owner}
+          />
+        ))}
 
       <AgentDetails
         owner={owner}

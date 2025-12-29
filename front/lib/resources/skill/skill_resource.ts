@@ -460,6 +460,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         id: customSkillIds,
         sId: globalSkillIds,
+        status: "active",
       },
     });
   }
