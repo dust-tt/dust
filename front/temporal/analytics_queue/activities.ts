@@ -425,7 +425,7 @@ async function extractRetrievalDocuments(
 
       partialDocuments.push({
         ...baseDocument,
-        mcp_server_configuration_id: config.sId,
+        mcp_server_configuration_id: config.id.toString(),
         mcp_server_name: mcpServerName,
         data_source_view_id: dataSourceViewId,
         data_source_id: dataSourceId,
