@@ -19,7 +19,7 @@
       "type": "date"
     },
     "mcp_server_configuration_id": {
-      "type": "keyword"
+      "type": "integer"
     },
     "mcp_server_name": {
       "type": "keyword"
