@@ -34,6 +34,8 @@ const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
 const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
 
+export const RUN_MODEL_MAX_RETRIES = 10;
+
 import {
   OpenTelemetryInboundInterceptor,
   OpenTelemetryInternalsInterceptor,
@@ -52,6 +54,9 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
 >({
   startToCloseTimeout: "10 minutes",
   heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+  retry: {
+    maximumAttempts: RUN_MODEL_MAX_RETRIES,
+  },
 });
 
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
