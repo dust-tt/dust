@@ -16,8 +16,8 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { SkillManagerTabType } from "@app/pages/w/[wId]/builder/skills";
 import type { LightWorkspaceType, UserType } from "@app/types";
-import { assertNever } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -143,7 +143,7 @@ const menuColumn = {
 
 const getTableColumns = (
   onAgentClick: (agentId: string) => void,
-  variant: "default" | "suggested"
+  activeTab: SkillManagerTabType | "search"
 ) => {
   /**
    * Columns order:
@@ -153,8 +153,10 @@ const getTableColumns = (
    * - Last Edited / Suggestion date (hidden on mobile)
    * - Actions (always)
    */
-  switch (variant) {
-    case "default":
+  switch (activeTab) {
+    case "suggested":
+      return [nameColumn, suggestionDateColumn, menuColumn];
+    default:
       return [
         nameColumn,
         editorsColumn,
@@ -162,10 +164,6 @@ const getTableColumns = (
         lastEditedColumn,
         menuColumn,
       ];
-    case "suggested":
-      return [nameColumn, suggestionDateColumn, menuColumn];
-    default:
-      assertNever(variant);
   }
 };
 
@@ -174,7 +172,7 @@ type SkillsTableProps = {
   owner: LightWorkspaceType;
   onSkillClick: (skill: SkillWithRelationsType) => void;
   onAgentClick: (agentId: string) => void;
-  variant?: "default" | "suggested";
+  activeTab: SkillManagerTabType | "search";
 };
 
 export function SkillsTable({
@@ -182,7 +180,7 @@ export function SkillsTable({
   owner,
   onSkillClick,
   onAgentClick,
-  variant = "default",
+  activeTab,
 }: SkillsTableProps) {
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
@@ -279,7 +277,7 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick, variant)}
+        columns={getTableColumns(onAgentClick, activeTab)}
         pagination={pagination}
         setPagination={setPagination}
       />

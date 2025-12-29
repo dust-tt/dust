@@ -65,7 +65,7 @@ const SKILL_MANAGER_TABS = [
   },
 ] as const;
 
-type SkillManagerTabType = (typeof SKILL_MANAGER_TABS)[number]["id"];
+export type SkillManagerTabType = (typeof SKILL_MANAGER_TABS)[number]["id"];
 
 function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
@@ -285,7 +285,7 @@ export default function WorkspaceSkills({
                   skills={skillsByTab[activeTab]}
                   onSkillClick={setSelectedSkill}
                   onAgentClick={setAgentId}
-                  variant={activeTab === "suggested" ? "suggested" : "default"}
+                  activeTab={activeTab}
                 />
               )}
             </div>
