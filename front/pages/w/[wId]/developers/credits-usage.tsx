@@ -33,10 +33,10 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { useCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import { isSupportedCurrency } from "@app/types/currency";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
