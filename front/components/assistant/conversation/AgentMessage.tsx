@@ -229,6 +229,8 @@ export function AgentMessage({
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
+  const isCancelled = agentMessage.status === "cancelled";
+  const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
@@ -671,7 +673,7 @@ export function AgentMessage({
           name={agentConfiguration.name}
           timestamp={timestamp}
           completionStatus={
-            isDeleted ? undefined : (
+            isCancelledOrDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
             )
           }
@@ -694,7 +696,7 @@ export function AgentMessage({
           name={agentConfiguration.name}
           timestamp={timestamp}
           completionStatus={
-            isDeleted ? undefined : (
+            isCancelledOrDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
             )
           }
@@ -727,9 +729,11 @@ export function AgentMessage({
             />
           )}
         </ConversationMessageContent>
-        {messageButtons && messageButtons.length > 0 && (
-          <div className="flex justify-start gap-3">{messageButtons}</div>
-        )}
+        {!isCancelledOrDeleted &&
+          messageButtons &&
+          messageButtons.length > 0 && (
+            <div className="flex justify-start gap-3">{messageButtons}</div>
+          )}
       </div>
     </NewConversationMessageContainer>
   );
@@ -1017,12 +1021,8 @@ function AgentMessageContent({
         </div>
       )}
       {agentMessage.status === "cancelled" && (
-        <div>
-          <Chip
-            label="The message generation was interrupted"
-            size="xs"
-            className="mt-4"
-          />
+        <div className="text-faint dark:text-faint-night">
+          Message generation was interrupted
         </div>
       )}
     </div>
