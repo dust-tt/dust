@@ -25,8 +25,6 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { sha256 } from "@app/types/shared/utils/hashing";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
@@ -39,6 +37,8 @@ import type {
   AgentMessageAnalyticsToolUsed,
   AgentRetrievalOutputAnalyticsData,
 } from "@app/types/assistant/analytics";
+import type { ModelId } from "@app/types/shared/model_id";
+import { sha256 } from "@app/types/shared/utils/hashing";
 
 export async function storeAgentAnalyticsActivity(
   authType: AuthenticatorType,
