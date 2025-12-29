@@ -23,7 +23,7 @@ import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -37,6 +37,7 @@ type UseSkillSelectionProps = {
   initialAdditionalSpaces: string[];
   searchQuery: string;
 };
+
 export const useSkillSelection = ({
   onModeChange,
   alreadyAddedSkillIds,
@@ -57,11 +58,10 @@ export const useSkillSelection = ({
     localAdditionalSpaces
   );
 
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-    });
+  const { skills, isSkillsLoading } = useSkills({
+    owner,
+    status: "active",
+  });
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
@@ -69,7 +69,7 @@ export const useSkillSelection = ({
   );
 
   const filteredSkills = useMemo(() => {
-    const notAlreadyAddedSkills = skillsWithRelations.filter(
+    const notAlreadyAddedSkills = skills.filter(
       (skill) => !alreadyAddedSkillIds.has(skill.sId)
     );
 
@@ -82,7 +82,7 @@ export const useSkillSelection = ({
         skill.name.toLowerCase().includes(query) ||
         skill.userFacingDescription.toLowerCase().includes(query)
     );
-  }, [skillsWithRelations, searchQuery, alreadyAddedSkillIds]);
+  }, [skills, searchQuery, alreadyAddedSkillIds]);
 
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
@@ -143,7 +143,7 @@ export const useSkillSelection = ({
     localAdditionalSpaces,
     handleSkillToggle,
     filteredSkills,
-    isSkillsLoading: isSkillsWithRelationsLoading,
+    isSkillsLoading,
     selectedSkillIds,
     handleSpaceSelectionSave,
     draftSelectedSpaces,

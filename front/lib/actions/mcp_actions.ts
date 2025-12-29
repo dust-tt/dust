@@ -602,7 +602,11 @@ export function getPrefixedToolName(
   config: MCPServerConfigurationType,
   originalName: string
 ): Result<string, Error> {
-  const slugifiedConfigName = slugify(config.name);
+  // Slugify each part separately to preserve separators (used for space disambiguation notably).
+  const slugifiedConfigName = config.name
+    .split(TOOL_NAME_SEPARATOR)
+    .map(slugify)
+    .join(TOOL_NAME_SEPARATOR);
   const slugifiedOriginalName = slugify(originalName).replaceAll(
     // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
     /[^a-zA-Z0-9_.-]/g,
@@ -641,6 +645,64 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
   AgentLoopListToolsContextType,
   "agentActionConfiguration"
 >;
+
+/**
+ * When multiple server-side configs share the same name but have different viewIds (e.g.,
+ * the same server in different spaces), prepends the space name to disambiguate them.
+ */
+async function disambiguateServerNamesBySpace(
+  auth: Authenticator,
+  configs: MCPServerConfigurationType[]
+): Promise<MCPServerConfigurationType[]> {
+  // Build a map of name -> unique viewIds for server-side configs.
+  const viewIdsByName = configs
+    .filter(isServerSideMCPServerConfiguration)
+    .reduce((map, config) => {
+      const viewIds = map.get(config.name) ?? new Set<string>();
+      viewIds.add(config.mcpServerViewId);
+      return map.set(config.name, viewIds);
+    }, new Map<string, Set<string>>());
+
+  // Find collisions (multiple viewIds for the same name) and collect viewIds to fetch.
+  const collidingNames = new Set<string>();
+  const viewIdsToFetch: string[] = [];
+  for (const [name, viewIds] of viewIdsByName) {
+    if (viewIds.size > 1) {
+      collidingNames.add(name);
+      viewIdsToFetch.push(...viewIds);
+    }
+  }
+
+  if (viewIdsToFetch.length === 0) {
+    return configs;
+  }
+
+  // We fetch the views to get the space names.
+  const mcpServerViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    viewIdsToFetch
+  );
+  const viewIdToSpaceName = new Map(
+    mcpServerViews.map((v) => [v.sId, v.space.name])
+  );
+
+  // Apply space prefix to colliding server-side configs.
+  return configs.map((config) => {
+    if (
+      isServerSideMCPServerConfiguration(config) &&
+      collidingNames.has(config.name)
+    ) {
+      const spaceName = viewIdToSpaceName.get(config.mcpServerViewId);
+      if (spaceName) {
+        return {
+          ...config,
+          name: `${slugify(spaceName)}${TOOL_NAME_SEPARATOR}${config.name}`,
+        };
+      }
+    }
+    return config;
+  });
+}
 
 /**
  * Deduplicates MCP server configurations by view ID and name.
@@ -698,13 +760,18 @@ export async function tryListMCPTools(
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  const mcpServerActions = deduplicateMCPServerConfigurations({
+  const deduplicatedConfigs = deduplicateMCPServerConfigurations({
     agentActions: agentLoopListToolsContext.agentConfiguration.actions,
     clientSideActions:
       agentLoopListToolsContext.clientSideActionConfigurations ?? [],
     skillServers,
     jitServers,
   });
+
+  const mcpServerActions = await disambiguateServerNamesBySpace(
+    auth,
+    deduplicatedConfigs
+  );
 
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(

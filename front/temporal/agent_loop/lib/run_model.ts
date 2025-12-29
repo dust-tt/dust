@@ -1,6 +1,6 @@
+import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
-import { fetchSkillMCPServerConfigurations } from "@app/lib/actions/configuration/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
@@ -29,7 +29,7 @@ import {
   fetchMessageInConversation,
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
-import { augmentSkillsWithExtendedSkills } from "@app/lib/api/assistant/skill";
+import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
@@ -201,16 +201,15 @@ export async function runModelActivity(
     );
 
   const { enabledSkills, equippedSkills } =
-    await SkillResource.listForConversation(auth, {
+    await SkillResource.listForAgentLoop(auth, {
       agentConfiguration,
       conversation,
     });
 
-  // Fetch MCP server configurations from enabled skills.
-  const skillServers = await fetchSkillMCPServerConfigurations(
-    auth,
-    enabledSkills
-  );
+  const skillServers = await getSkillServers(auth, {
+    agentConfiguration,
+    skills: enabledSkills,
+  });
 
   const {
     serverToolsAndInstructions: mcpActions,
@@ -263,11 +262,6 @@ export async function runModelActivity(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
-  const enabledWithExtendedSkills = await augmentSkillsWithExtendedSkills(
-    auth,
-    enabledSkills
-  );
-
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -278,7 +272,7 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
-    enabledSkills: enabledWithExtendedSkills,
+    enabledSkills,
     equippedSkills,
     featureFlags,
   });
@@ -357,8 +351,8 @@ export async function runModelActivity(
       await publishAgentError({
         code: "duplicate_specification_name",
         message:
-          `Duplicate action name in agent configuration: ${spec.name}. ` +
-          "Your agents actions must have unique names.",
+          `Found multiple tools named "${spec.name}". ` +
+          "Each tool needs a unique name so the agent can specify which one to use.",
         metadata: null,
       });
 
@@ -489,6 +483,11 @@ export async function runModelActivity(
   }
 
   const modelInteractionStartDate = performance.now();
+
+  // Heartbeat before starting the LLM stream to ensure the activity is still
+  // considered alive after potentially long setup operations (MCP tools
+  // listing, conversation rendering, etc.).
+  heartbeat();
 
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,

@@ -57,10 +57,14 @@ export interface RetrieveTranscriptsResult {
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string,
   modjoCursor: number | null = null,
-  modjoIsFirstSync: boolean | null = null
+  modjoIsFirstSync: boolean | null = null,
+  workspaceId: string
 ): Promise<RetrieveTranscriptsResult> {
+  const workspaceAuth =
+    await Authenticator.internalAdminForWorkspace(workspaceId);
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
+      workspaceAuth,
       transcriptsConfigurationId
     );
 
@@ -183,7 +187,8 @@ export async function retrieveNewTranscriptsActivity(
 
 export async function processTranscriptActivity(
   transcriptsConfigurationId: string,
-  fileId: string
+  fileId: string,
+  workspaceId: string
 ) {
   function convertCitationsToLinks(
     markdown: string,
@@ -239,8 +244,12 @@ export async function processTranscriptActivity(
     });
   }
 
+  const workspaceAuth =
+    await Authenticator.internalAdminForWorkspace(workspaceId);
+
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
+      workspaceAuth,
       transcriptsConfigurationId
     );
 
@@ -728,7 +737,7 @@ export async function processTranscriptActivity(
       allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
     });
 
-    await transcriptsConfiguration.setConversationHistory(auth, {
+    await transcriptsConfiguration.setConversationHistory({
       conversationId: conversation.sId,
       fileId,
     });

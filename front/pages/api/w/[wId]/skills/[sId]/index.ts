@@ -128,7 +128,6 @@ async function handler(
       if (withRelations === "true") {
         const usage = await skillResource.fetchUsage(auth);
         const editors = await skillResource.listEditors(auth);
-        const mcpServerViews = await skillResource.listMCPServerViews(auth);
         const author = await skillResource.fetchAuthor(auth);
         const extendedSkill = skillConfiguration.extendedSkillId
           ? await SkillResource.fetchById(
@@ -142,7 +141,6 @@ async function handler(
           relations: {
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
-            mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
             author: author ? author.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           },
@@ -267,7 +265,7 @@ async function handler(
 
         return new Ok({
           updatedSkill,
-          createdTools: mcpServerViews.map((t) => ({ mcpServerViewId: t.sId })),
+          createdTools: mcpServerViews.map((view) => view.toJSON()),
         });
       });
 

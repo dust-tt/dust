@@ -1024,6 +1024,7 @@ describe("createUserMentions", () => {
     // Verify both user mentions were stored
     const allMentionsInDb = await MentionModel.findAll({
       where: {
+        workspaceId: workspace.id,
         messageId: userMessage.id,
       },
       order: [["userId", "ASC"]],
@@ -1078,6 +1079,7 @@ describe("createUserMentions", () => {
     // Verify no mentions were stored
     const allMentionsInDb = await MentionModel.findAll({
       where: {
+        workspaceId: workspace.id,
         messageId: userMessage.id,
       },
     });
@@ -1283,6 +1285,7 @@ describe("createUserMentions", () => {
         where: {
           messageId: messageRow.id,
           userId: mentionedUser.id,
+          workspaceId: workspace.id,
         },
       });
       expect(mentionInDb).not.toBeNull();

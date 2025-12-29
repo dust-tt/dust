@@ -31,7 +31,6 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSkillTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -48,11 +47,6 @@ export default function SkillBuilder({
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
-
-  const { actions, isActionsLoading } = useSkillTools(
-    owner,
-    skillConfiguration?.sId ?? null
-  );
 
   const { editors } = useSkillEditors({
     owner,
@@ -79,16 +73,15 @@ export default function SkillBuilder({
     },
   });
 
-  // Populate editors and tools reactively
+  // Populate editors reactively
   useEffect(() => {
     const currentValues = form.getValues();
 
     form.reset({
       ...currentValues,
-      tools: actions,
       editors: skillConfiguration || editors.length > 0 ? editors : [user],
     });
-  }, [isActionsLoading, actions, editors, form, user, skillConfiguration]);
+  }, [editors, form, user, skillConfiguration]);
 
   const isCreatingNew = !skillConfiguration;
   const { isDirty } = form.formState;

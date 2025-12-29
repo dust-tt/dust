@@ -15,6 +15,7 @@ import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
+  deleteCreditFromVoidedInvoice,
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
@@ -636,6 +637,125 @@ async function handler(
               },
               "[Stripe Webhook] Successfully froze credit due to payment dispute."
             );
+          }
+
+          break;
+        }
+
+        case "invoice.voided": {
+          const voidedInvoice = event.data.object as Stripe.Invoice;
+
+          if (!isCreditPurchaseInvoice(voidedInvoice)) {
+            break;
+          }
+
+          if (!isString(voidedInvoice.subscription)) {
+            logger.warn(
+              { invoiceId: voidedInvoice.id, stripeError: true },
+              "[Stripe Webhook] Voided credit purchase invoice has no subscription."
+            );
+            break;
+          }
+
+          const voidedSubscription = await SubscriptionModel.findOne({
+            where: { stripeSubscriptionId: voidedInvoice.subscription },
+            include: [WorkspaceModel],
+          });
+
+          if (!voidedSubscription) {
+            logger.warn(
+              {
+                invoiceId: voidedInvoice.id,
+                stripeSubscriptionId: voidedInvoice.subscription,
+              },
+              "[Stripe Webhook] Subscription not found for voided credit purchase invoice."
+            );
+            break;
+          }
+
+          const stripeSubscription = await getStripeSubscription(
+            voidedInvoice.subscription
+          );
+
+          if (!stripeSubscription) {
+            logger.error(
+              {
+                invoiceId: voidedInvoice.id,
+                stripeSubscriptionId: voidedInvoice.subscription,
+                stripeError: true,
+              },
+              "[Stripe Webhook] Stripe subscription not found for voided invoice"
+            );
+            break;
+          }
+
+          // Skip enterprise subscriptions - they handle credit purchases differently
+          if (isEnterpriseSubscription(stripeSubscription)) {
+            break;
+          }
+
+          const auth = await Authenticator.internalAdminForWorkspace(
+            voidedSubscription.workspace.sId
+          );
+
+          const deleteResult = await deleteCreditFromVoidedInvoice({
+            auth,
+            invoice: voidedInvoice,
+          });
+
+          if (deleteResult.isOk()) {
+            logger.info(
+              {
+                invoiceId: voidedInvoice.id,
+                workspaceId: voidedSubscription.workspace.sId,
+              },
+              "[Stripe Webhook] Successfully deleted credit for voided credit purchase invoice."
+            );
+            break;
+          }
+
+          const error = deleteResult.error;
+
+          switch (error.type) {
+            case "credit_already_started": {
+              // Unexpected: credit was started but invoice was voided. Freeze it.
+              const freezeResult = await error.credit.freeze(auth);
+              if (freezeResult.isErr()) {
+                logger.warn(
+                  {
+                    invoiceId: voidedInvoice.id,
+                    creditId: error.credit.id,
+                    workspaceId: voidedSubscription.workspace.sId,
+                    error: freezeResult.error.message,
+                  },
+                  "[Stripe Webhook] Failed to freeze started credit for voided invoice. Possible race condition."
+                );
+              } else {
+                logger.warn(
+                  {
+                    invoiceId: voidedInvoice.id,
+                    creditId: error.credit.id,
+                    workspaceId: voidedSubscription.workspace.sId,
+                  },
+                  "[Stripe Webhook] Froze started credit for voided invoice"
+                );
+              }
+              break;
+            }
+            case "credit_not_found":
+              // Possible race condition with voidFailedProCreditPurchaseInvoice
+              // no-op
+              logger.warn(
+                {
+                  invoiceId: voidedInvoice.id,
+                  workspaceId: voidedSubscription.workspace.sId,
+                  error: error.type,
+                },
+                "[Stripe Webhook] Failed to delete credit for voided invoice, credit_not_found. Possible race condition."
+              );
+              break;
+            default:
+              assertNever(error);
           }
 
           break;

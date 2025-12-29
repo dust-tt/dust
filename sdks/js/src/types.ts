@@ -658,7 +658,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
   | "fireworks_new_model_feature"
-  | "freshservice_tool"
   | "front_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
@@ -2891,6 +2890,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTimeIcon"
   | "AsanaLogo"
   | "AshbyLogo"
+  | "ToolsIcon"
   | "CanvaLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
@@ -2903,6 +2903,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
+  | "GuruLogo"
   | "HubspotLogo"
   | "JiraLogo"
   | "LinearLogo"
@@ -2918,6 +2919,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "SupabaseLogo"
   | "ValTownLogo"
+  | "VantaLogo"
   | "ZendeskLogo"
 >();
 

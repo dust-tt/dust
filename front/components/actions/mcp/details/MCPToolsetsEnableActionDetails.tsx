@@ -11,8 +11,6 @@ export function MCPToolsetsEnableActionDetails({
       viewType={viewType}
       actionName={viewType === "conversation" ? "Enabled tool" : "Enable tool"}
       visual={BoltIcon}
-    >
-      <></>
-    </ActionDetailsWrapper>
+    />
   );
 }

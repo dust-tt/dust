@@ -27,9 +27,7 @@ export function MCPConversationCatFileDetails({
             : "Read conversation file"
         }
         visual={DocumentIcon}
-      >
-        <></>
-      </ActionDetailsWrapper>
+      />
     );
   }
 

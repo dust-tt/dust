@@ -33,7 +33,12 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
-import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
+import {
+  ConversationMessageAvatar,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  NewConversationMessageContainer,
+} from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -648,48 +653,85 @@ export function AgentMessage({
     ]
   );
 
+  const timestamp = parentAgent
+    ? undefined
+    : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
+
   return (
-    <NewConversationMessage
-      pictureUrl={agentConfiguration.pictureUrl}
-      name={agentConfiguration.name}
-      buttons={messageButtons}
-      avatarBusy={agentMessage.status === "created"}
-      isDisabled={isArchived}
-      renderName={renderName}
-      timestamp={
-        parentAgent
-          ? undefined
-          : formatTimestring(agentMessage.completedTs ?? agentMessage.created)
-      }
-      completionStatus={
-        isDeleted ? undefined : (
-          <AgentMessageCompletionStatus agentMessage={agentMessage} />
-        )
-      }
-      type="agent"
-      citations={isDeleted ? undefined : citations}
-    >
-      {isDeleted ? (
-        <DeletedMessage />
-      ) : (
-        <AgentMessageContent
-          onQuickReplySend={handleQuickReply}
-          owner={owner}
-          conversationId={conversationId}
-          retryHandler={retryHandler}
-          isLastMessage={isLastMessage}
-          agentMessage={agentMessage}
-          references={references}
-          streaming={shouldStream}
-          lastTokenClassification={
-            agentMessage.streaming.agentState === "thinking" ? "tokens" : null
-          }
-          activeReferences={activeReferences}
-          setActiveReferences={setActiveReferences}
-          triggeringUser={triggeringUser}
+    <NewConversationMessageContainer messageType="agent" type="agent">
+      <div className="inline-flex items-center gap-2 @sm:hidden">
+        <ConversationMessageAvatar
+          avatarUrl={agentConfiguration.pictureUrl}
+          name={agentConfiguration.name}
+          isBusy={agentMessage.status === "created"}
+          isDisabled={isArchived}
+          type="agent"
         />
-      )}
-    </NewConversationMessage>
+        <ConversationMessageTitle
+          name={agentConfiguration.name}
+          timestamp={timestamp}
+          completionStatus={
+            isDeleted ? undefined : (
+              <AgentMessageCompletionStatus agentMessage={agentMessage} />
+            )
+          }
+          renderName={renderName}
+        />
+      </div>
+
+      <ConversationMessageAvatar
+        className="hidden @sm:flex"
+        avatarUrl={agentConfiguration.pictureUrl}
+        name={agentConfiguration.name}
+        isBusy={agentMessage.status === "created"}
+        isDisabled={isArchived}
+        type="agent"
+      />
+
+      <div className="flex w-full min-w-0 flex-col gap-3">
+        <ConversationMessageTitle
+          className="hidden @sm:flex"
+          name={agentConfiguration.name}
+          timestamp={timestamp}
+          completionStatus={
+            isDeleted ? undefined : (
+              <AgentMessageCompletionStatus agentMessage={agentMessage} />
+            )
+          }
+          renderName={renderName}
+        />
+        <ConversationMessageContent
+          citations={isDeleted ? undefined : citations}
+          type="agent"
+        >
+          {isDeleted ? (
+            <DeletedMessage />
+          ) : (
+            <AgentMessageContent
+              onQuickReplySend={handleQuickReply}
+              owner={owner}
+              conversationId={conversationId}
+              retryHandler={retryHandler}
+              isLastMessage={isLastMessage}
+              agentMessage={agentMessage}
+              references={references}
+              streaming={shouldStream}
+              lastTokenClassification={
+                agentMessage.streaming.agentState === "thinking"
+                  ? "tokens"
+                  : null
+              }
+              activeReferences={activeReferences}
+              setActiveReferences={setActiveReferences}
+              triggeringUser={triggeringUser}
+            />
+          )}
+        </ConversationMessageContent>
+        {messageButtons && messageButtons.length > 0 && (
+          <div className="flex justify-start gap-3">{messageButtons}</div>
+        )}
+      </div>
+    </NewConversationMessageContainer>
   );
 }
 
@@ -893,10 +935,15 @@ function AgentMessageContent({
       progress: progress.progress?.progress,
     }));
 
-  // Get completed images.
-  const completedImages = agentMessage.generatedFiles.filter((file) =>
-    isSupportedImageContentType(file.contentType)
+  // Extract file IDs already referenced inline (to avoid duplicate rendering).
+  const referencedFileIds = new Set(
+    (agentMessage.content ?? "").match(/\bfil_[A-Za-z0-9]{10,}\b/g) ?? []
   );
+
+  // Get completed images that are not already referenced in the Markdown content.
+  const completedImages = agentMessage.generatedFiles
+    .filter((file) => isSupportedImageContentType(file.contentType))
+    .filter((file) => !referencedFileIds.has(file.fileId));
 
   const generatedFiles = agentMessage.generatedFiles
     .filter((file) => !file.hidden)
@@ -948,7 +995,7 @@ function AgentMessageContent({
               isStreaming={streaming && lastTokenClassification === "tokens"}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
-            ></AgentMessageMarkdown>
+            />
           </CitationsContext.Provider>
         </div>
       )}

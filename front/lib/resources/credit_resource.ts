@@ -227,6 +227,38 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   /**
+   * Returns the sum of excess credits (over-consumption) for the given period.
+   * Excess credits are created when usage exceeds available credits.
+   */
+  static async sumExcessCreditsInPeriod(
+    auth: Authenticator,
+    { periodStart, periodEnd }: { periodStart: Date; periodEnd: Date }
+  ): Promise<number> {
+    const result = await this.model.findOne({
+      attributes: [
+        [
+          Sequelize.fn(
+            "COALESCE",
+            Sequelize.fn("SUM", Sequelize.col("consumedAmountMicroUsd")),
+            0
+          ),
+          "total",
+        ],
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        type: "excess",
+        startDate: {
+          [Op.gte]: periodStart,
+          [Op.lt]: periodEnd,
+        },
+      },
+      raw: true,
+    });
+    return parseInt((result as unknown as { total: string })?.total ?? "0", 10);
+  }
+
+  /**
    * Consume a given amount of credits, allowing for over-consumption.
    * This is because users consume credits after Dust has spent the tokens,
    * so it's not possible to preemptively block consumption.
@@ -444,7 +476,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<number | undefined, Error>> {
+  ): Promise<Result<number, Error>> {
     assert(
       this.startDate === null || this.type === "free",
       "Cannot delete a credit that has been started. Use freeze() instead."
@@ -454,6 +486,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       where: { id: this.id, workspaceId: auth.getNonNullableWorkspace().id },
       transaction,
     });
+
     return new Ok(deletedCount);
   }
 }

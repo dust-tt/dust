@@ -282,7 +282,6 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
           // If force resync is enabled, delete the existing history record first
           if (forceResync) {
             const deleteRes = await configuration.deleteHistoryByFileId(
-              auth,
               transcript.callId
             );
             if (deleteRes.isErr()) {
@@ -296,7 +295,11 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
             }
           }
 
-          await processTranscriptActivity(configuration.sId, transcript.callId);
+          await processTranscriptActivity(
+            configuration.sId,
+            transcript.callId,
+            workspace.sId
+          );
           return {
             success: true,
             callId: transcript.callId,

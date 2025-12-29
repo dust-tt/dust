@@ -59,6 +59,7 @@ export { default as StripeLogo } from "./Stripe";
 export { default as SupabaseLogo } from "./Supabase";
 export { default as TogetheraiLogo } from "./Togetherai";
 export { default as ValTownLogo } from "./ValTown";
+export { default as VantaLogo } from "./Vanta";
 export { default as ZapierLogo } from "./Zapier";
 export { default as ZendeskLogo } from "./Zendesk";
 export { default as ZendeskWhiteLogo } from "./ZendeskWhite";

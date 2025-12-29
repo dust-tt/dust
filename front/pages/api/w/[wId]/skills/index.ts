@@ -7,7 +7,6 @@ import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -21,10 +20,6 @@ import type {
 
 export type GetSkillConfigurationsResponseBody = {
   skillConfigurations: SkillType[];
-};
-
-export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType;
 };
 
 export type GetSkillConfigurationsWithRelationsResponseBody = {
@@ -121,7 +116,6 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
-            const mcpServerViews = await sc.listMCPServerViews(auth);
             const author = await sc.fetchAuthor(auth);
             const extendedSkill = sc.extendedSkillId
               ? await SkillResource.fetchById(auth, sc.extendedSkillId)
@@ -132,7 +126,6 @@ async function handler(
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
-                mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
                 author: author ? author.toJSON() : null,
                 extendedSkill: extendedSkill
                   ? extendedSkill.toJSON(auth)
@@ -231,34 +224,26 @@ async function handler(
         });
       }
 
-      // Use a transaction to ensure all creates succeed or all are rolled back
-      const skillResource = await SkillResource.makeNew(auth, {
-        status: "active",
-        name: body.name,
-        agentFacingDescription: body.agentFacingDescription,
-        // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
-        userFacingDescription: body.userFacingDescription ?? "",
-        instructions: body.instructions,
-        authorId: user.id,
-        requestedSpaceIds,
-        extendedSkillId: body.extendedSkillId,
-      });
-
-      // Create MCP server configurations (tools) for this skill
-      for (const mcpServerView of mcpServerViews) {
-        // TODO(skills 2025-12-09): move this to the makeNew.
-        await SkillMCPServerConfigurationModel.create({
-          workspaceId: owner.id,
-          skillConfigurationId: skillResource.id,
-          mcpServerViewId: mcpServerView.id,
-        });
-      }
+      const skillResource = await SkillResource.makeNew(
+        auth,
+        {
+          status: "active",
+          name: body.name,
+          agentFacingDescription: body.agentFacingDescription,
+          // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
+          userFacingDescription: body.userFacingDescription ?? "",
+          instructions: body.instructions,
+          authorId: user.id,
+          requestedSpaceIds,
+          extendedSkillId: body.extendedSkillId,
+        },
+        {
+          mcpServerViews,
+        }
+      );
 
       return res.status(200).json({
-        skillConfiguration: {
-          ...skillResource.toJSON(auth),
-          tools: body.tools,
-        },
+        skillConfiguration: skillResource.toJSON(auth),
       });
     }
 
