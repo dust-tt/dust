@@ -866,7 +866,7 @@ export function useConversationMarkAsRead({
 
 export type ConversationParticipationOption = "join" | "leave" | "delete";
 
-export const useConversationParticipationOption = ({
+export const useConversationParticipationOptions = ({
   ownerId,
   conversationId,
   userId,

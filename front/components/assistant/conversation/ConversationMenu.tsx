@@ -24,7 +24,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
   useConversationParticipants,
-  useConversationParticipationOption,
+  useConversationParticipationOptions,
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
@@ -137,7 +137,7 @@ export function ConversationMenu({
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
-  const conversationParticipationOptions = useConversationParticipationOption({
+  const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
     userId: user?.sId ?? null,
