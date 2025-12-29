@@ -1,10 +1,15 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
-import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import {
+  AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
+  ANALYTICS_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -13,10 +18,13 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
@@ -27,7 +35,10 @@ import type {
   AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
+  AgentRetrievalOutputAnalyticsData,
 } from "@app/types/assistant/analytics";
+import type { ModelId } from "@app/types/shared/model_id";
+import { sha256 } from "@app/types/shared/utils/hashing";
 
 export async function storeAgentAnalyticsActivity(
   authType: AuthenticatorType,
@@ -187,6 +198,20 @@ export async function storeAgentAnalytics(
   };
 
   await storeToElasticsearch(document);
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("agent_tool_outputs_analytics")) {
+    const toolOutputs = await extractRetrievalDocuments(auth, {
+      agentMessageRow,
+      agentAgentMessageRow,
+      conversationRow,
+      actions,
+    });
+
+    if (toolOutputs.length > 0) {
+      await storeRetrievalOutputsToElasticsearch(toolOutputs);
+    }
+  }
 }
 
 /**
@@ -243,22 +268,24 @@ async function collectToolUsageFromMessage(
   auth: Authenticator,
   actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
 
-  const serverConfigs = await AgentMCPServerConfigurationModel.findAll({
-    where: {
-      workspaceId,
-      id: uniqueConfigIds,
-    },
-  });
+  // Convert string IDs to numeric ModelIds at call site.
+  const configModelIds: ModelId[] = uniqueConfigIds
+    .map((id) => parseInt(id, 10))
+    .filter((id) => !isNaN(id));
 
-  const configIdToSId = new Map<string, string>();
-  for (const cfg of serverConfigs) {
-    configIdToSId.set(cfg.id.toString(), cfg.sId);
-  }
+  const serverConfigs =
+    await AgentMCPServerConfigurationResource.fetchByModelIds(
+      auth,
+      configModelIds
+    );
+
+  const configIdToSId = new Map(
+    serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
+  );
 
   return actionResources.map((actionResource) => {
     return {
@@ -276,6 +303,158 @@ async function collectToolUsageFromMessage(
       status: actionResource.status,
     };
   });
+}
+
+async function extractRetrievalDocuments(
+  auth: Authenticator,
+  {
+    agentMessageRow,
+    agentAgentMessageRow,
+    conversationRow,
+    actions,
+  }: {
+    agentMessageRow: MessageModel;
+    agentAgentMessageRow: AgentMessageModel;
+    conversationRow: ConversationModel;
+    actions: AgentMCPActionResource[];
+  }
+): Promise<AgentRetrievalOutputAnalyticsData[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const searchActions = actions.filter((action) =>
+    isLightServerSideMCPToolConfiguration(action.toolConfiguration)
+  );
+
+  if (searchActions.length === 0) {
+    return [];
+  }
+
+  const configIds = Array.from(
+    new Set(searchActions.map((a) => a.mcpServerConfigurationId))
+  );
+
+  // Convert string IDs to numeric ModelIds at call site.
+  const configModelIds: ModelId[] = configIds
+    .map((id) => parseInt(id, 10))
+    .filter((id) => !isNaN(id));
+
+  // Fetch MCP server configurations for analytics tracking.
+  // Using standalone resource allows independent querying for reporting purposes.
+  const [outputItemsByActionId, serverConfigs] = await Promise.all([
+    AgentMCPActionResource.fetchOutputItemsByActionIds(
+      auth,
+      searchActions.map((a) => a.id)
+    ),
+    AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds),
+  ]);
+
+  const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
+
+  const baseDocument = {
+    message_id: agentMessageRow.sId,
+    workspace_id: workspace.sId,
+    conversation_id: conversationRow.sId,
+    agent_id: agentAgentMessageRow.agentConfigurationId,
+    agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
+  };
+
+  const partialDocuments: (typeof baseDocument & {
+    mcp_server_configuration_id: string;
+    mcp_server_name: string;
+    data_source_view_id: string;
+    data_source_id: string;
+    document_id: string;
+  })[] = [];
+  const dataSourceViewIds = new Set<string>();
+
+  for (const action of searchActions) {
+    const config = configMap.get(action.mcpServerConfigurationId);
+    if (!config) {
+      continue;
+    }
+
+    const actionOutputItems = outputItemsByActionId.get(action.id);
+    if (!actionOutputItems) {
+      continue;
+    }
+
+    const mcpServerName =
+      action.metadata.internalMCPServerName ??
+      action.metadata.mcpServerId ??
+      "unknown";
+
+    for (const outputItem of actionOutputItems) {
+      if (!isSearchResultResourceType(outputItem.content)) {
+        continue;
+      }
+
+      const searchResult = outputItem.content.resource;
+      const dataSourceViewId = searchResult.source.data_source_view_id;
+      const dataSourceId = searchResult.source.data_source_id;
+
+      if (!dataSourceViewId || !dataSourceId) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            messageId: agentMessageRow.sId,
+            documentId: searchResult.id,
+          },
+          "[extractRetrievalDocuments] Search result missing data source IDs"
+        );
+        continue;
+      }
+
+      dataSourceViewIds.add(dataSourceViewId);
+
+      partialDocuments.push({
+        ...baseDocument,
+        mcp_server_configuration_id: config.sId,
+        mcp_server_name: mcpServerName,
+        data_source_view_id: dataSourceViewId,
+        data_source_id: dataSourceId,
+        document_id: searchResult.id,
+      });
+    }
+  }
+
+  // Fetch only the data source views that actually appear in results
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    Array.from(dataSourceViewIds)
+  );
+
+  const dataSourceViewMap = new Map<string, string>();
+  for (const dsv of dataSourceViews) {
+    if (dsv.dataSource) {
+      dataSourceViewMap.set(dsv.sId, dsv.dataSource.name);
+    }
+  }
+
+  // Enrich partial documents with data source names
+  const documents: AgentRetrievalOutputAnalyticsData[] = [];
+  for (const partial of partialDocuments) {
+    const dataSourceName = dataSourceViewMap.get(partial.data_source_view_id);
+    if (!dataSourceName) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          messageId: agentMessageRow.sId,
+          dataSourceViewId: partial.data_source_view_id,
+          documentId: partial.document_id,
+        },
+        "[extractRetrievalDocuments] Data source view not found"
+      );
+      continue;
+    }
+
+    documents.push({
+      ...partial,
+      data_source_name: dataSourceName,
+    });
+  }
+
+  return documents;
 }
 
 function makeAgentMessageAnalyticsDocumentId({
@@ -308,6 +487,50 @@ async function storeToElasticsearch(
       id: documentId,
       body: document,
     });
+  });
+}
+
+function makeRetrievalOutputDocumentId({
+  workspaceId,
+  messageId,
+  documentId,
+  dataSourceViewId,
+}: {
+  workspaceId: string;
+  messageId: string;
+  documentId: string;
+  dataSourceViewId: string;
+}): string {
+  // Hash the raw document ID to ensure safe Elasticsearch _id.
+  // Document IDs from data sources may contain special characters or be very long.
+  const normalizedDocId = sha256(documentId);
+  return `${workspaceId}_${messageId}_${dataSourceViewId}_${normalizedDocId}`;
+}
+
+async function storeRetrievalOutputsToElasticsearch(
+  documents: AgentRetrievalOutputAnalyticsData[]
+): Promise<void> {
+  if (documents.length === 0) {
+    return;
+  }
+
+  await withEs(async (client) => {
+    const bulkBody = documents.flatMap((doc) => [
+      {
+        index: {
+          _index: AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
+          _id: makeRetrievalOutputDocumentId({
+            workspaceId: doc.workspace_id,
+            messageId: doc.message_id,
+            documentId: doc.document_id,
+            dataSourceViewId: doc.data_source_view_id,
+          }),
+        },
+      },
+      doc,
+    ]);
+
+    await client.bulk({ body: bulkBody });
   });
 }
 
