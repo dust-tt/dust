@@ -34,6 +34,7 @@ export type PostSkillConfigurationResponseBody = {
 const SkillStatusSchema = t.union([
   t.literal("active"),
   t.literal("archived"),
+  t.literal("suggested"),
   t.undefined,
 ]);
 
@@ -100,7 +101,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid status: ${status}. Expected "active" or "archived".`,
+            message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
           },
         });
       }

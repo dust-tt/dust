@@ -81,6 +81,10 @@ describe("GET /api/w/[wId]/skills", () => {
       status: "active",
     });
     await SkillConfigurationFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+    });
+    await SkillConfigurationFactory.create(auth, {
       name: "Archived Skill",
       status: "archived",
     });
@@ -94,6 +98,40 @@ describe("GET /api/w/[wId]/skills", () => {
 
     const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
+    expect(skillNames).not.toContain("Archived Skill");
+  });
+
+  it("should return suggested skills when status=suggested", async () => {
+    const { req, res, workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillConfigurationFactory.create(auth, {
+      name: "Active Skill",
+      status: "active",
+    });
+    await SkillConfigurationFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+    });
+    await SkillConfigurationFactory.create(auth, {
+      name: "Archived Skill",
+      status: "archived",
+    });
+
+    req.query = { ...req.query, wId: workspace.sId, status: "suggested" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+
+    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
+    expect(skillNames).toContain("Suggested Skill");
+    expect(skillNames).not.toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
 
