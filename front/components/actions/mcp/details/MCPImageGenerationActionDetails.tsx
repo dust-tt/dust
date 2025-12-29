@@ -33,7 +33,12 @@ export function MCPImageGenerationActionDetails({
       }
       visual={ActionImageIcon}
     >
-      <div className="flex flex-col gap-3 pl-6 pt-4">
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          viewType === "conversation" ? "pl-6" : "pt-2"
+        )}
+      >
         <p
           className={cn(
             "text-sm text-muted-foreground dark:text-muted-foreground-night",
@@ -71,7 +76,12 @@ export function MCPImageEditingActionDetails({
       actionName={viewType === "conversation" ? "Editing image" : "Edit image"}
       visual={ActionImageIcon}
     >
-      <div className="flex flex-col gap-3 pl-6 pt-4">
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          viewType === "conversation" ? "pl-6" : "pt-2"
+        )}
+      >
         <p
           className={cn(
             "text-sm text-muted-foreground dark:text-muted-foreground-night",
