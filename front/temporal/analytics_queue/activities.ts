@@ -161,6 +161,21 @@ export async function storeAgentAnalytics(
   );
 
   if (hasBlockedActions) {
+    const blockedStatuses = actions
+      .filter((a) => isToolExecutionStatusBlocked(a.status))
+      .map((a) => a.status);
+
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        conversationId: conversationRow.sId,
+        agentMessageId: agentMessageRow.sId,
+        actionCount: actions.length,
+        blockedStatuses,
+      },
+      "[Analytics] Skipping ingestion due to blocked actions"
+    );
+
     return;
   }
 
@@ -402,6 +417,7 @@ async function extractRetrievalDocuments(
           },
           "[extractRetrievalDocuments] Search result missing data source IDs"
         );
+
         continue;
       }
 
@@ -445,6 +461,7 @@ async function extractRetrievalDocuments(
         },
         "[extractRetrievalDocuments] Data source view not found"
       );
+
       continue;
     }
 
@@ -481,13 +498,27 @@ async function storeToElasticsearch(
     workspaceId: document.workspace_id,
   });
 
-  await withEs(async (client) => {
+  const result = await withEs(async (client) => {
     await client.index({
       index: ANALYTICS_ALIAS_NAME,
       id: documentId,
       body: document,
     });
   });
+
+  if (result.isErr()) {
+    logger.error(
+      {
+        error: result.error,
+        documentId,
+        workspaceId: document.workspace_id,
+        messageId: document.message_id,
+      },
+      "[Analytics] Failed to write analytics document to ES"
+    );
+
+    throw new Error(`ES write failed: ${result.error.message}`);
+  }
 }
 
 function makeRetrievalOutputDocumentId({
@@ -514,7 +545,7 @@ async function storeRetrievalOutputsToElasticsearch(
     return;
   }
 
-  await withEs(async (client) => {
+  const result = await withEs(async (client) => {
     const bulkBody = documents.flatMap((doc) => [
       {
         index: {
@@ -532,6 +563,22 @@ async function storeRetrievalOutputsToElasticsearch(
 
     await client.bulk({ body: bulkBody });
   });
+
+  const workspaceId = documents[0]?.workspace_id ?? "unknown";
+
+  if (result.isErr()) {
+    logger.error(
+      {
+        error: result.error,
+        workspaceId,
+        documentCount: documents.length,
+        messageId: documents[0]?.message_id,
+      },
+      "[Analytics] Failed to write retrieval outputs to ES"
+    );
+
+    throw new Error(`ES bulk write failed: ${result.error.message}`);
+  }
 }
 
 function getAgentMessageFeedbackAnalytics(
