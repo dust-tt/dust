@@ -786,6 +786,7 @@ export async function processWebhookRequest(
 
   const filteredTriggers = filteredTriggersResult.value;
   if (filteredTriggers.length === 0) {
+    localLogger.info("No triggers matched the webhook request.");
     await webhookRequest.markAsProcessed();
     return new Ok(undefined);
   }
