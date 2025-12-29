@@ -205,7 +205,6 @@ const WorkspacePage = ({
     disabled: false,
   });
 
-  const workspaceRetention = dataRetention?.workspace ?? null;
   const agentsRetention = dataRetention?.agents ?? {};
   const isInMaintenance = owner.metadata?.maintenance;
 
@@ -278,7 +277,7 @@ const WorkspacePage = ({
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
                   workspaceCreationDay={workspaceCreationDay}
                   extensionConfig={extensionConfig}
-                  workspaceRetention={workspaceRetention}
+                  dataRetention={dataRetention}
                   workosEnvironmentId={workosEnvironmentId}
                 />
               </TabsContent>
