@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { useCallback, useState } from "react";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkillsDisplay";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
@@ -96,6 +97,11 @@ export function SkillBuilderAgentFacingDescriptionSection() {
             error={hasError ? errorMessage : undefined}
             showErrorLabel={hasError}
             {...registerProps}
+            onBlur={() => {
+              window.dispatchEvent(
+                new CustomEvent(SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT)
+              );
+            }}
           />
           {isSimilarSkillsEnabled && (
             <SimilarSkillsDisplay
