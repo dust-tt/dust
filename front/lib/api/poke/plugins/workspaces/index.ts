@@ -20,6 +20,7 @@ export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
 export * from "./revoke_users";
 export * from "./send_onboarding_conversation";
+export * from "./soft_delete_conversation";
 export * from "./sync_missing_transcripts_date_range";
 export * from "./toggle_auto_create_space";
 export * from "./toggle_disable_manual_invitations";
