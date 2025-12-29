@@ -1,20 +1,27 @@
 import chunk from "lodash/chunk";
 import type { Logger } from "pino";
 
-import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  isAutoInternalMCPServerName,
+  isInternalMCPServerName,
+  type AutoInternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 
-const CHUNK_SIZE = 100;
-const CONCURRENCY = 5;
+// Safe chunk size for PostgreSQL's 65,535 parameter limit.
+// AgentSkillModel has 4 fields, so 65535/4 ≈ 16k. Using 5k for safety.
+const CHUNK_SIZE = 5000;
 
-const TOOL_TO_SKILL_MAP: Record<string, string> = {
+const TOOL_TO_SKILL_MAP: Record<string, GlobalSkillId> = {
   interactive_content: "frames",
   deep_dive: "go-deep",
 };
@@ -75,57 +82,61 @@ async function addGlobalSkillToAgentsWithTool(
     "Found agents with tool"
   );
 
-  // 3. Get existing agent-skill links to avoid duplicates.
-  const existingSkillLinks = await AgentSkillModel.findAll({
-    where: {
+  // 3. Get existing agent-skill links to avoid duplicates (chunked for large IN clauses).
+  const agentConfigIds = agentsWithTool.map((a) => a.agentConfigurationId);
+  const agentsWithSkill = new Set<number>();
+
+  for (const idChunk of chunk(agentConfigIds, CHUNK_SIZE)) {
+    const existingSkillLinks = await AgentSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        globalSkillId,
+        agentConfigurationId: idChunk,
+      },
+    });
+    for (const link of existingSkillLinks) {
+      agentsWithSkill.add(link.agentConfigurationId);
+    }
+  }
+
+  // 4. Filter agents that need skill creation.
+  const agentsToCreate = agentsWithTool.filter(
+    (a) => !agentsWithSkill.has(a.agentConfigurationId)
+  );
+
+  if (agentsToCreate.length === 0) {
+    logger.info(
+      {
+        workspaceId: workspace.id,
+        toCreate: agentsToCreate.length,
+        alreadyHasSkill: agentsWithSkill.size,
+      },
+      "No agents need skill creation"
+    );
+    return;
+  }
+
+  logger.info(
+    {
       workspaceId: workspace.id,
-      globalSkillId,
-      agentConfigurationId: agentsWithTool.map((a) => a.agentConfigurationId),
+      toCreate: agentsToCreate.length,
+      alreadyHasSkill: agentsWithSkill.size,
     },
-  });
-  const agentsWithSkill = new Set(
-    existingSkillLinks.map((l) => l.agentConfigurationId)
+    "Creating skills"
   );
 
-  // 4. Process in chunks with concurrency.
-  const agentChunks = chunk(agentsWithTool, CHUNK_SIZE);
-
-  await concurrentExecutor(
-    agentChunks,
-    async (agentChunk) => {
-      await concurrentExecutor(
-        agentChunk,
-        async (agent) => {
-          if (agentsWithSkill.has(agent.agentConfigurationId)) {
-            logger.info(
-              {
-                agentConfigurationId: agent.agentConfigurationId,
-                globalSkillId,
-              },
-              "Already has skill"
-            );
-            return;
-          }
-
-          if (execute) {
-            await AgentSkillModel.create({
-              workspaceId: workspace.id,
-              agentConfigurationId: agent.agentConfigurationId,
-              globalSkillId,
-              customSkillId: null,
-            });
-          }
-
-          logger.info(
-            { agentConfigurationId: agent.agentConfigurationId, globalSkillId },
-            "Added skill"
-          );
-        },
-        { concurrency: CONCURRENCY }
+  if (execute) {
+    for (const createChunk of chunk(agentsToCreate, CHUNK_SIZE)) {
+      await AgentSkillModel.bulkCreate(
+        createChunk.map((a) => ({
+          workspaceId: workspace.id,
+          agentConfigurationId: a.agentConfigurationId,
+          globalSkillId,
+          customSkillId: null,
+        }))
       );
-    },
-    { concurrency: CONCURRENCY }
-  );
+    }
+  }
 }
 
 makeScript(
@@ -141,15 +152,28 @@ makeScript(
     },
   },
   async ({ execute, workspaceId, mcpServerName }, logger) => {
-    const opts = {
-      execute,
-      mcpServerName: mcpServerName as AutoInternalMCPServerNameType,
-    };
+    if (
+      !(
+        isInternalMCPServerName(mcpServerName) &&
+        isAutoInternalMCPServerName(mcpServerName)
+      )
+    ) {
+      throw new Error(`Invalid MCP server name: ${mcpServerName}`);
+    }
+
+    const opts = { execute, mcpServerName };
 
     if (workspaceId) {
-      const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-      const workspace = auth.getNonNullableWorkspace();
-      await addGlobalSkillToAgentsWithTool(workspace, logger, opts);
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      await addGlobalSkillToAgentsWithTool(
+        renderLightWorkspaceType({ workspace }),
+        logger,
+        opts
+      );
     } else {
       await runOnAllWorkspaces(async (workspace) =>
         addGlobalSkillToAgentsWithTool(workspace, logger, opts)
