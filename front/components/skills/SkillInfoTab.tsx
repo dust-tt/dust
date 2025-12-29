@@ -5,23 +5,12 @@ import { useMemo } from "react";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type {
-  SkillRelations,
-  SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-export function SkillInfoTab({
-  skill,
-}: {
-  skill: SkillType & { relations?: SkillRelations };
-}) {
+export function SkillInfoTab({ skill }: { skill: SkillType }) {
   const sortedMCPServerViews = useMemo(
-    () =>
-      sortBy(
-        (skill.relations?.mcpServerViews ?? []).map(renderMCPServerView),
-        "title"
-      ),
-    [skill.relations?.mcpServerViews]
+    () => sortBy(skill.tools.map(renderMCPServerView), "title"),
+    [skill.tools]
   );
 
   return (
