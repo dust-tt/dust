@@ -18,6 +18,7 @@ import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
 } from "@app/types";
+import { ConversationError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
@@ -280,6 +281,14 @@ export async function finalizeCancellation(
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
+    // We ignore conversation_not_found errors; the conversation might have been deleted since.
+    if (
+      runAgentDataRes.error instanceof ConversationError &&
+      runAgentDataRes.error.type === "conversation_not_found"
+    ) {
+      return;
+    }
+
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
