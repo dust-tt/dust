@@ -18,6 +18,8 @@ interface TreemapNode {
   name: string;
   size: number;
   color: string;
+
+  [key: string]: string | number;
 }
 
 interface TreemapContentProps {
@@ -38,7 +40,6 @@ function CustomizedContent({
   height = 0,
   name = "",
   value = 0,
-  depth = 0,
   color = INDEXED_COLORS[0],
 }: TreemapContentProps) {
   const shouldShowText = width > 50 && height > 30;
@@ -109,17 +110,12 @@ export function DatasourceRetrievalTreemapChart({
     if (!agentConfiguration) {
       return new Map<string, string>();
     }
-    console.log(">>>>> agentConfiguration.actions", agentConfiguration.actions);
     const map = new Map<string, string>();
     agentConfiguration.actions.forEach((action) => {
       if (action.type === "mcp_server_configuration" && action.name) {
-        console.log(
-          `>>>>> Mapping action ID ${action.id} -> name "${action.name}"`
-        );
         map.set(action.id.toString(), action.name);
       }
     });
-    console.log(">>>>> mcpConfigNameMap", map);
     return map;
   }, [agentConfiguration]);
 
@@ -128,7 +124,6 @@ export function DatasourceRetrievalTreemapChart({
       return { treemapData: null, legendItems: [] };
     }
 
-    console.log(">>>>> datasourceRetrieval", datasourceRetrieval);
     const mcpServerConfigIds = datasourceRetrieval.map(
       (mcp) => mcp.mcpServerConfigId
     );
@@ -148,10 +143,6 @@ export function DatasourceRetrievalTreemapChart({
       const displayName =
         mcpConfigNameMap.get(mcp.mcpServerConfigId.toString()) ??
         mcp.mcpServerName;
-
-      console.log(
-        `>>>>> Matching mcpServerConfigId "${mcp.mcpServerConfigId}" -> displayName "${displayName}" (found in map: ${mcpConfigNameMap.has(mcp.mcpServerConfigId)})`
-      );
 
       if (!seenServers.has(mcp.mcpServerConfigId)) {
         legend.push({

@@ -10,6 +10,7 @@ import {
   ValueCard,
 } from "@dust-tt/sparkle";
 
+import { DatasourceRetrievalTreemapChart } from "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { SourceChart } from "@app/components/agent_builder/observability/charts/SourceChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
@@ -186,6 +187,11 @@ export function AgentObservability({
         />
         <Separator />
         <SourceChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+        />
+        <Separator />
+        <DatasourceRetrievalTreemapChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
         />
