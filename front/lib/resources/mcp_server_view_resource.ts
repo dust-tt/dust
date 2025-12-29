@@ -15,11 +15,9 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type {
   AutoInternalMCPServerNameType,
-  MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
-  getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
@@ -652,14 +650,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     } else {
       assertNever(this.serverType);
     }
-  }
-
-  get availability(): MCPServerAvailability {
-    if (this.serverType !== "internal" || !this.internalMCPServerId) {
-      return "manual";
-    }
-
-    return getAvailabilityOfInternalMCPServerById(this.internalMCPServerId);
   }
 
   static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{

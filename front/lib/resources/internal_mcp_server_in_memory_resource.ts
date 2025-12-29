@@ -5,7 +5,10 @@ import {
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerById,
   allowsMultipleInstancesOfInternalMCPServerByName,
@@ -19,6 +22,7 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/ena
 import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -31,9 +35,6 @@ import type { MCPOAuthUseCase, Result } from "@app/types";
 import { Err, Ok, redactString, removeNulls } from "@app/types";
 
 export class InternalMCPServerInMemoryResource {
-  // SID of the internal MCP server, scoped to a workspace.
-  readonly id: string;
-
   private metadata: Omit<
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
@@ -44,9 +45,10 @@ export class InternalMCPServerInMemoryResource {
   private internalServerCredential: InternalMCPServerCredentialModel | null =
     null;
 
-  constructor(id: string) {
-    this.id = id;
-  }
+  constructor(
+    readonly id: string,
+    readonly availability: MCPServerAvailability
+  ) {}
 
   private static async init(auth: Authenticator, id: string) {
     const r = getInternalMCPServerNameAndWorkspaceId(id);
@@ -54,12 +56,27 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    const isEnabled = await isEnabledForWorkspace(auth, r.value.name);
+    let availability = getAvailabilityOfInternalMCPServerById(id);
+
+    const name = r.value.name;
+    // TODO(skills-GA): Remove this check once skills are GA.
+    // When skills feature flag is enabled, treat interactive_content and deep_dive
+    // as auto_hidden_builder since they are exposed through skills instead.
+    if (name === "interactive_content" || name === "deep_dive") {
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (featureFlags.includes("skills")) {
+        availability = "auto_hidden_builder";
+      }
+    }
+
+    const isEnabled = await isEnabledForWorkspace(auth, name);
     if (!isEnabled) {
       return null;
     }
 
-    const server = new InternalMCPServerInMemoryResource(id);
+    const server = new this(id, availability);
 
     // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
     // Bigger refactoring to extract this logic from the resource will come later.
@@ -238,7 +255,7 @@ export class InternalMCPServerInMemoryResource {
     id: string,
     systemSpace: SpaceResource
   ) {
-    // Fast path : Do not check for default internal MCP servers as they are always available.
+    // Fast path: Do not check for default internal MCP servers as they are always available.
     const availability = getAvailabilityOfInternalMCPServerById(id);
     if (availability === "manual") {
       const server = await MCPServerViewModel.findOne({
@@ -251,7 +268,7 @@ export class InternalMCPServerInMemoryResource {
         },
       });
 
-      if (!server || !server.internalMCPServerId) {
+      if (!server?.internalMCPServerId) {
         return null;
       }
     }
@@ -438,7 +455,7 @@ export class InternalMCPServerInMemoryResource {
       sId: this.id,
       ...this.metadata,
       ...this.getRedactedCredentials(),
-      availability: getAvailabilityOfInternalMCPServerById(this.id),
+      availability: this.availability,
       allowMultipleInstances: allowsMultipleInstancesOfInternalMCPServerById(
         this.id
       ),
