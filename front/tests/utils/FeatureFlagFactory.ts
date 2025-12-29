@@ -1,4 +1,4 @@
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
 
 export class FeatureFlagFactory {
@@ -6,9 +6,6 @@ export class FeatureFlagFactory {
     featureName: WhitelistableFeature,
     workspace: WorkspaceType
   ) {
-    return FeatureFlagModel.create({
-      name: featureName,
-      workspaceId: workspace.id,
-    });
+    return FeatureFlagResource.enable(workspace, featureName);
   }
 }
