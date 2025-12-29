@@ -306,6 +306,7 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
     // Verify the resource was correctly stored in the database
     const agentConfigurationModel = await AgentConfigurationModel.findOne({
       where: {
+        workspaceId: workspace.id,
         sId: data.agentConfiguration.sId,
         version: data.agentConfiguration.version,
       },
