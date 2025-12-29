@@ -11,7 +11,6 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -24,6 +23,7 @@ import type {
 import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
 const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
