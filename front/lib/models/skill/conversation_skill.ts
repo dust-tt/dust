@@ -95,7 +95,12 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
 ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
   modelName: "conversation_skills",
   sequelize: frontSequelize,
-  indexes: [],
+  indexes: [
+    {
+      fields: ["workspaceId", "conversationId", "agentConfigurationId"],
+      name: "idx_conversation_skills_workspace_conv_agent",
+    },
+  ],
   validate: {
     eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
   },
@@ -150,7 +155,12 @@ AgentMessageSkillModel.init(
   {
     modelName: "agent_message_skills",
     sequelize: frontSequelize,
-    indexes: [],
+    indexes: [
+      {
+        fields: ["workspaceId", "agentMessageId"],
+        name: "idx_agent_message_skills_workspace_message",
+      },
+    ],
     validate: {
       eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
     },

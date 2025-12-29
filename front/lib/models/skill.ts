@@ -75,7 +75,10 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
   modelName: "skill_configuration",
   sequelize: frontSequelize,
   indexes: [
-    // TODO(skills): add indexes.
+    {
+      fields: ["workspaceId", "status"],
+      name: "idx_skill_configuration_workspace_status",
+    },
   ],
 });
 
