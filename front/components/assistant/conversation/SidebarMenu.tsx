@@ -4,7 +4,6 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  CollapsibleComponent,
   ContactsRobotIcon,
   DocumentIcon,
   DropdownMenu,
@@ -22,6 +21,7 @@ import {
   MagicIcon,
   MoreIcon,
   NavigationList,
+  NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
@@ -539,30 +539,14 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             )}
             <>
               {hasSpaceConversations && summary.length > 0 ? (
-                <div className="overflow-y-auto">
-                  <CollapsibleComponent
-                    rootProps={{ defaultOpen: summary.length <= 5 }}
-                    triggerChildren={
-                      <div className="text-sm text-foreground dark:text-foreground-night">
-                        Projects
-                      </div>
-                    }
-                    contentChildren={
-                      <SpacesList owner={owner} summary={summary} />
-                    }
-                  />
-                  <CollapsibleComponent
-                    rootProps={{
-                      defaultOpen: true,
-                    }}
-                    triggerChildren={
-                      <div className="text-sm text-foreground dark:text-foreground-night">
-                        My conversations
-                      </div>
-                    }
-                    contentChildren={conversationsList}
-                  />
-                </div>
+                <>
+                  <NavigationListCollapsibleSection label="Projects">
+                    <SpacesList owner={owner} summary={summary} />
+                  </NavigationListCollapsibleSection>
+                  <NavigationListCollapsibleSection label="My conversations">
+                    {conversationsList}
+                  </NavigationListCollapsibleSection>
+                </>
               ) : (
                 conversationsList
               )}
