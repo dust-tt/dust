@@ -281,11 +281,11 @@ export async function finalizeCancellation(
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
+    // We ignore conversation_not_found errors; the conversation might have been deleted since.
     if (
       runAgentDataRes.error instanceof ConversationError &&
       runAgentDataRes.error.type === "conversation_not_found"
     ) {
-      // We ignore conversation_not_found errors; the conversation might have been deleted since.
       return;
     }
 
