@@ -1,4 +1,4 @@
-import { ActionImageIcon, Chip, cn } from "@dust-tt/sparkle";
+import { ActionImageIcon, cn } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -23,7 +23,7 @@ export function MCPImageGenerationActionDetails({
     );
   }
 
-  const { prompt, name, quality, size } = toolParams;
+  const { prompt } = toolParams;
 
   return (
     <ActionDetailsWrapper
@@ -34,13 +34,6 @@ export function MCPImageGenerationActionDetails({
       visual={ActionImageIcon}
     >
       <div className="flex flex-col gap-3 pl-6 pt-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Chip label={name} color="primary" />
-          {size && <Chip label={size} color="highlight" />}
-          {quality && quality !== "auto" && (
-            <Chip label={`${quality} quality`} color="success" />
-          )}
-        </div>
         <p
           className={cn(
             "text-sm text-muted-foreground dark:text-muted-foreground-night",
@@ -70,7 +63,7 @@ export function MCPImageEditingActionDetails({
     );
   }
 
-  const { editPrompt, outputName, quality, aspectRatio } = toolParams;
+  const { editPrompt } = toolParams;
 
   return (
     <ActionDetailsWrapper
@@ -79,13 +72,6 @@ export function MCPImageEditingActionDetails({
       visual={ActionImageIcon}
     >
       <div className="flex flex-col gap-3 pl-6 pt-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Chip label={outputName} color="primary" />
-          {aspectRatio && <Chip label={aspectRatio} color="highlight" />}
-          {quality && quality !== "auto" && (
-            <Chip label={`${quality} quality`} color="success" />
-          )}
-        </div>
         <p
           className={cn(
             "text-sm text-muted-foreground dark:text-muted-foreground-night",
