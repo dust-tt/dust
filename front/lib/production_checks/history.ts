@@ -1,4 +1,5 @@
 import type { Client, WorkflowExecutionInfo } from "@temporalio/client";
+import { defaultPayloadConverter } from "@temporalio/common";
 import assert from "assert";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -10,10 +11,6 @@ import {
   WORKFLOW_TYPE_RUN_ALL_CHECKS,
   WORKFLOW_TYPE_RUN_SINGLE_CHECK,
 } from "@app/temporal/production_checks/config";
-import type {
-  runAllChecksWorkflow,
-  runSingleCheckWorkflow,
-} from "@app/temporal/production_checks/workflows";
 import type {
   CheckActivityResult,
   CheckHistoryRun,
@@ -53,40 +50,32 @@ async function getProductionCheckWorkflowResults(
     `Unexpected workflow type: ${workflowInfo.type}`
   );
 
-  switch (workflowInfo.type) {
-    case WORKFLOW_TYPE_RUN_ALL_CHECKS: {
-      const handle = client.workflow.getHandle<typeof runAllChecksWorkflow>(
-        workflowInfo.workflowId,
-        workflowInfo.runId
-      );
-      const result = await handle.result();
+  const handle = client.workflow.getHandle(
+    workflowInfo.workflowId,
+    workflowInfo.runId
+  );
+  const history = await handle.fetchHistory();
 
-      if (!Array.isArray(result)) {
-        logger.warn(
-          {
-            workflowId: workflowInfo.workflowId,
-            runId: workflowInfo.runId,
-            resultType: typeof result,
-            result,
-          },
-          "runAllChecksWorkflow returned non-array result - skipping historical workflow data"
+  const results: CheckActivityResult[] = [];
+
+  for (const event of history.events ?? []) {
+    const payload =
+      event.activityTaskCompletedEventAttributes?.result?.payloads?.[0];
+    if (payload) {
+      const decoded = defaultPayloadConverter.fromPayload<
+        CheckActivityResult | CheckActivityResult[]
+      >(payload);
+      if (Array.isArray(decoded)) {
+        results.push(
+          ...decoded.filter((r): r is CheckActivityResult => r != null)
         );
-        return [];
+      } else if (decoded) {
+        results.push(decoded);
       }
-
-      return result;
     }
-    case WORKFLOW_TYPE_RUN_SINGLE_CHECK: {
-      const handle = client.workflow.getHandle<typeof runSingleCheckWorkflow>(
-        workflowInfo.workflowId,
-        workflowInfo.runId
-      );
-      const result = await handle.result();
-      return [result];
-    }
-    default:
-      assertNever(workflowInfo.type);
   }
+
+  return results;
 }
 
 async function processBatch(
