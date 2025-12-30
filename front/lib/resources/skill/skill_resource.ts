@@ -443,7 +443,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    const customSkillIds = removeNulls(
+    const customSkillModelIds = removeNulls(
       agentSkills.map((as) => as.customSkillId)
     );
     const globalSkillIds = removeNulls(
@@ -452,7 +452,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.baseFetch(auth, {
       where: {
-        id: customSkillIds,
+        id: customSkillModelIds,
         sId: globalSkillIds,
       },
     });
@@ -526,28 +526,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    const customSkillIds = removeNulls(
-      conversationSkills.map((cs) =>
-        cs.customSkillId
-          ? SkillResource.modelIdToSId({
-              id: cs.customSkillId,
-              workspaceId: workspace.id,
-            })
-          : null
-      )
+    const customSkillModelIds = removeNulls(
+      conversationSkills.map((cs) => cs.customSkillId)
     );
-
     const globalSkillIds = removeNulls(
       conversationSkills.map((cs) => cs.globalSkillId)
     );
 
-    const allSkillIds = [...customSkillIds, ...globalSkillIds];
-
-    if (allSkillIds.length === 0) {
-      return [];
-    }
-
-    return SkillResource.fetchByIds(auth, allSkillIds, { agentConfiguration });
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: customSkillModelIds,
+          sId: globalSkillIds,
+        },
+      },
+      { agentConfiguration }
+    );
   }
 
   /**
@@ -1205,17 +1200,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
     });
 
-    const customSkills = await this.fetchByModelIds(
-      auth,
-      removeNulls(agentMessageSkills.map((ams) => ams.customSkillId))
+    const customSkillModelIds = removeNulls(
+      agentMessageSkills.map((ams) => ams.customSkillId)
+    );
+    const globalSkillIds = removeNulls(
+      agentMessageSkills.map((ams) => ams.globalSkillId)
     );
 
-    const globalSkills = await this.fetchByIds(
-      auth,
-      removeNulls(agentMessageSkills.map((ams) => ams.globalSkillId))
-    );
-
-    return [...customSkills, ...globalSkills];
+    return this.baseFetch(auth, {
+      where: {
+        id: customSkillModelIds,
+        sId: globalSkillIds,
+      },
+    });
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
