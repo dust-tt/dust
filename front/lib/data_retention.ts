@@ -4,8 +4,7 @@ import isNumber from "lodash/isNumber";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-
-export const WORKSPACE_DEFAULT_RETENTION_DAYS = 30;
+import { WORKSPACE_DEFAULT_RETENTION_DAYS } from "@app/temporal/scrub_workspace/config";
 
 export type DataRetentionConfig = {
   workspace: number;
@@ -48,7 +47,7 @@ export const getWorkspaceDataRetention = async (
 
   if (
     isNumber(customRetention) &&
-    customRetention >= 0 &&
+    customRetention >= 7 &&
     customRetention <= 1000
   ) {
     return customRetention;

@@ -7,10 +7,11 @@ import {
   startChild,
 } from "@temporalio/workflow";
 
-import { WORKSPACE_DEFAULT_RETENTION_DAYS } from "@app/lib/data_retention";
-
 import type * as activities from "./activities";
-import { LAST_EMAIL_BEFORE_SCRUB_IN_DAYS } from "./config";
+import {
+  LAST_EMAIL_BEFORE_SCRUB_IN_DAYS,
+  WORKSPACE_DEFAULT_RETENTION_DAYS,
+} from "./config";
 import { runScrubFreeEndedWorkspacesSignal } from "./signals";
 
 const { shouldStillScrubData, getWorkspaceRetentionDays } = proxyActivities<
