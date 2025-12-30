@@ -3,18 +3,16 @@ import React, { useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
-import type {
-  CapabilitiesSheetMode,
-  CapabilityFilterType,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { CapabilityFilterType } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import type { SheetState } from "@app/components/agent_builder/skills/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type CapabilitiesSelectionPageProps = {
-  onModeChange: (mode: CapabilitiesSheetMode) => void;
+  onStateChange: (state: SheetState) => void;
   handleSkillToggle: (skill: SkillType) => void;
   filteredSkills: SkillType[];
   searchQuery: string;
@@ -41,7 +39,7 @@ export function CapabilitiesSelectionPageContent({
   selectedMCPServerViewIds,
   handleToolToggle,
   handleToolInfoClick,
-  onModeChange,
+  onStateChange,
 }: CapabilitiesSelectionPageProps) {
   const { owner } = useAgentBuilderContext();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -49,11 +47,11 @@ export function CapabilitiesSelectionPageContent({
 
   const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
     onSuccess: ({ skill }) => {
-      onModeChange({
-        pageId: "skill_info",
+      onStateChange({
+        state: "info",
+        kind: "skill",
         capability: skill,
         hasPreviousPage: true,
-        open: true,
       });
     },
   });
