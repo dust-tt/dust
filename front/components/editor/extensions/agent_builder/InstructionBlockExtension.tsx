@@ -9,7 +9,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   CLOSING_TAG_REGEX,
@@ -54,6 +54,21 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(
     node.attrs.isCollapsed ?? false
   );
+  const [isEditingType, setIsEditingType] = useState(false);
+  const editableRef = useRef<HTMLSpanElement>(null);
+
+  // Focus and select text when entering edit mode
+  useEffect(() => {
+    if (isEditingType && editableRef.current) {
+      editableRef.current.focus();
+      // Select all text in the contentEditable span
+      const range = document.createRange();
+      range.selectNodeContents(editableRef.current);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+  }, [isEditingType]);
 
   const displayType = node.attrs.type ? node.attrs.type.toUpperCase() : " ";
 
@@ -69,6 +84,29 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     if (editor.isFocused) {
       editor.commands.focus();
     }
+  };
+
+  const handleChipClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isCollapsed) {
+      setIsEditingType(true);
+    }
+  };
+
+  const handleTypeSubmit = () => {
+    const currentText = editableRef.current?.textContent ?? "";
+    const cleaned = currentText.replace(/[^A-Za-z0-9._:-]/g, "");
+    const lowercased = cleaned.trim().toLowerCase();
+    const newType = lowercased === "" ? "instructions" : lowercased;
+    setIsEditingType(false);
+    if (newType !== node.attrs.type) {
+      updateAttributes({ type: newType });
+    }
+  };
+
+  const handleTypeBlur = () => {
+    handleTypeSubmit();
   };
 
   const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
@@ -89,6 +127,63 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
       : ""
   }`;
 
+  const renderTagChip = (isOpening: boolean) => {
+    const prefix = isOpening ? "<" : "</";
+    const suffix = ">";
+
+    if (isEditingType && isOpening && !isCollapsed) {
+      return (
+        <span
+          contentEditable={false}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Chip
+            size="mini"
+            className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+          >
+            {prefix}
+            <span
+              ref={editableRef}
+              contentEditable
+              suppressContentEditableWarning
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleTypeSubmit();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  if (editableRef.current) {
+                    editableRef.current.textContent =
+                      (node.attrs.type ?? "instructions").toUpperCase();
+                  }
+                  setIsEditingType(false);
+                }
+              }}
+              onBlur={handleTypeBlur}
+              className="outline-none"
+            >
+              {(node.attrs.type ?? "instructions").toUpperCase()}
+            </span>
+            {suffix}
+          </Chip>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        contentEditable={false}
+        onClick={isOpening ? handleChipClick : undefined}
+        className={isOpening && !isCollapsed ? "cursor-pointer" : undefined}
+      >
+        <InstructionBlockChip text={`${prefix}${displayType}${suffix}`} />
+      </span>
+    );
+  };
+
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
@@ -107,16 +202,16 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               className="mt-[0.5px] cursor-pointer"
               onClick={handleToggle}
             >
-              <InstructionBlockChip text={`<${displayType}>`} />
+              {renderTagChip(true)}
             </div>
           ) : (
             <div className="mt-0.5 w-full">
-              <InstructionBlockChip text={`<${displayType}>`} />
+              {renderTagChip(true)}
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
               />
-              <InstructionBlockChip text={`</${displayType}>`} />
+              {renderTagChip(false)}
             </div>
           )}
         </div>
