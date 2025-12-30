@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesFooter";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
   useSkillSelection,
@@ -162,6 +163,14 @@ export function useCapabilitiesPageAndFooter({
               {...skillSelection}
               {...toolSelection}
               onModeChange={onModeChange}
+            />
+          ),
+          footerContent: (
+            <CapabilitiesFooter
+              localSelectedTools={toolSelection.localSelectedTools}
+              localSelectedSkills={skillSelection.localSelectedSkills}
+              onRemoveSelectedTool={toolSelection.unselectTool}
+              onRemoveSelectedSkill={skillSelection.unselectSkill}
             />
           ),
         },

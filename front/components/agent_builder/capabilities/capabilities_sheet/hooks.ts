@@ -78,6 +78,12 @@ export const useSkillSelection = ({
     );
   }, [skills, searchQuery, alreadyAddedSkillIds]);
 
+  const unselectSkill = useCallback((skill: AgentBuilderSkillsType) => {
+    setLocalSelectedSkills((prev) =>
+      prev.filter((selected) => skill.sId !== selected.sId)
+    );
+  }, []);
+
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
       if (selectedSkillIds.has(skill.sId)) {
@@ -136,6 +142,7 @@ export const useSkillSelection = ({
   return {
     localSelectedSkills,
     localAdditionalSpaces,
+    unselectSkill,
     handleSkillToggle,
     filteredSkills,
     isSkillsLoading,
@@ -227,6 +234,12 @@ export const useToolSelection = ({
     selectedActions,
     isSelectedMCPServerView,
   ]);
+
+  const unselectTool = useCallback((tool: SelectedTool) => {
+    setLocalSelectedTools((prev) =>
+      prev.filter((selected) => tool.view.sId !== selected.view.sId)
+    );
+  }, []);
 
   const handleToolToggle = useCallback(
     (mcpServerView: MCPServerViewTypeWithLabel) => {
@@ -320,6 +333,7 @@ export const useToolSelection = ({
 
   return {
     localSelectedTools,
+    unselectTool,
     handleToolToggle,
     handleToolInfoClick,
     filteredMCPServerViews,
