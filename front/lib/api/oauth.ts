@@ -25,6 +25,7 @@ import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
+import { ProductboardOAuthProvider } from "@app/lib/api/oauth/providers/productboard";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
@@ -74,6 +75,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),
+  productboard: new ProductboardOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
   slack_tools: new SlackToolsOAuthProvider(),

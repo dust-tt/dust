@@ -39,6 +39,7 @@ export const OAUTH_PROVIDERS = [
   "linear",
   "monday",
   "notion",
+  "productboard",
   "slack",
   "slack_tools",
   "gong",
@@ -50,6 +51,7 @@ export const OAUTH_PROVIDERS = [
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
   "vanta",
+  "productboard",
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -67,6 +69,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   linear: "Linear",
   monday: "Monday",
   notion: "Notion",
+  productboard: "Productboard",
   slack: "Slack",
   slack_tools: "Slack Tools",
   gong: "Gong",
@@ -250,6 +253,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "mcp":
     case "discord":
     case "fathom":
+    case "productboard":
       return null;
     case "vanta": {
       const result: OAuthCredentialInputs = {

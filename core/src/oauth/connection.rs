@@ -13,9 +13,9 @@ use crate::oauth::{
         mcp_static::MCPStaticConnectionProvider, microsoft::MicrosoftConnectionProvider,
         microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
         monday::MondayConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        slack_tools::SlackToolsConnectionProvider, vanta::VantaConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        productboard::ProductboardConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, slack_tools::SlackToolsConnectionProvider,
+        vanta::VantaConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -115,6 +115,7 @@ pub enum ConnectionProvider {
     MicrosoftTools,
     Monday,
     Notion,
+    Productboard,
     Slack,
     SlackTools,
     Mock,
@@ -273,6 +274,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
         // MCP Static is the same as MCP but does not require the discovery process on the front end.
         ConnectionProvider::McpStatic => Box::new(MCPStaticConnectionProvider::new()),
+        ConnectionProvider::Productboard => Box::new(ProductboardConnectionProvider::new()),
     }
 }
 

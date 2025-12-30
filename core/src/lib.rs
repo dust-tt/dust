@@ -163,6 +163,7 @@ pub mod oauth {
         pub mod mock;
         pub mod monday;
         pub mod notion;
+        pub mod productboard;
         pub mod salesforce;
         pub mod slack;
         pub mod slack_tools;

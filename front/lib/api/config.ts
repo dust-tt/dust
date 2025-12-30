@@ -199,6 +199,9 @@ const config = {
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
+  getOAuthProductboardClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_PRODUCTBOARD_CLIENT_ID");
+  },
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
