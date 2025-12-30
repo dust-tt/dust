@@ -215,7 +215,7 @@ export async function deleteOrLeaveConversation(
   }
 
   let isConversationCreator = false;
-  const isCreatorRes = await conversation.isUserCreator(auth);
+  const isCreatorRes = await conversation.isConversationCreator(auth);
   if (!isCreatorRes.isErr()) {
     isConversationCreator = isCreatorRes.value;
   }
@@ -230,6 +230,16 @@ export async function deleteOrLeaveConversation(
     (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) ||
     (forceDelete && isConversationCreator)
   ) {
+    auditLog(
+      {
+        author: user.toJSON(),
+        workspaceId: conversation.workspaceId,
+        conversationId,
+        wasLastMember: leaveRes.value.wasLastMember,
+        isConversationCreator,
+      },
+      "Conversation soft-deleted"
+    );
     await conversation.updateVisibilityToDeleted();
   }
 
