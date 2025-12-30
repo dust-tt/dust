@@ -6,7 +6,7 @@ import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 import { REGISTERED_CHECKS } from "./activities";
-import { QUEUE_NAME } from "./config";
+import { MANUAL_CHECK_WORKFLOW_ID_PREFIX, QUEUE_NAME } from "./config";
 import { runAllChecksWorkflow, runSingleCheckWorkflow } from "./workflows";
 
 export async function launchProductionChecksWorkflow(): Promise<
@@ -62,7 +62,7 @@ export async function startManualCheckWorkflow(
   }
 
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = `production_check_manual_${checkName}_${Date.now()}`;
+  const workflowId = `${MANUAL_CHECK_WORKFLOW_ID_PREFIX}${checkName}_${Date.now()}`;
 
   try {
     await client.workflow.start(runSingleCheckWorkflow, {
