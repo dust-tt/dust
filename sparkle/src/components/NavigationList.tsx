@@ -68,7 +68,8 @@ const NavigationList = React.forwardRef<
 NavigationList.displayName = "NavigationList";
 
 interface NavigationListItemProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
@@ -174,8 +175,7 @@ const NavigationListItem = React.forwardRef<
 );
 NavigationListItem.displayName = "NavigationListItem";
 
-interface NavigationListItemActionProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListItemActionProps extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
 }
 
@@ -223,8 +223,7 @@ const labelStyles = cva(
   "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
-interface NavigationListLabelButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NavigationListLabelButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: React.ComponentType;
   children?: React.ReactNode;
 }
@@ -261,7 +260,8 @@ const NavigationListLabelButton = React.forwardRef<
 NavigationListLabelButton.displayName = "NavigationListLabelButton";
 
 interface NavigationListLabelProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantStyles> {
   label: string;
   isCollapsible?: boolean;
@@ -291,7 +291,7 @@ const NavigationListLabel = React.forwardRef<
       className={cn(
         labelStyles(),
         variantStyles({ variant, isSticky }),
-        isCollapsible ? "s-pl-1.5" : "s-pl-3",
+        isCollapsible ? "s-pl-1.5 s-pr-2" : "s-pl-3 s-pr-2",
         className
       )}
       {...props}
@@ -312,8 +312,7 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-interface NavigationListCollapsibleSectionProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   action?: React.ReactNode;
   defaultOpen?: boolean;
