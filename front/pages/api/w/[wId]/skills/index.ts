@@ -42,7 +42,7 @@ const SkillStatusSchema = t.union([
 const PostSkillConfigurationRequestBodySchema = t.type({
   name: t.string,
   agentFacingDescription: t.string,
-  userFacingDescription: t.union([t.string, t.null]),
+  userFacingDescription: t.string,
   instructions: t.string,
   icon: t.union([t.string, t.null]),
   tools: t.array(
