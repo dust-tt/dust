@@ -13,7 +13,7 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { Err, isBuilder, isString, Ok } from "@app/types";
+import { isBuilder, isString } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
@@ -234,8 +234,8 @@ async function handler(
       );
 
       // Wrap everything in a transaction to avoid inconsistent state.
-      const result = await withTransaction(async (transaction) => {
-        const updateResult = await skillResource.updateSkill(
+      await withTransaction(async (transaction) => {
+        await skillResource.updateSkill(
           auth,
           {
             name: body.name,
@@ -248,41 +248,17 @@ async function handler(
           { transaction }
         );
 
-        if (updateResult.isErr()) {
-          return new Err(new Error(updateResult.error.message));
-        }
-
-        const updatedSkill = updateResult.value;
-
-        await updatedSkill.updateTools(
+        await skillResource.updateTools(
           auth,
           {
             mcpServerViews,
           },
           { transaction }
         );
-
-        return new Ok({
-          updatedSkill,
-          createdTools: mcpServerViews.map((view) => view.toJSON()),
-        });
       });
 
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Error updating skill: ${result.error.message}`,
-          },
-        });
-      }
-
       return res.status(200).json({
-        skillConfiguration: {
-          ...result.value.updatedSkill.toJSON(auth),
-          tools: result.value.createdTools,
-        },
+        skillConfiguration: skillResource.toJSON(auth),
       });
     }
 
