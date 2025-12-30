@@ -13,8 +13,6 @@ import {
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
-import { isConfigurationState } from "@app/components/agent_builder/skills/types";
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import {
@@ -28,6 +26,8 @@ import {
   getInfoPageIcon,
   getInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
+import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
+import { isConfigurationState } from "@app/components/agent_builder/skills/types";
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
