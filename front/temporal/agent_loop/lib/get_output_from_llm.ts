@@ -160,6 +160,7 @@ export async function getOutputFromLLMStream(
         metadata: { thoughtSignature },
       } = event;
 
+      // TODO(2025-12-30 aubin): temporary log to investigate heartbeat timeouts.
       logger.info(
         {
           conversationId: conversation.sId,
