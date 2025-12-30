@@ -403,7 +403,6 @@ function createServer(
                 id: messageData.id,
                 threadId: messageData.threadId,
                 labelIds: messageData.labelIds,
-                internalDate: messageData.internalDate,
                 from,
                 to,
                 cc,
@@ -416,41 +415,19 @@ function createServer(
           { concurrency: 10 }
         );
 
-        // Separate successful and failed message details
+        // Extract successful message details
         const successfulMessages = messageDetails
           .filter((detail: MessageDetail) => detail.success)
           .map((detail: MessageDetail) => detail.data);
 
-        const failedMessages = messageDetails
-          .filter((detail: MessageDetail) => !detail.success)
-          .map((detail: MessageDetail) => ({
-            messageId: detail.messageId,
-            error: detail.error,
-          }));
-
-        const totalRequested = result.messages?.length ?? 0;
-        const totalSuccessful = successfulMessages.length;
-        const totalFailed = failedMessages.length;
-
-        const responseData = {
-          messages: successfulMessages,
-          failedMessages,
-          summary: {
-            totalRequested,
-            totalSuccessful,
-            totalFailed,
-          },
-        };
-
-        const markdownOutput = jsonToMarkdown(responseData, "id", "Mail");
-
-        let statusMessage = "Messages fetched successfully";
-        if (totalFailed > 0) {
-          statusMessage = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
-        }
+        const markdownOutput = jsonToMarkdown(
+          successfulMessages,
+          "id",
+          "Mail id"
+        );
 
         return new Ok([
-          { type: "text" as const, text: statusMessage },
+          { type: "text" as const, text: "Messages fetched successfully" },
           {
             type: "text" as const,
             text: markdownOutput,
