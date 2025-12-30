@@ -36,6 +36,7 @@ import {
   isTriggeredOrigin,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -231,9 +232,22 @@ export function UserMessage({
     []
   );
 
-  const renderName = useCallback((name: string | null) => {
-    return <div>{name}</div>;
-  }, []);
+  const renderName = useCallback(
+    (name: string | null) => {
+      if (!message.user) {
+        return <div>{name}</div>;
+      }
+      return (
+        <UserHandle
+          user={{
+            sId: message.user.sId,
+            name: message.user.fullName,
+          }}
+        />
+      );
+    },
+    [message.user]
+  );
 
   const methods = useVirtuosoMethods<VirtuosoMessage>();
 
