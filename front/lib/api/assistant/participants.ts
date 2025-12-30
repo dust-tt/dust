@@ -150,6 +150,7 @@ export async function fetchConversationParticipants(
     order: [["createdAt", "ASC"]],
   });
   const userIds = participants.map((p) => p.userId);
+  const creatorId = userIds[0]; // The current participant who was added first in the conversation is considered as the creator
 
   const [users, agents] = await Promise.all([
     fetchAllUsersById([...userIds]),
@@ -171,14 +172,14 @@ export async function fetchConversationParticipants(
       ...a,
       lastActivityAt: agentLastActivityMap.get(a.configurationId),
     })),
-    users: users.map((u, index) => ({
+    users: users.map((u) => ({
       sId: u.sId,
       fullName: u.fullName,
       pictureUrl: u.pictureUrl,
       username: u.username,
       action: userIdToAction.get(u.id) ?? "posted",
       lastActivityAt: userLastActivityMap.get(u.id),
-      isCreator: index === 0, // The current participant who was added first in the conversation is considered as the creator
+      isCreator: u.id === creatorId,
     })),
   });
 }
