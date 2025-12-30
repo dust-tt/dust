@@ -77,15 +77,8 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  let lastNonToolCallEventDate = performance.now();
-
   for await (const event of withPeriodicHeartbeat(events)) {
     timeToFirstEvent = Date.now() - start;
-
-    if (event.type !== "tool_call") {
-      lastNonToolCallEventDate = performance.now();
-    }
-
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({
@@ -189,23 +182,6 @@ export async function getOutputFromLLMStream(
         content: { name, id, arguments: args },
         metadata: { thoughtSignature },
       } = event;
-
-      // TODO(2025-12-30 aubin): temporary log to investigate heartbeat timeouts.
-      logger.info(
-        {
-          conversationId: conversation.sId,
-          agentMessageId: agentMessage.sId,
-          step,
-          modelId: model.modelId,
-          functionCallId: id,
-          functionCallName: name,
-          timeToFirstEvent: timeToFirstEvent,
-          timeSinceLastNonToolCallEvent:
-            performance.now() - lastNonToolCallEventDate,
-        },
-        "Tool call event"
-      );
-
       actions.push({
         name,
         functionCallId: id,
