@@ -11,6 +11,41 @@ import type {
 } from "@app/temporal/agent_loop/lib/types";
 import { Err, Ok } from "@app/types";
 
+const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
+const LLM_HEARTBEAT = "LLM_HEARTBEAT";
+
+// Wraps an async iterator and ensures heartbeat() is called at regular intervals
+// even when the source is slow to yield values.
+async function* withPeriodicHeartbeat<T>(
+  stream: AsyncIterator<T>
+): AsyncGenerator<T> {
+  let nextPromise = stream.next();
+  let streamExhausted = false;
+
+  while (!streamExhausted) {
+    const result = await Promise.race([
+      nextPromise,
+      new Promise<typeof LLM_HEARTBEAT>((resolve) =>
+        setTimeout(() => resolve(LLM_HEARTBEAT), LLM_HEARTBEAT_INTERVAL_MS)
+      ),
+    ]);
+
+    heartbeat();
+
+    if (result === LLM_HEARTBEAT) {
+      continue;
+    }
+
+    if (result.done) {
+      streamExhausted = true;
+      continue;
+    }
+
+    yield result.value;
+    nextPromise = stream.next();
+  }
+}
+
 export async function getOutputFromLLMStream(
   auth: Authenticator,
   {
@@ -44,7 +79,7 @@ export async function getOutputFromLLMStream(
 
   let lastNonToolCallEventDate = performance.now();
 
-  for await (const event of events) {
+  for await (const event of withPeriodicHeartbeat(events)) {
     timeToFirstEvent = Date.now() - start;
 
     if (event.type !== "tool_call") {
@@ -59,12 +94,7 @@ export async function getOutputFromLLMStream(
       });
     }
 
-    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
-    // agent" request. Upon experimentation, both are needed to ensure the
-    // activity receives the cancellation signal. The delay until which is the
-    // signal is received is governed by heartbeat
-    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
-    heartbeat();
+    // Sleep allows the activity to be cancelled, e.g. on a "Stop agent" request.
     try {
       await sleep(1);
     } catch (err) {
