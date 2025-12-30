@@ -7,11 +7,6 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
-import {
-  InstructionBlock,
-  instructionBlockDirective,
-  preprocessInstructionBlocks,
-} from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import { toolDirective } from "@app/components/markdown/tool/tool";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
@@ -44,12 +39,6 @@ export const AgentMessageMarkdown = ({
   forcedTextSize?: string;
   canCopyQuotes?: boolean;
 }) => {
-  // Preprocess content to handle instruction blocks
-  const processedContent = React.useMemo(
-    () => preprocessInstructionBlocks(content),
-    [content]
-  );
-
   const markdownComponents: Components = React.useMemo(
     () => ({
       sup: CiteBlock,
@@ -57,7 +46,6 @@ export const AgentMessageMarkdown = ({
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
-      instruction_block: InstructionBlock,
       ...additionalMarkdownComponents,
     }),
     [owner, additionalMarkdownComponents]
@@ -72,14 +60,13 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
-      instructionBlockDirective,
     ],
     []
   );
 
   return (
     <Markdown
-      content={processedContent}
+      content={content}
       additionalMarkdownComponents={markdownComponents}
       additionalMarkdownPlugins={additionalMarkdownPlugins}
       isLastMessage={isLastMessage}
