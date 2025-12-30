@@ -12,10 +12,16 @@ import type {
   BlogPageSkeleton,
   BlogPost,
   BlogPostSummary,
+  ContentSummary,
+  Course,
+  CourseSkeleton,
+  CourseSummary,
   CustomerStory,
   CustomerStoryFilters,
   CustomerStorySkeleton,
   CustomerStorySummary,
+  Lesson,
+  LessonSkeleton,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString, normalizeError } from "@app/types";
@@ -157,6 +163,79 @@ const EMPTY_DOCUMENT: Document = {
   data: {},
   content: [],
 };
+
+/**
+ * Cleans embedded entries in a rich text document to prevent circular references.
+ * Removes nested rich text content from embedded entries, keeping only basic fields.
+ */
+function cleanDocumentEmbeddedEntries(document: Document): Document {
+  if (!document || !document.content) {
+    return document;
+  }
+
+  const cleanNode = (node: unknown): unknown => {
+    if (
+      typeof node === "object" &&
+      node !== null &&
+      "nodeType" in node &&
+      node.nodeType === BLOCKS.EMBEDDED_ENTRY &&
+      "data" in node &&
+      node.data &&
+      typeof node.data === "object" &&
+      "target" in node.data &&
+      node.data.target &&
+      typeof node.data.target === "object"
+    ) {
+      const entry = node.data.target as {
+        sys?: unknown;
+        fields?: Record<string, unknown>;
+      };
+
+      // Only clean if entry has fields, otherwise preserve as-is
+      if (entry.fields && typeof entry.fields === "object") {
+        // Keep only basic fields for embedded entries to prevent circular references
+        return {
+          ...node,
+          data: {
+            ...(node.data as Record<string, unknown>),
+            target: {
+              sys: entry.sys,
+              fields: {
+                title: entry.fields.title,
+                slug: entry.fields.slug,
+                description: entry.fields.description,
+                courseId: entry.fields.courseId,
+                estimatedDurationMinutes: entry.fields.estimatedDurationMinutes,
+              },
+            },
+          },
+        };
+      }
+      // If entry structure is invalid, return node as-is
+      return node;
+    }
+
+    // For embedded assets or other node types, preserve as-is
+    if (
+      typeof node === "object" &&
+      node !== null &&
+      "content" in node &&
+      Array.isArray(node.content)
+    ) {
+      return {
+        ...node,
+        content: node.content.map(cleanNode),
+      };
+    }
+
+    return node;
+  };
+
+  return {
+    ...document,
+    content: document.content.map(cleanNode) as Document["content"],
+  };
+}
 
 /**
  * Extracts plain text from a Contentful rich text document.
@@ -722,6 +801,384 @@ export async function getRelatedCustomerStories(
 
     return new Ok(stories);
   } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+// Course functions
+
+function isContentfulCourseEntry(
+  value: MaybeUnresolved<Entry<CourseSkeleton>>
+): value is Entry<CourseSkeleton> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    "fields" in value
+  );
+}
+
+function contentfulEntryToCourseSummary(
+  entry: Entry<CourseSkeleton> | undefined
+): CourseSummary | null {
+  if (!entry?.fields) {
+    return null;
+  }
+
+  const titleField = entry.fields.title;
+  const title = isString(titleField) ? titleField : "";
+
+  const slugField = entry.fields.slug;
+  const slug = isString(slugField) ? slugField : slugify(title);
+
+  const courseIdField = entry.fields.courseId;
+  const courseId = isString(courseIdField) ? courseIdField : null;
+
+  const descriptionField = entry.fields.description;
+  const description = isString(descriptionField) ? descriptionField : null;
+
+  const dateOfAdditionField = entry.fields.dateOfAddition;
+  const dateOfAddition = isString(dateOfAdditionField)
+    ? dateOfAdditionField
+    : null;
+
+  const estimatedDurationMinutesField = entry.fields.estimatedDurationMinutes;
+  const estimatedDurationMinutes =
+    typeof estimatedDurationMinutesField === "number"
+      ? estimatedDurationMinutesField
+      : null;
+
+  const image = isContentfulAsset(entry.fields.courseImage)
+    ? contentfulAssetToBlogImage(entry.fields.courseImage, title)
+    : null;
+
+  return {
+    id: entry.sys.id,
+    slug,
+    title,
+    description,
+    courseId,
+    dateOfAddition,
+    estimatedDurationMinutes,
+    image,
+    createdAt: entry.sys.createdAt,
+  };
+}
+
+function contentfulEntryToCourse(entry: Entry<CourseSkeleton>): Course | null {
+  const { fields, sys } = entry;
+
+  const titleField = fields.title;
+  const title = isString(titleField) ? titleField : "";
+
+  const slugField = fields.slug;
+  const slug = isString(slugField) ? slugField : slugify(title);
+
+  const courseIdField = fields.courseId;
+  const courseId = isString(courseIdField) ? courseIdField : null;
+
+  const descriptionField = fields.description;
+  const description = isString(descriptionField) ? descriptionField : null;
+
+  const dateOfAdditionField = fields.dateOfAddition;
+  const dateOfAddition = isString(dateOfAdditionField)
+    ? dateOfAdditionField
+    : null;
+
+  const estimatedDurationMinutesField = fields.estimatedDurationMinutes;
+  const estimatedDurationMinutes =
+    typeof estimatedDurationMinutesField === "number"
+      ? estimatedDurationMinutesField
+      : null;
+
+  const courseContent = isContentfulDocument(fields.courseContent)
+    ? cleanDocumentEmbeddedEntries(fields.courseContent)
+    : EMPTY_DOCUMENT;
+
+  const preRequisites = isContentfulDocument(fields.preRequisites)
+    ? fields.preRequisites
+    : null;
+
+  const tableOfContentsField = fields.tableOfContents;
+  const tableOfContents = isString(tableOfContentsField)
+    ? tableOfContentsField
+    : null;
+
+  const image = isContentfulAsset(fields.courseImage)
+    ? contentfulAssetToBlogImage(fields.courseImage, title)
+    : null;
+
+  const previousCourse = isContentfulCourseEntry(fields.previousCourse)
+    ? contentfulEntryToCourseSummary(fields.previousCourse)
+    : null;
+
+  const nextCourse = isContentfulCourseEntry(fields.nextCourse)
+    ? contentfulEntryToCourseSummary(fields.nextCourse)
+    : null;
+
+  const author = isContentfulEntry(fields.author)
+    ? contentfulEntryToAuthor(fields.author)
+    : null;
+
+  return {
+    id: sys.id,
+    slug,
+    title,
+    description,
+    courseId,
+    dateOfAddition,
+    estimatedDurationMinutes,
+    courseContent,
+    preRequisites,
+    tableOfContents,
+    image,
+    author,
+    previousCourse,
+    nextCourse,
+    createdAt: sys.createdAt,
+    updatedAt: sys.updatedAt,
+  };
+}
+
+export async function getAllCourses(
+  resolvedUrl: string = ""
+): Promise<Result<CourseSummary[], Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const response = await contentfulClient.getEntries<CourseSkeleton>({
+      content_type: "course",
+      limit: 1000,
+    });
+
+    const courses = response.items
+      .map((entry) => contentfulEntryToCourse(entry))
+      .filter(isNonNull)
+      .sort((a, b) => {
+        // Sort by courseId if available, otherwise by dateOfAddition or createdAt
+        if (a.courseId && b.courseId) {
+          const aNum = parseFloat(a.courseId);
+          const bNum = parseFloat(b.courseId);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+          }
+          return a.courseId.localeCompare(b.courseId);
+        }
+        // Use dateOfAddition if available, otherwise fall back to createdAt
+        const aDate = a.dateOfAddition
+          ? new Date(a.dateOfAddition).getTime()
+          : new Date(a.createdAt).getTime();
+        const bDate = b.dateOfAddition
+          ? new Date(b.dateOfAddition).getTime()
+          : new Date(b.createdAt).getTime();
+        return bDate - aDate;
+      })
+      .map((course) => ({
+        id: course.id,
+        slug: course.slug,
+        title: course.title,
+        description: course.description,
+        courseId: course.courseId,
+        dateOfAddition: course.dateOfAddition,
+        estimatedDurationMinutes: course.estimatedDurationMinutes,
+        image: course.image,
+        createdAt: course.createdAt,
+      }));
+
+    return new Ok(courses);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get all courses");
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function getCourseBySlug(
+  slug: string,
+  resolvedUrl: string
+): Promise<Result<Course | null, Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const queryParams = {
+      content_type: "course",
+      "fields.slug": slug,
+      limit: 1,
+      include: 1 as const, // Allow one level for embedded entries/assets in rich text, but prevent deep circular references
+    };
+
+    const response =
+      await contentfulClient.getEntries<CourseSkeleton>(queryParams);
+
+    if (response.items.length > 0) {
+      const course = contentfulEntryToCourse(response.items[0]);
+      return new Ok(course);
+    }
+
+    return new Ok(null);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get course by slug");
+    return new Err(normalizeError(error));
+  }
+}
+
+// Lesson functions
+
+function contentfulEntryToLessonSummary(
+  entry: Entry<LessonSkeleton | CourseSkeleton> | undefined
+): ContentSummary | null {
+  if (!entry?.fields) {
+    return null;
+  }
+
+  // Check if it's a lesson or course
+  const contentType = entry.sys.contentType?.sys.id;
+  if (contentType === "lesson") {
+    const lessonEntry = entry as Entry<LessonSkeleton>;
+    const titleField = lessonEntry.fields.title;
+    const title = isString(titleField) ? titleField : "";
+
+    const slugField = lessonEntry.fields.slug;
+    const slug = isString(slugField) ? slugField : slugify(title);
+
+    const courseIdField = lessonEntry.fields.courseId;
+    const courseId = isString(courseIdField) ? courseIdField : null;
+
+    const descriptionField = lessonEntry.fields.description;
+    const description = isString(descriptionField) ? descriptionField : null;
+
+    const estimatedDurationMinutesField =
+      lessonEntry.fields.estimatedDurationMinutes;
+    const estimatedDurationMinutes =
+      typeof estimatedDurationMinutesField === "number"
+        ? estimatedDurationMinutesField
+        : null;
+
+    return {
+      id: lessonEntry.sys.id,
+      slug,
+      title,
+      description,
+      courseId,
+      estimatedDurationMinutes,
+      createdAt: lessonEntry.sys.createdAt,
+    };
+  } else if (contentType === "course") {
+    return contentfulEntryToCourseSummary(entry as Entry<CourseSkeleton>);
+  }
+
+  return null;
+}
+
+function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
+  const { fields, sys } = entry;
+
+  const titleField = fields.title;
+  const title = isString(titleField) ? titleField : "";
+
+  const slugField = fields.slug;
+  const slug = isString(slugField) ? slugField : slugify(title);
+
+  const courseIdField = fields.courseId;
+  const courseId = isString(courseIdField) ? courseIdField : null;
+
+  const descriptionField = fields.description;
+  const description = isString(descriptionField) ? descriptionField : null;
+
+  const dateOfAdditionField = fields.dateOfAddition;
+  const dateOfAddition = isString(dateOfAdditionField)
+    ? dateOfAdditionField
+    : null;
+
+  const estimatedDurationMinutesField = fields.estimatedDurationMinutes;
+  const estimatedDurationMinutes =
+    typeof estimatedDurationMinutesField === "number"
+      ? estimatedDurationMinutesField
+      : null;
+
+  const lessonObjectivesField = fields.lessonObjectives;
+  const lessonObjectives = isString(lessonObjectivesField)
+    ? lessonObjectivesField
+    : null;
+
+  const lessonContent = isContentfulDocument(fields.lessonContent)
+    ? cleanDocumentEmbeddedEntries(fields.lessonContent)
+    : EMPTY_DOCUMENT;
+
+  const preRequisites = isContentfulDocument(fields.preRequisites)
+    ? fields.preRequisites
+    : null;
+
+  const previousContentEntry = fields.previousContent;
+  let previousContent: ContentSummary | null = null;
+  if (
+    previousContentEntry &&
+    typeof previousContentEntry === "object" &&
+    "sys" in previousContentEntry &&
+    previousContentEntry.sys &&
+    "fields" in previousContentEntry
+  ) {
+    previousContent = contentfulEntryToLessonSummary(
+      previousContentEntry as unknown as Entry<CourseSkeleton | LessonSkeleton>
+    );
+  }
+
+  const nextContentEntry = fields.nextContent;
+  let nextContent: ContentSummary | null = null;
+  if (
+    nextContentEntry &&
+    typeof nextContentEntry === "object" &&
+    "sys" in nextContentEntry &&
+    nextContentEntry.sys &&
+    "fields" in nextContentEntry
+  ) {
+    nextContent = contentfulEntryToLessonSummary(
+      nextContentEntry as unknown as Entry<CourseSkeleton | LessonSkeleton>
+    );
+  }
+
+  return {
+    id: sys.id,
+    slug,
+    title,
+    description,
+    courseId,
+    dateOfAddition,
+    estimatedDurationMinutes,
+    lessonObjectives,
+    lessonContent,
+    preRequisites,
+    previousContent,
+    nextContent,
+    createdAt: sys.createdAt,
+    updatedAt: sys.updatedAt,
+  };
+}
+
+export async function getLessonBySlug(
+  slug: string,
+  resolvedUrl: string
+): Promise<Result<Lesson | null, Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const queryParams = {
+      content_type: "lesson",
+      "fields.slug": slug,
+      limit: 1,
+      include: 1 as const, // Allow one level for embedded entries/assets in rich text, but prevent deep circular references
+    };
+
+    const response =
+      await contentfulClient.getEntries<LessonSkeleton>(queryParams);
+
+    if (response.items.length > 0) {
+      const lesson = contentfulEntryToLesson(response.items[0]);
+      return new Ok(lesson);
+    }
+
+    return new Ok(null);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get lesson by slug");
     return new Err(normalizeError(error));
   }
 }
