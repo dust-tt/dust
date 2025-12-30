@@ -204,7 +204,7 @@ export const getChannels = async ({
     cursor = response.response_metadata?.next_cursor;
 
     // We can't handle a huge list of channels, and even if we could, it would be unusable.
-    // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
+    // So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
     if (channels.length >= MAX_CHANNELS_LIMIT) {
       logger.warn(
         `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
@@ -454,7 +454,7 @@ export async function hasSlackScope(
 function filterChannels(
   channels: ChannelWithIdAndName[],
   query: string,
-  limit: number = 10
+  limit: number = MAX_CHANNEL_SEARCH_RESULTS
 ): ChannelWithIdAndName[] {
   if (!query || query.trim() === "") {
     return channels
@@ -482,7 +482,7 @@ async function searchAndProcessChannels(
 ): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   try {
     const channels = await getChannels({ slackClient, scope });
-    const matched = filterChannels(channels, query, MAX_CHANNEL_SEARCH_RESULTS);
+    const matched = filterChannels(channels, query);
     const cleaned = matched.map(cleanChannelPayload);
     const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
     return new Ok([
