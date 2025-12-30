@@ -42,8 +42,15 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
+  let lastNonToolCallEventDate = performance.now();
+
   for await (const event of events) {
     timeToFirstEvent = Date.now() - start;
+
+    if (event.type !== "tool_call") {
+      lastNonToolCallEventDate = performance.now();
+    }
+
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({
@@ -152,6 +159,22 @@ export async function getOutputFromLLMStream(
         content: { name, id, arguments: args },
         metadata: { thoughtSignature },
       } = event;
+
+      logger.info(
+        {
+          conversationId: conversation.sId,
+          agentMessageId: agentMessage.sId,
+          step,
+          modelId: model.modelId,
+          functionCallId: id,
+          functionCallName: name,
+          timeToFirstEvent: timeToFirstEvent,
+          timeSinceLastNonToolCallEvent:
+            performance.now() - lastNonToolCallEventDate,
+        },
+        "Tool call event"
+      );
+
       actions.push({
         name,
         functionCallId: id,
