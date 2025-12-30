@@ -426,7 +426,7 @@ function createServer(
           },
         };
 
-        const markdownOutput = jsonToMarkdown(responseData);
+        const markdownOutput = jsonToMarkdown(responseData, "id", "Mail");
 
         let statusMessage = "Messages fetched successfully";
         if (totalFailed > 0) {

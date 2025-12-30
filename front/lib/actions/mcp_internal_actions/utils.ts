@@ -204,6 +204,8 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
 // Includes protections against circular references and excessive depth.
 export function jsonToMarkdown(
   data: any,
+  primaryKey: string,
+  primaryKeyPrefix: string = "",
   indent: number = 0,
   visited: WeakSet<object> = new WeakSet(),
   maxDepth: number = 15
@@ -256,7 +258,16 @@ export function jsonToMarkdown(
 
     visited.add(data);
     const result = data
-      .map((item) => jsonToMarkdown(item, indent, visited, maxDepth))
+      .map((item) =>
+        jsonToMarkdown(
+          item,
+          primaryKey,
+          primaryKeyPrefix,
+          indent,
+          visited,
+          maxDepth
+        )
+      )
       .join("\n");
     visited.delete(data);
     return result;
@@ -272,24 +283,59 @@ export function jsonToMarkdown(
   }
 
   visited.add(data);
-  const result = entries
+
+  // Check if this object has the primaryKey
+  const hasPrimaryKey = data[primaryKey] !== undefined;
+  let entriesToProcess = entries;
+  let headerLine = "";
+
+  if (hasPrimaryKey) {
+    // Create title from primaryKey
+    const primaryValue = formatValue(data[primaryKey]);
+    const title = primaryKeyPrefix
+      ? `${primaryKeyPrefix} ${primaryValue}`
+      : primaryValue;
+    headerLine = `${indentStr}- **${title}:**\n`;
+
+    // Remove primaryKey from entries to avoid duplication
+    entriesToProcess = entries.filter(([key]) => key !== primaryKey);
+
+    // If only primaryKey existed, return just the title
+    if (entriesToProcess.length === 0) {
+      visited.delete(data);
+      return `${indentStr}- **${title}:**`;
+    }
+  }
+
+  // Process all remaining entries
+  const childIndent = hasPrimaryKey ? indentStr + "  " : indentStr;
+  const nextIndent = hasPrimaryKey ? indent + 2 : indent + 1;
+
+  const result = entriesToProcess
     .map(([key, value]) => {
       // Handle nested objects and arrays
       if (value !== null && typeof value === "object") {
         if (Array.isArray(value) && value.length === 0) {
-          return `${indentStr}- **${key}:** []`;
+          return `${childIndent}- **${key}:** []`;
         }
         if (!Array.isArray(value) && Object.entries(value).length === 0) {
-          return `${indentStr}- **${key}:** {}`;
+          return `${childIndent}- **${key}:** {}`;
         }
-        return `${indentStr}- **${key}:**\n${jsonToMarkdown(value, indent + 1, visited, maxDepth)}`;
+        return `${childIndent}- **${key}:**\n${jsonToMarkdown(
+          value,
+          primaryKey,
+          primaryKeyPrefix,
+          nextIndent,
+          visited,
+          maxDepth
+        )}`;
       }
 
       // Handle primitives
-      return `${indentStr}- **${key}:** ${formatValue(value)}`;
+      return `${childIndent}- **${key}:** ${formatValue(value)}`;
     })
     .join("\n");
 
   visited.delete(data);
-  return result;
+  return hasPrimaryKey ? headerLine + result : result;
 }
