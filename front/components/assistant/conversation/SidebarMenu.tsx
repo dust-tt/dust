@@ -188,6 +188,20 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   });
   const sendNotification = useSendNotification();
 
+  // Compute inbox conversations for the inbox list
+  const { inboxConversations } = useMemo(() => {
+    return getGroupConversationsByUnreadAndActionRequired(
+      conversations,
+      titleFilter
+    );
+  }, [conversations, titleFilter]);
+
+  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+    owner,
+  });
+
+  const shouldDisplayInbox = inboxConversations.length > 0;
+
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
     setSelectedConversations([]);
@@ -553,6 +567,22 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               </Label>
             )}
             <>
+              {shouldDisplayInbox && (
+                <div className="bg-background pb-3 dark:bg-background-night">
+                  <InboxConversationList
+                    inboxConversations={inboxConversations}
+                    dateLabel={`Inbox (${inboxConversations.length})`}
+                    isMultiSelect={isMultiSelect}
+                    isMarkingAllAsRead={isMarkingAllAsRead}
+                    titleFilter={titleFilter}
+                    onMarkAllAsRead={markAllAsRead}
+                    selectedConversations={selectedConversations}
+                    toggleConversationSelection={toggleConversationSelection}
+                    router={router}
+                    owner={owner}
+                  />
+                </div>
+              )}
               {hasSpaceConversations && summary.length > 0 ? (
                 <>
                   <NavigationListCollapsibleSection
@@ -768,6 +798,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                   </NavigationListCollapsibleSection>
                   <NavigationListCollapsibleSection
                     label="My conversations"
+                    className="flex-grow"
                     defaultOpen
                     action={
                       <DropdownMenu>
@@ -1059,20 +1090,12 @@ const NavigationListWithInbox = forwardRef<
     },
     ref
   ) => {
-    const { readConversations, inboxConversations } = useMemo(() => {
+    const { readConversations } = useMemo(() => {
       return getGroupConversationsByUnreadAndActionRequired(
         conversations,
         titleFilter
       );
     }, [conversations, titleFilter]);
-
-    const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead(
-      {
-        owner,
-      }
-    );
-
-    const shouldDisplayInbox = inboxConversations.length > 0;
 
     // TODO: Remove filtering by titleFilter when we release the inbox.
     const conversationsByDate = readConversations?.length
@@ -1087,22 +1110,6 @@ const NavigationListWithInbox = forwardRef<
 
     return (
       <NavigationList className="dd-privacy-mask h-full w-full">
-        {shouldDisplayInbox && (
-          <div className="bg-background pb-3 dark:bg-background-night">
-            <InboxConversationList
-              inboxConversations={inboxConversations}
-              dateLabel={`Inbox (${inboxConversations.length})`}
-              isMultiSelect={isMultiSelect}
-              isMarkingAllAsRead={isMarkingAllAsRead}
-              titleFilter={titleFilter}
-              onMarkAllAsRead={markAllAsRead}
-              selectedConversations={selectedConversations}
-              toggleConversationSelection={toggleConversationSelection}
-              router={router}
-              owner={owner}
-            />
-          </div>
-        )}
         {readConversations.length > 0 && (
           <>
             {Object.keys(conversationsByDate).map((dateLabel) => (
