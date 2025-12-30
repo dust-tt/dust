@@ -70,5 +70,8 @@ const scrubWorkspaces = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
-  await scrubWorkspaces(execute);
+  console.error(
+    "Not scrubbing workspaces: script needs to be adapted to use workspace data retention (in workspace metadata)."
+  );
+  // await scrubWorkspaces(execute);
 });
