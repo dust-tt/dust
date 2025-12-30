@@ -14,9 +14,10 @@ use std::env;
 
 lazy_static! {
     static ref OAUTH_PRODUCTBOARD_CLIENT_ID: String =
-        env::var("OAUTH_PRODUCTBOARD_CLIENT_ID").unwrap();
+        env::var("OAUTH_PRODUCTBOARD_CLIENT_ID").expect("OAUTH_PRODUCTBOARD_CLIENT_ID must be set");
     static ref OAUTH_PRODUCTBOARD_CLIENT_SECRET: String =
-        env::var("OAUTH_PRODUCTBOARD_CLIENT_SECRET").unwrap();
+        env::var("OAUTH_PRODUCTBOARD_CLIENT_SECRET")
+            .expect("OAUTH_PRODUCTBOARD_CLIENT_SECRET must be set");
 }
 
 pub struct ProductboardConnectionProvider {}

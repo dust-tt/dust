@@ -51,7 +51,6 @@ export const OAUTH_PROVIDERS = [
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
   "vanta",
-  "productboard",
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
