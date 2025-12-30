@@ -654,12 +654,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       { customSkillModelIds: [], globalSkillIds: [] }
     );
 
-    const [customSkills, globalSkills] = await Promise.all([
-      SkillResource.fetchByModelIds(auth, customSkillModelIds),
-      SkillResource.fetchByIds(auth, globalSkillIds),
-    ]);
-
-    return [...customSkills, ...globalSkills];
+    return this.baseFetch(auth, {
+      where: {
+        id: customSkillModelIds,
+        sId: globalSkillIds,
+      },
+    });
   }
 
   async upsertToConversation(
