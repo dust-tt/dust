@@ -9,10 +9,12 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   useAgentConfiguration,
   useAgentDatasourceRetrieval,
 } from "@app/lib/swr/assistants";
+import { isConnectorProvider } from "@app/types";
 
 interface TreemapNode {
   name: string;
@@ -20,6 +22,18 @@ interface TreemapNode {
   color: string;
 
   [key: string]: string | number;
+}
+
+function getDisplayNameForDataSourceName(dataSourceName: string): string {
+  if (dataSourceName.startsWith("managed-")) {
+    const parts = dataSourceName.slice("managed-".length).split("-");
+    const provider = parts[0];
+
+    if (isConnectorProvider(provider)) {
+      return CONNECTOR_CONFIGURATIONS[provider].name;
+    }
+  }
+  return dataSourceName;
 }
 
 interface TreemapContentProps {
@@ -155,7 +169,7 @@ export function DatasourceRetrievalTreemapChart({
 
       mcp.datasources.forEach((ds) => {
         flattenedData.push({
-          name: ds.name,
+          name: getDisplayNameForDataSourceName(ds.name),
           size: ds.count,
           color: serverColor,
         });
