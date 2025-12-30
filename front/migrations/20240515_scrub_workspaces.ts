@@ -7,17 +7,13 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
-import { DATA_RETENTION_PERIOD_IN_DAYS } from "@app/temporal/scrub_workspace/config";
 
 const scrubWorkspaces = async (execute: boolean) => {
   const endedSubs = await SubscriptionModel.findAll({
     where: {
       // end date at least 30 days ago
       endDate: {
-        [Op.lt]: new Date(
-          new Date().getTime() -
-            DATA_RETENTION_PERIOD_IN_DAYS * 24 * 60 * 60 * 1000
-        ),
+        [Op.lt]: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
       },
     },
   });
@@ -50,10 +46,7 @@ const scrubWorkspaces = async (execute: boolean) => {
             (s) =>
               !s.endDate ||
               s.endDate >
-                new Date(
-                  new Date().getTime() -
-                    DATA_RETENTION_PERIOD_IN_DAYS * 24 * 60 * 60 * 1000
-                )
+                new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000)
           )
         ) {
           return;
@@ -77,5 +70,8 @@ const scrubWorkspaces = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
-  await scrubWorkspaces(execute);
+  console.error(
+    "Not scrubbing workspaces: script needs to be adapted to use workspace data retention (in workspace metadata)."
+  );
+  // await scrubWorkspaces(execute);
 });

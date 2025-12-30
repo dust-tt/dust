@@ -16,6 +16,7 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { getWorkspaceDataRetention } from "@app/lib/data_retention";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -72,6 +73,16 @@ export async function sendDataDeletionEmail({
     );
     throw e;
   }
+}
+
+export async function getWorkspaceRetentionDays({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<number> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const retentionDays = await getWorkspaceDataRetention(auth);
+  return retentionDays;
 }
 
 export async function shouldStillScrubData({
