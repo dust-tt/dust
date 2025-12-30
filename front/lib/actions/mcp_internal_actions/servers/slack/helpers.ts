@@ -466,9 +466,11 @@ function filterChannels(
 
   const matched = channels.filter((c) => {
     const nameMatch = c.name.toLowerCase().includes(queryLower);
-    const topicMatch = c.topic?.value?.toLowerCase().includes(queryLower);
-    const purposeMatch = c.purpose?.value?.toLowerCase().includes(queryLower);
-    return nameMatch ?? topicMatch ?? purposeMatch;
+    const topicMatch =
+      c.topic?.value?.toLowerCase().includes(queryLower) ?? false;
+    const purposeMatch =
+      c.purpose?.value?.toLowerCase().includes(queryLower) ?? false;
+    return nameMatch || topicMatch || purposeMatch;
   });
 
   return matched.sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit);
@@ -479,21 +481,17 @@ async function searchAndProcessChannels(
   scope: "joined" | "public",
   query: string,
   contextMessage: string
-): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
-  try {
-    const channels = await getChannels({ slackClient, scope });
-    const matched = filterChannels(channels, query);
-    const cleaned = matched.map(cleanChannelPayload);
-    const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
-      },
-    ]);
-  } catch (error) {
-    return new Err(new MCPError(`Error searching channels: ${error}`));
-  }
+): Promise<Ok<Array<{ type: "text"; text: string }>>> {
+  const channels = await getChannels({ slackClient, scope });
+  const matched = filterChannels(channels, query);
+  const cleaned = matched.map(cleanChannelPayload);
+  const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
+    },
+  ]);
 }
 
 function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
@@ -558,9 +556,6 @@ export async function executeSearchChannels(
       query,
       "in your joined channels"
     );
-    if (joinedResult.isErr()) {
-      return joinedResult;
-    }
 
     // Check if we have results, otherwise fallback to public
     const joinedContent = joinedResult.value[0].text;
