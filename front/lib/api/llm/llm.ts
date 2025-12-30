@@ -178,12 +178,16 @@ export abstract class LLM {
 
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
+    let timeToFirstEventMs: number | undefined = undefined;
     try {
       for await (const event of this.completeStream({
         conversation,
         prompt,
         specifications,
       })) {
+        if (currentEvent === null) {
+          timeToFirstEventMs = Date.now() - startTime;
+        }
         currentEvent = event;
         buffer.addEvent(event);
 
@@ -232,7 +236,9 @@ export abstract class LLM {
       }
 
       const durationMs = Date.now() - startTime;
-      buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
+      buffer
+        .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
+        .catch(() => {});
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 
