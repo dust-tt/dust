@@ -39,8 +39,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   slack: {
     name: "Slack",
     connectorProvider: "slack",
-    status: "rolling_out",
-    rollingOutFlag: "self_created_slack_app_connector_rollout",
+    status: "built",
     isDeletable: false,
   },
   slack_bot: {
