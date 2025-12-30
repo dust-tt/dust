@@ -9,7 +9,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   CLOSING_TAG_REGEX,
@@ -54,6 +54,24 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(
     node.attrs.isCollapsed ?? false
   );
+  const [isEditingType, setIsEditingType] = useState(false);
+  const [editedType, setEditedType] = useState(
+    node.attrs.type ?? "instructions"
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keep editedType in sync with node.attrs.type
+  useEffect(() => {
+    setEditedType(node.attrs.type ?? "instructions");
+  }, [node.attrs.type]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditingType && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditingType]);
 
   const displayType = node.attrs.type ? node.attrs.type.toUpperCase() : " ";
 
@@ -69,6 +87,44 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     if (editor.isFocused) {
       editor.commands.focus();
     }
+  };
+
+  const handleChipClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isCollapsed) {
+      setIsEditingType(true);
+    }
+  };
+
+  const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow valid XML tag characters
+    const value = e.target.value.replace(/[^A-Za-z0-9._:-]/g, "");
+    setEditedType(value);
+  };
+
+  const handleTypeSubmit = () => {
+    const lowercased = editedType.trim().toLowerCase();
+    const newType = lowercased === "" ? "instructions" : lowercased;
+    setIsEditingType(false);
+    if (newType !== node.attrs.type) {
+      updateAttributes({ type: newType });
+    }
+  };
+
+  const handleTypeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleTypeSubmit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setEditedType(node.attrs.type ?? "instructions");
+      setIsEditingType(false);
+    }
+  };
+
+  const handleTypeBlur = () => {
+    handleTypeSubmit();
   };
 
   const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
@@ -89,6 +145,43 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
       : ""
   }`;
 
+  const renderTagChip = (isOpening: boolean) => {
+    const prefix = isOpening ? "<" : "</";
+    const suffix = ">";
+
+    if (isEditingType && isOpening && !isCollapsed) {
+      return (
+        <span
+          contentEditable={false}
+          className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+        >
+          <span className="text-xs font-medium">{prefix}</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={editedType.toUpperCase()}
+            onChange={handleTypeChange}
+            onKeyDown={handleTypeKeyDown}
+            onBlur={handleTypeBlur}
+            className="w-24 border-b border-gray-400 bg-transparent text-xs font-medium uppercase outline-none"
+            style={{ minWidth: "2rem" }}
+          />
+          <span className="text-xs font-medium">{suffix}</span>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        contentEditable={false}
+        onClick={isOpening ? handleChipClick : undefined}
+        className={isOpening && !isCollapsed ? "cursor-pointer" : undefined}
+      >
+        <InstructionBlockChip text={`${prefix}${displayType}${suffix}`} />
+      </span>
+    );
+  };
+
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
@@ -107,16 +200,16 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               className="mt-[0.5px] cursor-pointer"
               onClick={handleToggle}
             >
-              <InstructionBlockChip text={`<${displayType}>`} />
+              {renderTagChip(true)}
             </div>
           ) : (
             <div className="mt-0.5 w-full">
-              <InstructionBlockChip text={`<${displayType}>`} />
+              {renderTagChip(true)}
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
               />
-              <InstructionBlockChip text={`</${displayType}>`} />
+              {renderTagChip(false)}
             </div>
           )}
         </div>
@@ -132,8 +225,6 @@ export const InstructionBlockExtension =
     priority: 1000,
     content: "block+",
     defining: true,
-    // Prevents auto-merging two blocks when they're not separated by a paragraph
-    isolating: true,
     selectable: true,
 
     addAttributes() {
@@ -197,6 +288,7 @@ export const InstructionBlockExtension =
 
     addInputRules() {
       return [
+        // allows typing <instructions> or <customTag> to create the block
         new InputRule({
           find: OPENING_TAG_REGEX,
           handler: ({ range, match, chain }) => {
