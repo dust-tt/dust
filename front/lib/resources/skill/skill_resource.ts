@@ -453,6 +453,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  private get skillReference():
+    | { globalSkillId: string }
+    | { customSkillId: ModelId } {
+    return this.globalSId
+      ? { globalSkillId: this.globalSId }
+      : { customSkillId: this.id };
+  }
+
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
@@ -650,12 +658,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const existingConversationSkill = await ConversationSkillModel.findOne({
       where: {
+        ...this.skillReference,
         workspaceId: workspace.id,
         conversationId,
         agentConfigurationId: null,
-        ...(this.globalSId
-          ? { globalSkillId: this.globalSId }
-          : { customSkillId: this.id }),
       },
     });
 
@@ -666,12 +672,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (!existingConversationSkill && enabled) {
       await ConversationSkillModel.create({
+        ...this.skillReference,
         conversationId,
         workspaceId: workspace.id,
         agentConfigurationId: null,
-        ...(this.globalSId
-          ? { globalSkillId: this.globalSId }
-          : { customSkillId: this.id }),
         source: "conversation",
         addedByUserId: user.id,
       } satisfies ConversationSkillCreationAttributes);
@@ -775,15 +779,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch agent-skill links for this skill.
-    // For global skills, we query by globalSkillId (sId string).
-    // For custom skills, we query by customSkillId (numeric id).
     const agentSkills = await AgentSkillModel.findAll({
       where: {
+        ...this.skillReference,
         workspaceId: workspace.id,
-        ...(this.globalSId
-          ? { globalSkillId: this.globalSId }
-          : { customSkillId: this.id }),
       },
     });
 
@@ -1077,11 +1076,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     await AgentSkillModel.create({
+      ...this.skillReference,
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
-      ...(this.globalSId
-        ? { globalSkillId: this.globalSId }
-        : { customSkillId: this.id }),
     });
   }
 
@@ -1099,11 +1096,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const agentSkill = await AgentSkillModel.findOne({
       where: {
+        ...this.skillReference,
         workspaceId: workspace.id,
         agentConfigurationId: agentConfiguration.id,
-        ...(this.globalSId
-          ? { globalSkillId: this.globalSId }
-          : { customSkillId: this.id }),
       },
     });
 
@@ -1116,10 +1111,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
+      ...this.skillReference,
       workspaceId: workspace.id,
-      ...(this.globalSId
-        ? { globalSkillId: this.globalSId }
-        : { customSkillId: this.id }),
       conversationId: conversation.id,
       addedByUserId: null,
       source: "agent_enabled",
