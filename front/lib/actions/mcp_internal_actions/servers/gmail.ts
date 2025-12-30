@@ -428,8 +428,7 @@ function createServer(
             error: detail.error,
           }));
 
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const totalRequested = result.messages?.length || 0;
+        const totalRequested = result.messages?.length ?? 0;
         const totalSuccessful = successfulMessages.length;
         const totalFailed = failedMessages.length;
 
