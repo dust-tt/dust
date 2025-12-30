@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+// import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
@@ -43,7 +43,7 @@ export function Landing() {
           title="Head of GTM Engineering at Clay"
           logo="/static/landing/logos/color/clay.png"
         />
-        <BlogSection />
+        {/* <BlogSection /> */}
         <ProductJustUseDustSection />
       </div>
     </UTMPageWrapper>
