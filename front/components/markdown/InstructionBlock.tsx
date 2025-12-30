@@ -64,7 +64,8 @@ export function instructionBlockDirective() {
       if (node.name === "instruction_block") {
         const data = node.data ?? (node.data = {});
         // Get tag name from the directive label (the [tagName] part)
-        const tagName = node.children?.[0]?.value ?? "instructions";
+        const tagName =
+          node.children?.[0]?.children?.[0]?.value ?? "instructions";
 
         data.hName = "instruction_block";
         data.hProperties = {
@@ -73,7 +74,7 @@ export function instructionBlockDirective() {
 
         // Remove the label node from children since we extracted it
         // The remaining children are the actual content
-        if (node.children?.[0]?.type === "text") {
+        if (node.children?.[0]?.children?.[0]?.type === "text") {
           node.children = node.children.slice(1);
         }
       }
@@ -104,7 +105,7 @@ export function preprocessInstructionBlocks(content: string): string {
     (match, tagName, innerContent) => {
       // Convert to remark-directive container syntax
       // The tagName goes in brackets as a label
-      return `:::instruction_block[${tagName}]\n${innerContent}\n:::`;
+      return `:::instruction_block[${tagName}]\n${innerContent}\n:::\n`;
     }
   );
 }

@@ -78,6 +78,7 @@ export function AgentInfoTab({
             <AgentMessageMarkdown
               content={agentConfiguration.instructions}
               owner={owner}
+              compactSpacing={true}
             />
           </div>
         </div>
