@@ -639,19 +639,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    const { customSkillModelIds, globalSkillIds } = conversationSkills.reduce<{
-      customSkillModelIds: number[];
-      globalSkillIds: string[];
-    }>(
-      (acc, conversationSkill) => {
-        if (conversationSkill.globalSkillId) {
-          acc.globalSkillIds.push(conversationSkill.globalSkillId);
-        } else if (conversationSkill.customSkillId) {
-          acc.customSkillModelIds.push(conversationSkill.customSkillId);
-        }
-        return acc;
-      },
-      { customSkillModelIds: [], globalSkillIds: [] }
+    const customSkillModelIds = removeNulls(
+      conversationSkills.map((cs) => cs.customSkillId)
+    );
+    const globalSkillIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
     );
 
     return this.baseFetch(auth, {
