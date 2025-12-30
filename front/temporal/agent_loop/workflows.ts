@@ -57,6 +57,8 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
   heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     maximumAttempts: RUN_MODEL_MAX_RETRIES,
+    initialInterval: "5 seconds",
+    backoffCoefficient: 1,
   },
 });
 
