@@ -13,9 +13,9 @@
     "dd-trace": "^5.52.0",
     "isomorphic-dompurify": "^2.32.0",
     "pg": "^8.8.0",
-    "tsconfig-paths-webpack-plugin": "^4.1.0"
+    "tsconfig-paths-webpack-plugin": "^4.1.0",
+    "sequelize": "^6.31.0"
   },
-  "devDependencies": {},
   "browser": {
     "net": false,
     "tls": false,
