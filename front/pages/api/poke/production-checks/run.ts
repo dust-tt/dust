@@ -62,8 +62,9 @@ async function handler(
 
   const result = await startManualCheckWorkflow(checkName);
   if (result.isErr()) {
+    const isUnknownCheck = result.error.message.startsWith("Unknown check:");
     return apiError(req, res, {
-      status_code: 400,
+      status_code: isUnknownCheck ? 400 : 500,
       api_error: {
         type: "invalid_request_error",
         message: result.error.message,

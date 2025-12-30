@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import {
+  getCheckHistoryRuns,
+  getRegisteredCheck,
+} from "@app/lib/api/poke/production_checks";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getProductionCheckHistory } from "@app/lib/production_checks/history";
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
-import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import type { CheckHistoryRun } from "@app/types";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { CheckHistoryRun, WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
 export type GetCheckHistoryResponseBody = {
@@ -54,7 +54,7 @@ async function handler(
     });
   }
 
-  const registeredCheck = REGISTERED_CHECKS.find((c) => c.name === checkName);
+  const registeredCheck = getRegisteredCheck(checkName);
   if (!registeredCheck) {
     return apiError(req, res, {
       status_code: 404,
@@ -65,8 +65,7 @@ async function handler(
     });
   }
 
-  const client = await getTemporalClientForFrontNamespace();
-  const runs = await getProductionCheckHistory(client, checkName);
+  const runs = await getCheckHistoryRuns(checkName);
 
   return res.status(200).json({ runs });
 }

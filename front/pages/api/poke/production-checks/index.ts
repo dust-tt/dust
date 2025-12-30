@@ -1,17 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { getCheckSummaries } from "@app/lib/api/poke/production_checks";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import {
-  getLatestProductionCheckResults,
-  statusToSummaryStatus,
-} from "@app/lib/production_checks/history";
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
-import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import type { CheckSummary, CheckSummaryStatus } from "@app/types";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { CheckSummary, WithAPIErrorResponse } from "@app/types";
 
 export type GetProductionChecksResponseBody = {
   checks: CheckSummary[];
@@ -44,42 +38,7 @@ async function handler(
     });
   }
 
-  const client = await getTemporalClientForFrontNamespace();
-  const checkResultsByName = await getLatestProductionCheckResults(client);
-
-  // Build check summaries for all registered checks
-  const checks: CheckSummary[] = REGISTERED_CHECKS.map((registeredCheck) => {
-    const latestResult = checkResultsByName.get(registeredCheck.name);
-
-    if (!latestResult) {
-      return {
-        name: registeredCheck.name,
-        everyHour: registeredCheck.everyHour,
-        status: "no-data" as const,
-        lastRun: null,
-      };
-    }
-
-    return {
-      name: registeredCheck.name,
-      everyHour: registeredCheck.everyHour,
-      status: statusToSummaryStatus(latestResult.status),
-      lastRun: {
-        timestamp: latestResult.timestamp,
-        errorMessage: latestResult.errorMessage,
-        payload: latestResult.payload,
-        actionLinks: latestResult.actionLinks,
-      },
-    };
-  });
-
-  // Sort: alerts first, then ok, then no-data
-  const statusOrder: Record<CheckSummaryStatus, number> = {
-    alert: 0,
-    ok: 1,
-    "no-data": 2,
-  };
-  checks.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+  const checks = await getCheckSummaries();
 
   return res.status(200).json({ checks });
 }
