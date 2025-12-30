@@ -59,33 +59,14 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversationSkills =
-        await SkillResource.fetchConversationSkillRecords(
-          auth,
-          conversationWithoutContent.id
-        );
+      const conversationSkills = await SkillResource.fetchConversationSkills(
+        auth,
+        conversationWithoutContent.id
+      );
 
-      const skills: SkillType[] = [];
-      for (const conversationSkill of conversationSkills) {
-        let skillId: string;
-        if (conversationSkill.globalSkillId) {
-          skillId = conversationSkill.globalSkillId;
-        } else if (conversationSkill.customSkillId) {
-          skillId = SkillResource.modelIdToSId({
-            id: conversationSkill.customSkillId,
-            workspaceId: conversationSkill.workspaceId,
-          });
-        } else {
-          continue;
-        }
-
-        const skillRes = await SkillResource.fetchById(auth, skillId);
-        if (skillRes) {
-          skills.push(skillRes.toJSON(auth));
-        }
-      }
-
-      return res.status(200).json({ skills });
+      return res
+        .status(200)
+        .json({ skills: conversationSkills.map((s) => s.toJSON(auth)) });
 
     case "POST":
       const parseResult = ConversationSkillActionRequestSchema.safeParse(

@@ -50,7 +50,6 @@ import type {
   Result,
 } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
-import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
 import type {
   SkillStatus,
   SkillType,
@@ -629,23 +628,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async fetchConversationSkillRecords(
+  static async fetchConversationSkills(
     auth: Authenticator,
     conversationId: ModelId
-  ): Promise<
-    Array<{
-      id: ModelId;
-      workspaceId: ModelId;
-      conversationId: ModelId;
-      agentConfigurationId: string | null;
-      source: ConversationSkillOrigin;
-      addedByUserId: ModelId | null;
-      createdAt: Date;
-      updatedAt: Date;
-      customSkillId: ModelId | null;
-      globalSkillId: string | null;
-    }>
-  > {
+  ): Promise<SkillResource[]> {
     const conversationSkills = await ConversationSkillModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -653,18 +639,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return conversationSkills.map((skill) => ({
-      id: skill.id,
-      workspaceId: skill.workspaceId,
-      conversationId: skill.conversationId,
-      agentConfigurationId: skill.agentConfigurationId,
-      source: skill.source,
-      addedByUserId: skill.addedByUserId,
-      createdAt: skill.createdAt,
-      updatedAt: skill.updatedAt,
-      customSkillId: skill.customSkillId,
-      globalSkillId: skill.globalSkillId,
-    }));
+    const customSkillModelIds = removeNulls(
+      conversationSkills.map((cs) => cs.customSkillId)
+    );
+    const globalSkillIds = removeNulls(
+      conversationSkills.map((cs) => cs.globalSkillId)
+    );
+
+    return this.baseFetch(auth, {
+      where: {
+        id: customSkillModelIds,
+        sId: globalSkillIds,
+      },
+    });
   }
 
   async upsertToConversation(
