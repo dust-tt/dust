@@ -123,61 +123,53 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
       : ""
   }`;
 
-  const renderTagChip = (isOpening: boolean) => {
-    const prefix = isOpening ? "<" : "</";
-    const suffix = ">";
-
-    if (isEditingType && isOpening && !isCollapsed) {
-      return (
-        <span
-          contentEditable={false}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Chip
-            size="mini"
-            className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
-          >
-            {prefix}
-            <span
-              ref={editableRef}
-              contentEditable
-              suppressContentEditableWarning
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleTypeSubmit();
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  if (editableRef.current) {
-                    editableRef.current.textContent =
-                      (node.attrs.type ?? "instructions").toUpperCase();
-                  }
-                  setIsEditingType(false);
-                }
-              }}
-              onBlur={handleTypeSubmit}
-              className="outline-none"
-            >
-              {(node.attrs.type ?? "instructions").toUpperCase()}
-            </span>
-            {suffix}
-          </Chip>
-        </span>
-      );
-    }
-
-    return (
-      <span
-        contentEditable={false}
-        onClick={isOpening ? handleChipClick : undefined}
-        className={isOpening && !isCollapsed ? "cursor-pointer" : undefined}
+  const openingTagChip = isEditingType ? (
+    <span
+      contentEditable={false}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Chip
+        size="mini"
+        className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
       >
-        <InstructionBlockChip text={`${prefix}${displayType}${suffix}`} />
-      </span>
-    );
-  };
+        {"<"}
+        <span
+          ref={editableRef}
+          contentEditable
+          suppressContentEditableWarning
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleTypeSubmit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              if (editableRef.current) {
+                editableRef.current.textContent = (
+                  node.attrs.type ?? "instructions"
+                ).toUpperCase();
+              }
+              setIsEditingType(false);
+            }
+          }}
+          onBlur={handleTypeSubmit}
+          className="outline-none"
+        >
+          {(node.attrs.type ?? "instructions").toUpperCase()}
+        </span>
+        {">"}
+      </Chip>
+    </span>
+  ) : (
+    <span
+      contentEditable={false}
+      onClick={handleChipClick}
+      className="cursor-pointer"
+    >
+      <InstructionBlockChip text={`<${displayType}>`} />
+    </span>
+  );
 
   return (
     <NodeViewWrapper className="my-2">
@@ -197,16 +189,16 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               className="mt-[0.5px] cursor-pointer"
               onClick={handleToggle}
             >
-              {renderTagChip(true)}
+              <InstructionBlockChip text={`<${displayType}>`} />
             </div>
           ) : (
             <div className="mt-0.5 w-full">
-              {renderTagChip(true)}
+              {openingTagChip}
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
               />
-              {renderTagChip(false)}
+              <InstructionBlockChip text={`</${displayType}>`} />
             </div>
           )}
         </div>
