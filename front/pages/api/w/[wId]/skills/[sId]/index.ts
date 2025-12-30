@@ -240,8 +240,7 @@ async function handler(
           {
             name: body.name,
             agentFacingDescription: body.agentFacingDescription,
-            // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
-            userFacingDescription: body.userFacingDescription ?? "",
+            userFacingDescription: body.userFacingDescription,
             instructions: body.instructions,
             icon: body.icon,
             requestedSpaceIds,
