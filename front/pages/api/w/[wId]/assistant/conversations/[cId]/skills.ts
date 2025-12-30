@@ -65,25 +65,30 @@ async function handler(
           conversationWithoutContent.id
         );
 
-      const skills: SkillType[] = [];
-      for (const conversationSkill of conversationSkills) {
-        let skillId: string;
-        if (conversationSkill.globalSkillId) {
-          skillId = conversationSkill.globalSkillId;
-        } else if (conversationSkill.customSkillId) {
-          skillId = SkillResource.modelIdToSId({
-            id: conversationSkill.customSkillId,
-            workspaceId: conversationSkill.workspaceId,
-          });
-        } else {
-          continue;
-        }
+      const { customSkillModelIds, globalSkillIds } =
+        conversationSkills.reduce<{
+          customSkillModelIds: number[];
+          globalSkillIds: string[];
+        }>(
+          (acc, conversationSkill) => {
+            if (conversationSkill.globalSkillId) {
+              acc.globalSkillIds.push(conversationSkill.globalSkillId);
+            } else if (conversationSkill.customSkillId) {
+              acc.customSkillModelIds.push(conversationSkill.customSkillId);
+            }
+            return acc;
+          },
+          { customSkillModelIds: [], globalSkillIds: [] }
+        );
 
-        const skillRes = await SkillResource.fetchById(auth, skillId);
-        if (skillRes) {
-          skills.push(skillRes.toJSON(auth));
-        }
-      }
+      const [customSkills, globalSkills] = await Promise.all([
+        SkillResource.fetchByModelIds(auth, customSkillModelIds),
+        SkillResource.fetchByIds(auth, globalSkillIds),
+      ]);
+
+      const skills: SkillType[] = [...customSkills, ...globalSkills].map(
+        (skill) => skill.toJSON(auth)
+      );
 
       return res.status(200).json({ skills });
 
