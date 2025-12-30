@@ -50,7 +50,11 @@ export interface CheckResult {
   checkName: string;
   status: CheckResultStatus;
   timestamp: string;
-  payload: CheckSuccessPayload | CheckFailurePayload | null;
+  payload:
+    | CheckSuccessPayload
+    | CheckFailurePayload
+    | CheckFailurePayload[]
+    | null;
   errorMessage: string | null;
   actionLinks: ActionLink[];
 }
@@ -61,7 +65,11 @@ export interface CheckActivityResult {
   checkName: string;
   status: CheckActivityResultStatus;
   timestamp: string;
-  payload: CheckSuccessPayload | CheckFailurePayload | null;
+  payload:
+    | CheckSuccessPayload
+    | CheckFailurePayload
+    | CheckFailurePayload[]
+    | null;
   errorMessage: string | null;
   actionLinks: ActionLink[];
 }
