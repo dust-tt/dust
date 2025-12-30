@@ -29,17 +29,26 @@ export function useSkills({
   owner,
   disabled,
   status,
+  globalSpaceOnly,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
+  globalSpaceOnly?: boolean;
 }) {
   const skillsFetcher: Fetcher<GetSkillConfigurationsResponseBody> = fetcher;
 
-  const statusQueryParam = status ? `?status=${status}` : "";
+  const queryParams = new URLSearchParams();
+  if (status) {
+    queryParams.set("status", status);
+  }
+  if (globalSpaceOnly) {
+    queryParams.set("globalSpaceOnly", "true");
+  }
+  const queryString = queryParams.toString();
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills${statusQueryParam}`,
+    `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
     skillsFetcher,
     { disabled }
   );
