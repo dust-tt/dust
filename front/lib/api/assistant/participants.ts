@@ -147,6 +147,7 @@ export async function fetchConversationParticipants(
       conversationId: conversation.id,
       workspaceId: owner.id,
     },
+    order: [["createdAt", "ASC"]],
   });
   const userIds = participants.map((p) => p.userId);
 
@@ -170,13 +171,14 @@ export async function fetchConversationParticipants(
       ...a,
       lastActivityAt: agentLastActivityMap.get(a.configurationId),
     })),
-    users: users.map((u) => ({
+    users: users.map((u, index) => ({
       sId: u.sId,
       fullName: u.fullName,
       pictureUrl: u.pictureUrl,
       username: u.username,
       action: userIdToAction.get(u.id) ?? "posted",
       lastActivityAt: userLastActivityMap.get(u.id),
+      isCreator: index === 0, // The current participant who was added first in the conversation is considered as the creator
     })),
   });
 }

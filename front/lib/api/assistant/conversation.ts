@@ -183,15 +183,18 @@ export async function updateConversationTitle(
 
 /**
  * Delete-or-Leave:
- * - If the user is the last participant: perform a soft-delete
+ * - If forceDelete is true and the user is the conversation creator: perform a soft-delete
+ * - If forceDelete is false and the user is the last participant: perform a soft-delete
  * - Otherwise just remove the user from the participants
  */
 export async function deleteOrLeaveConversation(
   auth: Authenticator,
   {
     conversationId,
+    forceDelete = false,
   }: {
     conversationId: string;
+    forceDelete?: boolean;
   }
 ): Promise<Result<{ success: true }, Error>> {
   const conversation = await ConversationResource.fetchById(
@@ -210,15 +213,36 @@ export async function deleteOrLeaveConversation(
   if (!user) {
     return new Err(new Error("User not authenticated."));
   }
+
+  let isConversationCreator = false;
+  const isCreatorRes = await conversation.isConversationCreator(auth);
+  if (!isCreatorRes.isErr()) {
+    isConversationCreator = isCreatorRes.value;
+  }
+
   const leaveRes = await conversation.leaveConversation(auth);
   if (leaveRes.isErr()) {
     return new Err(leaveRes.error);
   }
 
-  // If the user was the last member, soft-delete the conversation.
-  if (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) {
+  // If the user was the last member or it was a delete by the conversation creator, soft-delete the conversation.
+  if (
+    (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) ||
+    (forceDelete && isConversationCreator)
+  ) {
+    auditLog(
+      {
+        author: user.toJSON(),
+        workspaceId: conversation.workspaceId,
+        conversationId,
+        wasLastMember: leaveRes.value.wasLastMember,
+        isConversationCreator,
+      },
+      "Conversation soft-deleted"
+    );
     await conversation.updateVisibilityToDeleted();
   }
+
   return new Ok({ success: true });
 }
 

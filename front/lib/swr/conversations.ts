@@ -864,9 +864,9 @@ export function useConversationMarkAsRead({
   };
 }
 
-type ConversationParticipationOption = "join" | "leave" | "delete";
+export type ConversationParticipationOption = "join" | "leave" | "delete";
 
-export const useConversationParticipationOption = ({
+export const useConversationParticipationOptions = ({
   ownerId,
   conversationId,
   userId,
@@ -882,13 +882,11 @@ export const useConversationParticipationOption = ({
     workspaceId: ownerId,
     options: { disabled },
   });
-  const [option, setOption] = useState<ConversationParticipationOption | null>(
-    null
-  );
+  const [options, setOptions] = useState<ConversationParticipationOption[]>([]);
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
-      setOption(null);
+      setOptions([]);
       return;
     }
     const isUserParticipating =
@@ -900,12 +898,24 @@ export const useConversationParticipationOption = ({
     const isLastParticipant =
       isUserParticipating && conversationParticipants?.users.length === 1;
 
-    setOption(
-      isLastParticipant ? "delete" : isUserParticipating ? "leave" : "join"
-    );
+    const isConversationCreator =
+      userId !== null &&
+      conversationParticipants?.users.find(
+        (participant) => participant.sId === userId && participant.isCreator
+      );
+
+    if (isLastParticipant) {
+      setOptions(["delete"]);
+    } else if (isConversationCreator) {
+      setOptions(["leave", "delete"]);
+    } else if (isUserParticipating) {
+      setOptions(["leave"]);
+    } else {
+      setOptions(["join"]);
+    }
   }, [conversationParticipants, userId]);
 
-  return option;
+  return options;
 };
 
 export const useJoinConversation = ({

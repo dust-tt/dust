@@ -316,6 +316,7 @@ export interface UserParticipantType {
   username: string;
   action: ParticipantActionType;
   lastActivityAt?: number;
+  isCreator?: boolean;
 }
 
 export interface ConversationParticipantsType {

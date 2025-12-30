@@ -24,7 +24,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
   useConversationParticipants,
-  useConversationParticipationOption,
+  useConversationParticipationOptions,
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
@@ -137,7 +137,7 @@ export function ConversationMenu({
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
-  const conversationParticipationOption = useConversationParticipationOption({
+  const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
     userId: user?.sId ?? null,
@@ -170,13 +170,16 @@ export function ConversationMenu({
       : undefined;
 
   const doDelete = useDeleteConversation(owner);
-  const leaveOrDelete = useCallback(async () => {
-    const res = await doDelete(conversation);
-    // eslint-disable-next-line no-unused-expressions
-    isConversationDisplayed &&
-      res &&
-      void router.push(getConversationRoute(owner.sId));
-  }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
+  const leaveOrDelete = useCallback(
+    async (forceDelete: boolean = false) => {
+      const res = await doDelete(conversation, forceDelete);
+      // eslint-disable-next-line no-unused-expressions
+      isConversationDisplayed &&
+        res &&
+        void router.push(getConversationRoute(owner.sId));
+    },
+    [conversation, doDelete, owner.sId, router, isConversationDisplayed]
+  );
 
   const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink ?? "");
@@ -188,34 +191,38 @@ export function ConversationMenu({
   }
 
   const ConversationActionMenuItem = () => {
-    switch (conversationParticipationOption) {
-      case "delete":
-        return (
-          <DropdownMenuItem
-            label="Delete"
-            onClick={() => setShowDeleteDialog(true)}
-            icon={TrashIcon}
-          />
-        );
-      case "leave":
-        return (
-          <DropdownMenuItem
-            label="Leave"
-            onClick={() => setShowLeaveDialog(true)}
-            icon={XMarkIcon}
-          />
-        );
-      case "join":
-        return (
-          <DropdownMenuItem
-            label="Join"
-            onClick={joinConversation}
-            icon={PlusCircleIcon}
-          />
-        );
-      default:
-        return null;
-    }
+    return conversationParticipationOptions.map(
+      (conversationParticipationOption) => {
+        switch (conversationParticipationOption) {
+          case "delete":
+            return (
+              <DropdownMenuItem
+                label="Delete"
+                onClick={() => setShowDeleteDialog(true)}
+                icon={TrashIcon}
+              />
+            );
+          case "leave":
+            return (
+              <DropdownMenuItem
+                label="Leave"
+                onClick={() => setShowLeaveDialog(true)}
+                icon={XMarkIcon}
+              />
+            );
+          case "join":
+            return (
+              <DropdownMenuItem
+                label="Join"
+                onClick={joinConversation}
+                icon={PlusCircleIcon}
+              />
+            );
+          default:
+            return null;
+        }
+      }
+    );
   };
 
   return (
@@ -230,7 +237,7 @@ export function ConversationMenu({
         onClose={() => setShowDeleteDialog(false)}
         onDelete={() => {
           setShowDeleteDialog(false);
-          void leaveOrDelete();
+          void leaveOrDelete(true);
         }}
       />
       <LeaveConversationDialog
