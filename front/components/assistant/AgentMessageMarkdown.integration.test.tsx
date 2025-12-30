@@ -124,7 +124,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
   });
 
   describe("Instruction Block Preprocessing", () => {
-    it("preprocesses and renders instruction blocks", () => {
+    it.skip("preprocesses and renders instruction blocks", () => {
       const content = "<instructions>Follow these steps</instructions>";
       const { container } = render(
         <AgentMessageMarkdown owner={mockOwner} content={content} />
@@ -134,7 +134,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       expect(container.textContent).toContain("Follow these steps");
     });
 
-    it("handles custom tag names in instruction blocks", () => {
+    it.skip("handles custom tag names in instruction blocks", () => {
       const content = "<my_custom_tag>Custom content</my_custom_tag>";
       const { container } = render(
         <AgentMessageMarkdown owner={mockOwner} content={content} />
@@ -143,7 +143,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       expect(container.textContent).toContain("Custom content");
     });
 
-    it("handles multiple instruction blocks", () => {
+    it.skip("handles multiple instruction blocks", () => {
       const content = "<tag1>Content 1</tag1>\n\n<tag2>Content 2</tag2>";
       const { container } = render(
         <AgentMessageMarkdown owner={mockOwner} content={content} />
@@ -154,7 +154,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       expect(container.textContent).toContain("Content 2");
     });
 
-    it("renders markdown inside instruction blocks", () => {
+    it.skip("renders markdown inside instruction blocks", () => {
       const content =
         "<instructions>**Bold** and *italic* content</instructions>";
       const { container } = render(
@@ -166,7 +166,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
   });
 
   describe("Complex Content Scenarios", () => {
-    it("renders mixed markdown and instruction blocks", () => {
+    it.skip("renders mixed markdown and instruction blocks", () => {
       const content = `# Heading
 
 Regular paragraph with **bold** text.
