@@ -11,13 +11,12 @@ import React, { useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import {
   usePokeCheckHistory,
   usePokeProductionChecks,
-} from "@app/poke/swr/production_checks";
+  useRunProductionCheck,
+} from "@app/hooks/usePokeProductionChecks";
+import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type {
   ActionLink,
   CheckHistoryRun,
@@ -27,7 +26,6 @@ import type {
 import { conjugate, pluralize } from "@app/types";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const REFETCH_DELAY_MS = 2000;
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -355,51 +353,7 @@ function ProductionCheckCard({
 const ProductionChecksPage = () => {
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();
-  const [runningChecks, setRunningChecks] = useState<Set<string>>(new Set());
-  const sendNotification = useSendNotification();
-
-  const handleRunCheck = async (checkName: string) => {
-    setRunningChecks((prev) => new Set(prev).add(checkName));
-
-    try {
-      const res = await clientFetch("/api/poke/production-checks/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkName }),
-      });
-
-      if (res.ok) {
-        sendNotification({
-          title: "Check started",
-          description: `${checkName} has been triggered`,
-          type: "success",
-        });
-        setTimeout(() => {
-          void mutateProductionChecks();
-        }, REFETCH_DELAY_MS);
-      } else {
-        const errorData = await res.json();
-        sendNotification({
-          title: "Failed to start check",
-          description: errorData.error?.message ?? "Unknown error",
-          type: "error",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      sendNotification({
-        title: "Failed to start check",
-        description: "Network error",
-        type: "error",
-      });
-    } finally {
-      setRunningChecks((prev) => {
-        const next = new Set(prev);
-        next.delete(checkName);
-        return next;
-      });
-    }
-  };
+  const { runCheck, isCheckRunning } = useRunProductionCheck();
 
   const alertCount = checks.filter((c) => c.status === "alert").length;
 
@@ -435,8 +389,8 @@ const ProductionChecksPage = () => {
               <ProductionCheckCard
                 key={check.name}
                 check={check}
-                onRun={() => handleRunCheck(check.name)}
-                isRunning={runningChecks.has(check.name)}
+                onRun={() => runCheck(check.name)}
+                isRunning={isCheckRunning(check.name)}
               />
             ))}
           </div>
