@@ -6,11 +6,15 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-// =============================================================================
-// Base Types
-// =============================================================================
+type SheetStateType =
+  | "closed"
+  | "selection"
+  | "space-selection"
+  | "info"
+  | "knowledge"
+  | "configuration";
 
-type SheetStateBase<TState extends string> = {
+type SheetStateBase<TState extends SheetStateType> = {
   state: TState;
 };
 
@@ -19,28 +23,14 @@ type SheetStateBase<TState extends string> = {
  * - index: null → creating new item
  * - index: number → editing existing item at that index
  */
-type EditableSheetStateBase<TState extends string> = SheetStateBase<TState> & {
-  index: number | null;
-};
+type EditableSheetStateBase<TState extends SheetStateType> =
+  SheetStateBase<TState> & {
+    index: number | null;
+  };
 
-// =============================================================================
-// State Types
-// =============================================================================
-
-/**
- * No sheet is currently open.
- */
 export type ClosedState = SheetStateBase<"closed">;
-
-/**
- * Capabilities sheet: selection page for choosing skills/tools.
- */
 export type SelectionState = SheetStateBase<"selection">;
 
-/**
- * Capabilities sheet: info page for skill or tool.
- * Use `kind` to discriminate between skill and tool.
- */
 export type InfoState<
   TKind extends "skill" | "tool",
   TCapability,
@@ -59,8 +49,6 @@ export type SpaceSelectionState = SheetStateBase<"space-selection"> & {
 
 /**
  * Capabilities sheet: tool configuration/edit page.
- * - index: null → configuring new tool
- * - index: number → editing existing tool
  */
 export type ConfigurationState = EditableSheetStateBase<"configuration"> & {
   capability: BuilderAction;
@@ -69,21 +57,12 @@ export type ConfigurationState = EditableSheetStateBase<"configuration"> & {
 
 /**
  * Knowledge configuration sheet.
- * - index: null → adding new knowledge source
- * - index: number → editing existing knowledge source
  */
 export type KnowledgeState = EditableSheetStateBase<"knowledge"> & {
   action: BuilderAction;
   presetData?: TemplateActionPreset;
 };
 
-// =============================================================================
-// Union Types
-// =============================================================================
-
-/**
- * States where the capabilities sheet is open.
- */
 export type CapabilitiesSheetState =
   | SelectionState
   | InfoState<"skill", SkillWithRelationsType>
@@ -97,28 +76,13 @@ export type CapabilitiesSheetState =
  */
 export type SheetState = ClosedState | CapabilitiesSheetState | KnowledgeState;
 
-// =============================================================================
-// Type Guards & Helpers
-// =============================================================================
-
 /**
  * Check if the capabilities sheet is open (any capabilities page).
  */
 export function isCapabilitiesSheetOpen(
   state: SheetState
 ): state is CapabilitiesSheetState {
-  return (
-    state.state !== "closed" && state.state !== "knowledge"
-  );
-}
-
-/**
- * Check if the knowledge sheet is open.
- */
-export function isKnowledgeSheetOpen(
-  state: SheetState
-): state is KnowledgeState {
-  return state.state === "knowledge";
+  return state.state !== "closed" && state.state !== "knowledge";
 }
 
 /**
@@ -134,9 +98,7 @@ export function isConfigurationState(
  * Get a page identifier for MultiPageSheetContent.
  * Maps the flat SheetState to page IDs expected by the sheet component.
  */
-export function getCapabilitiesPageId(
-  state: CapabilitiesSheetState
-): string {
+export function getCapabilitiesPageId(state: CapabilitiesSheetState): string {
   switch (state.state) {
     case "selection":
       return "selection";
