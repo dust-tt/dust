@@ -202,8 +202,8 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
 // Converts a JSON object to Markdown format with bullet points.
 // Recursively handles nested objects and arrays with proper indentation.
 // Includes protections against circular references and excessive depth.
-export function jsonToMarkdown(
-  data: any,
+export function jsonToMarkdown<T = unknown>(
+  data: T,
   primaryKey: string,
   primaryKeyPrefix: string = "",
   indent: number = 0,
@@ -218,7 +218,7 @@ export function jsonToMarkdown(
   }
 
   // Helper to format primitive values
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) {
       return "(empty)";
     }
@@ -285,13 +285,14 @@ export function jsonToMarkdown(
   visited.add(data);
 
   // Check if this object has the primaryKey
-  const hasPrimaryKey = data[primaryKey] !== undefined;
+  const dataAsRecord = data as Record<string, unknown>;
+  const hasPrimaryKey = dataAsRecord[primaryKey] !== undefined;
   let entriesToProcess = entries;
   let headerLine = "";
 
   if (hasPrimaryKey) {
     // Create title from primaryKey
-    const primaryValue = formatValue(data[primaryKey]);
+    const primaryValue = formatValue(dataAsRecord[primaryKey]);
     const title = primaryKeyPrefix
       ? `${primaryKeyPrefix} ${primaryValue}`
       : primaryValue;

@@ -60,6 +60,15 @@ interface MessageDetail {
   error?: string;
 }
 
+// Typeguard for GmailMessage
+function isGmailMessage(data: unknown): data is GmailMessage {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  const obj = data as Record<string, unknown>;
+  return typeof obj.id === "string";
+}
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -367,7 +376,15 @@ function createServer(
               };
             }
 
-            const messageData: GmailMessage = await messageResponse.json();
+            const messageData = await messageResponse.json();
+
+            if (!isGmailMessage(messageData)) {
+              return {
+                success: false,
+                messageId: message.id,
+                error: "Invalid message format received from Gmail API",
+              };
+            }
 
             // Extract headers for easy access
             const headers = messageData.payload?.headers ?? [];
