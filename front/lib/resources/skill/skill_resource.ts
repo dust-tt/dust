@@ -966,11 +966,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    const [affectedCount] = await this.update(
-      {
-        status: "archived",
-      },
-      transaction
+    const affectedCount = await this.updateWithAuthorization(
+      auth,
+      { status: "archived" },
+      { transaction }
     );
 
     return { affectedCount };
@@ -980,11 +979,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<{ affectedCount: number }> {
-    const [affectedCount] = await this.update(
-      {
-        status: "active",
-      },
-      transaction
+    const affectedCount = await this.updateWithAuthorization(
+      auth,
+      { status: "active" },
+      { transaction }
     );
 
     return { affectedCount };
@@ -1008,13 +1006,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds: ModelId[];
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<SkillResource, Error>> {
+  ): Promise<void> {
     // Save the current version before updating.
     await this.saveVersion(auth, { transaction });
 
     const authorId = auth.user()?.id;
 
-    await this.update(
+    await this.updateWithAuthorization(
+      auth,
       {
         name,
         agentFacingDescription,
@@ -1024,17 +1023,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         requestedSpaceIds,
         authorId,
       },
-      transaction
+      { transaction }
     );
-
-    // Fetch the updated resource
-    const updated = await SkillResource.fetchByModelIdWithAuth(auth, this.id);
-
-    if (!updated) {
-      return new Err(new Error("Failed to fetch updated skill configuration"));
-    }
-
-    return new Ok(updated);
   }
 
   async updateTools(
@@ -1046,6 +1036,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
+    if (!this.canWrite(auth)) {
+      throw new Error("User does not have permission to update this skill.");
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     // Delete existing tool associations.
@@ -1066,24 +1060,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })),
       { transaction }
     );
+
+    // Update the current instance with the new tools to avoid stale data. (Similar to BaseResource update)
+    Object.assign(this, { mcpServerViews });
   }
 
-  async update(
+  private async updateWithAuthorization(
+    auth: Authenticator,
     blob: Partial<Attributes<SkillConfigurationModel>>,
-    transaction?: Transaction
-  ): Promise<[affectedCount: number]> {
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<number> {
     // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
-    if (this.globalSId) {
-      throw new Error("Cannot update a global skill configuration.");
+    if (!this.canWrite(auth)) {
+      throw new Error("User does not have permission to update this skill.");
     }
 
-    return super.update(blob, transaction);
+    const [affectedCount] = await this.update(blob, transaction);
+    return affectedCount;
   }
 
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined | number, Error>> {
+  ): Promise<Result<number, Error>> {
     if (!this.canWrite(auth)) {
       return new Err(
         new Error("User does not have permission to delete this skill.")

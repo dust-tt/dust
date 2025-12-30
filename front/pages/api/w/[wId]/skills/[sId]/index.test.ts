@@ -335,6 +335,55 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.requestedSpaceIds).toHaveLength(2);
   });
+
+  it("should correctly reflect updated tools in the response", async () => {
+    const { req, res, skill, workspace, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    // Create a regular space with an MCP server view
+    const space = await SpaceFactory.regular(workspace);
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Test Server",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      space
+    );
+
+    // Update skill with the tool
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [{ mcpServerViewId: serverView.sId }],
+    };
+
+    await handler(req, res);
+
+    const data = res._getJSONData();
+    expect(data).not.toHaveProperty("error");
+    expect(res._getStatusCode()).toBe(200);
+
+    // Verify the response contains the updated tools
+    expect(data.skillConfiguration.tools).toHaveLength(1);
+    expect(data.skillConfiguration.tools[0].sId).toBe(serverView.sId);
+
+    // Verify fetching the skill also shows the tool
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.toJSON(requestUserAuth).tools).toHaveLength(1);
+    expect(updatedSkill?.toJSON(requestUserAuth).tools[0].sId).toBe(
+      serverView.sId
+    );
+  });
 });
 
 describe("DELETE /api/w/[wId]/skills/[sId]", () => {
