@@ -13,11 +13,7 @@ import {
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
-import type {
-  CapabilitiesSheetContentProps,
-  ToolEditMode,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import { isToolConfigurationOrEditPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import {
@@ -31,14 +27,16 @@ import {
   getInfoPageIcon,
   getInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
+import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
+import { isConfigurationState } from "@app/components/agent_builder/skills/types";
 import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
 
 export function useCapabilitiesPageAndFooter({
-  mode,
-  onModeChange,
+  sheetState,
+  onStateChange,
   onClose,
   onCapabilitiesSave,
   onToolEditSave,
@@ -56,14 +54,14 @@ export function useCapabilitiesPageAndFooter({
   const [searchQuery, setSearchQuery] = useState("");
 
   const skillSelection = useSkillSelection({
-    onModeChange,
+    onStateChange,
     alreadyAddedSkillIds,
     initialAdditionalSpaces,
     searchQuery,
   });
   const toolSelection = useToolSelection({
     selectedActions,
-    onModeChange,
+    onStateChange,
     searchQuery,
   });
 
@@ -83,18 +81,18 @@ export function useCapabilitiesPageAndFooter({
   ]);
 
   const handleToolEditSave = useCallback(
-    (mode: ToolEditMode) => (formData: MCPFormData) => {
-      const nameChanged = mode.capability.name !== formData.name;
+    (configState: ConfigurationState) => (formData: MCPFormData) => {
+      const nameChanged = configState.capability.name !== formData.name;
       const newActionName = nameChanged
         ? generateUniqueActionName({
             baseName: nameToStorageFormat(formData.name),
             existingActions: selectedActions,
             selectedToolsInSheet: toolSelection.localSelectedTools,
           })
-        : mode.capability.name;
+        : configState.capability.name;
 
       onToolEditSave({
-        ...mode.capability,
+        ...configState.capability,
         name: newActionName,
         description: formData.description,
         configuration: formData.configuration,
@@ -113,10 +111,10 @@ export function useCapabilitiesPageAndFooter({
 
   const formSchema = useMemo(
     () =>
-      isToolConfigurationOrEditPage(mode)
-        ? getMCPConfigurationFormSchema(mode.mcpServerView)
+      isConfigurationState(sheetState)
+        ? getMCPConfigurationFormSchema(sheetState.mcpServerView)
         : null,
-    [mode]
+    [sheetState]
   );
 
   const form = useForm<MCPFormData>({
@@ -129,29 +127,29 @@ export function useCapabilitiesPageAndFooter({
   // Stable form reset handler - no form dependency to prevent re-renders
   const resetFormValues = useMemo(
     () => (form: UseFormReturn<MCPFormData>) => {
-      if (isToolConfigurationOrEditPage(mode)) {
+      if (isConfigurationState(sheetState)) {
         form.reset({
-          name: mode.capability.name,
-          description: mode.capability.description,
-          configuration: mode.capability.configuration,
+          name: sheetState.capability.name,
+          description: sheetState.capability.description,
+          configuration: sheetState.capability.configuration,
         });
       } else {
         form.reset(getDefaultFormValues(null));
       }
     },
-    [mode]
+    [sheetState]
   );
 
   useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
 
-  switch (mode.pageId) {
+  switch (sheetState.state) {
     case "selection":
       return {
         page: {
           title: "Add capabilities",
-          id: mode.pageId,
+          id: sheetState.state,
           content: (
             <CapabilitiesSelectionPageContent
               isCapabilitiesLoading={
@@ -162,7 +160,7 @@ export function useCapabilitiesPageAndFooter({
               setSearchQuery={setSearchQuery}
               {...skillSelection}
               {...toolSelection}
-              onModeChange={onModeChange}
+              onStateChange={onStateChange}
             />
           ),
           footerContent:
@@ -191,47 +189,85 @@ export function useCapabilitiesPageAndFooter({
         },
       };
 
-    case "skill_info":
-      const title = mode.capability.relations.extendedSkill?.name
-        ? `${mode.capability.name} (extends ${mode.capability.relations.extendedSkill.name})`
-        : mode.capability.name;
+    case "info":
+      if (sheetState.kind === "skill") {
+        const title = sheetState.capability.relations.extendedSkill?.name
+          ? `${sheetState.capability.name} (extends ${sheetState.capability.relations.extendedSkill.name})`
+          : sheetState.capability.name;
 
-      return {
-        page: {
-          title,
-          description: mode.capability.userFacingDescription,
-          id: mode.pageId,
-          icon: getSkillIcon(mode.capability.icon),
-          content: (
-            <SkillDetailsSheetContent
-              skill={mode.capability}
-              owner={owner}
-              user={user}
-            />
-          ),
-        },
-        leftButton: mode.hasPreviousPage
-          ? {
-              label: "Back",
-              variant: "outline",
-              onClick: () => {
-                onModeChange({ pageId: "selection", open: true });
+        return {
+          page: {
+            title,
+            description: sheetState.capability.userFacingDescription,
+            id: sheetState.state,
+            icon: getSkillIcon(sheetState.capability.icon),
+            content: (
+              <SkillDetailsSheetContent
+                skill={sheetState.capability}
+                owner={owner}
+                user={user}
+              />
+            ),
+          },
+          leftButton: sheetState.hasPreviousPage
+            ? {
+                label: "Back",
+                variant: "outline",
+                onClick: () => {
+                  onStateChange({ state: "selection" });
+                },
+              }
+            : {
+                label: "Close",
+                variant: "primary",
+                onClick: onClose,
               },
-            }
-          : {
-              label: "Close",
-              variant: "primary",
-              onClick: onClose,
-            },
-      };
+        };
+      } else {
+        // tool info
+        const mcpServerView =
+          toolSelection.allMcpServerViews.find(
+            (view) =>
+              view.sId === sheetState.capability.configuration.mcpServerViewId
+          ) ?? null;
 
-    case "skill_space_selection":
+        return {
+          page: {
+            title: getInfoPageTitle(mcpServerView),
+            description: getInfoPageDescription(mcpServerView),
+            icon: getInfoPageIcon(mcpServerView),
+            id: sheetState.state,
+            content: mcpServerView ? (
+              <MCPServerInfoPage infoMCPServerView={mcpServerView} />
+            ) : (
+              <div className="p-4 text-muted-foreground">
+                Tool information not available.
+              </div>
+            ),
+          },
+          leftButton: sheetState.hasPreviousPage
+            ? {
+                label: "Back",
+                variant: "outline",
+                onClick: () => {
+                  onStateChange({ state: "selection" });
+                },
+              }
+            : {
+                label: "Close",
+                variant: "primary",
+                onClick: onClose,
+              },
+        };
+      }
+
+    case "space-selection":
       return {
         page: {
           title: `Select spaces`,
           description:
             "Automatically grant access to all knowledge sources discovery from your selected spaces",
-          id: mode.pageId,
+          id: sheetState.state,
           content: (
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
@@ -247,112 +283,79 @@ export function useCapabilitiesPageAndFooter({
             skillSelection.setDraftSelectedSpaces(
               skillSelection.localAdditionalSpaces
             );
-            onModeChange({ pageId: "selection", open: true });
+            onStateChange({ state: "selection" });
           },
         },
         rightButton: {
           label: "Save",
           variant: "primary",
           onClick: () =>
-            skillSelection.handleSpaceSelectionSave(mode.capability),
+            skillSelection.handleSpaceSelectionSave(sheetState.capability),
         },
       };
 
-    case "tool_info": {
-      const mcpServerView =
-        toolSelection.allMcpServerViews.find(
-          (view) => view.sId === mode.capability.configuration.mcpServerViewId
-        ) ?? null;
-
-      return {
-        page: {
-          title: getInfoPageTitle(mcpServerView),
-          description: getInfoPageDescription(mcpServerView),
-          icon: getInfoPageIcon(mcpServerView),
-          id: mode.pageId,
-          content: mcpServerView ? (
-            <MCPServerInfoPage infoMCPServerView={mcpServerView} />
-          ) : (
-            <div className="p-4 text-muted-foreground">
-              Tool information not available.
-            </div>
-          ),
-        },
-        leftButton: mode.hasPreviousPage
-          ? {
-              label: "Back",
-              variant: "outline",
-              onClick: () => {
-                onModeChange({ pageId: "selection", open: true });
-              },
-            }
-          : {
-              label: "Close",
-              variant: "primary",
-              onClick: onClose,
-            },
-      };
-    }
-
-    case "tool_configuration":
-      return {
-        page: {
-          title: `Configure ${mode.mcpServerView.label}`,
-          icon: () => getAvatar(mode.mcpServerView.server),
-          id: mode.pageId,
-          content: (
-            <MCPServerConfigurationPage
-              form={form}
-              action={mode.capability}
-              mcpServerView={mode.mcpServerView}
-              getAgentInstructions={getAgentInstructions}
-            />
-          ),
-        },
-        leftButton: {
-          label: "Cancel",
-          variant: "outline",
-          onClick: () => {
-            onModeChange({ pageId: "selection", open: true });
+    case "configuration":
+      // index === null means new configuration, index !== null means edit
+      if (sheetState.index === null) {
+        return {
+          page: {
+            title: `Configure ${sheetState.mcpServerView.label}`,
+            icon: () => getAvatar(sheetState.mcpServerView.server),
+            id: sheetState.state,
+            content: (
+              <MCPServerConfigurationPage
+                form={form}
+                action={sheetState.capability}
+                mcpServerView={sheetState.mcpServerView}
+                getAgentInstructions={getAgentInstructions}
+              />
+            ),
           },
-        },
-        rightButton: {
-          label: "Save",
-          variant: "primary",
-          onClick: form.handleSubmit(
-            toolSelection.handleToolConfigurationSave(mode)
-          ),
-        },
-      };
-
-    case "tool_edit":
-      return {
-        page: {
-          title: `Edit ${mode.mcpServerView.label} Configuration`,
-          icon: () => getAvatar(mode.mcpServerView.server),
-          id: mode.pageId,
-          content: (
-            <MCPServerConfigurationPage
-              form={form}
-              action={mode.capability}
-              mcpServerView={mode.mcpServerView}
-              getAgentInstructions={getAgentInstructions}
-            />
-          ),
-        },
-        leftButton: {
-          label: "Close",
-          variant: "outline",
-          onClick: onClose,
-        },
-        rightButton: {
-          label: "Save",
-          variant: "primary",
-          onClick: form.handleSubmit(handleToolEditSave(mode)),
-        },
-      };
+          leftButton: {
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => {
+              onStateChange({ state: "selection" });
+            },
+          },
+          rightButton: {
+            label: "Save",
+            variant: "primary",
+            onClick: form.handleSubmit(
+              toolSelection.handleToolConfigurationSave(sheetState)
+            ),
+          },
+        };
+      } else {
+        // edit mode
+        return {
+          page: {
+            title: `Edit ${sheetState.mcpServerView.label} Configuration`,
+            icon: () => getAvatar(sheetState.mcpServerView.server),
+            id: sheetState.state,
+            content: (
+              <MCPServerConfigurationPage
+                form={form}
+                action={sheetState.capability}
+                mcpServerView={sheetState.mcpServerView}
+                getAgentInstructions={getAgentInstructions}
+              />
+            ),
+          },
+          leftButton: {
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          },
+          rightButton: {
+            label: "Save",
+            variant: "primary",
+            onClick: form.handleSubmit(handleToolEditSave(sheetState)),
+          },
+        };
+      }
 
     default:
-      assertNever(mode);
+      assertNever(sheetState);
   }
 }

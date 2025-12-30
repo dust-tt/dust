@@ -4,16 +4,16 @@ import type {
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type {
-  CapabilitiesSheetMode,
-  SelectedTool,
-  ToolConfigurationMode,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import {
   generateUniqueActionName,
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import type {
+  ConfigurationState,
+  SheetState,
+} from "@app/components/agent_builder/skills/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -31,14 +31,14 @@ function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
 }
 
 type UseSkillSelectionProps = {
-  onModeChange: (mode: CapabilitiesSheetMode) => void;
+  onStateChange: (state: SheetState) => void;
   alreadyAddedSkillIds: Set<string>;
   initialAdditionalSpaces: string[];
   searchQuery: string;
 };
 
 export const useSkillSelection = ({
-  onModeChange,
+  onStateChange,
   alreadyAddedSkillIds,
   initialAdditionalSpaces,
   searchQuery,
@@ -94,10 +94,9 @@ export const useSkillSelection = ({
       }
 
       if (isGlobalSkillWithSpaceSelection(skill)) {
-        onModeChange({
-          pageId: "skill_space_selection",
+        onStateChange({
+          state: "space-selection",
           capability: skill,
-          open: true,
         });
         return;
       }
@@ -112,7 +111,7 @@ export const useSkillSelection = ({
         },
       ]);
     },
-    [selectedSkillIds, onModeChange, setLocalSelectedSkills]
+    [selectedSkillIds, onStateChange, setLocalSelectedSkills]
   );
 
   const handleSpaceSelectionSave = useCallback(
@@ -129,10 +128,10 @@ export const useSkillSelection = ({
           icon: skill.icon,
         },
       ]);
-      onModeChange({ pageId: "selection", open: true });
+      onStateChange({ state: "selection" });
     },
     [
-      onModeChange,
+      onStateChange,
       setLocalSelectedSkills,
       setLocalAdditionalSpaces,
       draftSelectedSpaces,
@@ -155,11 +154,11 @@ export const useSkillSelection = ({
 
 export const useToolSelection = ({
   selectedActions,
-  onModeChange,
+  onStateChange,
   searchQuery,
 }: {
   selectedActions: BuilderAction[];
-  onModeChange: (mode: CapabilitiesSheetMode) => void;
+  onStateChange: (state: SheetState) => void;
   searchQuery: string;
 }) => {
   const { owner } = useBuilderContext();
@@ -252,11 +251,11 @@ export const useToolSelection = ({
       if (!requirements.noRequirement) {
         const action = getDefaultMCPAction(mcpServerView);
 
-        onModeChange({
-          pageId: "tool_configuration",
+        onStateChange({
+          state: "configuration",
           capability: action,
           mcpServerView,
-          open: true,
+          index: null,
         });
         return;
       }
@@ -276,24 +275,24 @@ export const useToolSelection = ({
         return [...prev, tool];
       });
     },
-    [featureFlags, onModeChange]
+    [featureFlags, onStateChange]
   );
 
   const handleToolInfoClick = useCallback(
     (mcpServerView: MCPServerViewType) => {
       const action = getDefaultMCPAction(mcpServerView);
-      onModeChange({
-        pageId: "tool_info",
+      onStateChange({
+        state: "info",
+        kind: "tool",
         capability: action,
         hasPreviousPage: true,
-        open: true,
       });
     },
-    [onModeChange]
+    [onStateChange]
   );
 
   const handleToolConfigurationSave = useCallback(
-    (mode: ToolConfigurationMode) => (formData: MCPFormData) => {
+    (configState: ConfigurationState) => (formData: MCPFormData) => {
       const newActionName = generateUniqueActionName({
         baseName: nameToStorageFormat(formData.name),
         existingActions: selectedActions,
@@ -301,14 +300,14 @@ export const useToolSelection = ({
       });
 
       const configuredAction: BuilderAction = {
-        ...mode.capability,
+        ...configState.capability,
         name: newActionName,
         description: formData.description,
         configuration: formData.configuration,
       };
 
       const updatedTool: SelectedTool = {
-        view: mode.mcpServerView,
+        view: configState.mcpServerView,
         configuredAction,
       };
 
@@ -326,9 +325,9 @@ export const useToolSelection = ({
         }
       });
 
-      onModeChange({ pageId: "selection", open: true });
+      onStateChange({ state: "selection" });
     },
-    [selectedActions, localSelectedTools, onModeChange]
+    [selectedActions, localSelectedTools, onStateChange]
   );
 
   return {
