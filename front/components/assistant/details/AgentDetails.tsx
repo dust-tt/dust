@@ -126,9 +126,7 @@ export function AgentDetails({
     !isGlobalAgent;
 
   const showInsightsTabs =
-    agentId != null &&
-    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
-    !isGlobalAgent;
+    agentId != null && (agentConfiguration?.canEdit ?? isAdmin(owner));
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
