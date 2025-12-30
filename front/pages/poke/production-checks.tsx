@@ -6,7 +6,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import type { ReactElement } from "react";
+import type { ComponentProps, ReactElement } from "react";
 import React, { useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -26,6 +26,34 @@ import type {
 import { conjugate, pluralize } from "@app/types";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_VISIBLE = 5;
+
+const STATUS_CHIP_CONFIG: Record<
+  CheckSummaryStatus,
+  { color: ComponentProps<typeof Chip>["color"]; label: string }
+> = {
+  ok: { color: "green", label: "OK" },
+  alert: { color: "rose", label: "Alert" },
+  "no-data": { color: "info", label: "No Data" },
+};
+
+const HISTORY_STATUS_CHIP_CONFIG: Record<
+  CheckHistoryRun["status"],
+  { color: ComponentProps<typeof Chip>["color"]; label: string }
+> = {
+  success: { color: "green", label: "Success" },
+  failure: { color: "rose", label: "Failed" },
+  skipped: { color: "info", label: "Skipped" },
+  running: { color: "warning", label: "Running" },
+};
+
+const STATUS_CARD_CLASSES: Record<CheckSummaryStatus, string> = {
+  alert:
+    "border-red-200 bg-red-50 dark:border-warning-500 dark:bg-warning-900/20",
+  ok: "border-green-200 bg-green-50 dark:border-success-500 dark:bg-success-900/20",
+  "no-data":
+    "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-muted-background-night",
+};
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -40,16 +68,11 @@ interface StatusChipProps {
 }
 
 function StatusChip({ status }: StatusChipProps) {
-  switch (status) {
-    case "ok":
-      return <Chip color="green" size="xs" label="OK" />;
-    case "alert":
-      return <Chip color="rose" size="xs" label="Alert" />;
-    case "no-data":
-      return <Chip color="info" size="xs" label="No Data" />;
-    default:
-      return <Chip color="info" size="xs" label="Unknown" />;
-  }
+  const config = STATUS_CHIP_CONFIG[status] ?? {
+    color: "info",
+    label: "Unknown",
+  };
+  return <Chip color={config.color} size="xs" label={config.label} />;
 }
 
 interface HistoryStatusChipProps {
@@ -57,18 +80,11 @@ interface HistoryStatusChipProps {
 }
 
 function HistoryStatusChip({ status }: HistoryStatusChipProps) {
-  switch (status) {
-    case "success":
-      return <Chip color="green" size="xs" label="Success" />;
-    case "failure":
-      return <Chip color="rose" size="xs" label="Failed" />;
-    case "skipped":
-      return <Chip color="info" size="xs" label="Skipped" />;
-    case "running":
-      return <Chip color="warning" size="xs" label="Running" />;
-    default:
-      return <Chip color="info" size="xs" label="Unknown" />;
-  }
+  const config = HISTORY_STATUS_CHIP_CONFIG[status] ?? {
+    color: "info",
+    label: "Unknown",
+  };
+  return <Chip color={config.color} size="xs" label={config.label} />;
 }
 
 interface ActionLinksListProps {
@@ -77,7 +93,6 @@ interface ActionLinksListProps {
 
 function ActionLinksList({ links }: ActionLinksListProps) {
   const [showAll, setShowAll] = useState(false);
-  const MAX_VISIBLE = 5;
 
   if (links.length === 0) {
     return null;
@@ -89,11 +104,9 @@ function ActionLinksList({ links }: ActionLinksListProps) {
   return (
     <div className="space-y-1">
       <div
-        className={
-          showAll && links.length > MAX_VISIBLE
-            ? "max-h-48 overflow-y-auto"
-            : ""
-        }
+        className={cn(
+          showAll && links.length > MAX_VISIBLE && "max-h-48 overflow-y-auto"
+        )}
       >
         {visibleLinks.map((link, idx) => (
           <div key={idx}>
@@ -115,27 +128,19 @@ function ActionLinksList({ links }: ActionLinksListProps) {
         ))}
       </div>
       {hiddenCount > 0 && (
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
+          label={showAll ? "Show less" : `Show ${hiddenCount} more...`}
           onClick={() => setShowAll(!showAll)}
-          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-        >
-          {showAll ? "Show less" : `Show ${hiddenCount} more...`}
-        </button>
+        />
       )}
     </div>
   );
 }
 
 function getStatusCardClasses(status: CheckSummaryStatus): string {
-  switch (status) {
-    case "alert":
-      return "border-red-200 bg-red-50 dark:border-warning-500 dark:bg-warning-900/20";
-    case "ok":
-      return "border-green-200 bg-green-50 dark:border-success-500 dark:bg-success-900/20";
-    case "no-data":
-    default:
-      return "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-muted-background-night";
-  }
+  return STATUS_CARD_CLASSES[status] ?? STATUS_CARD_CLASSES["no-data"];
 }
 
 function getDatadogLogsUrl(checkName: string): string {
@@ -284,14 +289,14 @@ function ProductionCheckCard({
     <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
       {check.status === "alert" && (
         <div className="flex items-center gap-2">
-          <a
+          <Link
             href={getDatadogLogsUrl(check.name)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-purple-600 hover:underline dark:text-purple-400"
           >
             View logs in Datadog →
-          </a>
+          </Link>
         </div>
       )}
 
