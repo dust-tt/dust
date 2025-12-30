@@ -1,8 +1,7 @@
 import {
   Button,
-  ChevronDownIcon,
-  ChevronRightIcon,
   Chip,
+  CollapsibleComponent,
   PlayIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -11,6 +10,7 @@ import type { ReactElement } from "react";
 import React, { useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -24,6 +24,10 @@ import type {
   CheckSummary,
   CheckSummaryStatus,
 } from "@app/types";
+import { conjugate, pluralize } from "@app/types";
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const REFETCH_DELAY_MS = 2000;
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -137,9 +141,9 @@ function getStatusCardClasses(status: CheckSummaryStatus): string {
 }
 
 function getDatadogLogsUrl(checkName: string): string {
-  const now = Date.now();
-  const from = now - 24 * 60 * 60 * 1000;
-  return `https://app.datadoghq.eu/logs?query=%40checkName%3A${encodeURIComponent(checkName)}&from_ts=${from}&to_ts=${now}&live=true`;
+  const nowMs = Date.now();
+  const fromMs = nowMs - ONE_DAY_MS;
+  return `https://app.datadoghq.eu/logs?query=%40checkName%3A${encodeURIComponent(checkName)}&from_ts=${fromMs}&to_ts=${nowMs}&live=true`;
 }
 
 interface HistoryRunRowProps {
@@ -147,59 +151,58 @@ interface HistoryRunRowProps {
 }
 
 function HistoryRunRow({ run }: HistoryRunRowProps) {
-  const [expanded, setExpanded] = useState(false);
   const links = run.actionLinks;
   const hasDetails =
     run.errorMessage !== null || links.length > 0 || run.payload !== null;
 
   const timestamp = new Date(run.timestamp);
 
-  return (
-    <div className="border-b border-gray-100 py-2 last:border-b-0 dark:border-gray-700">
-      <div
-        className={`flex items-center justify-between ${hasDetails ? "cursor-pointer" : ""}`}
-        onClick={() => hasDetails && setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-2">
-          {hasDetails && (
-            <span className="text-gray-400 dark:text-gray-500">
-              {expanded ? (
-                <ChevronDownIcon className="h-4 w-4" />
-              ) : (
-                <ChevronRightIcon className="h-4 w-4" />
-              )}
-            </span>
-          )}
-          <span className="text-sm text-gray-600 dark:text-muted-foreground-night">
-            {timestamp.toLocaleDateString()} {timestamp.toLocaleTimeString()}
-          </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            ({run.workflowType})
-          </span>
-        </div>
-        <HistoryStatusChip status={run.status} />
+  const rowContent = (
+    <>
+      <div className="flex flex-1 items-center gap-2">
+        <span className="text-sm font-medium text-gray-600 dark:text-muted-foreground-night">
+          {timestamp.toLocaleDateString()} {timestamp.toLocaleTimeString()}
+        </span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">
+          ({run.workflowType})
+        </span>
       </div>
-      {expanded && (
-        <div className="ml-6 mt-2 space-y-2">
-          {run.errorMessage && (
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {run.errorMessage}
-            </p>
-          )}
-          <ActionLinksList links={links} />
-          {run.payload !== null && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-sm text-gray-500 dark:text-muted-foreground-night">
-                Raw payload
-              </summary>
-              <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
-                {JSON.stringify(run.payload, null, 2)}
-              </pre>
-            </details>
-          )}
-        </div>
+      <HistoryStatusChip status={run.status} />
+    </>
+  );
+
+  const detailsContent = (
+    <div className="ml-6 mt-2 space-y-2">
+      {run.errorMessage && (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          {run.errorMessage}
+        </p>
+      )}
+      <ActionLinksList links={links} />
+      {run.payload !== null && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-sm text-gray-500 dark:text-muted-foreground-night">
+            Raw payload
+          </summary>
+          <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
+            {JSON.stringify(run.payload, null, 2)}
+          </pre>
+        </details>
       )}
     </div>
+  );
+
+  if (!hasDetails) {
+    return <div className="flex items-center gap-3">{rowContent}</div>;
+  }
+
+  return (
+    <CollapsibleComponent
+      rootProps={{ defaultOpen: false }}
+      triggerProps={{ className: "gap-3" }}
+      triggerChildren={rowContent}
+      contentChildren={detailsContent}
+    />
   );
 }
 
@@ -227,7 +230,7 @@ function PastRunsSection({ checkName }: PastRunsSectionProps) {
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-3">
       {runs.map((run) => (
         <HistoryRunRow key={`${run.workflowId}-${run.runId}`} run={run} />
       ))}
@@ -246,106 +249,105 @@ function ProductionCheckCard({
   onRun,
   isRunning,
 }: ProductionCheckCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const links = check.lastRun?.actionLinks ?? [];
 
   const lastRunDate = check.lastRun ? new Date(check.lastRun.timestamp) : null;
 
-  return (
-    <div
-      className={`rounded-lg border p-4 ${getStatusCardClasses(check.status)}`}
-    >
-      <div
-        className="flex cursor-pointer items-center justify-between gap-4"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-gray-400 dark:text-gray-500">
-            {expanded ? (
-              <ChevronDownIcon className="h-5 w-5" />
-            ) : (
-              <ChevronRightIcon className="h-5 w-5" />
-            )}
-          </span>
-          <StatusChip status={check.status} />
-          <div>
-            <div className="break-all font-mono text-sm font-medium">
-              {check.name}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-muted-foreground-night">
-              {lastRunDate
-                ? `Last run: ${lastRunDate.toLocaleDateString()} ${lastRunDate.toLocaleTimeString()}`
-                : "Never run"}
-              {" • "}
-              Every {check.everyHour} hour{check.everyHour > 1 ? "s" : ""}
-            </div>
-          </div>
+  const triggerContent = (
+    <>
+      <StatusChip status={check.status} />
+      <div className="min-w-0 flex-1 text-left">
+        <div className="break-all font-mono text-sm font-medium">
+          {check.name}
         </div>
-        <Button
-          variant="outline"
-          size="xs"
-          icon={isRunning ? Spinner : PlayIcon}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            onRun();
-          }}
-          disabled={isRunning}
-          label={isRunning ? "Running..." : "Run"}
-        />
+        <div className="text-xs text-gray-500 dark:text-muted-foreground-night">
+          {lastRunDate
+            ? `Last run: ${lastRunDate.toLocaleDateString()} ${lastRunDate.toLocaleTimeString()}`
+            : "Never run"}
+          {" • "}
+          Every {check.everyHour} hour{pluralize(check.everyHour)}
+        </div>
       </div>
+      <Button
+        variant="outline"
+        size="xs"
+        icon={isRunning ? Spinner : PlayIcon}
+        onClick={(e: React.MouseEvent) => {
+          e.stopPropagation();
+          onRun();
+        }}
+        disabled={isRunning}
+        label={isRunning ? "Running..." : "Run"}
+      />
+    </>
+  );
 
-      {expanded && (
-        <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-          {check.status === "alert" && (
-            <div className="flex items-center gap-2">
-              <a
-                href={getDatadogLogsUrl(check.name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-purple-600 hover:underline dark:text-purple-400"
-              >
-                View logs in Datadog →
-              </a>
-            </div>
-          )}
-
-          {check.status === "alert" && links.length > 0 && (
-            <div className="rounded-md bg-white p-3 dark:bg-background-night">
-              <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
-                Action Items
-              </h4>
-              <ActionLinksList links={links} />
-              {check.lastRun?.errorMessage && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                  {check.lastRun.errorMessage}
-                </p>
-              )}
-            </div>
-          )}
-
-          {check.status === "alert" &&
-            check.lastRun?.errorMessage &&
-            links.length === 0 && (
-              <div className="rounded-md bg-white p-3 dark:bg-background-night">
-                <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
-                  Error
-                </h4>
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {check.lastRun.errorMessage}
-                </p>
-              </div>
-            )}
-
-          <div>
-            <h4 className="mb-2 text-sm font-medium text-gray-700 dark:text-muted-foreground-night">
-              Past Runs
-            </h4>
-            <div className="rounded-md bg-white p-3 dark:bg-background-night">
-              <PastRunsSection checkName={check.name} />
-            </div>
-          </div>
+  const detailsContent = (
+    <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+      {check.status === "alert" && (
+        <div className="flex items-center gap-2">
+          <a
+            href={getDatadogLogsUrl(check.name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-purple-600 hover:underline dark:text-purple-400"
+          >
+            View logs in Datadog →
+          </a>
         </div>
       )}
+
+      {check.status === "alert" && links.length > 0 && (
+        <div className="rounded-md bg-white p-3 dark:bg-background-night">
+          <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
+            Action Items
+          </h4>
+          <ActionLinksList links={links} />
+          {check.lastRun?.errorMessage && (
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+              {check.lastRun.errorMessage}
+            </p>
+          )}
+        </div>
+      )}
+
+      {check.status === "alert" &&
+        check.lastRun?.errorMessage &&
+        links.length === 0 && (
+          <div className="rounded-md bg-white p-3 dark:bg-background-night">
+            <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
+              Error
+            </h4>
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {check.lastRun.errorMessage}
+            </p>
+          </div>
+        )}
+
+      <div>
+        <h4 className="mb-2 text-sm font-medium text-gray-700 dark:text-muted-foreground-night">
+          Past Runs
+        </h4>
+        <div className="rounded-md bg-white p-3 dark:bg-background-night">
+          <PastRunsSection checkName={check.name} />
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-4",
+        getStatusCardClasses(check.status)
+      )}
+    >
+      <CollapsibleComponent
+        rootProps={{ defaultOpen: false }}
+        triggerProps={{ className: "gap-3" }}
+        triggerChildren={triggerContent}
+        contentChildren={detailsContent}
+      />
     </div>
   );
 }
@@ -374,7 +376,7 @@ const ProductionChecksPage = () => {
         });
         setTimeout(() => {
           void mutateProductionChecks();
-        }, 2000);
+        }, REFETCH_DELAY_MS);
       } else {
         const errorData = await res.json();
         sendNotification({
@@ -383,7 +385,8 @@ const ProductionChecksPage = () => {
           type: "error",
         });
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       sendNotification({
         title: "Failed to start check",
         description: "Network error",
@@ -410,7 +413,7 @@ const ProductionChecksPage = () => {
             </h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
               {alertCount > 0
-                ? `${alertCount} check${alertCount > 1 ? "s" : ""} need${alertCount === 1 ? "s" : ""} attention`
+                ? `${alertCount} check${pluralize(alertCount)} need${conjugate(alertCount)} attention`
                 : "All checks passing"}
             </p>
           </div>

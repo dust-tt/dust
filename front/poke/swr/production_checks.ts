@@ -5,6 +5,8 @@ import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { GetProductionChecksResponseBody } from "@app/pages/api/poke/production-checks";
 import type { GetCheckHistoryResponseBody } from "@app/pages/api/poke/production-checks/[checkName]/history";
 
+const REFRESH_INTERVAL_MS = 30000;
+
 export function usePokeProductionChecks() {
   const productionChecksFetcher: Fetcher<GetProductionChecksResponseBody> =
     fetcher;
@@ -12,7 +14,7 @@ export function usePokeProductionChecks() {
   const { data, error, mutate } = useSWR(
     "/api/poke/production-checks",
     productionChecksFetcher,
-    { refreshInterval: 30000 }
+    { refreshInterval: REFRESH_INTERVAL_MS }
   );
 
   return {
