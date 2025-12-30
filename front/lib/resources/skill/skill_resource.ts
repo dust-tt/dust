@@ -215,6 +215,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  private static fetchBySkillReferences(
+    auth: Authenticator,
+    refs: {
+      customSkillId: ModelId | null;
+      globalSkillId: string | null;
+    }[],
+    context: { agentConfiguration?: LightAgentConfigurationType } = {}
+  ): Promise<SkillResource[]> {
+    const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
+    const globalSkillIds = removeNulls(refs.map((r) => r.globalSkillId));
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: customSkillModelIds,
+          sId: globalSkillIds,
+        },
+      },
+      context
+    );
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options: SkillConfigurationFindOptions = {},
@@ -443,19 +466,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    const customSkillModelIds = removeNulls(
-      agentSkills.map((as) => as.customSkillId)
-    );
-    const globalSkillIds = removeNulls(
-      agentSkills.map((as) => as.globalSkillId)
-    );
-
-    return this.baseFetch(auth, {
-      where: {
-        id: customSkillModelIds,
-        sId: globalSkillIds,
-      },
-    });
+    return this.fetchBySkillReferences(auth, agentSkills);
   }
 
   static modelIdToSId({
@@ -526,23 +537,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    const customSkillModelIds = removeNulls(
-      conversationSkills.map((cs) => cs.customSkillId)
-    );
-    const globalSkillIds = removeNulls(
-      conversationSkills.map((cs) => cs.globalSkillId)
-    );
-
-    return this.baseFetch(
-      auth,
-      {
-        where: {
-          id: customSkillModelIds,
-          sId: globalSkillIds,
-        },
-      },
-      { agentConfiguration }
-    );
+    return this.fetchBySkillReferences(auth, conversationSkills, {
+      agentConfiguration,
+    });
   }
 
   /**
@@ -604,10 +601,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const extendedSkillIds = removeNulls(
       uniq(skills.map((skill) => skill.extendedSkillId))
     );
-    const extendedSkills = await this.fetchByIds(
-      auth,
-      extendedSkillIds
-    );
+    const extendedSkills = await this.fetchByIds(auth, extendedSkillIds);
 
     // Create a map for quick lookup of extended skills.
     const extendedSkillsMap = new Map(
@@ -634,19 +628,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    const customSkillModelIds = removeNulls(
-      conversationSkills.map((cs) => cs.customSkillId)
-    );
-    const globalSkillIds = removeNulls(
-      conversationSkills.map((cs) => cs.globalSkillId)
-    );
-
-    return this.baseFetch(auth, {
-      where: {
-        id: customSkillModelIds,
-        sId: globalSkillIds,
-      },
-    });
+    return this.fetchBySkillReferences(auth, conversationSkills);
   }
 
   async upsertToConversation(
@@ -1200,19 +1182,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
     });
 
-    const customSkillModelIds = removeNulls(
-      agentMessageSkills.map((ams) => ams.customSkillId)
-    );
-    const globalSkillIds = removeNulls(
-      agentMessageSkills.map((ams) => ams.globalSkillId)
-    );
-
-    return this.baseFetch(auth, {
-      where: {
-        id: customSkillModelIds,
-        sId: globalSkillIds,
-      },
-    });
+    return this.fetchBySkillReferences(auth, agentMessageSkills);
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
