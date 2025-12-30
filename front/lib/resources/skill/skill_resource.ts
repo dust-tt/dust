@@ -604,7 +604,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const extendedSkillIds = removeNulls(
       uniq(skills.map((skill) => skill.extendedSkillId))
     );
-    const extendedSkills = await SkillResource.fetchByIds(
+    const extendedSkills = await this.fetchByIds(
       auth,
       extendedSkillIds
     );
