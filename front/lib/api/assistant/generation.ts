@@ -180,7 +180,6 @@ function getEnabledSkillInstructions(
   ].join("\n");
 }
 
-// TODO(skills): add detailed tools per skill
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,

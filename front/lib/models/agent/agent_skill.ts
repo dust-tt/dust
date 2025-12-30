@@ -1,9 +1,11 @@
-import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  eitherGlobalOrCustomSkillValidation,
+  SkillConfigurationModel,
+} from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
@@ -47,18 +49,7 @@ AgentSkillModel.init(
     sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
     validate: {
-      // A skill link must reference either a custom skill (workspace-specific, stored in DB)
-      // or a global skill (code-defined, referenced by string ID), but never both or neither.
-      eitherGlobalOrCustomSkill() {
-        const hasCustomSkill = !isNil(this.customSkillId);
-        const hasGlobalSkill = !isNil(this.globalSkillId);
-        const hasExactlyOne = hasCustomSkill !== hasGlobalSkill;
-        if (!hasExactlyOne) {
-          throw new Error(
-            "Exactly one of customSkillId or globalSkillId must be set"
-          );
-        }
-      },
+      eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
     },
   }
 );

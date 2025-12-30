@@ -5,7 +5,10 @@ import {
   AgentMessageModel,
   ConversationModel,
 } from "@app/lib/models/agent/conversation";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  eitherGlobalOrCustomSkillValidation,
+  SkillConfigurationModel,
+} from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -59,23 +62,6 @@ const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
     },
   },
 } as const satisfies ModelAttributes;
-
-/**
- * Shared validation for skill in conversation models.
- * Ensures exactly one of customSkillId or globalSkillId is set.
- */
-function eitherGlobalOrCustomSkillValidation(this: {
-  customSkillId: unknown;
-  globalSkillId: unknown;
-}) {
-  const hasCustomSkill = this.customSkillId !== null;
-  const hasGlobalSkill = this.globalSkillId !== null;
-  if (hasCustomSkill === hasGlobalSkill) {
-    throw new Error(
-      "Exactly one of customSkillId or globalSkillId must be set"
-    );
-  }
-}
 
 export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkillModel> {
   declare createdAt: CreationOptional<Date>;

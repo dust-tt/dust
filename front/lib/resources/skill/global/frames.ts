@@ -6,8 +6,8 @@ export const framesSkill = {
   name: "Frames",
   userFacingDescription:
     "Create dashboards, presentations, or any interactive content.",
-  // TODO(skills 2025-12-12): add an appropriate description.
-  agentFacingDescription: "",
+  agentFacingDescription:
+    "Create interactive visualizations, charts, dashboards, and presentations as executable React components.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
   internalMCPServerNames: ["interactive_content"],
   version: 1,
