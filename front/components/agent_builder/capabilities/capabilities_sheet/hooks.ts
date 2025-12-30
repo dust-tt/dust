@@ -52,8 +52,14 @@ export const useSkillSelection = ({
 
   // Draft state for space selection (only committed on save)
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>(
-    localAdditionalSpaces
+    initialAdditionalSpaces
   );
+
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedSkills([]);
+    setLocalAdditionalSpaces(initialAdditionalSpaces);
+    setDraftSelectedSpaces(initialAdditionalSpaces);
+  }, [initialAdditionalSpaces]);
 
   const { skills, isSkillsLoading } = useSkillsContext();
 
@@ -149,6 +155,7 @@ export const useSkillSelection = ({
     handleSpaceSelectionSave,
     draftSelectedSpaces,
     setDraftSelectedSpaces,
+    resetLocalState,
   };
 };
 
@@ -167,6 +174,10 @@ export const useToolSelection = ({
   const [localSelectedTools, setLocalSelectedTools] = useState<SelectedTool[]>(
     []
   );
+
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedTools([]);
+  }, []);
 
   const selectedMCPServerViewIds = useMemo(() => {
     return new Set(localSelectedTools.map((t) => t.view.sId));
@@ -340,5 +351,6 @@ export const useToolSelection = ({
     selectedMCPServerViewIds,
     allMcpServerViews,
     handleToolConfigurationSave,
+    resetLocalState,
   };
 };
