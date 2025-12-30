@@ -387,7 +387,9 @@ export function AgentBuilderSkillsBlock() {
         onSave={handleToolEditSave}
         action={sheetState.state === "knowledge" ? sheetState.action : null}
         actions={actionFields}
-        isEditing={sheetState.state === "knowledge" && sheetState.index !== null}
+        isEditing={
+          sheetState.state === "knowledge" && sheetState.index !== null
+        }
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={() => getValues("instructions")}
         presetActionData={

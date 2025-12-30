@@ -3,7 +3,6 @@ import React from "react";
 
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { useCapabilitiesPageAndFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/utils";
-import { getCapabilitiesPageId } from "@app/components/agent_builder/skills/types";
 
 export function CapabilitiesSheet(props: CapabilitiesSheetContentProps) {
   const { isOpen, onClose } = props;
@@ -21,7 +20,7 @@ function CapabilitiesSheetContent(props: CapabilitiesSheetContentProps) {
   return (
     <MultiPageSheetContent
       pages={[page]}
-      currentPageId={getCapabilitiesPageId(props.sheetState)}
+      currentPageId={props.sheetState.state}
       onPageChange={() => {}}
       size="xl"
       addFooterSeparator

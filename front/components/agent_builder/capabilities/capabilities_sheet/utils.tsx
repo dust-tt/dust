@@ -14,10 +14,7 @@ import {
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
-import {
-  getCapabilitiesPageId,
-  isConfigurationState,
-} from "@app/components/agent_builder/skills/types";
+import { isConfigurationState } from "@app/components/agent_builder/skills/types";
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import {
@@ -146,14 +143,12 @@ export function useCapabilitiesPageAndFooter({
     resetFormValues(form);
   }, [resetFormValues, form]);
 
-  const pageId = getCapabilitiesPageId(sheetState);
-
   switch (sheetState.state) {
     case "selection":
       return {
         page: {
           title: "Add capabilities",
-          id: pageId,
+          id: sheetState.state,
           content: (
             <CapabilitiesSelectionPageContent
               isCapabilitiesLoading={
@@ -194,7 +189,7 @@ export function useCapabilitiesPageAndFooter({
           page: {
             title,
             description: sheetState.capability.userFacingDescription,
-            id: pageId,
+            id: sheetState.state,
             icon: getSkillIcon(sheetState.capability.icon),
             content: (
               <SkillDetailsSheetContent
@@ -231,7 +226,7 @@ export function useCapabilitiesPageAndFooter({
             title: getInfoPageTitle(mcpServerView),
             description: getInfoPageDescription(mcpServerView),
             icon: getInfoPageIcon(mcpServerView),
-            id: pageId,
+            id: sheetState.state,
             content: mcpServerView ? (
               <MCPServerInfoPage infoMCPServerView={mcpServerView} />
             ) : (
@@ -262,7 +257,7 @@ export function useCapabilitiesPageAndFooter({
           title: `Select spaces`,
           description:
             "Automatically grant access to all knowledge sources discovery from your selected spaces",
-          id: pageId,
+          id: sheetState.state,
           content: (
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
@@ -296,7 +291,7 @@ export function useCapabilitiesPageAndFooter({
           page: {
             title: `Configure ${sheetState.mcpServerView.label}`,
             icon: () => getAvatar(sheetState.mcpServerView.server),
-            id: pageId,
+            id: sheetState.state,
             content: (
               <MCPServerConfigurationPage
                 form={form}
@@ -327,7 +322,7 @@ export function useCapabilitiesPageAndFooter({
           page: {
             title: `Edit ${sheetState.mcpServerView.label} Configuration`,
             icon: () => getAvatar(sheetState.mcpServerView.server),
-            id: pageId,
+            id: sheetState.state,
             content: (
               <MCPServerConfigurationPage
                 form={form}

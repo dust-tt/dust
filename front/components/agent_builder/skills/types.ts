@@ -93,20 +93,3 @@ export function isConfigurationState(
 ): state is ConfigurationState {
   return state.state === "configuration";
 }
-
-/**
- * Get a page identifier for MultiPageSheetContent.
- * Maps the flat SheetState to page IDs expected by the sheet component.
- */
-export function getCapabilitiesPageId(state: CapabilitiesSheetState): string {
-  switch (state.state) {
-    case "selection":
-      return "selection";
-    case "info":
-      return state.kind === "skill" ? "skill_info" : "tool_info";
-    case "space-selection":
-      return "skill_space_selection";
-    case "configuration":
-      return state.index === null ? "tool_configuration" : "tool_edit";
-  }
-}
