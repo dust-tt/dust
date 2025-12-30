@@ -90,6 +90,7 @@ interface LLMTraceMetadata {
   endTimestamp?: string;
   modelId: ModelIdType;
   startTimestamp: string;
+  timeToFirstEventMs?: number;
   /** Reason for truncation if applicable */
   truncationReason?: string;
 }
