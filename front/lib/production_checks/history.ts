@@ -89,6 +89,20 @@ async function getProductionCheckWorkflowResults(
   }
 }
 
+async function processBatch(
+  client: Client,
+  batch: WorkflowExecutionInfo[]
+): Promise<
+  { workflow: WorkflowExecutionInfo; checks: CheckActivityResult[] }[]
+> {
+  const results = await concurrentExecutor(
+    batch,
+    (wf) => getProductionCheckWorkflowResults(client, wf),
+    { concurrency: 8 }
+  );
+  return batch.map((workflow, i) => ({ workflow, checks: results[i] }));
+}
+
 async function* fetchWorkflowResultsBatched(client: Client): AsyncGenerator<{
   workflow: WorkflowExecutionInfo;
   checks: CheckActivityResult[];
@@ -104,28 +118,16 @@ async function* fetchWorkflowResultsBatched(client: Client): AsyncGenerator<{
     batch.push(workflowInfo);
 
     if (batch.length >= WORKFLOW_LIST_BATCH_SIZE) {
-      const results = await concurrentExecutor(
-        batch,
-        (wf) => getProductionCheckWorkflowResults(client, wf),
-        { concurrency: 8 }
-      );
-
-      for (let i = 0; i < batch.length; i++) {
-        yield { workflow: batch[i], checks: results[i] };
+      for (const item of await processBatch(client, batch)) {
+        yield item;
       }
       batch = [];
     }
   }
 
   if (batch.length > 0) {
-    const results = await concurrentExecutor(
-      batch,
-      (wf) => getProductionCheckWorkflowResults(client, wf),
-      { concurrency: 8 }
-    );
-
-    for (let i = 0; i < batch.length; i++) {
-      yield { workflow: batch[i], checks: results[i] };
+    for (const item of await processBatch(client, batch)) {
+      yield item;
     }
   }
 }
