@@ -73,14 +73,10 @@ export function useCapabilitiesPageAndFooter({
       additionalSpaces: skillSelection.localAdditionalSpaces,
       tools: toolSelection.localSelectedTools,
     });
+    skillSelection.resetLocalState();
+    toolSelection.resetLocalState();
     onClose();
-  }, [
-    skillSelection.localSelectedSkills,
-    skillSelection.localAdditionalSpaces,
-    toolSelection.localSelectedTools,
-    onCapabilitiesSave,
-    onClose,
-  ]);
+  }, [skillSelection, toolSelection, onCapabilitiesSave, onClose]);
 
   const handleToolEditSave = useCallback(
     (mode: ToolEditMode) => (formData: MCPFormData) => {
