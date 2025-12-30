@@ -105,10 +105,6 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const handleTypeBlur = () => {
-    handleTypeSubmit();
-  };
-
   const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
 
   const handleBlockClick = (e: React.MouseEvent) => {
@@ -147,7 +143,6 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               ref={editableRef}
               contentEditable
               suppressContentEditableWarning
-              onMouseDown={(e) => e.stopPropagation()}
               onKeyDown={(e) => {
                 e.stopPropagation();
                 if (e.key === "Enter") {
@@ -162,7 +157,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
                   setIsEditingType(false);
                 }
               }}
-              onBlur={handleTypeBlur}
+              onBlur={handleTypeSubmit}
               className="outline-none"
             >
               {(node.attrs.type ?? "instructions").toUpperCase()}
