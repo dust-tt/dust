@@ -30,8 +30,9 @@ async function* withPeriodicHeartbeat<T>(
       ),
     ]);
 
+    heartbeat();
+
     if (result === LLM_HEARTBEAT) {
-      heartbeat();
       continue;
     }
 
@@ -93,12 +94,7 @@ export async function getOutputFromLLMStream(
       });
     }
 
-    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
-    // agent" request. Upon experimentation, both are needed to ensure the
-    // activity receives the cancellation signal. The delay until which is the
-    // signal is received is governed by heartbeat
-    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
-    heartbeat();
+    // Sleep allows the activity to be cancelled, e.g. on a "Stop agent" request.
     try {
       await sleep(1);
     } catch (err) {
