@@ -198,3 +198,145 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
     getMCPServerRequirements(view).noRequirement
   );
 }
+
+// Converts a JSON object to Markdown format with bullet points.
+// Recursively handles nested objects and arrays with proper indentation.
+// Includes protections against circular references and excessive depth.
+export function jsonToMarkdown<T = unknown>(
+  data: T,
+  primaryKey: string,
+  primaryKeyPrefix: string = "",
+  indent: number = 0,
+  visited: WeakSet<object> = new WeakSet(),
+  maxDepth: number = 15
+): string {
+  const indentStr = "  ".repeat(indent);
+
+  // Max depth protection
+  if (indent >= maxDepth) {
+    return `${indentStr}- [Max depth reached]`;
+  }
+
+  // Helper to format primitive values
+  const formatValue = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "(empty)";
+    }
+    if (typeof value === "string") {
+      return (
+        value
+          // Remove newlines
+          .replace(/[\r\n]+/g, " ")
+          // Remove Markdown bold/italic patterns
+          .replace(/\*\*\*/g, "") // Bold+italic (***text***)
+          .replace(/\*\*/g, "") // Bold (**text**)
+          .replace(/___/g, "") // Bold+italic (___text___)
+          .replace(/__/g, "") // Bold (__text__)
+          // Remove backticks for code
+          .replace(/```/g, "") // Code blocks (```code```)
+          .replace(/`/g, "") // Inline code (`code`)
+          .trim()
+      );
+    }
+    // Numbers and booleans
+    return String(value);
+  };
+
+  // Handle primitives and special types
+  if (typeof data !== "object" || data === null) {
+    return `${indentStr}- ${formatValue(data)}`;
+  }
+
+  // Handle arrays
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return `${indentStr}- []`;
+    }
+    if (visited.has(data)) {
+      return `${indentStr}- [Circular Reference]`;
+    }
+
+    visited.add(data);
+    const result = data
+      .map((item) =>
+        jsonToMarkdown(
+          item,
+          primaryKey,
+          primaryKeyPrefix,
+          indent,
+          visited,
+          maxDepth
+        )
+      )
+      .join("\n");
+    visited.delete(data);
+    return result;
+  }
+
+  // Handle objects
+  const entries = Object.entries(data);
+  if (entries.length === 0) {
+    return `${indentStr}- {}`;
+  }
+  if (visited.has(data)) {
+    return `${indentStr}- [Circular Reference]`;
+  }
+
+  visited.add(data);
+
+  // Check if this object has the primaryKey
+  const dataAsRecord = data as Record<string, unknown>;
+  const hasPrimaryKey = dataAsRecord[primaryKey] !== undefined;
+  let entriesToProcess = entries;
+  let headerLine = "";
+
+  if (hasPrimaryKey) {
+    // Create title from primaryKey
+    const primaryValue = formatValue(dataAsRecord[primaryKey]);
+    const title = primaryKeyPrefix
+      ? `${primaryKeyPrefix} ${primaryValue}`
+      : primaryValue;
+    headerLine = `${indentStr}- **${title}:**\n`;
+
+    // Remove primaryKey from entries to avoid duplication
+    entriesToProcess = entries.filter(([key]) => key !== primaryKey);
+
+    // If only primaryKey existed, return just the title
+    if (entriesToProcess.length === 0) {
+      visited.delete(data);
+      return `${indentStr}- **${title}:**`;
+    }
+  }
+
+  // Process all remaining entries
+  const childIndent = hasPrimaryKey ? indentStr + "  " : indentStr;
+  const nextIndent = hasPrimaryKey ? indent + 2 : indent + 1;
+
+  const result = entriesToProcess
+    .map(([key, value]) => {
+      // Handle nested objects and arrays
+      if (value !== null && typeof value === "object") {
+        if (Array.isArray(value) && value.length === 0) {
+          return `${childIndent}- **${key}:** []`;
+        }
+        if (!Array.isArray(value) && Object.entries(value).length === 0) {
+          return `${childIndent}- **${key}:** {}`;
+        }
+        return `${childIndent}- **${key}:**\n${jsonToMarkdown(
+          value,
+          primaryKey,
+          primaryKeyPrefix,
+          nextIndent,
+          visited,
+          maxDepth
+        )}`;
+      }
+
+      // Handle primitives
+      return `${childIndent}- **${key}:** ${formatValue(value)}`;
+    })
+    .join("\n");
+
+  visited.delete(data);
+  return hasPrimaryKey ? headerLine + result : result;
+}
