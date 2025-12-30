@@ -1,10 +1,13 @@
 import {
   ParentClosePolicy,
+  patched,
   proxyActivities,
   setHandler,
   sleep,
   startChild,
 } from "@temporalio/workflow";
+
+import { WORKSPACE_DEFAULT_RETENTION_DAYS } from "@app/lib/data_retention";
 
 import type * as activities from "./activities";
 import { LAST_EMAIL_BEFORE_SCRUB_IN_DAYS } from "./config";
@@ -43,9 +46,13 @@ export async function scheduleWorkspaceScrubWorkflowV2({
     return false;
   }
 
-  const workspaceRetentionDays = await getWorkspaceRetentionDays({
-    workspaceId,
-  });
+  // Patch lifecycle for dynamic retention days:
+  // 1. Now: patched() allows old workflows to use WORKSPACE_DEFAULT_RETENTION_DAYS, new ones call getWorkspaceRetentionDays.
+  // 2. ~5 weeks (~Feb 5th 2026): Replace patched() with deprecatePatch(), remove conditional.
+  // 3. ~10 weeks (~Mar 12th 2026): Remove deprecatePatch() entirely.
+  const workspaceRetentionDays = patched("dynamic-retention-days")
+    ? await getWorkspaceRetentionDays({ workspaceId })
+    : WORKSPACE_DEFAULT_RETENTION_DAYS;
 
   await pauseAllConnectors({ workspaceId });
   await pauseAllTriggers({ workspaceId });

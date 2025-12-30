@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
-const WORKSPACE_DEFAULT_RETENTION_DAYS = 30;
+export const WORKSPACE_DEFAULT_RETENTION_DAYS = 30;
 
 export type DataRetentionConfig = {
   workspace: number;
