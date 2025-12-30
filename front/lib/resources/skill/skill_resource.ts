@@ -215,29 +215,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static fetchBySkillReferences(
-    auth: Authenticator,
-    refs: {
-      customSkillId: ModelId | null;
-      globalSkillId: string | null;
-    }[],
-    context: { agentConfiguration?: LightAgentConfigurationType } = {}
-  ): Promise<SkillResource[]> {
-    const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
-    const globalSkillIds = removeNulls(refs.map((r) => r.globalSkillId));
-
-    return this.baseFetch(
-      auth,
-      {
-        where: {
-          id: customSkillModelIds,
-          sId: globalSkillIds,
-        },
-      },
-      context
-    );
-  }
-
   private static async baseFetch(
     auth: Authenticator,
     options: SkillConfigurationFindOptions = {},
@@ -451,6 +428,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return resources[0];
+  }
+
+  private static fetchBySkillReferences(
+    auth: Authenticator,
+    refs: {
+      customSkillId: ModelId | null;
+      globalSkillId: string | null;
+    }[],
+    context: { agentConfiguration?: LightAgentConfigurationType } = {}
+  ): Promise<SkillResource[]> {
+    const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
+    const globalSkillIds = removeNulls(refs.map((r) => r.globalSkillId));
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: customSkillModelIds,
+          sId: globalSkillIds,
+        },
+      },
+      context
+    );
   }
 
   static async listByAgentConfiguration(
