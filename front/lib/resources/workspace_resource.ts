@@ -177,7 +177,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateMetadata(
     id: ModelId,
-    metadata: Record<string, string | number | boolean | object>
+    metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
   }
