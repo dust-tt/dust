@@ -40,7 +40,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAdmin, isBuilder } from "@app/types";
 
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
@@ -126,7 +126,7 @@ export function AgentDetails({
     !isGlobalAgent;
 
   const showInsightsTabs =
-    agentId != null && (agentConfiguration?.canEdit ?? isAdmin(owner));
+    agentId != null && (isBuilder(owner) ?? agentConfiguration?.canEdit);
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
