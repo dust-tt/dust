@@ -169,11 +169,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  // TODO(SKILLS 2025-12-11): Remove and hide behind canWrite.
-  get isGlobal(): boolean {
-    return this.globalSId !== null;
-  }
-
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
@@ -694,8 +689,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: workspace.id,
         conversationId,
         agentConfigurationId: null,
-        ...(this.isGlobal
-          ? { globalSkillId: this.sId }
+        ...(this.globalSId
+          ? { globalSkillId: this.globalSId }
           : { customSkillId: this.id }),
       },
     });
@@ -710,8 +705,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversationId,
         workspaceId: workspace.id,
         agentConfigurationId: null,
-        customSkillId: this.globalSId ? null : this.id,
-        globalSkillId: this.globalSId ?? null,
+        ...(this.globalSId
+          ? { globalSkillId: this.globalSId }
+          : { customSkillId: this.id }),
         source: "conversation",
         addedByUserId: user.id,
       } satisfies ConversationSkillCreationAttributes);
@@ -809,7 +805,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   isExtendable(): boolean {
-    return this.isGlobal;
+    return this.globalSId !== null;
   }
 
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
@@ -1120,8 +1116,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await AgentSkillModel.create({
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.id,
-      customSkillId: this.globalSId ? null : this.id,
-      globalSkillId: this.globalSId,
+      ...(this.globalSId
+        ? { globalSkillId: this.globalSId }
+        : { customSkillId: this.id }),
     });
   }
 
@@ -1157,8 +1154,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
       workspaceId: workspace.id,
-      customSkillId: this.isGlobal ? null : this.id,
-      globalSkillId: this.isGlobal ? this.globalSId : null,
+      ...(this.globalSId
+        ? { globalSkillId: this.globalSId }
+        : { customSkillId: this.id }),
       conversationId: conversation.id,
       addedByUserId: null,
       source: "agent_enabled",

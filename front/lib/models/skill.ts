@@ -1,3 +1,4 @@
+import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -51,6 +52,24 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: true,
   },
 } as const satisfies ModelAttributes;
+
+/**
+ * Shared validation for skill in conversation models.
+ * Ensures exactly one of customSkillId or globalSkillId is set.
+ */
+export function eitherGlobalOrCustomSkillValidation(this: {
+  customSkillId: unknown;
+  globalSkillId: unknown;
+}): void {
+  const hasCustomSkill = !isNil(this.customSkillId);
+  const hasGlobalSkill = !isNil(this.globalSkillId);
+  const hasExactlyOne = hasCustomSkill !== hasGlobalSkill;
+  if (!hasExactlyOne) {
+    throw new Error(
+      "Exactly one of customSkillId or globalSkillId must be set"
+    );
+  }
+}
 
 export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
