@@ -430,6 +430,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  /**
+   * Fetches skills from rows that reference them via customSkillId or globalSkillId.
+   */
   private static fetchBySkillReferences(
     auth: Authenticator,
     refs: {
@@ -453,6 +456,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  /**
+   * Returns the fields to identify this skill in related tables (e.g., AgentSkillModel).
+   */
   private get skillReference():
     | { globalSkillId: string }
     | { customSkillId: ModelId } {
