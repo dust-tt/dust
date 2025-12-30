@@ -155,18 +155,18 @@ function buildOnboardingPrompt(options: {
   );
 
   // Build the tool setup directives for the first message (max 2, on same line).
-  const initialTools = tools.slice(0, 2);
+  const topTools = tools.slice(0, 2);
 
   // Check if any of the initial tools are already configured
-  const alreadyConfiguredTool = initialTools.find((tool) =>
+  const alreadyConfiguredTopTool = topTools.find((tool) =>
     options.configuredTools.includes(tool)
   );
 
-  const toolSetupDirectives = initialTools
+  const topToolSetupDirectives = topTools
     .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
 
-  const toolsWithDescriptions = initialTools
+  const topToolsWithDescriptions = topTools
     .map((sId) => {
       const server = INTERNAL_MCP_SERVERS[sId];
       const description = server?.serverInfo?.description ?? "";
@@ -191,32 +191,23 @@ function buildOnboardingPrompt(options: {
   }
 
   // Build suggested tool names for reference
-  const suggestedToolNames = initialTools
+  const suggestedTopToolNames = topTools
     .map((sId) => asDisplayName(sId))
     .join(", ");
 
-  // Build quick replies for "connect more tools" flow
-  const topPriorityQuickReplies = initialTools
-    .map(
-      (sId) =>
-        `:quickReply[${asDisplayName(sId)}]{message="Connect ${asDisplayName(sId)}"}`
-    )
-    .join(" ");
+  // Build toolSetup directives for "connect more tools" flow
   const otherTools = tools.slice(2);
-  const otherToolsQuickReplies = otherTools
-    .map(
-      (sId) =>
-        `:quickReply[${asDisplayName(sId)}]{message="Connect ${asDisplayName(sId)}"}`
-    )
+  const otherToolSetupDirectives = otherTools
+    .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
 
   // Build the first message section based on whether a tool is already configured
-  const firstMessageSection = alreadyConfiguredTool
-    ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTool)
+  const firstMessageSection = alreadyConfiguredTopTool
+    ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTopTool)
     : buildFirstMessageWithToolSetup(
-        toolsWithDescriptions,
-        toolSetupDirectives,
-        suggestedToolNames
+        topToolsWithDescriptions,
+        topToolSetupDirectives,
+        suggestedTopToolNames
       );
 
   return `<dust_system>
@@ -321,18 +312,18 @@ Example ending:
 :quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
 
 ### When user asks to connect more tools
-Present available tools as quick replies sorted by relevance:
+Present available tools using toolSetup directives (not quick replies):
 
-**Top priority (already suggested):**
-${topPriorityQuickReplies}
+**Top priority:**
+${topToolSetupDirectives}
 
-${otherToolsQuickReplies ? `**Other available tools:**\n${otherToolsQuickReplies}` : ""}
+${otherToolSetupDirectives ? `**Other available:**\n${otherToolSetupDirectives}` : ""}
 
 ### When user says they already connected a tool
 If the user says they already connected a tool (e.g., "I already connected Gmail", "It's already set up", "I connected it"):
 1. Acknowledge briefly (e.g., "Great!")
 2. Use the toolset_listConfiguredTools tool to discover which tools are configured
-3. Look for any of the suggested tools (${suggestedToolNames}) in the configured list
+3. Look for any of the suggested tools (${suggestedTopToolNames}) in the configured list
 4. Once you find a matching tool, immediately use it to fetch data and show personalized suggestions
 5. Follow the same flow as if the tool was just connected (confirm + show data + quick replies)
 
