@@ -31,10 +31,11 @@ import type {
 } from "@app/types/assistant/agent_run";
 
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
-export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
-const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
 
-export const RUN_MODEL_MAX_RETRIES = 10;
+const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
+const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 2 * 60 * 1000;
+
+const RUN_MODEL_MAX_RETRIES = 10;
 
 import {
   OpenTelemetryInboundInterceptor,
