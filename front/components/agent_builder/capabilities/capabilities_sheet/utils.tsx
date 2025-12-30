@@ -165,14 +165,15 @@ export function useCapabilitiesPageAndFooter({
               onModeChange={onModeChange}
             />
           ),
-          footerContent: (
-            <CapabilitiesFooter
-              localSelectedTools={toolSelection.localSelectedTools}
-              localSelectedSkills={skillSelection.localSelectedSkills}
-              onRemoveSelectedTool={toolSelection.unselectTool}
-              onRemoveSelectedSkill={skillSelection.unselectSkill}
-            />
-          ),
+          footerContent:
+            selectedCapabilitiesCount > 0 ? (
+              <CapabilitiesFooter
+                localSelectedTools={toolSelection.localSelectedTools}
+                localSelectedSkills={skillSelection.localSelectedSkills}
+                onRemoveSelectedTool={toolSelection.unselectTool}
+                onRemoveSelectedSkill={skillSelection.unselectSkill}
+              />
+            ) : null,
         },
         leftButton: {
           label: "Cancel",
