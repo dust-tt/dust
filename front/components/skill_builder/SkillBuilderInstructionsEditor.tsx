@@ -133,7 +133,7 @@ export function SkillBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: field.value,
+      content: field.value || undefined, // display placeholder if instructions are empty
       contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
