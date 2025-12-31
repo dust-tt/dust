@@ -509,11 +509,15 @@ export const JiraSearchResultSchema = z.object({
 
 export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
   description: true,
+  status: true,
   priority: true,
   assignee: true,
   reporter: true,
   labels: true,
   parent: true,
+  created: true,
+  updated: true,
+  duedate: true,
 })
   .extend({
     description: z.union([z.string(), ADFDocumentSchema]).optional(),
