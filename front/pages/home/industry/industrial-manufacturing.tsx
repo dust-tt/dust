@@ -1,24 +1,39 @@
+import type { GetStaticProps } from "next";
 import type { ReactElement } from "react";
 
 import { industrialFirmsConfig } from "@app/components/home/content/Industry/configs/industrialFirmsConfig";
 import IndustryTemplate from "@app/components/home/content/Industry/IndustryTemplate";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getCustomerStoriesForIndustry,
+} from "@app/lib/contentful/industryStories";
 
-export async function getStaticProps() {
+import type { IndustryPageProps } from "./types";
+
+export const getStaticProps: GetStaticProps<IndustryPageProps> = async () => {
+  const customerStories = await getCustomerStoriesForIndustry(
+    "industrial-manufacturing"
+  );
+
   return {
     props: {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      customerStories,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
-}
+};
 
-export default function IndustrialFirms() {
-  return (
-    <IndustryTemplate
-      config={industrialFirmsConfig}
-      trackingPrefix="manufacturing"
-    />
-  );
+export default function IndustrialFirms({
+  customerStories,
+}: IndustryPageProps) {
+  const config = {
+    ...industrialFirmsConfig,
+    ...(customerStories && { customerStories }),
+  };
+
+  return <IndustryTemplate config={config} trackingPrefix="manufacturing" />;
 }
 
 IndustrialFirms.getLayout = (
