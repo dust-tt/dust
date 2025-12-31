@@ -13,6 +13,7 @@ import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_chec
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import mainLogger from "@app/logger/logger";
 import type {
+  ActionLink,
   Check,
   CheckActivityResult,
   CheckFailurePayload,
@@ -107,14 +108,14 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         });
       } else {
         logger.info("Check starting");
-        let checkSucceeded = false;
+        let checkSucceeded = true;
         let lastSuccessPayload: CheckSuccessPayload | undefined;
-        let lastFailurePayload: CheckFailurePayload | undefined;
-        let lastErrorMessage: string | null = null;
+        const errorMessages: string[] = [];
+        const allActionLinks: ActionLink[] = [];
+        const allFailurePayloads: CheckFailurePayload[] = [];
 
         const reportSuccess = (payload?: CheckSuccessPayload) => {
           logger.info({ payload }, "Check succeeded");
-          checkSucceeded = true;
           lastSuccessPayload = payload;
         };
         const reportFailure = (
@@ -126,8 +127,9 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
             "Production check failed"
           );
           checkSucceeded = false;
-          lastFailurePayload = payload;
-          lastErrorMessage = message;
+          allFailurePayloads.push(payload);
+          errorMessages.push(message);
+          allActionLinks.push(...(payload.actionLinks ?? []));
         };
         const heartbeat = async () => {
           return Context.current().heartbeat({
@@ -158,11 +160,12 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           timestamp: new Date().toISOString(),
           payload: checkSucceeded
             ? (lastSuccessPayload ?? null)
-            : (lastFailurePayload ?? null),
-          errorMessage: lastErrorMessage,
-          actionLinks: checkSucceeded
-            ? []
-            : (lastFailurePayload?.actionLinks ?? []),
+            : allFailurePayloads.length > 0
+              ? allFailurePayloads
+              : null,
+          errorMessage:
+            errorMessages.length > 0 ? errorMessages.join("; ") : null,
+          actionLinks: allActionLinks,
         });
 
         logger.info("Check done");
@@ -200,22 +203,23 @@ export async function runSingleCheckActivity(
 
   logger.info("Manual check starting");
 
-  let checkSucceeded = false;
+  let checkSucceeded = true;
   let lastSuccessPayload: CheckSuccessPayload | undefined;
-  let lastFailurePayload: CheckFailurePayload | undefined;
-  let lastErrorMessage: string | null = null;
+  const errorMessages: string[] = [];
+  const allActionLinks: ActionLink[] = [];
+  const allFailurePayloads: CheckFailurePayload[] = [];
 
   const reportSuccess = (payload?: CheckSuccessPayload) => {
     logger.info({ payload }, "Check succeeded");
-    checkSucceeded = true;
     lastSuccessPayload = payload;
   };
 
   const reportFailure = (payload: CheckFailurePayload, message: string) => {
     logger.error({ payload, errorMessage: message }, "Production check failed");
     checkSucceeded = false;
-    lastFailurePayload = payload;
-    lastErrorMessage = message;
+    allFailurePayloads.push(payload);
+    errorMessages.push(message);
+    allActionLinks.push(...(payload.actionLinks ?? []));
   };
 
   const heartbeat = async () => {
@@ -251,8 +255,10 @@ export async function runSingleCheckActivity(
     timestamp: new Date().toISOString(),
     payload: checkSucceeded
       ? (lastSuccessPayload ?? null)
-      : (lastFailurePayload ?? null),
-    errorMessage: lastErrorMessage,
-    actionLinks: checkSucceeded ? [] : (lastFailurePayload?.actionLinks ?? []),
+      : allFailurePayloads.length > 0
+        ? allFailurePayloads
+        : null,
+    errorMessage: errorMessages.length > 0 ? errorMessages.join("; ") : null,
+    actionLinks: allActionLinks,
   };
 }
