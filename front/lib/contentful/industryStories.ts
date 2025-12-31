@@ -3,6 +3,7 @@ import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getAllCustomerStories,
 } from "@app/lib/contentful/client";
+import type { CustomerStorySummary } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 
 /**
@@ -20,6 +21,17 @@ const INDUSTRY_MAPPING: Record<string, string[]> = {
   "financial-services": ["Financial Services"],
   "energy-utilities": ["Energy & Utilities"],
 };
+
+/**
+ * Type guard to check if a story has a valid hero image with a URL
+ */
+function hasHeroImage(
+  story: CustomerStorySummary
+): story is CustomerStorySummary & {
+  heroImage: NonNullable<CustomerStorySummary["heroImage"]>;
+} {
+  return story.heroImage?.url !== undefined && story.heroImage.url !== null;
+}
 
 /**
  * Fetches customer stories for a given industry and maps them to the format
@@ -51,9 +63,7 @@ export async function getCustomerStoriesForIndustry(
   }
 
   // Filter stories that have hero images and limit to 5
-  const stories = storiesResult.value
-    .filter((story) => story.heroImage?.url)
-    .slice(0, 5);
+  const stories = storiesResult.value.filter(hasHeroImage).slice(0, 5);
 
   if (stories.length === 0) {
     return null;
@@ -66,7 +76,7 @@ export async function getCustomerStoriesForIndustry(
       title: story.title,
       content: story.headlineMetric ?? story.description ?? "",
       href: `/customers/${story.slug}`,
-      src: story.heroImage!.url,
+      src: story.heroImage.url,
     })),
   };
 }
