@@ -3,13 +3,12 @@ import type { ReactElement } from "react";
 
 import { industrialFirmsConfig } from "@app/components/home/content/Industry/configs/industrialFirmsConfig";
 import IndustryTemplate from "@app/components/home/content/Industry/IndustryTemplate";
+import type { IndustryPageProps } from "@app/components/home/content/Industry/types";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getCustomerStoriesForIndustry,
 } from "@app/lib/contentful/industryStories";
-
-import type { IndustryPageProps } from "./types";
 
 export const getStaticProps: GetStaticProps<IndustryPageProps> = async () => {
   const customerStories = await getCustomerStoriesForIndustry(
