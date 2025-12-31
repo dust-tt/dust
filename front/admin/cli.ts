@@ -172,7 +172,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           logger
         );
         for (const connectorId of connectorIds) {
-          console.log(`Unpausing connectorId=${connectorId}`);
+            logger.info(`Unpausing connectorId=${connectorId}`);
           const res = await connectorsAPI.unpauseConnector(connectorId);
           if (res.isErr()) {
             if (res.error.message === "Connector is not stopped") {
