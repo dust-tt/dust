@@ -127,7 +127,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
             "Production check failed"
           );
           checkSucceeded = false;
-          allFailurePayloads.push(payload);
+          allFailurePayloads.push({ ...payload, errorMessage: message });
           errorMessages.push(message);
           allActionLinks.push(...(payload.actionLinks ?? []));
         };
@@ -164,7 +164,9 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
               ? allFailurePayloads
               : null,
           errorMessage:
-            errorMessages.length > 0 ? errorMessages.join("; ") : null,
+            errorMessages.length > 0
+              ? [...new Set(errorMessages)].join("; ")
+              : null,
           actionLinks: allActionLinks,
         });
 
@@ -217,7 +219,7 @@ export async function runSingleCheckActivity(
   const reportFailure = (payload: CheckFailurePayload, message: string) => {
     logger.error({ payload, errorMessage: message }, "Production check failed");
     checkSucceeded = false;
-    allFailurePayloads.push(payload);
+    allFailurePayloads.push({ ...payload, errorMessage: message });
     errorMessages.push(message);
     allActionLinks.push(...(payload.actionLinks ?? []));
   };
@@ -258,7 +260,8 @@ export async function runSingleCheckActivity(
       : allFailurePayloads.length > 0
         ? allFailurePayloads
         : null,
-    errorMessage: errorMessages.length > 0 ? errorMessages.join("; ") : null,
+    errorMessage:
+      errorMessages.length > 0 ? [...new Set(errorMessages)].join("; ") : null,
     actionLinks: allActionLinks,
   };
 }

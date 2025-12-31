@@ -21,6 +21,8 @@ import { assertNever } from "@app/types";
 
 const COMPLETED_CHECKS_QUERY = `(WorkflowType = "${WORKFLOW_TYPE_RUN_ALL_CHECKS}" OR WorkflowType = "${WORKFLOW_TYPE_RUN_SINGLE_CHECK}") AND ExecutionStatus = "Completed"`;
 
+const RUNNING_CHECKS_QUERY = `(WorkflowType = "${WORKFLOW_TYPE_RUN_ALL_CHECKS}" OR WorkflowType = "${WORKFLOW_TYPE_RUN_SINGLE_CHECK}") AND ExecutionStatus = "Running"`;
+
 const WORKFLOW_LIST_BATCH_SIZE = 50;
 const DEFAULT_SEARCH_BREADTH = 200;
 const DEFAULT_RUN_LIMIT = 10;
@@ -165,6 +167,40 @@ export async function getLatestProductionCheckResults(
   return checkResultsByName;
 }
 
+async function getRunningWorkflowsForCheck(
+  client: Client,
+  checkName: string
+): Promise<CheckHistoryRun[]> {
+  const runs: CheckHistoryRun[] = [];
+
+  for await (const workflow of client.workflow.list({
+    query: RUNNING_CHECKS_QUERY,
+    pageSize: WORKFLOW_LIST_BATCH_SIZE,
+  })) {
+    if (workflow.type === WORKFLOW_TYPE_RUN_SINGLE_CHECK) {
+      const expectedPrefix = `${MANUAL_CHECK_WORKFLOW_ID_PREFIX}${checkName}_`;
+      if (!workflow.workflowId.startsWith(expectedPrefix)) {
+        continue;
+      }
+    }
+    const isManual = workflow.workflowId.startsWith(
+      MANUAL_CHECK_WORKFLOW_ID_PREFIX
+    );
+    runs.push({
+      workflowId: workflow.workflowId,
+      runId: workflow.runId ?? "",
+      timestamp: workflow.startTime.toISOString(),
+      status: "running",
+      errorMessage: null,
+      payload: null,
+      actionLinks: [],
+      workflowType: isManual ? "manual" : "scheduled",
+    });
+  }
+
+  return runs;
+}
+
 export async function getProductionCheckHistory(
   client: Client,
   checkName: string,
@@ -176,7 +212,15 @@ export async function getProductionCheckHistory(
     searchBreadth?: number;
   } = {}
 ): Promise<CheckHistoryRun[]> {
-  const runs: CheckHistoryRun[] = [];
+  const runningWorkflows = await getRunningWorkflowsForCheck(client, checkName);
+
+  const runs: CheckHistoryRun[] = [...runningWorkflows];
+  const completedRunsLimit = runsLimit - runningWorkflows.length;
+
+  if (completedRunsLimit <= 0) {
+    return runs;
+  }
+
   let processedCount = 0;
 
   for await (const { workflow, checks } of fetchWorkflowResultsBatched(

@@ -9,6 +9,7 @@ export interface ActionLink {
 // Payload types for check functions
 export interface CheckFailurePayload {
   actionLinks: ActionLink[];
+  errorMessage?: string;
   [key: string]: unknown;
 }
 
