@@ -154,10 +154,9 @@ function buildOnboardingPrompt(options: {
     options.userJobType as JobType | null
   );
 
-  // Build the tool setup directives for the first message (max 2, on same line).
+  // We want to display on the best 2 tools maximum
   const topTools = tools.slice(0, 2);
 
-  // Check if any of the initial tools are already configured
   const alreadyConfiguredTopTool = topTools.find((tool) =>
     options.configuredTools.includes(tool)
   );
@@ -190,18 +189,15 @@ function buildOnboardingPrompt(options: {
     }
   }
 
-  // Build suggested tool names for reference
   const suggestedTopToolNames = topTools
     .map((sId) => asDisplayName(sId))
     .join(", ");
 
-  // Build toolSetup directives for "connect more tools" flow
   const otherTools = tools.slice(2);
   const otherToolSetupDirectives = otherTools
     .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
 
-  // Build the first message section based on whether a tool is already configured
   const firstMessageSection = alreadyConfiguredTopTool
     ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTopTool)
     : buildFirstMessageWithToolSetup(
@@ -241,7 +237,7 @@ ${userContext}
 - Keep task suggestions universal - they should work for ANY user of that tool
 - When describing tools, use only their official descriptions provided below
 
-## Quick replies must match the data found
+### Quick replies must match the data found
 
 After showing results from any tool use:
 1. Present the results with specific names/titles/dates
@@ -249,7 +245,7 @@ After showing results from any tool use:
 3. Include "Automate this" as ONE option among the actions - not the main focus
 
 **Quick replies should be specific to what you found:**
-- Found emails from Sarah and Mike → :quickReply[Reply to Sarah]{...} :quickReply[Summarize Mike's email]{...}
+- Found emails from Sarah and Mike → :quickReply[Draft a reply to Sarah]{...} :quickReply[Summarize Mike's email]{...}
 - Found PR reviews pending → :quickReply[Show PR details]{...} :quickReply[List my open PRs]{...}
 - Found Notion pages → :quickReply[Open recent page]{...} :quickReply[Search for...]{...}
 
@@ -258,13 +254,10 @@ After showing results from any tool use:
 ## Automation flow
 
 When user wants to automate (clicks "Automate this" or asks for it):
-1. Ask for timezone:
-   :quickReply[Eastern US]{message="My timezone is America/New_York"} :quickReply[Pacific US]{message="My timezone is America/Los_Angeles"} :quickReply[Europe/Paris]{message="My timezone is Europe/Paris"} :quickReply[Other]{message="My timezone is different"}
-2. Call create_schedule_trigger with:
-   - name: Short description (e.g., "Daily email summary")
-   - schedule: Natural language (e.g., "every weekday at 9am")
-   - prompt: Start with @${options.username} so user gets pinged
-   - timezone: The IANA timezone provided
+Call create_schedule_trigger with:
+- name: Short description (e.g., "Daily email summary")
+- schedule: Natural language (e.g., "every weekday at 9am")
+- prompt: Start with @${options.username} so user gets pinged
 
 ## Directive reference
 
@@ -378,11 +371,11 @@ Query guidance: ${queryGuidance}
 1. Welcome the user to Dust and mention you noticed ${toolName} was already connected, so you went ahead and checked it
    (e.g., "Welcome to Dust! 👋 I noticed you already have ${toolName} connected, so I took a look...")
 2. Share what you found in a conversational way (e.g., "I see you have an email from Roger 2 days ago...")
-3. End with **actionable quick replies based on the actual data found** (e.g., "Reply to Roger", "Summarize this email")
+3. End with **actionable quick replies based on the actual data found** (e.g., "Draft a reply to Roger", "Summarize this email")
 4. Include "Automate this" as one option among the quick replies
 
 Example quick replies for Gmail with emails from Sarah and a Datadog digest:
-:quickReply[Reply to Sarah]{message="Help me reply to Sarah's email"} :quickReply[Summarize Datadog digest]{message="Summarize the Datadog digest"} :quickReply[Automate daily summary]{message="Send me a daily email summary every morning"}
+:quickReply[Draft a reply to Sarah]{message="Draft a reply to Sarah's email"} :quickReply[Summarize Datadog digest]{message="Summarize the Datadog digest"} :quickReply[Automate daily summary]{message="Send me a daily email summary every morning"}
 
 If you don't find relevant data:
 - Still welcome the user and mention the tool is connected
