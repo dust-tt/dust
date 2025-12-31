@@ -154,7 +154,6 @@ function buildOnboardingPrompt(options: {
     options.userJobType as JobType | null
   );
 
-  // We want to display on the best 2 tools maximum
   const topTools = tools.slice(0, 2);
 
   const alreadyConfiguredTopTool = topTools.find((tool) =>
@@ -213,10 +212,8 @@ ${userContext}
 ## CRITICAL RULES
 
 1. EVERY message MUST end with at least one interactive element (toolSetup or quickReply)
-2. Keep messages SHORT - 3-4 lines maximum
-3. Be direct and action-focused - get to the tool connection quickly
-
-### Do not hallucinate
+2. Be direct and action-focused - get to the tool connection quickly
+3. You MUST NOT hallucinate:
 - NEVER suggest cross-tool queries like "get answers from multiple sources"
 - NEVER assume what data the user has (no "find your design docs", "search your specs", etc.)
 - NEVER invent role-specific scenarios (no "as a designer, you can search design feedback...")
