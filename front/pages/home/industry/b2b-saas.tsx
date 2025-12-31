@@ -6,42 +6,11 @@ import IndustryTemplate from "@app/components/home/content/Industry/IndustryTemp
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import {
   CONTENTFUL_REVALIDATE_SECONDS,
-  getAllCustomerStories,
-} from "@app/lib/contentful/client";
-import logger from "@app/logger/logger";
+  getCustomerStoriesForIndustry,
+} from "@app/lib/contentful/industryStories";
 
 export const getStaticProps: GetStaticProps = async () => {
-  // Fetch customer stories filtered by B2B SaaS industry
-  const storiesResult = await getAllCustomerStories("", {
-    industries: ["B2B SaaS"],
-  });
-
-  let customerStories = null;
-
-  if (storiesResult.isErr()) {
-    logger.error(
-      { error: storiesResult.error },
-      "Error fetching customer stories from Contentful for B2B SaaS page"
-    );
-  } else {
-    // Filter stories that have hero images and limit to 5
-    const stories = storiesResult.value
-      .filter((story) => story.heroImage?.url)
-      .slice(0, 5);
-
-    // Map Contentful stories to the format expected by CustomerStoriesSection
-    if (stories.length > 0) {
-      customerStories = {
-        title: "Customer stories",
-        stories: stories.map((story) => ({
-          title: story.title,
-          content: story.headlineMetric ?? story.description ?? "",
-          href: `/customers/${story.slug}`,
-          src: story.heroImage!.url,
-        })),
-      };
-    }
-  }
+  const customerStories = await getCustomerStoriesForIndustry("b2b-saas");
 
   return {
     props: {
@@ -54,15 +23,9 @@ export const getStaticProps: GetStaticProps = async () => {
 
 interface B2BSaaSProps {
   gtmTrackingId: string | null;
-  customerStories: {
-    title: string;
-    stories: Array<{
-      title: string;
-      content: string;
-      href: string;
-      src: string;
-    }>;
-  } | null;
+  customerStories: Awaited<
+    ReturnType<typeof getCustomerStoriesForIndustry>
+  > | null;
 }
 
 export default function B2BSaaS({ customerStories }: B2BSaaSProps) {

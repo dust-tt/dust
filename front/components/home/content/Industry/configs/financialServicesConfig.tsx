@@ -270,33 +270,6 @@ export const financialServicesConfig: IndustryPageConfig = {
     bgColor: "bg-violet-400",
     textColor: "text-white",
   },
-  // customerStories: {
-  //   title: "Customer stories",
-  //   stories: [
-  //     {
-  //       title:
-  //         "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
-  //       content:
-  //         "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
-  //       href: "/customers/qonto-dust-ai-partnership",
-  //       src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
-  //     },
-  //     {
-  //       title: "Kyriba's adoption of Dust across all functions",
-  //       content:
-  //         "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-  //       href: "/customers/kyriba-accelerating-innovation-with-dust",
-  //       src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
-  //     },
-  //     {
-  //       title: "Pennylane's journey to deploy Dust for Customer Care teams",
-  //       content:
-  //         "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
-  //       href: "/customers/pennylane-customer-support-journey",
-  //       src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
-  //     },
-  //   ],
-  // },
   justUseDust: {
     title: "Just use Dust",
     titleColor: "text-blue-600",

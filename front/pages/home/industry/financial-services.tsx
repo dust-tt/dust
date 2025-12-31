@@ -1,24 +1,43 @@
+import type { GetStaticProps } from "next";
 import type { ReactElement } from "react";
 
 import { financialServicesConfig } from "@app/components/home/content/Industry/configs/financialServicesConfig";
 import IndustryTemplate from "@app/components/home/content/Industry/IndustryTemplate";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getCustomerStoriesForIndustry,
+} from "@app/lib/contentful/industryStories";
 
-export async function getStaticProps() {
+export const getStaticProps: GetStaticProps = async () => {
+  const customerStories =
+    await getCustomerStoriesForIndustry("financial-services");
+
   return {
     props: {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      customerStories,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
+};
+
+interface FinancialServicesProps {
+  gtmTrackingId: string | null;
+  customerStories: Awaited<
+    ReturnType<typeof getCustomerStoriesForIndustry>
+  > | null;
 }
 
-export default function FinancialServices() {
-  return (
-    <IndustryTemplate
-      config={financialServicesConfig}
-      trackingPrefix="financial"
-    />
-  );
+export default function FinancialServices({
+  customerStories,
+}: FinancialServicesProps) {
+  const config = {
+    ...financialServicesConfig,
+    ...(customerStories && { customerStories }),
+  };
+
+  return <IndustryTemplate config={config} trackingPrefix="financial" />;
 }
 
 FinancialServices.getLayout = (
