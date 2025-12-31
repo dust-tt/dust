@@ -9,7 +9,9 @@ import {
   getCustomerStoriesForIndustry,
 } from "@app/lib/contentful/industryStories";
 
-export const getStaticProps: GetStaticProps = async () => {
+import type { IndustryPageProps } from "./types";
+
+export const getStaticProps: GetStaticProps<IndustryPageProps> = async () => {
   const customerStories = await getCustomerStoriesForIndustry("b2b-saas");
 
   return {
@@ -21,14 +23,7 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
-interface B2BSaaSProps {
-  gtmTrackingId: string | null;
-  customerStories: Awaited<
-    ReturnType<typeof getCustomerStoriesForIndustry>
-  > | null;
-}
-
-export default function B2BSaaS({ customerStories }: B2BSaaSProps) {
+export default function B2BSaaS({ customerStories }: IndustryPageProps) {
   // Merge fetched customer stories into the config
   const config = {
     ...b2bSaasConfig,

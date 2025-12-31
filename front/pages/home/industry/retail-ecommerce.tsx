@@ -9,7 +9,9 @@ import {
   getCustomerStoriesForIndustry,
 } from "@app/lib/contentful/industryStories";
 
-export const getStaticProps: GetStaticProps = async () => {
+import type { IndustryPageProps } from "./types";
+
+export const getStaticProps: GetStaticProps<IndustryPageProps> = async () => {
   const customerStories =
     await getCustomerStoriesForIndustry("retail-ecommerce");
 
@@ -22,16 +24,9 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
-interface RetailEcommerceProps {
-  gtmTrackingId: string | null;
-  customerStories: Awaited<
-    ReturnType<typeof getCustomerStoriesForIndustry>
-  > | null;
-}
-
 export default function RetailEcommerce({
   customerStories,
-}: RetailEcommerceProps) {
+}: IndustryPageProps) {
   const config = {
     ...retailEcommerceConfig,
     ...(customerStories && { customerStories }),
