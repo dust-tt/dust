@@ -28,7 +28,7 @@ const INDUSTRY_MAPPING: Record<string, string[]> = {
 function hasHeroImage(
   story: CustomerStorySummary
 ): story is CustomerStorySummary & {
-  heroImage: NonNullable<CustomerStorySummary["heroImage"]>;
+  heroImage: NonNullable<CustomerStorySummary["heroImage"]> & { url: string };
 } {
   return story.heroImage?.url !== undefined && story.heroImage.url !== null;
 }
