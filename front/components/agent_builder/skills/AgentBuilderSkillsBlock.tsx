@@ -36,9 +36,12 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
+import type { SpaceType } from "@app/types";
 import { pluralize } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -77,6 +80,47 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
       </div>
     </Card>
   );
+}
+
+function useDerivedSkillsAndActionsState(
+  skillFields: AgentBuilderSkillsType[],
+  actionFields: BuilderAction[],
+  mcpServerViews: MCPServerViewType[],
+  allSkills: SkillType[],
+  spaces: SpaceType[]
+) {
+  return useMemo(() => {
+    const alreadyAddedSkillIds = new Set(skillFields.map((s) => s.sId));
+    const spaceIdToActions = getSpaceIdToActionsMap(
+      actionFields,
+      mcpServerViews
+    );
+
+    const alreadyRequestedSpaceIds = new Set<string>();
+    for (const spaceId of Object.keys(spaceIdToActions)) {
+      if (spaceIdToActions[spaceId]?.length > 0) {
+        alreadyRequestedSpaceIds.add(spaceId);
+      }
+    }
+    for (const skill of allSkills) {
+      if (alreadyAddedSkillIds.has(skill.sId) && skill.canWrite) {
+        for (const spaceId of skill.requestedSpaceIds) {
+          alreadyRequestedSpaceIds.add(spaceId);
+        }
+      }
+    }
+
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    const nonGlobalSpacesUsedInActions = nonGlobalSpaces.filter(
+      (s) => spaceIdToActions[s.sId]?.length > 0
+    );
+
+    return {
+      alreadyAddedSkillIds,
+      alreadyRequestedSpaceIds,
+      nonGlobalSpacesUsedInActions,
+    };
+  }, [skillFields, actionFields, mcpServerViews, allSkills, spaces]);
 }
 
 function ActionButtons({
@@ -133,7 +177,6 @@ export function AgentBuilderSkillsBlock() {
     name: "additionalSpaces",
   });
 
-  // TODO(skills Jules): make a pass on the way we use reacthookform here
   const {
     mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
@@ -142,44 +185,17 @@ export function AgentBuilderSkillsBlock() {
   const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const alreadyAddedSkillIds = useMemo(
-    () => new Set(skillFields.map((s) => s.sId)),
-    [skillFields]
+  const {
+    alreadyAddedSkillIds,
+    alreadyRequestedSpaceIds,
+    nonGlobalSpacesUsedInActions,
+  } = useDerivedSkillsAndActionsState(
+    skillFields,
+    actionFields,
+    mcpServerViews,
+    allSkills,
+    spaces
   );
-
-  // Compute space IDs already requested by actions (tools/knowledge)
-  const alreadyRequestedSpaceIds = useMemo(() => {
-    const spaceIdToActions = getSpaceIdToActionsMap(
-      actionFields,
-      mcpServerViews
-    );
-    const actionRequestedSpaceIds = new Set<string>();
-    for (const spaceId of Object.keys(spaceIdToActions)) {
-      if (spaceIdToActions[spaceId]?.length > 0) {
-        actionRequestedSpaceIds.add(spaceId);
-      }
-    }
-
-    // Also include space IDs from custom skills (those with canWrite: true have their own requestedSpaceIds)
-    for (const skill of allSkills) {
-      if (alreadyAddedSkillIds.has(skill.sId) && skill.canWrite) {
-        for (const spaceId of skill.requestedSpaceIds) {
-          actionRequestedSpaceIds.add(spaceId);
-        }
-      }
-    }
-
-    return actionRequestedSpaceIds;
-  }, [actionFields, mcpServerViews, alreadyAddedSkillIds, allSkills]);
-
-  const spaceIdToActions = useMemo(() => {
-    return getSpaceIdToActionsMap(actionFields, mcpServerViews);
-  }, [actionFields, mcpServerViews]);
-
-  const nonGlobalSpacesUsedInActions = useMemo(() => {
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
-    return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
-  }, [spaceIdToActions, spaces]);
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
 
