@@ -12,6 +12,7 @@ import {
   useSkillSelection,
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
+import { SkillInfoPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage";
 import { SpaceSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
@@ -29,7 +30,6 @@ import {
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
 import { isConfigurationState } from "@app/components/agent_builder/skills/types";
-import { SkillDetailsSheetContent } from "@app/components/skills/SkillDetailsSheet";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types";
@@ -191,6 +191,10 @@ export function useCapabilitiesPageAndFooter({
           ? `${sheetState.capability.name} (extends ${sheetState.capability.relations.extendedSkill.name})`
           : sheetState.capability.name;
 
+        const handleClose = sheetState.hasPreviousPage
+          ? () => onStateChange({ state: "selection" })
+          : onClose;
+
         return {
           page: {
             title,
@@ -198,10 +202,11 @@ export function useCapabilitiesPageAndFooter({
             id: sheetState.state,
             icon: getSkillIcon(sheetState.capability.icon),
             content: (
-              <SkillDetailsSheetContent
+              <SkillInfoPage
                 skill={sheetState.capability}
                 owner={owner}
                 user={user}
+                onClose={handleClose}
               />
             ),
           },
