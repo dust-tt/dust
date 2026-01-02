@@ -140,7 +140,7 @@ export {
   ConversationMessageContent,
   ConversationMessageTitle,
   ConversationMessageContainer,
-} from "./NewConversationMessage";
+} from "./ConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
