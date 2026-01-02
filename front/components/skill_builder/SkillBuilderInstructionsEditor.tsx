@@ -13,6 +13,9 @@ import { useController } from "react-hook-form";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { KnowledgeExtension } from "@app/components/editor/extensions/skill_builder/KnowledgeExtension";
+import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { createKnowledgeSuggestion } from "@app/components/editor/input_bar/knowledgeSuggestion";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -97,6 +100,10 @@ export function SkillBuilderInstructionsEditor({
           },
         },
       }),
+      KnowledgeExtension.configure({
+        suggestion: createKnowledgeSuggestion(),
+      }),
+      KnowledgeNode,
       // Custom ordered list and list item extensions to preserve start attribute
       OrderedListExtension.configure({
         HTMLAttributes: {
