@@ -69,10 +69,7 @@ export const getStaticProps: GetStaticProps<CoursePageProps> = async (
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
-export default function CoursePage({
-  course,
-  preview,
-}: CoursePageProps) {
+export default function CoursePage({ course, preview }: CoursePageProps) {
   const ogImageUrl = course.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${course.slug}`;
   const tocItems = extractTableOfContents(course.courseContent);
@@ -122,9 +119,7 @@ export default function CoursePage({
 
           <header className={WIDE_CLASSES}>
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {course.courseId && (
-                <span>Course {course.courseId}</span>
-              )}
+              {course.courseId && <span>Course {course.courseId}</span>}
               {course.estimatedDurationMinutes && (
                 <>
                   {course.courseId && <span>•</span>}
@@ -135,7 +130,7 @@ export default function CoursePage({
 
             <H1 className="text-4xl md:text-5xl">{course.title}</H1>
 
-            {(course.author || course.dateOfAddition) && (
+            {(course.author ?? course.dateOfAddition) && (
               <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 {course.author && (
                   <>
@@ -222,8 +217,13 @@ export default function CoursePage({
             </div>
           </div>
 
-          {(course.previousCourse || course.nextCourse) && (
-            <div className={classNames(WIDE_CLASSES, "mt-12 border-t border-gray-200 pt-8")}>
+          {(course.previousCourse ?? course.nextCourse) && (
+            <div
+              className={classNames(
+                WIDE_CLASSES,
+                "mt-12 border-t border-gray-200 pt-8"
+              )}
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
                 {course.previousCourse && (
                   <Link
@@ -263,4 +263,3 @@ export default function CoursePage({
 CoursePage.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-

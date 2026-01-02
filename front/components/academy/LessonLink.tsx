@@ -2,7 +2,6 @@ import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { P } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
 interface LessonLinkProps {
   title: string;
@@ -56,4 +55,3 @@ export function LessonLink({
     </div>
   );
 }
-
