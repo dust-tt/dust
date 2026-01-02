@@ -60,7 +60,7 @@ export function SkillInstructionsHistory({
   const formatVersionLabel = useCallback((config: SkillType) => {
     return config.createdAt
       ? format(config.createdAt, "Pp")
-      : `Version ${config.id}`;
+      : `Version ${config.version + 1}`;
   }, []);
 
   const getAuthorName = useCallback(
@@ -100,7 +100,7 @@ export function SkillInstructionsHistory({
           config,
           prevInstructions,
         });
-      } else if (config.id === selectedConfig?.id) {
+      } else if (config.version === selectedConfig?.version) {
         const prevInstructions = result[result.length - 1].prevInstructions;
         result[result.length - 1] = {
           config,
@@ -141,10 +141,10 @@ export function SkillInstructionsHistory({
           </div>
         ) : (
           <DropdownMenuRadioGroup
-            value={selectedConfig?.id.toString() ?? ""}
+            value={selectedConfig?.version.toString() ?? ""}
             onValueChange={(selectedValue) => {
               const config = history.find(
-                (c) => c.id.toString() === selectedValue
+                (c) => c.version.toString() === selectedValue
               );
               if (config) {
                 onSelect(config);
@@ -153,8 +153,8 @@ export function SkillInstructionsHistory({
           >
             {historyWithPrev.map(({ config }) => (
               <DropdownMenuRadioItem
-                key={config.id}
-                value={config.id.toString()}
+                key={config.version}
+                value={config.version.toString()}
               >
                 <div className="flex w-full items-center justify-between">
                   <div className="flex flex-col">
