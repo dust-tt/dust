@@ -23,6 +23,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  version: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   name: {
     type: DataTypes.TEXT,
     allowNull: false,
@@ -76,6 +80,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare updatedAt: CreationOptional<Date>;
 
   declare status: SkillStatus;
+  declare version: number;
 
   declare name: string;
   declare agentFacingDescription: string;
@@ -104,7 +109,6 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
   declare mcpServerViewIds: number[];
-  declare version: number;
 }
 
 SkillVersionModel.init(
@@ -116,10 +120,6 @@ SkillVersionModel.init(
     },
     mcpServerViewIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
-      allowNull: false,
-    },
-    version: {
-      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },
