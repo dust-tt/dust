@@ -18,6 +18,7 @@ import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillInstructionsHistoryProps {
+  currentSkill: SkillType;
   history: SkillType[];
   selectedConfig: SkillType | null;
   onSelect: (config: SkillType) => void;
@@ -25,6 +26,7 @@ interface SkillInstructionsHistoryProps {
 }
 
 export function SkillInstructionsHistory({
+  currentSkill,
   history,
   onSelect,
   selectedConfig,
@@ -77,12 +79,17 @@ export function SkillInstructionsHistory({
   const historyWithPrev = useMemo(() => {
     const result: SkillType[] = [];
 
-    let lastRawInstructions: string | null = null;
+    let lastRawInstructions = currentSkill.instructions;
 
     for (const config of history) {
-      const instructions = config.instructions ?? "";
-      const isNewRun =
-        lastRawInstructions === null || instructions !== lastRawInstructions;
+      const { instructions } = config;
+      const isNewRun = instructions !== lastRawInstructions;
+      console.log({
+        isNewRun,
+        lastRawInstructions,
+        instructions,
+        version: config.version,
+      });
 
       if (isNewRun) {
         result.push(config);
@@ -94,7 +101,7 @@ export function SkillInstructionsHistory({
     }
 
     return result;
-  }, [history, selectedConfig]);
+  }, [history, selectedConfig, currentSkill]);
 
   return (
     <DropdownMenu>

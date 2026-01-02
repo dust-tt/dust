@@ -51,17 +51,20 @@ export function SkillBuilderInstructionsSection({
     setIsInstructionDiffMode(false);
   };
 
-  const headerActions = skillHistory && skillHistory.length > 1 && (
-    <SkillInstructionsHistory
-      history={skillHistory}
-      selectedConfig={compareVersion}
-      onSelect={(config) => {
-        setCompareVersion(config);
-        setIsInstructionDiffMode(true);
-      }}
-      owner={owner}
-    />
-  );
+  const headerActions = skillConfiguration &&
+    skillHistory &&
+    skillHistory.length > 1 && (
+      <SkillInstructionsHistory
+        currentSkill={skillConfiguration}
+        history={skillHistory}
+        selectedConfig={compareVersion}
+        onSelect={(config) => {
+          setCompareVersion(config);
+          setIsInstructionDiffMode(true);
+        }}
+        owner={owner}
+      />
+    );
 
   return (
     <section className="flex flex-col gap-3">
