@@ -4,6 +4,7 @@ import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { Suggestion } from "@tiptap/suggestion";
 
+
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -50,6 +51,15 @@ export const SlashCommandExtension =
                 command.description.toLowerCase().includes(query.toLowerCase())
             );
           },
+        },
+      };
+    },
+
+    addProseMirrorPlugins() {
+      return [
+        Suggestion({
+          editor: this.editor,
+          ...this.options.suggestion,
           command: ({
             editor,
             range,
@@ -111,15 +121,6 @@ export const SlashCommandExtension =
               },
             };
           },
-        },
-      };
-    },
-
-    addProseMirrorPlugins() {
-      return [
-        Suggestion({
-          editor: this.editor,
-          ...this.options.suggestion,
         }),
       ];
     },

@@ -1,11 +1,13 @@
 import {
   cn,
+  DoubleIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { DocumentIcon } from "@dust-tt/sparkle";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper } from "@tiptap/react";
 import React, {
@@ -16,7 +18,20 @@ import React, {
   useState,
 } from "react";
 
-import type { KnowledgeItem, KnowledgeNodeAttributes } from "./KnowledgeNode";
+import type {
+  KnowledgeItem,
+  KnowledgeNodeAttributes,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import {
+  getLocationForDataSourceViewContentNodeWithSpace,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { useUnifiedSearch } from "@app/lib/swr/search";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { removeNulls } from "@app/types";
 
 export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   node,
@@ -25,88 +40,73 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   editor,
 }) => {
   const { selectedItems, isSearching } = node.attrs as KnowledgeNodeAttributes;
+  const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Mock knowledge items - filtered by search query.
-  const knowledgeItems: KnowledgeItem[] = useMemo(() => {
-    const allItems = [
-      {
-        id: "marketing-strategy",
-        label: "Marketing Strategy 2024",
-        description:
-          "Complete marketing plan with target audiences and campaigns",
-      },
-      {
-        id: "product-roadmap",
-        label: "Product Roadmap Q1-Q4",
-        description: "Feature priorities and development timeline",
-      },
-      {
-        id: "sales-playbook",
-        label: "Sales Playbook",
-        description:
-          "Sales processes, objection handling, and closing techniques",
-      },
-      {
-        id: "brand-guidelines",
-        label: "Brand Guidelines",
-        description: "Logo usage, colors, typography, and voice & tone",
-      },
-      {
-        id: "customer-personas",
-        label: "Customer Personas",
-        description: "Detailed profiles of target customer segments",
-      },
-      {
-        id: "pricing-strategy",
-        label: "Pricing Strategy",
-        description: "Pricing models, tiers, and competitive analysis",
-      },
-      {
-        id: "content-calendar",
-        label: "Content Calendar",
-        description: "Social media and blog post scheduling",
-      },
-      {
-        id: "onboarding-guide",
-        label: "Customer Onboarding Guide",
-        description: "Step-by-step process for new customer success",
-      },
-      {
-        id: "competitor-analysis",
-        label: "Competitor Analysis",
-        description: "Market landscape and competitive positioning",
-      },
-      {
-        id: "growth-metrics",
-        label: "Growth Metrics Dashboard",
-        description: "KPIs, conversion rates, and performance tracking",
-      },
-      {
-        id: "user-research",
-        label: "User Research Findings",
-        description: "Customer interviews and usability testing results",
-      },
-      {
-        id: "technical-docs",
-        label: "Technical Documentation",
-        description: "Architecture overview and implementation guides",
-      },
-    ];
+  // Get spaces for location display.
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    disabled: false,
+  });
 
-    if (!searchQuery.trim()) {
-      return allItems;
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces.map((space) => [space.sId, space])),
+    [spaces]
+  );
+
+  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
+
+  const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
+    {
+      owner,
+      query: searchQuery,
+      pageSize: 10,
+      disabled: !searchQuery || searchQuery.length < 2,
+      spaceIds,
+      viewType: "all",
+      includeDataSources: true,
+      searchSourceUrls: false,
+      includeTools: false,
     }
+  );
 
-    return allItems.filter(
-      (item) =>
-        item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  // Convert API results to properly formatted nodes with hierarchy.
+  const dataSourceNodes = useMemo(
+    () =>
+      removeNulls(
+        searchResults.map((node) => {
+          const { dataSourceViews, ...rest } = node;
+
+          const dataSourceView = dataSourceViews.find(
+            (view) => spacesMap[view.spaceId]
+          );
+
+          if (!dataSourceView) {
+            return null;
+          }
+
+          return {
+            ...rest,
+            dataSourceView,
+          };
+        })
+      ),
+    [searchResults, spacesMap]
+  );
+
+  const knowledgeItems: KnowledgeItem[] = useMemo(() => {
+    return dataSourceNodes.map((node) => ({
+      id: node.internalId,
+      label: node.title,
+      description: getLocationForDataSourceViewContentNodeWithSpace(
+        node,
+        spacesMap
+      ),
+    }));
+  }, [dataSourceNodes, spacesMap]);
 
   const handleItemSelect = useCallback(
     (index: number) => {
@@ -147,10 +147,14 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
       const text = e.currentTarget.textContent ?? "";
       setSearchQuery(text);
 
-      if (text.trim() && !isOpen) {
-        setIsOpen(true);
-      } else if (!text.trim() && isOpen) {
-        setIsOpen(false);
+      if (text.trim()) {
+        if (!isOpen) {
+          setIsOpen(true);
+        }
+      } else {
+        if (isOpen) {
+          setIsOpen(false);
+        }
       }
     },
     [isOpen]
@@ -347,22 +351,66 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
               onOpenAutoFocus={(e) => e.preventDefault()}
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              {knowledgeItems.map((item, index) => (
-                <DropdownMenuItem
-                  key={item.id}
-                  icon={DocumentIcon}
-                  label={item.label}
-                  description={item.description}
-                  truncateText
-                  onClick={() => handleItemClick(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  className={
-                    index === selectedIndex
-                      ? "bg-gray-100 dark:bg-gray-800"
-                      : ""
+              {isSearchLoading ? (
+                <div className="flex items-center justify-center px-4 py-8">
+                  <Spinner size="sm" />
+                  <span className="ml-2 text-sm text-gray-500">
+                    Searching knowledge...
+                  </span>
+                </div>
+              ) : knowledgeItems.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-gray-500">
+                  {searchQuery.length < 3
+                    ? "Type at least 3 characters to search"
+                    : "No knowledge found"}
+                </div>
+              ) : (
+                knowledgeItems.map((item, index) => {
+                  const node = dataSourceNodes[index];
+                  if (!node) {
+                    return null;
                   }
-                />
-              ))}
+
+                  return (
+                    <DropdownMenuItem
+                      key={item.id}
+                      icon={
+                        isWebsite(node.dataSourceView.dataSource) ||
+                        isFolder(node.dataSourceView.dataSource) ? (
+                          <Icon
+                            visual={getVisualForDataSourceViewContentNode(node)}
+                            size="md"
+                          />
+                        ) : (
+                          <DoubleIcon
+                            size="md"
+                            mainIcon={getVisualForDataSourceViewContentNode(
+                              node
+                            )}
+                            secondaryIcon={getConnectorProviderLogoWithFallback(
+                              {
+                                provider:
+                                  node.dataSourceView.dataSource
+                                    .connectorProvider,
+                              }
+                            )}
+                          />
+                        )
+                      }
+                      label={item.label}
+                      description={item.description}
+                      truncateText
+                      onClick={() => handleItemClick(item)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      className={
+                        index === selectedIndex
+                          ? "bg-gray-100 dark:bg-gray-800"
+                          : ""
+                      }
+                    />
+                  );
+                })
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

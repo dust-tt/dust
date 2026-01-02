@@ -1,7 +1,7 @@
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
-import { KnowledgeNodeView } from "./KnowledgeNodeView";
+import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 
 export interface KnowledgeItem {
   id: string;
@@ -10,8 +10,8 @@ export interface KnowledgeItem {
 }
 
 export interface KnowledgeNodeAttributes {
-  selectedItems: KnowledgeItem[];
   isSearching: boolean;
+  selectedItems: KnowledgeItem[];
 }
 
 declare module "@tiptap/core" {

@@ -53,12 +53,14 @@ const editorVariants = cva(
 interface SkillBuilderInstructionsEditorProps {
   compareVersion?: SkillType | null;
   isInstructionDiffMode?: boolean;
+  owner: LightWorkspaceType;
 }
 
 export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
-}: SkillBuilderInstructionsEditorProps = {}) {
+  owner,
+}: SkillBuilderInstructionsEditorProps) {
   const { field, fieldState } = useController<
     SkillBuilderFormData,
     "instructions"
@@ -122,7 +124,7 @@ export function SkillBuilderInstructionsEditor({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
     ];
-  }, []);
+  }, [owner]);
 
   const debouncedUpdate = useMemo(
     () =>
