@@ -2,7 +2,7 @@
 
 # Script to check if package.json and package-lock.json are in sync
 # Usage: ./check-package-lock-sync.sh [dir1 dir2 ...]
-# If no directories are provided, checks all default directories
+# If no directories are provided, checks directories with changed package.json files
 # Returns 0 if in sync, 1 if out of sync
 
 set -e
@@ -10,12 +10,30 @@ set -e
 # Get the root path of the git repository
 root_path=$(git rev-parse --show-toplevel)
 
+# All possible directories to check
+all_directories=("front" "connectors" "cli" "viz" "sparkle" "extension" "sdks/js")
+
 # If arguments are provided, use them as the list of directories to check
-# Otherwise, use the default list
+# Otherwise, find directories with changed package.json files in the commit
 if [ $# -gt 0 ]; then
     directories=("$@")
 else
-    directories=("front" "connectors" "cli" "viz" "sparkle" "extension" "sdks/js")
+    # Get list of changed files in the commit (staged files)
+    changed_files=$(git diff --cached --name-only 2>/dev/null || git diff --name-only HEAD~1 2>/dev/null || echo "")
+
+    # Filter to only directories with changed package.json files
+    directories=()
+    for dir in "${all_directories[@]}"; do
+        if echo "$changed_files" | grep -q "^${dir}/package\.json$"; then
+            directories+=("$dir")
+        fi
+    done
+
+    # If no package.json files were changed, exit early with success
+    if [ ${#directories[@]} -eq 0 ]; then
+        echo "No package.json files changed, skipping sync check"
+        exit 0
+    fi
 fi
 
 # Track if any checks failed
