@@ -1,6 +1,8 @@
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { EmojiMartData } from "@emoji-mart/data";
@@ -9,7 +11,6 @@ import { init, SearchIndex } from "emoji-mart";
 import shuffle from "lodash/shuffle";
 import React, {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -21,7 +22,6 @@ import type {
   EmojiDropdownOnKeyDown,
   EmojiDropdownProps,
 } from "@app/components/editor/input_bar/types";
-import { classNames } from "@app/lib/utils";
 
 // Type the imported data, emoji-mart types are not the best
 const emojiData = data as unknown as EmojiMartData;
@@ -76,10 +76,7 @@ export const EmojiDropdown = forwardRef<
   const [emojiMartInitialized, setEmojiMartInitialized] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filteredEmojis, setFilteredEmojis] = useState<EmojiResult[]>([]);
-  const triggerRect = useMemo(
-    () => (clientRect ? clientRect() : null),
-    [clientRect]
-  );
+  const triggerRect = clientRect?.();
 
   useMemo(() => {
     // Initialize emoji-mart with data
@@ -118,10 +115,7 @@ export const EmojiDropdown = forwardRef<
     void searchEmoji();
   }, [query, emojiMartInitialized]);
 
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const [virtualTriggerStyle, setVirtualTriggerStyle] =
-    useState<React.CSSProperties>({});
-  const selectedItemRef = useRef<HTMLButtonElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
 
   const selectItem = (index: number) => {
     const emoji = filteredEmojis[index];
@@ -129,20 +123,6 @@ export const EmojiDropdown = forwardRef<
       command({ name: emoji.id });
     }
   };
-
-  const updateTriggerPosition = useCallback(() => {
-    if (triggerRect && triggerRef.current) {
-      setVirtualTriggerStyle({
-        position: "fixed",
-        left: triggerRect.left,
-        top: triggerRect.top + (window.visualViewport?.offsetTop ?? 0),
-        width: 1,
-        height: triggerRect.height || 1,
-        pointerEvents: "none",
-        zIndex: -1,
-      });
-    }
-  }, [triggerRect]);
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
@@ -171,10 +151,6 @@ export const EmojiDropdown = forwardRef<
   }));
 
   useEffect(() => {
-    updateTriggerPosition();
-  }, [updateTriggerPosition]);
-
-  useEffect(() => {
     setSelectedIndex(0);
   }, [filteredEmojis]);
 
@@ -194,10 +170,34 @@ export const EmojiDropdown = forwardRef<
   const contentKey =
     filteredEmojis.length === 0 ? "empty" : `results-${filteredEmojis.length}`;
 
+  const virtualTriggerStyle: React.CSSProperties = {
+    position: "fixed",
+    left: triggerRect.left,
+    top:
+      triggerRect.top +
+      (typeof window === "undefined"
+        ? 0
+        : (window.visualViewport?.offsetTop ?? 0)),
+    width: 1,
+    height: triggerRect.height || 1,
+    pointerEvents: "none",
+    zIndex: -1,
+    padding: 0,
+    minWidth: 0,
+    border: "none",
+    background: "transparent",
+  };
+
   return (
     <DropdownMenu open={true}>
       <DropdownMenuTrigger asChild>
-        <div ref={triggerRef} style={virtualTriggerStyle} />
+        <Button
+          size="xmini"
+          variant="ghost"
+          tabIndex={-1}
+          aria-hidden={true}
+          style={virtualTriggerStyle}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         key={contentKey}
@@ -215,31 +215,28 @@ export const EmojiDropdown = forwardRef<
         }}
       >
         {filteredEmojis.length > 0 ? (
-          <div className="flex max-h-60 flex-col gap-y-1 overflow-y-auto p-1">
+          <div className="flex max-h-60 flex-col overflow-y-auto">
             {filteredEmojis.map((emoji, index) => (
-              <div key={emoji.id}>
-                <button
-                  ref={index === selectedIndex ? selectedItemRef : null}
-                  className={classNames(
-                    "flex items-center px-2 py-1",
-                    "w-full flex-initial cursor-pointer text-left text-sm",
-                    index === selectedIndex
-                      ? "text-highlight-500"
-                      : "text-foreground dark:text-foreground-night"
-                  )}
-                  onClick={() => {
-                    selectItem(index);
-                  }}
-                  onMouseEnter={() => {
-                    setSelectedIndex(index);
-                  }}
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                    <span className="text-2xl">{emoji.native}</span>
-                    <span className="truncate">:{emoji.shortcodes}:</span>
-                  </div>
-                </button>
-              </div>
+              <DropdownMenuItem
+                key={emoji.id}
+                ref={index === selectedIndex ? selectedItemRef : null}
+                className={
+                  index === selectedIndex
+                    ? "text-highlight-500"
+                    : "text-foreground dark:text-foreground-night"
+                }
+                onClick={() => {
+                  selectItem(index);
+                }}
+                onMouseEnter={() => {
+                  setSelectedIndex(index);
+                }}
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                  <span className="text-2xl">{emoji.native}</span>
+                  <span className="truncate">:{emoji.shortcodes}:</span>
+                </div>
+              </DropdownMenuItem>
             ))}
           </div>
         ) : (
