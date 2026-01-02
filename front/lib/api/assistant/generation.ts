@@ -9,6 +9,8 @@ import {
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
@@ -193,11 +195,24 @@ function constructSkillsSection({
     return "";
   }
 
-  let skillsSection = "\n## SKILLS\n";
+  let skillsSection =
+    "\n## SKILLS\n" +
+    "Skills are modular capabilities that extend your abilities for specific tasks. " +
+    "Each skill includes specialized instructions and may provide additional tools.\n\n" +
+    "Skills can be in two states:\n" +
+    // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
+    // `equipped` is the backend term.
+    "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
+    `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
+    "tool when they become relevant to the conversation.\n" +
+    "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
+    "for the rest of the conversation.\n\n" +
+    "Enable skills proactively when a user's request matches a skill's purpose. " +
+    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n";
 
   if (!enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
-      "No skills are currently equipped or enabled for this agent.\n";
+      "\nNo skills are currently available or enabled for this agent.\n";
     return skillsSection;
   }
 
@@ -216,7 +231,9 @@ function constructSkillsSection({
   // Equipped but not yet enabled skills - show name and description only
   if (equippedSkills && equippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
-    skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${ENABLE_SKILL_TOOL_NAME} tool.\n`;
+    skillsSection +=
+      `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
+      "Review their descriptions and enable the appropriate skill when relevant:\n";
     const skillList = equippedSkills
       .map(
         ({ name, agentFacingDescription }) =>
