@@ -48,6 +48,7 @@ const NavigationListItemStyles = cva(
 interface NavigationListProps {
   viewportRef?: React.RefObject<HTMLDivElement>;
 }
+
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> &
@@ -220,7 +221,7 @@ const variantStyles = cva("", {
 });
 
 const labelStyles = cva(
-  "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-pr-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
 interface NavigationListLabelButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -291,7 +292,7 @@ const NavigationListLabel = React.forwardRef<
       className={cn(
         labelStyles(),
         variantStyles({ variant, isSticky }),
-        isCollapsible ? "s-pl-1 s-pr-2" : "s-pl-3 s-pr-2",
+        isCollapsible ? "s-pl-1" : "s-pl-3",
         className
       )}
       {...props}
