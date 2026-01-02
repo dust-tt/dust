@@ -848,36 +848,31 @@ async function createServer(
 
   server.tool(
     "search_channels",
-    `Search for Slack channels using two strategies. Returns JSON.
+    `Search for Slack channels by ID or name.
 
-1. EXACT QUERY (lookup_type='exact'): ONLY use when you have a Slack channel ID (e.g., 'C01234ABCD'). This does NOT work with channel names - only with channel IDs.
+AUTOMATIC DETECTION:
+- If query is a channel ID (e.g., 'C01234ABCD', 'D01234ABCD'), retrieves that specific channel directly
+- If query is text (e.g., 'marketing', 'team-eng'), searches across channel names, topics, and purpose descriptions. Returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches.
 
-2. SEARCH QUERY (lookup_type='search'): Use for channel names or vague queries. Searches across channel names, topics, and purpose descriptions. Returns top ${MAX_CHANNEL_SEARCH_RESULTS} matches.
-
-SCOPE BEHAVIOR (only applies to lookup_type='search'):
+SCOPE BEHAVIOR (only applies to text searches, ignored for channel IDs):
 - 'auto' (default): Searches user's joined channels (public, private, im and mpim) first, then automatically falls back to all public workspace channels if no results found
 - 'joined': Searches ONLY in user's joined channels (no fallback)
 - 'all': Searches ONLY in all public workspace channels
 
-IMPORTANT: Always use 'auto' unless the user explicitly requests a specific scope.
+IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specific scope.
 
 `,
     {
       query: z
         .string()
         .describe(
-          "Channel ID (e.g., 'C01234ABCD'), channel name, or search keywords."
-        ),
-      lookup_type: z
-        .enum(["exact", "search"])
-        .describe(
-          "'exact' for channel ID only (not names), 'search' for names/keywords."
+          "Channel ID (e.g., 'C01234ABCD'), channel name, or search keywords. Channel IDs are automatically detected."
         ),
       scope: z
         .enum(["auto", "joined", "all"])
         .default("auto")
         .describe(
-          "'auto' (default, always use this unless user specifies), 'joined' (only joined channels), 'all' (only public channels)."
+          "'auto' (default, always use this unless user specifies), 'joined' (only joined channels), 'all' (only public channels). Ignored when query is a channel ID."
         ),
     },
     withToolLogging(
@@ -886,24 +881,16 @@ IMPORTANT: Always use 'auto' unless the user explicitly requests a specific scop
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
       },
-      async ({ query, lookup_type, scope }, { authInfo }) => {
+      async ({ query, scope }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
           return new Err(new MCPError("Access token not found"));
         }
 
-        // Force scope to default "auto" for exact lookups since scope has no meaning for ID-based queries
-        const effectiveScope = lookup_type === "exact" ? "auto" : scope;
-
         try {
-          return await executeSearchChannels(
-            query,
-            effectiveScope,
-            lookup_type,
-            {
-              accessToken,
-            }
-          );
+          return await executeSearchChannels(query, scope, {
+            accessToken,
+          });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {

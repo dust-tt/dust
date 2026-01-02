@@ -481,17 +481,23 @@ async function searchAndProcessChannels(
   scope: "joined" | "public",
   query: string,
   contextMessage: string
-): Promise<Ok<Array<{ type: "text"; text: string }>>> {
+): Promise<{
+  result: Ok<Array<{ type: "text"; text: string }>>;
+  count: number;
+}> {
   const channels = await getChannels({ slackClient, scope });
   const matched = filterChannels(channels, query);
   const cleaned = matched.map(cleanChannelPayload);
   const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
-    },
-  ]);
+  return {
+    result: new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
+      },
+    ]),
+    count: cleaned.length,
+  };
 }
 
 function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
@@ -509,11 +515,10 @@ function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
   ].join("\n");
 }
 
-// Execute search_channels: "exact" uses conversations.info, "search" fetches lists and filters locally.
+// Execute search_channels: automatically detects channel IDs vs text search.
 export async function executeSearchChannels(
   query: string,
   scope: "auto" | "joined" | "all",
-  lookupType: "exact" | "search",
   {
     accessToken,
   }: {
@@ -522,11 +527,15 @@ export async function executeSearchChannels(
 ): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
   const slackClient = await getSlackClient(accessToken);
 
-  // Exact lookup: direct API call to conversations.info
-  if (lookupType === "exact") {
+  // Auto-detect if query looks like a channel ID (e.g., C01234ABCD, D01234ABCD, G01234ABCD)
+  const cleanedQuery = query.replace(/^[#@]/, "");
+  const detectedChannelId = /^[CDG][A-Z0-9]{8,}$/.test(cleanedQuery);
+
+  // Channel ID lookup: direct API call to conversations.info
+  if (detectedChannelId) {
     try {
       const response = await slackClient.conversations.info({
-        channel: query.replace(/^[#@]/, ""),
+        channel: cleanedQuery,
       });
 
       if (response.ok && response.channel) {
@@ -550,48 +559,47 @@ export async function executeSearchChannels(
   // Search lookup.
   // Scope="auto": search in joined channels; if no match fallback in all public channels.
   if (scope === "auto") {
-    const joinedResult = await searchAndProcessChannels(
-      slackClient,
-      "joined",
-      query,
-      "in your joined channels"
-    );
+    const { result: joinedResult, count: joinedCount } =
+      await searchAndProcessChannels(
+        slackClient,
+        "joined",
+        query,
+        "in your joined channels"
+      );
 
-    // Check if we have results, otherwise fallback to public
-    const joinedContent = joinedResult.value[0].text;
-    const joinedCount = parseInt(
-      joinedContent.match(/Found (\d+)/)?.[1] ?? "0"
-    );
     if (joinedCount > 0) {
       return joinedResult;
     }
 
     // Fallback to all public channels.
-    return searchAndProcessChannels(
+    const { result: publicResult } = await searchAndProcessChannels(
       slackClient,
       "public",
       query,
       "in public workspace channels"
     );
+    return publicResult;
   }
 
   // Scope="joined": search all public, private, im and mpim joined channels.
   if (scope === "joined") {
-    return searchAndProcessChannels(
+    const { result } = await searchAndProcessChannels(
       slackClient,
       "joined",
       query,
       "in your joined channels"
     );
+    return result;
   }
 
   // Scope="all": search all public channels.
-  return searchAndProcessChannels(
+  const { result } = await searchAndProcessChannels(
     slackClient,
     "public",
     query,
     "in public workspace channels"
   );
+  return result;
 }
 
 // Used by slack_bot
