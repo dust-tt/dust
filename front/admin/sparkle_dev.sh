@@ -23,7 +23,6 @@ RESET='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SPARKLE_DIR="$(cd "$SCRIPT_DIR/../../sparkle" && pwd)"
 FRONT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ROLLUP_CONFIG="$SPARKLE_DIR/rollup.config.mjs"
 
 log() {
     local message="$1"
@@ -107,8 +106,8 @@ main() {
     fi
     
     # Check if we're in the right directory structure
-    if [[ ! -d "$SPARKLE_DIR" ]] || [[ ! -f "$ROLLUP_CONFIG" ]]; then
-        log "❌ Cannot find Sparkle directory or rollup config" "$RED"
+    if [[ ! -d "$SPARKLE_DIR" ]]; then
+        log "❌ Cannot find Sparkle directory" "$RED"
         log "   Expected: $SPARKLE_DIR" "$DIM"
         exit 1
     fi
