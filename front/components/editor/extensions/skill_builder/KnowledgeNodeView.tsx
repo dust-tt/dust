@@ -22,6 +22,10 @@ import type {
   KnowledgeItem,
   KnowledgeNodeAttributes,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+
+interface ExtendedNodeViewProps extends NodeViewProps {
+  clientRect?: () => DOMRect | null;
+}
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
@@ -33,11 +37,12 @@ import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types";
 
-export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
+export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   node,
   updateAttributes,
   deleteNode,
   editor,
+  clientRect,
 }) => {
   const { selectedItems, isSearching } = node.attrs as KnowledgeNodeAttributes;
   const { owner } = useSkillBuilderContext();
@@ -72,6 +77,30 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
       includeTools: false,
     }
   );
+
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [virtualTriggerStyle, setVirtualTriggerStyle] =
+    useState<React.CSSProperties>({});
+
+  // Update virtual trigger position.
+  const updateTriggerPosition = useCallback(() => {
+    const triggerRect = clientRect?.();
+    if (triggerRect && triggerRef.current) {
+      setVirtualTriggerStyle({
+        position: "fixed",
+        left: triggerRect.left,
+        top: triggerRect.top + (window.visualViewport?.offsetTop ?? 0),
+        width: 1,
+        height: triggerRect.height || 1,
+        pointerEvents: "none",
+        zIndex: -1,
+      });
+    }
+  }, [clientRect]);
+
+  useEffect(() => {
+    updateTriggerPosition();
+  }, [updateTriggerPosition]);
 
   // Convert API results to properly formatted nodes with hierarchy.
   const dataSourceNodes = useMemo(
@@ -328,24 +357,11 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
         {isOpen && knowledgeItems.length > 0 && (
           <DropdownMenu open={true}>
             <DropdownMenuTrigger asChild>
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  left: 0,
-                  width: "100%",
-                  height: 1,
-                  opacity: 0,
-                  pointerEvents: "none",
-                }}
-              />
+              <div ref={triggerRef} style={virtualTriggerStyle} />
             </DropdownMenuTrigger>
-            {/* Offset to prevent dropdown from overlapping the trigger */}
+            {/* TODO(2026-01-02 SKILL) Fix dropdow display to avoid overlap with input */}
             <DropdownMenuContent
               className="w-96"
-              side="bottom"
-              sideOffset={4}
-              align="start"
               avoidCollisions={true}
               onInteractOutside={handleInteractOutside}
               onOpenAutoFocus={(e) => e.preventDefault()}
