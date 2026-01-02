@@ -22,10 +22,6 @@ import type {
   KnowledgeItem,
   KnowledgeNodeAttributes,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-
-interface ExtendedNodeViewProps extends NodeViewProps {
-  clientRect?: () => DOMRect | null;
-}
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
@@ -37,12 +33,16 @@ import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types";
 
+interface ExtendedNodeViewProps extends NodeViewProps {
+  clientRect?: () => DOMRect | null;
+}
+
 export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
-  node,
-  updateAttributes,
+  clientRect,
   deleteNode,
   editor,
-  clientRect,
+  node,
+  updateAttributes,
 }) => {
   const { selectedItems, isSearching } = node.attrs as KnowledgeNodeAttributes;
   const { owner } = useSkillBuilderContext();
