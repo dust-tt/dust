@@ -20,7 +20,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { getRandomUsers, mockConversations, type User } from "../data";
+import {
+  getRandomAgents,
+  getRandomUsers,
+  mockConversations,
+  type Agent,
+  type User,
+} from "../data";
 
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
@@ -28,10 +34,16 @@ function DustMain() {
   );
   const [searchText, setSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
     const randomUser = getRandomUsers(1)[0];
     setUser(randomUser);
+
+    // Generate random number of agents between 2 and 8
+    const agentCount = Math.floor(Math.random() * (8 - 2 + 1)) + 2;
+    const randomAgents = getRandomAgents(agentCount);
+    setAgents(randomAgents);
   }, []);
 
   const filteredConversations = useMemo(() => {
@@ -135,6 +147,7 @@ function DustMain() {
 
               <NavigationListCollapsibleSection
                 label="Agents"
+                defaultOpen={agents.length <= 3}
                 action={
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -176,7 +189,15 @@ function DustMain() {
                   </DropdownMenu>
                 }
               >
-                <></>
+                {agents.map((agent) => (
+                  <NavigationListItem
+                    key={agent.id}
+                    label={`${agent.emoji} ${agent.name}`}
+                    onClick={() => {
+                      console.log("Selected agent:", agent.id);
+                    }}
+                  />
+                ))}
               </NavigationListCollapsibleSection>
 
               <NavigationListCollapsibleSection
