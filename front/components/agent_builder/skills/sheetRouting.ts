@@ -1,7 +1,10 @@
+import type {
+  ConfigurationState,
+  InfoState,
+  KnowledgeState,
+} from "@app/components/agent_builder/skills/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-
-import type { ConfigurationState, InfoState, KnowledgeState } from "./types";
 
 export function getKnowledgeMCPServerViewForAction(
   action: BuilderAction,
