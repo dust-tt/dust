@@ -24,11 +24,6 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import {
-  deleteWorkspaceDomain,
-  getWorkspaceVerifiedDomains,
-  upsertWorkspaceDomain,
-} from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import { createOrUpdateUser } from "@app/lib/iam/users";
@@ -37,6 +32,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
@@ -308,9 +304,14 @@ async function handleOrganizationDomainEvent(
     `Domain state is not ${expectedState} -- expected ${expectedState} but got ${state}`
   );
 
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${workspace.sId}`);
+  }
+
   let domainResult: Result<any, Error>;
   if (expectedState === "verified") {
-    domainResult = await upsertWorkspaceDomain(workspace, {
+    domainResult = await workspaceResource.upsertWorkspaceDomain({
       domain,
       // If a workspace has a verified domain, it means that they went through the DNS
       // verification process. If this domain is already assigned to another workspace,
@@ -318,7 +319,7 @@ async function handleOrganizationDomainEvent(
       dropExistingDomain: true,
     });
   } else {
-    domainResult = await deleteWorkspaceDomain(workspace, { domain });
+    domainResult = await workspaceResource.deleteDomain({ domain });
   }
 
   if (domainResult.isErr()) {
@@ -352,7 +353,12 @@ async function handleOrganizationUpdated(
 ) {
   const { domains } = eventData;
 
-  const existingVerifiedDomains = await getWorkspaceVerifiedDomains(workspace);
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${workspace.sId}`);
+  }
+
+  const existingVerifiedDomains = await workspaceResource.getVerifiedDomains();
   const existingVerifiedDomainsSet = new Set(
     existingVerifiedDomains.map((d) => d.domain)
   );
@@ -365,7 +371,7 @@ async function handleOrganizationUpdated(
   // Add new verified domains that don't exist yet.
   for (const domain of workOSVerifiedDomains) {
     if (!existingVerifiedDomainsSet.has(domain)) {
-      const result = await upsertWorkspaceDomain(workspace, { domain });
+      const result = await workspaceResource.upsertWorkspaceDomain({ domain });
 
       // Swallow errors, we don't want to block the event from being processed. Sole error returned
       // is if the domain is already in use by another workspace.
@@ -381,7 +387,7 @@ async function handleOrganizationUpdated(
   // Delete domains that are no longer verified in WorkOS.
   for (const domain of existingVerifiedDomainsSet) {
     if (!workOSVerifiedDomains.has(domain)) {
-      await deleteWorkspaceDomain(workspace, { domain });
+      await workspaceResource.deleteDomain({ domain });
     }
   }
 }
