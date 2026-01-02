@@ -14,10 +14,13 @@ export function useURLSheet(paramName: string) {
   const onOpenChange = useCallback(
     (open: boolean) => {
       const { [paramName]: _, ...restQuery } = router.query;
+      const hash = router.asPath.split("#")[1] || undefined;
+
       void router.push(
         {
           pathname: router.pathname,
           query: open ? { ...restQuery, [paramName]: "true" } : restQuery,
+          hash,
         },
         undefined,
         { shallow: true }
