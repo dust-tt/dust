@@ -302,6 +302,11 @@ export function constructGuidelinesSection({
     "parentheses are not sufficient to denote mathematical formulas:\nBAD: \\( \\Delta \\)\nGOOD: $$ \\Delta $$.\n";
 
   guidelinesSection +=
+    "\n## RENDERING MARKDOWN CODE BLOCKS\n" +
+    "When rendering code blocks, always use quadruple backticks (````). " +
+    "To render nested code blocks, always use triple backticks (```) for the inner code blocks.";
+
+  guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
     'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +

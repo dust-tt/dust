@@ -40,14 +40,14 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
     id: "garbage-collect-google-drive-document",
     name: "GC Google Drive Document",
     description:
-      "Garbage collect Google Drive document(s). Accepts a single ID or a comma-separated list.",
+      "Garbage collect Google Drive document(s). Accepts a single ID or one per line.",
     resourceTypes: ["data_sources"],
     args: {
       documentId: {
-        type: "string",
+        type: "text",
         label: "Document ID(s)",
         description:
-          "Comma-separated list of document IDs to garbage collect, e.g. gdrive-abc, gdrive-def",
+          "One document ID per line to garbage collect, e.g. gdrive-abc",
       },
     },
   },
@@ -74,7 +74,7 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
     }
 
     const documentIds = rawDocumentIds
-      .split(",")
+      .split("\n")
       .map((d) => d.trim())
       .filter((d) => d.length > 0);
 

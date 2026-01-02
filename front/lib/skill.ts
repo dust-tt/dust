@@ -61,7 +61,8 @@ const IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS: string[] = [
 export function doesSkillTriggerSelectSpaces(sId: string): boolean {
   return IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS.includes(sId);
 }
-export const hasRelations = (
-  skillConfiguration: SkillType & { relations?: SkillRelations }
-): skillConfiguration is SkillWithRelationsType =>
-  skillConfiguration.relations !== undefined;
+export function hasRelations(
+  skill: SkillType & { relations?: SkillRelations }
+): skill is SkillWithRelationsType {
+  return skill.relations !== undefined;
+}
