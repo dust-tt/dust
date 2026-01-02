@@ -56,7 +56,11 @@ export type PostMessageResponse = {
 export type StreamEvent =
   | { type: "user_message_new"; message: UserMessage }
   | { type: "agent_message_new"; message: AgentMessage }
-  | { type: "generation_tokens"; text: string; classification: "tokens" | "chain_of_thought" }
+  | {
+      type: "generation_tokens";
+      text: string;
+      classification: "tokens" | "chain_of_thought";
+    }
   | { type: "agent_message_success"; message: AgentMessage }
   | { type: "user_message_error"; error: { code: string; message: string } }
   | { type: "agent_error"; error: { code: string; message: string } }

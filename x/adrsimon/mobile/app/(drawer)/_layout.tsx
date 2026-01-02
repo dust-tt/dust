@@ -22,7 +22,9 @@ function NavItem({ label, icon, isActive, onPress }: NavItemProps) {
   return (
     <Pressable
       className={`flex-row items-center gap-3 py-2.5 px-3 mx-2 rounded-xl ${
-        isActive ? "bg-blue-500/10" : "active:bg-gray-100 dark:active:bg-gray-800"
+        isActive
+          ? "bg-blue-500/10"
+          : "active:bg-gray-100 dark:active:bg-gray-800"
       }`}
       onPress={onPress}
     >
@@ -119,9 +121,6 @@ export default function DrawerLayout() {
     <Drawer
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: colors.gray[950] },
-        headerTintColor: colors.gray[50],
-        drawerStyle: { backgroundColor: colors.gray[950] },
         headerTitleStyle: { fontWeight: "600" },
       }}
     >
