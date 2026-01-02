@@ -1,14 +1,16 @@
 import {
   Avatar,
+  Button,
   Chip,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -20,7 +22,6 @@ import type {
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
-import { classNames } from "@app/lib/utils";
 
 export const MentionDropdown = forwardRef<
   MentionDropdownOnKeyDown,
@@ -55,10 +56,7 @@ export const MentionDropdown = forwardRef<
       includeCurrentUser,
     });
 
-    const triggerRef = useRef<HTMLDivElement>(null);
-    const [virtualTriggerStyle, setVirtualTriggerStyle] =
-      useState<React.CSSProperties>({});
-    const selectedItemRef = useRef<HTMLButtonElement>(null);
+    const selectedItemRef = useRef<HTMLDivElement>(null);
 
     const selectItem = (index: number) => {
       const item = suggestions[index];
@@ -67,22 +65,6 @@ export const MentionDropdown = forwardRef<
         command(item);
       }
     };
-
-    const updateTriggerPosition = useCallback(() => {
-      if (triggerRect && triggerRef.current) {
-        setVirtualTriggerStyle({
-          position: "fixed",
-          left: triggerRect.left,
-          // On iOS based browsers, the position is not correct without adding the offsetTop.
-          // Something related to the position calculation when there is a scrollable area.
-          top: triggerRect.top + (window.visualViewport?.offsetTop ?? 0),
-          width: 1,
-          height: triggerRect.height || 1,
-          pointerEvents: "none",
-          zIndex: -1,
-        });
-      }
-    }, [triggerRect]);
 
     useImperativeHandle(ref, () => ({
       onKeyDown: ({ event }) => {
@@ -109,10 +91,6 @@ export const MentionDropdown = forwardRef<
         return false;
       },
     }));
-
-    useEffect(() => {
-      updateTriggerPosition();
-    }, [updateTriggerPosition]);
 
     // Reset the selected index when items change (e.g., when query changes).
     useEffect(() => {
@@ -147,10 +125,36 @@ export const MentionDropdown = forwardRef<
       return null;
     }
 
+    const virtualTriggerStyle: React.CSSProperties = {
+      position: "fixed",
+      left: triggerRect.left,
+      // On iOS based browsers, the position is not correct without adding the offsetTop.
+      // Something related to the position calculation when there is a scrollable area.
+      top:
+        triggerRect.top +
+        (typeof window === "undefined"
+          ? 0
+          : (window.visualViewport?.offsetTop ?? 0)),
+      width: 1,
+      height: triggerRect.height || 1,
+      pointerEvents: "none",
+      zIndex: -1,
+      padding: 0,
+      minWidth: 0,
+      border: "none",
+      background: "transparent",
+    };
+
     return (
       <DropdownMenu open={true}>
         <DropdownMenuTrigger asChild>
-          <div ref={triggerRef} style={virtualTriggerStyle} />
+          <Button
+            size="xmini"
+            variant="ghost"
+            tabIndex={-1}
+            aria-hidden={true}
+            style={virtualTriggerStyle}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           key={contentKey}
@@ -172,48 +176,45 @@ export const MentionDropdown = forwardRef<
               <Spinner />
             </div>
           ) : suggestions.length > 0 ? (
-            <div className="flex max-h-60 flex-col gap-y-1 overflow-y-auto p-1">
+            <div className="flex max-h-60 flex-col overflow-y-auto">
               {suggestions.map((suggestion, index) => (
-                <div key={suggestion.id}>
-                  <button
-                    ref={index === selectedIndex ? selectedItemRef : null}
-                    className={classNames(
-                      "flex items-center px-2 py-1",
-                      "w-full flex-initial cursor-pointer text-left text-sm",
-                      index === selectedIndex
-                        ? "text-highlight-500"
-                        : "text-foreground dark:text-foreground-night"
-                    )}
-                    onClick={() => {
-                      selectItem(index);
-                    }}
-                    onMouseEnter={() => {
-                      setSelectedIndex(index);
-                    }}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                      <Avatar
-                        size="xs"
-                        visual={suggestion.pictureUrl}
-                        isRounded={suggestion.type === "user"}
-                      />
-                      <span
-                        className="truncate font-semibold"
-                        title={suggestion.label}
-                      >
-                        {suggestion.label}
-                      </span>
-                    </div>
-                    {suggestion.type === "user" && (
-                      <Chip
-                        size="mini"
-                        color="primary"
-                        label="Member"
-                        className="ml-2 shrink-0"
-                      />
-                    )}
-                  </button>
-                </div>
+                <DropdownMenuItem
+                  key={suggestion.id}
+                  ref={index === selectedIndex ? selectedItemRef : null}
+                  className={cn(
+                    index === selectedIndex
+                      ? "text-highlight-500"
+                      : "text-foreground dark:text-foreground-night"
+                  )}
+                  onClick={() => {
+                    selectItem(index);
+                  }}
+                  onMouseEnter={() => {
+                    setSelectedIndex(index);
+                  }}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                    <Avatar
+                      size="xs"
+                      visual={suggestion.pictureUrl}
+                      isRounded={suggestion.type === "user"}
+                    />
+                    <span
+                      className="truncate font-semibold"
+                      title={suggestion.label}
+                    >
+                      {suggestion.label}
+                    </span>
+                  </div>
+                  {suggestion.type === "user" && (
+                    <Chip
+                      size="mini"
+                      color="primary"
+                      label="Member"
+                      className="ml-2 shrink-0"
+                    />
+                  )}
+                </DropdownMenuItem>
               ))}
             </div>
           ) : (
