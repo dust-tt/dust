@@ -11,6 +11,7 @@ export type SkillType = {
   updatedAt: number | null;
   authorId: number | null;
   status: SkillStatus;
+  version: number;
   name: string;
   agentFacingDescription: string;
   userFacingDescription: string;

@@ -1225,6 +1225,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
       authorId: this.globalSId ? null : this.authorId,
       status: this.status,
+      version: this.version,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,
@@ -1261,7 +1262,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch current MCP server configuration IDs for this skill
+    // Fetch current MCP server configuration IDs for this skill.
     const mcpServerConfigurations =
       await SkillMCPServerConfigurationModel.findAll({
         where: {
@@ -1275,20 +1276,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
-    // Calculate the next version number by counting existing versions
-    const where: WhereOptions<SkillVersionModel> = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
-    };
+    const versionNumber = this.version + 1;
 
-    const existingVersionsCount = await SkillVersionModel.count({
-      where,
-      transaction,
-    });
-
-    const versionNumber = existingVersionsCount + 1;
-
-    // Create a new version entry with the current state
+    // Create a new version entry with the current state.
     const versionData: SkillVersionCreationAttributes = {
       workspaceId: this.workspaceId,
       skillConfigurationId: this.id,
@@ -1305,6 +1295,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       updatedAt: this.updatedAt,
     };
 
-    await SkillVersionModel.create(versionData, { transaction });
+    await SkillVersionModel.create(versionData, {
+      transaction,
+    });
+
+    await this.updateWithAuthorization(
+      auth,
+      { version: versionNumber },
+      { transaction }
+    );
   }
 }

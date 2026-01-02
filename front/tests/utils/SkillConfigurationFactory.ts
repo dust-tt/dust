@@ -15,6 +15,7 @@ export class SkillConfigurationFactory {
       userFacingDescription: string;
       instructions: string;
       status: SkillStatus;
+      version: number;
     }> = {}
   ): Promise<SkillResource> {
     const user = auth.user();
@@ -27,6 +28,7 @@ export class SkillConfigurationFactory {
       overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
+    const version = overrides.version ?? 0;
     const authorId = overrides.status === "suggested" ? null : user.id;
 
     return SkillResource.makeNew(
@@ -39,6 +41,7 @@ export class SkillConfigurationFactory {
         name,
         requestedSpaceIds: [],
         status,
+        version,
       },
       {
         mcpServerViews: [],
