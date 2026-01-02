@@ -2,8 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   Button,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  MoreIcon,
   NavigationList,
+  NavigationListCollapsibleSection,
   NavigationListItem,
+  NavigationListLabelButton,
+  PlanetIcon,
   SearchInput,
   Tabs,
   TabsContent,
@@ -56,10 +66,14 @@ function DustMain() {
           }
           className="s-flex s-flex-1 s-flex-col s-overflow-hidden"
         >
-          <TabsList className="s-px-2 s-pt-2">
-            <TabsTrigger value="chat" label="Chat" />
-            <TabsTrigger value="spaces" label="Spaces" />
-            <TabsTrigger value="admin" label="Admin" />
+          <TabsList className="s-mt-2 s-px-2">
+            <TabsTrigger
+              value="chat"
+              label="Chat"
+              icon={ChatBubbleLeftRightIcon}
+            />
+            <TabsTrigger value="spaces" label="Spaces" icon={PlanetIcon} />
+            <TabsTrigger value="admin" icon={Cog6ToothIcon} />
           </TabsList>
 
           {/* Chat Tab */}
@@ -78,6 +92,131 @@ function DustMain() {
               />
               <Button label="New" variant="primary" size="sm" />
             </div>
+
+            {/* Collapsible Sections */}
+            <NavigationList className="s-px-2">
+              <NavigationListCollapsibleSection
+                label="Spaces"
+                action={
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <NavigationListLabelButton
+                        icon={MoreIcon}
+                        aria-label="Spaces options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Manage"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Manage Spaces");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Create"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Create Space");
+                        }}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                }
+              >
+                <></>
+              </NavigationListCollapsibleSection>
+
+              <NavigationListCollapsibleSection
+                label="Agents"
+                action={
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <NavigationListLabelButton
+                        icon={MoreIcon}
+                        aria-label="Agents options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Manage"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Manage Agents");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Create"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Create Agent");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Edit"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Edit Agent");
+                        }}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                }
+              >
+                <></>
+              </NavigationListCollapsibleSection>
+
+              <NavigationListCollapsibleSection
+                label="Conversations"
+                action={
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <NavigationListLabelButton
+                        icon={MoreIcon}
+                        aria-label="Conversations options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Edit"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Edit Conversations");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Clear history"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Clear history");
+                        }}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                }
+              >
+                <></>
+              </NavigationListCollapsibleSection>
+            </NavigationList>
 
             {/* Conversation List */}
             <NavigationList className="s-flex-1 s-overflow-auto s-px-2">
