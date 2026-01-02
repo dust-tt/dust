@@ -212,7 +212,7 @@ const CardActions = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-right-2 s-top-2 sm:s-opacity-0 s-transition-opacity",
+        "s-absolute s-right-2 s-top-2 s-transition-opacity sm:s-opacity-0",
         "group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
       )}
       {...props}
