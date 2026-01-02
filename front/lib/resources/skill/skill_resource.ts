@@ -990,6 +990,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon,
         requestedSpaceIds,
         authorId,
+        version: this.version + 1,
       },
       { transaction }
     );
@@ -1273,13 +1274,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
-    const versionNumber = this.version + 1;
-
     // Create a new version entry with the current state.
     const versionData: SkillVersionCreationAttributes = {
       workspaceId: this.workspaceId,
       skillConfigurationId: this.id,
-      version: versionNumber,
+      version: this.version,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
@@ -1295,11 +1294,5 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await SkillVersionModel.create(versionData, {
       transaction,
     });
-
-    await this.updateWithAuthorization(
-      auth,
-      { version: versionNumber },
-      { transaction }
-    );
   }
 }
