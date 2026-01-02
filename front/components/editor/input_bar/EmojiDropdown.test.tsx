@@ -27,9 +27,9 @@ describe("EmojiDropdown", () => {
     );
 
     // Should show curated popular emojis
-    const buttons = await screen.findAllByRole("button");
-    expect(buttons.length).toBeGreaterThan(0);
-    expect(buttons.length).toBeLessThanOrEqual(20);
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.length).toBeLessThanOrEqual(20);
   });
 
   it("filters emojis based on query", async () => {
@@ -42,8 +42,8 @@ describe("EmojiDropdown", () => {
     );
 
     // Should show smile-related emojis
-    const buttons = await screen.findAllByRole("button");
-    expect(buttons.length).toBeGreaterThan(0);
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.length).toBeGreaterThan(0);
 
     // Rerender with different query
     rerender(
@@ -55,8 +55,8 @@ describe("EmojiDropdown", () => {
     );
 
     // Should show different emojis
-    const heartButtons = await screen.findAllByRole("button");
-    expect(heartButtons.length).toBeGreaterThan(0);
+    const heartItems = await screen.findAllByRole("menuitem");
+    expect(heartItems.length).toBeGreaterThan(0);
   });
 
   it("shows no results message when no emojis match", () => {
@@ -81,9 +81,9 @@ describe("EmojiDropdown", () => {
       />
     );
 
-    const buttons = await screen.findAllByRole("button");
+    const items = await screen.findAllByRole("menuitem");
     // Should not exceed 20 results
-    expect(buttons.length).toBeLessThanOrEqual(20);
+    expect(items.length).toBeLessThanOrEqual(20);
   });
 
   it("returns null when clientRect is not provided", () => {
