@@ -1,6 +1,4 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { NodeSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { KnowledgeNodeView } from "./KnowledgeNodeView";
@@ -29,8 +27,8 @@ export const KnowledgeNode = Node.create<{}>({
 
   group: "inline",
   inline: true,
-  atom: false,  // Make it editable
-  selectable: false,  // Allow text cursor inside
+  atom: false, // Make it editable.
+  selectable: false, // Allow text cursor inside.
 
   addAttributes() {
     return {
@@ -67,15 +65,17 @@ export const KnowledgeNode = Node.create<{}>({
 
   renderHTML({ node, HTMLAttributes }) {
     const { selectedItems } = node.attrs;
-    
+
     if (selectedItems.length > 0) {
-      // Render selected knowledge as a chip
+      // Render selected knowledge as a chip.
+      // TODO(2026-01-02 SKILLS): Use the same chip as the url one in the input bar.
       return [
         "span",
         mergeAttributes(
-          { 
+          {
             "data-type": "knowledge-node",
-            "class": "inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm"
+            class:
+              "inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm",
           },
           HTMLAttributes
         ),
@@ -83,20 +83,21 @@ export const KnowledgeNode = Node.create<{}>({
         ["span", {}, selectedItems[0].label],
       ];
     }
-    
-    // Render editable search container
+
+    // Render editable search container.
     return [
       "span",
       mergeAttributes(
-        { 
+        {
           "data-type": "knowledge-node",
-          "class": "inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-sm italic",
-          "contenteditable": "true"
+          class:
+            "inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-sm italic",
+          contenteditable: "true",
         },
         HTMLAttributes
       ),
       ["span", { class: "emoji" }, "🔍"],
-      0, // This allows text content inside
+      0, // This allows text content inside.
     ];
   },
 
@@ -122,7 +123,7 @@ export const KnowledgeNode = Node.create<{}>({
 
   addKeyboardShortcuts() {
     return {
-      // Allow normal editing behavior
+      // Allow normal editing behavior.
     };
   },
 });

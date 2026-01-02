@@ -9,73 +9,44 @@ import type { SuggestionProps } from "@tiptap/suggestion";
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
 
-export interface KnowledgeDropdownOnKeyDown {
+export interface SlashCommand {
+  id: string;
+  label: string;
+  description: string;
+  action: string;
+}
+
+export interface SlashCommandDropdownProps extends SuggestionProps<SlashCommand> {}
+
+export interface SlashCommandDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-export interface KnowledgeDropdownProps extends SuggestionProps {
-  onClose?: () => void;
-}
-
-export const KnowledgeDropdown = forwardRef<
-  KnowledgeDropdownOnKeyDown,
-  KnowledgeDropdownProps
->(({ query, clientRect, command, onClose }, ref) => {
+export const SlashCommandDropdown = forwardRef<
+  SlashCommandDropdownRef,
+  SlashCommandDropdownProps
+>(({ items, command, clientRect }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
-
-  // Simple attachment options - no complex menu levels
-  const items = useMemo(() => {
-    const allOptions = [
-      {
-        id: "attach-knowledge",
-        label: "Attach knowledge 1",
-        description: "Search and attach knowledge to your message",
-        action: "insert-knowledge-node",
-      },
-      {
-        id: "attach-file",
-        label: "Attach file",
-        description: "Upload and attach a file",
-        action: "open-file-upload",
-      },
-      {
-        id: "attach-url",
-        label: "Attach URL",
-        description: "Attach a web page or document by URL",
-        action: "open-url-input",
-      },
-    ];
-
-    if (!query || query.length === 0) {
-      return allOptions;
-    }
-
-    // Filter options based on what user typed
-    return allOptions.filter(
-      (item) =>
-        item.label.toLowerCase().includes(query.toLowerCase()) ||
-        item.description.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [virtualTriggerStyle, setVirtualTriggerStyle] =
+    useState<React.CSSProperties>({});
 
   const selectItem = useCallback(
     (index: number) => {
       const item = items[index];
       if (item) {
-        // Just pass the item to the command - let the suggestion system handle it
         command(item);
       }
     },
     [command, items]
   );
-
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(
     ref,
@@ -105,13 +76,14 @@ export const KnowledgeDropdown = forwardRef<
     [selectItem, selectedIndex, items.length]
   );
 
-  // Virtual trigger - EXACTLY like MentionDropdown
-  const triggerRect = clientRect?.();
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const [virtualTriggerStyle, setVirtualTriggerStyle] =
-    useState<React.CSSProperties>({});
+  // Reset selected index when items change.
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [items.length]);
 
+  // Update virtual trigger position.
   const updateTriggerPosition = useCallback(() => {
+    const triggerRect = clientRect?.();
     if (triggerRect && triggerRef.current) {
       setVirtualTriggerStyle({
         position: "fixed",
@@ -123,21 +95,11 @@ export const KnowledgeDropdown = forwardRef<
         zIndex: -1,
       });
     }
-  }, [triggerRect]);
+  }, [clientRect]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     updateTriggerPosition();
   }, [updateTriggerPosition]);
-
-  // // Scroll selected item into view when selection changes
-  // React.useEffect(() => {
-  //   if (selectedItemRef.current) {
-  //     selectedItemRef.current.scrollIntoView({
-  //       block: "nearest",
-  //       behavior: "smooth",
-  //     });
-  //   }
-  // }, [selectedIndex]);
 
   return (
     <DropdownMenu open={true}>
@@ -146,18 +108,16 @@ export const KnowledgeDropdown = forwardRef<
       </DropdownMenuTrigger>
       <DropdownMenuContent
         ref={containerRef}
-        className="w-96"
+        className="min-h-16 w-96"
         align="start"
         side="bottom"
         sideOffset={4}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        onEscapeKeyDown={() => onClose?.()}
-        onInteractOutside={() => onClose?.()}
       >
         {items.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-            No attachment options found for "{query}"
+          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            No commands found
           </div>
         ) : (
           items.map((item, index) => (
@@ -180,4 +140,4 @@ export const KnowledgeDropdown = forwardRef<
   );
 });
 
-KnowledgeDropdown.displayName = "KnowledgeDropdown";
+SlashCommandDropdown.displayName = "SlashCommandDropdown";

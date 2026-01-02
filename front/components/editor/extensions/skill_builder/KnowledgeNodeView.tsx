@@ -1,4 +1,5 @@
 import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,7 +30,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Mock knowledge items - filtered by search query
+  // Mock knowledge items - filtered by search query.
   const knowledgeItems: KnowledgeItem[] = useMemo(() => {
     const allItems = [
       {
@@ -119,7 +120,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
         setSelectedIndex(0);
         setSearchQuery("");
 
-        // Return focus to the editor after selection and add a space
+        // Return focus to the editor after selection and add a space.
         setTimeout(() => {
           if (editor) {
             editor.chain().focus().insertContent(" ").run();
@@ -140,10 +141,10 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     [knowledgeItems, handleItemSelect]
   );
 
-  // Listen for input events to update search query and dropdown state
+  // Listen for input events to update search query and dropdown state.
   const handleInput = useCallback(
     (e: React.FormEvent<HTMLSpanElement>) => {
-      const text = e.currentTarget.textContent || "";
+      const text = e.currentTarget.textContent ?? "";
       setSearchQuery(text);
 
       if (text.trim() && !isOpen) {
@@ -155,15 +156,15 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     [isOpen]
   );
 
-  // Auto-focus when node is created or component mounts
+  // Auto-focus when node is created or component mounts.
   useEffect(() => {
     if (isSearching && selectedItems.length === 0 && contentRef.current) {
-      // Use setTimeout to ensure the DOM is ready
+      // Use setTimeout to ensure the DOM is ready.
       setTimeout(() => {
         if (contentRef.current) {
           contentRef.current.focus();
 
-          // Set cursor at the end of any existing text
+          // Set cursor at the end of any existing text.
           const range = document.createRange();
           const sel = window.getSelection();
           if (sel) {
@@ -173,11 +174,11 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
             sel.addRange(range);
           }
         }
-      }, 10); // Slightly longer delay to ensure the node is fully rendered
+      }, 10); // Slightly longer delay to ensure the node is fully rendered.
     }
   }, [isSearching, selectedItems.length]);
 
-  // Additional focus trigger on mount
+  // Additional focus trigger on mount.
   useEffect(() => {
     if (isSearching && selectedItems.length === 0) {
       const focusTimer = setTimeout(() => {
@@ -188,14 +189,14 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
 
       return () => clearTimeout(focusTimer);
     }
-  }, []); // Only run on mount
+  }); // Only run on mount.
 
-  // Reset selected index when items change
+  // Reset selected index when items change.
   useEffect(() => {
     setSelectedIndex(0);
   }, [knowledgeItems.length]);
 
-  // Delete empty node helper
+  // Delete empty node helper.
   const deleteIfEmpty = useCallback(
     (delay: number = 50) => {
       setTimeout(() => {
@@ -207,7 +208,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     [isSearching, selectedItems.length, searchQuery, deleteNode]
   );
 
-  // Add global click handler to catch clicks outside when dropdown isn't open
+  // Add global click handler to catch clicks outside when dropdown isn't open.
   useEffect(() => {
     if (!isSearching || selectedItems.length > 0) {
       return;
@@ -226,7 +227,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     return () => document.removeEventListener("click", handleGlobalClick, true);
   }, [isSearching, selectedItems.length, deleteIfEmpty]);
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isOpen || selectedItems.length > 0) {
@@ -259,12 +260,12 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     ]
   );
 
-  // Handle blur - delete node if it's empty and in search mode
+  // Handle blur: delete node if it's empty and in search mode.
   const handleBlur = useCallback(() => {
     deleteIfEmpty(100);
   }, [deleteIfEmpty]);
 
-  // Handle click outside - also delete node if empty
+  // Handle click outside: also delete node if empty.
   const handleInteractOutside = useCallback(() => {
     setIsOpen(false);
     deleteIfEmpty(50);
@@ -279,7 +280,8 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   );
 
   if (selectedItems.length > 0) {
-    // Show selected knowledge as simple inline text
+    // Show selected knowledge as simple inline text.
+    // TODO(2026-01-02 SKILLS): Use the same chip as the url one in the input bar.
     return (
       <NodeViewWrapper className="inline">
         <span className="text-blue-600 dark:text-blue-400">
@@ -296,12 +298,16 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     );
   }
 
-  // Show editable search node
+  // Show editable search node.
   return (
     <NodeViewWrapper className="inline">
       <div className="relative inline-block">
         <span
-          className="inline-block cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic text-gray-600 empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)] focus:outline-none"
+          className={cn(
+            "inline-block cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
+            "text-gray-600 empty:before:text-gray-400",
+            "empty:before:content-[attr(data-placeholder)] focus:outline-none"
+          )}
           contentEditable
           suppressContentEditableWarning
           ref={contentRef}
@@ -330,6 +336,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
                 }}
               />
             </DropdownMenuTrigger>
+            {/* Offset to prevent dropdown from overlapping the trigger */}
             <DropdownMenuContent
               className="w-96"
               side="bottom"
