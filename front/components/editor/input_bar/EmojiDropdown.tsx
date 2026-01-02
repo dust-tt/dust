@@ -1,5 +1,4 @@
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -191,13 +190,7 @@ export const EmojiDropdown = forwardRef<
   return (
     <DropdownMenu open={true}>
       <DropdownMenuTrigger asChild>
-        <Button
-          size="xmini"
-          variant="ghost"
-          tabIndex={-1}
-          aria-hidden={true}
-          style={virtualTriggerStyle}
-        />
+        <div style={virtualTriggerStyle} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         key={contentKey}
@@ -215,7 +208,7 @@ export const EmojiDropdown = forwardRef<
         }}
       >
         {filteredEmojis.length > 0 ? (
-          <div className="flex max-h-60 flex-col overflow-y-auto">
+          <div className="max-h-60">
             {filteredEmojis.map((emoji, index) => (
               <DropdownMenuItem
                 key={emoji.id}
