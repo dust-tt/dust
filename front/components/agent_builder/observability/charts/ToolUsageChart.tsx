@@ -1,5 +1,5 @@
 import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -41,7 +41,6 @@ export function ToolUsageChart({
 }) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
-  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
   const { configurations: mcpConfigurations } = useAgentMcpConfigurations({
     workspaceId,
@@ -108,16 +107,9 @@ export function ToolUsageChart({
     });
   }, [bars, chartData]);
 
-  const renderToolUsageTooltip = useCallback(
-    (payload: TooltipContentProps<number, string>) => (
-      <ChartsTooltip
-        {...payload}
-        topTools={topTools}
-        hoveredTool={hoveredTool}
-      />
-    ),
-    [topTools, hoveredTool]
-  );
+  const renderToolUsageTooltip = (
+    props: TooltipContentProps<number, string>
+  ) => <ChartsTooltip {...props} topTools={topTools} />;
 
   return (
     <ChartContainer
@@ -147,6 +139,7 @@ export function ToolUsageChart({
         data={rechartsData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         stackOffset="expand"
+        style={{ zIndex: 10 }}
       >
         <CartesianGrid
           vertical={false}
@@ -177,7 +170,12 @@ export function ToolUsageChart({
         <Tooltip
           cursor={false}
           content={renderToolUsageTooltip}
-          wrapperStyle={{ outline: "none" }}
+          shared={false}
+          wrapperStyle={{
+            outline: "none",
+            zIndex: 50,
+            pointerEvents: "auto",
+          }}
           contentStyle={{
             background: "transparent",
             border: "none",
@@ -208,8 +206,6 @@ export function ToolUsageChart({
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
             }
-            onMouseEnter={() => setHoveredTool(toolName)}
-            onMouseLeave={() => setHoveredTool(null)}
           />
         ))}
       </BarChart>
