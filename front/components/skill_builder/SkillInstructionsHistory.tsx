@@ -60,7 +60,7 @@ export function SkillInstructionsHistory({
   const formatVersionLabel = useCallback((config: SkillType) => {
     return config.createdAt
       ? format(config.createdAt, "Pp")
-      : `Version ${config.version + 1}`;
+      : `Version ${config.version}`;
   }, []);
 
   const getAuthorName = useCallback(
