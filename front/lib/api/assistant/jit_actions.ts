@@ -194,9 +194,10 @@ export async function getJITServers(
   // Add schedules_management MCP server if this is an onboarding conversation
   // user is not always defined (API triggered agent loop)
   const userResource = auth.user();
-  if (userResource) {
+  if (userResource && owner) {
     const onboardingMetadata = await userResource.getMetadata(
-      "onboarding:conversation"
+      "onboarding:conversation",
+      owner.id
     );
     if (onboardingMetadata?.value === conversation.sId) {
       const schedulesManagementView =

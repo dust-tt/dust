@@ -114,8 +114,10 @@ export const InputBar = React.memo(function InputBar({
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, setAnimate, getAndClearSelectedAgent } =
     useContext(InputBarContext);
-  const { isOnboardingConversation } =
-    useIsOnboardingConversation(conversationId);
+  const { isOnboardingConversation } = useIsOnboardingConversation(
+    conversationId,
+    owner.sId
+  );
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedAgent = useMemo(
     () => getAndClearSelectedAgent(),

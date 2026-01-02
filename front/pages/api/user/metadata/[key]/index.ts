@@ -51,7 +51,7 @@ async function handler(
     });
   }
 
-  const { key } = req.query;
+  let { key } = req.query;
 
   if (typeof key !== "string") {
     return apiError(req, res, {
@@ -63,9 +63,27 @@ async function handler(
     });
   }
 
+  // Parse optional wId query parameter from the key (e.g., "onboarding:conversation?wId=A1B2C3D4")
+  let workspaceId: number | undefined;
+  if (key.includes("?wId=")) {
+    const [actualKey, queryString] = key.split("?");
+    key = actualKey;
+    const params = new URLSearchParams(queryString);
+    const wId = params.get("wId");
+    if (wId) {
+      // Need to look up the workspace to get its numeric id
+      // For now, we'll pass the string workspace sId and resolve it in the user resource
+      // But actually, let's just use the user's workspace from the session
+      const workspace = user.workspaces.find((w) => w.sId === wId);
+      if (workspace) {
+        workspaceId = workspace.id;
+      }
+    }
+  }
+
   switch (req.method) {
     case "GET":
-      const metadata = await u.getMetadata(key);
+      const metadata = await u.getMetadata(key, workspaceId);
 
       res.status(200).json({
         metadata,
@@ -83,7 +101,7 @@ async function handler(
         });
       }
 
-      await u.setMetadata(key, req.body.value);
+      await u.setMetadata(key, req.body.value, workspaceId);
 
       res.status(200).json({
         metadata: {

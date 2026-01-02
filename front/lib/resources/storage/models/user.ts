@@ -2,6 +2,7 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { UserProviderType } from "@app/types";
 
@@ -112,6 +113,7 @@ export class UserMetadataModel extends BaseModel<UserMetadataModel> {
   declare key: string;
   declare value: string;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare workspaceId: ForeignKey<number> | null;
 }
 UserMetadataModel.init(
   {
@@ -133,13 +135,22 @@ UserMetadataModel.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    workspaceId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: WorkspaceModel.tableName,
+        key: "id",
+      },
+      onDelete: "CASCADE",
+    },
   },
   {
     modelName: "user_metadata",
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["userId", "key"],
+        fields: ["userId", "workspaceId", "key"],
         unique: true,
       },
     ],

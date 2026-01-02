@@ -81,7 +81,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
     const userResource = auth.user();
     const metadata = userResource
-      ? await userResource.getMetadata("onboarding:conversation")
+      ? await userResource.getMetadata("onboarding:conversation", owner.id)
       : null;
 
     const onboardingConversationId = metadata?.value ?? null;
