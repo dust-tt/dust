@@ -18,6 +18,7 @@ import React, {
   useState,
 } from "react";
 
+import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type {
   KnowledgeItem,
   KnowledgeNodeAttributes,
@@ -134,6 +135,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
         node,
         spacesMap
       ),
+      node, // Store the original node for chip display
     }));
   }, [dataSourceNodes, spacesMap]);
 
@@ -142,7 +144,14 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       const item = knowledgeItems[index];
       if (item) {
         updateAttributes({
-          selectedItems: [item],
+          selectedItems: [
+            {
+              id: item.id,
+              label: item.label,
+              description: item.description,
+              node: item.node, // Store the node for chip display
+            },
+          ],
           isSearching: false,
         });
         setIsOpen(false);
@@ -312,21 +321,15 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [deleteNode]
   );
 
-  if (selectedItems.length > 0) {
-    // Show selected knowledge as simple inline text.
-    // TODO(2026-01-02 SKILLS): Use the same chip as the url one in the input bar.
+  if (selectedItems.length > 0 && selectedItems[0].node) {
+    // Show selected knowledge using the unified chip component.
     return (
       <NodeViewWrapper className="inline">
-        <span className="text-blue-600 dark:text-blue-400">
-          📚 {selectedItems[0].label}
-        </span>
-        <button
-          onClick={handleRemove}
-          className="ml-1 text-xs text-gray-400 hover:text-gray-600"
-          title="Remove knowledge"
-        >
-          ×
-        </button>
+        <KnowledgeChip
+          node={selectedItems[0].node}
+          onRemove={handleRemove}
+          title={selectedItems[0].label}
+        />
       </NodeViewWrapper>
     );
   }
@@ -382,8 +385,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
                 </div>
               ) : (
                 knowledgeItems.map((item, index) => {
-                  const node = dataSourceNodes[index];
-                  if (!node) {
+                  if (!item.node) {
                     return null;
                   }
 
@@ -391,22 +393,24 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
                     <DropdownMenuItem
                       key={item.id}
                       icon={
-                        isWebsite(node.dataSourceView.dataSource) ||
-                        isFolder(node.dataSourceView.dataSource) ? (
+                        isWebsite(item.node.dataSourceView.dataSource) ||
+                        isFolder(item.node.dataSourceView.dataSource) ? (
                           <Icon
-                            visual={getVisualForDataSourceViewContentNode(node)}
+                            visual={getVisualForDataSourceViewContentNode(
+                              item.node
+                            )}
                             size="md"
                           />
                         ) : (
                           <DoubleIcon
                             size="md"
                             mainIcon={getVisualForDataSourceViewContentNode(
-                              node
+                              item.node
                             )}
                             secondaryIcon={getConnectorProviderLogoWithFallback(
                               {
                                 provider:
-                                  node.dataSourceView.dataSource
+                                  item.node.dataSourceView.dataSource
                                     .connectorProvider,
                               }
                             )}

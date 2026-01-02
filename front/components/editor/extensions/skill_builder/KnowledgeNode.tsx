@@ -1,12 +1,12 @@
-import { mergeAttributes, Node } from "@tiptap/core";
+import { Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 
 export interface KnowledgeItem {
+  description?: string;
   id: string;
   label: string;
-  description?: string;
 }
 
 export interface KnowledgeNodeAttributes {
@@ -60,44 +60,6 @@ export const KnowledgeNode = Node.create<{}>({
       {
         tag: 'span[data-type="knowledge-node"]',
       },
-    ];
-  },
-
-  renderHTML({ node, HTMLAttributes }) {
-    const { selectedItems } = node.attrs;
-
-    if (selectedItems.length > 0) {
-      // Render selected knowledge as a chip.
-      // TODO(2026-01-02 SKILLS): Use the same chip as the url one in the input bar.
-      return [
-        "span",
-        mergeAttributes(
-          {
-            "data-type": "knowledge-node",
-            class:
-              "inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm",
-          },
-          HTMLAttributes
-        ),
-        ["span", { class: "emoji" }, "📚"],
-        ["span", {}, selectedItems[0].label],
-      ];
-    }
-
-    // Render editable search container.
-    return [
-      "span",
-      mergeAttributes(
-        {
-          "data-type": "knowledge-node",
-          class:
-            "inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-sm italic",
-          contenteditable: "true",
-        },
-        HTMLAttributes
-      ),
-      ["span", { class: "emoji" }, "🔍"],
-      0, // This allows text content inside.
     ];
   },
 
