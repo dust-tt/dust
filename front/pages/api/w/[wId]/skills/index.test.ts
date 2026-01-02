@@ -61,9 +61,9 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data).toHaveProperty("skillConfigurations");
+    expect(data).toHaveProperty("skills");
 
-    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -96,7 +96,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
@@ -129,7 +129,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Suggested Skill");
     expect(skillNames).not.toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
@@ -190,7 +190,7 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(res._getStatusCode()).toBe(200);
       const skillNames = res
         ._getJSONData()
-        .skillConfigurations.map((s: SkillType) => s.name);
+        .skills.map((s: SkillType) => s.name);
       expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
@@ -230,9 +230,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -269,9 +267,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === "frames"
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === "frames");
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -307,9 +303,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -345,7 +339,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find((s: SkillType) => s.sId === skillSId);
+      .skills.find((s: SkillType) => s.sId === skillSId);
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
@@ -391,9 +385,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -424,7 +416,7 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.skillConfiguration).toMatchObject({
+    expect(responseData.skill).toMatchObject({
       name: "Simple Skill",
       agentFacingDescription: "To use in various situations",
       userFacingDescription: "A simple skill without tools",
@@ -482,7 +474,7 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.skillConfiguration).toMatchObject({
+    expect(responseData.skill).toMatchObject({
       name: "Test Skill",
       agentFacingDescription: "Use this skill all the time",
       userFacingDescription: "A test skill description",
@@ -559,7 +551,7 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.skillConfiguration).toMatchObject({
+    expect(responseData.skill).toMatchObject({
       name: "Skill With Space Restrictions",
       requestedSpaceIds: [regularSpace.sId],
     });
