@@ -1,3 +1,4 @@
+import assert from "assert";
 import groupBy from "lodash/groupBy";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
@@ -89,6 +90,12 @@ type ConversationSkillCreationAttributes =
           agentConfigurationId: string;
         }
     );
+
+function isSkillResourceWithVersion(
+  skill: SkillResource
+): skill is SkillResource & { version: number } {
+  return skill.version !== null;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -856,7 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           versionModel.mcpServerViewIds
         );
 
-        return new SkillResource(
+        const skill = new SkillResource(
           this.model,
           {
             id: this.id,
@@ -879,6 +886,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             version: versionModel.version,
           }
         );
+        assert(isSkillResourceWithVersion(skill));
+        return skill;
       },
       { concurrency: 5 }
     );
