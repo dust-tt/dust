@@ -761,6 +761,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name: def.name,
         requestedSpaceIds: requestedSpaceModelIds,
         status: "active",
+        version: def.version,
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
         icon: def.icon,
@@ -820,7 +821,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async listVersions(auth: Authenticator): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch all historical versions from skill_versions table
+    // Fetch all historical versions from the skill_versions table.
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: workspace.id,
       skillConfigurationId: this.id,
@@ -830,7 +831,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
     });
 
-    // Sort application-side
+    // Sort application-side by version number DESC.
     const sortedVersionModels = versionModels.sort(
       (a, b) => b.version - a.version
     );
@@ -854,6 +855,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             createdAt: versionModel.createdAt,
             updatedAt: versionModel.updatedAt,
             status: versionModel.status,
+            version: versionModel.version,
             name: versionModel.name,
             agentFacingDescription: versionModel.agentFacingDescription,
             userFacingDescription: versionModel.userFacingDescription,
