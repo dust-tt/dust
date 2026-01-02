@@ -70,9 +70,9 @@ type SkillResourceConstructorOptions =
 
 type SkillVersionCreationAttributes =
   CreationAttributes<SkillConfigurationModel> & {
-    skillConfigurationId: number;
+    skillConfigurationId: ModelId;
     version: number;
-    mcpServerConfigurationIds: number[];
+    mcpServerViewIds: ModelId[];
   };
 
 type ConversationSkillCreationAttributes =
@@ -842,7 +842,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         // TODO(skills 2025-12-23): add caching on the MCP server views across versions.
         const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
-          versionModel.mcpServerConfigurationIds
+          versionModel.mcpServerViewIds
         );
 
         return new SkillResource(
@@ -1269,7 +1269,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         transaction,
       });
 
-    const mcpServerConfigurationIds = mcpServerConfigurations.map(
+    const mcpServerViewIds = mcpServerConfigurations.map(
       (config) => config.mcpServerViewId
     );
 
@@ -1298,8 +1298,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
       authorId: this.authorId,
-      // TODO(skills 2025-12-23): rename into mcpServerViewIds.
-      mcpServerConfigurationIds,
+      mcpServerViewIds,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

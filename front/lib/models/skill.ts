@@ -103,7 +103,7 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
 
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
-  declare mcpServerConfigurationIds: number[];
+  declare mcpServerViewIds: number[];
   declare version: number;
 }
 
@@ -114,7 +114,7 @@ SkillVersionModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    mcpServerConfigurationIds: {
+    mcpServerViewIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
     },
