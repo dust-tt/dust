@@ -51,8 +51,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           const similarSkillIdsSet = new Set(similarSkillIds);
           const matchedSkills = skills.filter(
             (skill) =>
-              similarSkillIdsSet.has(skill.sId) &&
-              skill.sId !== skillId
+              similarSkillIdsSet.has(skill.sId) && skill.sId !== skillId
           );
           setSimilarSkills(matchedSkills);
         }

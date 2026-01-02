@@ -81,11 +81,7 @@ export default function EditSkill({
   }
 
   return (
-    <SkillBuilderProvider
-      owner={owner}
-      user={user}
-      skillId={skill.sId}
-    >
+    <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
       <>
         <Head>
           <title>{`Dust - ${skill.name}`}</title>
