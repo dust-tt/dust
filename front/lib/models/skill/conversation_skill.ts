@@ -87,14 +87,24 @@ ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
       name: "idx_conversation_skills_workspace_conv_agent",
     },
     {
-      fields: ["workspaceId", "conversationId", "customSkillId"],
+      fields: [
+        "workspaceId",
+        "conversationId",
+        "agentConfigurationId",
+        "customSkillId",
+      ],
       where: { customSkillId: { [Op.ne]: null } },
-      name: "idx_conversation_skills_workspace_conv_custom_skill",
+      name: "idx_conversation_skills_workspace_conv_agent_custom_skill",
     },
     {
-      fields: ["workspaceId", "conversationId", "globalSkillId"],
+      fields: [
+        "workspaceId",
+        "conversationId",
+        "agentConfigurationId",
+        "globalSkillId",
+      ],
       where: { globalSkillId: { [Op.ne]: null } },
-      name: "idx_conversation_skills_workspace_conv_global_skill",
+      name: "idx_conversation_skills_workspace_conv_agent_global_skill",
     },
   ],
   validate: {
