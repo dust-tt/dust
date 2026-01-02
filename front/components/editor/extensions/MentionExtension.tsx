@@ -226,9 +226,6 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     return parentPlugins ? [...parentPlugins, addedPlugin] : [addedPlugin];
   },
 
-  // Override Backspace behavior so it removes a single character from the
-  // mention label and converts the chip back to typed text (which re-triggers
-  // the @-suggestion dropdown).
   addKeyboardShortcuts() {
     // Shared command to jump to end of line
     const jumpToEndOfLine = () =>
@@ -251,6 +248,9 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
 
     return {
       ...this.parent?.(),
+      // Override Backspace behavior so it removes a single character from the
+      // mention label and converts the chip back to typed text (which re-triggers
+      // the @-suggestion dropdown).
       Backspace: () =>
         this.editor.commands.command(({ tr, state, dispatch }) => {
           const { selection } = state;
