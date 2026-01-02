@@ -12,7 +12,7 @@ import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skillConfiguration: SkillType;
+  skill: SkillType;
   extendedSkill: SkillType | null;
   owner: WorkspaceType;
   user: UserType;
@@ -59,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      skillConfiguration: skillResource.toJSON(auth),
+      skill: skillResource.toJSON(auth),
       extendedSkill: extendedSkillResource
         ? extendedSkillResource.toJSON(auth)
         : null,
@@ -71,12 +71,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function EditSkill({
-  skillConfiguration,
+  skill,
   extendedSkill,
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (skillConfiguration.status === "archived") {
+  if (skill.status === "archived") {
     throw new Error("Cannot edit archived skill");
   }
 
@@ -84,14 +84,14 @@ export default function EditSkill({
     <SkillBuilderProvider
       owner={owner}
       user={user}
-      skillConfigurationId={skillConfiguration.sId}
+      skillId={skill.sId}
     >
       <>
         <Head>
-          <title>{`Dust - ${skillConfiguration.name}`}</title>
+          <title>{`Dust - ${skill.name}`}</title>
         </Head>
         <SkillBuilder
-          skillConfiguration={skillConfiguration}
+          skill={skill}
           extendedSkill={extendedSkill ?? undefined}
         />
       </>

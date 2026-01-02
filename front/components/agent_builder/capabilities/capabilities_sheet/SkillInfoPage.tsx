@@ -71,7 +71,7 @@ export function SkillInfoPage({
             <TabsContent value="editors">
               {hasRelations(skill) && (
                 <SkillEditorsTab
-                  skillConfiguration={skill}
+                  skill={skill}
                   owner={owner}
                   user={user}
                 />

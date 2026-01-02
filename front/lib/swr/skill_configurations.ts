@@ -110,10 +110,10 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
 
 export function useArchiveSkill({
   owner,
-  skillConfiguration,
+  skill,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration: SkillType;
+  skill: SkillType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
@@ -130,15 +130,12 @@ export function useArchiveSkill({
     });
 
   const doArchive = async () => {
-    if (!skillConfiguration.sId) {
+    if (!skill.sId) {
       return;
     }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/skills/${skillConfiguration.sId}`,
-      {
-        method: "DELETE",
-      }
-    );
+    const res = await clientFetch(`/api/w/${owner.sId}/skills/${skill.sId}`, {
+      method: "DELETE",
+    });
 
     if (res.ok) {
       void mutateArchivedSkills();
@@ -146,15 +143,15 @@ export function useArchiveSkill({
 
       sendNotification({
         type: "success",
-        title: `Successfully archived ${skillConfiguration.name}`,
-        description: `${skillConfiguration.name} was successfully archived.`,
+        title: `Successfully archived ${skill.name}`,
+        description: `${skill.name} was successfully archived.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error archiving ${skillConfiguration.name}`,
+        title: `Error archiving ${skill.name}`,
         description: `Error: ${errorData.message}`,
       });
     }
@@ -222,12 +219,12 @@ export function useRestoreSkill({
 
 export function useSkillHistory({
   owner,
-  skillConfiguration,
+  skill,
   limit,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  skillConfiguration?: SkillType;
+  skill?: SkillType;
   limit?: number;
   disabled?: boolean;
 }) {
@@ -236,8 +233,8 @@ export function useSkillHistory({
 
   const queryParams = limit ? `?limit=${limit}` : "";
   const { data, error, mutate } = useSWRWithDefaults(
-    skillConfiguration
-      ? `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/history${queryParams}`
+    skill
+      ? `/api/w/${owner.sId}/skills/${skill.sId}/history${queryParams}`
       : null,
     skillHistoryFetcher,
     { disabled }

@@ -16,7 +16,7 @@ const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 
 export function SkillBuilderAgentFacingDescriptionSection() {
-  const { owner, skillConfigurationId } = useSkillBuilderContext();
+  const { owner, skillId } = useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
 
@@ -52,13 +52,13 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           const matchedSkills = skills.filter(
             (skill) =>
               similarSkillIdsSet.has(skill.sId) &&
-              skill.sId !== skillConfigurationId
+              skill.sId !== skillId
           );
           setSimilarSkills(matchedSkills);
         }
       }
     },
-    [getSimilarSkills, isSimilarSkillsEnabled, skillConfigurationId, skills]
+    [getSimilarSkills, isSimilarSkillsEnabled, skillId, skills]
   );
 
   const triggerSimilarSkillsFetch = useDebounceWithAbort(fetchSimilarSkills, {
