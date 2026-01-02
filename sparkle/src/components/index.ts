@@ -45,13 +45,16 @@ export {
   ContentMessageInline,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
-export type { ConversationMessageAction } from "./ConversationMessage";
 export {
   ConversationContainer,
   ConversationMessage,
-  ConversationMessageContent,
-  ConversationMessageHeader,
 } from "./ConversationMessage";
+export {
+  ConversationMessageAvatar,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  NewConversationMessageContainer,
+} from "./NewConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
