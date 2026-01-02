@@ -836,8 +836,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (a, b) => b.version - a.version
     );
 
-    // Convert version models to SkillResource instances
-    const historicalVersions: SkillResource[] = await concurrentExecutor(
+    // Convert version models to SkillResource instances.
+    return concurrentExecutor(
       sortedVersionModels,
       async (versionModel) => {
         // TODO(skills 2025-12-23): add caching on the MCP server views across versions.
@@ -872,9 +872,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
       { concurrency: 5 }
     );
-
-    // Return current version + all historical versions
-    return [this, ...historicalVersions];
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
