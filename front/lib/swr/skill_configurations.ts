@@ -70,8 +70,7 @@ export function useSkillsWithRelations({
   disabled?: boolean;
   status: SkillStatus;
 }) {
-  const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> =
-    fetcher;
+  const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
 
   const { data, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills?withRelations=true&status=${status}`,
@@ -228,8 +227,7 @@ export function useSkillHistory({
   limit?: number;
   disabled?: boolean;
 }) {
-  const skillHistoryFetcher: Fetcher<GetSkillHistoryResponseBody> =
-    fetcher;
+  const skillHistoryFetcher: Fetcher<GetSkillHistoryResponseBody> = fetcher;
 
   const queryParams = limit ? `?limit=${limit}` : "";
   const { data, error, mutate } = useSWRWithDefaults(

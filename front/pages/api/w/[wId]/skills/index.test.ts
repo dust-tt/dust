@@ -230,9 +230,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -269,9 +267,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const skillResult = res
       ._getJSONData()
-      .skills.find(
-        (s: SkillWithRelationsType) => s.sId === "frames"
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === "frames");
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -307,9 +303,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -391,9 +385,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {

@@ -17,8 +17,7 @@ export async function submitSkillBuilderForm({
   currentEditors?: UserType[];
 }): Promise<
   Result<
-    | PostSkillResponseBody["skill"]
-    | PatchSkillResponseBody["skill"],
+    PostSkillResponseBody["skill"] | PatchSkillResponseBody["skill"],
     Error
   >
 > {
@@ -57,9 +56,8 @@ export async function submitSkillBuilderForm({
       );
     }
 
-    const result:
-      | PostSkillResponseBody
-      | PatchSkillResponseBody = await response.json();
+    const result: PostSkillResponseBody | PatchSkillResponseBody =
+      await response.json();
 
     const { skill } = result;
 
