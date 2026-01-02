@@ -24,6 +24,7 @@ import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/ca
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
@@ -213,34 +214,13 @@ export function AgentBuilderSkillsBlock() {
   };
 
   const handleActionEdit = (action: BuilderAction, index: number) => {
-    const mcpServerViewWithKnowledge = mcpServerViewsWithKnowledge.find(
-      (view) => view.sId === action.configuration?.mcpServerViewId
-    );
-    const isDataSourceSelectionRequired = Boolean(mcpServerViewWithKnowledge);
-
-    if (isDataSourceSelectionRequired) {
-      setSheetState({ state: "knowledge", action, index });
-      return;
-    }
-
-    const mcpServerViewWithoutKnowledge = mcpServerViewsWithoutKnowledge.find(
-      (view) => view.sId === action.configuration?.mcpServerViewId
-    );
-
     setSheetState(
-      action.configurationRequired && mcpServerViewWithoutKnowledge
-        ? {
-            state: "configuration",
-            capability: action,
-            mcpServerView: mcpServerViewWithoutKnowledge,
-            index,
-          }
-        : {
-            state: "info",
-            kind: "tool",
-            capability: action,
-            hasPreviousPage: false,
-          }
+      getSheetStateForActionEdit({
+        action,
+        index,
+        mcpServerViewsWithKnowledge,
+        mcpServerViewsWithoutKnowledge,
+      })
     );
   };
 
