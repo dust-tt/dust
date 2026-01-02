@@ -31,14 +31,14 @@ const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   },
 });
 
-interface NewConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   messageType: MessageType;
   type: ConversationMessageType;
 }
 
-export const NewConversationMessageContainer = React.forwardRef<
+export const ConversationMessageContainer = React.forwardRef<
   HTMLDivElement,
-  NewConversationMessageContainerProps
+  ConversationMessageContainerProps
 >(({ children, className, messageType, type, ...props }, ref) => {
   return (
     <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
@@ -49,7 +49,7 @@ export const NewConversationMessageContainer = React.forwardRef<
   );
 });
 
-NewConversationMessageContainer.displayName = "NewConversationMessageContainer";
+ConversationMessageContainer.displayName = "ConversationMessageContainer";
 
 interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
