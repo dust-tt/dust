@@ -385,20 +385,22 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
-  async getMetadata(key: string) {
+  async getMetadata(key: string, workspaceId?: number | null) {
     return UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
+        workspaceId: workspaceId ?? null,
       },
     });
   }
 
-  async setMetadata(key: string, value: string) {
+  async setMetadata(key: string, value: string, workspaceId?: number | null) {
     const metadata = await UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
+        workspaceId: workspaceId ?? null,
       },
     });
 
@@ -407,6 +409,7 @@ export class UserResource extends BaseResource<UserModel> {
         userId: this.id,
         key,
         value,
+        workspaceId: workspaceId ?? null,
       });
       return;
     }

@@ -84,11 +84,17 @@ export function useDeleteMetadata() {
   return { deleteMetadata };
 }
 
-export function useIsOnboardingConversation(conversationId: string | null) {
-  const { metadata, isMetadataLoading } = useUserMetadata(
-    "onboarding:conversation",
-    { disabled: !conversationId }
-  );
+export function useIsOnboardingConversation(
+  conversationId: string | null,
+  workspaceId?: string
+) {
+  const metadataKey = workspaceId
+    ? `onboarding:conversation?wId=${workspaceId}`
+    : "onboarding:conversation";
+
+  const { metadata, isMetadataLoading } = useUserMetadata(metadataKey, {
+    disabled: !conversationId,
+  });
 
   return {
     isOnboardingConversation:
