@@ -25,6 +25,11 @@ export function getNonKnowledgeMCPServerViewForAction(
   );
 }
 
+type ActionEditState =
+  | KnowledgeState
+  | ConfigurationState
+  | InfoState<"tool", BuilderAction>;
+
 export function getSheetStateForActionEdit({
   action,
   index,
@@ -35,7 +40,7 @@ export function getSheetStateForActionEdit({
   index: number;
   mcpServerViewsWithKnowledge: MCPServerViewTypeWithLabel[];
   mcpServerViewsWithoutKnowledge: MCPServerViewTypeWithLabel[];
-}): KnowledgeState | ConfigurationState | InfoState<"tool", BuilderAction> {
+}): ActionEditState {
   const knowledgeView = getKnowledgeMCPServerViewForAction(
     action,
     mcpServerViewsWithKnowledge
