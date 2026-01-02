@@ -20,6 +20,7 @@ import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
+import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
@@ -1077,6 +1078,37 @@ export function useAgentToolStepIndex({
     isToolStepIndexLoading: !error && !data && !disabled,
     isToolStepIndexError: error,
     isToolStepIndexValidating: isValidating,
+  };
+}
+
+export function useAgentDatasourceRetrieval({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetDatasourceRetrievalResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    datasourceRetrieval: data?.datasources ?? emptyArray(),
+    totalRetrievals: data?.total ?? 0,
+    isDatasourceRetrievalLoading: !error && !data && !disabled,
+    isDatasourceRetrievalError: error,
+    isDatasourceRetrievalValidating: isValidating,
   };
 }
 
