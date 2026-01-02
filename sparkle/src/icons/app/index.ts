@@ -88,6 +88,7 @@ export { default as HexagonIcon } from "./Hexagon";
 export { default as HistoryIcon } from "./History";
 export { default as HomeIcon } from "./Home";
 export { default as ImageIcon } from "./Image";
+export { default as InboxIcon } from "./Inbox";
 export { default as InformationCircleIcon } from "./InformationCircle";
 export { default as ItalicIcon } from "./Italic";
 export { default as LightbulbIcon } from "./Lightbulb";
