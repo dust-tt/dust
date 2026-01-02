@@ -111,7 +111,7 @@ export function MentionValidationRequired({
               <span className="font-semibold">
                 @{message.configuration.name}
               </span>{" "}
-              mentioned
+              mentioned{" "}
               <span className="font-semibold">{pendingMention.label}</span>. Do
               you want to invite them? They'll see the full history and be able
               to reply.
