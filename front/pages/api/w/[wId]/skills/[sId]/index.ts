@@ -19,16 +19,16 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-export type GetSkillConfigurationResponseBody = {
-  skillConfiguration: SkillType;
+export type GetSkillResponseBody = {
+  skill: SkillType;
 };
 
 export type GetSkillWithRelationsResponseBody = {
   skill: SkillWithRelationsType;
 };
 
-export type PatchSkillConfigurationResponseBody = {
-  skillConfiguration: Omit<
+export type PatchSkillResponseBody = {
+  skill: Omit<
     SkillType,
     | "author"
     | "requestedSpaceIds"
@@ -39,12 +39,12 @@ export type PatchSkillConfigurationResponseBody = {
   >;
 };
 
-export type DeleteSkillConfigurationResponseBody = {
+export type DeleteSkillResponseBody = {
   success: boolean;
 };
 
 // Request body schema for PATCH
-const PatchSkillConfigurationRequestBodySchema = t.type({
+const PatchSkillRequestBodySchema = t.type({
   name: t.string,
   agentFacingDescription: t.string,
   userFacingDescription: t.string,
@@ -57,18 +57,16 @@ const PatchSkillConfigurationRequestBodySchema = t.type({
   ),
 });
 
-type PatchSkillConfigurationRequestBody = t.TypeOf<
-  typeof PatchSkillConfigurationRequestBodySchema
->;
+type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillConfigurationResponseBody
+      | GetSkillResponseBody
       | GetSkillWithRelationsResponseBody
-      | PatchSkillConfigurationResponseBody
-      | DeleteSkillConfigurationResponseBody
+      | PatchSkillResponseBody
+      | DeleteSkillResponseBody
     >
   >,
   auth: Authenticator
@@ -123,21 +121,18 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const skillConfiguration = skillResource.toJSON(auth);
+      const skill = skillResource.toJSON(auth);
 
       if (withRelations === "true") {
         const usage = await skillResource.fetchUsage(auth);
         const editors = await skillResource.listEditors(auth);
         const author = await skillResource.fetchAuthor(auth);
-        const extendedSkill = skillConfiguration.extendedSkillId
-          ? await SkillResource.fetchById(
-              auth,
-              skillConfiguration.extendedSkillId
-            )
+        const extendedSkill = skill.extendedSkillId
+          ? await SkillResource.fetchById(auth, skill.extendedSkillId)
           : null;
 
-        const skillConfigurationWithRelations: SkillWithRelationsType = {
-          ...skillConfiguration,
+        const skillWithRelations: SkillWithRelationsType = {
+          ...skill,
           relations: {
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -147,16 +142,14 @@ async function handler(
         };
 
         return res.status(200).json({
-          skill: skillConfigurationWithRelations,
+          skill: skillWithRelations,
         });
       }
-      return res.status(200).json({ skillConfiguration });
+      return res.status(200).json({ skill });
     }
 
     case "PATCH": {
-      const bodyValidation = PatchSkillConfigurationRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation = PatchSkillRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -169,7 +162,7 @@ async function handler(
         });
       }
 
-      const body: PatchSkillConfigurationRequestBody = bodyValidation.right;
+      const body: PatchSkillRequestBody = bodyValidation.right;
 
       // Check if user can write.
       if (!skillResource.canWrite(auth)) {
@@ -258,7 +251,7 @@ async function handler(
       });
 
       return res.status(200).json({
-        skillConfiguration: skillResource.toJSON(auth),
+        skill: skillResource.toJSON(auth),
       });
     }
 

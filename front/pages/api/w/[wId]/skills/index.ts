@@ -18,16 +18,16 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillType[];
+export type GetSkillsResponseBody = {
+  skills: SkillType[];
 };
 
-export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: SkillWithRelationsType[];
+export type GetSkillsWithRelationsResponseBody = {
+  skills: SkillWithRelationsType[];
 };
 
-export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: SkillType;
+export type PostSkillResponseBody = {
+  skill: SkillType;
 };
 
 // Schema for GET status query parameter
@@ -39,7 +39,7 @@ const SkillStatusSchema = t.union([
 ]);
 
 // Request body schema for POST
-const PostSkillConfigurationRequestBodySchema = t.type({
+const PostSkillRequestBodySchema = t.type({
   name: t.string,
   agentFacingDescription: t.string,
   userFacingDescription: t.string,
@@ -53,17 +53,15 @@ const PostSkillConfigurationRequestBodySchema = t.type({
   extendedSkillId: t.union([t.string, t.null]),
 });
 
-type PostSkillConfigurationRequestBody = t.TypeOf<
-  typeof PostSkillConfigurationRequestBodySchema
->;
+type PostSkillRequestBody = t.TypeOf<typeof PostSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillConfigurationsResponseBody
-      | GetSkillConfigurationsWithRelationsResponseBody
-      | PostSkillConfigurationResponseBody
+      | GetSkillsResponseBody
+      | GetSkillsWithRelationsResponseBody
+      | PostSkillResponseBody
     >
   >,
   auth: Authenticator
@@ -107,14 +105,14 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
-      const skillConfigurations = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listSkills(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
       });
 
       if (withRelations === "true") {
-        const skillConfigurationsWithRelations = await concurrentExecutor(
-          skillConfigurations,
+        const skillsWithRelations = await concurrentExecutor(
+          skills,
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
@@ -138,22 +136,18 @@ async function handler(
           { concurrency: 10 }
         );
 
-        return res
-          .status(200)
-          .json({ skillConfigurations: skillConfigurationsWithRelations });
+        return res.status(200).json({ skills: skillsWithRelations });
       }
 
       return res.status(200).json({
-        skillConfigurations: skillConfigurations.map((sc) => sc.toJSON(auth)),
+        skills: skills.map((sc) => sc.toJSON(auth)),
       });
     }
 
     case "POST": {
       const user = auth.getNonNullableUser();
 
-      const bodyValidation = PostSkillConfigurationRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation = PostSkillRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -166,7 +160,7 @@ async function handler(
         });
       }
 
-      const body: PostSkillConfigurationRequestBody = bodyValidation.right;
+      const body: PostSkillRequestBody = bodyValidation.right;
 
       const existingSkill = await SkillResource.fetchActiveByName(
         auth,
@@ -244,7 +238,7 @@ async function handler(
       );
 
       return res.status(200).json({
-        skillConfiguration: skillResource.toJSON(auth),
+        skill: skillResource.toJSON(auth),
       });
     }
 

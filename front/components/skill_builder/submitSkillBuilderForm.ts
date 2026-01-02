@@ -1,7 +1,7 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PostSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/skills";
-import type { PatchSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
+import type { PostSkillResponseBody } from "@app/pages/api/w/[wId]/skills";
+import type { PatchSkillResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { Result, UserType, WorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -17,8 +17,8 @@ export async function submitSkillBuilderForm({
   currentEditors?: UserType[];
 }): Promise<
   Result<
-    | PostSkillConfigurationResponseBody["skillConfiguration"]
-    | PatchSkillConfigurationResponseBody["skillConfiguration"],
+    | PostSkillResponseBody["skill"]
+    | PatchSkillResponseBody["skill"],
     Error
   >
 > {
@@ -58,10 +58,10 @@ export async function submitSkillBuilderForm({
     }
 
     const result:
-      | PostSkillConfigurationResponseBody
-      | PatchSkillConfigurationResponseBody = await response.json();
+      | PostSkillResponseBody
+      | PatchSkillResponseBody = await response.json();
 
-    const skillConfiguration = result.skillConfiguration;
+    const { skill } = result;
 
     // Only sync editors for existing skills (updates), not for newly created skills
     // When creating a skill, the backend automatically adds the creator to the editors group
@@ -88,7 +88,7 @@ export async function submitSkillBuilderForm({
 
       if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
         const editorsResponse = await clientFetch(
-          `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/editors`,
+          `/api/w/${owner.sId}/skills/${skill.sId}/editors`,
           {
             method: "PATCH",
             headers: {
@@ -112,7 +112,7 @@ export async function submitSkillBuilderForm({
       }
     }
 
-    return new Ok(skillConfiguration);
+    return new Ok(skill);
   } catch (error) {
     const normalizedError = normalizeError(error);
     return new Err(

@@ -12,11 +12,11 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
-  GetSkillConfigurationsResponseBody,
-  GetSkillConfigurationsWithRelationsResponseBody,
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
 import type { GetSkillWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
-import type { GetSkillConfigurationsHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
+import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type { LightWorkspaceType } from "@app/types";
 import { Ok } from "@app/types";
@@ -36,7 +36,7 @@ export function useSkills({
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
 }) {
-  const skillsFetcher: Fetcher<GetSkillConfigurationsResponseBody> = fetcher;
+  const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
 
   const queryParams = new URLSearchParams();
   if (status) {
@@ -54,7 +54,7 @@ export function useSkills({
   );
 
   return {
-    skills: data?.skillConfigurations ?? emptyArray(),
+    skills: data?.skills ?? emptyArray(),
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
@@ -70,7 +70,7 @@ export function useSkillsWithRelations({
   disabled?: boolean;
   status: SkillStatus;
 }) {
-  const skillsFetcher: Fetcher<GetSkillConfigurationsWithRelationsResponseBody> =
+  const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> =
     fetcher;
 
   const { data, isLoading, mutate } = useSWRWithDefaults(
@@ -80,7 +80,7 @@ export function useSkillsWithRelations({
   );
 
   return {
-    skillsWithRelations: data?.skillConfigurations ?? emptyArray(),
+    skillsWithRelations: data?.skills ?? emptyArray(),
     isSkillsWithRelationsLoading: isLoading,
     mutateSkillsWithRelations: mutate,
   };
@@ -228,7 +228,7 @@ export function useSkillHistory({
   limit?: number;
   disabled?: boolean;
 }) {
-  const skillHistoryFetcher: Fetcher<GetSkillConfigurationsHistoryResponseBody> =
+  const skillHistoryFetcher: Fetcher<GetSkillHistoryResponseBody> =
     fetcher;
 
   const queryParams = limit ? `?limit=${limit}` : "";
