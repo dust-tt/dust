@@ -224,7 +224,6 @@ async function handler(
         auth,
         {
           status: "active",
-          version: 0,
           name: body.name,
           agentFacingDescription: body.agentFacingDescription,
           userFacingDescription: body.userFacingDescription,

@@ -170,7 +170,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
+    blob: Omit<
+      CreationAttributes<SkillConfigurationModel>,
+      "workspaceId" | "version"
+    >,
     {
       mcpServerViews,
     }: {
@@ -185,6 +188,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           ...blob,
           workspaceId: owner.id,
+          version: 1,
         },
         {
           transaction,
