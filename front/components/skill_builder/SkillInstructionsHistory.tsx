@@ -72,11 +72,10 @@ export function SkillInstructionsHistory({
     [authorMap]
   );
 
+  // Collapse successive versions that contain the exact same instructions,
+  // keeping the first one (it's the one with the highest version).
   const historyWithPrev = useMemo(() => {
-    const result: {
-      config: SkillType;
-      prevInstructions: string;
-    }[] = [];
+    const result: SkillType[] = [];
 
     let lastRawInstructions: string | null = null;
 
@@ -86,21 +85,9 @@ export function SkillInstructionsHistory({
         lastRawInstructions === null || instructions !== lastRawInstructions;
 
       if (isNewRun) {
-        const prevInstructions =
-          result.length > 0
-            ? (result[result.length - 1].config.instructions ?? "")
-            : "";
-
-        result.push({
-          config,
-          prevInstructions,
-        });
+        result.push(config);
       } else if (config.version === selectedConfig?.version) {
-        const prevInstructions = result[result.length - 1].prevInstructions;
-        result[result.length - 1] = {
-          config,
-          prevInstructions,
-        };
+        result[result.length - 1] = config;
       }
 
       lastRawInstructions = instructions;
@@ -146,7 +133,7 @@ export function SkillInstructionsHistory({
               }
             }}
           >
-            {historyWithPrev.map(({ config }) => (
+            {historyWithPrev.map((config) => (
               <DropdownMenuRadioItem
                 key={config.version}
                 value={config.version.toString()}
