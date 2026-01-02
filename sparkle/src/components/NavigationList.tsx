@@ -291,7 +291,7 @@ const NavigationListLabel = React.forwardRef<
       className={cn(
         labelStyles(),
         variantStyles({ variant, isSticky }),
-        isCollapsible ? "s-pl-1.5 s-pr-2" : "s-pl-3 s-pr-2",
+        isCollapsible ? "s-pl-1 s-pr-2" : "s-pl-3 s-pr-2",
         className
       )}
       {...props}
