@@ -31,6 +31,7 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
   sourceIcon?: string;
+  hasPreviousVersion?: boolean;
 };
 
 export function isConversationFileUseCase(

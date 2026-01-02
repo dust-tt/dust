@@ -1,33 +1,13 @@
-import groupBy from "lodash/groupBy";
-
-import {
-  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
 import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItemModel,
-} from "@app/lib/models/agent/actions/mcp";
-import {
-  AgentMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type {
-  InteractiveContentFileContentType,
-  ModelId,
-  Result,
-  WorkspaceType,
-} from "@app/types";
+import type { InteractiveContentFileContentType, Result } from "@app/types";
 import {
   Err,
   INTERACTIVE_CONTENT_FILE_FORMATS,
@@ -258,15 +238,20 @@ export async function editClientExecutableFile(
     });
   }
 
-  if (
-    editedByAgentConfigurationId &&
-    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-      editedByAgentConfigurationId
-  ) {
-    await fileResource.setUseCaseMetadata({
-      ...fileResource.useCaseMetadata,
-      lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
-    });
+  // Update metadata to track the editing agent and set hasPreviousVersion flag
+  if (editedByAgentConfigurationId) {
+    const needsMetadataUpdate =
+      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+        editedByAgentConfigurationId ||
+      !fileResource.useCaseMetadata?.hasPreviousVersion;
+
+    if (needsMetadataUpdate) {
+      await fileResource.setUseCaseMetadata({
+        ...fileResource.useCaseMetadata,
+        lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+        hasPreviousVersion: true, // Original version is now a previous version
+      });
+    }
   }
 
   // Validate the Tailwind classes in the resulting code.
@@ -392,320 +377,18 @@ export async function getClientExecutableFileContent(
   }
 }
 
-export function isCreateFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: {
-    content: string;
-    file_name: string;
-  };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.content === "string" &&
-    typeof action.augmentedInputs.file_name === "string"
-  );
-}
-
-function isEditFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { old_string: string; new_string: string };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.old_string === "string" &&
-    typeof action.augmentedInputs.new_string === "string"
-  );
-}
-
-function isRevertFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel {
-  return (
-    action.toolConfiguration.originalName ===
-    REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
-  );
-}
-
-function isRenameFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { new_file_name: string };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.new_file_name === "string"
-  );
-}
-
-function isCreateFileActionOutputType(
-  output: AgentMCPActionOutputItemModel
-): output is AgentMCPActionOutputItemModel & {
-  content: { resource: { fileId: string } };
-} {
-  if (typeof output.content !== "object" || output.content === null) {
-    return false;
-  }
-
-  if (
-    typeof output.content.resource !== "object" ||
-    output.content.resource === null
-  ) {
-    return false;
-  }
-
-  return (
-    "fileId" in output.content.resource &&
-    typeof output.content.resource.fileId === "string"
-  );
-}
-
-export async function isCreateFileActionForFileId({
-  action,
-  workspace,
-  fileId,
-}: {
-  action: AgentMCPActionModel;
-  workspace: WorkspaceType;
-  fileId: string;
-}) {
-  if (isCreateFileActionType(action)) {
-    const actionOutputs = await AgentMCPActionOutputItemModel.findAll({
-      where: {
-        agentMCPActionId: action.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const createdActionOutputs = actionOutputs.filter((output) => {
-      if (isCreateFileActionOutputType(output)) {
-        return output.content.resource.fileId === fileId;
-      }
-
-      return false;
-    });
-
-    // No outputs referencing `fileId` => this action did not create that file.
-    if (createdActionOutputs.length === 0) {
-      return false;
-    }
-
-    // Multiple outputs referencing the same `fileId` should never occur.
-    if (createdActionOutputs.length > 1) {
-      throw new Error(
-        `Multiple create file actions found for file_id ${fileId}.`
-      );
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-function isEditOrRevertOrRenameFileAction(
-  action: AgentMCPActionModel,
-  fileId: string
-) {
-  if (action.augmentedInputs.file_id !== fileId) {
-    return false;
-  }
-
-  return [
-    EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  ].includes(action.toolConfiguration.originalName);
-}
-
-// A conversation can have multiple files so you need to find the file actions for the given fileId.
-export async function getFileActionsByType(
-  actions: AgentMCPActionModel[],
-  fileId: string,
-  workspace: WorkspaceType
-) {
-  let createFileAction: AgentMCPActionModel | null = null;
-  const nonCreateFileActions: AgentMCPActionModel[] = [];
-
-  for (const action of actions) {
-    const isCreateAction = await isCreateFileActionForFileId({
-      action,
-      workspace,
-      fileId,
-    });
-
-    if (isCreateAction) {
-      createFileAction = action;
-    }
-
-    if (isEditOrRevertOrRenameFileAction(action, fileId)) {
-      nonCreateFileActions.push(action);
-    }
-  }
-
-  return {
-    createFileAction,
-    nonCreateFileActions,
-  };
-}
-
-/**
- * Returns the edit and rename actions that still apply after a revert operation.
- *
- * How it works:
- * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest => newest.
- * - Process groups newest => oldest so the revert cancels the most recent changes first.
- * - Maintain a cancellation counter starting at 1 (single revert step).
- *   While counter > 0:
- *     • Edit/rename-only group => skip it and decrement counter by 1.
- *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits/renames in that group.
- * - When counter = 0, collect edit and rename actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
- *
- * Note:
- * - `nonCreateFileActions` includes only past reverts; the current revert is not included.
- * - We expect that all changes on the file were done through the edit and rename tools.
- */
-export function getEditAndRenameActionsToApply(
-  nonCreateFileActions: AgentMCPActionModel[]
-) {
-  const clientExecutableFileActionsByMessage = groupBy(
-    nonCreateFileActions,
-    (action) => action.agentMessageId
-  );
-
-  // Within each group, sort actions chronologically (oldest → newest).
-  Object.keys(clientExecutableFileActionsByMessage).forEach((messageId) => {
-    clientExecutableFileActionsByMessage[messageId] =
-      clientExecutableFileActionsByMessage[messageId].sort(
-        (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-      );
-  });
-
-  // Order groups newest => oldest (based on the group's earliest action time).
-  const sortedActionGroups = Object.values(
-    clientExecutableFileActionsByMessage
-  ).sort(
-    (actionsA, actionsB) =>
-      actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
-  );
-
-  // Remaining edit/rename-only groups to cancel. Starts from the current revert.
-  let cancelGroupActionCounter = 1;
-
-  const editAndRenameActionsToApply = [];
-
-  for (const actionGroup of sortedActionGroups) {
-    if (cancelGroupActionCounter > 0) {
-      const revertActions = actionGroup.filter((a) =>
-        isRevertFileActionType(a)
-      );
-
-      // Cancel everything if there are only edit/rename actions in the group.
-      if (revertActions.length === 0) {
-        cancelGroupActionCounter--;
-        continue;
-      }
-
-      // Extend cancellation window by each revert (any edits/renames in the group will be cancelled).
-      cancelGroupActionCounter += revertActions.length;
-
-      continue;
-    }
-
-    // Not cancelling: collect edits and renames. A revert here reopens cancellation for older groups.
-    for (const currentAction of actionGroup) {
-      if (
-        isEditFileActionType(currentAction) ||
-        isRenameFileActionType(currentAction)
-      ) {
-        editAndRenameActionsToApply.push(currentAction);
-        continue;
-      }
-
-      if (isRevertFileActionType(currentAction)) {
-        cancelGroupActionCounter++;
-      }
-    }
-  }
-
-  return editAndRenameActionsToApply;
-}
-
-export function getRevertedContent(
-  createFileAction: AgentMCPActionModel,
-  actionsToApply: AgentMCPActionModel[]
-) {
-  // Sort actions from oldest to latest since we need to apply the changes from top to bottom.
-  const sortedActions = actionsToApply.sort(
-    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-  );
-
-  if (!isCreateFileActionType(createFileAction)) {
-    throw new Error("Wrong file action type for create file action");
-  }
-
-  let revertedContent = createFileAction.augmentedInputs.content;
-
-  for (const action of sortedActions) {
-    if (!isEditFileActionType(action)) {
-      // Skip non-edit actions (e.g., rename).
-      continue;
-    }
-
-    const { old_string, new_string } = action.augmentedInputs;
-
-    const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
-      oldString: old_string,
-      newString: new_string,
-      currentContent: revertedContent,
-    });
-
-    if (occurrences === 0) {
-      throw new Error(`Cannot find matched text: "${old_string}"`);
-    }
-
-    revertedContent = updatedContent;
-  }
-
-  return revertedContent;
-}
-
-export function getRevertedFileName(
-  createFileAction: AgentMCPActionModel,
-  actionsToApply: AgentMCPActionModel[]
-) {
-  // Loop backwards to find the most recent rename.
-  for (let i = actionsToApply.length - 1; i >= 0; i--) {
-    const action = actionsToApply[i];
-    if (isRenameFileActionType(action)) {
-      return action.augmentedInputs.new_file_name;
-    }
-  }
-
-  if (!isCreateFileActionType(createFileAction)) {
-    throw new Error("Wrong file action type for create file action");
-  }
-
-  // No rename were found, the file kept its original name.
-  return createFileAction.augmentedInputs.file_name;
-}
+// Minimum number of versions required to perform a revert (current + previous).
+const MIN_VERSIONS_FOR_REVERT = 2;
 
 // Revert the changes made to the Interactive Content file in the last agent message.
-// This reconstructs the previous file content and name by replaying edit and rename
-// operations chronologically from the create action.
+// Uses GCS versioning to restore the previous version of the file.
 export async function revertClientExecutableFileChanges(
   auth: Authenticator,
   {
     fileId,
-    conversationId,
     revertedByAgentConfigurationId,
   }: {
     fileId: string;
-    conversationId: ModelId;
     revertedByAgentConfigurationId: string;
   }
 ): Promise<
@@ -716,95 +399,88 @@ export async function revertClientExecutableFileChanges(
 > {
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
-    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+    return new Err({ tracked: true, message: "File not found" });
   }
 
-  if (!isInteractiveContentFileContentType(fileResource.contentType)) {
-    return new Err({
-      message: `File '${fileId}' is not an interactive content file (content type: ${fileResource.contentType})`,
-      tracked: true,
-    });
-  }
+  // Get the GCS path for this file
+  const filePath = fileResource.getCloudStoragePath(auth, "original");
+  const fileStorage = getPrivateUploadBucket();
 
+  // Get all versions of the file (sorted newest to oldest)
+  // No maxResults limit - we need all versions to ensure correct sorting
+  let versions;
   try {
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Fetch all the successful actions from the given conversation id
-    // (we only update the file when action succeeded).
-    const conversationActions = await AgentMCPActionModel.findAll({
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          include: [
-            {
-              model: MessageModel,
-              as: "message",
-              required: true,
-              where: {
-                conversationId,
-                workspaceId: workspace.id,
-              },
-            },
-          ],
-        },
-      ],
-      where: {
-        workspaceId: workspace.id,
-        status: "succeeded",
-      },
+    versions = await fileStorage.getSortedFileVersions({
+      filePath,
     });
-
-    if (!conversationActions.length) {
-      return new Err({
-        message: `No file actions found for: ${fileId}`,
-        tracked: true,
-      });
-    }
-
-    const { createFileAction, nonCreateFileActions } =
-      await getFileActionsByType(conversationActions, fileId, workspace);
-
-    if (createFileAction === null) {
-      return new Err({
-        message: `Cannot find the create file action for ${fileId}`,
-        tracked: true,
-      });
-    }
-
-    const editAndRenameActionsToApply =
-      getEditAndRenameActionsToApply(nonCreateFileActions);
-
-    const revertedContent = getRevertedContent(
-      createFileAction,
-      editAndRenameActionsToApply
-    );
-
-    const revertedFileName = getRevertedFileName(
-      createFileAction,
-      editAndRenameActionsToApply
-    );
-
-    // Apply the reverted file name if it differs from the current name
-    if (fileResource.fileName !== revertedFileName) {
-      await fileResource.rename(revertedFileName);
-    }
-
-    await fileResource.setUseCaseMetadata({
-      ...fileResource.useCaseMetadata,
-      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
-    });
-
-    await fileResource.uploadContent(auth, revertedContent);
-
-    return new Ok({ fileResource, revertedContent });
   } catch (error) {
     return new Err({
-      message: `Failed to revert ${fileId}: ${normalizeError(error)}`,
       tracked: true,
+      message: `Failed to retrieve file versions: ${normalizeError(error)}`,
     });
   }
+
+  // Check if there's a previous version available, button should be hidden in this
+  // case but just in case
+  if (versions.length < MIN_VERSIONS_FOR_REVERT) {
+    return new Err({
+      tracked: true,
+      message: "No previous version available to revert to",
+    });
+  }
+
+  // Log version generations for debugging
+  logger.info(
+    {
+      fileId,
+      versionGenerations: versions.map((v) => v.metadata.generation),
+      versionCount: versions.length,
+    },
+    "File versions retrieved for revert"
+  );
+
+  const currentVersion = versions[0];
+  const previousVersion = versions[1];
+
+  // Download the previous version's content
+  let revertedContent: string;
+  try {
+    const [content] = await previousVersion.download();
+    revertedContent = content.toString("utf8");
+  } catch (error) {
+    return new Err({
+      tracked: true,
+      message: `Failed to download previous version: ${normalizeError(error)}`,
+    });
+  }
+
+  // Update metadata BEFORE upload (following the pattern from editClientExecutableFile)
+  const stillHasPreviousVersion = versions.length > MIN_VERSIONS_FOR_REVERT;
+  await fileResource.setUseCaseMetadata({
+    ...fileResource.useCaseMetadata,
+    lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    hasPreviousVersion: stillHasPreviousVersion,
+  });
+
+  // Upload the reverted content
+  await fileResource.uploadContent(auth, revertedContent);
+
+  // Delete old versions to prevent accumulation and infinite loops
+  try {
+    await currentVersion.delete();
+    await previousVersion.delete();
+  } catch (error) {
+    // Log but don't fail the revert if deletion fails
+    logger.error(
+      {
+        fileId,
+        error,
+      },
+      "Failed to clean up old file versions after revert"
+    );
+  }
+
+  return new Ok({ fileResource, revertedContent });
 }
 
 export async function getClientExecutableFileShareUrl(
