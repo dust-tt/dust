@@ -1,5 +1,5 @@
 import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -24,14 +24,6 @@ import type {
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 
-type ToolBarSpec = {
-  toolName: string;
-  dataKey: string;
-  colorClassName: string;
-};
-type ToolUsageRechartsRow = ChartDatum &
-  Record<string, number | string | ChartDatum["values"] | undefined>;
-
 export function ToolUsageChart({
   workspaceId,
   agentConfigurationId,
@@ -41,6 +33,7 @@ export function ToolUsageChart({
 }) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
   const { configurations: mcpConfigurations } = useAgentMcpConfigurations({
     workspaceId,
@@ -77,39 +70,22 @@ export function ToolUsageChart({
     configurationNames,
   });
 
-  const bars = useMemo<ToolBarSpec[]>(
+  const legendItems = useMemo(
     () =>
-      topTools.map((toolName, idx) => ({
-        toolName,
-        dataKey: `tool_${idx}`,
-        colorClassName: getIndexedColor(toolName, topTools),
+      topTools.map((t) => ({
+        key: t,
+        label: t,
+        colorClassName: getIndexedColor(t, topTools),
       })),
     [topTools]
   );
 
-  const legendItems = useMemo(
-    () =>
-      bars.map(({ toolName, colorClassName }) => ({
-        key: toolName,
-        label: toolName,
-        colorClassName,
-      })),
-    [bars]
+  const renderToolUsageTooltip = useCallback(
+    (props: TooltipContentProps<number, string>) => (
+      <ChartsTooltip {...props} topTools={topTools} hoveredTool={hoveredTool} />
+    ),
+    [topTools, hoveredTool]
   );
-
-  const rechartsData = useMemo<ToolUsageRechartsRow[]>(() => {
-    return chartData.map((row) => {
-      const withKeys: ToolUsageRechartsRow = { ...row };
-      for (const { toolName, dataKey } of bars) {
-        withKeys[dataKey] = row.values[toolName]?.count ?? 0;
-      }
-      return withKeys;
-    });
-  }, [bars, chartData]);
-
-  const renderToolUsageTooltip = (
-    props: TooltipContentProps<number, string>
-  ) => <ChartsTooltip {...props} topTools={topTools} />;
 
   return (
     <ChartContainer
@@ -136,10 +112,9 @@ export function ToolUsageChart({
       legendItems={legendItems}
     >
       <BarChart
-        data={rechartsData}
+        data={chartData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         stackOffset="expand"
-        style={{ zIndex: 10 }}
       >
         <CartesianGrid
           vertical={false}
@@ -170,12 +145,7 @@ export function ToolUsageChart({
         <Tooltip
           cursor={false}
           content={renderToolUsageTooltip}
-          shared={false}
-          wrapperStyle={{
-            outline: "none",
-            zIndex: 50,
-            pointerEvents: "auto",
-          }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
             background: "transparent",
             border: "none",
@@ -195,17 +165,19 @@ export function ToolUsageChart({
               ifOverflow="extendDomain"
             />
           )}
-        {bars.map(({ toolName, dataKey, colorClassName }) => (
+        {topTools.map((toolName) => (
           <Bar
             key={toolName}
-            dataKey={dataKey}
+            dataKey={(row: ChartDatum) => row.values[toolName]?.count ?? 0}
             stackId="a"
             fill="currentColor"
-            className={colorClassName}
+            className={getIndexedColor(toolName, topTools)}
             name={toolName}
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
             }
+            onMouseEnter={() => setHoveredTool(toolName)}
+            onMouseLeave={() => setHoveredTool(null)}
           />
         ))}
       </BarChart>

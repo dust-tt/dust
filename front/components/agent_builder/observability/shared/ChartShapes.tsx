@@ -1,21 +1,7 @@
 import type { ValuesPayload } from "@app/components/agent_builder/observability/utils";
 
 function getStackValue(payload: ValuesPayload, key: string): number {
-  const v = payload.values[key];
-  if (typeof v === "number") {
-    return v;
-  }
-
-  if (typeof v === "object" && v !== null) {
-    if (typeof v.count === "number") {
-      return v.count;
-    }
-    if (typeof v.percent === "number") {
-      return v.percent;
-    }
-  }
-
-  return 0;
+  return payload.values[key]?.count ?? 0;
 }
 
 export function RoundedTopBarShape({

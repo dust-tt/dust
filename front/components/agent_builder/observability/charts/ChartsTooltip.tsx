@@ -18,23 +18,30 @@ export interface ToolUsageTooltipProps extends TooltipContentProps<
   string
 > {
   topTools: string[];
+  hoveredTool?: string | null;
 }
 
 export function ChartsTooltip({
   active,
   payload,
   topTools,
+  hoveredTool,
 }: ToolUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
-  const typed = payload.filter(isToolChartUsagePayload);
-  if (typed.length === 0) {
+  if (!hoveredTool) {
     return null;
   }
 
-  const toolPayload = typed[0];
+  const typed = payload.filter(isToolChartUsagePayload);
+  const filtered = typed.filter((p) => p.name === hoveredTool);
+  if (filtered.length === 0) {
+    return null;
+  }
+
+  const toolPayload = filtered[0];
   const toolName = toolPayload.name ?? "";
   const data = toolPayload.payload?.values?.[toolName];
 
