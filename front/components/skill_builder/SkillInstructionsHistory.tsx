@@ -10,7 +10,6 @@ import {
   HistoryIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { compareDesc } from "date-fns";
 import { format } from "date-fns/format";
 import React, { useCallback, useMemo } from "react";
 
@@ -74,10 +73,6 @@ export function SkillInstructionsHistory({
   );
 
   const historyWithPrev = useMemo(() => {
-    const sorted = [...history].sort((a, b) =>
-      compareDesc(a.createdAt ?? a.version, b.createdAt ?? b.version)
-    );
-
     const result: {
       config: SkillType;
       prevInstructions: string;
@@ -85,7 +80,7 @@ export function SkillInstructionsHistory({
 
     let lastRawInstructions: string | null = null;
 
-    for (const config of sorted) {
+    for (const config of history) {
       const instructions = config.instructions ?? "";
       const isNewRun =
         lastRawInstructions === null || instructions !== lastRawInstructions;
