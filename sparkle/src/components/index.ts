@@ -49,12 +49,6 @@ export {
   ConversationContainer,
   ConversationMessage,
 } from "./ConversationMessage";
-export {
-  ConversationMessageAvatar,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  NewConversationMessageContainer,
-} from "./NewConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
@@ -141,6 +135,12 @@ export {
   MultiPageSheetTrigger,
 } from "./MultiPageSheet";
 export * from "./NavigationList";
+export {
+  ConversationMessageAvatar,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+  NewConversationMessageContainer,
+} from "./NewConversationMessage";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
