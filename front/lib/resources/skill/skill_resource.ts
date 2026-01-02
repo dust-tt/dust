@@ -61,11 +61,13 @@ type SkillResourceConstructorOptions =
       editorGroup?: undefined;
       globalSId: string;
       mcpServerViews: MCPServerViewResource[];
+      version?: number;
     }
   | {
       editorGroup?: GroupResource;
       globalSId?: undefined;
       mcpServerViews: MCPServerViewResource[];
+      version?: number;
     };
 
 type SkillVersionCreationAttributes =
@@ -142,19 +144,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   readonly editorGroup: GroupResource | null = null;
   readonly mcpServerViews: MCPServerViewResource[];
+  readonly version: number | null = null;
 
   private readonly globalSId: string | null;
 
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
-    { globalSId, mcpServerViews, editorGroup }: SkillResourceConstructorOptions
+    {
+      globalSId,
+      mcpServerViews,
+      editorGroup,
+      version,
+    }: SkillResourceConstructorOptions
   ) {
     super(SkillConfigurationModel, blob);
 
     this.editorGroup = editorGroup ?? null;
     this.globalSId = globalSId ?? null;
     this.mcpServerViews = mcpServerViews;
+    this.version = version ?? null;
   }
 
   get sId(): string {
@@ -170,10 +179,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<
-      CreationAttributes<SkillConfigurationModel>,
-      "workspaceId" | "version"
-    >,
+    blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
     {
       mcpServerViews,
     }: {
@@ -188,7 +194,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           ...blob,
           workspaceId: owner.id,
-          version: 1,
         },
         {
           transaction,
@@ -765,7 +770,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name: def.name,
         requestedSpaceIds: requestedSpaceModelIds,
         status: "active",
-        version: def.version,
         updatedAt: new Date(),
         workspaceId: auth.getNonNullableWorkspace().id,
         icon: def.icon,
@@ -822,7 +826,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  async listVersions(auth: Authenticator): Promise<SkillResource[]> {
+  async listVersions(
+    auth: Authenticator
+  ): Promise<(SkillResource & { version: number })[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     // Fetch all historical versions from the skill_versions table.
@@ -859,7 +865,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             createdAt: versionModel.createdAt,
             updatedAt: versionModel.updatedAt,
             status: versionModel.status,
-            version: versionModel.version,
             name: versionModel.name,
             agentFacingDescription: versionModel.agentFacingDescription,
             userFacingDescription: versionModel.userFacingDescription,
@@ -871,6 +876,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             editorGroup: this.editorGroup ?? undefined,
             mcpServerViews,
+            version: versionModel.version,
           }
         );
       },
@@ -994,7 +1000,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon,
         requestedSpaceIds,
         authorId,
-        version: this.version + 1,
       },
       { transaction }
     );
@@ -1227,7 +1232,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
       authorId: this.globalSId ? null : this.authorId,
       status: this.status,
-      version: this.version,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,
@@ -1278,11 +1282,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
+    // Calculate the next version number by counting existing versions.
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: this.workspaceId,
+      skillConfigurationId: this.id,
+    };
+
+    const existingVersionsCount = await SkillVersionModel.count({
+      where,
+      transaction,
+    });
+
+    const versionNumber = existingVersionsCount + 1;
+
     // Create a new version entry with the current state.
     const versionData: SkillVersionCreationAttributes = {
       workspaceId: this.workspaceId,
       skillConfigurationId: this.id,
-      version: this.version,
+      version: versionNumber,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,

@@ -14,7 +14,10 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillType,
+  SkillWithVersionType,
+} from "@app/types/assistant/skill_configuration";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
@@ -27,7 +30,8 @@ export function SkillBuilderInstructionsSection({
 }: SkillBuilderInstructionsSectionProps) {
   const { owner } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
-  const [compareVersion, setCompareVersion] = useState<SkillType | null>(null);
+  const [compareVersion, setCompareVersion] =
+    useState<SkillWithVersionType | null>(null);
   const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
 
   const { skillHistory } = useSkillHistory({

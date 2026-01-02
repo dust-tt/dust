@@ -15,13 +15,16 @@ import React, { useCallback, useMemo } from "react";
 
 import { useMembersLookup } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillType,
+  SkillWithVersionType,
+} from "@app/types/assistant/skill_configuration";
 
 interface SkillInstructionsHistoryProps {
   currentSkill: SkillType;
-  history: SkillType[];
-  selectedConfig: SkillType | null;
-  onSelect: (config: SkillType) => void;
+  history: SkillWithVersionType[];
+  selectedConfig: SkillWithVersionType | null;
+  onSelect: (config: SkillWithVersionType) => void;
   owner: LightWorkspaceType;
 }
 
@@ -58,7 +61,7 @@ export function SkillInstructionsHistory({
     return map;
   }, [authorLookupMembers]);
 
-  const formatVersionLabel = useCallback((config: SkillType) => {
+  const formatVersionLabel = useCallback((config: SkillWithVersionType) => {
     return config.createdAt
       ? format(config.createdAt, "Pp")
       : `Version ${config.version}`;
@@ -77,7 +80,7 @@ export function SkillInstructionsHistory({
   // Collapse successive versions that contain the exact same instructions,
   // keeping the first one (it's the one with the highest version).
   const historyWithPrev = useMemo(() => {
-    const result: SkillType[] = [];
+    const result: SkillWithVersionType[] = [];
 
     let lastRawInstructions = currentSkill.instructions;
 

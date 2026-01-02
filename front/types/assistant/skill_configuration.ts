@@ -11,7 +11,6 @@ export type SkillType = {
   updatedAt: number | null;
   authorId: number | null;
   status: SkillStatus;
-  version: number;
   name: string;
   agentFacingDescription: string;
   userFacingDescription: string;
@@ -33,4 +32,8 @@ export type SkillRelations = {
 
 export type SkillWithRelationsType = SkillType & {
   relations: SkillRelations;
+};
+
+export type SkillWithVersionType = SkillType & {
+  version: number;
 };
