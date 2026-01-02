@@ -8,12 +8,12 @@ import { Err, normalizeError, Ok } from "@app/types";
 export async function submitSkillBuilderForm({
   formData,
   owner,
-  skillConfigurationId,
+  skillId,
   currentEditors = [],
 }: {
   formData: SkillBuilderFormData;
   owner: WorkspaceType;
-  skillConfigurationId?: string;
+  skillId?: string;
   currentEditors?: UserType[];
 }): Promise<
   Result<
@@ -23,11 +23,11 @@ export async function submitSkillBuilderForm({
   >
 > {
   try {
-    const endpoint = skillConfigurationId
-      ? `/api/w/${owner.sId}/skills/${skillConfigurationId}`
+    const endpoint = skillId
+      ? `/api/w/${owner.sId}/skills/${skillId}`
       : `/api/w/${owner.sId}/skills`;
 
-    const method = skillConfigurationId ? "PATCH" : "POST";
+    const method = skillId ? "PATCH" : "POST";
 
     const response = await clientFetch(endpoint, {
       method,
@@ -52,9 +52,7 @@ export async function submitSkillBuilderForm({
       return new Err(
         new Error(
           errorData.error?.message ??
-            (skillConfigurationId
-              ? "Failed to update skill"
-              : "Failed to create skill")
+            (skillId ? "Failed to update skill" : "Failed to create skill")
         )
       );
     }
@@ -67,7 +65,7 @@ export async function submitSkillBuilderForm({
 
     // Only sync editors for existing skills (updates), not for newly created skills
     // When creating a skill, the backend automatically adds the creator to the editors group
-    if (skillConfigurationId) {
+    if (skillId) {
       const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
       const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
 
@@ -119,7 +117,7 @@ export async function submitSkillBuilderForm({
     const normalizedError = normalizeError(error);
     return new Err(
       new Error(
-        `Unexpected error ${skillConfigurationId ? "updating" : "creating"} skill: ${normalizedError.message}`
+        `Unexpected error ${skillId ? "updating" : "creating"} skill: ${normalizedError.message}`
       )
     );
   }
