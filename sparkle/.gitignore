@@ -1,6 +1,5 @@
 # dependencies
 /node_modules
-playground/node_modules
 /.pnp
 .pnp.js
 
