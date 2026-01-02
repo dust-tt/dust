@@ -51,9 +51,9 @@ export {
 } from "./ConversationMessage";
 export {
   ConversationMessageAvatar,
+  ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  ConversationMessageContainer,
 } from "./ConversationMessages";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
