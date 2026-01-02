@@ -14,7 +14,10 @@ import {
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
-import type { ContentSummary, LessonPageProps } from "@app/lib/contentful/types";
+import type {
+  ContentSummary,
+  LessonPageProps,
+} from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
@@ -84,10 +87,7 @@ function getContentTypeLabel(content: ContentSummary): string {
   return "Lesson";
 }
 
-export default function LessonPage({
-  lesson,
-  preview,
-}: LessonPageProps) {
+export default function LessonPage({ lesson, preview }: LessonPageProps) {
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
   const tocItems = extractTableOfContents(lesson.lessonContent);
 
@@ -134,9 +134,7 @@ export default function LessonPage({
 
           <header className={WIDE_CLASSES}>
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {lesson.courseId && (
-                <span>Lesson {lesson.courseId}</span>
-              )}
+              {lesson.courseId && <span>Lesson {lesson.courseId}</span>}
               {lesson.estimatedDurationMinutes && (
                 <>
                   {lesson.courseId && <span>•</span>}
@@ -181,8 +179,13 @@ export default function LessonPage({
             </div>
           </div>
 
-          {(lesson.previousContent || lesson.nextContent) && (
-            <div className={classNames(WIDE_CLASSES, "mt-12 border-t border-gray-200 pt-8")}>
+          {(lesson.previousContent ?? lesson.nextContent) && (
+            <div
+              className={classNames(
+                WIDE_CLASSES,
+                "mt-12 border-t border-gray-200 pt-8"
+              )}
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
                 {lesson.previousContent && (
                   <Link
@@ -222,4 +225,3 @@ export default function LessonPage({
 LessonPage.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
