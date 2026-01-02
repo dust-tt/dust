@@ -63,7 +63,7 @@ export function SourceChart({
       <PieChart>
         <Tooltip
           cursor={false}
-          wrapperStyle={{ outline: "none" }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           content={({ active }) => {
             if (!active || data.length === 0) {
               return null;
