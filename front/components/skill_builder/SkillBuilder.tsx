@@ -22,11 +22,11 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
-import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
-} from "@app/components/skill_builder/transformSkillConfiguration";
+} from "@app/components/skill_builder/skillFormData";
+import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
