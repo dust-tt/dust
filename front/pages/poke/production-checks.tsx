@@ -1,16 +1,18 @@
 import {
   Button,
   Chip,
+  ClipboardIcon,
   CollapsibleComponent,
   PlayIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ComponentProps, ReactElement } from "react";
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   usePokeCheckHistory,
   usePokeProductionChecks,
@@ -19,6 +21,7 @@ import {
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type {
   ActionLink,
+  CheckFailurePayload,
   CheckHistoryRun,
   CheckSummary,
   CheckSummaryStatus,
@@ -44,7 +47,7 @@ const HISTORY_STATUS_CHIP_CONFIG: Record<
   success: { color: "green", label: "Success" },
   failure: { color: "rose", label: "Failed" },
   skipped: { color: "info", label: "Skipped" },
-  running: { color: "warning", label: "Running" },
+  running: { color: "blue", label: "Running" },
 };
 
 const STATUS_CARD_CLASSES: Record<CheckSummaryStatus, string> = {
@@ -87,13 +90,162 @@ function HistoryStatusChip({ status }: HistoryStatusChipProps) {
   return <Chip color={config.color} size="xs" label={config.label} />;
 }
 
-interface ActionLinksListProps {
-  links: ActionLink[];
+function isCheckFailurePayload(item: unknown): item is CheckFailurePayload {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "actionLinks" in item &&
+    Array.isArray(item.actionLinks)
+  );
 }
 
-function ActionLinksList({ links }: ActionLinksListProps) {
-  const [showAll, setShowAll] = useState(false);
+interface ActionLinksListProps {
+  payload: unknown;
+  links: ActionLink[];
+  checkName: string;
+}
 
+function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
+  const [showAll, setShowAll] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const isGdriveCheck = checkName === "managed_data_source_gdrive_gc";
+
+  const groupedItems = useMemo(() => {
+    if (!Array.isArray(payload)) {
+      return null;
+    }
+
+    const groups = new Map<string, CheckFailurePayload[]>();
+    for (const item of payload) {
+      if (!isCheckFailurePayload(item)) {
+        continue;
+      }
+      const errorMsg = item.errorMessage ?? "Unknown error";
+      const existing = groups.get(errorMsg) ?? [];
+      existing.push(item);
+      groups.set(errorMsg, existing);
+    }
+    return groups;
+  }, [payload]);
+
+  const handleCopyDocumentIds = useCallback(
+    async (item: CheckFailurePayload) => {
+      const notDeleted = item.notDeleted;
+      if (Array.isArray(notDeleted)) {
+        try {
+          await navigator.clipboard.writeText(notDeleted.join(","));
+          sendNotification({
+            title: "Copied",
+            description: "Document IDs copied to clipboard",
+            type: "success",
+          });
+        } catch {
+          sendNotification({
+            title: "Failed to copy",
+            description: "Could not copy to clipboard",
+            type: "error",
+          });
+        }
+      }
+    },
+    [sendNotification]
+  );
+
+  const renderActionLink = (link: ActionLink, item?: CheckFailurePayload) => (
+    <div className="flex items-center gap-2">
+      {link.url === "#" ? (
+        <span className="text-sm text-gray-500 dark:text-muted-foreground-night">
+          {link.label}
+        </span>
+      ) : (
+        <Link
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+          {link.label}
+        </Link>
+      )}
+      {isGdriveCheck && item && Array.isArray(item.notDeleted) && (
+        <Button
+          variant="ghost"
+          size="xs"
+          icon={ClipboardIcon}
+          onClick={() => handleCopyDocumentIds(item)}
+          tooltip="Copy document IDs"
+        />
+      )}
+    </div>
+  );
+
+  // Grouped view when payload is an array
+  if (groupedItems && groupedItems.size > 0) {
+    const totalItems = Array.from(groupedItems.values()).reduce(
+      (acc, items) => acc + items.length,
+      0
+    );
+    const hiddenCount = totalItems - MAX_VISIBLE;
+    let itemsRendered = 0;
+
+    return (
+      <div className="space-y-3">
+        <div
+          className={cn(
+            showAll && totalItems > MAX_VISIBLE && "h-96 overflow-y-scroll"
+          )}
+        >
+          {Array.from(groupedItems.entries()).map(([errorMsg, items]) => {
+            const itemsToRender: {
+              item: CheckFailurePayload;
+              link: ActionLink;
+            }[] = [];
+
+            for (const item of items) {
+              for (const link of item.actionLinks) {
+                if (!showAll && itemsRendered >= MAX_VISIBLE) {
+                  break;
+                }
+                itemsToRender.push({ item, link });
+                itemsRendered++;
+              }
+              if (!showAll && itemsRendered >= MAX_VISIBLE) {
+                break;
+              }
+            }
+
+            if (itemsToRender.length === 0) {
+              return null;
+            }
+
+            return (
+              <div key={errorMsg} className="space-y-1">
+                <p className="text-sm text-gray-500 dark:text-muted-foreground-night">
+                  {errorMsg}:
+                </p>
+                <div className="ml-4 space-y-1">
+                  {itemsToRender.map(({ item, link }, idx) => (
+                    <div key={idx}>{renderActionLink(link, item)}</div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {hiddenCount > 0 && (
+          <Button
+            variant="ghost"
+            size="xs"
+            label={showAll ? "Show less" : `Show ${hiddenCount} more...`}
+            onClick={() => setShowAll(!showAll)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Flat view when no payload array (fallback to links)
   if (links.length === 0) {
     return null;
   }
@@ -105,26 +257,11 @@ function ActionLinksList({ links }: ActionLinksListProps) {
     <div className="space-y-1">
       <div
         className={cn(
-          showAll && links.length > MAX_VISIBLE && "max-h-48 overflow-y-auto"
+          showAll && links.length > MAX_VISIBLE && "h-96 overflow-y-scroll"
         )}
       >
         {visibleLinks.map((link, idx) => (
-          <div key={idx}>
-            {link.url === "#" ? (
-              <span className="text-sm text-gray-500 dark:text-muted-foreground-night">
-                {link.label}
-              </span>
-            ) : (
-              <Link
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-              >
-                {link.label}
-              </Link>
-            )}
-          </div>
+          <div key={idx}>{renderActionLink(link)}</div>
         ))}
       </div>
       {hiddenCount > 0 && (
@@ -151,9 +288,10 @@ function getDatadogLogsUrl(checkName: string): string {
 
 interface HistoryRunRowProps {
   run: CheckHistoryRun;
+  checkName: string;
 }
 
-function HistoryRunRow({ run }: HistoryRunRowProps) {
+function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
   const links = run.actionLinks;
   const hasDetails =
     run.errorMessage !== null || links.length > 0 || run.payload !== null;
@@ -181,13 +319,17 @@ function HistoryRunRow({ run }: HistoryRunRowProps) {
           {run.errorMessage}
         </p>
       )}
-      <ActionLinksList links={links} />
+      <ActionLinksList
+        payload={run.payload}
+        links={links}
+        checkName={checkName}
+      />
       {run.payload !== null && (
         <details className="mt-2">
           <summary className="cursor-pointer text-sm text-gray-500 dark:text-muted-foreground-night">
             Raw payload
           </summary>
-          <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
+          <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
             {JSON.stringify(run.payload, null, 2)}
           </pre>
         </details>
@@ -235,7 +377,11 @@ function PastRunsSection({ checkName }: PastRunsSectionProps) {
   return (
     <div className="space-y-3">
       {runs.map((run) => (
-        <HistoryRunRow key={`${run.workflowId}-${run.runId}`} run={run} />
+        <HistoryRunRow
+          key={`${run.workflowId}-${run.runId}`}
+          run={run}
+          checkName={checkName}
+        />
       ))}
     </div>
   );
@@ -287,35 +433,34 @@ function ProductionCheckCard({
 
   const detailsContent = (
     <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-      {check.status === "alert" && (
-        <div className="flex items-center gap-2">
-          <Link
-            href={getDatadogLogsUrl(check.name)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-purple-600 hover:underline dark:text-purple-400"
-          >
-            View logs in Datadog →
-          </Link>
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <Link
+          href={getDatadogLogsUrl(check.name)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-purple-600 hover:underline dark:text-purple-400"
+        >
+          View logs in Datadog →
+        </Link>
+      </div>
 
-      {check.status === "alert" && links.length > 0 && (
-        <div className="rounded-md bg-white p-3 dark:bg-background-night">
-          <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
-            Action Items
-          </h4>
-          <ActionLinksList links={links} />
-          {check.lastRun?.errorMessage && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-              {check.lastRun.errorMessage}
-            </p>
-          )}
-        </div>
-      )}
+      {check.status === "alert" &&
+        (Array.isArray(check.lastRun?.payload) || links.length > 0) && (
+          <div className="rounded-md bg-white p-3 dark:bg-background-night">
+            <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
+              Action Items
+            </h4>
+            <ActionLinksList
+              payload={check.lastRun?.payload}
+              links={links}
+              checkName={check.name}
+            />
+          </div>
+        )}
 
       {check.status === "alert" &&
         check.lastRun?.errorMessage &&
+        !Array.isArray(check.lastRun?.payload) &&
         links.length === 0 && (
           <div className="rounded-md bg-white p-3 dark:bg-background-night">
             <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">

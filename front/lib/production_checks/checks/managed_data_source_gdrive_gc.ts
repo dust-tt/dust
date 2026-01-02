@@ -114,7 +114,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
           "Google Drive documents not properly Garbage collected"
         );
       } else {
-        reportSuccess({ connectorId: ds.connectorId });
+        reportSuccess();
       }
     },
     { concurrency: CONCURRENCY }
