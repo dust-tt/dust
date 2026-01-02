@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,

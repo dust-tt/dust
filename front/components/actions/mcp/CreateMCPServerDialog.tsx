@@ -353,7 +353,7 @@ export function CreateMCPServerDialog({
         resetState();
       }}
     >
-      <DialogContent size="lg" onClick={(e) => e.stopPropagation()}>
+      <DialogContent size="xl" height="xl" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center gap-2">

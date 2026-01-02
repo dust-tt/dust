@@ -1,6 +1,5 @@
 import {
   Card,
-  CardGrid,
   cn,
   Hoverable,
   Icon,
@@ -135,7 +134,7 @@ export function MCPServerOAuthConnexion({
           <div className="heading-lg text-foreground dark:text-foreground-night">
             {supportBoth ? "How do you want to connect?" : "Connection type"}
           </div>
-          <CardGrid>
+          <div className="grid w-full grid-cols-2 gap-4">
             <ConditionalTooltip
               showTooltip={!supportsPersonalActions}
               label={`${toolName} does not support individual connection.`}
@@ -230,7 +229,7 @@ export function MCPServerOAuthConnexion({
                 </div>
               </Card>
             </ConditionalTooltip>
-          </CardGrid>
+          </div>
         </div>
 
         {inputs && (
