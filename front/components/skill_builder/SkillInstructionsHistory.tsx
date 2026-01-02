@@ -74,17 +74,15 @@ export function SkillInstructionsHistory({
   );
 
   const historyWithPrev = useMemo(() => {
-    // Get current version (first item, since it's sorted DESC by version)
-    const currentVersionId = history[0]?.id;
-
+    // Skip the current version (first item, since it's sorted DESC by version).
     const sorted = [...history]
-      .filter((config) => config.id !== currentVersionId)
+      .slice(1)
       .sort((a, b) => compareDesc(a.createdAt ?? a.id, b.createdAt ?? b.id));
 
-    const result: Array<{
+    const result: {
       config: SkillType;
       prevInstructions: string;
-    }> = [];
+    }[] = [];
 
     let lastRawInstructions: string | null = null;
 
