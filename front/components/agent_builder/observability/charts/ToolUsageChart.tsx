@@ -24,6 +24,14 @@ import type {
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 
+type ToolBarSpec = {
+  toolName: string;
+  dataKey: string;
+  colorClassName: string;
+};
+type ToolUsageRechartsRow = ChartDatum &
+  Record<string, number | string | ChartDatum["values"] | undefined>;
+
 export function ToolUsageChart({
   workspaceId,
   agentConfigurationId,
@@ -70,15 +78,35 @@ export function ToolUsageChart({
     configurationNames,
   });
 
-  const legendItems = useMemo(
+  const bars = useMemo<ToolBarSpec[]>(
     () =>
-      topTools.map((t) => ({
-        key: t,
-        label: t,
-        colorClassName: getIndexedColor(t, topTools),
+      topTools.map((toolName, idx) => ({
+        toolName,
+        dataKey: `tool_${idx}`,
+        colorClassName: getIndexedColor(toolName, topTools),
       })),
     [topTools]
   );
+
+  const legendItems = useMemo(
+    () =>
+      bars.map(({ toolName, colorClassName }) => ({
+        key: toolName,
+        label: toolName,
+        colorClassName,
+      })),
+    [bars]
+  );
+
+  const rechartsData = useMemo<ToolUsageRechartsRow[]>(() => {
+    return chartData.map((row) => {
+      const withKeys: ToolUsageRechartsRow = { ...row };
+      for (const { toolName, dataKey } of bars) {
+        withKeys[dataKey] = row.values[toolName]?.count ?? 0;
+      }
+      return withKeys;
+    });
+  }, [bars, chartData]);
 
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
@@ -116,8 +144,9 @@ export function ToolUsageChart({
       legendItems={legendItems}
     >
       <BarChart
-        data={chartData}
+        data={rechartsData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+        stackOffset="expand"
       >
         <CartesianGrid
           vertical={false}
@@ -141,10 +170,9 @@ export function ToolUsageChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          domain={[0, 100]}
-          ticks={[0, 20, 40, 60, 80, 100]}
-          tickFormatter={(value) => `${value}%`}
-          allowDecimals={false}
+          domain={[0, 1]}
+          ticks={[0, 0.2, 0.4, 0.6, 0.8, 1]}
+          tickFormatter={(value) => `${Math.round(value * 100)}%`}
         />
         <Tooltip
           cursor={false}
@@ -169,13 +197,13 @@ export function ToolUsageChart({
               ifOverflow="extendDomain"
             />
           )}
-        {topTools.map((toolName) => (
+        {bars.map(({ toolName, dataKey, colorClassName }) => (
           <Bar
             key={toolName}
-            dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
+            dataKey={dataKey}
             stackId="a"
             fill="currentColor"
-            className={getIndexedColor(toolName, topTools)}
+            className={colorClassName}
             name={toolName}
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />

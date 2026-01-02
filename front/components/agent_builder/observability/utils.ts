@@ -12,7 +12,12 @@ import type { UserMessageOrigin } from "@app/types";
 
 export type VersionMarker = { version: string; timestamp: number };
 
-export type ValuesPayload = { values: Record<string, number> };
+export type ValuesPayload = {
+  values: Record<
+    string,
+    number | { count?: number; percent?: number } | undefined
+  >;
+};
 
 export type SourceBucket = { origin: string; count: number };
 

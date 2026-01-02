@@ -51,6 +51,15 @@ export function ChartsTooltip({
     return null;
   }
 
+  const totalCount =
+    toolPayload.payload?.total ??
+    Object.values(toolPayload.payload?.values ?? {}).reduce(
+      (sum, d) => sum + (d?.count ?? 0),
+      0
+    );
+  const percentOfTotal =
+    totalCount > 0 ? Math.round((data.count / totalCount) * 100) : 0;
+
   const colorClassName = getIndexedColor(toolName, topTools);
 
   // If there's a breakdown, show the configurations as bullet points
@@ -90,7 +99,7 @@ export function ChartsTooltip({
           <LegendDot className={colorClassName} />
           <Label>{toolName}</Label>
           <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
-            ({data.percent}%)
+            ({percentOfTotal}%)
           </span>
         </div>
         <div className="space-y-1.5">
@@ -121,7 +130,7 @@ export function ChartsTooltip({
         <LegendDot className={colorClassName} />
         <Label>{toolName}</Label>
         <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
-          ({data.percent}%)
+          ({percentOfTotal}%)
         </span>
       </div>
       <div className="flex items-center gap-2">
