@@ -134,7 +134,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
       const notDeleted = item.notDeleted;
       if (Array.isArray(notDeleted)) {
         try {
-          await navigator.clipboard.writeText(notDeleted.join(","));
+          await navigator.clipboard.writeText(notDeleted.join("\n"));
           sendNotification({
             title: "Copied",
             description: "Document IDs copied to clipboard",
