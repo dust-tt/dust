@@ -186,18 +186,25 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
       node.data.target &&
       typeof node.data.target === "object"
     ) {
-      const entry = node.data.target as {
-        sys?: unknown;
-        fields?: Record<string, unknown>;
-      };
+      if (!isContentfulEntryWithFields(node.data.target)) {
+        return node;
+      }
+
+      const entry = node.data.target;
 
       // Only clean if entry has fields, otherwise preserve as-is
       if (entry.fields && typeof entry.fields === "object") {
         // Keep only basic fields for embedded entries to prevent circular references
+        // node.data is already verified to be an object in the outer condition
+        // Use Object.assign to safely copy properties without type assertion
+        const nodeData =
+          typeof node.data === "object" && node.data !== null
+            ? Object.assign({}, node.data)
+            : {};
         return {
           ...node,
           data: {
-            ...(node.data as Record<string, unknown>),
+            ...nodeData,
             target: {
               sys: entry.sys,
               fields: {
@@ -231,9 +238,13 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
     return node;
   };
 
+  const cleanedContent = document.content
+    .map(cleanNode)
+    .filter(isDocumentContentNode);
+
   return {
     ...document,
-    content: document.content.map(cleanNode) as Document["content"],
+    content: cleanedContent,
   };
 }
 
@@ -248,8 +259,12 @@ function extractPlainText(document: Document): string {
         if ("value" in node && isString(node.value)) {
           return node.value;
         }
-        if ("content" in node && Array.isArray(node.content)) {
-          return extractFromNodes(node.content as Document["content"]);
+        if (
+          "content" in node &&
+          Array.isArray(node.content) &&
+          node.content.every(isDocumentContentNode)
+        ) {
+          return extractFromNodes(node.content);
         }
         return "";
       })
@@ -331,6 +346,85 @@ function isTagLink(
     "id" in value.sys &&
     typeof value.sys.id === "string"
   );
+}
+
+function isContentfulEntryWithFields(
+  value: unknown
+): value is { sys?: unknown; fields?: Record<string, unknown> } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ("sys" in value || "fields" in value)
+  );
+}
+
+function isDocumentContentNode(
+  value: unknown
+): value is Document["content"][number] {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "nodeType" in value &&
+    typeof value.nodeType === "string"
+  );
+}
+
+function isContentfulEntryForLesson(
+  entry: Entry<LessonSkeleton | CourseSkeleton>
+): entry is Entry<LessonSkeleton> {
+  return entry.sys.contentType?.sys.id === "lesson";
+}
+
+function isContentfulEntryForCourse(
+  entry: Entry<LessonSkeleton | CourseSkeleton>
+): entry is Entry<CourseSkeleton> {
+  return entry.sys.contentType?.sys.id === "course";
+}
+
+function isContentfulContentEntry(
+  value: unknown
+): value is Entry<CourseSkeleton | LessonSkeleton> {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("sys" in value) ||
+    !("fields" in value)
+  ) {
+    return false;
+  }
+  // TypeScript narrows value to object with sys and fields after the checks above
+  const entry = value as { sys: unknown; fields: unknown };
+  if (
+    typeof entry.sys !== "object" ||
+    entry.sys === null ||
+    !("contentType" in entry.sys)
+  ) {
+    return false;
+  }
+  // TypeScript narrows entry.sys to object with contentType after the checks above
+  const sysWithContentType = entry.sys as { contentType: unknown };
+  if (
+    typeof sysWithContentType.contentType !== "object" ||
+    sysWithContentType.contentType === null ||
+    !("sys" in sysWithContentType.contentType)
+  ) {
+    return false;
+  }
+  // TypeScript narrows contentType to object with sys after the checks above
+  const contentTypeWithSys = sysWithContentType.contentType as {
+    sys: unknown;
+  };
+  if (
+    typeof contentTypeWithSys.sys !== "object" ||
+    contentTypeWithSys.sys === null ||
+    !("id" in contentTypeWithSys.sys)
+  ) {
+    return false;
+  }
+  // TypeScript narrows sys to object with id after the checks above
+  const sysWithId = contentTypeWithSys.sys as { id: unknown };
+  const id = sysWithId.id;
+  return typeof id === "string" && (id === "lesson" || id === "course");
 }
 
 function contentfulEntryToAuthor(
@@ -1031,39 +1125,36 @@ function contentfulEntryToLessonSummary(
   }
 
   // Check if it's a lesson or course
-  const contentType = entry.sys.contentType?.sys.id;
-  if (contentType === "lesson") {
-    const lessonEntry = entry as Entry<LessonSkeleton>;
-    const titleField = lessonEntry.fields.title;
+  if (isContentfulEntryForLesson(entry)) {
+    const titleField = entry.fields.title;
     const title = isString(titleField) ? titleField : "";
 
-    const slugField = lessonEntry.fields.slug;
+    const slugField = entry.fields.slug;
     const slug = isString(slugField) ? slugField : slugify(title);
 
-    const courseIdField = lessonEntry.fields.courseId;
+    const courseIdField = entry.fields.courseId;
     const courseId = isString(courseIdField) ? courseIdField : null;
 
-    const descriptionField = lessonEntry.fields.description;
+    const descriptionField = entry.fields.description;
     const description = isString(descriptionField) ? descriptionField : null;
 
-    const estimatedDurationMinutesField =
-      lessonEntry.fields.estimatedDurationMinutes;
+    const estimatedDurationMinutesField = entry.fields.estimatedDurationMinutes;
     const estimatedDurationMinutes =
       typeof estimatedDurationMinutesField === "number"
         ? estimatedDurationMinutesField
         : null;
 
     return {
-      id: lessonEntry.sys.id,
+      id: entry.sys.id,
       slug,
       title,
       description,
       courseId,
       estimatedDurationMinutes,
-      createdAt: lessonEntry.sys.createdAt,
+      createdAt: entry.sys.createdAt,
     };
-  } else if (contentType === "course") {
-    return contentfulEntryToCourseSummary(entry as Entry<CourseSkeleton>);
+  } else if (isContentfulEntryForCourse(entry)) {
+    return contentfulEntryToCourseSummary(entry);
   }
 
   return null;
@@ -1110,30 +1201,14 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
 
   const previousContentEntry = fields.previousContent;
   let previousContent: ContentSummary | null = null;
-  if (
-    previousContentEntry &&
-    typeof previousContentEntry === "object" &&
-    "sys" in previousContentEntry &&
-    previousContentEntry.sys &&
-    "fields" in previousContentEntry
-  ) {
-    previousContent = contentfulEntryToLessonSummary(
-      previousContentEntry as unknown as Entry<CourseSkeleton | LessonSkeleton>
-    );
+  if (isContentfulContentEntry(previousContentEntry)) {
+    previousContent = contentfulEntryToLessonSummary(previousContentEntry);
   }
 
   const nextContentEntry = fields.nextContent;
   let nextContent: ContentSummary | null = null;
-  if (
-    nextContentEntry &&
-    typeof nextContentEntry === "object" &&
-    "sys" in nextContentEntry &&
-    nextContentEntry.sys &&
-    "fields" in nextContentEntry
-  ) {
-    nextContent = contentfulEntryToLessonSummary(
-      nextContentEntry as unknown as Entry<CourseSkeleton | LessonSkeleton>
-    );
+  if (isContentfulContentEntry(nextContentEntry)) {
+    nextContent = contentfulEntryToLessonSummary(nextContentEntry);
   }
 
   return {
