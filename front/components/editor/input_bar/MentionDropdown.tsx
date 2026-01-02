@@ -186,27 +186,29 @@ export const MentionDropdown = forwardRef<
                     setSelectedIndex(index);
                   }}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                    <Avatar
-                      size="xs"
-                      visual={suggestion.pictureUrl}
-                      isRounded={suggestion.type === "user"}
-                    />
-                    <span
-                      className="truncate font-semibold"
-                      title={suggestion.label}
-                    >
-                      {suggestion.label}
-                    </span>
+                  <div className="flex w-full items-center">
+                    <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                      <Avatar
+                        size="xs"
+                        visual={suggestion.pictureUrl}
+                        isRounded={suggestion.type === "user"}
+                      />
+                      <span
+                        className="truncate font-semibold"
+                        title={suggestion.label}
+                      >
+                        {suggestion.label}
+                      </span>
+                    </div>
+                    {suggestion.type === "user" && (
+                      <Chip
+                        size="mini"
+                        color="primary"
+                        label="Member"
+                        className="ml-2 shrink-0"
+                      />
+                    )}
                   </div>
-                  {suggestion.type === "user" && (
-                    <Chip
-                      size="mini"
-                      color="primary"
-                      label="Member"
-                      className="ml-2 shrink-0"
-                    />
-                  )}
                 </DropdownMenuItem>
               ))}
             </div>
