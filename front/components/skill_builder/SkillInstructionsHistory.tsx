@@ -84,12 +84,6 @@ export function SkillInstructionsHistory({
     for (const config of history) {
       const { instructions } = config;
       const isNewRun = instructions !== lastRawInstructions;
-      console.log({
-        isNewRun,
-        lastRawInstructions,
-        instructions,
-        version: config.version,
-      });
 
       if (isNewRun) {
         result.push(config);
