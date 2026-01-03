@@ -7,11 +7,10 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SkillDisplayType = Pick<
   SkillType,
-  "sId" | "name" | "status" | "userFacingDescription" | "createdAt"
+  "sId" | "name" | "status" | "createdAt" | "updatedAt"
 >;
 
-export function makeColumnsForSkills(
-): ColumnDef<SkillDisplayType>[] {
+export function makeColumnsForSkills(): ColumnDef<SkillDisplayType>[] {
   return [
     {
       accessorKey: "sId",
@@ -59,7 +58,6 @@ export function makeColumnsForSkills(
       header: "Created at",
       cell: ({ row }) => {
         const createdAt: number | null = row.getValue("createdAt");
-
         return createdAt ? formatTimestampToFriendlyDate(createdAt) : null;
       },
     },
@@ -68,7 +66,6 @@ export function makeColumnsForSkills(
       header: "Updated at",
       cell: ({ row }) => {
         const updatedAt: number | null = row.getValue("updatedAt");
-
         return updatedAt ? formatTimestampToFriendlyDate(updatedAt) : null;
       },
     },
