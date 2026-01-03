@@ -1,8 +1,9 @@
-import { IconButton } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SkillDisplayType = Pick<
@@ -11,12 +12,19 @@ type SkillDisplayType = Pick<
 >;
 
 export function makeColumnsForSkills(
+  owner: LightWorkspaceType
 ): ColumnDef<SkillDisplayType>[] {
   return [
     {
       accessorKey: "sId",
       cell: ({ row }) => {
-        return row.getValue("sId");
+        const sId: string = row.getValue("sId");
+
+        return (
+          <LinkWrapper href={`/poke/${owner.sId}/skills/${sId}`}>
+            {sId}
+          </LinkWrapper>
+        );
       },
       header: ({ column }) => {
         return (
