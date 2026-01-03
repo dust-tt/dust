@@ -9,10 +9,10 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 
 export type GetSkillHistoryResponseBody = {
-  history: SkillType[];
+  history: SkillWithVersionType[];
 };
 
 async function handler(
@@ -75,9 +75,10 @@ async function handler(
         skillVersionResources = skillVersionResources.slice(0, limit);
       }
 
-      const skillVersions = skillVersionResources.map((resource) =>
-        resource.toJSON(auth)
-      );
+      const skillVersions = skillVersionResources.map((resource) => ({
+        ...resource.toJSON(auth),
+        version: resource.version,
+      }));
 
       return res.status(200).json({ history: skillVersions });
     default:
