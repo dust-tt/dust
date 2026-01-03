@@ -1,6 +1,7 @@
 import { TextArea } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -63,9 +64,9 @@ const SkillDetailsPage = ({
     <div>
       <h3 className="text-xl font-bold">
         Skill {skill.name} from workspace&nbsp;
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <Link href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </Link>
       </h3>
 
       <div className="mt-4 flex flex-row items-stretch space-x-3">
