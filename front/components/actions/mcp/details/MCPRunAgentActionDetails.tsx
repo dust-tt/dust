@@ -252,6 +252,7 @@ export function MCPRunAgentActionDetails({
                         key={id}
                         label={getMcpServerViewDisplayName(mcpServerView)}
                         icon={{ visual: getIcon(mcpServerView.server.icon) }}
+                        color="highlight"
                       />
                     );
                   })}

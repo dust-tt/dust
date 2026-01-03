@@ -36,6 +36,7 @@ export function PastedAttachmentComponent({
         <AttachmentChip
           label={displayTitle}
           icon={{ visual: DoubleQuotesIcon }}
+          color="highlight"
         />
       </div>
     </NodeViewWrapper>
