@@ -17,9 +17,7 @@ export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
       loadOnInit={loadOnInit}
       useSWRHook={usePokeSkills}
     >
-      {(data) => (
-        <PokeDataTable columns={makeColumnsForSkills(owner)} data={data} />
-      )}
+      {(data) => <PokeDataTable columns={makeColumnsForSkills()} data={data} />}
     </PokeDataTableConditionalFetch>
   );
 }
