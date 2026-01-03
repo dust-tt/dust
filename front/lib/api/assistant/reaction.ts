@@ -3,11 +3,14 @@ import {
   MessageModel,
   MessageReactionModel,
 } from "@app/lib/models/agent/conversation";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import logger from "@app/logger/logger";
 import type {
   ConversationError,
   ConversationMessageReactions,
   ConversationWithoutContentType,
   MessageReactionType,
+  ModelId,
   Result,
 } from "@app/types";
 import type { UserType } from "@app/types";
@@ -49,29 +52,74 @@ export async function getMessageReactions(
   );
 }
 
+export async function getMessagesReactions(
+  auth: Authenticator,
+  { messageIds }: { messageIds: ModelId[] }
+) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const reactions = await MessageReactionModel.findAll({
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
+    include: [
+      {
+        model: UserModel,
+        as: "user",
+        attributes: ["sId", "firstName", "lastName", "username"],
+        required: true,
+      },
+    ],
+  });
+
+  logger.info({ reactions, messageIds }, "reactions");
+
+  //group by message id
+  const groupedReactions = reactions.reduce(
+    (acc, reaction) => {
+      const messageId = reaction.messageId;
+      if (!acc[messageId]) {
+        acc[messageId] = [];
+      }
+      acc[messageId].push(reaction);
+      return acc;
+    },
+    {} as { [key: ModelId]: MessageReactionModel[] }
+  );
+
+  const result: { [key: ModelId]: MessageReactionType[] } = {};
+  for (const messageId in groupedReactions) {
+    result[messageId] = _renderMessageReactions(groupedReactions[messageId]);
+  }
+
+  return result;
+}
+
 function _renderMessageReactions(
   reactions: MessageReactionModel[]
 ): MessageReactionType[] {
   return reactions.reduce<MessageReactionType[]>(
     (acc: MessageReactionType[], r: MessageReactionModel) => {
+      if (!r.user) {
+        return acc;
+      }
+
+      const userData = {
+        userId: r.user.sId,
+        username: r.user.username,
+        fullName: r.user.firstName + " " + r.user.lastName,
+      };
+
       const reaction = acc.find((r2) => r2.emoji === r.reaction);
+
       if (reaction) {
-        reaction.users.push({
-          userId: r.userId,
-          username: r.userContextUsername,
-          fullName: r.userContextFullName,
-        });
+        reaction.users.push(userData);
       } else {
-        acc.push({
-          emoji: r.reaction,
-          users: [
-            {
-              userId: r.userId,
-              username: r.userContextUsername,
-              fullName: r.userContextFullName,
-            },
-          ],
-        });
+        acc.push({ emoji: r.reaction, users: [userData] });
       }
       return acc;
     },

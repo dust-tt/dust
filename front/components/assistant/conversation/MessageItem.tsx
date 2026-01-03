@@ -20,6 +20,7 @@ import {
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types";
 
@@ -70,6 +71,112 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           });
         }
       );
+
+    const { submit: onReactionToggle } = useSubmitFunction(
+      async ({ emoji }: { emoji: string }) => {
+        const message = data;
+        if (!isUserMessage(message) && !isMessageTemporayState(message)) {
+          return;
+        }
+
+        const currentReactions =
+          isUserMessage(message) || isMessageTemporayState(message)
+            ? (message.reactions ?? [])
+            : [];
+
+        const hasReacted = currentReactions.some(
+          (r) =>
+            r.emoji === emoji &&
+            r.users.some((u) => u.username === context.user.username)
+        );
+
+        const res = await clientFetch(
+          `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/messages/${sId}/reactions`,
+          {
+            method: hasReacted ? "DELETE" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ reaction: emoji }),
+          }
+        );
+
+        if (res.ok) {
+          // Optimistically update the message reactions in the Virtuoso list
+          methods.data.map((m) => {
+            if (m.sId === sId) {
+              const currentMsgReactions =
+                isUserMessage(m) || isMessageTemporayState(m)
+                  ? (m.reactions ?? [])
+                  : [];
+
+              let updatedReactions = currentMsgReactions;
+
+              if (hasReacted) {
+                // Remove user from this emoji's reaction
+                updatedReactions = currentMsgReactions
+                  .map((r) => {
+                    if (r.emoji === emoji) {
+                      return {
+                        ...r,
+                        users: r.users.filter(
+                          (u) => u.username !== context.user.username
+                        ),
+                      };
+                    }
+                    return r;
+                  })
+                  .filter((r) => r.users.length > 0); // Remove empty reactions
+              } else {
+                // Add user to this emoji's reaction
+                const existingReaction = currentMsgReactions.find(
+                  (r) => r.emoji === emoji
+                );
+                if (existingReaction) {
+                  updatedReactions = currentMsgReactions.map((r) => {
+                    if (r.emoji === emoji) {
+                      return {
+                        ...r,
+                        users: [
+                          ...r.users,
+                          {
+                            userId: context.user.sId,
+                            username: context.user.username,
+                            fullName: context.user.fullName,
+                          },
+                        ],
+                      };
+                    }
+                    return r;
+                  });
+                } else {
+                  updatedReactions = [
+                    ...currentMsgReactions,
+                    {
+                      emoji,
+                      users: [
+                        {
+                          userId: context.user.sId,
+                          username: context.user.username,
+                          fullName: context.user.fullName,
+                        },
+                      ],
+                    },
+                  ];
+                }
+              }
+
+              if (isUserMessage(m)) {
+                return { ...m, reactions: updatedReactions };
+              } else if (isMessageTemporayState(m)) {
+                return { ...m, reactions: updatedReactions };
+              }
+            }
+            return m;
+          });
+        }
+      }
+    );
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
@@ -143,6 +250,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
+              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
           {isMessageTemporayState(data) && (
@@ -155,6 +263,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
           {data.visibility !== "deleted" &&
