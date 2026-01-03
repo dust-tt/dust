@@ -2,6 +2,7 @@
 
 import { doctorCommand } from "./commands/doctor";
 import { listCommand } from "./commands/list";
+import { spawnCommand } from "./commands/spawn";
 import { statusCommand } from "./commands/status";
 import { ensureDirectories } from "./lib/config";
 import { logger } from "./lib/logger";
@@ -88,8 +89,11 @@ async function main(): Promise<void> {
       await doctorCommand();
       break;
 
-    // Commands not yet implemented
     case "spawn":
+      await spawnCommand(args.slice(1));
+      break;
+
+    // Commands not yet implemented
     case "open":
     case "warm":
     case "cool":
