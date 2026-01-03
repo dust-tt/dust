@@ -1,5 +1,9 @@
 #!/usr/bin/env bun
 
+import { doctorCommand } from "./commands/doctor";
+import { listCommand } from "./commands/list";
+import { statusCommand } from "./commands/status";
+import { ensureDirectories } from "./lib/config";
 import { logger } from "./lib/logger";
 
 const COMMANDS = [
@@ -25,16 +29,16 @@ Usage:
   dust-hive <command> [options]
 
 Commands:
-  spawn   Create a new environment
-  open    Open environment's zellij session
-  warm    Start docker and all services
-  cool    Stop services, keep SDK watch
-  start   Resume stopped environment
-  stop    Full stop of all services
-  destroy Remove environment
-  list    Show all environments
-  status  Show service health
-  doctor  Check prerequisites
+  spawn [--name NAME] [--base BRANCH] [--no-open]  Create a new environment
+  open NAME                                         Open environment's zellij session
+  warm NAME                                         Start docker and all services
+  cool NAME                                         Stop services, keep SDK watch
+  start NAME                                        Resume stopped environment
+  stop NAME                                         Full stop of all services
+  destroy NAME [--force]                            Remove environment
+  list                                              Show all environments
+  status NAME                                       Show service health
+  doctor                                            Check prerequisites
 
 Options:
   --help  Show this help message
@@ -61,8 +65,40 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // TODO: Implement commands
-  logger.info(`Command '${command}' not yet implemented`);
+  // Ensure directories exist
+  await ensureDirectories();
+
+  // Route to command handlers
+  switch (command) {
+    case "list":
+      await listCommand();
+      break;
+
+    case "status": {
+      const name = args[1];
+      if (!name) {
+        logger.error("Usage: dust-hive status NAME");
+        process.exit(1);
+      }
+      await statusCommand(name);
+      break;
+    }
+
+    case "doctor":
+      await doctorCommand();
+      break;
+
+    // Commands not yet implemented
+    case "spawn":
+    case "open":
+    case "warm":
+    case "cool":
+    case "start":
+    case "stop":
+    case "destroy":
+      logger.info(`Command '${command}' not yet implemented`);
+      break;
+  }
 }
 
 main().catch((err: unknown) => {
