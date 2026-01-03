@@ -97,21 +97,25 @@ const CollapsibleTrigger = React.forwardRef<
         )}
         {...props}
       >
-        <span
-          className={cn(
-            "s-transition-transform s-duration-200",
-            chevronVariants({ variant, disabled })
-          )}
-        >
-          <Icon
-            visual={isOpen ? ChevronDownIcon : ChevronRightIcon}
-            size="sm"
-          />
-        </span>
         {children ? (
           children
         ) : (
-          <span className={labelVariants({ variant, disabled })}>{label}</span>
+          <>
+            <span
+              className={cn(
+                "s-transition-transform s-duration-200",
+                chevronVariants({ variant, disabled })
+              )}
+            >
+              <Icon
+                visual={isOpen ? ChevronDownIcon : ChevronRightIcon}
+                size="sm"
+              />
+            </span>
+            <span className={labelVariants({ variant, disabled })}>
+              {label}
+            </span>
+          </>
         )}
       </CollapsiblePrimitive.Trigger>
     );
@@ -148,7 +152,7 @@ const CollapsibleContent = React.forwardRef<
     )}
     {...props}
   >
-    <div className="s-py-2">{children}</div>
+    {children}
   </CollapsiblePrimitive.Content>
 ));
 CollapsibleContent.displayName = "CollapsibleContent";

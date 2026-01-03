@@ -1,7 +1,10 @@
 import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
+import { ActionInboxIcon } from "@sparkle/icons/actions";
 import {
+  Avatar,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,10 +14,14 @@ import {
   NavigationListItemAction,
   NavigationListCollapsibleSection,
   NavigationListLabel,
-  NavigationListLabelButton,
   PencilSquareIcon,
   TrashIcon,
   MoreIcon,
+  InboxIcon,
+  CollapsibleContent,
+  Collapsible,
+  CollapsibleTrigger,
+  PlusIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -50,7 +57,7 @@ export const Demo = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          label={`Rename ${title}`}
+          label="Rename"
           icon={PencilSquareIcon}
           onClick={(e) => {
             e.preventDefault();
@@ -181,7 +188,7 @@ export const CollapsibleSection = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          label={`Rename ${title}`}
+          label="Rename"
           icon={PencilSquareIcon}
           onClick={(e) => {
             e.preventDefault();
@@ -202,69 +209,111 @@ export const CollapsibleSection = () => {
   );
 
   return (
-    <div className="s-flex s-h-[500px] s-w-full s-flex-row s-gap-12 s-bg-muted">
-      <div className="s-h-[500px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
-          {conversationTitles.map((section, sectionIndex) => (
+    <div className="s-dark:bg-muted-background-night s-flex s-h-[800px] s-w-[240px] s-flex-row s-border-r s-border-border s-bg-muted-background">
+      <NavigationList className="s-relative s-h-full s-w-full s-px-2 s-py-2 dark:s-bg-muted-background-night">
+        <NavigationListItem
+          icon={InboxIcon}
+          label="Inbox"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+          }}
+        />
+        <NavigationListLabel label="Hello" />
+        <NavigationListCollapsibleSection
+          label="Agents"
+          defaultOpen={true}
+          action={
             <>
-              <NavigationListLabel label="Hello" key={0} />
-              <NavigationListCollapsibleSection
-                key={sectionIndex}
-                label={section.label}
-                defaultOpen={sectionIndex === 0}
-              >
-                {section.items.map((title, index) => {
-                  const itemIndex = allItems.indexOf(title);
-                  const getStatus = (idx: number) => {
-                    if (idx % 5 === 0) {
-                      return "unread";
-                    }
-                    if (idx % 3 === 0) {
-                      return "blocked";
-                    }
-                    return "idle";
-                  };
-                  return (
-                    <NavigationListItem
-                      key={index}
-                      href={index % 2 === 0 ? "#" : undefined}
-                      selected={itemIndex === selectedIndex}
-                      onClick={(e) => {
-                        if (!e.defaultPrevented) {
-                          e.preventDefault();
-                          setSelectedIndex(itemIndex);
-                        }
-                      }}
-                      label={title}
-                      className="s-w-full"
-                      moreMenu={getMoreMenu(title)}
-                      status={getStatus(index)}
-                    />
-                  );
-                })}
-              </NavigationListCollapsibleSection>
+              <Button
+                size="xmini"
+                icon={PlusIcon}
+                variant="ghost"
+                aria-label="Add new item"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Add action logic here
+                }}
+              />
+              <Button
+                size="xmini"
+                icon={MoreIcon}
+                variant="ghost"
+                aria-label="Add new item"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Add action logic here
+                }}
+              />
             </>
+          }
+        >
+          {[
+            {
+              handle: "alex",
+              name: "Alex",
+              emoji: "🤖",
+              color: "s-bg-blue-300",
+            },
+            {
+              handle: "sam",
+              name: "Sam",
+              emoji: "🎨",
+              color: "s-bg-violet-300",
+            },
+            {
+              handle: "taylor",
+              name: "Taylor",
+              emoji: "🚀",
+              color: "s-bg-pink-300",
+            },
+            {
+              handle: "jordan",
+              name: "Jordan",
+              emoji: "⚡",
+              color: "s-bg-orange-300",
+            },
+            {
+              handle: "riley",
+              name: "Riley",
+              emoji: "🌟",
+              color: "s-bg-golden-300",
+            },
+            {
+              handle: "casey",
+              name: "Casey",
+              emoji: "💡",
+              color: "s-bg-emerald-300",
+            },
+          ].map((agent, index) => (
+            <NavigationListItem
+              key={agent.handle}
+              href="#"
+              selected={false}
+              onClick={(e) => {
+                e.preventDefault();
+              }}
+              label={agent.name}
+              avatar={
+                <Avatar
+                  size="xxs"
+                  name={agent.handle}
+                  emoji={agent.emoji}
+                  backgroundColor={agent.color}
+                />
+              }
+              className="s-w-full"
+            />
           ))}
-        </NavigationList>
-      </div>
-      <div className="s-h-[500px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
-          {conversationTitles.map((section, sectionIndex) => (
+        </NavigationListCollapsibleSection>
+        {conversationTitles.map((section, sectionIndex) => (
+          <>
             <NavigationListCollapsibleSection
               key={sectionIndex}
               label={section.label}
               defaultOpen={sectionIndex === 0}
-              action={
-                <NavigationListLabelButton
-                  icon={MoreIcon}
-                  aria-label="Add new item"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Add action logic here
-                  }}
-                />
-              }
             >
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
@@ -296,9 +345,9 @@ export const CollapsibleSection = () => {
                 );
               })}
             </NavigationListCollapsibleSection>
-          ))}
-        </NavigationList>
-      </div>
+          </>
+        ))}
+      </NavigationList>
     </div>
   );
 };
