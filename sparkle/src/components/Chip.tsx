@@ -160,7 +160,7 @@ type ChipLinkProps = ChipBaseProps &
     onClick?: never;
   };
 
-type ChipProps = ChipLinkProps | ChipButtonProps;
+export type ChipProps = ChipLinkProps | ChipButtonProps;
 
 // TODO(yuka: 1606): we should update this component so that you cannot have both
 // onClick and onRemove at the same time. We should use div when there is no onClick,
