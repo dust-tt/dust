@@ -6,6 +6,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { LessonLink } from "@app/components/academy/LessonLink";
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import {
@@ -250,6 +251,9 @@ const renderOptions: Options = {
       </blockquote>
     ),
     [BLOCKS.EMBEDDED_ASSET]: (node) => {
+      if (!node.data?.target?.fields) {
+        return null;
+      }
       const { file, title, description } = node.data.target.fields;
       if (!file) {
         return null;
@@ -268,6 +272,45 @@ const renderOptions: Options = {
           height={height}
         />
       );
+    },
+    [BLOCKS.EMBEDDED_ENTRY]: (node) => {
+      if (!node.data?.target) {
+        return null;
+      }
+      const entry = node.data.target;
+      const contentType = entry?.sys?.contentType?.sys?.id;
+
+      // Handle lesson entries
+      if (contentType === "lesson") {
+        const fields = entry.fields;
+        const title = isString(fields.title) ? fields.title : "";
+        const slug = isString(fields.slug) ? fields.slug : "";
+        const description = isString(fields.description)
+          ? fields.description
+          : null;
+        const courseId = isString(fields.courseId) ? fields.courseId : null;
+        const estimatedDurationMinutes =
+          typeof fields.estimatedDurationMinutes === "number"
+            ? fields.estimatedDurationMinutes
+            : null;
+
+        if (!title || !slug) {
+          return null;
+        }
+
+        return (
+          <LessonLink
+            title={title}
+            slug={slug}
+            description={description}
+            courseId={courseId}
+            estimatedDurationMinutes={estimatedDurationMinutes}
+          />
+        );
+      }
+
+      // Fallback for other embedded entry types
+      return null;
     },
     [INLINES.HYPERLINK]: (node, children) => {
       const url = node.data.uri;

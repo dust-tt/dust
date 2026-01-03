@@ -243,6 +243,10 @@ const ExploreMenuConfig: MenuConfig = {
       href: "/blog",
     },
     {
+      title: "Academy",
+      href: "/academy",
+    },
+    {
       title: "Webinars",
       href: "https://app.getcontrast.io/dust",
       isExternal: true,
