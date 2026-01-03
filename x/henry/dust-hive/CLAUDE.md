@@ -48,9 +48,11 @@ bun run test         # All tests
 src/
 ├── index.ts           # CLI entry point
 ├── commands/          # Command implementations
-│   ├── spawn.ts
-│   ├── warm.ts
-│   └── ...
+│   ├── doctor.ts      # Prerequisite checking
+│   ├── list.ts        # List environments
+│   ├── spawn.ts       # Create environment
+│   ├── status.ts      # Show service health
+│   └── ...            # warm, cool, start, stop, destroy, open (TODO)
 └── lib/               # Shared utilities
     ├── paths.ts       # Path constants and helpers
     ├── config.ts      # Configuration management
@@ -58,11 +60,16 @@ src/
     ├── ports.ts       # Port allocation
     ├── environment.ts # Environment CRUD
     ├── envgen.ts      # env.sh generation
-    └── process.ts     # Daemon management
+    ├── docker.ts      # Docker compose override generation
+    ├── process.ts     # Daemon management (PID files, spawn/kill)
+    └── state.ts       # State detection (stopped/cold/warm)
 
 tests/
 ├── lib/               # Unit tests for lib/
-└── commands/          # Integration tests for commands
+│   ├── docker.test.ts
+│   ├── environment.test.ts
+│   └── ports.test.ts
+└── commands/          # Integration tests for commands (TODO)
 ```
 
 ## Testing Guidelines
