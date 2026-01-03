@@ -47,12 +47,17 @@ bun run test         # All tests
 ```
 src/
 ├── index.ts           # CLI entry point
-├── commands/          # Command implementations
+├── commands/          # Command implementations (all MVP commands complete)
+│   ├── cool.ts        # Stop services, keep SDK
+│   ├── destroy.ts     # Remove environment
 │   ├── doctor.ts      # Prerequisite checking
 │   ├── list.ts        # List environments
+│   ├── open.ts        # Attach to zellij session
 │   ├── spawn.ts       # Create environment
+│   ├── start.ts       # Resume stopped env
 │   ├── status.ts      # Show service health
-│   └── ...            # warm, cool, start, stop, destroy, open (TODO)
+│   ├── stop.ts        # Full stop
+│   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
     ├── paths.ts       # Path constants and helpers
     ├── config.ts      # Configuration management
@@ -69,7 +74,7 @@ tests/
 │   ├── docker.test.ts
 │   ├── environment.test.ts
 │   └── ports.test.ts
-└── commands/          # Integration tests for commands (TODO)
+└── commands/          # Integration tests for commands
 ```
 
 ## Testing Guidelines

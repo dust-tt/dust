@@ -1,9 +1,15 @@
 #!/usr/bin/env bun
 
+import { coolCommand } from "./commands/cool";
+import { destroyCommand } from "./commands/destroy";
 import { doctorCommand } from "./commands/doctor";
 import { listCommand } from "./commands/list";
+import { openCommand } from "./commands/open";
 import { spawnCommand } from "./commands/spawn";
+import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
+import { stopCommand } from "./commands/stop";
+import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
 import { logger } from "./lib/logger";
 
@@ -93,14 +99,28 @@ async function main(): Promise<void> {
       await spawnCommand(args.slice(1));
       break;
 
-    // Commands not yet implemented
-    case "open":
     case "warm":
+      await warmCommand(args.slice(1));
+      break;
+
     case "cool":
+      await coolCommand(args.slice(1));
+      break;
+
     case "start":
+      await startCommand(args.slice(1));
+      break;
+
     case "stop":
+      await stopCommand(args.slice(1));
+      break;
+
     case "destroy":
-      logger.info(`Command '${command}' not yet implemented`);
+      await destroyCommand(args.slice(1));
+      break;
+
+    case "open":
+      await openCommand(args.slice(1));
       break;
   }
 }

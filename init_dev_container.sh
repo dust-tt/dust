@@ -1,5 +1,5 @@
 ## This is the init script used to initialize the development environment.
-## Supports parameterized PostgreSQL connection via environment variables:
+## Supports parameterized PostgreSQL connection via environment variables (for dust-hive):
 ##   POSTGRES_PORT (default: 5432)
 ##   POSTGRES_HOST (default: localhost)
 
