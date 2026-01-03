@@ -6,6 +6,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type GetPokeSkillsResponseBody = {
@@ -18,7 +19,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId } = req.query;
-  if (typeof wId !== "string") {
+  if (!isString(wId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
