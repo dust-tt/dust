@@ -2,7 +2,7 @@
 // Forwards traffic from port 3000 to the active environment's front port
 
 import { unlink } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { logger } from "./logger";
 import {
   FORWARDER_LOG_PATH,
@@ -145,8 +145,21 @@ export async function startForwarder(targetPort: number, envName: string): Promi
     );
   }
 
-  // Find the daemon script
-  const daemonPath = resolve(dirname(import.meta.path), "..", "forward-daemon.ts");
+  // Find the daemon script - need to locate it relative to project root
+  // When bundled, import.meta.path is in dist/, when running from source it's in src/lib/
+  // We find the project root by looking for package.json
+  const findProjectRoot = (startPath: string): string => {
+    let dir = startPath;
+    while (dir !== "/") {
+      if (Bun.file(join(dir, "package.json")).size) {
+        return dir;
+      }
+      dir = dirname(dir);
+    }
+    return startPath; // Fallback
+  };
+  const projectRoot = findProjectRoot(dirname(import.meta.path));
+  const daemonPath = join(projectRoot, "src", "forward-daemon.ts");
 
   // Spawn the forwarder daemon
   const logFile = Bun.file(FORWARDER_LOG_PATH);
