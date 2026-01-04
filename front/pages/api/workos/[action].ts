@@ -91,7 +91,8 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
-      redirectUri: `${config.getClientFacingUrl()}/api/workos/callback`,
+      // Use auth redirect base URL for WorkOS callbacks
+      redirectUri: `${config.getAuthRedirectBaseUrl()}/api/workos/callback`,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
       state:
