@@ -72,9 +72,7 @@ export function generateDockerComposeOverride(
         ports: [`${ports.apacheTika}:9998`],
       },
     },
-    volumes: Object.fromEntries(
-      getVolumeNames(name).map((volume) => [volume, null] as const)
-    ),
+    volumes: Object.fromEntries(getVolumeNames(name).map((volume) => [volume, null] as const)),
   };
 }
 

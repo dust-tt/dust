@@ -3,9 +3,9 @@ import { requireEnvironment } from "../lib/commands";
 import { getDockerProjectName, startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
+import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
-import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { cleanupServicePorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceHealth } from "../lib/registry";
@@ -28,6 +28,7 @@ async function isTemporalRunning(): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
 export async function warmCommand(
   nameArg: string | undefined,
   options: WarmOptions

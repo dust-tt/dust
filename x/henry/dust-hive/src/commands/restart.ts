@@ -13,13 +13,12 @@ export async function restartCommand(
   name: string | undefined,
   serviceArg: string | undefined
 ): Promise<Result<void>> {
-
   if (!name) {
     console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
     return Err(new CommandError("Usage: dust-hive restart NAME SERVICE"));
   }
 
-  if (!serviceArg || !isServiceName(serviceArg)) {
+  if (!(serviceArg && isServiceName(serviceArg))) {
     console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
     return Err(new CommandError(`Unknown service '${serviceArg ?? ""}'`));
   }

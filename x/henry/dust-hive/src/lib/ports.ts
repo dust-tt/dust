@@ -106,6 +106,7 @@ async function getAllocatedBasePorts(): Promise<number[]> {
   return bases;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: lock acquisition with retry logic
 async function acquirePortLock(): Promise<() => Promise<void>> {
   await mkdir(DUST_HIVE_HOME, { recursive: true });
   const start = Date.now();
@@ -210,7 +211,7 @@ export async function loadPortAllocation(name: string): Promise<PortAllocation |
 
 // Get PIDs using a specific port
 export function getPidsOnPort(port: number): number[] {
-  const result = spawnSync("lsof", ["-nP", "-iTCP:" + port, "-sTCP:LISTEN", "-t"], {
+  const result = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], {
     encoding: "utf-8",
   });
 

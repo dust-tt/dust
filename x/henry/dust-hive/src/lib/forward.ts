@@ -4,9 +4,9 @@
 import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import { FORWARDER_PORTS } from "./forwarderConfig";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
-import { FORWARDER_PORTS } from "./forwarderConfig";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
 import { getPortProcessInfo, isPortInUse } from "./ports";
 import { isProcessRunning, killProcess } from "./process";

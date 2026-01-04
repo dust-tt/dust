@@ -1,6 +1,6 @@
-import { getTemporalEnvExports } from "./temporal";
 import { CONFIG_ENV_PATH, getEnvFilePath } from "./paths";
 import type { PortAllocation } from "./ports";
+import { getTemporalEnvExports } from "./temporal";
 
 // Generate env.sh content for an environment
 export function generateEnvSh(name: string, ports: PortAllocation): string {

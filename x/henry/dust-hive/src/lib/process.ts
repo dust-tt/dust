@@ -236,6 +236,7 @@ async function readFileTail(path: string, maxBytes: number): Promise<string> {
 }
 
 // Wait for SDK build to complete with error detection
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex build wait with error detection
 export async function waitForSdkBuild(envName: string, timeoutMs = 60000): Promise<void> {
   logger.step("Waiting for SDK to build...");
 

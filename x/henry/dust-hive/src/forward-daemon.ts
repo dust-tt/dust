@@ -24,6 +24,7 @@ if (Number.isNaN(basePort) || basePort < 1 || basePort > 65535) {
   process.exit(1);
 }
 
+// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
 const LISTEN_HOST = process.env["DUST_HIVE_FORWARD_LISTEN_HOST"] ?? "127.0.0.1";
 const TARGET_HOST = "127.0.0.1";
 const MAX_PENDING_BYTES = 256 * 1024;
@@ -106,7 +107,7 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
         });
 
         setTimeout(() => {
-          if (!client.data.upstream && !client.data.clientClosed) {
+          if (!(client.data.upstream || client.data.clientClosed)) {
             console.error(`[${name}] Upstream connection timed out`);
             client.end();
           }

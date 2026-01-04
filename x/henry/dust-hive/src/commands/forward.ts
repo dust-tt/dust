@@ -20,9 +20,7 @@ function printUsage(): void {
   console.log();
   console.log(`Ports forwarded: ${FORWARDER_PORTS.join(", ")}`);
   console.log(
-    `  ${FORWARDER_MAPPINGS.map((mapping) => `${mapping.listenPort} → ${mapping.name}`).join(
-      ", "
-    )}`
+    `  ${FORWARDER_MAPPINGS.map((mapping) => `${mapping.listenPort} → ${mapping.name}`).join(", ")}`
   );
   console.log();
   console.log("Commands:");
@@ -143,7 +141,6 @@ async function forwardToEnv(name: string): Promise<Result<void>> {
 }
 
 export async function forwardCommand(subcommand?: string): Promise<Result<void>> {
-
   // No args: forward to last warmed env
   if (!subcommand) {
     const lastEnv = await findLastWarmedEnv();

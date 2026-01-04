@@ -9,8 +9,8 @@ import { forwardCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
-import { restartCommand } from "./commands/restart";
 import { reloadCommand } from "./commands/reload";
+import { restartCommand } from "./commands/restart";
 import { spawnCommand } from "./commands/spawn";
 import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
@@ -65,17 +65,13 @@ cli
     }
   );
 
-cli
-  .command("open <name>", "Open environment's zellij session")
-  .action(async (name: string) => {
-    await prepareAndRun(openCommand(name));
-  });
+cli.command("open <name>", "Open environment's zellij session").action(async (name: string) => {
+  await prepareAndRun(openCommand(name));
+});
 
-cli
-  .command("reload <name>", "Kill and reopen zellij session")
-  .action(async (name: string) => {
-    await prepareAndRun(reloadCommand(name));
-  });
+cli.command("reload <name>", "Kill and reopen zellij session").action(async (name: string) => {
+  await prepareAndRun(reloadCommand(name));
+});
 
 cli
   .command("restart <name> <service>", "Restart a single service")
@@ -96,23 +92,17 @@ cli
     );
   });
 
-cli
-  .command("cool <name>", "Stop services, keep SDK watch")
-  .action(async (name: string) => {
-    await prepareAndRun(coolCommand(name));
-  });
+cli.command("cool <name>", "Stop services, keep SDK watch").action(async (name: string) => {
+  await prepareAndRun(coolCommand(name));
+});
 
-cli
-  .command("start <name>", "Resume stopped environment")
-  .action(async (name: string) => {
-    await prepareAndRun(startCommand(name));
-  });
+cli.command("start <name>", "Resume stopped environment").action(async (name: string) => {
+  await prepareAndRun(startCommand(name));
+});
 
-cli
-  .command("stop <name>", "Full stop of all services")
-  .action(async (name: string) => {
-    await prepareAndRun(stopCommand(name));
-  });
+cli.command("stop <name>", "Full stop of all services").action(async (name: string) => {
+  await prepareAndRun(stopCommand(name));
+});
 
 cli
   .command("destroy <name>", "Remove environment")
@@ -125,11 +115,9 @@ cli.command("list", "Show all environments").action(async () => {
   await prepareAndRun(listCommand());
 });
 
-cli
-  .command("status <name>", "Show service health")
-  .action(async (name: string) => {
-    await prepareAndRun(statusCommand(name));
-  });
+cli.command("status <name>", "Show service health").action(async (name: string) => {
+  await prepareAndRun(statusCommand(name));
+});
 
 cli
   .command("logs <name> [service]", "Show service logs")
@@ -138,11 +126,9 @@ cli
     await prepareAndRun(logsCommand(name, service, { follow: Boolean(options.follow) }));
   });
 
-cli
-  .command("url <name>", "Print front URL")
-  .action(async (name: string) => {
-    await prepareAndRun(urlCommand(name));
-  });
+cli.command("url <name>", "Print front URL").action(async (name: string) => {
+  await prepareAndRun(urlCommand(name));
+});
 
 cli.command("doctor", "Check prerequisites").action(async () => {
   await prepareAndRun(doctorCommand());
