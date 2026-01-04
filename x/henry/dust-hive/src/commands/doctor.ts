@@ -122,6 +122,52 @@ async function checkCargo(): Promise<CheckResult> {
   };
 }
 
+async function checkSccache(): Promise<CheckResult> {
+  const version = await getCommandVersion("sccache");
+  if (!version) {
+    return {
+      name: "sccache",
+      ok: false,
+      message: "Not found",
+      fix: "Install sccache: brew install sccache",
+    };
+  }
+
+  // Check if sccache is configured in cargo
+  const { HOME: home = "" } = process.env;
+  const configPath = `${home}/.cargo/config.toml`;
+  const file = Bun.file(configPath);
+  const exists = await file.exists();
+  const configFix = `Add to ${configPath}:\n[build]\nrustc-wrapper = "sccache"`;
+
+  if (!exists) {
+    return {
+      name: "sccache",
+      ok: false,
+      message: `${version} (not configured)`,
+      fix: configFix,
+    };
+  }
+
+  const content = await file.text();
+  const configured = content.includes("sccache");
+
+  if (configured) {
+    return {
+      name: "sccache",
+      ok: true,
+      message: version,
+    };
+  }
+
+  return {
+    name: "sccache",
+    ok: false,
+    message: `${version} (not configured)`,
+    fix: configFix,
+  };
+}
+
 async function checkRepo(): Promise<CheckResult> {
   const root = await findRepoRoot();
   return {
@@ -175,6 +221,7 @@ export async function doctorCommand(): Promise<Result<void>> {
     temporal.server,
     await checkNvm(),
     await checkCargo(),
+    await checkSccache(),
     await checkRepo(),
     await checkConfig(),
   ];

@@ -24,6 +24,16 @@ brew install --cask orbstack
 
 # Temporal CLI (workflow engine)
 brew install temporal
+
+# sccache (Rust compilation cache - speeds up builds across worktrees)
+brew install sccache
+```
+
+Then configure cargo to use sccache by adding to `~/.cargo/config.toml`:
+
+```toml
+[build]
+rustc-wrapper = "sccache"
 ```
 
 ## Installation
@@ -306,10 +316,12 @@ First warm is slower because it initializes databases (Postgres, Qdrant, Elastic
 The cache uses your main Dust repo as source:
 
 1. **Node modules**: Symlinked from main repo (instant)
-2. **Cargo target**: Symlinked (shared Rust compilation)
-3. **Rust binaries**: Pre-compiled (no `cargo run` overhead)
+2. **Rust compilation**: sccache provides content-addressed caching across all worktrees
+3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
 > **Warning**: node_modules are symlinked, not copied. Running `npm install` in a worktree will modify the main repo's node_modules. If you need isolation, manually run: `rm -rf node_modules && npm ci`
+
+> **sccache**: Each worktree compiles its own code, but sccache caches compilation results by content hash. This means unchanged dependencies compile instantly, even across different worktrees with different code.
 
 ```bash
 # Check cache status
