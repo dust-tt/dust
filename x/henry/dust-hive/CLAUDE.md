@@ -139,7 +139,7 @@ tests/
 | `doctor` | Check prerequisites |
 | `cache` | Show or rebuild binary cache |
 | `forward` | Manage OAuth port forwarding (ports 3000,3001,3002,3006 → env) |
-| `sync` | Update main repo to latest main, rebuild binaries, refresh node_modules |
+| `sync [BRANCH]` | Rebase on branch (default: main), rebuild binaries, refresh node_modules |
 
 ## Performance
 

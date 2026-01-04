@@ -1,4 +1,4 @@
-// Sync command - update main repo cache source with latest main, rebuild binaries, refresh node_modules
+// Sync command - rebase current branch on latest main, rebuild binaries, refresh node_modules
 
 import { ALL_BINARIES, buildBinaries, getCacheSource, setCacheSource } from "../lib/cache";
 import { logger } from "../lib/logger";
@@ -43,25 +43,29 @@ async function gitFetch(repoRoot: string): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-// Switch to main and pull
-async function switchToMain(repoRoot: string): Promise<boolean> {
-  const checkout = Bun.spawn(["git", "checkout", "main"], {
+type RebaseResult = { success: true } | { success: false; conflict: boolean; error: string };
+
+// Rebase current branch on origin/<branch>
+async function rebaseOnBranch(repoRoot: string, branch: string): Promise<RebaseResult> {
+  const proc = Bun.spawn(["git", "rebase", `origin/${branch}`], {
     cwd: repoRoot,
     stdout: "pipe",
     stderr: "pipe",
   });
-  await checkout.exited;
-  if (checkout.exitCode !== 0) {
-    return false;
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode === 0) {
+    return { success: true };
   }
 
-  const pull = Bun.spawn(["git", "pull", "origin", "main"], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await pull.exited;
-  return pull.exitCode === 0;
+  // Check if it's a conflict
+  const isConflict =
+    stderr.includes("CONFLICT") ||
+    stderr.includes("could not apply") ||
+    stderr.includes("Resolve all conflicts");
+
+  return { success: false, conflict: isConflict, error: stderr };
 }
 
 // Run npm ci in a directory
@@ -75,8 +79,9 @@ async function runNpmCi(dir: string): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-export async function syncCommand(): Promise<Result<void>> {
+export async function syncCommand(targetBranch?: string): Promise<Result<void>> {
   const startTime = Date.now();
+  const branch = targetBranch ?? "main";
 
   // Find repo root (or use existing cache source)
   let repoRoot = await getCacheSource();
@@ -107,6 +112,9 @@ export async function syncCommand(): Promise<Result<void>> {
 
   // Get current branch for reporting
   const currentBranch = await getCurrentBranch(repoRoot);
+  if (!currentBranch) {
+    return Err(new CommandError("Could not determine current branch"));
+  }
 
   // Fetch from origin
   logger.step("Fetching from origin...");
@@ -116,17 +124,26 @@ export async function syncCommand(): Promise<Result<void>> {
   }
   logger.success("Fetched latest changes");
 
-  // Switch to main and pull
-  logger.step("Switching to main and pulling...");
-  const switched = await switchToMain(repoRoot);
-  if (!switched) {
-    return Err(new CommandError("Failed to switch to main branch"));
+  // Rebase current branch on origin/<branch>
+  logger.step(`Rebasing '${currentBranch}' on origin/${branch}...`);
+  const rebaseResult = await rebaseOnBranch(repoRoot, branch);
+  if (!rebaseResult.success) {
+    if (rebaseResult.conflict) {
+      console.log();
+      logger.error("Rebase failed due to conflicts.");
+      console.log();
+      console.log("To resolve:");
+      console.log("  1. Fix the conflicts in the listed files");
+      console.log("  2. Stage your changes: git add <files>");
+      console.log("  3. Continue the rebase: git rebase --continue");
+      console.log("  4. Run dust-hive sync again");
+      console.log();
+      console.log("Or abort the rebase: git rebase --abort");
+      return Err(new CommandError("Rebase conflicts - resolve and run sync again"));
+    }
+    return Err(new CommandError(`Rebase failed: ${rebaseResult.error}`));
   }
-  if (currentBranch && currentBranch !== "main") {
-    logger.success(`Switched from '${currentBranch}' to 'main'`);
-  } else {
-    logger.success("Updated main branch");
-  }
+  logger.success(`Rebased '${currentBranch}' on latest ${branch}`);
 
   // Update cache source
   await setCacheSource(repoRoot);
@@ -173,8 +190,8 @@ export async function syncCommand(): Promise<Result<void>> {
   console.log();
   logger.success(`Sync complete! (${elapsed}s)`);
   console.log();
-  console.log("Your cache source is now up to date with latest main.");
-  console.log("New environments will use these fresh dependencies and binaries.");
+  console.log(`Branch '${currentBranch}' is now rebased on latest ${branch}.`);
+  console.log("Dependencies and binaries are up to date.");
   console.log();
 
   return Ok(undefined);

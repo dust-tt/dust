@@ -164,9 +164,9 @@ cli
   });
 
 cli
-  .command("sync", "Update main repo with latest, rebuild binaries, refresh node_modules")
-  .action(async () => {
-    await prepareAndRun(syncCommand());
+  .command("sync [branch]", "Rebase on branch (default: main), rebuild binaries, refresh deps")
+  .action(async (branch: string | undefined) => {
+    await prepareAndRun(syncCommand(branch));
   });
 
 cli.help();

@@ -97,7 +97,7 @@ open $(dust-hive url myenv)
 | `doctor` | Check prerequisites |
 | `cache [status\|rebuild] [--status] [--rebuild]` | Show or rebuild binary cache |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
-| `sync` | Update main repo to latest main, rebuild binaries, refresh deps |
+| `sync [BRANCH]` | Rebase on branch (default: main), rebuild binaries, refresh deps |
 
 ### Services
 
