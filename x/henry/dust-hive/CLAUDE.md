@@ -139,6 +139,7 @@ tests/
 | `doctor` | Check prerequisites |
 | `cache` | Show or rebuild binary cache |
 | `forward` | Manage OAuth port forwarding (ports 3000,3001,3002,3006 → env) |
+| `sync` | Update main repo to latest main, rebuild binaries, refresh node_modules |
 
 ## Performance
 
@@ -158,9 +159,13 @@ First warm runs everything in parallel:
 ### Cache System
 
 dust-hive uses the main Dust repo as a cache source for:
-1. **Node modules**: Symlinked from main repo (no npm install needed)
+1. **Node modules**: Symlinked from main repo (instant, but shared - see warning below)
 2. **Cargo target**: Symlinked to share Rust compilation cache (incremental builds)
 3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
+
+**WARNING**: node_modules are symlinked, not copied. Running `npm install` in a worktree
+will modify the main repo's node_modules. If you need isolation, manually run:
+`rm -rf node_modules && npm ci`
 
 Check cache status:
 ```bash

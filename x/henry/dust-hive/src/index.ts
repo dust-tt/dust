@@ -15,6 +15,7 @@ import { spawnCommand } from "./commands/spawn";
 import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
+import { syncCommand } from "./commands/sync";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
@@ -160,6 +161,12 @@ cli
   .command("forward [target]", "Manage OAuth port forwarding")
   .action(async (target: string | undefined) => {
     await prepareAndRun(forwardCommand(target));
+  });
+
+cli
+  .command("sync", "Update main repo with latest, rebuild binaries, refresh node_modules")
+  .action(async () => {
+    await prepareAndRun(syncCommand());
   });
 
 cli.help();

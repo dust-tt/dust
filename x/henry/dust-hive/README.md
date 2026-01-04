@@ -97,6 +97,7 @@ open $(dust-hive url myenv)
 | `doctor` | Check prerequisites |
 | `cache [status\|rebuild] [--status] [--rebuild]` | Show or rebuild binary cache |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
+| `sync` | Update main repo to latest main, rebuild binaries, refresh deps |
 
 ### Services
 
@@ -304,9 +305,11 @@ First warm is slower because it initializes databases (Postgres, Qdrant, Elastic
 
 The cache uses your main Dust repo as source:
 
-1. **Node modules**: Symlinked (no npm install)
+1. **Node modules**: Symlinked from main repo (instant)
 2. **Cargo target**: Symlinked (shared Rust compilation)
 3. **Rust binaries**: Pre-compiled (no `cargo run` overhead)
+
+> **Warning**: node_modules are symlinked, not copied. Running `npm install` in a worktree will modify the main repo's node_modules. If you need isolation, manually run: `rm -rf node_modules && npm ci`
 
 ```bash
 # Check cache status
@@ -314,6 +317,9 @@ dust-hive cache
 
 # Build missing binaries
 dust-hive cache --rebuild
+
+# Update main repo with latest and refresh everything
+dust-hive sync
 ```
 
 ## File Locations

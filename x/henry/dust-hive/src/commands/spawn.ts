@@ -108,7 +108,7 @@ async function setupWorktree(
   try {
     await installAllDependencies(worktreePath, metadata.repoRoot);
   } catch (error) {
-    logger.error("Spawn failed during npm install, cleaning up...");
+    logger.error("Spawn failed during dependency linking, cleaning up...");
     await cleanupPartialEnvironment(metadata.repoRoot, worktreePath, workspaceBranch).catch((e) =>
       logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
     );
