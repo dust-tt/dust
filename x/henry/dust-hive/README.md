@@ -243,13 +243,15 @@ dust-hive logs myenv front -f
 
 ## Performance
 
-dust-hive uses aggressive caching to keep operations fast:
+dust-hive uses aggressive caching and parallelization:
 
 | Operation | Time |
 |-----------|------|
 | `spawn` | ~7 seconds |
-| `warm` (first) | ~60 seconds |
-| `warm` (subsequent) | ~30 seconds |
+| `warm` (first) | ~80 seconds |
+| `warm` (subsequent) | ~18 seconds |
+
+First warm is slower because it initializes databases (Postgres, Qdrant, Elasticsearch). Subsequent warms are fast because services just reconnect to existing data.
 
 ### Cache System
 

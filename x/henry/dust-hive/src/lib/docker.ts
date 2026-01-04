@@ -95,7 +95,7 @@ export function getVolumeNames(name: string): string[] {
   ];
 }
 
-// Start docker-compose containers with --wait flag
+// Start docker-compose containers (starts in background, services have retry logic)
 export async function startDocker(env: Environment): Promise<void> {
   logger.step("Starting Docker containers...");
 
@@ -103,24 +103,10 @@ export async function startDocker(env: Environment): Promise<void> {
   const overridePath = getDockerOverridePath(env.name);
   const basePath = `${env.metadata.repoRoot}/tools/docker-compose.dust-hive.yml`;
 
+  // Start all containers in detached mode (no --wait)
   const proc = Bun.spawn(
-    [
-      "docker",
-      "compose",
-      "-f",
-      basePath,
-      "-f",
-      overridePath,
-      "-p",
-      projectName,
-      "up",
-      "-d",
-      "--wait",
-    ],
-    {
-      stdout: "pipe",
-      stderr: "pipe",
-    }
+    ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "up", "-d"],
+    { stdout: "pipe", stderr: "pipe" }
   );
 
   const stderr = await new Response(proc.stderr).text();
@@ -130,6 +116,8 @@ export async function startDocker(env: Environment): Promise<void> {
     throw new Error(`Docker compose failed: ${stderr}`);
   }
 
+  // Don't wait for containers to be healthy - services have retry logic
+  // This allows services to start connecting while containers finish starting
   logger.success("Docker containers started");
 }
 

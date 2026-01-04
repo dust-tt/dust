@@ -135,17 +135,25 @@ tests/
 
 ## Performance
 
-Typical timings with warm cache:
+Typical timings (with aggressive parallelization):
 - **spawn**: ~7 seconds (symlinks node_modules and cargo target from main repo)
-- **warm (first)**: ~60 seconds (runs DB init with cached binaries)
-- **warm (subsequent)**: ~30 seconds (skips DB init)
+- **warm (first)**: ~80 seconds (parallel DB init: Postgres, Qdrant, Elasticsearch)
+- **warm (subsequent)**: ~18 seconds (all services start in parallel)
+
+### Parallelization
+
+First warm runs everything in parallel:
+- Docker containers start (no blocking wait)
+- core + oauth start immediately (compile while init runs)
+- Temporal namespaces, Postgres init, Qdrant init, ES init run concurrently
+- Each init waits only for its own container
 
 ### Cache System
 
 dust-hive uses the main Dust repo as a cache source for:
 1. **Node modules**: Symlinked from main repo (no npm install needed)
-2. **Cargo target**: Symlinked to share Rust compilation cache
-3. **Rust binaries**: Pre-compiled binaries used instead of `cargo run`
+2. **Cargo target**: Symlinked to share Rust compilation cache (incremental builds)
+3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
 Check cache status:
 ```bash

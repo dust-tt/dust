@@ -1,16 +1,46 @@
 import { setCacheSource } from "../lib/cache";
 import { requireEnvironment } from "../lib/commands";
-import { startDocker } from "../lib/docker";
+import { getDockerProjectName, startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
 import { getServicePorts, isPortInUse, killProcessesOnPort } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
-import { WARM_SERVICES, startService, waitForServiceHealth } from "../lib/registry";
+import { startService, waitForServiceHealth } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isDockerRunning } from "../lib/state";
 
+// Check if Temporal server is running (default gRPC port 7233)
+async function isTemporalRunning(): Promise<boolean> {
+  try {
+    const proc = Bun.spawn(
+      ["temporal", "operator", "namespace", "list", "--namespace", "default"],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    await proc.exited;
+    return proc.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+// Kill orphaned processes on service ports
+async function cleanupOrphanedPorts(ports: number[]): Promise<void> {
+  const blockedPorts: number[] = [];
+  for (const port of ports) {
+    if (isPortInUse(port)) {
+      logger.warn(`Port ${port} is in use, killing orphaned process...`);
+      killProcessesOnPort(port);
+      blockedPorts.push(port);
+    }
+  }
+  if (blockedPorts.length > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
+
 export async function warmCommand(args: string[]): Promise<Result<void>> {
+  const startTime = Date.now();
   const envResult = await requireEnvironment(args[0], "warm");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
@@ -38,57 +68,85 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   logger.info(`Warming environment '${name}'...`);
   console.log();
 
-  // Check for orphaned processes on service ports and kill them
-  const servicePorts = getServicePorts(env.ports);
-  const blockedPorts: number[] = [];
-  for (const port of servicePorts) {
-    if (isPortInUse(port)) {
-      logger.warn(`Port ${port} is in use, killing orphaned process...`);
-      killProcessesOnPort(port);
-      blockedPorts.push(port);
-    }
-  }
-  if (blockedPorts.length > 0) {
-    // Give processes time to die
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  // Clean up orphaned processes on service ports
+  await cleanupOrphanedPorts(getServicePorts(env.ports));
 
-  // Start Docker containers
+  // Start Docker containers (doesn't wait for health)
   await startDocker(env);
 
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(name));
+  const projectName = getDockerProjectName(name);
 
   if (needsInit) {
-    logger.info("First warm - initializing databases...");
+    logger.info("First warm - initializing (parallel)...");
     console.log();
 
-    // Create Temporal namespaces
-    await createTemporalNamespaces(env);
+    // Start core + oauth early (they compile while init runs)
+    // Run Temporal + DB inits in parallel
+    const [, , temporalRunning] = await Promise.all([
+      // Start Rust services early - they'll compile while other init happens
+      startService(env, "core"),
+      startService(env, "oauth"),
+      // Check Temporal
+      isTemporalRunning(),
+      // Create Temporal namespaces (no container dependency)
+      createTemporalNamespaces(env),
+      // Run all DB inits (each waits for its container)
+      runAllDbInits(env, projectName),
+    ]);
 
-    // Run all DB init steps
-    await runAllDbInits(env);
+    // Report Temporal status
+    if (!temporalRunning) {
+      logger.warn("Temporal server is not running. Workers will fail to connect.");
+      logger.warn("Run 'temporal server start-dev' in another terminal.");
+    }
 
-    // Mark as initialized
     await markInitialized(name);
-    logger.success("Database initialization complete");
+    logger.success("Initialization complete");
     console.log();
-  }
 
-  // Start services using registry
-  logger.info("Starting services...");
-  console.log();
+    // Start remaining services
+    logger.info("Starting remaining services...");
+    await Promise.all([
+      startService(env, "front"),
+      startService(env, "connectors"),
+      startService(env, "front-workers"),
+    ]);
+  } else {
+    // Not first warm - start all services in parallel
+    logger.info("Starting services (parallel)...");
+    console.log();
 
-  for (const service of WARM_SERVICES) {
-    await startService(env, service);
-    // Wait for front to be healthy before starting front-workers
-    if (service === "front") {
-      await waitForServiceHealth("front", env.ports);
+    const [, temporalRunning] = await Promise.all([
+      Promise.all([
+        startService(env, "core"),
+        startService(env, "oauth"),
+        startService(env, "front"),
+        startService(env, "connectors"),
+        startService(env, "front-workers"),
+      ]),
+      isTemporalRunning(),
+    ]);
+
+    if (!temporalRunning) {
+      logger.warn("Temporal server is not running. Workers will fail to connect.");
+      logger.warn("Run 'temporal server start-dev' in another terminal.");
     }
   }
 
+  // Wait for services with health checks
+  logger.step("Waiting for services to be healthy...");
+  await Promise.all([
+    waitForServiceHealth("front", env.ports),
+    waitForServiceHealth("core", env.ports),
+    waitForServiceHealth("oauth", env.ports),
+  ]);
+  logger.success("All services healthy");
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
-  logger.success(`Environment '${name}' is now warm!`);
+  logger.success(`Environment '${name}' is now warm! (${elapsed}s)`);
   console.log();
   console.log(`  Front:       http://localhost:${env.ports.front}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);

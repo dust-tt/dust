@@ -210,46 +210,89 @@ async function initElasticsearchTS(
   return true;
 }
 
-// Run init_dev_container equivalent with cached binaries
-async function runInitDevContainer(env: Environment): Promise<void> {
-  logger.step("Initializing databases and services...");
+// Wait for a Docker container to be healthy
+async function waitForContainer(projectName: string, service: string): Promise<void> {
+  const containerName = `${projectName}-${service}-1`;
+  const maxWait = 60000;
+  const start = Date.now();
 
+  while (Date.now() - start < maxWait) {
+    const proc = Bun.spawn(
+      ["docker", "inspect", "--format", "{{.State.Health.Status}}", containerName],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+
+    if (proc.exitCode === 0 && output.trim() === "healthy") {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`Container ${service} did not become healthy`);
+}
+
+// Initialize all postgres-related things (runs after postgres is healthy)
+async function initAllPostgres(env: Environment): Promise<void> {
+  const envShPath = getEnvFilePath(env.name);
+  const envVars = await loadEnvVars(envShPath);
+
+  // Create databases first
+  await initPostgres(envVars);
+  logger.success("PostgreSQL databases created");
+
+  // Then run schema migrations in parallel
+  const [coreResult, frontResult, connectorsResult] = await Promise.all([
+    runCoreDbInit(env),
+    runFrontDbInit(env),
+    runConnectorsDbInit(env),
+  ]);
+
+  const failed: string[] = [];
+  if (!coreResult.success) failed.push("core");
+  if (!frontResult) failed.push("front");
+  if (!connectorsResult) failed.push("connectors");
+
+  if (failed.length > 0) {
+    throw new Error(`DB schema init failed for: ${failed.join(", ")}`);
+  }
+  logger.success("Database schemas initialized");
+}
+
+// Initialize Qdrant (runs after qdrant is healthy)
+async function initAllQdrant(env: Environment): Promise<void> {
+  const envShPath = getEnvFilePath(env.name);
+  const worktreePath = getWorktreeDir(env.name);
+  const envVars = await loadEnvVars(envShPath);
+
+  const result = await initQdrant(worktreePath, envVars);
+  if (!result.success) {
+    throw new Error("Qdrant collection creation failed");
+  }
+  logger.success("Qdrant collections created");
+}
+
+// Initialize Elasticsearch (runs after ES is healthy)
+async function initAllElasticsearch(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
   // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
   envVars["__ENV_SH_PATH__"] = envShPath;
 
-  // 1. Create PostgreSQL databases
-  logger.step("Creating PostgreSQL databases...");
-  await initPostgres(envVars);
-  logger.success("PostgreSQL databases created");
+  // Run Rust and TS ES inits in parallel
+  const [rustResult, tsResult] = await Promise.all([
+    initElasticsearchRust(worktreePath, envVars),
+    initElasticsearchTS(worktreePath, envVars),
+  ]);
 
-  // 2. Create Qdrant collections (using cached binary)
-  logger.step("Creating Qdrant collections...");
-  const qdrantResult = await initQdrant(worktreePath, envVars);
-  if (!qdrantResult.success) {
-    throw new Error("Qdrant collection creation failed");
-  }
-  logger.success(`Qdrant collections created${qdrantResult.usedCache ? " (cached)" : ""}`);
-
-  // 3. Create Elasticsearch indices (Rust - using cached binary)
-  logger.step("Creating Elasticsearch indices (core)...");
-  const esRustResult = await initElasticsearchRust(worktreePath, envVars);
-  if (!esRustResult.success) {
+  if (!rustResult.success) {
     throw new Error("Elasticsearch index creation failed (core)");
   }
-  logger.success(
-    `Elasticsearch indices created (core)${esRustResult.usedCache ? " (cached)" : ""}`
-  );
-
-  // 4. Create Elasticsearch indices (TypeScript)
-  logger.step("Creating Elasticsearch indices (front)...");
-  const esTsResult = await initElasticsearchTS(worktreePath, envVars);
-  if (!esTsResult) {
+  if (!tsResult) {
     throw new Error("Elasticsearch index creation failed (front)");
   }
-  logger.success("Elasticsearch indices created (front)");
+  logger.success("Elasticsearch indices created");
 }
 
 // Run core database init
@@ -314,32 +357,22 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-// Run all DB initialization steps
-// Uses cached binaries where possible
-export async function runAllDbInits(env: Environment): Promise<void> {
-  // First: init_dev_container equivalent (postgres, qdrant, elasticsearch)
-  await runInitDevContainer(env);
+// Run all DB initialization steps in parallel
+// Each init waits for its container, then runs
+export async function runAllDbInits(env: Environment, projectName: string): Promise<void> {
+  logger.info("Initializing databases (parallel)...");
 
-  // Then: core, front, connectors in parallel
-  logger.step("Initializing databases (parallel)...");
-
-  const [coreResult, frontResult, connectorsResult] = await Promise.all([
-    runCoreDbInit(env),
-    runFrontDbInit(env),
-    runConnectorsDbInit(env),
+  // Run all inits in parallel - each waits for its container first
+  await Promise.all([
+    // Postgres: wait for container → create DBs → run schema inits
+    waitForContainer(projectName, "db").then(() => initAllPostgres(env)),
+    // Qdrant: wait for container → create collections
+    waitForContainer(projectName, "qdrant_primary").then(() => initAllQdrant(env)),
+    // Elasticsearch: wait for container → create indices
+    waitForContainer(projectName, "elasticsearch").then(() => initAllElasticsearch(env)),
   ]);
 
-  const failed: string[] = [];
-  if (!coreResult.success) failed.push("core");
-  if (!frontResult) failed.push("front");
-  if (!connectorsResult) failed.push("connectors");
-
-  if (failed.length > 0) {
-    throw new Error(`DB initialization failed for: ${failed.join(", ")}`);
-  }
-
-  const cacheNote = coreResult.usedCache ? " (core used cached binary)" : "";
-  logger.success(`All databases initialized${cacheNote}`);
+  logger.success("All databases initialized");
 }
 
 // Create Temporal namespaces for an environment

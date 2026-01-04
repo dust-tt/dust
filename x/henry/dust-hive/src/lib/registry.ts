@@ -53,6 +53,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     needsNvm: false,
     needsEnvSh: true,
     buildCommand: () => "cargo run --bin oauth",
+    healthCheckUrl: (ports) => `http://localhost:${ports.oauth}/`,
     portKey: "oauth",
   },
   connectors: {
@@ -77,6 +78,8 @@ export const WARM_SERVICES: ServiceName[] = (Object.keys(SERVICE_REGISTRY) as Se
 );
 
 // Build the full shell command for a service
+// Note: For Rust services, cargo run is used with a symlinked target directory
+// This gives us incremental compilation - only changed code is recompiled
 function buildServiceCommand(env: Environment, service: ServiceName): string {
   const config = SERVICE_REGISTRY[service];
 
