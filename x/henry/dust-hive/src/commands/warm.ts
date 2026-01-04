@@ -41,7 +41,6 @@ async function cleanupOrphanedPorts(ports: number[]): Promise<void> {
   }
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: warm has inherent complexity from parallel init paths
 export async function warmCommand(args: string[]): Promise<Result<void>> {
   const startTime = Date.now();
   const noForward = args.includes("--no-forward");
@@ -141,24 +140,23 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   }
 
   // Wait for services with health checks
+  // Start forwarder as soon as front is healthy (don't wait for core/oauth)
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
-    waitForServiceHealth("front", env.ports),
+    waitForServiceHealth("front", env.ports).then(async () => {
+      if (!noForward) {
+        try {
+          await startForwarder(env.ports.front, name);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.warn(`Could not start forwarder: ${msg}`);
+        }
+      }
+    }),
     waitForServiceHealth("core", env.ports),
     waitForServiceHealth("oauth", env.ports),
   ]);
   logger.success("All services healthy");
-
-  // Auto-forward to this environment (unless --no-forward)
-  if (!noForward) {
-    try {
-      await startForwarder(env.ports.front, name);
-    } catch (err) {
-      // Non-fatal: log warning but don't fail warm
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.warn(`Could not start forwarder: ${msg}`);
-    }
-  }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
