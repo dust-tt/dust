@@ -6,7 +6,7 @@ import {
   stopForwarder,
 } from "../lib/forward";
 import { logger } from "../lib/logger";
-import { FORWARDER_LOG_PATH, FORWARDER_PORT } from "../lib/paths";
+import { FORWARDER_LOG_PATH, FORWARDER_PORTS } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
@@ -14,8 +14,11 @@ import { getStateInfo } from "../lib/state";
 function printUsage(): void {
   console.log("Usage: dust-hive forward [NAME|status|stop]");
   console.log();
-  console.log("Forward http://localhost:3000 to an environment's front port.");
+  console.log("Forward standard local dev ports to an environment's ports.");
   console.log("This enables OAuth redirects to work with dust-hive environments.");
+  console.log();
+  console.log(`Ports forwarded: ${FORWARDER_PORTS.join(", ")}`);
+  console.log("  3000 → front, 3001 → core, 3002 → connectors, 3006 → oauth");
   console.log();
   console.log("Commands:");
   console.log("  dust-hive forward          Forward to the last warmed environment");
@@ -63,9 +66,9 @@ async function showStatus(): Promise<Result<void>> {
   if (status.running && status.state) {
     console.log("Status:     \x1b[32mRunning\x1b[0m");
     console.log(`PID:        ${status.pid}`);
-    console.log(`Target:     ${status.state.targetEnv} (port ${status.state.targetPort})`);
+    console.log(`Target:     ${status.state.targetEnv} (base port ${status.state.basePort})`);
     console.log(`Updated:    ${status.state.updatedAt}`);
-    console.log(`Listening:  http://localhost:${FORWARDER_PORT}`);
+    console.log(`Listening:  ports ${FORWARDER_PORTS.join(", ")}`);
 
     // Check if target is still warm
     const env = await getEnvironment(status.state.targetEnv);
@@ -86,7 +89,7 @@ async function showStatus(): Promise<Result<void>> {
     }
   } else if (status.state) {
     console.log("Status:     \x1b[90mStopped\x1b[0m");
-    console.log(`Last target: ${status.state.targetEnv} (port ${status.state.targetPort})`);
+    console.log(`Last target: ${status.state.targetEnv} (base port ${status.state.basePort})`);
     console.log(`Last update: ${status.state.updatedAt}`);
   } else {
     console.log("Status:     \x1b[90mNot configured\x1b[0m");
@@ -129,7 +132,7 @@ async function forwardToEnv(name: string): Promise<Result<void>> {
     );
   }
 
-  await startForwarder(env.ports.front, name);
+  await startForwarder(env.ports.base, name);
 
   return Ok(undefined);
 }

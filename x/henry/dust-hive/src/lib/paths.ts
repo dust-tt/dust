@@ -16,6 +16,8 @@ export const FORWARDER_PID_PATH = join(DUST_HIVE_HOME, "forward.pid");
 export const FORWARDER_LOG_PATH = join(DUST_HIVE_HOME, "forward.log");
 export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
 export const FORWARDER_PORT = 3000;
+// All standard ports that the forwarder listens on
+export const FORWARDER_PORTS = [3000, 3001, 3002, 3006] as const;
 
 // Per-environment paths
 export function getEnvDir(name: string): string {

@@ -5,7 +5,7 @@ import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
-import { FORWARDER_PORT } from "../lib/paths";
+import { FORWARDER_PORTS } from "../lib/paths";
 import { getServicePorts, isPortInUse, killProcessesOnPort } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
 import { startService, waitForServiceHealth } from "../lib/registry";
@@ -146,7 +146,7 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
     waitForServiceHealth("front", env.ports).then(async () => {
       if (!noForward) {
         try {
-          await startForwarder(env.ports.front, name);
+          await startForwarder(env.ports.base, name);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           logger.warn(`Could not start forwarder: ${msg}`);
@@ -163,11 +163,12 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   logger.success(`Environment '${name}' is now warm! (${elapsed}s)`);
   console.log();
   console.log(`  Front:       http://localhost:${env.ports.front}`);
-  if (!noForward) {
-    console.log(`  OAuth:       http://localhost:${FORWARDER_PORT} (forwarded)`);
-  }
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
+  if (!noForward) {
+    console.log();
+    console.log(`  Forwarded:   ports ${FORWARDER_PORTS.join(", ")} → env (for OAuth)`);
+  }
   console.log();
   console.log("Next steps:");
   console.log(`  dust-hive open ${name}      # Open zellij session`);

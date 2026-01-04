@@ -47,7 +47,7 @@ bun run test         # All tests
 ```
 src/
 ├── index.ts           # CLI entry point
-├── forward-daemon.ts  # TCP forwarder daemon (port 3000 → env front)
+├── forward-daemon.ts  # TCP forwarder daemon (ports 3000,3001,3002,3006 → env)
 ├── commands/          # Command implementations (all MVP commands complete)
 │   ├── cache.ts       # Cache management (show/rebuild binaries)
 │   ├── cool.ts        # Stop services, keep SDK
@@ -135,7 +135,7 @@ tests/
 | `url` | Print front URL |
 | `doctor` | Check prerequisites |
 | `cache` | Show or rebuild binary cache |
-| `forward` | Manage OAuth port forwarding (port 3000 → env) |
+| `forward` | Manage OAuth port forwarding (ports 3000,3001,3002,3006 → env) |
 
 ## Performance
 

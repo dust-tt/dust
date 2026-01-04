@@ -127,9 +127,16 @@ Each environment gets a 1000-port range:
 
 ## OAuth Forwarding
 
-OAuth providers (Google, GitHub, etc.) are configured to redirect to `http://localhost:3000`. Since dust-hive uses different ports per environment, a TCP forwarder routes port 3000 to the active environment.
+OAuth providers (WorkOS, Google, GitHub, etc.) are configured to redirect to `http://localhost:3000`. Since dust-hive uses different ports per environment, a TCP forwarder routes standard ports to the active environment:
 
-**Automatic**: When you run `dust-hive warm`, port 3000 is automatically forwarded to that environment.
+| Standard Port | Service | Environment Port |
+|---------------|---------|------------------|
+| 3000 | front | base + 0 |
+| 3001 | core | base + 1 |
+| 3002 | connectors | base + 2 |
+| 3006 | oauth | base + 6 |
+
+**Automatic**: When you run `dust-hive warm`, these ports are automatically forwarded to that environment.
 
 ```bash
 # Manual control

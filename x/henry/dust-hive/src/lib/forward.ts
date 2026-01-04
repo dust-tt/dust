@@ -7,7 +7,7 @@ import { logger } from "./logger";
 import {
   FORWARDER_LOG_PATH,
   FORWARDER_PID_PATH,
-  FORWARDER_PORT,
+  FORWARDER_PORTS,
   FORWARDER_STATE_PATH,
 } from "./paths";
 import { isPortInUse } from "./ports";
@@ -16,7 +16,7 @@ import { createPropertyChecker } from "./typeGuards";
 
 export interface ForwarderState {
   targetEnv: string;
-  targetPort: number;
+  basePort: number;
   updatedAt: string;
 }
 
@@ -27,7 +27,7 @@ function isForwarderState(data: unknown): data is ForwarderState {
 
   return (
     checker.hasString("targetEnv") &&
-    checker.hasNumber("targetPort") &&
+    checker.hasNumber("basePort") &&
     checker.hasString("updatedAt")
   );
 }
@@ -134,14 +134,15 @@ export async function stopForwarder(): Promise<boolean> {
 }
 
 // Start forwarder to target port
-export async function startForwarder(targetPort: number, envName: string): Promise<void> {
+export async function startForwarder(basePort: number, envName: string): Promise<void> {
   // Stop existing forwarder if running
   await stopForwarder();
 
-  // Check if port 3000 is already in use by something else
-  if (isPortInUse(FORWARDER_PORT)) {
+  // Check if any standard ports are already in use by something else
+  const portsInUse = FORWARDER_PORTS.filter((port) => isPortInUse(port));
+  if (portsInUse.length > 0) {
     throw new Error(
-      `Port ${FORWARDER_PORT} is already in use. Stop the process using it before starting the forwarder.`
+      `Ports ${portsInUse.join(", ")} are already in use. Stop the processes using them before starting the forwarder.`
     );
   }
 
@@ -164,7 +165,7 @@ export async function startForwarder(targetPort: number, envName: string): Promi
   // Spawn the forwarder daemon
   const logFile = Bun.file(FORWARDER_LOG_PATH);
 
-  const proc = Bun.spawn(["bun", "run", daemonPath, String(targetPort)], {
+  const proc = Bun.spawn(["bun", "run", daemonPath, String(basePort)], {
     env: process.env,
     stdout: logFile,
     stderr: logFile,
@@ -186,11 +187,11 @@ export async function startForwarder(targetPort: number, envName: string): Promi
   await writeForwarderPid(proc.pid);
   await writeForwarderState({
     targetEnv: envName,
-    targetPort,
+    basePort,
     updatedAt: new Date().toISOString(),
   });
 
-  logger.success(`Forwarding http://localhost:${FORWARDER_PORT} → ${envName} (port ${targetPort})`);
+  logger.success(`Forwarding ports ${FORWARDER_PORTS.join(", ")} → ${envName} (base ${basePort})`);
 }
 
 // Get forwarder status info
