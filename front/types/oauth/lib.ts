@@ -31,6 +31,7 @@ export const OAUTH_PROVIDERS = [
   "discord",
   "fathom",
   "freshservice",
+  "front",
   "github",
   "google_drive",
   "gmail",
@@ -59,6 +60,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   discord: "Discord",
   fathom: "Fathom",
   freshservice: "Freshservice",
+  front: "Front",
   github: "GitHub",
   gmail: "Gmail",
   google_drive: "Google",
@@ -232,6 +234,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "front":
     case "hubspot":
     case "slack":
     case "slack_tools":

@@ -11,6 +11,7 @@ import { DatabricksOAuthProvider } from "@app/lib/api/oauth/providers/databricks
 import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
 import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
+import { FrontOAuthProvider } from "@app/lib/api/oauth/providers/front";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
 import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
@@ -60,6 +61,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   discord: new DiscordOAuthProvider(),
   fathom: new FathomOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
+  front: new FrontOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
   gong: new GongOAuthProvider(),

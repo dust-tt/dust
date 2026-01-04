@@ -208,6 +208,9 @@ const config = {
   getOAuthFreshserviceDomain: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_DOMAIN");
   },
+  getOAuthFrontClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRONT_CLIENT_ID");
+  },
   getOAuthJiraClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
   },

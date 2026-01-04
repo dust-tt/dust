@@ -1,3 +1,5 @@
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -5,13 +7,13 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import { decrypt, Err, normalizeError, Ok } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
@@ -102,11 +104,11 @@ const makeFrontAPIRequest = async (
     const errorBody = await response.text();
     if (response.status === 401) {
       throw new MCPError(
-        "Invalid Front API token. Please check your API token configuration."
+        "Invalid Front API token. Please reconnect your Front account."
       );
     } else if (response.status === 403) {
       throw new MCPError(
-        "Insufficient permissions. Please check your Front API token permissions."
+        "Insufficient permissions. Please check your Front account permissions."
       );
     } else if (response.status === 404) {
       throw new MCPError(`Resource not found: ${endpoint}`);
@@ -130,42 +132,113 @@ const makeFrontAPIRequest = async (
 };
 
 /**
- * Helper to get the API token from workspace secrets
+ * Upload attachments to Front using multipart/form-data
  */
-async function getFrontAPIToken(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<string> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
-    throw new MCPError(
-      "Front API token not configured. Please configure a secret containing your Front API token in the agent settings."
+async function uploadAttachmentsToFront(
+  apiToken: string,
+  conversationId: string,
+  files: Array<{
+    buffer: Buffer;
+    filename: string;
+    contentType: string;
+  }>,
+  messageBody: string,
+  isComment: boolean
+): Promise<any> {
+  const endpoint = isComment
+    ? `conversations/${conversationId}/comments`
+    : `conversations/${conversationId}/messages`;
+  const url = `${FRONT_API_BASE_URL}/${endpoint}`;
+
+  const boundary = `----formdata-dust-${Date.now()}-${Math.random().toString(36)}`;
+  const parts: Buffer[] = [];
+
+  // Add body field
+  parts.push(
+    Buffer.from(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="body"\r\n\r\n` +
+        `${messageBody}\r\n`
+    )
+  );
+
+  // Add file attachments
+  for (const file of files) {
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="attachments[]"; filename="${file.filename}"\r\n` +
+          `Content-Type: ${file.contentType}\r\n\r\n`
+      )
     );
+    parts.push(file.buffer);
+    parts.push(Buffer.from("\r\n"));
   }
 
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+  const bodyBuffer = Buffer.concat(parts);
+
+  // eslint-disable-next-line no-restricted-globals
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
     },
+    body: bodyBuffer,
   });
 
-  const apiToken = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
-
-  if (!apiToken) {
+  if (!response.ok) {
+    const errorBody = await response.text();
     throw new MCPError(
-      "Front API token not found in workspace secrets. Please check the secret configuration."
+      `Failed to upload attachments: ${response.status} - ${errorBody}`
     );
   }
 
-  return apiToken;
+  if (
+    response.status === 204 ||
+    response.headers.get("content-length") === "0"
+  ) {
+    return null;
+  }
+
+  return response.json();
 }
+
+interface WithAuthParams {
+  authInfo?: AuthInfo;
+  action: (accessToken: string) => Promise<Result<CallToolResult["content"], MCPError>>;
+}
+
+/**
+ * Wrapper to handle OAuth authentication for Front API calls
+ */
+const withAuth = async ({
+  authInfo,
+  action,
+}: WithAuthParams): Promise<Result<CallToolResult["content"], MCPError>> => {
+  const accessToken = authInfo?.token;
+
+  if (!accessToken) {
+    return new Err(
+      new MCPError("No access token found. Please connect your Front account.")
+    );
+  }
+
+  try {
+    return await action(accessToken);
+  } catch (error: unknown) {
+    if (error instanceof MCPError) {
+      return new Err(error);
+    }
+    logger.error(
+      { error },
+      "[Front MCP Server] Operation failed"
+    );
+    return new Err(new MCPError(normalizeError(error).message));
+  }
+};
 
 /**
  * Format conversation data in LLM-friendly format
@@ -255,52 +328,44 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ q, limit = 20 }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ q, limit = 20 }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: "conversations",
+              apiToken,
+              params: { q, limit: Math.min(limit, 100) },
+            });
 
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: "conversations",
-            apiToken,
-            params: { q, limit: Math.min(limit, 100) },
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const conversations = data._results || [];
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const conversations = data._results || [];
+            if (conversations.length === 0) {
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `No conversations found for query: "${q}"`,
+                },
+              ]);
+            }
 
-          if (conversations.length === 0) {
+            const formatted = conversations
+              .map((conv: any) => formatConversationForLLM(conv))
+              .join("\n\n");
+
             return new Ok([
               {
                 type: "text" as const,
-                text: `No conversations found for query: "${q}"`,
+                text:
+                  `Found ${conversations.length} conversation(s)` +
+                  "\n\n" +
+                  formatted,
               },
             ]);
-          }
-
-          const formatted = conversations
-            .map((conv: any) => formatConversationForLLM(conv))
-            .join("\n\n");
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Found ${conversations.length} conversation(s)` +
-                "\n\n" +
-                formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to search conversations: ${normalizeError(error).message}`
-            )
-          );
-        }
+          },
+        });
       }
     )
   );
@@ -317,37 +382,29 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: `conversations/${conversation_id}`,
+              apiToken,
+            });
 
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: `conversations/${conversation_id}`,
-            apiToken,
-          });
+            const formatted = formatConversationForLLM(data);
 
-          const formatted = formatConversationForLLM(data);
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Retrieved conversation ${conversation_id}` +
-                "\n\n" +
-                formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to get conversation: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text:
+                  `Retrieved conversation ${conversation_id}` +
+                  "\n\n" +
+                  formatted,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -364,39 +421,31 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: `conversations/${conversation_id}/messages`,
+              apiToken,
+            });
 
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: `conversations/${conversation_id}/messages`,
-            apiToken,
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const messages = data._results || [];
+            const formatted = formatMessagesForLLM(messages);
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const messages = data._results || [];
-          const formatted = formatMessagesForLLM(messages);
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Retrieved ${messages.length} message(s) from conversation ${conversation_id}` +
-                "\n\n" +
-                formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to get conversation messages: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text:
+                  `Retrieved ${messages.length} message(s) from conversation ${conversation_id}` +
+                  "\n\n" +
+                  formatted,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -418,65 +467,57 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ email, contact_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
-
-          let data;
-          if (contact_id) {
-            data = await makeFrontAPIRequest({
-              method: "GET",
-              endpoint: `contacts/${contact_id}`,
-              apiToken,
-            });
-          } else if (email) {
-            const searchData = await makeFrontAPIRequest({
-              method: "GET",
-              endpoint: "contacts",
-              apiToken,
-              params: { q: email },
-            });
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            const contacts = searchData._results || [];
-            if (contacts.length === 0) {
-              return new Ok([
-                {
-                  type: "text" as const,
-                  text: `No contact found with email: ${email}`,
-                },
-              ]);
+      async ({ email, contact_id }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            let data;
+            if (contact_id) {
+              data = await makeFrontAPIRequest({
+                method: "GET",
+                endpoint: `contacts/${contact_id}`,
+                apiToken,
+              });
+            } else if (email) {
+              const searchData = await makeFrontAPIRequest({
+                method: "GET",
+                endpoint: "contacts",
+                apiToken,
+                params: { q: email },
+              });
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              const contacts = searchData._results || [];
+              if (contacts.length === 0) {
+                return new Ok([
+                  {
+                    type: "text" as const,
+                    text: `No contact found with email: ${email}`,
+                  },
+                ]);
+              }
+              data = contacts[0];
+            } else {
+              throw new MCPError("Either email or contact_id must be provided");
             }
-            data = contacts[0];
-          } else {
-            throw new MCPError("Either email or contact_id must be provided");
-          }
 
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Retrieved contact information` +
-                "\n\n" +
-                JSON.stringify(data, null, 2),
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to get contact: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text:
+                  `Retrieved contact information` +
+                  "\n\n" +
+                  JSON.stringify(data, null, 2),
+              },
+            ]);
+          },
+        });
       }
     )
   );
 
   server.tool(
     "send_message",
-    "Send a reply or internal comment to a conversation. Can send as email reply or internal note.",
+    "Send a reply or internal comment to a conversation. Can send as email reply or internal note. Supports file attachments from the conversation.",
     {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       body: z.string().describe("The message content (supports markdown)"),
@@ -490,56 +531,153 @@ const createServer = (
         .string()
         .optional()
         .describe(
-          "Optional: Teammate ID to send as (defaults to API token owner)"
+          "Optional: Teammate ID to send as (defaults to authenticated user)"
         ),
+      attachments: z
+        .array(
+          z.union([
+            z.object({
+              type: z
+                .literal("conversation_file")
+                .describe("Use this for files already in the Dust conversation"),
+              fileId: z
+                .string()
+                .describe(
+                  "The fileId from conversation attachments (use conversation_list_files to get available files)"
+                ),
+            }),
+            z.object({
+              type: z
+                .literal("external_file")
+                .describe("Use this for new files provided as base64 data"),
+              filename: z
+                .string()
+                .describe(
+                  "The filename for the attachment (e.g., 'document.pdf', 'image.png')"
+                ),
+              contentType: z
+                .string()
+                .describe(
+                  "MIME type of the file (e.g., 'image/png', 'application/pdf', 'text/plain')"
+                ),
+              base64Data: z.string().describe("Base64 encoded file data"),
+            }),
+          ])
+        )
+        .optional()
+        .describe("Optional: Array of file attachments to include with the message"),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, body, type = "reply", author_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, body, type = "reply", author_id, attachments }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            // Convert markdown to HTML for better formatting
+            const htmlBody = await convertMarkdownToHTML(body);
 
-          const endpoint =
-            type === "comment"
-              ? `conversations/${conversation_id}/comments`
-              : `conversations/${conversation_id}/messages`;
+            // If there are attachments, use multipart upload
+            if (attachments && attachments.length > 0) {
+              const filesToUpload: Array<{
+                buffer: Buffer;
+                filename: string;
+                contentType: string;
+              }> = [];
 
-          // Convert markdown to HTML for better formatting
-          const htmlBody = await convertMarkdownToHTML(body);
+              for (const attachment of attachments) {
+                if (attachment.type === "conversation_file") {
+                  if (!auth || !agentLoopContext) {
+                    throw new MCPError(
+                      "Authentication and conversation context required for conversation file attachments"
+                    );
+                  }
 
-          const requestBody: any = {
-            body: htmlBody,
-            ...(author_id && { author_id }),
-          };
+                  const fileResult = await getFileFromConversationAttachment(
+                    auth,
+                    attachment.fileId,
+                    agentLoopContext
+                  );
 
-          if (type === "comment") {
-            requestBody.type = "comment";
-          }
+                  if (fileResult.isErr()) {
+                    throw new MCPError(
+                      `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
+                    );
+                  }
 
-          await makeFrontAPIRequest({
-            method: "POST",
-            endpoint,
-            apiToken,
-            body: requestBody,
-          });
+                  filesToUpload.push(fileResult.value);
+                } else if (attachment.type === "external_file") {
+                  // Validate base64 data size (100MB limit)
+                  const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+                  const estimatedSize = (attachment.base64Data.length * 3) / 4;
 
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `${type === "comment" ? "Internal comment" : "Reply"} sent successfully to conversation ${conversation_id}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to send message: ${normalizeError(error).message}`
-            )
-          );
-        }
+                  if (estimatedSize > MAX_FILE_SIZE_BYTES) {
+                    throw new MCPError(
+                      `File ${attachment.filename} is too large. Maximum size is 100MB.`
+                    );
+                  }
+
+                  try {
+                    const buffer = Buffer.from(attachment.base64Data, "base64");
+                    filesToUpload.push({
+                      buffer,
+                      filename: attachment.filename,
+                      contentType: attachment.contentType,
+                    });
+                  } catch (error) {
+                    throw new MCPError(
+                      `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
+                    );
+                  }
+                }
+              }
+
+              await uploadAttachmentsToFront(
+                apiToken,
+                conversation_id,
+                filesToUpload,
+                htmlBody,
+                type === "comment"
+              );
+
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `${type === "comment" ? "Internal comment" : "Reply"} with ${filesToUpload.length} attachment(s) sent successfully to conversation ${conversation_id}`,
+                },
+              ]);
+            }
+
+            // No attachments - use regular JSON request
+            const endpoint =
+              type === "comment"
+                ? `conversations/${conversation_id}/comments`
+                : `conversations/${conversation_id}/messages`;
+
+            const requestBody: any = {
+              body: htmlBody,
+              ...(author_id && { author_id }),
+            };
+
+            if (type === "comment") {
+              requestBody.type = "comment";
+            }
+
+            await makeFrontAPIRequest({
+              method: "POST",
+              endpoint,
+              apiToken,
+              body: requestBody,
+            });
+
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `${type === "comment" ? "Internal comment" : "Reply"} sent successfully to conversation ${conversation_id}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -556,31 +694,25 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, tag_ids }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, tag_ids }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            await makeFrontAPIRequest({
+              method: "POST",
+              endpoint: `conversations/${conversation_id}/tags`,
+              apiToken,
+              body: { tag_ids },
+            });
 
-          await makeFrontAPIRequest({
-            method: "POST",
-            endpoint: `conversations/${conversation_id}/tags`,
-            apiToken,
-            body: { tag_ids },
-          });
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Added ${tag_ids.length} tag(s) to conversation ${conversation_id}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(`Failed to add tags: ${normalizeError(error).message}`)
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Added ${tag_ids.length} tag(s) to conversation ${conversation_id}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -595,33 +727,25 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, teammate_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, teammate_id }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            await makeFrontAPIRequest({
+              method: "PUT",
+              endpoint: `conversations/${conversation_id}/assignee`,
+              apiToken,
+              body: { assignee_id: teammate_id },
+            });
 
-          await makeFrontAPIRequest({
-            method: "PUT",
-            endpoint: `conversations/${conversation_id}/assignee`,
-            apiToken,
-            body: { assignee_id: teammate_id },
-          });
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Assigned conversation ${conversation_id} to teammate ${teammate_id}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to assign conversation: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Assigned conversation ${conversation_id} to teammate ${teammate_id}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -640,33 +764,25 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, status }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, status }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            await makeFrontAPIRequest({
+              method: "PATCH",
+              endpoint: `conversations/${conversation_id}`,
+              apiToken,
+              body: { status },
+            });
 
-          await makeFrontAPIRequest({
-            method: "PATCH",
-            endpoint: `conversations/${conversation_id}`,
-            apiToken,
-            body: { status },
-          });
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Updated conversation ${conversation_id} status to: ${status}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to update conversation status: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Updated conversation ${conversation_id} status to: ${status}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -678,41 +794,33 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async () => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async (_, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: "tags",
+              apiToken,
+            });
 
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: "tags",
-            apiToken,
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const tags = data._results || [];
+            const formatted = tags
+              .map(
+                (tag: any) =>
+                  `- ${tag.name} (ID: ${tag.id})${tag.description ? ` - ${tag.description}` : ""}`
+              )
+              .join("\n");
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const tags = data._results || [];
-          const formatted = tags
-            .map(
-              (tag: any) =>
-                `- ${tag.name} (ID: ${tag.id})${tag.description ? ` - ${tag.description}` : ""}`
-            )
-            .join("\n");
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Found ${tags.length} tag(s)` + "\n\n" + formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to list tags: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Found ${tags.length} tag(s)` + "\n\n" + formatted,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -724,42 +832,34 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async () => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async (_, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: "teammates",
+              apiToken,
+            });
 
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: "teammates",
-            apiToken,
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const teammates = data._results || [];
+            const formatted = teammates
+              .map(
+                (tm: any) =>
+                  `- ${tm.first_name} ${tm.last_name} (${tm.email}) - ID: ${tm.id}${tm.is_available ? "" : " [Away]"}`
+              )
+              .join("\n");
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const teammates = data._results || [];
-          const formatted = teammates
-            .map(
-              (tm: any) =>
-                `- ${tm.first_name} ${tm.last_name} (${tm.email}) - ID: ${tm.id}${tm.is_available ? "" : " [Away]"}`
-            )
-            .join("\n");
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Found ${teammates.length} teammate(s)` + "\n\n" + formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to list teammates: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text:
+                  `Found ${teammates.length} teammate(s)` + "\n\n" + formatted,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -778,131 +878,107 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, body, author_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, body, author_id }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            // Fetch conversation to get inbox information
+            const conversation = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: `conversations/${conversation_id}`,
+              apiToken,
+            });
 
-          // Fetch conversation to get inbox information
-          const conversation = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: `conversations/${conversation_id}`,
-            apiToken,
-          });
+            // Fetch messages to get the last inbound message's recipients
+            const messagesData = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: `conversations/${conversation_id}/messages`,
+              apiToken,
+            });
 
-          // Fetch messages to get the last inbound message's recipients
-          const messagesData = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: `conversations/${conversation_id}/messages`,
-            apiToken,
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const messages = messagesData._results || [];
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const messages = messagesData._results || [];
+            // Get channel address from conversation context
+            let channelAddress: string | undefined;
 
-          // Get channel address from conversation context
-          // We can use the address directly as a resource alias (alt:address:EMAIL)
-          let channelAddress: string | undefined;
+            // First, try to use the inbox address from the conversation (most reliable)
+            if (conversation.inbox?.address) {
+              channelAddress = conversation.inbox.address;
+            } else {
+              // If inbox address is not available, find it from messages
+              const lastInboundMessage = messages
+                .filter((msg: any) => msg.is_inbound && msg.type !== "comment")
+                .sort((a: any, b: any) => b.created_at - a.created_at)[0];
 
-          // First, try to use the inbox address from the conversation (most reliable)
-          if (conversation.inbox?.address) {
-            channelAddress = conversation.inbox.address;
-          } else {
-            // If inbox address is not available, we need to identify which recipient is a channel
-            // by matching recipients from the previous message against available channels
-            const lastInboundMessage = messages
-              .filter((msg: any) => msg.is_inbound && msg.type !== "comment")
-              .sort((a: any, b: any) => b.created_at - a.created_at)[0];
-
-            if (
-              lastInboundMessage?.recipients &&
-              lastInboundMessage.recipients.length > 0
-            ) {
-              for (const recipient of lastInboundMessage.recipients) {
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const recipientAddress = recipient.handle || recipient.email;
-                if (!recipientAddress) {
-                  continue;
-                }
-
-                try {
-                  // Try to fetch the channel using resource alias
-                  await makeFrontAPIRequest({
-                    method: "GET",
-                    endpoint: `channels/alt:address:${recipientAddress}`,
-                    apiToken,
-                  });
-
-                  channelAddress = recipientAddress;
-                  break;
-                } catch (error) {
-                  if (
-                    error instanceof MCPError &&
-                    error.message.includes("Resource not found")
-                  ) {
+              if (
+                lastInboundMessage?.recipients &&
+                lastInboundMessage.recipients.length > 0
+              ) {
+                for (const recipient of lastInboundMessage.recipients) {
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                  const recipientAddress = recipient.handle || recipient.email;
+                  if (!recipientAddress) {
                     continue;
                   }
-                  // For other errors, log but continue trying other recipients
-                  logger.warn(
-                    {
-                      conversation_id,
-                      error: normalizeError(error).message,
-                    },
-                    "[FrontMCP] Error checking if recipient is a channel"
-                  );
+
+                  try {
+                    await makeFrontAPIRequest({
+                      method: "GET",
+                      endpoint: `channels/alt:address:${recipientAddress}`,
+                      apiToken,
+                    });
+
+                    channelAddress = recipientAddress;
+                    break;
+                  } catch (error) {
+                    if (
+                      error instanceof MCPError &&
+                      error.message.includes("Resource not found")
+                    ) {
+                      continue;
+                    }
+                    logger.warn(
+                      {
+                        conversation_id,
+                        error: normalizeError(error).message,
+                      },
+                      "[FrontMCP] Error checking if recipient is a channel"
+                    );
+                  }
                 }
               }
-            } else {
-              logger.warn(
-                {
-                  conversation_id,
-                  has_last_inbound_message: !!lastInboundMessage,
-                  message_recipients_count:
-                    lastInboundMessage?.recipients?.length ?? 0,
-                },
-                "[FrontMCP] Unable to find channel address from last inbound message"
+            }
+
+            if (!channelAddress) {
+              throw new MCPError(
+                "Unable to determine channel address from conversation. The conversation may not have sufficient message history or inbox configuration."
               );
             }
-          }
 
-          if (!channelAddress) {
-            return new Err(
-              new MCPError(
-                "Unable to determine channel address from conversation. The conversation may not have sufficient message history or inbox configuration."
-              )
-            );
-          }
+            const channel_id = `alt:address:${channelAddress}`;
+            const htmlBody = await convertMarkdownToHTML(body);
 
-          const channel_id = `alt:address:${channelAddress}`;
-          const htmlBody = await convertMarkdownToHTML(body);
+            await makeFrontAPIRequest({
+              method: "POST",
+              endpoint: `conversations/${conversation_id}/drafts`,
+              apiToken,
+              body: {
+                body: htmlBody,
+                mode: "shared",
+                channel_id,
+                ...(author_id && { author_id }),
+              },
+            });
 
-          await makeFrontAPIRequest({
-            method: "POST",
-            endpoint: `conversations/${conversation_id}/drafts`,
-            apiToken,
-            body: {
-              body: htmlBody,
-              mode: "shared",
-              channel_id,
-              ...(author_id && { author_id }),
-            },
-          });
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Draft created for conversation ${conversation_id}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to create draft: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Draft created for conversation ${conversation_id}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -921,36 +997,28 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, body, author_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, body, author_id }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            await makeFrontAPIRequest({
+              method: "POST",
+              endpoint: `conversations/${conversation_id}/comments`,
+              apiToken,
+              body: {
+                body,
+                ...(author_id && { author_id }),
+              },
+            });
 
-          await makeFrontAPIRequest({
-            method: "POST",
-            endpoint: `conversations/${conversation_id}/comments`,
-            apiToken,
-            body: {
-              body,
-              ...(author_id && { author_id }),
-            },
-          });
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Internal comment added to conversation ${conversation_id}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to add comment: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Internal comment added to conversation ${conversation_id}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -973,56 +1041,47 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ customer_email, limit = 10 }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ customer_email, limit = 10 }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: "conversations",
+              apiToken,
+              params: {
+                q: `from:${customer_email}`,
+                limit: Math.min(limit, 100),
+              },
+            });
 
-          // Search for conversations from this customer.
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: "conversations",
-            apiToken,
-            params: {
-              q: `from:${customer_email}`,
-              limit: Math.min(limit, 100),
-            },
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const conversations = data._results || [];
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const conversations = data._results || [];
+            if (conversations.length === 0) {
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `No past conversations found for customer: ${customer_email}`,
+                },
+              ]);
+            }
 
-          if (conversations.length === 0) {
+            const formatted = conversations
+              .map((conv: any) => formatConversationForLLM(conv))
+              .join("\n\n");
+
             return new Ok([
               {
                 type: "text" as const,
-                text: `No past conversations found for customer: ${customer_email}`,
+                text:
+                  `Found ${conversations.length} past conversation(s) with ${customer_email}` +
+                  "\n\n" +
+                  formatted,
               },
             ]);
-          }
-
-          const formatted = conversations
-            .map((conv: any) => formatConversationForLLM(conv))
-            .join("\n\n");
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Found ${conversations.length} past conversation(s) with ${customer_email}` +
-                "\n\n" +
-                formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to get customer history: ${normalizeError(error).message}`
-            )
-          );
-        }
+          },
+        });
       }
     )
   );
@@ -1034,48 +1093,40 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async () => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async (_, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            const data = await makeFrontAPIRequest({
+              method: "GET",
+              endpoint: "inboxes",
+              apiToken,
+            });
 
-          const data = await makeFrontAPIRequest({
-            method: "GET",
-            endpoint: "inboxes",
-            apiToken,
-          });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const inboxes = data._results || [];
+            const formatted = inboxes
+              .map(
+                (inbox: any) =>
+                  `- ${inbox.name} (ID: ${inbox.id})${inbox.is_private ? " [Private]" : ""}`
+              )
+              .join("\n");
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const inboxes = data._results || [];
-          const formatted = inboxes
-            .map(
-              (inbox: any) =>
-                `- ${inbox.name} (ID: ${inbox.id})${inbox.is_private ? " [Private]" : ""}`
-            )
-            .join("\n");
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Found ${inboxes.length} inbox(es)` + "\n\n" + formatted,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to list inboxes: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Found ${inboxes.length} inbox(es)` + "\n\n" + formatted,
+              },
+            ]);
+          },
+        });
       }
     )
   );
 
   server.tool(
     "create_conversation",
-    "Start a new outbound conversation with a customer.",
+    "Start a new outbound conversation with a customer. Supports file attachments.",
     {
       inbox_id: z
         .string()
@@ -1087,45 +1138,219 @@ const createServer = (
         .string()
         .optional()
         .describe("Optional: Teammate ID for the message author"),
+      attachments: z
+        .array(
+          z.union([
+            z.object({
+              type: z
+                .literal("conversation_file")
+                .describe("Use this for files already in the Dust conversation"),
+              fileId: z
+                .string()
+                .describe(
+                  "The fileId from conversation attachments (use conversation_list_files to get available files)"
+                ),
+            }),
+            z.object({
+              type: z
+                .literal("external_file")
+                .describe("Use this for new files provided as base64 data"),
+              filename: z
+                .string()
+                .describe(
+                  "The filename for the attachment (e.g., 'document.pdf', 'image.png')"
+                ),
+              contentType: z
+                .string()
+                .describe(
+                  "MIME type of the file (e.g., 'image/png', 'application/pdf', 'text/plain')"
+                ),
+              base64Data: z.string().describe("Base64 encoded file data"),
+            }),
+          ])
+        )
+        .optional()
+        .describe("Optional: Array of file attachments to include with the message"),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ inbox_id, to, subject, body, author_id }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ inbox_id, to, subject, body, author_id, attachments }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            // If there are attachments, we need to use multipart upload
+            // For new conversations with attachments, we need to first create the conversation
+            // then add the message with attachments using a different approach
 
-          const data = await makeFrontAPIRequest({
-            method: "POST",
-            endpoint: `inboxes/${inbox_id}/messages`,
-            apiToken,
-            body: {
+            const requestBody: any = {
               to,
               subject,
               body,
               ...(author_id && { author_id }),
-            },
-          });
+            };
 
-          return new Ok([
-            {
-              type: "text" as const,
-              text:
-                `Outbound conversation created successfully` +
-                "\n\n" +
-                JSON.stringify(data, null, 2),
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to create conversation: ${normalizeError(error).message}`
-            )
-          );
-        }
+            // Handle attachments if present
+            if (attachments && attachments.length > 0) {
+              const filesToUpload: Array<{
+                buffer: Buffer;
+                filename: string;
+                contentType: string;
+              }> = [];
+
+              for (const attachment of attachments) {
+                if (attachment.type === "conversation_file") {
+                  if (!auth || !agentLoopContext) {
+                    throw new MCPError(
+                      "Authentication and conversation context required for conversation file attachments"
+                    );
+                  }
+
+                  const fileResult = await getFileFromConversationAttachment(
+                    auth,
+                    attachment.fileId,
+                    agentLoopContext
+                  );
+
+                  if (fileResult.isErr()) {
+                    throw new MCPError(
+                      `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
+                    );
+                  }
+
+                  filesToUpload.push(fileResult.value);
+                } else if (attachment.type === "external_file") {
+                  const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+                  const estimatedSize = (attachment.base64Data.length * 3) / 4;
+
+                  if (estimatedSize > MAX_FILE_SIZE_BYTES) {
+                    throw new MCPError(
+                      `File ${attachment.filename} is too large. Maximum size is 100MB.`
+                    );
+                  }
+
+                  try {
+                    const buffer = Buffer.from(attachment.base64Data, "base64");
+                    filesToUpload.push({
+                      buffer,
+                      filename: attachment.filename,
+                      contentType: attachment.contentType,
+                    });
+                  } catch (error) {
+                    throw new MCPError(
+                      `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
+                    );
+                  }
+                }
+              }
+
+              // For new conversations with attachments, use multipart form
+              const url = `${FRONT_API_BASE_URL}/inboxes/${inbox_id}/messages`;
+              const boundary = `----formdata-dust-${Date.now()}-${Math.random().toString(36)}`;
+              const parts: Buffer[] = [];
+
+              // Add required fields
+              for (const recipient of to) {
+                parts.push(
+                  Buffer.from(
+                    `--${boundary}\r\n` +
+                      `Content-Disposition: form-data; name="to[]"\r\n\r\n` +
+                      `${recipient}\r\n`
+                  )
+                );
+              }
+
+              parts.push(
+                Buffer.from(
+                  `--${boundary}\r\n` +
+                    `Content-Disposition: form-data; name="subject"\r\n\r\n` +
+                    `${subject}\r\n`
+                )
+              );
+
+              parts.push(
+                Buffer.from(
+                  `--${boundary}\r\n` +
+                    `Content-Disposition: form-data; name="body"\r\n\r\n` +
+                    `${body}\r\n`
+                )
+              );
+
+              if (author_id) {
+                parts.push(
+                  Buffer.from(
+                    `--${boundary}\r\n` +
+                      `Content-Disposition: form-data; name="author_id"\r\n\r\n` +
+                      `${author_id}\r\n`
+                  )
+                );
+              }
+
+              // Add file attachments
+              for (const file of filesToUpload) {
+                parts.push(
+                  Buffer.from(
+                    `--${boundary}\r\n` +
+                      `Content-Disposition: form-data; name="attachments[]"; filename="${file.filename}"\r\n` +
+                      `Content-Type: ${file.contentType}\r\n\r\n`
+                  )
+                );
+                parts.push(file.buffer);
+                parts.push(Buffer.from("\r\n"));
+              }
+
+              parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+              const bodyBuffer = Buffer.concat(parts);
+
+              // eslint-disable-next-line no-restricted-globals
+              const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${apiToken}`,
+                  "Content-Type": `multipart/form-data; boundary=${boundary}`,
+                },
+                body: bodyBuffer,
+              });
+
+              if (!response.ok) {
+                const errorBody = await response.text();
+                throw new MCPError(
+                  `Failed to create conversation with attachments: ${response.status} - ${errorBody}`
+                );
+              }
+
+              const data = response.status !== 204 ? await response.json() : null;
+
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text:
+                    `Outbound conversation with ${filesToUpload.length} attachment(s) created successfully` +
+                    (data ? "\n\n" + JSON.stringify(data, null, 2) : ""),
+                },
+              ]);
+            }
+
+            // No attachments - use regular JSON request
+            const data = await makeFrontAPIRequest({
+              method: "POST",
+              endpoint: `inboxes/${inbox_id}/messages`,
+              apiToken,
+              body: requestBody,
+            });
+
+            return new Ok([
+              {
+                type: "text" as const,
+                text:
+                  `Outbound conversation created successfully` +
+                  "\n\n" +
+                  JSON.stringify(data, null, 2),
+              },
+            ]);
+          },
+        });
       }
     )
   );
@@ -1142,33 +1367,25 @@ const createServer = (
     withToolLogging(
       auth,
       { toolNameForMonitoring: "front", agentLoopContext },
-      async ({ conversation_id, linked_conversation_ids }) => {
-        try {
-          const apiToken = await getFrontAPIToken(auth, agentLoopContext);
+      async ({ conversation_id, linked_conversation_ids }, { authInfo }) => {
+        return withAuth({
+          authInfo,
+          action: async (apiToken) => {
+            await makeFrontAPIRequest({
+              method: "POST",
+              endpoint: `conversations/${conversation_id}/links`,
+              apiToken,
+              body: { conversation_ids: linked_conversation_ids },
+            });
 
-          await makeFrontAPIRequest({
-            method: "POST",
-            endpoint: `conversations/${conversation_id}/links`,
-            apiToken,
-            body: { conversation_ids: linked_conversation_ids },
-          });
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Linked ${linked_conversation_ids.length} conversation(s) to ${conversation_id}`,
-            },
-          ]);
-        } catch (error) {
-          if (error instanceof MCPError) {
-            return new Err(error);
-          }
-          return new Err(
-            new MCPError(
-              `Failed to add links: ${normalizeError(error).message}`
-            )
-          );
-        }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Linked ${linked_conversation_ids.length} conversation(s) to ${conversation_id}`,
+              },
+            ]);
+          },
+        });
       }
     )
   );

@@ -1648,11 +1648,9 @@ export const INTERNAL_MCP_SERVERS = {
   front: {
     id: 1018,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("front_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       search_conversations: "never_ask",
       get_conversation: "never_ask",
@@ -1680,17 +1678,18 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description:
         "Manage support conversations, messages, and customer interactions.",
-      authorization: null,
+      authorization: {
+        provider: "front" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
       icon: "FrontLogo",
       documentationUrl: "https://dev.frontapp.com/reference/introduction",
       instructions:
         "When handling support tickets:\n" +
         "- Always check customer history before replying using get_customer_history\n" +
         "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
-        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
         "- Use LLM-friendly timeline format for conversation data\n" +
         "- Include full context (metadata, custom fields) in responses",
-      developerSecretSelection: "required",
     },
   },
   skill_management: {
