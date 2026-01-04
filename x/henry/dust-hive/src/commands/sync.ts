@@ -5,7 +5,7 @@ import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 
-// Check if repo has uncommitted changes
+// Check if repo has uncommitted changes (ignores untracked files)
 async function hasUncommittedChanges(repoRoot: string): Promise<boolean> {
   const proc = Bun.spawn(["git", "status", "--porcelain"], {
     cwd: repoRoot,
@@ -14,7 +14,13 @@ async function hasUncommittedChanges(repoRoot: string): Promise<boolean> {
   });
   const output = await new Response(proc.stdout).text();
   await proc.exited;
-  return output.trim().length > 0;
+
+  // Filter out untracked files (lines starting with ??)
+  const lines = output
+    .trim()
+    .split("\n")
+    .filter((line) => line && !line.startsWith("??"));
+  return lines.length > 0;
 }
 
 // Get current branch name
