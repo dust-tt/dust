@@ -10,6 +10,24 @@ import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
+async function cleanupZellijSession(envName: string): Promise<void> {
+  const sessionName = `dust-hive-${envName}`;
+
+  // Kill session first (stops it)
+  const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await killProc.exited;
+
+  // Then delete it (removes from list)
+  const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await deleteProc.exited;
+}
+
 interface DestroyOptions {
   force: boolean;
 }
@@ -71,6 +89,10 @@ export async function destroyCommand(
   // Stop all services
   logger.step("Stopping all services...");
   await stopAllServices(name);
+
+  // Clean up zellij session
+  logger.step("Cleaning up zellij session...");
+  await cleanupZellijSession(name);
 
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
