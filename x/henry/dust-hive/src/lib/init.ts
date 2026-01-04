@@ -5,14 +5,9 @@ import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { getEnvFilePath, getWorktreeDir } from "./paths";
 import { buildShell } from "./shell";
+import { getTemporalNamespaces } from "./temporal";
 
-// Temporal namespace suffixes (shared with envgen.ts)
-const TEMPORAL_NAMESPACE_SUFFIXES = ["", "-agent", "-connectors", "-relocation"] as const;
-
-// Generate temporal namespace names for an environment
-export function getTemporalNamespaces(envName: string): string[] {
-  return TEMPORAL_NAMESPACE_SUFFIXES.map((suffix) => `dust-hive-${envName}${suffix}`);
-}
+export { getTemporalNamespaces } from "./temporal";
 
 // Load environment variables from env.sh
 async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
@@ -23,8 +18,15 @@ async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
     stderr: "pipe",
   });
 
-  const output = await new Response(proc.stdout).text();
+  const stdoutPromise = new Response(proc.stdout).text();
+  const stderrPromise = new Response(proc.stderr).text();
   await proc.exited;
+  const output = await stdoutPromise;
+  const stderr = await stderrPromise;
+
+  if (proc.exitCode !== 0) {
+    throw new Error(`Failed to load env vars: ${stderr.trim() || "unknown error"}`);
+  }
 
   const env: Record<string, string> = {};
   for (const line of output.split("\n")) {
@@ -104,12 +106,29 @@ async function initPostgres(envVars: Record<string, string>): Promise<void> {
   ];
 
   for (const db of databases) {
-    const proc = Bun.spawn(["psql", uri, "-c", `CREATE DATABASE ${db};`], {
+    const existsProc = Bun.spawn(
+      ["psql", uri, "-tAc", `SELECT 1 FROM pg_database WHERE datname='${db}';`],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    const existsOut = await new Response(existsProc.stdout).text();
+    const existsErr = await new Response(existsProc.stderr).text();
+    await existsProc.exited;
+    if (existsProc.exitCode !== 0) {
+      throw new Error(`Failed to check database ${db}: ${existsErr.trim() || "unknown error"}`);
+    }
+    if (existsOut.trim() === "1") {
+      continue;
+    }
+
+    const proc = Bun.spawn(["psql", uri, "-c", `CREATE DATABASE "${db}";`], {
       stdout: "pipe",
       stderr: "pipe",
     });
+    const stderr = await new Response(proc.stderr).text();
     await proc.exited;
-    // Ignore errors - database may already exist
+    if (proc.exitCode !== 0) {
+      throw new Error(`Failed to create database ${db}: ${stderr.trim() || "unknown error"}`);
+    }
   }
 }
 
@@ -386,8 +405,15 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
       stdout: "pipe",
       stderr: "pipe",
     });
+    const stderr = await new Response(proc.stderr).text();
     await proc.exited;
-    // Ignore errors - namespace may already exist
+    if (proc.exitCode !== 0) {
+      const message = stderr.trim();
+      if (message.toLowerCase().includes("already exists")) {
+        continue;
+      }
+      throw new Error(`Failed to create Temporal namespace ${ns}: ${message || "unknown error"}`);
+    }
   }
 
   logger.success("Temporal namespaces created");

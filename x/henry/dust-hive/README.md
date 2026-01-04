@@ -82,11 +82,12 @@ open $(dust-hive url myenv)
 | Command | Description |
 |---------|-------------|
 | `spawn [--name NAME] [--base BRANCH] [--no-open]` | Create new environment |
-| `warm NAME [--no-forward]` | Start docker + all services |
+| `warm NAME [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool NAME` | Stop services, keep SDK watch |
 | `start NAME` | Resume stopped environment |
 | `stop NAME` | Full stop of all services |
 | `destroy NAME [--force]` | Remove environment completely |
+| `restart NAME SERVICE` | Restart a single service |
 | `open NAME` | Open zellij terminal session |
 | `reload NAME` | Kill and reopen zellij session |
 | `list` | Show all environments |
@@ -137,6 +138,7 @@ OAuth providers (WorkOS, Google, GitHub, etc.) are configured to redirect to `ht
 | 3006 | oauth | base + 6 |
 
 **Automatic**: When you run `dust-hive warm`, these ports are automatically forwarded to that environment.
+The forwarder listens on `127.0.0.1` by default; set `DUST_HIVE_FORWARD_LISTEN_HOST=0.0.0.0` to expose it to your LAN.
 
 ```bash
 # Manual control
@@ -146,6 +148,9 @@ dust-hive forward stop      # Stop forwarding
 
 # Skip auto-forward on warm
 dust-hive warm myenv --no-forward
+
+# Force-kill any processes blocking service ports during warm
+dust-hive warm myenv --force-ports
 ```
 
 When working with multiple environments, use `forward` to switch which one receives OAuth callbacks:
@@ -154,6 +159,9 @@ When working with multiple environments, use `forward` to switch which one recei
 # env-a is warm and receiving OAuth at :3000
 dust-hive forward env-b     # Switch OAuth to env-b
 ```
+
+If the ports are already owned by another dust-hive forwarder, `dust-hive forward NAME` will switch it automatically.
+If those ports are owned by a different process, the command will fail with details so you can stop it.
 
 ## Zellij Session
 

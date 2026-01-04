@@ -58,6 +58,7 @@ src/
 │   ├── logs.ts        # View service logs
 │   ├── open.ts        # Attach to zellij session
 │   ├── reload.ts      # Kill and reopen zellij session
+│   ├── restart.ts     # Restart a single service
 │   ├── spawn.ts       # Create environment
 │   ├── start.ts       # Resume stopped env
 │   ├── status.ts      # Show service health
@@ -71,6 +72,8 @@ src/
     ├── docker.ts      # Docker compose + start/stop operations
     ├── environment.ts # Environment CRUD
     ├── envgen.ts      # env.sh generation
+    ├── forwarderConfig.ts # Forwarder port mappings
+    ├── fs.ts          # Filesystem helpers
     ├── forward.ts     # TCP forwarder management
     ├── init.ts        # Database initialization with binary caching
     ├── logger.ts      # Console output utilities
@@ -83,11 +86,12 @@ src/
     ├── setup.ts       # Dependency installation
     ├── shell.ts       # Shell command builder
     ├── state.ts       # State detection (stopped/cold/warm)
+    ├── temporal.ts    # Temporal namespace config
     ├── typeGuards.ts  # Runtime JSON validation helpers
     └── worktree.ts    # Git worktree operations
 
 tests/
-└── lib/               # Unit tests for lib modules (183 tests)
+└── lib/               # Unit tests for lib modules (177 tests)
     ├── docker.test.ts
     ├── environment.test.ts
     ├── envgen.test.ts
@@ -122,13 +126,14 @@ tests/
 | Command | Description |
 |---------|-------------|
 | `spawn` | Create environment (worktree + symlinks + SDK watch) |
-| `warm` | Start docker + all services (auto-forwards port 3000) |
+| `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
 | `cool` | Stop services, keep SDK watch |
 | `start` | Resume stopped env |
 | `stop` | Full stop |
 | `destroy` | Remove environment |
 | `open` | Attach to zellij session |
 | `reload` | Kill and reopen zellij session |
+| `restart` | Restart a single service |
 | `list` | Show all environments |
 | `status` | Show service health |
 | `logs` | View service logs |

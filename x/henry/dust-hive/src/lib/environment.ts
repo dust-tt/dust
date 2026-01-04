@@ -1,4 +1,5 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
+import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { loadPortAllocation } from "./ports";
@@ -129,24 +130,24 @@ export async function getEnvironment(name: string): Promise<Environment | null> 
 
 // List all environments
 export async function listEnvironments(): Promise<string[]> {
-  try {
-    const entries = await readdir(DUST_HIVE_ENVS, { withFileTypes: true });
-    const names: string[] = [];
-
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const exists = await environmentExists(entry.name);
-        if (exists) {
-          names.push(entry.name);
-        }
-      }
-    }
-
-    return names.sort();
-  } catch {
-    // envs directory may not exist yet on first run
+  const envsExists = await directoryExists(DUST_HIVE_ENVS);
+  if (!envsExists) {
     return [];
   }
+
+  const entries = await readdir(DUST_HIVE_ENVS, { withFileTypes: true });
+  const names: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const exists = await environmentExists(entry.name);
+      if (exists) {
+        names.push(entry.name);
+      }
+    }
+  }
+
+  return names.sort();
 }
 
 // Delete environment directory

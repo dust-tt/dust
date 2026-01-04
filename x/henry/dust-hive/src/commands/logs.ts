@@ -21,8 +21,15 @@ export async function logsCommand(args: string[]): Promise<Result<void>> {
   if (!envResult.ok) return envResult;
   const env = envResult.value;
 
-  // If no service specified or invalid, show front by default
-  const targetService: ServiceName = isServiceName(serviceArg) ? serviceArg : "front";
+  // If no service specified, show front by default
+  let targetService: ServiceName = "front";
+  if (serviceArg) {
+    if (!isServiceName(serviceArg)) {
+      console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
+      return Err(new CommandError(`Unknown service '${serviceArg}'`));
+    }
+    targetService = serviceArg;
+  }
   const logPath = getLogPath(env.name, targetService);
 
   const logFile = Bun.file(logPath);

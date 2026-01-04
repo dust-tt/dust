@@ -5,8 +5,9 @@ import {
   startForwarder,
   stopForwarder,
 } from "../lib/forward";
+import { FORWARDER_MAPPINGS, FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
-import { FORWARDER_LOG_PATH, FORWARDER_PORTS } from "../lib/paths";
+import { FORWARDER_LOG_PATH } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
@@ -18,7 +19,11 @@ function printUsage(): void {
   console.log("This enables OAuth redirects to work with dust-hive environments.");
   console.log();
   console.log(`Ports forwarded: ${FORWARDER_PORTS.join(", ")}`);
-  console.log("  3000 → front, 3001 → core, 3002 → connectors, 3006 → oauth");
+  console.log(
+    `  ${FORWARDER_MAPPINGS.map((mapping) => `${mapping.listenPort} → ${mapping.name}`).join(
+      ", "
+    )}`
+  );
   console.log();
   console.log("Commands:");
   console.log("  dust-hive forward          Forward to the last warmed environment");

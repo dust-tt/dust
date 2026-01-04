@@ -10,7 +10,11 @@ export async function getCurrentBranch(repoRoot: string): Promise<string> {
     stderr: "pipe",
   });
   const output = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
+  if (proc.exitCode !== 0) {
+    throw new Error(`Failed to get current branch: ${stderr.trim() || "unknown error"}`);
+  }
   return output.trim();
 }
 
@@ -46,8 +50,15 @@ export async function removeWorktree(repoRoot: string, worktreePath: string): Pr
     stdout: "pipe",
     stderr: "pipe",
   });
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
-  // Ignore errors - worktree may not exist
+  if (proc.exitCode !== 0) {
+    const message = stderr.trim();
+    if (message.includes("not a working tree") || message.includes("not a worktree")) {
+      return;
+    }
+    throw new Error(`Failed to remove worktree: ${message || "unknown error"}`);
+  }
 }
 
 // Check if a git worktree has uncommitted changes
@@ -58,7 +69,11 @@ export async function hasUncommittedChanges(worktreePath: string): Promise<boole
     stderr: "pipe",
   });
   const output = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
+  if (proc.exitCode !== 0) {
+    throw new Error(`Failed to check git status: ${stderr.trim() || "unknown error"}`);
+  }
   return output.trim().length > 0;
 }
 
@@ -69,8 +84,15 @@ export async function deleteBranch(repoRoot: string, branchName: string): Promis
     stdout: "pipe",
     stderr: "pipe",
   });
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
-  // Ignore errors - branch may not exist
+  if (proc.exitCode !== 0) {
+    const message = stderr.trim();
+    if (message.includes("not found")) {
+      return;
+    }
+    throw new Error(`Failed to delete branch: ${message || "unknown error"}`);
+  }
 }
 
 // Clean up a partially created environment (for rollback on failure)

@@ -31,6 +31,18 @@ export interface DockerComposeOverride {
   volumes: Record<string, null>;
 }
 
+const VOLUME_KEYS = ["pgsql", "qdrant-primary", "qdrant-secondary", "elasticsearch"] as const;
+type VolumeKey = (typeof VOLUME_KEYS)[number];
+
+function getVolumeName(envName: string, volume: VolumeKey): string {
+  return `dust-hive-${envName}-${volume}`;
+}
+
+// Get list of volume names for an environment
+export function getVolumeNames(name: string): string[] {
+  return VOLUME_KEYS.map((volume) => getVolumeName(name, volume));
+}
+
 // Generate docker-compose.override.yml content for an environment
 export function generateDockerComposeOverride(
   name: string,
@@ -40,32 +52,29 @@ export function generateDockerComposeOverride(
     services: {
       db: {
         ports: [`${ports.postgres}:5432`],
-        volumes: [`dust-hive-${name}-pgsql:/var/lib/postgresql/data`],
+        volumes: [`${getVolumeName(name, "pgsql")}:/var/lib/postgresql/data`],
       },
       redis: {
         ports: [`${ports.redis}:6379`],
       },
       qdrant_primary: {
         ports: [`${ports.qdrantHttp}:6334`, `${ports.qdrantGrpc}:6333`],
-        volumes: [`dust-hive-${name}-qdrant-primary:/qdrant/storage`],
+        volumes: [`${getVolumeName(name, "qdrant-primary")}:/qdrant/storage`],
       },
       qdrant_secondary: {
-        volumes: [`dust-hive-${name}-qdrant-secondary:/qdrant/storage`],
+        volumes: [`${getVolumeName(name, "qdrant-secondary")}:/qdrant/storage`],
       },
       elasticsearch: {
         ports: [`${ports.elasticsearch}:9200`],
-        volumes: [`dust-hive-${name}-elasticsearch:/usr/share/elasticsearch/data`],
+        volumes: [`${getVolumeName(name, "elasticsearch")}:/usr/share/elasticsearch/data`],
       },
       "apache-tika": {
         ports: [`${ports.apacheTika}:9998`],
       },
     },
-    volumes: {
-      [`dust-hive-${name}-pgsql`]: null,
-      [`dust-hive-${name}-qdrant-primary`]: null,
-      [`dust-hive-${name}-qdrant-secondary`]: null,
-      [`dust-hive-${name}-elasticsearch`]: null,
-    },
+    volumes: Object.fromEntries(
+      getVolumeNames(name).map((volume) => [volume, null] as const)
+    ),
   };
 }
 
@@ -83,16 +92,6 @@ export async function writeDockerComposeOverride(
 // Get docker project name for an environment
 export function getDockerProjectName(name: string): string {
   return `dust-hive-${name}`;
-}
-
-// Get list of volume names for an environment
-export function getVolumeNames(name: string): string[] {
-  return [
-    `dust-hive-${name}-pgsql`,
-    `dust-hive-${name}-qdrant-primary`,
-    `dust-hive-${name}-qdrant-secondary`,
-    `dust-hive-${name}-elasticsearch`,
-  ];
 }
 
 // Start docker-compose containers (starts in background, services have retry logic)

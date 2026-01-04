@@ -3,21 +3,22 @@
 
 import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileExists } from "./fs";
 import { logger } from "./logger";
-import {
-  FORWARDER_LOG_PATH,
-  FORWARDER_PID_PATH,
-  FORWARDER_PORTS,
-  FORWARDER_STATE_PATH,
-} from "./paths";
-import { isPortInUse } from "./ports";
-import { isProcessRunning } from "./process";
+import { FORWARDER_PORTS } from "./forwarderConfig";
+import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
+import { getPortProcessInfo, isPortInUse } from "./ports";
+import { isProcessRunning, killProcess } from "./process";
 import { createPropertyChecker } from "./typeGuards";
 
 export interface ForwarderState {
   targetEnv: string;
   basePort: number;
   updatedAt: string;
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
 }
 
 // Type guard for ForwarderState
@@ -65,8 +66,11 @@ async function writeForwarderPid(pid: number): Promise<void> {
 async function cleanupForwarderPid(): Promise<void> {
   try {
     await unlink(FORWARDER_PID_PATH);
-  } catch {
-    // Ignore if file doesn't exist
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return;
+    }
+    throw error;
   }
 }
 
@@ -106,11 +110,7 @@ export async function stopForwarder(): Promise<boolean> {
   }
 
   // Kill the process
-  try {
-    process.kill(pid, "SIGTERM");
-  } catch {
-    // Process may have already exited
-  }
+  await killProcess(pid, "SIGTERM");
 
   // Wait for process to exit (up to 2 seconds)
   const start = Date.now();
@@ -123,14 +123,71 @@ export async function stopForwarder(): Promise<boolean> {
   }
 
   // Force kill if still running
-  try {
-    process.kill(pid, "SIGKILL");
-  } catch {
-    // Process may have already exited
-  }
+  await killProcess(pid, "SIGKILL");
 
   await cleanupForwarderPid();
   return true;
+}
+
+function looksLikeForwarderProcess(command: string | null): boolean {
+  if (!command) return false;
+  const normalized = command.toLowerCase();
+  return normalized.includes("forward-daemon");
+}
+
+async function stopForwarderProcessesOnPorts(ports: number[]): Promise<boolean> {
+  const portInfos = ports.map((port) => ({ port, processes: getPortProcessInfo(port) }));
+  const forwarderPids = new Set<number>();
+  const nonForwarder = portInfos.some((info) =>
+    info.processes.some((proc) => !looksLikeForwarderProcess(proc.command))
+  );
+
+  if (nonForwarder) {
+    return false;
+  }
+
+  for (const info of portInfos) {
+    for (const proc of info.processes) {
+      if (looksLikeForwarderProcess(proc.command)) {
+        forwarderPids.add(proc.pid);
+      }
+    }
+  }
+
+  if (forwarderPids.size === 0) {
+    return false;
+  }
+
+  for (const pid of forwarderPids) {
+    await killProcess(pid, "SIGTERM");
+  }
+
+  const start = Date.now();
+  while (Date.now() - start < 2000) {
+    if (ports.every((port) => !isPortInUse(port))) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  for (const pid of forwarderPids) {
+    await killProcess(pid, "SIGKILL");
+  }
+
+  const killed = ports.every((port) => !isPortInUse(port));
+  return killed;
+}
+
+function formatPortProcessInfo(ports: number[]): string {
+  return ports
+    .map((port) => {
+      const processes = getPortProcessInfo(port);
+      const detail = processes
+        .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
+        .join(", ");
+      return `${port}: ${detail || "unknown"}`;
+    })
+    .join("; ");
 }
 
 // Start forwarder to target port
@@ -141,26 +198,46 @@ export async function startForwarder(basePort: number, envName: string): Promise
   // Check if any standard ports are already in use by something else
   const portsInUse = FORWARDER_PORTS.filter((port) => isPortInUse(port));
   if (portsInUse.length > 0) {
-    throw new Error(
-      `Ports ${portsInUse.join(", ")} are already in use. Stop the processes using them before starting the forwarder.`
-    );
+    const stopped = await stopForwarderProcessesOnPorts(portsInUse);
+    if (!stopped) {
+      const details = formatPortProcessInfo(portsInUse);
+      throw new Error(
+        `Ports ${portsInUse.join(", ")} are already in use (${details}). Stop the processes using them before starting the forwarder.`
+      );
+    }
   }
 
   // Find the daemon script - need to locate it relative to project root
   // When bundled, import.meta.path is in dist/, when running from source it's in src/lib/
   // We find the project root by looking for package.json
-  const findProjectRoot = (startPath: string): string => {
+  const findProjectRoot = async (startPath: string): Promise<string> => {
     let dir = startPath;
     while (dir !== "/") {
-      if (Bun.file(join(dir, "package.json")).size) {
+      if (await fileExists(join(dir, "package.json"))) {
         return dir;
       }
       dir = dirname(dir);
     }
     return startPath; // Fallback
   };
-  const projectRoot = findProjectRoot(dirname(import.meta.path));
-  const daemonPath = join(projectRoot, "src", "forward-daemon.ts");
+  const projectRoot = await findProjectRoot(dirname(import.meta.path));
+  const candidates = [
+    join(projectRoot, "dist", "forward-daemon.js"),
+    join(projectRoot, "src", "forward-daemon.ts"),
+  ];
+  let daemonPath: string | null = null;
+  for (const candidate of candidates) {
+    if (await fileExists(candidate)) {
+      daemonPath = candidate;
+      break;
+    }
+  }
+
+  if (!daemonPath) {
+    throw new Error(
+      "Forwarder daemon not found (expected dist/forward-daemon.js or src/forward-daemon.ts)"
+    );
+  }
 
   // Spawn the forwarder daemon
   const logFile = Bun.file(FORWARDER_LOG_PATH);

@@ -1,7 +1,9 @@
 // Cache management for dust-hive
 // Uses local repo as cache source, with fallback to build from scratch
 
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { directoryExists, fileExists } from "./fs";
 import { logger } from "./logger";
 import { DUST_HIVE_HOME } from "./paths";
 import { buildShell } from "./shell";
@@ -27,29 +29,9 @@ export type InitBinary = (typeof INIT_BINARIES)[number];
 export type ServiceBinary = (typeof SERVICE_BINARIES)[number];
 export type Binary = (typeof ALL_BINARIES)[number];
 
-// Check if a file exists
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    const file = Bun.file(path);
-    return await file.exists();
-  } catch {
-    return false;
-  }
-}
-
-// Check if a directory exists
-async function directoryExists(path: string): Promise<boolean> {
-  const proc = Bun.spawn(["test", "-d", path], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-  return proc.exitCode === 0;
-}
-
 // Ensure cache directory exists
 async function ensureCacheDir(): Promise<void> {
-  await Bun.spawn(["mkdir", "-p", CACHE_DIR]).exited;
+  await mkdir(CACHE_DIR, { recursive: true });
 }
 
 // Get the cache source path (main Dust repo)

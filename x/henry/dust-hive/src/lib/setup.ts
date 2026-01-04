@@ -1,17 +1,8 @@
 // Environment setup operations
 
+import { directoryExists } from "./fs";
 import { logger } from "./logger";
 import { buildShell } from "./shell";
-
-// Check if a directory exists
-async function directoryExists(path: string): Promise<boolean> {
-  const proc = Bun.spawn(["test", "-d", path], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-  return proc.exitCode === 0;
-}
 
 // Check if two files have identical content
 async function filesMatch(file1: string, file2: string): Promise<boolean> {

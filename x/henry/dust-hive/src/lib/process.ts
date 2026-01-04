@@ -1,7 +1,11 @@
-import { unlink } from "node:fs/promises";
+import { open, rename, stat, unlink } from "node:fs/promises";
 import { logger } from "./logger";
 import { getLogPath, getPidPath, getWorktreeDir } from "./paths";
 import { ALL_SERVICES, type ServiceName } from "./services";
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
+}
 
 // Check if a process is running by PID
 export function isProcessRunning(pid: number): boolean {
@@ -9,8 +13,11 @@ export function isProcessRunning(pid: number): boolean {
     // Send signal 0 to check if process exists
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ESRCH") {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -51,8 +58,11 @@ export async function cleanupPidFile(envName: string, service: ServiceName): Pro
   const pidPath = getPidPath(envName, service);
   try {
     await unlink(pidPath);
-  } catch {
-    // Ignore if file doesn't exist
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return;
+    }
+    throw error;
   }
 }
 
@@ -61,12 +71,19 @@ export async function killProcess(pid: number, signal: NodeJS.Signals = "SIGTERM
   try {
     // Try to kill the entire process group (negative PID)
     process.kill(-pid, signal);
-  } catch {
+    return;
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ESRCH") {
+      return;
+    }
     // If process group kill fails, try killing just the process
     try {
       process.kill(pid, signal);
-    } catch {
-      // Process may have already exited
+    } catch (innerError) {
+      if (isErrnoException(innerError) && innerError.code === "ESRCH") {
+        return;
+      }
+      throw innerError;
     }
   }
 }
@@ -133,10 +150,9 @@ export async function spawnDaemon(
     env?: Record<string, string>;
   }
 ): Promise<number> {
+  await rotateLogIfNeeded(envName, service);
   const logPath = getLogPath(envName, service);
-
-  // Open log file for appending
-  const logFile = Bun.file(logPath);
+  const logHandle = await open(logPath, "a");
 
   const proc = Bun.spawn(command, {
     cwd: options.cwd,
@@ -145,11 +161,12 @@ export async function spawnDaemon(
       FORCE_COLOR: "1",
       ...options.env,
     },
-    stdout: logFile,
-    stderr: logFile,
+    stdout: logHandle.fd,
+    stderr: logHandle.fd,
     // Don't wait for this child process
     detached: true,
   });
+  await logHandle.close();
 
   // Unref to allow parent to exit while child continues
   proc.unref();
@@ -196,8 +213,25 @@ export async function rotateLogIfNeeded(
 
   const stat = await file.stat();
   if (stat && stat.size > maxSize) {
-    // Truncate by writing empty content
+    const rotatedPath = `${logPath}.${Date.now()}`;
+    await rename(logPath, rotatedPath);
     await Bun.write(logPath, "");
+  }
+}
+
+async function readFileTail(path: string, maxBytes: number): Promise<string> {
+  const handle = await open(path, "r");
+  try {
+    const info = await handle.stat();
+    const length = Math.min(maxBytes, info.size);
+    if (length === 0) {
+      return "";
+    }
+    const buffer = Buffer.alloc(length);
+    await handle.read(buffer, 0, length, info.size - length);
+    return buffer.toString("utf-8");
+  } finally {
+    await handle.close();
   }
 }
 
@@ -210,6 +244,7 @@ export async function waitForSdkBuild(envName: string, timeoutMs = 60000): Promi
   const logFile = getLogPath(envName, "sdk");
   const start = Date.now();
   const checkInterval = 500;
+  let lastLogSize = 0;
 
   while (Date.now() - start < timeoutMs) {
     // Check if build output exists
@@ -222,14 +257,18 @@ export async function waitForSdkBuild(envName: string, timeoutMs = 60000): Promi
     // Check log for errors
     const log = Bun.file(logFile);
     if (await log.exists()) {
-      const logContent = await log.text();
-      if (logContent.includes("npm error") || logContent.includes("Error:")) {
-        const errorLines = logContent
-          .split("\n")
-          .filter((l) => l.includes("error") || l.includes("Error"))
-          .slice(0, 5)
-          .join("\n");
-        throw new Error(`SDK build failed:\n${errorLines}`);
+      const info = await stat(logFile);
+      if (info.size !== lastLogSize) {
+        lastLogSize = info.size;
+        const logContent = await readFileTail(logFile, 4000);
+        if (logContent.includes("npm error") || logContent.includes("Error:")) {
+          const errorLines = logContent
+            .split("\n")
+            .filter((l) => l.includes("error") || l.includes("Error"))
+            .slice(0, 5)
+            .join("\n");
+          throw new Error(`SDK build failed:\n${errorLines}`);
+        }
       }
     }
 

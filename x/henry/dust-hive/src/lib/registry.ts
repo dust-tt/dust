@@ -5,7 +5,7 @@ import { logger } from "./logger";
 import { getEnvFilePath, getWorktreeDir } from "./paths";
 import type { PortAllocation } from "./ports";
 import { isServiceRunning, spawnShellDaemon } from "./process";
-import type { ServiceName } from "./services";
+import { ALL_SERVICES, type ServiceName } from "./services";
 import { buildShell } from "./shell";
 
 // Service configuration
@@ -72,10 +72,19 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
   },
 };
 
+const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];
+const missingKeys = ALL_SERVICES.filter((service) => !registryKeys.includes(service));
+const extraKeys = registryKeys.filter((service) => !ALL_SERVICES.includes(service));
+if (missingKeys.length > 0 || extraKeys.length > 0) {
+  throw new Error(
+    `SERVICE_REGISTRY mismatch. Missing: ${missingKeys.join(", ") || "none"}. Extra: ${
+      extraKeys.join(", ") || "none"
+    }.`
+  );
+}
+
 // Services to start during warm (all services except SDK, which starts at spawn)
-export const WARM_SERVICES: ServiceName[] = (Object.keys(SERVICE_REGISTRY) as ServiceName[]).filter(
-  (s) => s !== "sdk"
-);
+export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter((service) => service !== "sdk");
 
 // Build the full shell command for a service
 // Note: For Rust services, cargo run is used with a symlinked target directory

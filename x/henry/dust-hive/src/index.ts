@@ -8,6 +8,7 @@ import { forwardCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
+import { restartCommand } from "./commands/restart";
 import { reloadCommand } from "./commands/reload";
 import { spawnCommand } from "./commands/spawn";
 import { startCommand } from "./commands/start";
@@ -23,6 +24,7 @@ const COMMANDS = [
   "spawn",
   "open",
   "reload",
+  "restart",
   "warm",
   "cool",
   "start",
@@ -50,7 +52,8 @@ Commands:
   spawn [--name NAME] [--base BRANCH] [--no-open]  Create a new environment
   open NAME                                         Open environment's zellij session
   reload NAME                                       Kill and reopen zellij session
-  warm NAME [--no-forward]                          Start docker and all services
+  restart NAME SERVICE                              Restart a single service
+  warm NAME [--no-forward] [--force-ports]          Start docker and all services
   cool NAME                                         Stop services, keep SDK watch
   start NAME                                        Resume stopped environment
   stop NAME                                         Full stop of all services
@@ -144,6 +147,10 @@ async function main(): Promise<void> {
 
     case "reload":
       await runCommand(reloadCommand(args.slice(1)));
+      break;
+
+    case "restart":
+      await runCommand(restartCommand(args.slice(1)));
       break;
 
     case "url":

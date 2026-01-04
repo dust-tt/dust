@@ -15,9 +15,6 @@ export const CONFIG_ENV_PATH = join(DUST_HIVE_HOME, "config.env");
 export const FORWARDER_PID_PATH = join(DUST_HIVE_HOME, "forward.pid");
 export const FORWARDER_LOG_PATH = join(DUST_HIVE_HOME, "forward.log");
 export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
-export const FORWARDER_PORT = 3000;
-// All standard ports that the forwarder listens on
-export const FORWARDER_PORTS = [3000, 3001, 3002, 3006] as const;
 
 // Per-environment paths
 export function getEnvDir(name: string): string {
@@ -61,6 +58,10 @@ export function getZellijLayoutPath(): string {
   return join(DUST_HIVE_ZELLIJ, "layout.kdl");
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
+}
+
 // Find repo root by looking for .git directory
 export async function findRepoRoot(startPath?: string): Promise<string | null> {
   let current = resolve(startPath ?? process.cwd());
@@ -70,7 +71,10 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
     try {
       await stat(gitPath);
       return current;
-    } catch {
+    } catch (error) {
+      if (!isErrnoException(error) || error.code !== "ENOENT") {
+        throw error;
+      }
       // .git not found at this level, continue traversing up
       current = dirname(current);
     }

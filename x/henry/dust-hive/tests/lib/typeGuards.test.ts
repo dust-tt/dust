@@ -18,10 +18,8 @@ describe("typeGuards", () => {
     });
 
     it("returns null for arrays", () => {
-      // Arrays are objects but not what we want to check properties on
       const checker = createPropertyChecker([1, 2, 3]);
-      // Arrays do return a checker, but hasString/hasNumber on array keys is odd
-      expect(checker).not.toBeNull();
+      expect(checker).toBeNull();
     });
 
     it("returns checker for plain objects", () => {

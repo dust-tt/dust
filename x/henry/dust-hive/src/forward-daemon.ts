@@ -9,6 +9,7 @@
 //   3006 → base + 6 (oauth)
 
 import type { Socket } from "bun";
+import { FORWARDER_MAPPINGS } from "./lib/forwarderConfig";
 
 const basePortArg = process.argv[2];
 if (!basePortArg) {
@@ -18,27 +19,21 @@ if (!basePortArg) {
 
 const basePort = Number.parseInt(basePortArg, 10);
 
-if (Number.isNaN(basePort)) {
+if (Number.isNaN(basePort) || basePort < 1 || basePort > 65535) {
   console.error("Usage: forward-daemon.ts <base-port>");
   process.exit(1);
 }
 
-// Use 0.0.0.0 to accept connections from both IPv4 and mapped IPv6
-const LISTEN_HOST = "0.0.0.0";
+const LISTEN_HOST = process.env["DUST_HIVE_FORWARD_LISTEN_HOST"] ?? "127.0.0.1";
 const TARGET_HOST = "127.0.0.1";
-
-// Port mappings: [listenPort, targetOffset]
-const PORT_MAPPINGS: Array<[number, number, string]> = [
-  [3000, 0, "front"],
-  [3001, 1, "core"],
-  [3002, 2, "connectors"],
-  [3006, 6, "oauth"],
-];
+const MAX_PENDING_BYTES = 256 * 1024;
+const CONNECT_TIMEOUT_MS = 4000;
 
 interface ConnectionData {
   upstream: Socket<ConnectionData> | null;
   clientClosed: boolean;
   pendingData: Uint8Array[]; // Buffer data until upstream connects
+  pendingBytes: number;
 }
 
 function createForwarder(listenPort: number, targetPort: number, name: string) {
@@ -51,7 +46,12 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
     port: listenPort,
     socket: {
       open(client) {
-        client.data = { upstream: null, clientClosed: false, pendingData: [] };
+        client.data = {
+          upstream: null,
+          clientClosed: false,
+          pendingData: [],
+          pendingBytes: 0,
+        };
 
         // Connect to upstream
         Bun.connect<ConnectionData>({
@@ -60,12 +60,18 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
           socket: {
             open(upstream) {
               client.data.upstream = upstream;
-              upstream.data = { upstream: client, clientClosed: false, pendingData: [] };
+              upstream.data = {
+                upstream: client,
+                clientClosed: false,
+                pendingData: [],
+                pendingBytes: 0,
+              };
               // Flush any buffered data
               for (const chunk of client.data.pendingData) {
                 upstream.write(chunk);
               }
               client.data.pendingData = [];
+              client.data.pendingBytes = 0;
             },
             data(upstream, data) {
               const clientSocket = upstream.data.upstream;
@@ -88,13 +94,23 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
             },
             connectError(_upstream, error) {
               console.error(`[${name}] Failed to connect to upstream: ${error.message}`);
+              if (!client.data.clientClosed) {
+                client.end();
+              }
             },
           },
-          data: { upstream: null, clientClosed: false, pendingData: [] },
+          data: { upstream: null, clientClosed: false, pendingData: [], pendingBytes: 0 },
         }).catch((error) => {
           console.error(`[${name}] Connection error: ${error.message}`);
           client.end();
         });
+
+        setTimeout(() => {
+          if (!client.data.upstream && !client.data.clientClosed) {
+            console.error(`[${name}] Upstream connection timed out`);
+            client.end();
+          }
+        }, CONNECT_TIMEOUT_MS);
       },
       data(client, data) {
         const upstream = client.data.upstream;
@@ -102,7 +118,14 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
           upstream.write(data);
         } else {
           // Buffer data until upstream connects
-          client.data.pendingData.push(new Uint8Array(data));
+          const chunk = new Uint8Array(data);
+          client.data.pendingBytes += chunk.byteLength;
+          if (client.data.pendingBytes > MAX_PENDING_BYTES) {
+            console.error(`[${name}] Pending buffer exceeded ${MAX_PENDING_BYTES} bytes`);
+            client.end();
+            return;
+          }
+          client.data.pendingData.push(chunk);
         }
       },
       close(client) {
@@ -133,22 +156,26 @@ interface ServerHandle {
   stop(): void;
 }
 const servers: ServerHandle[] = [];
+const failedPorts: number[] = [];
 
-for (const [listenPort, offset, name] of PORT_MAPPINGS) {
-  const targetPort = basePort + offset;
+for (const mapping of FORWARDER_MAPPINGS) {
+  const targetPort = basePort + mapping.targetOffset;
   try {
-    const server = createForwarder(listenPort, targetPort, name);
+    const server = createForwarder(mapping.listenPort, targetPort, mapping.name);
     servers.push(server);
     console.log(`Listening on ${server.hostname}:${server.port}`);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to start forwarder on port ${listenPort}: ${msg}`);
-    // Continue with other ports - some might work
+    console.error(`Failed to start forwarder on port ${mapping.listenPort}: ${msg}`);
+    failedPorts.push(mapping.listenPort);
   }
 }
 
-if (servers.length === 0) {
-  console.error("No forwarders started, exiting");
+if (failedPorts.length > 0) {
+  console.error(`Forwarder failed to bind ports: ${failedPorts.join(", ")}`);
+  for (const server of servers) {
+    server.stop();
+  }
   process.exit(1);
 }
 

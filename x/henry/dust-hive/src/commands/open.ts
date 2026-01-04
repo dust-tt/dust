@@ -21,14 +21,49 @@ const TAB_NAMES: Record<ServiceName, string> = {
   "front-workers": "workers",
 };
 
+const tabKeys = Object.keys(TAB_NAMES) as ServiceName[];
+const missingTabs = ALL_SERVICES.filter((service) => !tabKeys.includes(service));
+const extraTabs = tabKeys.filter((service) => !ALL_SERVICES.includes(service));
+if (missingTabs.length > 0 || extraTabs.length > 0) {
+  throw new Error(
+    `TAB_NAMES mismatch. Missing: ${missingTabs.join(", ") || "none"}. Extra: ${
+      extraTabs.join(", ") || "none"
+    }.`
+  );
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function kdlEscape(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function getUserShell(): string {
+  return process.env["SHELL"] ?? "zsh";
+}
+
+function buildLogTailCommand(logPath: string): string {
+  const quotedPath = shellQuote(logPath);
+  return [
+    "while true; do",
+    `  if [ ! -e ${quotedPath} ]; then touch ${quotedPath}; fi;`,
+    `  tail -n 500 -F ${quotedPath};`,
+    "  sleep 1;",
+    "done",
+  ].join(" ");
+}
+
 // Generate a single service tab
 function generateServiceTab(envName: string, service: ServiceName): string {
   const logPath = getLogPath(envName, service);
   const tabName = TAB_NAMES[service];
+  const tailCommand = buildLogTailCommand(logPath);
   return `    tab name="${tabName}" {
         pane {
-            command "tail"
-            args "-n" "500" "-F" "${logPath}"
+            command "sh"
+            args "-c" "${kdlEscape(tailCommand)}"
             start_suspended false
         }
     }`;
@@ -36,6 +71,8 @@ function generateServiceTab(envName: string, service: ServiceName): string {
 
 // Generate zellij layout for an environment
 function generateLayout(envName: string, worktreePath: string, envShPath: string): string {
+  const shellPath = getUserShell();
+  const shellCommand = `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
   const serviceTabs = ALL_SERVICES.map((service) => generateServiceTab(envName, service)).join(
     "\n\n"
   );
@@ -53,9 +90,9 @@ function generateLayout(envName: string, worktreePath: string, envShPath: string
 
     tab name="shell" focus=true {
         pane {
-            cwd "${worktreePath}"
-            command "zsh"
-            args "-c" "source ${envShPath} && exec zsh"
+            cwd "${kdlEscape(worktreePath)}"
+            command "${kdlEscape(shellPath)}"
+            args "-c" "${kdlEscape(shellCommand)}"
             start_suspended false
         }
     }
@@ -103,7 +140,10 @@ export async function openCommand(args: string[]): Promise<Result<void>> {
   const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
   const sessionExists = sessions
     .split("\n")
-    .some((line) => stripAnsi(line).startsWith(sessionName));
+    .map((line) => stripAnsi(line).trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.split(/\s+/)[0])
+    .some((name) => name === sessionName);
 
   if (sessionExists) {
     // Attach to existing session

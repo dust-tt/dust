@@ -1,8 +1,13 @@
+import { unlink } from "node:fs/promises";
 import { requireEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import { getZellijLayoutPath } from "../lib/paths";
 import type { Result } from "../lib/result";
 import { openCommand } from "./open";
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
+}
 
 export async function reloadCommand(args: string[]): Promise<Result<void>> {
   const envResult = await requireEnvironment(args[0], "reload");
@@ -29,15 +34,12 @@ export async function reloadCommand(args: string[]): Promise<Result<void>> {
   // Remove old layout
   const layoutPath = getZellijLayoutPath();
   try {
-    if (await Bun.file(layoutPath).exists()) {
-      const { unlink } = await import("node:fs/promises");
-      await unlink(layoutPath);
-    }
+    await unlink(layoutPath);
   } catch (error) {
-    // Race condition: file deleted between exists() and unlink()
-    logger.warn(
-      `Could not remove layout: ${error instanceof Error ? error.message : String(error)}`
-    );
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return openCommand(args);
+    }
+    throw error;
   }
 
   // Open fresh

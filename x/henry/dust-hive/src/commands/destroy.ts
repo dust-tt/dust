@@ -1,10 +1,12 @@
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { deleteEnvironmentDir, getEnvironment } from "../lib/environment";
+import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts } from "../lib/ports";
-import { stopAllServices } from "../lib/process";
+import { readPid, stopAllServices } from "../lib/process";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
@@ -61,7 +63,7 @@ export async function destroyCommand(args: string[]): Promise<Result<void>> {
 
   // Check for uncommitted changes (unless --force)
   if (!options.force) {
-    const worktreeExists = await Bun.file(worktreePath).exists();
+    const worktreeExists = await directoryExists(worktreePath);
     if (worktreeExists) {
       const hasChanges = await hasUncommittedChanges(worktreePath);
       if (hasChanges) {
@@ -75,14 +77,36 @@ export async function destroyCommand(args: string[]): Promise<Result<void>> {
   logger.info(`Destroying environment '${name}'...`);
   console.log();
 
+  const portServices: ServiceName[] = ["front", "core", "connectors", "oauth"];
+  const servicePids = await Promise.all(portServices.map((service) => readPid(name, service)));
+  const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
+
   // Stop all services
   logger.step("Stopping all services...");
   await stopAllServices(name);
 
   // Force cleanup any orphaned processes on service ports
-  const killedPorts = cleanupServicePorts(env.ports);
+  const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
+    allowedPids,
+    force: options.force,
+  });
+  if (blockedPorts.length > 0) {
+    const details = blockedPorts
+      .map(({ port, processes }) => {
+        const procInfo = processes
+          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
+          .join(", ");
+        return `${port}: ${procInfo}`;
+      })
+      .join("; ");
+    return Err(
+      new CommandError(
+        `Ports in use by other processes: ${details}. Stop them or rerun destroy with --force to terminate.`
+      )
+    );
+  }
   if (killedPorts.length > 0) {
-    logger.warn(`Killed orphaned processes on ports: ${killedPorts.join(", ")}`);
+    logger.warn(`Killed processes on ports: ${killedPorts.join(", ")}`);
   }
   logger.success("All services stopped");
 

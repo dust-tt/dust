@@ -5,45 +5,28 @@ import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
-import { FORWARDER_PORTS } from "../lib/paths";
-import { getServicePorts, isPortInUse, killProcessesOnPort } from "../lib/ports";
-import { isServiceRunning } from "../lib/process";
+import { FORWARDER_PORTS } from "../lib/forwarderConfig";
+import { cleanupServicePorts } from "../lib/ports";
+import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceHealth } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
 
 // Check if Temporal server is running (default gRPC port 7233)
 async function isTemporalRunning(): Promise<boolean> {
-  try {
-    const proc = Bun.spawn(
-      ["temporal", "operator", "namespace", "list", "--namespace", "default"],
-      { stdout: "pipe", stderr: "pipe" }
-    );
-    await proc.exited;
-    return proc.exitCode === 0;
-  } catch {
-    return false;
-  }
-}
-
-// Kill orphaned processes on service ports
-async function cleanupOrphanedPorts(ports: number[]): Promise<void> {
-  const blockedPorts: number[] = [];
-  for (const port of ports) {
-    if (isPortInUse(port)) {
-      logger.warn(`Port ${port} is in use, killing orphaned process...`);
-      killProcessesOnPort(port);
-      blockedPorts.push(port);
-    }
-  }
-  if (blockedPorts.length > 0) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  const proc = Bun.spawn(["temporal", "operator", "namespace", "list", "--namespace", "default"], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
 }
 
 export async function warmCommand(args: string[]): Promise<Result<void>> {
   const startTime = Date.now();
   const noForward = args.includes("--no-forward");
+  const forcePorts = args.includes("--force-ports");
   const envName = args.find((arg) => !arg.startsWith("--"));
   const envResult = await requireEnvironment(envName, "warm");
   if (!envResult.ok) return envResult;
@@ -73,7 +56,33 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   console.log();
 
   // Clean up orphaned processes on service ports
-  await cleanupOrphanedPorts(getServicePorts(env.ports));
+  const portServices: ServiceName[] = ["front", "core", "connectors", "oauth"];
+  const servicePids = await Promise.all(portServices.map((service) => readPid(name, service)));
+  const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
+  const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
+    allowedPids,
+    force: forcePorts,
+  });
+
+  if (blockedPorts.length > 0) {
+    const details = blockedPorts
+      .map(({ port, processes }) => {
+        const procInfo = processes
+          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
+          .join(", ");
+        return `${port}: ${procInfo}`;
+      })
+      .join("; ");
+    return Err(
+      new CommandError(
+        `Ports in use by other processes: ${details}. Stop them or rerun with --force-ports to terminate.`
+      )
+    );
+  }
+  if (killedPorts.length > 0) {
+    logger.warn(`Killed processes on ports: ${killedPorts.join(", ")}`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 
   // Start Docker containers (doesn't wait for health)
   await startDocker(env);
@@ -88,16 +97,14 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
 
     // Start core + oauth early (they compile while init runs)
     // Run Temporal + DB inits in parallel
+    const dbInitPromise = runAllDbInits(env, projectName);
+    const temporalRunningPromise = isTemporalRunning();
     const [, , temporalRunning] = await Promise.all([
       // Start Rust services early - they'll compile while other init happens
       startService(env, "core"),
       startService(env, "oauth"),
       // Check Temporal
-      isTemporalRunning(),
-      // Create Temporal namespaces (no container dependency)
-      createTemporalNamespaces(env),
-      // Run all DB inits (each waits for its container)
-      runAllDbInits(env, projectName),
+      temporalRunningPromise,
     ]);
 
     // Report Temporal status
@@ -106,8 +113,21 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
       logger.warn("Run 'temporal server start-dev' in another terminal.");
     }
 
-    await markInitialized(name);
-    logger.success("Initialization complete");
+    const initTasks: Promise<void>[] = [dbInitPromise];
+    if (temporalRunning) {
+      initTasks.push(createTemporalNamespaces(env));
+    }
+
+    await Promise.all(initTasks);
+
+    if (!temporalRunning) {
+      logger.warn(
+        "Skipping initialization marker; Temporal namespaces were not created. Rerun warm once Temporal is running."
+      );
+    } else {
+      await markInitialized(name);
+      logger.success("Initialization complete");
+    }
     console.log();
 
     // Start remaining services
@@ -145,12 +165,7 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   await Promise.all([
     waitForServiceHealth("front", env.ports).then(async () => {
       if (!noForward) {
-        try {
-          await startForwarder(env.ports.base, name);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          logger.warn(`Could not start forwarder: ${msg}`);
-        }
+        await startForwarder(env.ports.base, name);
       }
     }),
     waitForServiceHealth("core", env.ports),
