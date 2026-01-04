@@ -1,7 +1,7 @@
 // Environment setup operations
 // NOTE: node_modules are symlinked from main repo for speed.
 // Running `npm install` in a worktree will modify the main repo's node_modules.
-// NOTE: Rust compilation uses sccache for caching across worktrees (content-addressed).
+// NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
 
 import { directoryExists } from "./fs";
 import { logger } from "./logger";
@@ -25,12 +25,27 @@ async function symlinkNodeModules(srcDir: string, destDir: string): Promise<bool
   return proc.exitCode === 0;
 }
 
+// Symlink cargo target directory to share compilation cache
+async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void> {
+  const srcTarget = `${srcDir}/core/target`;
+  const destTarget = `${destDir}/core/target`;
+
+  // Check if source target exists
+  if (await directoryExists(srcTarget)) {
+    // Create symlink (ignore errors if already exists)
+    await Bun.spawn(["ln", "-sf", srcTarget, destTarget]).exited;
+  }
+}
+
 // Install all dependencies for a worktree by symlinking from main repo
 export async function installAllDependencies(
   worktreePath: string,
   repoRoot: string
 ): Promise<void> {
   logger.step("Linking dependencies from main repo...");
+
+  // Symlink cargo target to share Rust compilation cache
+  await symlinkCargoTarget(repoRoot, worktreePath);
 
   // Symlink node_modules for each project
   const projects = [

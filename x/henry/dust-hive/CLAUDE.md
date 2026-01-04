@@ -144,7 +144,7 @@ tests/
 ## Performance
 
 Typical timings (with aggressive parallelization):
-- **spawn**: ~7 seconds (symlinks node_modules from main repo)
+- **spawn**: ~7 seconds (symlinks node_modules and cargo target from main repo)
 - **warm (first)**: ~80 seconds (parallel DB init: Postgres, Qdrant, Elasticsearch)
 - **warm (subsequent)**: ~18 seconds (all services start in parallel)
 
@@ -160,15 +160,15 @@ First warm runs everything in parallel:
 
 dust-hive uses the main Dust repo as a cache source for:
 1. **Node modules**: Symlinked from main repo (instant, but shared - see warning below)
-2. **Rust compilation**: sccache provides content-addressed caching across all worktrees
+2. **Cargo target**: Symlinked from main repo (shared compilation + linking cache)
 3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
 **WARNING**: node_modules are symlinked, not copied. Running `npm install` in a worktree
 will modify the main repo's node_modules. If you need isolation, manually run:
 `rm -rf node_modules && npm ci`
 
-**sccache**: Each worktree has its own `target/` directory but sccache caches compilation
-results by content hash. Unchanged code compiles instantly, even across worktrees.
+**sccache** (optional): When worktree code differs from main, cargo recompiles. sccache
+caches compilations by content hash, making rebuilds after branch switches faster.
 
 Check cache status:
 ```bash

@@ -8,6 +8,7 @@ interface CheckResult {
   ok: boolean;
   message: string;
   fix?: string;
+  optional?: boolean; // If true, failing this check doesn't fail the overall doctor
 }
 
 async function checkCommand(command: string, args: string[] = []): Promise<boolean> {
@@ -126,9 +127,10 @@ async function checkSccache(): Promise<CheckResult> {
   const version = await getCommandVersion("sccache");
   if (!version) {
     return {
-      name: "sccache",
+      name: "sccache (optional)",
       ok: false,
-      message: "Not found",
+      optional: true,
+      message: "Not found (recommended for faster rebuilds)",
       fix: "Install sccache: brew install sccache",
     };
   }
@@ -142,8 +144,9 @@ async function checkSccache(): Promise<CheckResult> {
 
   if (!exists) {
     return {
-      name: "sccache",
+      name: "sccache (optional)",
       ok: false,
+      optional: true,
       message: `${version} (not configured)`,
       fix: configFix,
     };
@@ -154,15 +157,16 @@ async function checkSccache(): Promise<CheckResult> {
 
   if (configured) {
     return {
-      name: "sccache",
+      name: "sccache (optional)",
       ok: true,
       message: version,
     };
   }
 
   return {
-    name: "sccache",
+    name: "sccache (optional)",
     ok: false,
+    optional: true,
     message: `${version} (not configured)`,
     fix: configFix,
   };
@@ -194,10 +198,16 @@ function printResults(results: CheckResult[]): boolean {
 
   let allOk = true;
   for (const result of results) {
-    const icon = result.ok ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
+    const icon = result.ok
+      ? "\x1b[32m✓\x1b[0m"
+      : result.optional
+        ? "\x1b[33m○\x1b[0m"
+        : "\x1b[31m✗\x1b[0m";
     console.log(`  ${icon} ${result.name.padEnd(20)} ${result.message}`);
     if (!result.ok) {
-      allOk = false;
+      if (!result.optional) {
+        allOk = false;
+      }
       if (result.fix) {
         console.log(`    \x1b[90m→ ${result.fix}\x1b[0m`);
       }
