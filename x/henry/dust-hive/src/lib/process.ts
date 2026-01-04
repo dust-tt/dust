@@ -1,6 +1,5 @@
-import { open, rename, stat, unlink } from "node:fs/promises";
-import { logger } from "./logger";
-import { getLogPath, getPidPath, getWorktreeDir } from "./paths";
+import { open, rename, unlink } from "node:fs/promises";
+import { getLogPath, getPidPath } from "./paths";
 import { ALL_SERVICES, type ServiceName } from "./services";
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
@@ -219,7 +218,7 @@ export async function rotateLogIfNeeded(
   }
 }
 
-async function readFileTail(path: string, maxBytes: number): Promise<string> {
+export async function readFileTail(path: string, maxBytes: number): Promise<string> {
   const handle = await open(path, "r");
   try {
     const info = await handle.stat();
@@ -233,55 +232,4 @@ async function readFileTail(path: string, maxBytes: number): Promise<string> {
   } finally {
     await handle.close();
   }
-}
-
-// Wait for SDK build to complete with error detection
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex build wait with error detection
-export async function waitForSdkBuild(envName: string, timeoutMs = 60000): Promise<void> {
-  logger.step("Waiting for SDK to build...");
-
-  const worktreePath = getWorktreeDir(envName);
-  const targetFile = `${worktreePath}/sdks/js/dist/client.esm.js`;
-  const logFile = getLogPath(envName, "sdk");
-  const start = Date.now();
-  const checkInterval = 500;
-  let lastLogSize = 0;
-
-  while (Date.now() - start < timeoutMs) {
-    // Check if build output exists
-    const distFile = Bun.file(targetFile);
-    if (await distFile.exists()) {
-      logger.success("SDK build complete");
-      return;
-    }
-
-    // Check log for errors
-    const log = Bun.file(logFile);
-    if (await log.exists()) {
-      const info = await stat(logFile);
-      if (info.size !== lastLogSize) {
-        lastLogSize = info.size;
-        const logContent = await readFileTail(logFile, 4000);
-        if (logContent.includes("npm error") || logContent.includes("Error:")) {
-          const errorLines = logContent
-            .split("\n")
-            .filter((l) => l.includes("error") || l.includes("Error"))
-            .slice(0, 5)
-            .join("\n");
-          throw new Error(`SDK build failed:\n${errorLines}`);
-        }
-      }
-    }
-
-    // Check if process is still running
-    if (!(await isServiceRunning(envName, "sdk"))) {
-      const log = Bun.file(logFile);
-      const logContent = (await log.exists()) ? await log.text() : "No log available";
-      throw new Error(`SDK process exited unexpectedly. Log:\n${logContent.slice(-500)}`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, checkInterval));
-  }
-
-  throw new Error("SDK build timed out after 60s");
 }

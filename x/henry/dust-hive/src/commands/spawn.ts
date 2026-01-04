@@ -13,8 +13,7 @@ import { logger } from "../lib/logger";
 import { findRepoRoot, getWorktreeDir } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
-import { waitForSdkBuild } from "../lib/process";
-import { startService } from "../lib/registry";
+import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { installAllDependencies } from "../lib/setup";
 import { cleanupPartialEnvironment, createWorktree, getCurrentBranch } from "../lib/worktree";
@@ -131,6 +130,7 @@ async function startSdk(
 
   try {
     await startService(env, "sdk");
+    await waitForServiceReady(env, "sdk");
   } catch (error) {
     logger.error("Spawn failed during SDK startup, cleaning up...");
     await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
@@ -140,19 +140,6 @@ async function startSdk(
       logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
     );
     return Err(new CommandError(`Failed to start SDK: ${errorMessage(error)}`));
-  }
-
-  try {
-    await waitForSdkBuild(env.name);
-  } catch (error) {
-    logger.error("Spawn failed waiting for SDK build, cleaning up...");
-    await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
-      logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
-    );
-    await deleteEnvironmentDir(env.name).catch((e) =>
-      logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
-    );
-    return Err(new CommandError(`SDK build failed: ${errorMessage(error)}`));
   }
 
   return Ok(undefined);

@@ -29,7 +29,8 @@ describe("registry", () => {
       expect(config.needsNvm).toBe(true);
       expect(config.needsEnvSh).toBe(true);
       expect(config.portKey).toBe("front");
-      expect(config.healthCheckUrl).toBeDefined();
+      expect(config.readinessCheck).toBeDefined();
+      expect(config.readinessCheck?.type).toBe("http");
     });
 
     it("core config does not need nvm", () => {

@@ -8,7 +8,7 @@ import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
 import { cleanupServicePorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
-import { startService, waitForServiceHealth } from "../lib/registry";
+import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
@@ -164,13 +164,13 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   // Start forwarder as soon as front is healthy (don't wait for core/oauth)
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
-    waitForServiceHealth("front", env.ports).then(async () => {
+    waitForServiceReady(env, "front").then(async () => {
       if (!noForward) {
         await startForwarder(env.ports.base, env.name);
       }
     }),
-    waitForServiceHealth("core", env.ports),
-    waitForServiceHealth("oauth", env.ports),
+    waitForServiceReady(env, "core"),
+    waitForServiceReady(env, "oauth"),
   ]);
   logger.success("All services healthy");
 

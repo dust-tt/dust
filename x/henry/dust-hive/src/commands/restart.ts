@@ -1,7 +1,7 @@
 import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
-import { stopService, waitForSdkBuild } from "../lib/process";
-import { startService, waitForServiceHealth } from "../lib/registry";
+import { stopService } from "../lib/process";
+import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
 
@@ -23,12 +23,7 @@ export const restartCommand = withEnvironment("restart", async (env, serviceArg:
   }
 
   await startService(env, serviceArg);
-
-  if (serviceArg === "sdk") {
-    await waitForSdkBuild(env.name);
-  } else {
-    await waitForServiceHealth(serviceArg, env.ports);
-  }
+  await waitForServiceReady(env, serviceArg);
 
   logger.success(`${serviceArg} restarted`);
 

@@ -1,7 +1,7 @@
 import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
-import { isServiceRunning, waitForSdkBuild } from "../lib/process";
-import { startService } from "../lib/registry";
+import { isServiceRunning } from "../lib/process";
+import { startService, waitForServiceReady } from "../lib/registry";
 import { Ok } from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
@@ -23,7 +23,7 @@ export const startCommand = withEnvironment("start", async (env) => {
   // Start SDK watch using registry
   if (!(await isServiceRunning(env.name, "sdk"))) {
     await startService(env, "sdk");
-    await waitForSdkBuild(env.name);
+    await waitForServiceReady(env, "sdk");
   } else {
     logger.info("SDK watch already running");
   }

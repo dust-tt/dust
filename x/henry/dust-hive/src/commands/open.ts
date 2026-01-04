@@ -104,7 +104,7 @@ function generateLayout(
     tab name="shell" focus=true {
         pane {
             cwd "${kdlEscape(worktreePath)}"
-            command "${kdlEscape(shellPath)}"
+            command "sh"
             args "-c" "${kdlEscape(shellCommand)}"
             start_suspended false
         }
