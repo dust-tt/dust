@@ -74,9 +74,9 @@ async function rebaseOnBranch(repoRoot: string, branch: string): Promise<RebaseR
   return { success: false, conflict: isConflict, error: stderr };
 }
 
-// Run npm ci in a directory
-async function runNpmCi(dir: string): Promise<boolean> {
-  const proc = Bun.spawn(["npm", "ci", "--prefer-offline"], {
+// Run npm install in a directory
+async function runNpmInstall(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["npm", "install", "--prefer-offline"], {
     cwd: dir,
     stdout: "pipe",
     stderr: "pipe",
@@ -154,8 +154,8 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   // Update cache source
   await setCacheSource(repoRoot);
 
-  // Run npm ci in all project directories (parallel)
-  logger.step("Installing node dependencies (npm ci)...");
+  // Run npm install in all project directories (parallel)
+  logger.step("Updating node dependencies...");
   console.log();
 
   const dirs = [
@@ -167,7 +167,7 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   const results = await Promise.all(
     dirs.map(async ({ name, path }) => {
       logger.step(`  ${name}...`);
-      const success = await runNpmCi(path);
+      const success = await runNpmInstall(path);
       if (success) {
         logger.success(`  ${name} done`);
       } else {
@@ -179,7 +179,7 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
 
   const failed = results.filter((r) => !r.success);
   if (failed.length > 0) {
-    return Err(new CommandError(`npm ci failed in: ${failed.map((r) => r.name).join(", ")}`));
+    return Err(new CommandError(`npm install failed in: ${failed.map((r) => r.name).join(", ")}`));
   }
   console.log();
   logger.success("All node dependencies installed");
