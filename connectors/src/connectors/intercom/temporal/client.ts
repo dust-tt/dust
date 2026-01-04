@@ -251,7 +251,7 @@ export async function deleteIntercomSchedules(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   await stopIntercomSchedulesAndWorkflows(connector, {
-    stopReason: "Connector deleted.",
+    stopReason: "Connector deleted",
   });
 
   const helpCenterResult = await deleteSchedule({
