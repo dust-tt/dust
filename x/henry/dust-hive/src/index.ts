@@ -41,10 +41,14 @@ cli
   .option("--name <name>", "Environment name")
   .option("--base <branch>", "Base branch")
   .option("--no-open", "Do not open zellij session after spawn")
+  .option("--warm", "Open zellij with a warm tab running dust-hive warm")
   .action(
-    async (name: string | undefined, options: { name?: string; base?: string; open?: boolean }) => {
+    async (
+      name: string | undefined,
+      options: { name?: string; base?: string; open?: boolean; warm?: boolean }
+    ) => {
       const resolvedName = name ?? options.name;
-      const spawnOptions: { name?: string; base?: string; noOpen?: boolean } = {};
+      const spawnOptions: { name?: string; base?: string; noOpen?: boolean; warm?: boolean } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
       }
@@ -53,6 +57,9 @@ cli
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;
+      }
+      if (options.warm) {
+        spawnOptions.warm = true;
       }
       await prepareAndRun(spawnCommand(spawnOptions));
     }

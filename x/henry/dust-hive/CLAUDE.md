@@ -123,7 +123,7 @@ tests/
 
 | Command | Description |
 |---------|-------------|
-| `spawn` | Create environment (worktree + symlinks + SDK watch) |
+| `spawn` | Create environment (worktree + symlinks + SDK watch); supports --warm to open a warm tab |
 | `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
 | `cool` | Stop services, keep SDK watch |
 | `start` | Resume stopped env |

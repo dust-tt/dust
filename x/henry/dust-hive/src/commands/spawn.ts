@@ -24,6 +24,7 @@ interface SpawnOptions {
   name?: string;
   base?: string;
   noOpen?: boolean;
+  warm?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -235,8 +236,17 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   console.log(`  dust-hive open ${name}    # Open zellij session`);
   console.log();
 
+  if (options.noOpen && options.warm) {
+    return Err(
+      new CommandError("Cannot use --warm with --no-open. Remove --no-open to open zellij.")
+    );
+  }
+
   // Open zellij unless --no-open
   if (!options.noOpen) {
+    if (options.warm) {
+      return openCommand(name, { warmCommand: `dust-hive warm ${name}` });
+    }
     return openCommand(name);
   }
 

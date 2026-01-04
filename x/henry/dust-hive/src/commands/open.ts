@@ -70,9 +70,24 @@ function generateServiceTab(envName: string, service: ServiceName): string {
 }
 
 // Generate zellij layout for an environment
-function generateLayout(envName: string, worktreePath: string, envShPath: string): string {
+function generateLayout(
+  envName: string,
+  worktreePath: string,
+  envShPath: string,
+  warmCommand?: string
+): string {
   const shellPath = getUserShell();
   const shellCommand = `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
+  const warmTab = warmCommand
+    ? `    tab name="warm" {
+        pane {
+            cwd "${kdlEscape(worktreePath)}"
+            command "sh"
+            args "-c" "${kdlEscape(warmCommand)}"
+            start_suspended false
+        }
+    }`
+    : "";
   const serviceTabs = ALL_SERVICES.map((service) => generateServiceTab(envName, service)).join(
     "\n\n"
   );
@@ -94,7 +109,7 @@ function generateLayout(envName: string, worktreePath: string, envShPath: string
         }
     }
 
-${serviceTabs}
+${warmTab ? `${warmTab}\n\n` : ""}${serviceTabs}
 }
 `;
 }
@@ -103,18 +118,26 @@ ${serviceTabs}
 async function writeLayout(
   envName: string,
   worktreePath: string,
-  envShPath: string
+  envShPath: string,
+  warmCommand?: string
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(envName, worktreePath, envShPath);
+  const content = generateLayout(envName, worktreePath, envShPath, warmCommand);
   await Bun.write(layoutPath, content);
 
   return layoutPath;
 }
 
-export async function openCommand(nameArg: string | undefined): Promise<Result<void>> {
+interface OpenOptions {
+  warmCommand?: string;
+}
+
+export async function openCommand(
+  nameArg: string | undefined,
+  options: OpenOptions = {}
+): Promise<Result<void>> {
   const envResult = await requireEnvironment(nameArg, "open");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
@@ -157,7 +180,7 @@ export async function openCommand(nameArg: string | undefined): Promise<Result<v
     // Create new session with layout
     logger.info(`Creating new zellij session '${sessionName}'...`);
 
-    const layoutPath = await writeLayout(name, worktreePath, envShPath);
+    const layoutPath = await writeLayout(name, worktreePath, envShPath, options.warmCommand);
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],

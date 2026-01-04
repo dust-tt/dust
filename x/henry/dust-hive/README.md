@@ -81,7 +81,7 @@ open $(dust-hive url myenv)
 
 | Command | Description |
 |---------|-------------|
-| `spawn [--name NAME] [--base BRANCH] [--no-open]` | Create new environment |
+| `spawn [--name NAME] [--base BRANCH] [--no-open] [--warm]` | Create new environment |
 | `warm NAME [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool NAME` | Stop services, keep SDK watch |
 | `start NAME` | Resume stopped environment |
@@ -174,6 +174,14 @@ When you run `dust-hive open`, you get a terminal with tabs:
 - **oauth** - OAuth service logs
 - **connectors** - Connectors logs
 - **workers** - Temporal worker logs
+
+If you want to start warming while you work in the shell, use:
+
+```bash
+dust-hive spawn myenv --warm
+```
+
+This opens zellij with an extra **warm** tab that runs `dust-hive warm myenv`.
 
 ### Zellij Shortcuts
 
