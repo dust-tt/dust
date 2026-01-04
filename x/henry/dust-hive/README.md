@@ -82,7 +82,7 @@ open $(dust-hive url myenv)
 | Command | Description |
 |---------|-------------|
 | `spawn [--name NAME] [--base BRANCH] [--no-open]` | Create new environment |
-| `warm NAME` | Start docker + all services |
+| `warm NAME [--no-forward]` | Start docker + all services |
 | `cool NAME` | Stop services, keep SDK watch |
 | `start NAME` | Resume stopped environment |
 | `stop NAME` | Full stop of all services |
@@ -95,6 +95,7 @@ open $(dust-hive url myenv)
 | `url NAME` | Print front URL |
 | `doctor` | Check prerequisites |
 | `cache [--rebuild]` | Show or rebuild binary cache |
+| `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
 
 ### Services
 
@@ -123,6 +124,29 @@ Each environment gets a 1000-port range:
 | 1st env | 10000-10999 | 10000 | 10001 | 10002 |
 | 2nd env | 11000-11999 | 11000 | 11001 | 11002 |
 | 3rd env | 12000-12999 | 12000 | 12001 | 12002 |
+
+## OAuth Forwarding
+
+OAuth providers (Google, GitHub, etc.) are configured to redirect to `http://localhost:3000`. Since dust-hive uses different ports per environment, a TCP forwarder routes port 3000 to the active environment.
+
+**Automatic**: When you run `dust-hive warm`, port 3000 is automatically forwarded to that environment.
+
+```bash
+# Manual control
+dust-hive forward status    # Check current forwarding
+dust-hive forward env-b     # Switch to a different environment
+dust-hive forward stop      # Stop forwarding
+
+# Skip auto-forward on warm
+dust-hive warm myenv --no-forward
+```
+
+When working with multiple environments, use `forward` to switch which one receives OAuth callbacks:
+
+```bash
+# env-a is warm and receiving OAuth at :3000
+dust-hive forward env-b     # Switch OAuth to env-b
+```
 
 ## Zellij Session
 
@@ -274,6 +298,9 @@ dust-hive cache --rebuild
 ```
 ~/.dust-hive/
 ├── config.env                 # Your secrets (create this)
+├── forward.pid                # Forwarder process ID
+├── forward.log                # Forwarder logs
+├── forward.json               # Forwarder state (target env)
 ├── cache/
 │   └── source.path            # Path to cache source repo
 ├── envs/

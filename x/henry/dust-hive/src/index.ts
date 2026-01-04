@@ -4,6 +4,7 @@ import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand } from "./commands/doctor";
+import { forwardCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
@@ -33,6 +34,7 @@ const COMMANDS = [
   "url",
   "doctor",
   "cache",
+  "forward",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -48,7 +50,7 @@ Commands:
   spawn [--name NAME] [--base BRANCH] [--no-open]  Create a new environment
   open NAME                                         Open environment's zellij session
   reload NAME                                       Kill and reopen zellij session
-  warm NAME                                         Start docker and all services
+  warm NAME [--no-forward]                          Start docker and all services
   cool NAME                                         Stop services, keep SDK watch
   start NAME                                        Resume stopped environment
   stop NAME                                         Full stop of all services
@@ -59,6 +61,7 @@ Commands:
   url NAME                                          Print front URL
   doctor                                            Check prerequisites
   cache [--rebuild]                                 Show or rebuild binary cache
+  forward [NAME|status|stop]                        Manage OAuth port forwarding
 
 Options:
   --help  Show this help message
@@ -153,6 +156,10 @@ async function main(): Promise<void> {
 
     case "cache":
       await runCommand(cacheCommand(args.slice(1)));
+      break;
+
+    case "forward":
+      await runCommand(forwardCommand(args.slice(1)));
       break;
   }
 }

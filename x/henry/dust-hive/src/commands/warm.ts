@@ -2,8 +2,10 @@ import { setCacheSource } from "../lib/cache";
 import { requireEnvironment } from "../lib/commands";
 import { getDockerProjectName, startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
+import { startForwarder } from "../lib/forward";
 import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
+import { FORWARDER_PORT } from "../lib/paths";
 import { getServicePorts, isPortInUse, killProcessesOnPort } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
 import { startService, waitForServiceHealth } from "../lib/registry";
@@ -39,9 +41,12 @@ async function cleanupOrphanedPorts(ports: number[]): Promise<void> {
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: warm has inherent complexity from parallel init paths
 export async function warmCommand(args: string[]): Promise<Result<void>> {
   const startTime = Date.now();
-  const envResult = await requireEnvironment(args[0], "warm");
+  const noForward = args.includes("--no-forward");
+  const envName = args.find((arg) => !arg.startsWith("--"));
+  const envResult = await requireEnvironment(envName, "warm");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const name = env.name;
@@ -144,11 +149,25 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   ]);
   logger.success("All services healthy");
 
+  // Auto-forward to this environment (unless --no-forward)
+  if (!noForward) {
+    try {
+      await startForwarder(env.ports.front, name);
+    } catch (err) {
+      // Non-fatal: log warning but don't fail warm
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn(`Could not start forwarder: ${msg}`);
+    }
+  }
+
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
   logger.success(`Environment '${name}' is now warm! (${elapsed}s)`);
   console.log();
   console.log(`  Front:       http://localhost:${env.ports.front}`);
+  if (!noForward) {
+    console.log(`  OAuth:       http://localhost:${FORWARDER_PORT} (forwarded)`);
+  }
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
   console.log();

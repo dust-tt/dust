@@ -47,11 +47,13 @@ bun run test         # All tests
 ```
 src/
 ├── index.ts           # CLI entry point
+├── forward-daemon.ts  # TCP forwarder daemon (port 3000 → env front)
 ├── commands/          # Command implementations (all MVP commands complete)
 │   ├── cache.ts       # Cache management (show/rebuild binaries)
 │   ├── cool.ts        # Stop services, keep SDK
 │   ├── destroy.ts     # Remove environment
 │   ├── doctor.ts      # Prerequisite checking
+│   ├── forward.ts     # OAuth port forwarding management
 │   ├── list.ts        # List environments
 │   ├── logs.ts        # View service logs
 │   ├── open.ts        # Attach to zellij session
@@ -69,6 +71,7 @@ src/
     ├── docker.ts      # Docker compose + start/stop operations
     ├── environment.ts # Environment CRUD
     ├── envgen.ts      # env.sh generation
+    ├── forward.ts     # TCP forwarder management
     ├── init.ts        # Database initialization with binary caching
     ├── logger.ts      # Console output utilities
     ├── paths.ts       # Path constants and helpers
@@ -119,7 +122,7 @@ tests/
 | Command | Description |
 |---------|-------------|
 | `spawn` | Create environment (worktree + symlinks + SDK watch) |
-| `warm` | Start docker + all services |
+| `warm` | Start docker + all services (auto-forwards port 3000) |
 | `cool` | Stop services, keep SDK watch |
 | `start` | Resume stopped env |
 | `stop` | Full stop |
@@ -132,6 +135,7 @@ tests/
 | `url` | Print front URL |
 | `doctor` | Check prerequisites |
 | `cache` | Show or rebuild binary cache |
+| `forward` | Manage OAuth port forwarding (port 3000 → env) |
 
 ## Performance
 
