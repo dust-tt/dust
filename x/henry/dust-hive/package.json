@@ -11,8 +11,12 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "test": "bun test",
+    "test": "bun test tests/lib",
     "test:watch": "bun test --watch",
+    "test:integration": "bun test tests/integration",
+    "test:integration:fast": "bun test tests/integration/filesystem.test.ts tests/integration/git.test.ts tests/integration/process.test.ts",
+    "test:e2e": "bun test tests/integration/e2e.test.ts",
+    "test:all": "bun test",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "devDependencies": {
