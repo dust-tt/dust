@@ -95,7 +95,7 @@ open $(dust-hive url myenv)
 | `cool [NAME]` | Stop services, keep SDK watch |
 | `start [NAME]` | Resume stopped environment |
 | `stop [NAME]` | Full stop of all services |
-| `destroy [NAME] [--force]` | Remove environment completely |
+| `destroy NAME [--force]` | Remove environment completely |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |
 | `reload [NAME]` | Kill and reopen zellij session |

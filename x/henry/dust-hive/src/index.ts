@@ -116,9 +116,9 @@ cli.command("stop [name]", "Full stop of all services").action(async (name: stri
 });
 
 cli
-  .command("destroy [name]", "Remove environment")
+  .command("destroy <name>", "Remove environment")
   .option("-f, --force", "Force destroy even with uncommitted changes")
-  .action(async (name: string | undefined, options: { force?: boolean }) => {
+  .action(async (name: string, options: { force?: boolean }) => {
     await prepareAndRun(destroyCommand(name, { force: Boolean(options.force) }));
   });
 
