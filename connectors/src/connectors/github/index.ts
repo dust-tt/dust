@@ -169,7 +169,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         webhooksEnabledAt: null,
       });
 
-      await terminateAllWorkflowsForConnectorId(this.connectorId);
+      await terminateAllWorkflowsForConnectorId({
+        connectorId: this.connectorId,
+        stopReason: "Stopped via connector STOP command",
+      });
 
       return new Ok(undefined);
     } catch (err) {

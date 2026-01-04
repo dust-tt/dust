@@ -168,7 +168,7 @@ export async function launchGoogleGarbageCollector(
     const handle: WorkflowHandle<typeof googleDriveGarbageCollectorWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await handle.terminate("Terminating before restarting workflow");
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;
@@ -221,7 +221,7 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
       typeof googleDriveFixParentsConsistencyWorkflow
     > = client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await handle.terminate("Terminating before restarting workflow");
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;

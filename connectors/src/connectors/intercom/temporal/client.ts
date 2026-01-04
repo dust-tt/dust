@@ -109,11 +109,17 @@ export async function launchIntercomFullSyncWorkflow({
 }
 
 export async function stopIntercomSchedulesAndWorkflows(
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  {
+    stopReason,
+  }: {
+    stopReason: string;
+  }
 ): Promise<Result<void, Error>> {
   const helpCenterResult = await pauseSchedule({
     scheduleId: makeIntercomHelpCenterScheduleId(connector),
     connector,
+    stopReason,
   });
 
   if (helpCenterResult.isErr()) {
@@ -123,6 +129,7 @@ export async function stopIntercomSchedulesAndWorkflows(
   const conversationResult = await pauseSchedule({
     scheduleId: makeIntercomConversationScheduleId(connector),
     connector,
+    stopReason,
   });
 
   if (conversationResult.isErr()) {
@@ -135,7 +142,7 @@ export async function stopIntercomSchedulesAndWorkflows(
   try {
     const handle: WorkflowHandle<typeof intercomFullSyncWorkflow> =
       client.workflow.getHandle(workflowId);
-    await handle.terminate();
+    await handle.terminate(stopReason);
   } catch (error) {
     if (!(error instanceof WorkflowNotFoundError)) {
       logger.error(
@@ -243,7 +250,9 @@ export async function unpauseIntercomSchedules(
 export async function deleteIntercomSchedules(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
-  await stopIntercomSchedulesAndWorkflows(connector);
+  await stopIntercomSchedulesAndWorkflows(connector, {
+    stopReason: "Connector deleted.",
+  });
 
   const helpCenterResult = await deleteSchedule({
     scheduleId: makeIntercomHelpCenterScheduleId(connector),

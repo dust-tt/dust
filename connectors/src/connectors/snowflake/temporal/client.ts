@@ -80,9 +80,13 @@ export async function launchSnowflakeSyncWorkflow(
   }
 }
 
-export async function stopSnowflakeSyncWorkflow(
-  connectorId: ModelId
-): Promise<Result<void, Error>> {
+export async function stopSnowflakeSyncWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -97,7 +101,7 @@ export async function stopSnowflakeSyncWorkflow(
     const handle: WorkflowHandle<typeof snowflakeSyncWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await handle.terminate(stopReason);
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;
