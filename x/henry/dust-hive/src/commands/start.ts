@@ -1,74 +1,34 @@
-import { getEnvironment } from "../lib/environment";
+import { requireEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
-import { getWorktreeDir } from "../lib/paths";
-import { isServiceRunning, spawnShellDaemon } from "../lib/process";
+import { isServiceRunning, waitForSdkBuild } from "../lib/process";
+import { startService } from "../lib/registry";
+import { Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
-// Wait for SDK build
-async function waitForSdkBuild(worktreePath: string, timeoutMs = 120000): Promise<void> {
-  logger.step("Waiting for SDK to build...");
-
-  const targetFile = `${worktreePath}/sdks/js/dist/client.esm.js`;
-  const start = Date.now();
-
-  while (Date.now() - start < timeoutMs) {
-    const file = Bun.file(targetFile);
-    if (await file.exists()) {
-      logger.success("SDK build complete");
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-
-  throw new Error("SDK build timed out");
-}
-
-export async function startCommand(args: string[]): Promise<void> {
-  const name = args[0];
-
-  if (!name) {
-    logger.error("Usage: dust-hive start NAME");
-    process.exit(1);
-  }
-
-  // Get environment
-  const env = await getEnvironment(name);
-  if (!env) {
-    logger.error(`Environment '${name}' not found`);
-    process.exit(1);
-  }
+export async function startCommand(args: string[]): Promise<Result<void>> {
+  const envResult = await requireEnvironment(args[0], "start");
+  if (!envResult.ok) return envResult;
+  const env = envResult.value;
+  const name = env.name;
 
   // Check state
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "stopped") {
     if (stateInfo.state === "cold") {
       logger.info("Environment is already cold (SDK running). Use 'warm' to start services.");
-      return;
+      return Ok(undefined);
     }
     logger.info("Environment is already warm.");
-    return;
+    return Ok(undefined);
   }
 
   logger.info(`Starting environment '${name}'...`);
   console.log();
 
-  // Start SDK watch
-  const worktreePath = getWorktreeDir(name);
-
+  // Start SDK watch using registry
   if (!(await isServiceRunning(name, "sdk"))) {
-    logger.step("Starting SDK watch...");
-
-    const sdkPath = `${worktreePath}/sdks/js`;
-    const command = `
-      source ~/.nvm/nvm.sh && nvm use
-      npm run dev
-    `;
-
-    await spawnShellDaemon(name, "sdk", command, { cwd: sdkPath });
-    logger.success("SDK watch started");
-
-    // Wait for build
-    await waitForSdkBuild(worktreePath);
+    await startService(env, "sdk");
+    await waitForSdkBuild(name);
   } else {
     logger.info("SDK watch already running");
   }
@@ -80,4 +40,6 @@ export async function startCommand(args: string[]): Promise<void> {
   console.log(`  dust-hive warm ${name}    # Start all services`);
   console.log(`  dust-hive open ${name}    # Open zellij session`);
   console.log();
+
+  return Ok(undefined);
 }

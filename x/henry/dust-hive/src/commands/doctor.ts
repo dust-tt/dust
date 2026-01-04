@@ -1,6 +1,7 @@
 import { configEnvExists } from "../lib/config";
 import { logger } from "../lib/logger";
 import { CONFIG_ENV_PATH, findRepoRoot } from "../lib/paths";
+import { CommandError, Err, Ok, type Result } from "../lib/result";
 
 interface CheckResult {
   name: string;
@@ -18,6 +19,7 @@ async function checkCommand(command: string, args: string[] = []): Promise<boole
     await proc.exited;
     return proc.exitCode === 0;
   } catch {
+    // Command not found or failed to execute - treat as check failure
     return false;
   }
 }
@@ -33,6 +35,7 @@ async function getCommandVersion(command: string): Promise<string | null> {
     const firstLine = output.trim().split("\n")[0];
     return proc.exitCode === 0 ? (firstLine ?? null) : null;
   } catch {
+    // Command not found or failed to execute
     return null;
   }
 }
@@ -158,7 +161,7 @@ function printResults(results: CheckResult[]): boolean {
   return allOk;
 }
 
-export async function doctorCommand(): Promise<void> {
+export async function doctorCommand(): Promise<Result<void>> {
   logger.info("Checking prerequisites...\n");
 
   const temporal = await checkTemporal();
@@ -182,8 +185,9 @@ export async function doctorCommand(): Promise<void> {
 
   if (allOk) {
     logger.success("All prerequisites met!");
-  } else {
-    logger.warn("Some prerequisites are missing. Please install them to use dust-hive.");
-    process.exit(1);
+    return Ok(undefined);
   }
+
+  logger.warn("Some prerequisites are missing. Please install them to use dust-hive.");
+  return Err(new CommandError("Prerequisites check failed"));
 }

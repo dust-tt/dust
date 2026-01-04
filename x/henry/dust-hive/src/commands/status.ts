@@ -1,70 +1,40 @@
-import { getEnvironment } from "../lib/environment";
-import { logger } from "../lib/logger";
+import { requireEnvironment } from "../lib/commands";
 import { getLogPath } from "../lib/paths";
-import { type ServiceName, isServiceRunning } from "../lib/process";
+import type { PortAllocation } from "../lib/ports";
+import { isServiceRunning } from "../lib/process";
+import { checkServiceHealth, getHealthChecks } from "../lib/registry";
+import { Ok, type Result } from "../lib/result";
+import { ALL_SERVICES } from "../lib/services";
 import { getStateInfo, isDockerRunning } from "../lib/state";
-
-const SERVICE_DESCRIPTIONS: Record<ServiceName, string> = {
-  sdk: "SDK TypeScript watcher",
-  front: "Next.js frontend",
-  core: "Rust core API",
-  oauth: "Rust OAuth service",
-  connectors: "TypeScript connectors",
-  "front-workers": "Temporal workers",
-};
-
-const SERVICES: ServiceName[] = ["sdk", "front", "core", "oauth", "connectors", "front-workers"];
-
-async function checkHealthEndpoint(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
 
 async function printServiceStatus(name: string): Promise<void> {
   console.log("Services:");
 
-  for (const service of SERVICES) {
+  for (const service of ALL_SERVICES) {
     const running = await isServiceRunning(name, service);
     const status = running ? "\x1b[32m●\x1b[0m" : "\x1b[90m○\x1b[0m";
-    const logPath = getLogPath(name, service);
-    console.log(`  ${status} ${service.padEnd(15)} ${SERVICE_DESCRIPTIONS[service]}`);
+    console.log(`  ${status} ${service}`);
     if (running) {
-      console.log(`    Log: ${logPath}`);
+      console.log(`    Log: ${getLogPath(name, service)}`);
     }
   }
 }
 
-interface HealthCheck {
-  name: string;
-  url: string;
-}
-
-async function printHealthChecks(frontPort: number, corePort: number): Promise<void> {
+async function printHealthChecks(ports: PortAllocation): Promise<void> {
   console.log("Health checks:");
 
-  const checks: HealthCheck[] = [
-    { name: "Front", url: `http://localhost:${frontPort}/api/healthz` },
-    { name: "Core", url: `http://localhost:${corePort}/` },
-  ];
-
+  const checks = getHealthChecks(ports);
   for (const check of checks) {
-    const healthy = await checkHealthEndpoint(check.url);
+    const healthy = await checkServiceHealth(check.service, ports);
     const status = healthy ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
-    console.log(`  ${status} ${check.name.padEnd(10)} ${check.url}`);
+    console.log(`  ${status} ${check.service.padEnd(10)} ${check.url}`);
   }
 }
 
-export async function statusCommand(name: string): Promise<void> {
-  const env = await getEnvironment(name);
-  if (!env) {
-    logger.error(`Environment '${name}' not found`);
-    process.exit(1);
-  }
-
+export async function statusCommand(name: string): Promise<Result<void>> {
+  const envResult = await requireEnvironment(name, "status");
+  if (!envResult.ok) return envResult;
+  const env = envResult.value;
   const stateInfo = await getStateInfo(env);
 
   console.log();
@@ -92,8 +62,10 @@ export async function statusCommand(name: string): Promise<void> {
 
   if (stateInfo.state === "warm") {
     console.log();
-    await printHealthChecks(env.ports.front, env.ports.core);
+    await printHealthChecks(env.ports);
   }
 
   console.log();
+
+  return Ok(undefined);
 }

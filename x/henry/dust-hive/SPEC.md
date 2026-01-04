@@ -51,7 +51,7 @@ dust-hive directly launches each service with correct port env vars and FORCE_CO
 # === Phase 1: SDK watch (started first) ===
 source ~/.nvm/nvm.sh && nvm use
 cd ~/dust-hive/NAME/sdks/js
-FORCE_COLOR=1 npm run dev > ~/.dust-hive/envs/NAME/sdk.log 2>&1 &
+FORCE_COLOR=1 npm run watch > ~/.dust-hive/envs/NAME/sdk.log 2>&1 &
 echo $! > ~/.dust-hive/envs/NAME/sdk.pid
 
 # Wait for SDK build before starting app services
@@ -77,7 +77,7 @@ echo $! > ~/.dust-hive/envs/NAME/oauth.pid
 
 # Connectors (requires -p flag + TEMPORAL_NAMESPACE override)
 cd ~/dust-hive/NAME/connectors
-TEMPORAL_NAMESPACE=$TEMPORAL_CONNECTORS_NAMESPACE FORCE_COLOR=1 npx tsx src/start.ts -p $CONNECTORS_PORT > ~/.dust-hive/envs/NAME/connectors.log 2>&1 &
+TEMPORAL_NAMESPACE=dust-hive-NAME-connectors FORCE_COLOR=1 npx tsx src/start.ts -p $CONNECTORS_PORT > ~/.dust-hive/envs/NAME/connectors.log 2>&1 &
 echo $! > ~/.dust-hive/envs/NAME/connectors.pid
 
 # === Phase 3: Workers (wait for front to be ready) ===

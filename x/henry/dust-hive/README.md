@@ -1,0 +1,276 @@
+# dust-hive
+
+CLI tool for running multiple isolated Dust development environments simultaneously.
+
+Each environment gets its own:
+- Git worktree (separate branch)
+- Port range (no conflicts)
+- Docker containers (isolated volumes)
+- Database instances
+
+## Prerequisites
+
+Install these before using dust-hive:
+
+```bash
+# Bun (runtime)
+curl -fsSL https://bun.sh/install | bash
+
+# Zellij (terminal multiplexer)
+brew install zellij
+
+# Docker (via OrbStack or Docker Desktop)
+brew install --cask orbstack
+
+# Temporal CLI (workflow engine)
+brew install temporal
+```
+
+## Installation
+
+```bash
+# From the dust repo
+cd x/henry/dust-hive
+
+# Build and link globally
+bun install
+bun run build
+bun link
+```
+
+Now `dust-hive` is available globally.
+
+## Initial Setup
+
+1. **Create config file** with your secrets:
+
+```bash
+mkdir -p ~/.dust-hive
+cp /path/to/your/.env ~/.dust-hive/config.env
+```
+
+The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.). See `local-dev-setup.md` for the full list.
+
+2. **Start Temporal server** (keep running in a separate terminal):
+
+```bash
+temporal server start-dev
+```
+
+## Quick Start
+
+```bash
+# Create a new environment
+dust-hive spawn myenv
+
+# Start all services (docker, front, core, connectors, etc.)
+dust-hive warm myenv
+
+# Open the terminal UI
+dust-hive open myenv
+
+# Get the app URL
+dust-hive url myenv
+# http://localhost:10000
+
+# Open in browser
+open $(dust-hive url myenv)
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `spawn [--name NAME] [--base BRANCH] [--no-open]` | Create new environment |
+| `warm NAME` | Start docker + all services |
+| `cool NAME` | Stop services, keep SDK watch |
+| `start NAME` | Resume stopped environment |
+| `stop NAME` | Full stop of all services |
+| `destroy NAME [--force]` | Remove environment completely |
+| `open NAME` | Open zellij terminal session |
+| `reload NAME` | Kill and reopen zellij session |
+| `list` | Show all environments |
+| `status NAME` | Show service health |
+| `logs NAME [SERVICE] [-f]` | View service logs |
+| `url NAME` | Print front URL |
+| `doctor` | Check prerequisites |
+
+### Services
+
+Available services for `logs` command:
+- `sdk` - TypeScript SDK watcher
+- `front` - Next.js frontend
+- `core` - Rust core API
+- `oauth` - Rust OAuth service
+- `connectors` - TypeScript connectors
+- `front-workers` - Temporal workers
+
+## Environment States
+
+| State | Description |
+|-------|-------------|
+| **stopped** | Nothing running |
+| **cold** | Only SDK watch running |
+| **warm** | All services running |
+
+## Port Allocation
+
+Each environment gets a 1000-port range:
+
+| Environment | Port Range | Front | Core | Connectors |
+|-------------|------------|-------|------|------------|
+| 1st env | 10000-10999 | 10000 | 10001 | 10002 |
+| 2nd env | 11000-11999 | 11000 | 11001 | 11002 |
+| 3rd env | 12000-12999 | 12000 | 12001 | 12002 |
+
+## Zellij Session
+
+When you run `dust-hive open`, you get a terminal with tabs:
+
+- **shell** - Interactive shell with environment loaded
+- **sdk** - SDK build logs
+- **front** - Next.js logs
+- **core** - Core API logs
+- **oauth** - OAuth service logs
+- **connectors** - Connectors logs
+- **workers** - Temporal worker logs
+
+### Zellij Shortcuts
+
+- `Ctrl+o` then `d` - Detach (keeps services running)
+- `Ctrl+o` then `w` - Session manager
+- `Ctrl+o` then `[` - Scroll mode (arrow keys to scroll)
+- `Alt+n` - Next tab
+- `Alt+p` - Previous tab
+
+## Workflow Examples
+
+### Working on a feature
+
+```bash
+# Create environment from current branch
+dust-hive spawn --name my-feature
+
+# Start everything
+dust-hive warm my-feature
+
+# Open terminal
+dust-hive open my-feature
+
+# ... work on your feature ...
+
+# When done for the day
+dust-hive stop my-feature
+```
+
+### Running two environments
+
+```bash
+# First environment
+dust-hive spawn --name env-a --base main
+dust-hive warm env-a
+
+# Second environment
+dust-hive spawn --name env-b --base feature-branch
+dust-hive warm env-b
+
+# Both running simultaneously
+dust-hive list
+# env-a    warm    10000-10999
+# env-b    warm    11000-11999
+
+# Access both
+open http://localhost:10000  # env-a
+open http://localhost:11000  # env-b
+```
+
+### Cleaning up
+
+```bash
+# Stop and remove an environment
+dust-hive destroy my-feature
+
+# If there are uncommitted changes
+dust-hive destroy my-feature --force
+```
+
+## Troubleshooting
+
+### "Environment not found"
+
+Check if it exists:
+```bash
+dust-hive list
+```
+
+### Services not starting
+
+Check prerequisites:
+```bash
+dust-hive doctor
+```
+
+### Docker issues
+
+Make sure Docker/OrbStack is running:
+```bash
+docker ps
+```
+
+### Zellij "Waiting to run"
+
+Reload the session:
+```bash
+dust-hive reload myenv
+```
+
+### Check service health
+
+```bash
+dust-hive status myenv
+```
+
+### View logs
+
+```bash
+# Last 500 lines
+dust-hive logs myenv front
+
+# Follow logs
+dust-hive logs myenv front -f
+```
+
+## File Locations
+
+```
+~/.dust-hive/
+├── config.env                 # Your secrets (create this)
+├── envs/
+│   └── NAME/
+│       ├── env.sh             # Port overrides
+│       ├── ports.json         # Port allocation
+│       ├── metadata.json      # Environment info
+│       ├── *.pid              # Process IDs
+│       └── *.log              # Service logs
+└── zellij/
+    └── layout.kdl             # Zellij layout
+
+~/dust-hive/
+└── NAME/                      # Git worktree
+```
+
+## Development
+
+```bash
+# Run in dev mode
+bun run src/index.ts <command>
+
+# Type check
+bun run typecheck
+
+# Lint
+bun run lint
+
+# Build
+bun run build
+```

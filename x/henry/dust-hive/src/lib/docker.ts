@@ -1,4 +1,6 @@
 import YAML from "yaml";
+import type { Environment } from "./environment";
+import { logger } from "./logger";
 import { getDockerOverridePath } from "./paths";
 import type { PortAllocation } from "./ports";
 
@@ -91,4 +93,100 @@ export function getVolumeNames(name: string): string[] {
     `dust-hive-${name}-qdrant-secondary`,
     `dust-hive-${name}-elasticsearch`,
   ];
+}
+
+// Start docker-compose containers with --wait flag
+export async function startDocker(env: Environment): Promise<void> {
+  logger.step("Starting Docker containers...");
+
+  const projectName = getDockerProjectName(env.name);
+  const overridePath = getDockerOverridePath(env.name);
+  const basePath = `${env.metadata.repoRoot}/tools/docker-compose.dust-hive.yml`;
+
+  const proc = Bun.spawn(
+    [
+      "docker",
+      "compose",
+      "-f",
+      basePath,
+      "-f",
+      overridePath,
+      "-p",
+      projectName,
+      "up",
+      "-d",
+      "--wait",
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
+
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    throw new Error(`Docker compose failed: ${stderr}`);
+  }
+
+  logger.success("Docker containers started");
+}
+
+// Stop docker-compose containers
+// Returns true if stopped successfully, false if docker-compose failed
+export async function stopDocker(
+  envName: string,
+  repoRoot: string,
+  options: { removeVolumes?: boolean } = {}
+): Promise<boolean> {
+  logger.step("Stopping Docker containers...");
+
+  const projectName = getDockerProjectName(envName);
+  const overridePath = getDockerOverridePath(envName);
+  const basePath = `${repoRoot}/tools/docker-compose.dust-hive.yml`;
+
+  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "down"];
+
+  if (options.removeVolumes) {
+    args.push("-v");
+  }
+
+  const proc = Bun.spawn(args, {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  await proc.exited;
+
+  if (proc.exitCode === 0) {
+    const msg = options.removeVolumes
+      ? "Docker containers and volumes removed"
+      : "Docker containers stopped";
+    logger.success(msg);
+    return true;
+  }
+
+  logger.warn("Docker containers may not have stopped cleanly");
+  return false;
+}
+
+// Remove docker volumes (fallback if docker-compose down -v didn't work)
+// Returns list of volumes that failed to remove (empty array = all succeeded)
+export async function removeDockerVolumes(envName: string): Promise<string[]> {
+  const volumes = getVolumeNames(envName);
+  const failed: string[] = [];
+
+  for (const volume of volumes) {
+    const proc = Bun.spawn(["docker", "volume", "rm", "-f", volume], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    await proc.exited;
+    if (proc.exitCode !== 0) {
+      failed.push(volume);
+    }
+  }
+
+  return failed;
 }

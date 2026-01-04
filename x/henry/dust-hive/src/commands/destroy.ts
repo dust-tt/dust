@@ -1,9 +1,11 @@
-import { getDockerProjectName, getVolumeNames } from "../lib/docker";
+import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { logger } from "../lib/logger";
-import { getDockerOverridePath, getWorktreeDir } from "../lib/paths";
+import { getWorktreeDir } from "../lib/paths";
 import { stopAllServices } from "../lib/process";
+import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isDockerRunning } from "../lib/state";
+import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
 interface DestroyOptions {
   force: boolean;
@@ -24,110 +26,34 @@ function parseArgs(args: string[]): { name: string | undefined; options: Destroy
   return { name, options };
 }
 
-// Check for uncommitted changes in worktree
-async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
-  const proc = Bun.spawn(["git", "status", "--porcelain"], {
-    cwd: worktreePath,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+async function cleanupDocker(envName: string, repoRoot: string): Promise<void> {
+  const dockerRunning = await isDockerRunning(envName);
+  let needsVolumeCleanup = !dockerRunning;
 
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
+  if (dockerRunning) {
+    const dockerStopped = await stopDocker(envName, repoRoot, { removeVolumes: true });
+    needsVolumeCleanup = !dockerStopped;
+  }
 
-  return output.trim().length > 0;
-}
-
-// Stop docker-compose
-async function stopDocker(envName: string, repoRoot: string): Promise<void> {
-  logger.step("Stopping Docker containers...");
-
-  const projectName = getDockerProjectName(envName);
-  const overridePath = getDockerOverridePath(envName);
-  const basePath = `${repoRoot}/tools/docker-compose.dust-hive.yml`;
-
-  const proc = Bun.spawn(
-    ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "down", "-v"],
-    {
-      stdout: "pipe",
-      stderr: "pipe",
+  if (needsVolumeCleanup) {
+    const failedVolumes = await removeDockerVolumes(envName);
+    if (failedVolumes.length > 0) {
+      logger.warn(`Could not remove volumes: ${failedVolumes.join(", ")}`);
     }
-  );
-
-  await proc.exited;
-
-  if (proc.exitCode === 0) {
-    logger.success("Docker containers and volumes removed");
-  } else {
-    logger.warn("Docker containers may not have stopped cleanly");
   }
 }
 
-// Remove docker volumes (in case docker-compose down -v didn't work)
-async function removeDockerVolumes(envName: string): Promise<void> {
-  const volumes = getVolumeNames(envName);
-
-  for (const volume of volumes) {
-    const proc = Bun.spawn(["docker", "volume", "rm", "-f", volume], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    await proc.exited;
-  }
-}
-
-// Remove git worktree
-async function removeWorktree(repoRoot: string, worktreePath: string): Promise<void> {
-  logger.step("Removing git worktree...");
-
-  // Force remove worktree
-  const proc = Bun.spawn(["git", "worktree", "remove", "--force", worktreePath], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  await proc.exited;
-
-  if (proc.exitCode === 0) {
-    logger.success("Git worktree removed");
-  } else {
-    logger.warn("Git worktree may not have been removed cleanly");
-  }
-}
-
-// Delete the workspace branch
-async function deleteBranch(repoRoot: string, branchName: string): Promise<void> {
-  logger.step(`Deleting branch '${branchName}'...`);
-
-  const proc = Bun.spawn(["git", "branch", "-D", branchName], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  await proc.exited;
-
-  if (proc.exitCode === 0) {
-    logger.success("Branch deleted");
-  } else {
-    logger.warn("Branch may not have been deleted");
-  }
-}
-
-export async function destroyCommand(args: string[]): Promise<void> {
+export async function destroyCommand(args: string[]): Promise<Result<void>> {
   const { name, options } = parseArgs(args);
 
   if (!name) {
-    logger.error("Usage: dust-hive destroy NAME [--force]");
-    process.exit(1);
+    return Err(new CommandError("Usage: dust-hive destroy NAME [--force]"));
   }
 
   // Get environment
   const env = await getEnvironment(name);
   if (!env) {
-    logger.error(`Environment '${name}' not found`);
-    process.exit(1);
+    return Err(new CommandError(`Environment '${name}' not found`));
   }
 
   const worktreePath = getWorktreeDir(name);
@@ -138,8 +64,9 @@ export async function destroyCommand(args: string[]): Promise<void> {
     if (worktreeExists) {
       const hasChanges = await hasUncommittedChanges(worktreePath);
       if (hasChanges) {
-        logger.error("Worktree has uncommitted changes. Use --force to destroy anyway.");
-        process.exit(1);
+        return Err(
+          new CommandError("Worktree has uncommitted changes. Use --force to destroy anyway.")
+        );
       }
     }
   }
@@ -153,19 +80,17 @@ export async function destroyCommand(args: string[]): Promise<void> {
   logger.success("All services stopped");
 
   // Stop Docker and remove volumes
-  const dockerRunning = await isDockerRunning(name);
-  if (dockerRunning) {
-    await stopDocker(name, env.metadata.repoRoot);
-  } else {
-    // Just remove volumes in case they exist
-    await removeDockerVolumes(name);
-  }
+  await cleanupDocker(name, env.metadata.repoRoot);
 
   // Remove git worktree
+  logger.step("Removing git worktree...");
   await removeWorktree(env.metadata.repoRoot, worktreePath);
+  logger.success("Git worktree removed");
 
   // Delete the workspace branch
+  logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
   await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch);
+  logger.success("Branch deleted");
 
   // Remove environment directory
   logger.step("Removing environment config...");
@@ -175,4 +100,6 @@ export async function destroyCommand(args: string[]): Promise<void> {
   console.log();
   logger.success(`Environment '${name}' destroyed`);
   console.log();
+
+  return Ok(undefined);
 }

@@ -1,13 +1,14 @@
 import { getEnvironment, listEnvironments } from "../lib/environment";
 import { logger } from "../lib/logger";
+import { Ok, type Result } from "../lib/result";
 import { formatState, getStateInfo } from "../lib/state";
 
-export async function listCommand(): Promise<void> {
+export async function listCommand(): Promise<Result<void>> {
   const envNames = await listEnvironments();
 
   if (envNames.length === 0) {
     logger.info("No environments found. Create one with: dust-hive spawn");
-    return;
+    return Ok(undefined);
   }
 
   // Print header
@@ -38,4 +39,6 @@ export async function listCommand(): Promise<void> {
   }
 
   console.log();
+
+  return Ok(undefined);
 }

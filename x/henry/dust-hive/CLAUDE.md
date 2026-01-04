@@ -52,21 +52,28 @@ src/
 │   ├── destroy.ts     # Remove environment
 │   ├── doctor.ts      # Prerequisite checking
 │   ├── list.ts        # List environments
+│   ├── logs.ts        # View service logs
 │   ├── open.ts        # Attach to zellij session
+│   ├── reload.ts      # Kill and reopen zellij session
 │   ├── spawn.ts       # Create environment
 │   ├── start.ts       # Resume stopped env
 │   ├── status.ts      # Show service health
 │   ├── stop.ts        # Full stop
+│   ├── url.ts         # Print front URL
 │   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
-    ├── paths.ts       # Path constants and helpers
+    ├── commands.ts    # Command helpers (requireEnvironment)
     ├── config.ts      # Configuration management
-    ├── logger.ts      # Console output utilities
-    ├── ports.ts       # Port allocation
+    ├── docker.ts      # Docker compose + start/stop operations
     ├── environment.ts # Environment CRUD
     ├── envgen.ts      # env.sh generation
-    ├── docker.ts      # Docker compose override generation
+    ├── init.ts        # Database initialization (data-driven)
+    ├── logger.ts      # Console output utilities
+    ├── paths.ts       # Path constants and helpers
+    ├── ports.ts       # Port allocation
     ├── process.ts     # Daemon management (PID files, spawn/kill)
+    ├── services.ts    # Service names and types
+    ├── shell.ts       # Shell command builder
     └── state.ts       # State detection (stopped/cold/warm)
 
 tests/
@@ -97,14 +104,17 @@ tests/
 | Command | Description |
 |---------|-------------|
 | `spawn` | Create environment (worktree + npm ci + SDK watch) |
-| `open` | Attach to zellij session |
 | `warm` | Start docker + all services |
 | `cool` | Stop services, keep SDK watch |
 | `start` | Resume stopped env |
 | `stop` | Full stop |
 | `destroy` | Remove environment |
+| `open` | Attach to zellij session |
+| `reload` | Kill and reopen zellij session |
 | `list` | Show all environments |
 | `status` | Show service health |
+| `logs` | View service logs |
+| `url` | Print front URL |
 | `doctor` | Check prerequisites |
 
 ## Testing the CLI

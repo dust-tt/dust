@@ -20,33 +20,3 @@ export async function configEnvExists(): Promise<boolean> {
   const file = Bun.file(CONFIG_ENV_PATH);
   return file.exists();
 }
-
-// Read global config.env as key-value pairs
-export async function readConfigEnv(): Promise<Record<string, string>> {
-  const file = Bun.file(CONFIG_ENV_PATH);
-  if (!(await file.exists())) {
-    return {};
-  }
-
-  const content = await file.text();
-  const result: Record<string, string> = {};
-
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    const match = trimmed.match(/^export\s+(\w+)=(.*)$/);
-    if (match) {
-      const key = match[1];
-      const value = match[2];
-      if (key !== undefined && value !== undefined) {
-        // Remove surrounding quotes if present
-        result[key] = value.replace(/^["']|["']$/g, "");
-      }
-    }
-  }
-
-  return result;
-}

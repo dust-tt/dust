@@ -4,18 +4,23 @@ import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand } from "./commands/doctor";
 import { listCommand } from "./commands/list";
+import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
+import { reloadCommand } from "./commands/reload";
 import { spawnCommand } from "./commands/spawn";
 import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
+import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
 import { logger } from "./lib/logger";
+import type { Result } from "./lib/result";
 
 const COMMANDS = [
   "spawn",
   "open",
+  "reload",
   "warm",
   "cool",
   "start",
@@ -23,6 +28,8 @@ const COMMANDS = [
   "destroy",
   "list",
   "status",
+  "logs",
+  "url",
   "doctor",
 ] as const;
 
@@ -38,6 +45,7 @@ Usage:
 Commands:
   spawn [--name NAME] [--base BRANCH] [--no-open]  Create a new environment
   open NAME                                         Open environment's zellij session
+  reload NAME                                       Kill and reopen zellij session
   warm NAME                                         Start docker and all services
   cool NAME                                         Stop services, keep SDK watch
   start NAME                                        Resume stopped environment
@@ -45,6 +53,8 @@ Commands:
   destroy NAME [--force]                            Remove environment
   list                                              Show all environments
   status NAME                                       Show service health
+  logs NAME [SERVICE] [-f]                          Show service logs
+  url NAME                                          Print front URL
   doctor                                            Check prerequisites
 
 Options:
@@ -54,6 +64,15 @@ Options:
 
 function isCommand(cmd: string): cmd is Command {
   return COMMANDS.includes(cmd as Command);
+}
+
+// Helper to run a command and handle its Result
+async function runCommand(resultPromise: Promise<Result<void>>): Promise<void> {
+  const result = await resultPromise;
+  if (!result.ok) {
+    logger.error(result.error.message);
+    process.exit(1);
+  }
 }
 
 async function main(): Promise<void> {
@@ -78,49 +97,55 @@ async function main(): Promise<void> {
   // Route to command handlers
   switch (command) {
     case "list":
-      await listCommand();
+      await runCommand(listCommand());
       break;
 
-    case "status": {
-      const name = args[1];
-      if (!name) {
-        logger.error("Usage: dust-hive status NAME");
-        process.exit(1);
-      }
-      await statusCommand(name);
+    case "status":
+      await runCommand(statusCommand(args[1] ?? ""));
       break;
-    }
 
     case "doctor":
-      await doctorCommand();
+      await runCommand(doctorCommand());
       break;
 
     case "spawn":
-      await spawnCommand(args.slice(1));
+      await runCommand(spawnCommand(args.slice(1)));
       break;
 
     case "warm":
-      await warmCommand(args.slice(1));
+      await runCommand(warmCommand(args.slice(1)));
       break;
 
     case "cool":
-      await coolCommand(args.slice(1));
+      await runCommand(coolCommand(args.slice(1)));
       break;
 
     case "start":
-      await startCommand(args.slice(1));
+      await runCommand(startCommand(args.slice(1)));
       break;
 
     case "stop":
-      await stopCommand(args.slice(1));
+      await runCommand(stopCommand(args.slice(1)));
       break;
 
     case "destroy":
-      await destroyCommand(args.slice(1));
+      await runCommand(destroyCommand(args.slice(1)));
       break;
 
     case "open":
-      await openCommand(args.slice(1));
+      await runCommand(openCommand(args.slice(1)));
+      break;
+
+    case "reload":
+      await runCommand(reloadCommand(args.slice(1)));
+      break;
+
+    case "url":
+      await runCommand(urlCommand(args.slice(1)));
+      break;
+
+    case "logs":
+      await runCommand(logsCommand(args.slice(1)));
       break;
   }
 }

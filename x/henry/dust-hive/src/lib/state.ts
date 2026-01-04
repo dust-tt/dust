@@ -1,7 +1,8 @@
 import { getDockerProjectName } from "./docker";
 import type { Environment } from "./environment";
-import type { ServiceName } from "./process";
-import { APP_SERVICES, getRunningServices, isServiceRunning } from "./process";
+import { getRunningServices, isServiceRunning } from "./process";
+import { WARM_SERVICES } from "./registry";
+import type { ServiceName } from "./services";
 
 export type EnvironmentState = "stopped" | "cold" | "warm";
 
@@ -86,9 +87,9 @@ function detectWarnings(
     warnings.push("App services running but Docker is not");
   }
 
-  const missingServices = APP_SERVICES.filter((s) => !runningAppServices.includes(s));
-  const hasMissingServices = missingServices.length > 0 && runningAppServices.length > 0;
-  if (hasMissingServices) {
+  // Check for partially running app services
+  const missingServices = WARM_SERVICES.filter((s) => !runningAppServices.includes(s));
+  if (missingServices.length > 0 && runningAppServices.length > 0) {
     warnings.push(`Missing services: ${missingServices.join(", ")}`);
   }
 
@@ -100,7 +101,7 @@ export async function getStateInfo(env: Environment): Promise<StateInfo> {
   const sdkRunning = await isServiceRunning(env.name, "sdk");
   const dockerRunning = await isDockerRunning(env.name);
   const runningServices = await getRunningServices(env.name);
-  const runningAppServices = runningServices.filter((s) => APP_SERVICES.includes(s));
+  const runningAppServices = runningServices.filter((s) => s !== "sdk");
   const appServicesRunning = runningAppServices.length > 0;
 
   const state = determineState(sdkRunning, dockerRunning, appServicesRunning);

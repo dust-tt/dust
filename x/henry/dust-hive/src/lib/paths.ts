@@ -1,5 +1,6 @@
+import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 // Base directories
 export const DUST_HIVE_HOME = join(homedir(), ".dust-hive");
@@ -54,15 +55,17 @@ export function getZellijLayoutPath(): string {
 
 // Find repo root by looking for .git directory
 export async function findRepoRoot(startPath?: string): Promise<string | null> {
-  let current = startPath || process.cwd();
+  let current = resolve(startPath ?? process.cwd());
 
   while (current !== "/") {
     const gitPath = join(current, ".git");
-    const file = Bun.file(gitPath);
-    if (await file.exists()) {
+    try {
+      await stat(gitPath);
       return current;
+    } catch {
+      // .git not found at this level, continue traversing up
+      current = dirname(current);
     }
-    current = join(current, "..");
   }
 
   return null;

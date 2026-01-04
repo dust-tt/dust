@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { getEnvironment } from "../lib/environment";
+import { requireEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import {
   DUST_HIVE_ZELLIJ,
@@ -8,15 +8,37 @@ import {
   getWorktreeDir,
   getZellijLayoutPath,
 } from "../lib/paths";
+import { Ok, type Result } from "../lib/result";
+import { ALL_SERVICES, type ServiceName } from "../lib/services";
+
+// Tab display names (shorter names for better zellij tab bar)
+const TAB_NAMES: Record<ServiceName, string> = {
+  sdk: "sdk",
+  front: "front",
+  core: "core",
+  oauth: "oauth",
+  connectors: "connectors",
+  "front-workers": "workers",
+};
+
+// Generate a single service tab
+function generateServiceTab(envName: string, service: ServiceName): string {
+  const logPath = getLogPath(envName, service);
+  const tabName = TAB_NAMES[service];
+  return `    tab name="${tabName}" {
+        pane {
+            command "tail"
+            args "-n" "500" "-F" "${logPath}"
+            start_suspended false
+        }
+    }`;
+}
 
 // Generate zellij layout for an environment
 function generateLayout(envName: string, worktreePath: string, envShPath: string): string {
-  const sdkLog = getLogPath(envName, "sdk");
-  const frontLog = getLogPath(envName, "front");
-  const coreLog = getLogPath(envName, "core");
-  const oauthLog = getLogPath(envName, "oauth");
-  const connectorsLog = getLogPath(envName, "connectors");
-  const frontWorkersLog = getLogPath(envName, "front-workers");
+  const serviceTabs = ALL_SERVICES.map((service) => generateServiceTab(envName, service)).join(
+    "\n\n"
+  );
 
   return `layout {
     default_tab_template {
@@ -32,52 +54,13 @@ function generateLayout(envName: string, worktreePath: string, envShPath: string
     tab name="shell" focus=true {
         pane {
             cwd "${worktreePath}"
-            command "bash"
-            args "-c" "source ${envShPath} && exec bash"
+            command "zsh"
+            args "-c" "source ${envShPath} && exec zsh"
+            start_suspended false
         }
     }
 
-    tab name="sdk" {
-        pane {
-            command "tail"
-            args "-F" "${sdkLog}"
-        }
-    }
-
-    tab name="front" {
-        pane {
-            command "tail"
-            args "-F" "${frontLog}"
-        }
-    }
-
-    tab name="core" {
-        pane {
-            command "tail"
-            args "-F" "${coreLog}"
-        }
-    }
-
-    tab name="oauth" {
-        pane {
-            command "tail"
-            args "-F" "${oauthLog}"
-        }
-    }
-
-    tab name="connectors" {
-        pane {
-            command "tail"
-            args "-F" "${connectorsLog}"
-        }
-    }
-
-    tab name="workers" {
-        pane {
-            command "tail"
-            args "-F" "${frontWorkersLog}"
-        }
-    }
+${serviceTabs}
 }
 `;
 }
@@ -97,20 +80,11 @@ async function writeLayout(
   return layoutPath;
 }
 
-export async function openCommand(args: string[]): Promise<void> {
-  const name = args[0];
-
-  if (!name) {
-    logger.error("Usage: dust-hive open NAME");
-    process.exit(1);
-  }
-
-  // Get environment
-  const env = await getEnvironment(name);
-  if (!env) {
-    logger.error(`Environment '${name}' not found`);
-    process.exit(1);
-  }
+export async function openCommand(args: string[]): Promise<Result<void>> {
+  const envResult = await requireEnvironment(args[0], "open");
+  if (!envResult.ok) return envResult;
+  const env = envResult.value;
+  const name = env.name;
 
   const worktreePath = getWorktreeDir(name);
   const envShPath = getEnvFilePath(name);
@@ -124,7 +98,12 @@ export async function openCommand(args: string[]): Promise<void> {
   const sessions = await new Response(checkProc.stdout).text();
   await checkProc.exited;
 
-  const sessionExists = sessions.split("\n").some((line) => line.trim().startsWith(sessionName));
+  // Strip ANSI codes for comparison
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional for ANSI escape code stripping
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
+  const sessionExists = sessions
+    .split("\n")
+    .some((line) => stripAnsi(line).startsWith(sessionName));
 
   if (sessionExists) {
     // Attach to existing session
@@ -143,12 +122,17 @@ export async function openCommand(args: string[]): Promise<void> {
 
     const layoutPath = await writeLayout(name, worktreePath, envShPath);
 
-    const proc = Bun.spawn(["zellij", "--session", sessionName, "--layout", layoutPath], {
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
-    });
+    const proc = Bun.spawn(
+      ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],
+      {
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      }
+    );
 
     await proc.exited;
   }
+
+  return Ok(undefined);
 }

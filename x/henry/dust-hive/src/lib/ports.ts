@@ -1,7 +1,11 @@
 import { readdir } from "node:fs/promises";
 import { DUST_HIVE_ENVS, getPortsPath } from "./paths";
+import { createPropertyChecker } from "./typeGuards";
 
-// Port offsets from base (spec-defined)
+// Port offsets from base (spec-defined).
+// Offsets chosen so base_port + offset resembles standard ports:
+// postgres: 432 -> 10432 (resembles 5432), redis: 379 -> 10379 (resembles 6379),
+// qdrant: 334 -> 10334 (resembles 6334), elasticsearch: 200 -> 10200 (resembles 9200)
 export const PORT_OFFSETS = {
   front: 0,
   core: 1,
@@ -30,6 +34,26 @@ export interface PortAllocation {
   qdrantGrpc: number;
   elasticsearch: number;
   apacheTika: number;
+}
+
+// Type guard for PortAllocation
+function isPortAllocation(data: unknown): data is PortAllocation {
+  const checker = createPropertyChecker(data);
+  if (!checker) return false;
+
+  return (
+    checker.hasNumber("base") &&
+    checker.hasNumber("front") &&
+    checker.hasNumber("core") &&
+    checker.hasNumber("connectors") &&
+    checker.hasNumber("oauth") &&
+    checker.hasNumber("postgres") &&
+    checker.hasNumber("redis") &&
+    checker.hasNumber("qdrantHttp") &&
+    checker.hasNumber("qdrantGrpc") &&
+    checker.hasNumber("elasticsearch") &&
+    checker.hasNumber("apacheTika")
+  );
 }
 
 // Calculate ports from a base port
@@ -62,8 +86,8 @@ async function getAllocatedBasePorts(): Promise<number[]> {
       const file = Bun.file(portsPath);
 
       if (await file.exists()) {
-        const data = await file.json();
-        if (typeof data.base === "number") {
+        const data: unknown = await file.json();
+        if (isPortAllocation(data)) {
           bases.push(data.base);
         }
       }
@@ -71,6 +95,7 @@ async function getAllocatedBasePorts(): Promise<number[]> {
 
     return bases;
   } catch {
+    // envs directory may not exist yet on first spawn
     return [];
   }
 }
@@ -103,5 +128,10 @@ export async function loadPortAllocation(name: string): Promise<PortAllocation |
     return null;
   }
 
-  return file.json();
+  const data: unknown = await file.json();
+  if (!isPortAllocation(data)) {
+    return null;
+  }
+
+  return data;
 }

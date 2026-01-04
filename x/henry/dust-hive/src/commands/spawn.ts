@@ -1,15 +1,24 @@
 import { writeDockerComposeOverride } from "../lib/docker";
 import { writeEnvSh } from "../lib/envgen";
 import {
+  type Environment,
   type EnvironmentMetadata,
+  METADATA_SCHEMA_VERSION,
   createEnvironment,
+  deleteEnvironmentDir,
   environmentExists,
   validateEnvName,
 } from "../lib/environment";
 import { logger } from "../lib/logger";
 import { findRepoRoot, getWorktreeDir } from "../lib/paths";
+import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
-import { spawnShellDaemon } from "../lib/process";
+import { waitForSdkBuild } from "../lib/process";
+import { startService } from "../lib/registry";
+import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { installAllDependencies } from "../lib/setup";
+import { cleanupPartialEnvironment, createWorktree, getCurrentBranch } from "../lib/worktree";
+import { openCommand } from "./open";
 
 interface SpawnOptions {
   name?: string;
@@ -42,6 +51,7 @@ function parseArgs(args: string[]): SpawnOptions {
 async function promptForName(): Promise<string> {
   process.stdout.write("Environment name: ");
 
+  // Bun-specific API: `console` is an AsyncIterable that yields lines from stdin
   for await (const line of console) {
     const name = line.trim();
     const validation = validateEnvName(name);
@@ -56,93 +66,126 @@ async function promptForName(): Promise<string> {
   throw new Error("No input received");
 }
 
-async function getCurrentBranch(repoRoot: string): Promise<string> {
-  const proc = Bun.spawn(["git", "rev-parse", "--abbrev-ref", "HEAD"], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
-  return output.trim();
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-async function createWorktree(
-  repoRoot: string,
+// Phase 1: Create environment files
+async function setupEnvironmentFiles(
+  metadata: EnvironmentMetadata,
+  ports: PortAllocation
+): Promise<Result<void, CommandError>> {
+  try {
+    await createEnvironment(metadata);
+  } catch (error) {
+    return Err(new CommandError(`Failed to create environment: ${errorMessage(error)}`));
+  }
+
+  try {
+    await savePortAllocation(metadata.name, ports);
+  } catch (error) {
+    await deleteEnvironmentDir(metadata.name).catch((e) =>
+      logger.warn(`Cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`Failed to save port allocation: ${errorMessage(error)}`));
+  }
+
+  try {
+    await writeEnvSh(metadata.name, ports);
+  } catch (error) {
+    await deleteEnvironmentDir(metadata.name).catch((e) =>
+      logger.warn(`Cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`Failed to write env.sh: ${errorMessage(error)}`));
+  }
+
+  try {
+    await writeDockerComposeOverride(metadata.name, ports);
+  } catch (error) {
+    await deleteEnvironmentDir(metadata.name).catch((e) =>
+      logger.warn(`Cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`Failed to write docker-compose override: ${errorMessage(error)}`));
+  }
+
+  return Ok(undefined);
+}
+
+// Phase 2: Create worktree and install dependencies
+async function setupWorktree(
+  metadata: EnvironmentMetadata,
   worktreePath: string,
-  branchName: string,
-  baseBranch: string
-): Promise<void> {
-  logger.step(`Creating worktree at ${worktreePath}`);
-
-  const proc = Bun.spawn(["git", "worktree", "add", worktreePath, "-b", branchName, baseBranch], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stderr = await new Response(proc.stderr).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    throw new Error(`Failed to create worktree: ${stderr}`);
-  }
-}
-
-async function runNpmCi(cwd: string, name: string): Promise<void> {
-  logger.step(`Installing dependencies in ${name}...`);
-
-  const proc = Bun.spawn(["bash", "-c", "source ~/.nvm/nvm.sh && nvm use && npm ci"], {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    throw new Error(`npm ci failed in ${name}`);
-  }
-}
-
-async function startSdkWatch(envName: string, worktreePath: string): Promise<void> {
-  logger.step("Starting SDK watch...");
-
-  const sdkPath = `${worktreePath}/sdks/js`;
-  const command = `
-    source ~/.nvm/nvm.sh && nvm use
-    npm run dev
-  `;
-
-  await spawnShellDaemon(envName, "sdk", command, { cwd: sdkPath });
-}
-
-async function waitForSdkBuild(worktreePath: string, timeoutMs = 120000): Promise<void> {
-  logger.step("Waiting for SDK to build...");
-
-  const targetFile = `${worktreePath}/sdks/js/dist/client.esm.js`;
-  const start = Date.now();
-
-  while (Date.now() - start < timeoutMs) {
-    const file = Bun.file(targetFile);
-    if (await file.exists()) {
-      logger.success("SDK build complete");
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  workspaceBranch: string
+): Promise<Result<void, CommandError>> {
+  try {
+    await createWorktree(metadata.repoRoot, worktreePath, workspaceBranch, metadata.baseBranch);
+  } catch (error) {
+    await deleteEnvironmentDir(metadata.name).catch((e) =>
+      logger.warn(`Cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`Failed to create worktree: ${errorMessage(error)}`));
   }
 
-  throw new Error("SDK build timed out");
+  try {
+    await installAllDependencies(worktreePath);
+  } catch (error) {
+    logger.error("Spawn failed during npm install, cleaning up...");
+    await cleanupPartialEnvironment(metadata.repoRoot, worktreePath, workspaceBranch).catch((e) =>
+      logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
+    );
+    await deleteEnvironmentDir(metadata.name).catch((e) =>
+      logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`Failed to install dependencies: ${errorMessage(error)}`));
+  }
+
+  return Ok(undefined);
 }
 
-export async function spawnCommand(args: string[]): Promise<void> {
+// Phase 3: Start SDK
+async function startSdk(
+  env: Environment,
+  worktreePath: string
+): Promise<Result<void, CommandError>> {
+  const { repoRoot } = env.metadata;
+  const workspaceBranch = env.metadata.workspaceBranch;
+
+  try {
+    await startService(env, "sdk");
+  } catch (error) {
+    logger.error("Spawn failed during SDK startup, cleaning up...");
+    await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
+      logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
+    );
+    await deleteEnvironmentDir(env.name).catch((e) =>
+      logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`Failed to start SDK: ${errorMessage(error)}`));
+  }
+
+  try {
+    await waitForSdkBuild(env.name);
+  } catch (error) {
+    logger.error("Spawn failed waiting for SDK build, cleaning up...");
+    await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
+      logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
+    );
+    await deleteEnvironmentDir(env.name).catch((e) =>
+      logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
+    );
+    return Err(new CommandError(`SDK build failed: ${errorMessage(error)}`));
+  }
+
+  return Ok(undefined);
+}
+
+export async function spawnCommand(args: string[]): Promise<Result<void>> {
   const options = parseArgs(args);
 
   // Find repo root
   const repoRoot = await findRepoRoot();
   if (!repoRoot) {
-    logger.error("Not in a git repository. Please run from within the Dust repo.");
-    process.exit(1);
+    return Err(new CommandError("Not in a git repository. Please run from within the Dust repo."));
   }
 
   // Get or prompt for name
@@ -154,19 +197,18 @@ export async function spawnCommand(args: string[]): Promise<void> {
   // Validate name
   const validation = validateEnvName(name);
   if (!validation.valid) {
-    logger.error(validation.error ?? "Invalid environment name");
-    process.exit(1);
+    return Err(new CommandError(validation.error ?? "Invalid environment name"));
   }
 
   // Check if already exists
   if (await environmentExists(name)) {
-    logger.error(`Environment '${name}' already exists`);
-    process.exit(1);
+    return Err(new CommandError(`Environment '${name}' already exists`));
   }
 
   // Get base branch
   const baseBranch = options.base ?? (await getCurrentBranch(repoRoot));
   const workspaceBranch = `${name}-workspace`;
+  const worktreePath = getWorktreeDir(name);
 
   logger.info(`Creating environment '${name}' from branch '${baseBranch}'`);
 
@@ -177,6 +219,7 @@ export async function spawnCommand(args: string[]): Promise<void> {
 
   // Create environment metadata
   const metadata: EnvironmentMetadata = {
+    schemaVersion: METADATA_SCHEMA_VERSION,
     name,
     baseBranch,
     workspaceBranch,
@@ -184,24 +227,24 @@ export async function spawnCommand(args: string[]): Promise<void> {
     repoRoot,
   };
 
-  // Create environment directory and files
-  await createEnvironment(metadata);
-  await savePortAllocation(name, ports);
-  await writeEnvSh(name, ports);
-  await writeDockerComposeOverride(name, ports);
+  // Phase 1: Setup environment files
+  const filesResult = await setupEnvironmentFiles(metadata, ports);
+  if (!filesResult.ok) return filesResult;
 
-  // Create worktree
-  const worktreePath = getWorktreeDir(name);
-  await createWorktree(repoRoot, worktreePath, workspaceBranch, baseBranch);
+  // Phase 2: Setup worktree
+  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch);
+  if (!worktreeResult.ok) return worktreeResult;
 
-  // Install dependencies
-  await runNpmCi(`${worktreePath}/sdks/js`, "sdks/js");
-  await runNpmCi(`${worktreePath}/front`, "front");
-  await runNpmCi(`${worktreePath}/connectors`, "connectors");
+  // Phase 3: Start SDK
+  const env: Environment = {
+    name,
+    metadata,
+    ports,
+    initialized: false,
+  };
 
-  // Start SDK watch
-  await startSdkWatch(name, worktreePath);
-  await waitForSdkBuild(worktreePath);
+  const sdkResult = await startSdk(env, worktreePath);
+  if (!sdkResult.ok) return sdkResult;
 
   logger.success(`Environment '${name}' created successfully!`);
   console.log();
@@ -216,7 +259,8 @@ export async function spawnCommand(args: string[]): Promise<void> {
 
   // Open zellij unless --no-open
   if (!options.noOpen) {
-    // TODO: Implement open command and call it here
-    logger.info("(--no-open was not specified, but open command is not yet implemented)");
+    return openCommand([name]);
   }
+
+  return Ok(undefined);
 }
