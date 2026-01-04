@@ -3,7 +3,6 @@ import { writeEnvSh } from "../lib/envgen";
 import {
   type Environment,
   type EnvironmentMetadata,
-  METADATA_SCHEMA_VERSION,
   createEnvironment,
   deleteEnvironmentDir,
   environmentExists,
@@ -219,7 +218,6 @@ export async function spawnCommand(args: string[]): Promise<Result<void>> {
 
   // Create environment metadata
   const metadata: EnvironmentMetadata = {
-    schemaVersion: METADATA_SCHEMA_VERSION,
     name,
     baseBranch,
     workspaceBranch,

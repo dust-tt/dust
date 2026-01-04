@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { validateEnvName } from "../../src/lib/environment";
+import {
+  type EnvironmentMetadata,
+  isEnvironmentMetadata,
+  validateEnvName,
+} from "../../src/lib/environment";
 
 describe("environment", () => {
   describe("validateEnvName", () => {
@@ -46,6 +50,69 @@ describe("environment", () => {
     it("accepts names exactly 32 characters", () => {
       const maxName = "a".repeat(32);
       expect(validateEnvName(maxName).valid).toBe(true);
+    });
+  });
+
+  describe("isEnvironmentMetadata", () => {
+    const validMetadata: EnvironmentMetadata = {
+      name: "test",
+      baseBranch: "main",
+      workspaceBranch: "test-workspace",
+      createdAt: "2024-01-01T00:00:00Z",
+      repoRoot: "/path/to/repo",
+    };
+
+    it("returns true for valid metadata", () => {
+      expect(isEnvironmentMetadata(validMetadata)).toBe(true);
+    });
+
+    it("returns false for null", () => {
+      expect(isEnvironmentMetadata(null)).toBe(false);
+    });
+
+    it("returns false for undefined", () => {
+      expect(isEnvironmentMetadata(undefined)).toBe(false);
+    });
+
+    it("returns false for primitives", () => {
+      expect(isEnvironmentMetadata(42)).toBe(false);
+      expect(isEnvironmentMetadata("string")).toBe(false);
+      expect(isEnvironmentMetadata(true)).toBe(false);
+    });
+
+    it("returns false when name is missing", () => {
+      const { name, ...rest } = validMetadata;
+      expect(isEnvironmentMetadata(rest)).toBe(false);
+    });
+
+    it("returns false when name is number instead of string", () => {
+      const invalid = { ...validMetadata, name: 123 };
+      expect(isEnvironmentMetadata(invalid)).toBe(false);
+    });
+
+    it("returns false when baseBranch is missing", () => {
+      const { baseBranch, ...rest } = validMetadata;
+      expect(isEnvironmentMetadata(rest)).toBe(false);
+    });
+
+    it("returns false when workspaceBranch is missing", () => {
+      const { workspaceBranch, ...rest } = validMetadata;
+      expect(isEnvironmentMetadata(rest)).toBe(false);
+    });
+
+    it("returns false when createdAt is missing", () => {
+      const { createdAt, ...rest } = validMetadata;
+      expect(isEnvironmentMetadata(rest)).toBe(false);
+    });
+
+    it("returns false when repoRoot is missing", () => {
+      const { repoRoot, ...rest } = validMetadata;
+      expect(isEnvironmentMetadata(rest)).toBe(false);
+    });
+
+    it("allows extra properties", () => {
+      const extended = { ...validMetadata, extraField: "value" };
+      expect(isEnvironmentMetadata(extended)).toBe(true);
     });
   });
 });

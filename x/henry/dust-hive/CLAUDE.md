@@ -72,16 +72,29 @@ src/
     ├── paths.ts       # Path constants and helpers
     ├── ports.ts       # Port allocation
     ├── process.ts     # Daemon management (PID files, spawn/kill)
+    ├── registry.ts    # Service registry (config, health checks)
+    ├── result.ts      # Result<T,E> type for error handling
     ├── services.ts    # Service names and types
+    ├── setup.ts       # Dependency installation
     ├── shell.ts       # Shell command builder
-    └── state.ts       # State detection (stopped/cold/warm)
+    ├── state.ts       # State detection (stopped/cold/warm)
+    ├── typeGuards.ts  # Runtime JSON validation helpers
+    └── worktree.ts    # Git worktree operations
 
 tests/
-├── lib/               # Unit tests for lib/
-│   ├── docker.test.ts
-│   ├── environment.test.ts
-│   └── ports.test.ts
-└── commands/          # Integration tests for commands
+└── lib/               # Unit tests for lib modules (183 tests)
+    ├── docker.test.ts
+    ├── environment.test.ts
+    ├── envgen.test.ts
+    ├── init.test.ts
+    ├── paths.test.ts
+    ├── ports.test.ts
+    ├── registry.test.ts
+    ├── result.test.ts
+    ├── services.test.ts
+    ├── shell.test.ts
+    ├── state.test.ts
+    └── typeGuards.test.ts
 ```
 
 ## Testing Guidelines

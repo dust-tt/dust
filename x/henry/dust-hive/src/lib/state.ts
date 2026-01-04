@@ -32,8 +32,8 @@ export async function isDockerRunning(envName: string): Promise<boolean> {
   return output.trim().length > 0;
 }
 
-// Determine the base state from running status
-function determineState(
+// Determine the base state from running status (exported for testing)
+export function determineState(
   sdkRunning: boolean,
   dockerRunning: boolean,
   appServicesRunning: boolean
@@ -57,8 +57,8 @@ function determineState(
   return appServicesRunning || dockerRunning ? "warm" : "cold";
 }
 
-// Detect warnings for inconsistent states
-function detectWarnings(
+// Detect warnings for inconsistent states (exported for testing)
+export function detectWarnings(
   sdkRunning: boolean,
   dockerRunning: boolean,
   appServicesRunning: boolean,

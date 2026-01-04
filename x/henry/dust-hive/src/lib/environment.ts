@@ -4,11 +4,7 @@ import type { PortAllocation } from "./ports";
 import { loadPortAllocation } from "./ports";
 import { createPropertyChecker } from "./typeGuards";
 
-// Schema version for metadata - increment when changing EnvironmentMetadata structure
-export const METADATA_SCHEMA_VERSION = 1;
-
 export interface EnvironmentMetadata {
-  schemaVersion: number;
   name: string;
   baseBranch: string;
   workspaceBranch: string;
@@ -17,31 +13,7 @@ export interface EnvironmentMetadata {
 }
 
 // Type guard for EnvironmentMetadata
-function isEnvironmentMetadata(data: unknown): data is EnvironmentMetadata {
-  const checker = createPropertyChecker(data);
-  if (!checker) return false;
-
-  return (
-    checker.hasNumber("schemaVersion") &&
-    checker.hasString("name") &&
-    checker.hasString("baseBranch") &&
-    checker.hasString("workspaceBranch") &&
-    checker.hasString("createdAt") &&
-    checker.hasString("repoRoot")
-  );
-}
-
-// Shape of old metadata without schema version
-interface LegacyMetadata {
-  name: string;
-  baseBranch: string;
-  workspaceBranch: string;
-  createdAt: string;
-  repoRoot: string;
-}
-
-// Type guard for legacy metadata (without schemaVersion)
-function isLegacyMetadata(data: unknown): data is LegacyMetadata {
+export function isEnvironmentMetadata(data: unknown): data is EnvironmentMetadata {
   const checker = createPropertyChecker(data);
   if (!checker) return false;
 
@@ -52,22 +24,6 @@ function isLegacyMetadata(data: unknown): data is LegacyMetadata {
     checker.hasString("createdAt") &&
     checker.hasString("repoRoot")
   );
-}
-
-// Migrate metadata from older schema versions
-function migrateMetadata(data: Record<string, unknown>): EnvironmentMetadata | null {
-  // Handle missing schemaVersion (pre-versioning metadata)
-  if (!("schemaVersion" in data) && isLegacyMetadata(data)) {
-    return {
-      schemaVersion: METADATA_SCHEMA_VERSION,
-      name: data.name,
-      baseBranch: data.baseBranch,
-      workspaceBranch: data.workspaceBranch,
-      createdAt: data.createdAt,
-      repoRoot: data.repoRoot,
-    };
-  }
-  return null;
 }
 
 export interface Environment {
@@ -129,19 +85,8 @@ export async function loadMetadata(name: string): Promise<EnvironmentMetadata | 
 
   const data: unknown = await file.json();
 
-  // Try to parse as current schema
   if (isEnvironmentMetadata(data)) {
     return data;
-  }
-
-  // Try migration from older schema
-  if (typeof data === "object" && data !== null) {
-    const migrated = migrateMetadata(data as Record<string, unknown>);
-    if (migrated && isEnvironmentMetadata(migrated)) {
-      // Save migrated metadata back
-      await saveMetadata(migrated);
-      return migrated;
-    }
   }
 
   return null;
