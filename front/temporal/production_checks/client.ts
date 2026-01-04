@@ -17,7 +17,7 @@ export async function launchProductionChecksWorkflow(): Promise<
   const workflowId = "production_checks";
   try {
     const handle = client.workflow.getHandle(workflowId);
-    await handle.terminate();
+    await handle.terminate("Terminating before restarting workflow");
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {
       throw e;
