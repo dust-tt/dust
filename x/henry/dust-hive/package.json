@@ -4,11 +4,9 @@
   "description": "CLI tool for isolated Dust development environments",
   "type": "module",
   "bin": {
-    "dust-hive": "./dist/index.js"
+    "dust-hive": "./src/index.ts"
   },
   "scripts": {
-    "dev": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

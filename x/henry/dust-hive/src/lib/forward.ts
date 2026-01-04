@@ -204,36 +204,11 @@ export async function startForwarder(basePort: number, envName: string): Promise
     }
   }
 
-  // Find the daemon script - need to locate it relative to project root
-  // When bundled, import.meta.path is in dist/, when running from source it's in src/lib/
-  // We find the project root by looking for package.json
-  const findProjectRoot = async (startPath: string): Promise<string> => {
-    let dir = startPath;
-    while (dir !== "/") {
-      if (await fileExists(join(dir, "package.json"))) {
-        return dir;
-      }
-      dir = dirname(dir);
-    }
-    return startPath; // Fallback
-  };
-  const projectRoot = await findProjectRoot(dirname(import.meta.path));
-  const candidates = [
-    join(projectRoot, "dist", "forward-daemon.js"),
-    join(projectRoot, "src", "forward-daemon.ts"),
-  ];
-  let daemonPath: string | null = null;
-  for (const candidate of candidates) {
-    if (await fileExists(candidate)) {
-      daemonPath = candidate;
-      break;
-    }
-  }
+  // Find the daemon script relative to this module (src/lib/forward.ts → src/forward-daemon.ts)
+  const daemonPath = join(dirname(dirname(import.meta.path)), "forward-daemon.ts");
 
-  if (!daemonPath) {
-    throw new Error(
-      "Forwarder daemon not found (expected dist/forward-daemon.js or src/forward-daemon.ts)"
-    );
+  if (!(await fileExists(daemonPath))) {
+    throw new Error(`Forwarder daemon not found at ${daemonPath}`);
   }
 
   // Spawn the forwarder daemon

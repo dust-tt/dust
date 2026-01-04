@@ -42,13 +42,12 @@ rustc-wrapper = "sccache"
 # From the dust repo
 cd x/henry/dust-hive
 
-# Build and link globally
+# Install dependencies and link globally
 bun install
-bun run build
 bun link
 ```
 
-Now `dust-hive` is available globally.
+Now `dust-hive` is available globally. No build step needed - Bun runs TypeScript directly.
 
 ## Initial Setup
 
@@ -361,7 +360,7 @@ dust-hive sync
 ## Development
 
 ```bash
-# Run in dev mode
+# Run directly (no build step)
 bun run src/index.ts <command>
 
 # Run all checks
@@ -371,7 +370,4 @@ bun run check
 bun run typecheck    # TypeScript
 bun run lint         # Biome linter
 bun run test         # Unit tests
-
-# Build
-bun run build
 ```
