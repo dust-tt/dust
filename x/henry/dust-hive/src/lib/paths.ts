@@ -16,6 +16,9 @@ export const FORWARDER_PID_PATH = join(DUST_HIVE_HOME, "forward.pid");
 export const FORWARDER_LOG_PATH = join(DUST_HIVE_HOME, "forward.log");
 export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
 
+// Activity tracking (last-interacted environment)
+export const ACTIVITY_PATH = join(DUST_HIVE_HOME, "activity.json");
+
 // Per-environment paths
 export function getEnvDir(name: string): string {
   return join(DUST_HIVE_ENVS, name);
@@ -81,4 +84,26 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
   }
 
   return null;
+}
+
+// Detect if current working directory is inside a dust-hive worktree
+// Returns the environment name if found, null otherwise
+export function detectEnvFromCwd(): string | null {
+  const cwd = process.cwd();
+  const worktreesBase = DUST_HIVE_WORKTREES;
+
+  // Check if cwd is under ~/dust-hive/{name}/
+  if (!cwd.startsWith(`${worktreesBase}/`)) {
+    return null;
+  }
+
+  // Extract environment name from path
+  const relativePath = cwd.slice(worktreesBase.length + 1);
+  const envName = relativePath.split("/")[0];
+
+  if (!envName) {
+    return null;
+  }
+
+  return envName;
 }

@@ -1,9 +1,9 @@
-import { requireEnvironment } from "../lib/commands";
+import { withEnvironment } from "../lib/commands";
 import { getLogPath } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
 import { checkServiceHealth, getHealthChecks } from "../lib/registry";
-import { Ok, type Result } from "../lib/result";
+import { Ok } from "../lib/result";
 import { ALL_SERVICES } from "../lib/services";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 
@@ -31,15 +31,11 @@ async function printHealthChecks(ports: PortAllocation): Promise<void> {
   }
 }
 
-export async function statusCommand(name: string | undefined): Promise<Result<void>> {
-  const envResult = await requireEnvironment(name, "status");
-  if (!envResult.ok) return envResult;
-  const env = envResult.value;
-  const envName = env.name;
+export const statusCommand = withEnvironment("status", async (env) => {
   const stateInfo = await getStateInfo(env);
 
   console.log();
-  console.log(`Environment: ${envName}`);
+  console.log(`Environment: ${env.name}`);
   console.log(`State: ${stateInfo.state}`);
   console.log(`Ports: ${env.ports.base}-${env.ports.base + 999}`);
   console.log(`Branch: ${env.metadata.workspaceBranch}`);
@@ -54,11 +50,11 @@ export async function statusCommand(name: string | undefined): Promise<Result<vo
     console.log();
   }
 
-  await printServiceStatus(envName);
+  await printServiceStatus(env.name);
 
   console.log();
 
-  const dockerRunning = await isDockerRunning(envName);
+  const dockerRunning = await isDockerRunning(env.name);
   console.log(`Docker: ${dockerRunning ? "\x1b[32mRunning\x1b[0m" : "\x1b[90mStopped\x1b[0m"}`);
 
   if (stateInfo.state === "warm") {
@@ -69,4 +65,4 @@ export async function statusCommand(name: string | undefined): Promise<Result<vo
   console.log();
 
   return Ok(undefined);
-}
+});

@@ -1,31 +1,19 @@
-import { requireEnvironment } from "../lib/commands";
+import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import { stopService, waitForSdkBuild } from "../lib/process";
 import { startService, waitForServiceHealth } from "../lib/registry";
-import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { CommandError, Err, Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
 
 function isServiceName(value: string | undefined): value is ServiceName {
   return value !== undefined && ALL_SERVICES.includes(value as ServiceName);
 }
 
-export async function restartCommand(
-  name: string | undefined,
-  serviceArg: string | undefined
-): Promise<Result<void>> {
-  if (!name) {
-    console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
-    return Err(new CommandError("Usage: dust-hive restart NAME SERVICE"));
-  }
-
-  if (!(serviceArg && isServiceName(serviceArg))) {
+export const restartCommand = withEnvironment("restart", async (env, serviceArg: string) => {
+  if (!isServiceName(serviceArg)) {
     console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
     return Err(new CommandError(`Unknown service '${serviceArg ?? ""}'`));
   }
-
-  const envResult = await requireEnvironment(name, "restart");
-  if (!envResult.ok) return envResult;
-  const env = envResult.value;
 
   logger.info(`Restarting ${serviceArg} in '${env.name}'...`);
 
@@ -45,4 +33,4 @@ export async function restartCommand(
   logger.success(`${serviceArg} restarted`);
 
   return Ok(undefined);
-}
+});

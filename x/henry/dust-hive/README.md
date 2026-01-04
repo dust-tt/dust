@@ -91,22 +91,25 @@ open $(dust-hive url myenv)
 | Command | Description |
 |---------|-------------|
 | `spawn [--name NAME] [--base BRANCH] [--no-open] [--warm]` | Create new environment |
-| `warm NAME [--no-forward] [--force-ports]` | Start docker + all services |
-| `cool NAME` | Stop services, keep SDK watch |
-| `start NAME` | Resume stopped environment |
-| `stop NAME` | Full stop of all services |
-| `destroy NAME [--force]` | Remove environment completely |
-| `restart NAME SERVICE` | Restart a single service |
-| `open NAME` | Open zellij terminal session |
-| `reload NAME` | Kill and reopen zellij session |
+| `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
+| `cool [NAME]` | Stop services, keep SDK watch |
+| `start [NAME]` | Resume stopped environment |
+| `stop [NAME]` | Full stop of all services |
+| `destroy [NAME] [--force]` | Remove environment completely |
+| `restart [NAME] SERVICE` | Restart a single service |
+| `open [NAME]` | Open zellij terminal session |
+| `reload [NAME]` | Kill and reopen zellij session |
 | `list` | Show all environments |
-| `status NAME` | Show service health |
-| `logs NAME [SERVICE] [-f]` | View service logs |
-| `url NAME` | Print front URL |
+| `status [NAME]` | Show service health |
+| `logs [NAME] [SERVICE] [-f]` | View service logs |
+| `url [NAME]` | Print front URL |
 | `doctor` | Check prerequisites |
 | `cache [status\|rebuild] [--status] [--rebuild]` | Show or rebuild binary cache |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
 | `sync [BRANCH]` | Rebase on branch (default: main), rebuild binaries, refresh deps |
+
+> **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
+> It pre-selects the current environment (if you're in a worktree) or the last one you used.
 
 ### Services
 

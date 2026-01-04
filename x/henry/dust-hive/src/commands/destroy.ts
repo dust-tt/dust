@@ -1,5 +1,6 @@
+import { requireEnvironment } from "../lib/commands";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
-import { deleteEnvironmentDir, getEnvironment } from "../lib/environment";
+import { deleteEnvironmentDir } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
@@ -54,17 +55,12 @@ export async function destroyCommand(
   options?: Partial<DestroyOptions>
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, ...options };
-  if (!name) {
-    return Err(new CommandError("Usage: dust-hive destroy NAME [--force]"));
-  }
 
-  // Get environment
-  const env = await getEnvironment(name);
-  if (!env) {
-    return Err(new CommandError(`Environment '${name}' not found`));
-  }
+  const envResult = await requireEnvironment(name, "destroy");
+  if (!envResult.ok) return envResult;
+  const env = envResult.value;
 
-  const worktreePath = getWorktreeDir(name);
+  const worktreePath = getWorktreeDir(env.name);
 
   // Check for uncommitted changes (unless --force)
   if (!resolvedOptions.force) {
@@ -79,20 +75,20 @@ export async function destroyCommand(
     }
   }
 
-  logger.info(`Destroying environment '${name}'...`);
+  logger.info(`Destroying environment '${env.name}'...`);
   console.log();
 
   const portServices: ServiceName[] = ["front", "core", "connectors", "oauth"];
-  const servicePids = await Promise.all(portServices.map((service) => readPid(name, service)));
+  const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
 
   // Stop all services
   logger.step("Stopping all services...");
-  await stopAllServices(name);
+  await stopAllServices(env.name);
 
   // Clean up zellij session
   logger.step("Cleaning up zellij session...");
-  await cleanupZellijSession(name);
+  await cleanupZellijSession(env.name);
 
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
@@ -120,7 +116,7 @@ export async function destroyCommand(
   logger.success("All services stopped");
 
   // Stop Docker and remove volumes
-  await cleanupDocker(name, env.metadata.repoRoot);
+  await cleanupDocker(env.name, env.metadata.repoRoot);
 
   // Remove git worktree
   logger.step("Removing git worktree...");
@@ -134,11 +130,11 @@ export async function destroyCommand(
 
   // Remove environment directory
   logger.step("Removing environment config...");
-  await deleteEnvironmentDir(name);
+  await deleteEnvironmentDir(env.name);
   logger.success("Environment config removed");
 
   console.log();
-  logger.success(`Environment '${name}' destroyed`);
+  logger.success(`Environment '${env.name}' destroyed`);
   console.log();
 
   return Ok(undefined);

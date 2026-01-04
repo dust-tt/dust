@@ -1,18 +1,14 @@
 import { unlink } from "node:fs/promises";
-import { requireEnvironment } from "../lib/commands";
+import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import { getZellijLayoutPath } from "../lib/paths";
-import type { Result } from "../lib/result";
 import { openCommand } from "./open";
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return typeof error === "object" && error !== null && "code" in error;
 }
 
-export async function reloadCommand(nameArg: string | undefined): Promise<Result<void>> {
-  const envResult = await requireEnvironment(nameArg, "reload");
-  if (!envResult.ok) return envResult;
-  const env = envResult.value;
+export const reloadCommand = withEnvironment("reload", async (env) => {
   const sessionName = `dust-hive-${env.name}`;
 
   logger.step("Killing existing session...");
@@ -37,11 +33,11 @@ export async function reloadCommand(nameArg: string | undefined): Promise<Result
     await unlink(layoutPath);
   } catch (error) {
     if (isErrnoException(error) && error.code === "ENOENT") {
-      return openCommand(nameArg);
+      return openCommand(env.name);
     }
     throw error;
   }
 
   // Open fresh
-  return openCommand(nameArg);
-}
+  return openCommand(env.name);
+});

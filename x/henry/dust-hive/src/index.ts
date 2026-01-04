@@ -66,49 +66,59 @@ cli
     }
   );
 
-cli.command("open <name>", "Open environment's zellij session").action(async (name: string) => {
-  await prepareAndRun(openCommand(name));
-});
-
-cli.command("reload <name>", "Kill and reopen zellij session").action(async (name: string) => {
-  await prepareAndRun(reloadCommand(name));
-});
+cli
+  .command("open [name]", "Open environment's zellij session")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(openCommand(name));
+  });
 
 cli
-  .command("restart <name> <service>", "Restart a single service")
-  .action(async (name: string, service: string) => {
+  .command("reload [name]", "Kill and reopen zellij session")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(reloadCommand(name));
+  });
+
+cli
+  .command("restart [name] <service>", "Restart a single service")
+  .action(async (name: string | undefined, service: string) => {
     await prepareAndRun(restartCommand(name, service));
   });
 
 cli
-  .command("warm <name>", "Start docker and all services")
+  .command("warm [name]", "Start docker and all services")
   .option("--no-forward", "Disable OAuth port forwarding")
   .option("--force-ports", "Kill processes blocking service ports")
-  .action(async (name: string, options: { forward?: boolean; forcePorts?: boolean }) => {
-    await prepareAndRun(
-      warmCommand(name, {
-        noForward: options.forward === false,
-        forcePorts: Boolean(options.forcePorts),
-      })
-    );
+  .action(
+    async (name: string | undefined, options: { forward?: boolean; forcePorts?: boolean }) => {
+      await prepareAndRun(
+        warmCommand(name, {
+          noForward: options.forward === false,
+          forcePorts: Boolean(options.forcePorts),
+        })
+      );
+    }
+  );
+
+cli
+  .command("cool [name]", "Stop services, keep SDK watch")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(coolCommand(name));
   });
 
-cli.command("cool <name>", "Stop services, keep SDK watch").action(async (name: string) => {
-  await prepareAndRun(coolCommand(name));
-});
+cli
+  .command("start [name]", "Resume stopped environment")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(startCommand(name));
+  });
 
-cli.command("start <name>", "Resume stopped environment").action(async (name: string) => {
-  await prepareAndRun(startCommand(name));
-});
-
-cli.command("stop <name>", "Full stop of all services").action(async (name: string) => {
+cli.command("stop [name]", "Full stop of all services").action(async (name: string | undefined) => {
   await prepareAndRun(stopCommand(name));
 });
 
 cli
-  .command("destroy <name>", "Remove environment")
+  .command("destroy [name]", "Remove environment")
   .option("-f, --force", "Force destroy even with uncommitted changes")
-  .action(async (name: string, options: { force?: boolean }) => {
+  .action(async (name: string | undefined, options: { force?: boolean }) => {
     await prepareAndRun(destroyCommand(name, { force: Boolean(options.force) }));
   });
 
@@ -116,18 +126,24 @@ cli.command("list", "Show all environments").action(async () => {
   await prepareAndRun(listCommand());
 });
 
-cli.command("status <name>", "Show service health").action(async (name: string) => {
+cli.command("status [name]", "Show service health").action(async (name: string | undefined) => {
   await prepareAndRun(statusCommand(name));
 });
 
 cli
-  .command("logs <name> [service]", "Show service logs")
+  .command("logs [name] [service]", "Show service logs")
   .option("-f, --follow", "Follow log output")
-  .action(async (name: string, service: string | undefined, options: { follow?: boolean }) => {
-    await prepareAndRun(logsCommand(name, service, { follow: Boolean(options.follow) }));
-  });
+  .action(
+    async (
+      name: string | undefined,
+      service: string | undefined,
+      options: { follow?: boolean }
+    ) => {
+      await prepareAndRun(logsCommand(name, service, { follow: Boolean(options.follow) }));
+    }
+  );
 
-cli.command("url <name>", "Print front URL").action(async (name: string) => {
+cli.command("url [name]", "Print front URL").action(async (name: string | undefined) => {
   await prepareAndRun(urlCommand(name));
 });
 

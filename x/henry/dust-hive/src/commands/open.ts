@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { requireEnvironment } from "../lib/commands";
+import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import {
   DUST_HIVE_ZELLIJ,
@@ -8,7 +8,7 @@ import {
   getWorktreeDir,
   getZellijLayoutPath,
 } from "../lib/paths";
-import { Ok, type Result } from "../lib/result";
+import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
 
 // Tab display names (shorter names for better zellij tab bar)
@@ -135,18 +135,10 @@ interface OpenOptions {
   warmCommand?: string;
 }
 
-export async function openCommand(
-  nameArg: string | undefined,
-  options: OpenOptions = {}
-): Promise<Result<void>> {
-  const envResult = await requireEnvironment(nameArg, "open");
-  if (!envResult.ok) return envResult;
-  const env = envResult.value;
-  const name = env.name;
-
-  const worktreePath = getWorktreeDir(name);
-  const envShPath = getEnvFilePath(name);
-  const sessionName = `dust-hive-${name}`;
+export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
+  const worktreePath = getWorktreeDir(env.name);
+  const envShPath = getEnvFilePath(env.name);
+  const sessionName = `dust-hive-${env.name}`;
 
   // Check if session already exists
   const checkProc = Bun.spawn(["zellij", "list-sessions"], {
@@ -181,7 +173,7 @@ export async function openCommand(
     // Create new session with layout
     logger.info(`Creating new zellij session '${sessionName}'...`);
 
-    const layoutPath = await writeLayout(name, worktreePath, envShPath, options.warmCommand);
+    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, options.warmCommand);
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],
@@ -196,4 +188,4 @@ export async function openCommand(
   }
 
   return Ok(undefined);
-}
+});
