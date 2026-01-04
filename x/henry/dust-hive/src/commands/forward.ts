@@ -142,8 +142,7 @@ async function forwardToEnv(name: string): Promise<Result<void>> {
   return Ok(undefined);
 }
 
-export async function forwardCommand(args: string[]): Promise<Result<void>> {
-  const subcommand = args[0];
+export async function forwardCommand(subcommand?: string): Promise<Result<void>> {
 
   // No args: forward to last warmed env
   if (!subcommand) {

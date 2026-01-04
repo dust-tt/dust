@@ -17,25 +17,6 @@ interface CacheOptions {
   status?: boolean;
 }
 
-function parseArgs(args: string[]): CacheOptions {
-  const options: CacheOptions = {};
-
-  for (const arg of args) {
-    if (arg === "--rebuild") {
-      options.rebuild = true;
-    } else if (arg === "--status" || arg === "status") {
-      options.status = true;
-    }
-  }
-
-  // Default to status if no flags
-  if (!(options.rebuild || options.status)) {
-    options.status = true;
-  }
-
-  return options;
-}
-
 async function showCacheStatus(): Promise<void> {
   const cacheSource = await getCacheSource();
 
@@ -93,11 +74,13 @@ async function rebuildCache(): Promise<void> {
   }
 }
 
-export async function cacheCommand(args: string[]): Promise<Result<void>> {
-  const options = parseArgs(args);
-
+export async function cacheCommand(options: CacheOptions): Promise<Result<void>> {
+  const resolved: CacheOptions = { ...options };
+  if (!(resolved.rebuild || resolved.status)) {
+    resolved.status = true;
+  }
   try {
-    if (options.rebuild) {
+    if (resolved.rebuild) {
       await rebuildCache();
     } else {
       await showCacheStatus();

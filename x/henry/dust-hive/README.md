@@ -95,7 +95,7 @@ open $(dust-hive url myenv)
 | `logs NAME [SERVICE] [-f]` | View service logs |
 | `url NAME` | Print front URL |
 | `doctor` | Check prerequisites |
-| `cache [--rebuild]` | Show or rebuild binary cache |
+| `cache [status\|rebuild] [--status] [--rebuild]` | Show or rebuild binary cache |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
 
 ### Services

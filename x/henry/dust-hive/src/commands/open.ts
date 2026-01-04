@@ -79,12 +79,9 @@ function generateLayout(envName: string, worktreePath: string, envShPath: string
 
   return `layout {
     default_tab_template {
-        pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
-        }
         children
-        pane size=2 borderless=true {
-            plugin location="zellij:status-bar"
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
         }
     }
 
@@ -117,8 +114,8 @@ async function writeLayout(
   return layoutPath;
 }
 
-export async function openCommand(args: string[]): Promise<Result<void>> {
-  const envResult = await requireEnvironment(args[0], "open");
+export async function openCommand(nameArg: string | undefined): Promise<Result<void>> {
+  const envResult = await requireEnvironment(nameArg, "open");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const name = env.name;

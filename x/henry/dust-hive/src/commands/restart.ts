@@ -9,9 +9,10 @@ function isServiceName(value: string | undefined): value is ServiceName {
   return value !== undefined && ALL_SERVICES.includes(value as ServiceName);
 }
 
-export async function restartCommand(args: string[]): Promise<Result<void>> {
-  const name = args[0];
-  const serviceArg = args[1];
+export async function restartCommand(
+  name: string | undefined,
+  serviceArg: string | undefined
+): Promise<Result<void>> {
 
   if (!name) {
     console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);

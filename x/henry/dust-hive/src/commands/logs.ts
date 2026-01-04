@@ -7,10 +7,16 @@ function isServiceName(value: string | undefined): value is ServiceName {
   return value !== undefined && ALL_SERVICES.includes(value as ServiceName);
 }
 
-export async function logsCommand(args: string[]): Promise<Result<void>> {
-  const name = args[0];
-  const serviceArg = args[1];
-  const follow = args.includes("-f") || args.includes("--follow");
+interface LogsOptions {
+  follow?: boolean;
+}
+
+export async function logsCommand(
+  name: string | undefined,
+  serviceArg: string | undefined,
+  options: LogsOptions
+): Promise<Result<void>> {
+  const follow = options.follow ?? false;
 
   if (!name) {
     console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);

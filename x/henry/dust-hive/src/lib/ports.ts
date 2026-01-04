@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { mkdir, open, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, DUST_HIVE_HOME, getPortsPath } from "./paths";
 import { isProcessRunning, killProcess } from "./process";
-import { createPropertyChecker } from "./typeGuards";
 
 // Port offsets from base (spec-defined).
 // Offsets chosen so base_port + offset resembles standard ports:
@@ -29,19 +29,23 @@ const PORT_LOCK_PATH = join(DUST_HIVE_HOME, "ports.lock");
 const PORT_LOCK_TIMEOUT_MS = 5000;
 const PORT_LOCK_STALE_MS = 30000;
 
-export interface PortAllocation {
-  base: number;
-  front: number;
-  core: number;
-  connectors: number;
-  oauth: number;
-  postgres: number;
-  redis: number;
-  qdrantHttp: number;
-  qdrantGrpc: number;
-  elasticsearch: number;
-  apacheTika: number;
-}
+const PortAllocationFields = z.object({
+  base: z.number(),
+  front: z.number(),
+  core: z.number(),
+  connectors: z.number(),
+  oauth: z.number(),
+  postgres: z.number(),
+  redis: z.number(),
+  qdrantHttp: z.number(),
+  qdrantGrpc: z.number(),
+  elasticsearch: z.number(),
+  apacheTika: z.number(),
+});
+
+const PortAllocationSchema = PortAllocationFields.passthrough();
+
+export type PortAllocation = z.infer<typeof PortAllocationFields>;
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return typeof error === "object" && error !== null && "code" in error;
@@ -49,22 +53,7 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 
 // Type guard for PortAllocation
 function isPortAllocation(data: unknown): data is PortAllocation {
-  const checker = createPropertyChecker(data);
-  if (!checker) return false;
-
-  return (
-    checker.hasNumber("base") &&
-    checker.hasNumber("front") &&
-    checker.hasNumber("core") &&
-    checker.hasNumber("connectors") &&
-    checker.hasNumber("oauth") &&
-    checker.hasNumber("postgres") &&
-    checker.hasNumber("redis") &&
-    checker.hasNumber("qdrantHttp") &&
-    checker.hasNumber("qdrantGrpc") &&
-    checker.hasNumber("elasticsearch") &&
-    checker.hasNumber("apacheTika")
-  );
+  return PortAllocationSchema.safeParse(data).success;
 }
 
 // Calculate ports from a base port

@@ -6,8 +6,8 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { ALL_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
-export async function coolCommand(args: string[]): Promise<Result<void>> {
-  const envResult = await requireEnvironment(args[0], "cool");
+export async function coolCommand(nameArg: string | undefined): Promise<Result<void>> {
+  const envResult = await requireEnvironment(nameArg, "cool");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const name = env.name;

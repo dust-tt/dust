@@ -87,11 +87,10 @@ src/
     ├── shell.ts       # Shell command builder
     ├── state.ts       # State detection (stopped/cold/warm)
     ├── temporal.ts    # Temporal namespace config
-    ├── typeGuards.ts  # Runtime JSON validation helpers
     └── worktree.ts    # Git worktree operations
 
 tests/
-└── lib/               # Unit tests for lib modules (177 tests)
+└── lib/               # Unit tests for lib modules (156 tests)
     ├── docker.test.ts
     ├── environment.test.ts
     ├── envgen.test.ts
@@ -102,8 +101,7 @@ tests/
     ├── result.test.ts
     ├── services.test.ts
     ├── shell.test.ts
-    ├── state.test.ts
-    └── typeGuards.test.ts
+    └── state.test.ts
 ```
 
 ## Testing Guidelines
@@ -167,7 +165,9 @@ dust-hive uses the main Dust repo as a cache source for:
 Check cache status:
 ```bash
 dust-hive cache            # Show what's cached
+dust-hive cache status     # Explicit status
 dust-hive cache --rebuild  # Build missing binaries
+dust-hive cache rebuild    # Alias for rebuild
 ```
 
 ## Testing the CLI

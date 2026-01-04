@@ -26,28 +26,6 @@ interface SpawnOptions {
   noOpen?: boolean;
 }
 
-function parseArgs(args: string[]): SpawnOptions {
-  const options: SpawnOptions = {};
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    const nextArg = args[i + 1];
-    if (arg === "--name" && nextArg !== undefined) {
-      options.name = nextArg;
-      i++;
-    } else if (arg === "--base" && nextArg !== undefined) {
-      options.base = nextArg;
-      i++;
-    } else if (arg === "--no-open") {
-      options.noOpen = true;
-    } else if (arg !== undefined && !arg.startsWith("-")) {
-      options.name = arg;
-    }
-  }
-
-  return options;
-}
-
 async function promptForName(): Promise<string> {
   process.stdout.write("Environment name: ");
 
@@ -179,9 +157,7 @@ async function startSdk(
   return Ok(undefined);
 }
 
-export async function spawnCommand(args: string[]): Promise<Result<void>> {
-  const options = parseArgs(args);
-
+export async function spawnCommand(options: SpawnOptions): Promise<Result<void>> {
   // Find repo root
   const repoRoot = await findRepoRoot();
   if (!repoRoot) {
@@ -261,7 +237,7 @@ export async function spawnCommand(args: string[]): Promise<Result<void>> {
 
   // Open zellij unless --no-open
   if (!options.noOpen) {
-    return openCommand([name]);
+    return openCommand(name);
   }
 
   return Ok(undefined);

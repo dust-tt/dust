@@ -31,14 +31,15 @@ async function printHealthChecks(ports: PortAllocation): Promise<void> {
   }
 }
 
-export async function statusCommand(name: string): Promise<Result<void>> {
+export async function statusCommand(name: string | undefined): Promise<Result<void>> {
   const envResult = await requireEnvironment(name, "status");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
+  const envName = env.name;
   const stateInfo = await getStateInfo(env);
 
   console.log();
-  console.log(`Environment: ${name}`);
+  console.log(`Environment: ${envName}`);
   console.log(`State: ${stateInfo.state}`);
   console.log(`Ports: ${env.ports.base}-${env.ports.base + 999}`);
   console.log(`Branch: ${env.metadata.workspaceBranch}`);
@@ -53,11 +54,11 @@ export async function statusCommand(name: string): Promise<Result<void>> {
     console.log();
   }
 
-  await printServiceStatus(name);
+  await printServiceStatus(envName);
 
   console.log();
 
-  const dockerRunning = await isDockerRunning(name);
+  const dockerRunning = await isDockerRunning(envName);
   console.log(`Docker: ${dockerRunning ? "\x1b[32mRunning\x1b[0m" : "\x1b[90mStopped\x1b[0m"}`);
 
   if (stateInfo.state === "warm") {

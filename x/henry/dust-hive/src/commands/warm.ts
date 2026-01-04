@@ -13,6 +13,11 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
 
+interface WarmOptions {
+  noForward?: boolean;
+  forcePorts?: boolean;
+}
+
 // Check if Temporal server is running (default gRPC port 7233)
 async function isTemporalRunning(): Promise<boolean> {
   const proc = Bun.spawn(["temporal", "operator", "namespace", "list", "--namespace", "default"], {
@@ -23,11 +28,14 @@ async function isTemporalRunning(): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-export async function warmCommand(args: string[]): Promise<Result<void>> {
+export async function warmCommand(
+  nameArg: string | undefined,
+  options: WarmOptions
+): Promise<Result<void>> {
   const startTime = Date.now();
-  const noForward = args.includes("--no-forward");
-  const forcePorts = args.includes("--force-ports");
-  const envName = args.find((arg) => !arg.startsWith("--"));
+  const noForward = options.noForward ?? false;
+  const forcePorts = options.forcePorts ?? false;
+  const envName = nameArg;
   const envResult = await requireEnvironment(envName, "warm");
   if (!envResult.ok) return envResult;
   const env = envResult.value;

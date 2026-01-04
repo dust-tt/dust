@@ -9,8 +9,8 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return typeof error === "object" && error !== null && "code" in error;
 }
 
-export async function reloadCommand(args: string[]): Promise<Result<void>> {
-  const envResult = await requireEnvironment(args[0], "reload");
+export async function reloadCommand(nameArg: string | undefined): Promise<Result<void>> {
+  const envResult = await requireEnvironment(nameArg, "reload");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const sessionName = `dust-hive-${env.name}`;
@@ -37,11 +37,11 @@ export async function reloadCommand(args: string[]): Promise<Result<void>> {
     await unlink(layoutPath);
   } catch (error) {
     if (isErrnoException(error) && error.code === "ENOENT") {
-      return openCommand(args);
+      return openCommand(nameArg);
     }
     throw error;
   }
 
   // Open fresh
-  return openCommand(args);
+  return openCommand(nameArg);
 }

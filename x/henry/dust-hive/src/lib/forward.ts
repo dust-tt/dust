@@ -3,19 +3,23 @@
 
 import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { z } from "zod";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
 import { FORWARDER_PORTS } from "./forwarderConfig";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
 import { getPortProcessInfo, isPortInUse } from "./ports";
 import { isProcessRunning, killProcess } from "./process";
-import { createPropertyChecker } from "./typeGuards";
 
-export interface ForwarderState {
-  targetEnv: string;
-  basePort: number;
-  updatedAt: string;
-}
+const ForwarderStateFields = z.object({
+  targetEnv: z.string(),
+  basePort: z.number(),
+  updatedAt: z.string(),
+});
+
+const ForwarderStateSchema = ForwarderStateFields.passthrough();
+
+export type ForwarderState = z.infer<typeof ForwarderStateFields>;
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return typeof error === "object" && error !== null && "code" in error;
@@ -23,14 +27,7 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 
 // Type guard for ForwarderState
 function isForwarderState(data: unknown): data is ForwarderState {
-  const checker = createPropertyChecker(data);
-  if (!checker) return false;
-
-  return (
-    checker.hasString("targetEnv") &&
-    checker.hasNumber("basePort") &&
-    checker.hasString("updatedAt")
-  );
+  return ForwarderStateSchema.safeParse(data).success;
 }
 
 // Read forwarder PID, returns null if not running

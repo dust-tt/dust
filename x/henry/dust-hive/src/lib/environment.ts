@@ -1,30 +1,25 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
+import { z } from "zod";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { loadPortAllocation } from "./ports";
-import { createPropertyChecker } from "./typeGuards";
 
-export interface EnvironmentMetadata {
-  name: string;
-  baseBranch: string;
-  workspaceBranch: string;
-  createdAt: string;
-  repoRoot: string;
-}
+const EnvironmentMetadataFields = z.object({
+  name: z.string(),
+  baseBranch: z.string(),
+  workspaceBranch: z.string(),
+  createdAt: z.string(),
+  repoRoot: z.string(),
+});
+
+export const EnvironmentMetadataSchema = EnvironmentMetadataFields.passthrough();
+
+export type EnvironmentMetadata = z.infer<typeof EnvironmentMetadataFields>;
 
 // Type guard for EnvironmentMetadata
 export function isEnvironmentMetadata(data: unknown): data is EnvironmentMetadata {
-  const checker = createPropertyChecker(data);
-  if (!checker) return false;
-
-  return (
-    checker.hasString("name") &&
-    checker.hasString("baseBranch") &&
-    checker.hasString("workspaceBranch") &&
-    checker.hasString("createdAt") &&
-    checker.hasString("repoRoot")
-  );
+  return EnvironmentMetadataSchema.safeParse(data).success;
 }
 
 export interface Environment {

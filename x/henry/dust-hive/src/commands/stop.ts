@@ -5,8 +5,8 @@ import { stopAllServices } from "../lib/process";
 import { Ok, type Result } from "../lib/result";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 
-export async function stopCommand(args: string[]): Promise<Result<void>> {
-  const envResult = await requireEnvironment(args[0], "stop");
+export async function stopCommand(nameArg: string | undefined): Promise<Result<void>> {
+  const envResult = await requireEnvironment(nameArg, "stop");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const name = env.name;

@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { cac } from "cac";
 import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
@@ -20,62 +21,6 @@ import { ensureDirectories } from "./lib/config";
 import { logger } from "./lib/logger";
 import type { Result } from "./lib/result";
 
-const COMMANDS = [
-  "spawn",
-  "open",
-  "reload",
-  "restart",
-  "warm",
-  "cool",
-  "start",
-  "stop",
-  "destroy",
-  "list",
-  "status",
-  "logs",
-  "url",
-  "doctor",
-  "cache",
-  "forward",
-] as const;
-
-type Command = (typeof COMMANDS)[number];
-
-function printUsage(): void {
-  console.log(`
-dust-hive - Isolated Dust development environments
-
-Usage:
-  dust-hive <command> [options]
-
-Commands:
-  spawn [--name NAME] [--base BRANCH] [--no-open]  Create a new environment
-  open NAME                                         Open environment's zellij session
-  reload NAME                                       Kill and reopen zellij session
-  restart NAME SERVICE                              Restart a single service
-  warm NAME [--no-forward] [--force-ports]          Start docker and all services
-  cool NAME                                         Stop services, keep SDK watch
-  start NAME                                        Resume stopped environment
-  stop NAME                                         Full stop of all services
-  destroy NAME [--force]                            Remove environment
-  list                                              Show all environments
-  status NAME                                       Show service health
-  logs NAME [SERVICE] [-f]                          Show service logs
-  url NAME                                          Print front URL
-  doctor                                            Check prerequisites
-  cache [--rebuild]                                 Show or rebuild binary cache
-  forward [NAME|status|stop]                        Manage OAuth port forwarding
-
-Options:
-  --help  Show this help message
-`);
-}
-
-function isCommand(cmd: string): cmd is Command {
-  return COMMANDS.includes(cmd as Command);
-}
-
-// Helper to run a command and handle its Result
 async function runCommand(resultPromise: Promise<Result<void>>): Promise<void> {
   const result = await resultPromise;
   if (!result.ok) {
@@ -84,94 +29,158 @@ async function runCommand(resultPromise: Promise<Result<void>>): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-
-  if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
-    printUsage();
-    process.exit(0);
-  }
-
-  const command = args[0];
-
-  if (!(command && isCommand(command))) {
-    logger.error(`Unknown command: ${command}`);
-    printUsage();
-    process.exit(1);
-  }
-
-  // Ensure directories exist
+async function prepareAndRun(resultPromise: Promise<Result<void>>): Promise<void> {
   await ensureDirectories();
-
-  // Route to command handlers
-  switch (command) {
-    case "list":
-      await runCommand(listCommand());
-      break;
-
-    case "status":
-      await runCommand(statusCommand(args[1] ?? ""));
-      break;
-
-    case "doctor":
-      await runCommand(doctorCommand());
-      break;
-
-    case "spawn":
-      await runCommand(spawnCommand(args.slice(1)));
-      break;
-
-    case "warm":
-      await runCommand(warmCommand(args.slice(1)));
-      break;
-
-    case "cool":
-      await runCommand(coolCommand(args.slice(1)));
-      break;
-
-    case "start":
-      await runCommand(startCommand(args.slice(1)));
-      break;
-
-    case "stop":
-      await runCommand(stopCommand(args.slice(1)));
-      break;
-
-    case "destroy":
-      await runCommand(destroyCommand(args.slice(1)));
-      break;
-
-    case "open":
-      await runCommand(openCommand(args.slice(1)));
-      break;
-
-    case "reload":
-      await runCommand(reloadCommand(args.slice(1)));
-      break;
-
-    case "restart":
-      await runCommand(restartCommand(args.slice(1)));
-      break;
-
-    case "url":
-      await runCommand(urlCommand(args.slice(1)));
-      break;
-
-    case "logs":
-      await runCommand(logsCommand(args.slice(1)));
-      break;
-
-    case "cache":
-      await runCommand(cacheCommand(args.slice(1)));
-      break;
-
-    case "forward":
-      await runCommand(forwardCommand(args.slice(1)));
-      break;
-  }
+  await runCommand(resultPromise);
 }
 
-main().catch((err: unknown) => {
-  logger.error(err instanceof Error ? err.message : String(err));
+const cli = cac("dust-hive");
+
+cli
+  .command("spawn [name]", "Create a new environment")
+  .option("--name <name>", "Environment name")
+  .option("--base <branch>", "Base branch")
+  .option("--no-open", "Do not open zellij session after spawn")
+  .action(
+    async (name: string | undefined, options: { name?: string; base?: string; open?: boolean }) => {
+      const resolvedName = name ?? options.name;
+      const spawnOptions: { name?: string; base?: string; noOpen?: boolean } = {};
+      if (resolvedName !== undefined) {
+        spawnOptions.name = resolvedName;
+      }
+      if (options.base !== undefined) {
+        spawnOptions.base = options.base;
+      }
+      if (options.open === false) {
+        spawnOptions.noOpen = true;
+      }
+      await prepareAndRun(spawnCommand(spawnOptions));
+    }
+  );
+
+cli
+  .command("open <name>", "Open environment's zellij session")
+  .action(async (name: string) => {
+    await prepareAndRun(openCommand(name));
+  });
+
+cli
+  .command("reload <name>", "Kill and reopen zellij session")
+  .action(async (name: string) => {
+    await prepareAndRun(reloadCommand(name));
+  });
+
+cli
+  .command("restart <name> <service>", "Restart a single service")
+  .action(async (name: string, service: string) => {
+    await prepareAndRun(restartCommand(name, service));
+  });
+
+cli
+  .command("warm <name>", "Start docker and all services")
+  .option("--no-forward", "Disable OAuth port forwarding")
+  .option("--force-ports", "Kill processes blocking service ports")
+  .action(async (name: string, options: { forward?: boolean; forcePorts?: boolean }) => {
+    await prepareAndRun(
+      warmCommand(name, {
+        noForward: options.forward === false,
+        forcePorts: Boolean(options.forcePorts),
+      })
+    );
+  });
+
+cli
+  .command("cool <name>", "Stop services, keep SDK watch")
+  .action(async (name: string) => {
+    await prepareAndRun(coolCommand(name));
+  });
+
+cli
+  .command("start <name>", "Resume stopped environment")
+  .action(async (name: string) => {
+    await prepareAndRun(startCommand(name));
+  });
+
+cli
+  .command("stop <name>", "Full stop of all services")
+  .action(async (name: string) => {
+    await prepareAndRun(stopCommand(name));
+  });
+
+cli
+  .command("destroy <name>", "Remove environment")
+  .option("-f, --force", "Force destroy even with uncommitted changes")
+  .action(async (name: string, options: { force?: boolean }) => {
+    await prepareAndRun(destroyCommand(name, { force: Boolean(options.force) }));
+  });
+
+cli.command("list", "Show all environments").action(async () => {
+  await prepareAndRun(listCommand());
+});
+
+cli
+  .command("status <name>", "Show service health")
+  .action(async (name: string) => {
+    await prepareAndRun(statusCommand(name));
+  });
+
+cli
+  .command("logs <name> [service]", "Show service logs")
+  .option("-f, --follow", "Follow log output")
+  .action(async (name: string, service: string | undefined, options: { follow?: boolean }) => {
+    await prepareAndRun(logsCommand(name, service, { follow: Boolean(options.follow) }));
+  });
+
+cli
+  .command("url <name>", "Print front URL")
+  .action(async (name: string) => {
+    await prepareAndRun(urlCommand(name));
+  });
+
+cli.command("doctor", "Check prerequisites").action(async () => {
+  await prepareAndRun(doctorCommand());
+});
+
+cli
+  .command("cache [action]", "Show or rebuild binary cache")
+  .option("--rebuild", "Rebuild cache")
+  .option("--status", "Show cache status")
+  .action(async (action: string | undefined, options: { rebuild?: boolean; status?: boolean }) => {
+    const resolved = {
+      rebuild: options.rebuild ?? false,
+      status: options.status ?? false,
+    };
+
+    if (action === "rebuild") {
+      resolved.rebuild = true;
+    } else if (action === "status") {
+      resolved.status = true;
+    } else if (action !== undefined) {
+      logger.error(`Unknown cache action: ${action}`);
+      process.exit(1);
+    }
+
+    await prepareAndRun(cacheCommand(resolved));
+  });
+
+cli
+  .command("forward [target]", "Manage OAuth port forwarding")
+  .action(async (target: string | undefined) => {
+    await prepareAndRun(forwardCommand(target));
+  });
+
+cli.help();
+
+cli.on("command:*", () => {
+  const command = cli.args[0];
+  logger.error(`Unknown command: ${command}`);
+  cli.outputHelp();
   process.exit(1);
 });
+
+if (process.argv.length <= 2) {
+  cli.outputHelp();
+  process.exit(0);
+}
+
+cli.parse();

@@ -5,8 +5,8 @@ import { startService } from "../lib/registry";
 import { Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
-export async function startCommand(args: string[]): Promise<Result<void>> {
-  const envResult = await requireEnvironment(args[0], "start");
+export async function startCommand(nameArg: string | undefined): Promise<Result<void>> {
+  const envResult = await requireEnvironment(nameArg, "start");
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const name = env.name;

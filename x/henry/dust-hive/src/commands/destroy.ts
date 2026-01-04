@@ -14,21 +14,6 @@ interface DestroyOptions {
   force: boolean;
 }
 
-function parseArgs(args: string[]): { name: string | undefined; options: DestroyOptions } {
-  const options: DestroyOptions = { force: false };
-  let name: string | undefined;
-
-  for (const arg of args) {
-    if (arg === "--force" || arg === "-f") {
-      options.force = true;
-    } else if (!arg.startsWith("-")) {
-      name = arg;
-    }
-  }
-
-  return { name, options };
-}
-
 async function cleanupDocker(envName: string, repoRoot: string): Promise<void> {
   const dockerRunning = await isDockerRunning(envName);
   let needsVolumeCleanup = !dockerRunning;
@@ -46,9 +31,11 @@ async function cleanupDocker(envName: string, repoRoot: string): Promise<void> {
   }
 }
 
-export async function destroyCommand(args: string[]): Promise<Result<void>> {
-  const { name, options } = parseArgs(args);
-
+export async function destroyCommand(
+  name: string | undefined,
+  options?: Partial<DestroyOptions>
+): Promise<Result<void>> {
+  const resolvedOptions: DestroyOptions = { force: false, ...options };
   if (!name) {
     return Err(new CommandError("Usage: dust-hive destroy NAME [--force]"));
   }
@@ -62,7 +49,7 @@ export async function destroyCommand(args: string[]): Promise<Result<void>> {
   const worktreePath = getWorktreeDir(name);
 
   // Check for uncommitted changes (unless --force)
-  if (!options.force) {
+  if (!resolvedOptions.force) {
     const worktreeExists = await directoryExists(worktreePath);
     if (worktreeExists) {
       const hasChanges = await hasUncommittedChanges(worktreePath);
@@ -88,7 +75,7 @@ export async function destroyCommand(args: string[]): Promise<Result<void>> {
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
     allowedPids,
-    force: options.force,
+    force: resolvedOptions.force,
   });
   if (blockedPorts.length > 0) {
     const details = blockedPorts
