@@ -1,8 +1,10 @@
+import { setCacheSource } from "../lib/cache";
 import { requireEnvironment } from "../lib/commands";
 import { startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
 import { logger } from "../lib/logger";
+import { getServicePorts, isPortInUse, killProcessesOnPort } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
 import { WARM_SERVICES, startService, waitForServiceHealth } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
@@ -13,6 +15,9 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
   if (!envResult.ok) return envResult;
   const env = envResult.value;
   const name = env.name;
+
+  // Set cache source to use binaries from main repo
+  await setCacheSource(env.metadata.repoRoot);
 
   // Check if SDK is running (should be in cold state)
   const sdkRunning = await isServiceRunning(name, "sdk");
@@ -32,6 +37,21 @@ export async function warmCommand(args: string[]): Promise<Result<void>> {
 
   logger.info(`Warming environment '${name}'...`);
   console.log();
+
+  // Check for orphaned processes on service ports and kill them
+  const servicePorts = getServicePorts(env.ports);
+  const blockedPorts: number[] = [];
+  for (const port of servicePorts) {
+    if (isPortInUse(port)) {
+      logger.warn(`Port ${port} is in use, killing orphaned process...`);
+      killProcessesOnPort(port);
+      blockedPorts.push(port);
+    }
+  }
+  if (blockedPorts.length > 0) {
+    // Give processes time to die
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 
   // Start Docker containers
   await startDocker(env);

@@ -185,6 +185,7 @@ export DUST_FRONT_INTERNAL_API=http://localhost:10000
 export DUST_CLIENT_FACING_URL=http://localhost:10000
 export DUST_PUBLIC_URL=http://localhost:10000
 export NEXT_PUBLIC_DUST_CLIENT_FACING_URL=http://localhost:10000
+export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000
 export CONNECTORS_PUBLIC_URL=http://localhost:10002
 
 # === Database URIs ===

@@ -48,6 +48,7 @@ export DUST_FRONT_INTERNAL_API=http://localhost:${ports.front}
 export DUST_CLIENT_FACING_URL=http://localhost:${ports.front}
 export DUST_PUBLIC_URL=http://localhost:${ports.front}
 export NEXT_PUBLIC_DUST_CLIENT_FACING_URL=http://localhost:${ports.front}
+export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000
 export CONNECTORS_PUBLIC_URL=http://localhost:${ports.connectors}
 
 # === Database URIs ===

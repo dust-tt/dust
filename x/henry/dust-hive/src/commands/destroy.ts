@@ -2,6 +2,7 @@ import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
+import { cleanupServicePorts } from "../lib/ports";
 import { stopAllServices } from "../lib/process";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isDockerRunning } from "../lib/state";
@@ -77,6 +78,12 @@ export async function destroyCommand(args: string[]): Promise<Result<void>> {
   // Stop all services
   logger.step("Stopping all services...");
   await stopAllServices(name);
+
+  // Force cleanup any orphaned processes on service ports
+  const killedPorts = cleanupServicePorts(env.ports);
+  if (killedPorts.length > 0) {
+    logger.warn(`Killed orphaned processes on ports: ${killedPorts.join(", ")}`);
+  }
   logger.success("All services stopped");
 
   // Stop Docker and remove volumes

@@ -56,12 +56,18 @@ export async function cleanupPidFile(envName: string, service: ServiceName): Pro
   }
 }
 
-// Kill a process by PID
+// Kill a process and its entire process group by PID
 export async function killProcess(pid: number, signal: NodeJS.Signals = "SIGTERM"): Promise<void> {
   try {
-    process.kill(pid, signal);
+    // Try to kill the entire process group (negative PID)
+    process.kill(-pid, signal);
   } catch {
-    // Process may have already exited
+    // If process group kill fails, try killing just the process
+    try {
+      process.kill(pid, signal);
+    } catch {
+      // Process may have already exited
+    }
   }
 }
 
@@ -141,7 +147,12 @@ export async function spawnDaemon(
     },
     stdout: logFile,
     stderr: logFile,
+    // Don't wait for this child process
+    detached: true,
   });
+
+  // Unref to allow parent to exit while child continues
+  proc.unref();
 
   // Wait a moment to check if process started successfully
   await new Promise((resolve) => setTimeout(resolve, 100));

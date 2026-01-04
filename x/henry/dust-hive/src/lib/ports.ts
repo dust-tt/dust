@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { readdir } from "node:fs/promises";
 import { DUST_HIVE_ENVS, getPortsPath } from "./paths";
 import { createPropertyChecker } from "./typeGuards";
@@ -134,4 +135,59 @@ export async function loadPortAllocation(name: string): Promise<PortAllocation |
   }
 
   return data;
+}
+
+// Get PIDs using a specific port
+export function getPidsOnPort(port: number): number[] {
+  try {
+    // Use lsof to find processes on the port
+    const output = execSync(`lsof -ti :${port} 2>/dev/null || true`, {
+      encoding: "utf-8",
+    });
+    return output
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((pid) => Number.parseInt(pid, 10))
+      .filter((pid) => !Number.isNaN(pid));
+  } catch {
+    return [];
+  }
+}
+
+// Check if a port is in use
+export function isPortInUse(port: number): boolean {
+  return getPidsOnPort(port).length > 0;
+}
+
+// Kill all processes on a port
+export function killProcessesOnPort(port: number): void {
+  const pids = getPidsOnPort(port);
+  for (const pid of pids) {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // Process may have already exited
+    }
+  }
+}
+
+// Check and clean service ports (front, core, connectors, oauth)
+export function getServicePorts(ports: PortAllocation): number[] {
+  return [ports.front, ports.core, ports.connectors, ports.oauth];
+}
+
+// Kill any orphaned processes on service ports
+export function cleanupServicePorts(ports: PortAllocation): number[] {
+  const servicePorts = getServicePorts(ports);
+  const killedPorts: number[] = [];
+
+  for (const port of servicePorts) {
+    if (isPortInUse(port)) {
+      killProcessesOnPort(port);
+      killedPorts.push(port);
+    }
+  }
+
+  return killedPorts;
 }

@@ -48,6 +48,7 @@ bun run test         # All tests
 src/
 ├── index.ts           # CLI entry point
 ├── commands/          # Command implementations (all MVP commands complete)
+│   ├── cache.ts       # Cache management (show/rebuild binaries)
 │   ├── cool.ts        # Stop services, keep SDK
 │   ├── destroy.ts     # Remove environment
 │   ├── doctor.ts      # Prerequisite checking
@@ -62,12 +63,13 @@ src/
 │   ├── url.ts         # Print front URL
 │   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
+    ├── cache.ts       # Binary caching for fast init
     ├── commands.ts    # Command helpers (requireEnvironment)
     ├── config.ts      # Configuration management
     ├── docker.ts      # Docker compose + start/stop operations
     ├── environment.ts # Environment CRUD
     ├── envgen.ts      # env.sh generation
-    ├── init.ts        # Database initialization (data-driven)
+    ├── init.ts        # Database initialization with binary caching
     ├── logger.ts      # Console output utilities
     ├── paths.ts       # Path constants and helpers
     ├── ports.ts       # Port allocation
@@ -116,7 +118,7 @@ tests/
 
 | Command | Description |
 |---------|-------------|
-| `spawn` | Create environment (worktree + npm ci + SDK watch) |
+| `spawn` | Create environment (worktree + symlinks + SDK watch) |
 | `warm` | Start docker + all services |
 | `cool` | Stop services, keep SDK watch |
 | `start` | Resume stopped env |
@@ -129,6 +131,27 @@ tests/
 | `logs` | View service logs |
 | `url` | Print front URL |
 | `doctor` | Check prerequisites |
+| `cache` | Show or rebuild binary cache |
+
+## Performance
+
+Typical timings with warm cache:
+- **spawn**: ~7 seconds (symlinks node_modules and cargo target from main repo)
+- **warm (first)**: ~60 seconds (runs DB init with cached binaries)
+- **warm (subsequent)**: ~30 seconds (skips DB init)
+
+### Cache System
+
+dust-hive uses the main Dust repo as a cache source for:
+1. **Node modules**: Symlinked from main repo (no npm install needed)
+2. **Cargo target**: Symlinked to share Rust compilation cache
+3. **Rust binaries**: Pre-compiled binaries used instead of `cargo run`
+
+Check cache status:
+```bash
+dust-hive cache            # Show what's cached
+dust-hive cache --rebuild  # Build missing binaries
+```
 
 ## Testing the CLI
 

@@ -1,3 +1,4 @@
+import { setCacheSource } from "../lib/cache";
 import { writeDockerComposeOverride } from "../lib/docker";
 import { writeEnvSh } from "../lib/envgen";
 import {
@@ -126,7 +127,7 @@ async function setupWorktree(
   }
 
   try {
-    await installAllDependencies(worktreePath);
+    await installAllDependencies(worktreePath, metadata.repoRoot);
   } catch (error) {
     logger.error("Spawn failed during npm install, cleaning up...");
     await cleanupPartialEnvironment(metadata.repoRoot, worktreePath, workspaceBranch).catch((e) =>
@@ -186,6 +187,9 @@ export async function spawnCommand(args: string[]): Promise<Result<void>> {
   if (!repoRoot) {
     return Err(new CommandError("Not in a git repository. Please run from within the Dust repo."));
   }
+
+  // Set cache source to use binaries from main repo
+  await setCacheSource(repoRoot);
 
   // Get or prompt for name
   let name = options.name;

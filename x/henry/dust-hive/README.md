@@ -94,6 +94,7 @@ open $(dust-hive url myenv)
 | `logs NAME [SERVICE] [-f]` | View service logs |
 | `url NAME` | Print front URL |
 | `doctor` | Check prerequisites |
+| `cache [--rebuild]` | Show or rebuild binary cache |
 
 ### Services
 
@@ -240,11 +241,39 @@ dust-hive logs myenv front
 dust-hive logs myenv front -f
 ```
 
+## Performance
+
+dust-hive uses aggressive caching to keep operations fast:
+
+| Operation | Time |
+|-----------|------|
+| `spawn` | ~7 seconds |
+| `warm` (first) | ~60 seconds |
+| `warm` (subsequent) | ~30 seconds |
+
+### Cache System
+
+The cache uses your main Dust repo as source:
+
+1. **Node modules**: Symlinked (no npm install)
+2. **Cargo target**: Symlinked (shared Rust compilation)
+3. **Rust binaries**: Pre-compiled (no `cargo run` overhead)
+
+```bash
+# Check cache status
+dust-hive cache
+
+# Build missing binaries
+dust-hive cache --rebuild
+```
+
 ## File Locations
 
 ```
 ~/.dust-hive/
 ├── config.env                 # Your secrets (create this)
+├── cache/
+│   └── source.path            # Path to cache source repo
 ├── envs/
 │   └── NAME/
 │       ├── env.sh             # Port overrides
@@ -265,11 +294,13 @@ dust-hive logs myenv front -f
 # Run in dev mode
 bun run src/index.ts <command>
 
-# Type check
-bun run typecheck
+# Run all checks
+bun run check
 
-# Lint
-bun run lint
+# Individual checks
+bun run typecheck    # TypeScript
+bun run lint         # Biome linter
+bun run test         # Unit tests
 
 # Build
 bun run build

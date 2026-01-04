@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand } from "./commands/doctor";
@@ -31,6 +32,7 @@ const COMMANDS = [
   "logs",
   "url",
   "doctor",
+  "cache",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -56,6 +58,7 @@ Commands:
   logs NAME [SERVICE] [-f]                          Show service logs
   url NAME                                          Print front URL
   doctor                                            Check prerequisites
+  cache [--rebuild]                                 Show or rebuild binary cache
 
 Options:
   --help  Show this help message
@@ -146,6 +149,10 @@ async function main(): Promise<void> {
 
     case "logs":
       await runCommand(logsCommand(args.slice(1)));
+      break;
+
+    case "cache":
+      await runCommand(cacheCommand(args.slice(1)));
       break;
   }
 }
