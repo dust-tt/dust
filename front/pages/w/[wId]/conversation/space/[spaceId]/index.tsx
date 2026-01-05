@@ -6,6 +6,7 @@ import {
   NavigationList,
   NavigationListLabel,
 } from "@dust-tt/sparkle";
+import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -74,22 +75,26 @@ function SpaceConversationListItem({
     .map((m) => m[m.length - 1])
     .find(isUserMessageType);
 
-  const iconsUrls = useMemo(() => {
-    const urls = new Set<string>();
+  const avatars = useMemo(() => {
+    const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
     for (const versions of conversation.content) {
       const message = versions[versions.length - 1];
       if (isUserMessageType(message)) {
-        urls.add(message.user?.image ?? "");
+        avatars.push({
+          isRounded: true,
+          name: message.user?.fullName ?? "",
+          visual: message.user?.image ?? "",
+        });
       } else if (isAgentMessageType(message)) {
-        urls.add(message.configuration.pictureUrl ?? "");
-      }
-
-      if (urls.size === 4) {
-        break;
+        avatars.push({
+          isRounded: false,
+          name: "@" + (message.configuration.name ?? ""),
+          visual: message.configuration.pictureUrl ?? "",
+        });
       }
     }
-    return Array.from(urls);
+    return uniqBy(avatars, "visual");
   }, [conversation.content]);
 
   // TODO(conversations-groups) Are we sure we want to require a user message?
@@ -144,24 +149,12 @@ function SpaceConversationListItem({
         variant="secondary"
         children={
           <div className="flex w-full flex-row items-center gap-2">
-            <div
-              className="relative"
-              style={{ top: -((iconsUrls.length - 1) * 5) / 2 + "px", left: 0 }}
-            >
-              {iconsUrls.map((url, index) => (
-                <div
-                  className={classNames(index > 0 && "absolute")}
-                  style={{
-                    top: index * 5 + "px",
-                    left: 0,
-                    zIndex: index,
-                  }}
-                  key={`avatar-stack-${index}`}
-                >
-                  <Avatar visual={url} size="sm" />
-                </div>
-              ))}
-            </div>
+            <Avatar.Stack
+              avatars={avatars}
+              size="sm"
+              orientation="vertical"
+              nbVisibleItems={5}
+            />
             <div className="flex w-full flex-col gap-2">
               <div className="flex flex-row items-center gap-2">
                 {shouldShowStatusDot && (
