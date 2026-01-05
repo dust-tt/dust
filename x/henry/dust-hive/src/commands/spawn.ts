@@ -18,6 +18,7 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { installAllDependencies } from "../lib/setup";
 import { cleanupPartialEnvironment, createWorktree, getCurrentBranch } from "../lib/worktree";
 import { openCommand } from "./open";
+import { warmCommand } from "./warm";
 
 interface SpawnOptions {
   name?: string;
@@ -223,18 +224,17 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   console.log(`  dust-hive open ${name}    # Open zellij session`);
   console.log();
 
-  if (options.noOpen && options.warm) {
-    return Err(
-      new CommandError("Cannot use --warm with --no-open. Remove --no-open to open zellij.")
-    );
-  }
-
   // Open zellij unless --no-open
   if (!options.noOpen) {
     if (options.warm) {
       return openCommand(name, { warmCommand: `dust-hive warm ${name}` });
     }
     return openCommand(name);
+  }
+
+  // If --no-open and --warm, run warm command directly in current terminal
+  if (options.warm) {
+    return warmCommand(name, {});
   }
 
   return Ok(undefined);
