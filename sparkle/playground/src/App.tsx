@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Button } from "@dust-tt/sparkle";
-import { ArrowLeftIcon } from "@dust-tt/sparkle";
 
 // Automatically discover all story files
 // @ts-expect-error - import.meta.glob is a Vite feature
@@ -84,28 +83,11 @@ function App() {
     setCurrentStory(name);
   };
 
-  const handleBack = () => {
-    setCurrentStory(null);
-  };
-
   if (currentStory) {
     const story = stories.find((s) => s.name === currentStory);
     if (story) {
       const StoryComponent = story.component;
-      return (
-        <div className="s-min-h-screen s-bg-background">
-          <div className="s-border-b s-border-separator s-p-4">
-            <Button
-              label="Back"
-              icon={ArrowLeftIcon}
-              onClick={handleBack}
-              size="sm"
-              variant="outline"
-            />
-          </div>
-          <StoryComponent />
-        </div>
-      );
+      return <StoryComponent />;
     }
   }
 
