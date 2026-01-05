@@ -27,7 +27,7 @@ async function createServer(
 
   server.tool(
     "post_message",
-    "Post a message to a Slack channel. The slack bot must be added to the channel before it can post messages. Direct messages are not supported.",
+    "Post a message to a Slack channel. The slack bot must be added to the channel before it can post messages. Direct messages are not supported. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     {
       to: z
         .string()
