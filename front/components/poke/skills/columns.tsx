@@ -11,7 +11,8 @@ type SkillDisplayType = Pick<
   "sId" | "name" | "status" | "createdAt" | "updatedAt"
 >;
 
-export function makeColumnsForSkills(owner: LightWorkspaceType
+export function makeColumnsForSkills(
+  owner: LightWorkspaceType
 ): ColumnDef<SkillDisplayType>[] {
   return [
     {
