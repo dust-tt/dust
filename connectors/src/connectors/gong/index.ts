@@ -198,14 +198,18 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
     const result = await pauseSchedule({
       connector,
       scheduleId: makeGongSyncScheduleId(connector),
-      stopReason: "Stopped via connector STOP command",
+      stopReason: reason,
     });
     if (result.isErr()) {
       return result;

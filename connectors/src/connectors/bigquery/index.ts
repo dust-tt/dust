@@ -179,10 +179,14 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const stopRes = await stopBigQuerySyncWorkflow({
       connectorId: this.connectorId,
-      stopReason: "Stopped via connector STOP command",
+      stopReason: reason,
     });
     if (stopRes.isErr()) {
       return stopRes;

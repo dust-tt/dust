@@ -229,7 +229,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   /**
    * Stops all workflows related to the connector (sync and garbage collection).
    */
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
@@ -237,7 +241,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       throw new Error("[Zendesk] Connector not found.");
     }
     return stopZendeskWorkflows(connector, {
-      stopReason: "Stopped via connector STOP command",
+      stopReason: reason,
     });
   }
 
