@@ -203,15 +203,17 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
             : {};
 
         // Handle both course and lesson entries
-        const idField = "courseId" in entry.fields
-          ? { courseId: entry.fields.courseId }
-          : "lessonId" in entry.fields
-          ? { lessonId: entry.fields.lessonId }
-          : {};
+        const idField =
+          "courseId" in entry.fields
+            ? { courseId: entry.fields.courseId }
+            : "lessonId" in entry.fields
+              ? { lessonId: entry.fields.lessonId }
+              : {};
 
-        const complexityField = "complexity" in entry.fields
-          ? { complexity: entry.fields.complexity }
-          : {};
+        const complexityField =
+          "complexity" in entry.fields
+            ? { complexity: entry.fields.complexity }
+            : {};
 
         return {
           ...node,
@@ -1237,7 +1239,10 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
 
   const parentCourseEntry = fields.parentCourse;
   let parentCourse: CourseSummary | null = null;
-  if (isContentfulEntryForCourse(parentCourseEntry)) {
+  if (
+    isContentfulContentEntry(parentCourseEntry) &&
+    isContentfulEntryForCourse(parentCourseEntry)
+  ) {
     parentCourse = contentfulEntryToCourseSummary(parentCourseEntry);
   }
 

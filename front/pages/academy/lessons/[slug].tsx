@@ -145,118 +145,118 @@ export default function LessonPage({
                   className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <span>&larr;</span> Back to {lesson.parentCourse.title}
-              </Link>
-            ) : (
-              <Link
-                href="/academy"
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <span>&larr;</span> Back to Academy
-              </Link>
-            )}
-          </div>
-
-          <header className={WIDE_CLASSES}>
-            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {lesson.lessonId && <span>Lesson {lesson.lessonId}</span>}
-              {lesson.estimatedDurationMinutes && (
-                <>
-                  {lesson.lessonId && <span>•</span>}
-                  <span>{lesson.estimatedDurationMinutes} min</span>
-                </>
+                </Link>
+              ) : (
+                <Link
+                  href="/academy"
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <span>&larr;</span> Back to Academy
+                </Link>
               )}
-              {lesson.complexity && (
-                <>
-                  {(lesson.lessonId || lesson.estimatedDurationMinutes) && (
-                    <span>•</span>
+            </div>
+
+            <header className={WIDE_CLASSES}>
+              <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                {lesson.lessonId && <span>Lesson {lesson.lessonId}</span>}
+                {lesson.estimatedDurationMinutes && (
+                  <>
+                    {lesson.lessonId && <span>•</span>}
+                    <span>{lesson.estimatedDurationMinutes} min</span>
+                  </>
+                )}
+                {lesson.complexity && (
+                  <>
+                    {(lesson.lessonId ?? lesson.estimatedDurationMinutes) && (
+                      <span>•</span>
+                    )}
+                    <span>{lesson.complexity}</span>
+                  </>
+                )}
+              </div>
+
+              <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
+
+              {(lesson.category ?? lesson.tools.length > 0) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {lesson.category && (
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                      {lesson.category}
+                    </span>
                   )}
-                  <span>{lesson.complexity}</span>
-                </>
+                  {lesson.tools.map((tool) => (
+                    <span
+                      key={tool}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
+                    >
+                      {tool}
+                    </span>
+                  ))}
+                </div>
               )}
-            </div>
+            </header>
 
-            <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
-
-            {(lesson.category || lesson.tools.length > 0) && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {lesson.category && (
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-                    {lesson.category}
-                  </span>
-                )}
-                {lesson.tools.map((tool) => (
-                  <span
-                    key={tool}
-                    className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
-                  >
-                    {tool}
-                  </span>
-                ))}
+            {lesson.lessonObjectives && (
+              <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                <H2 className="mb-4">Lesson Objectives</H2>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
+                  <P className="whitespace-pre-line text-muted-foreground">
+                    {lesson.lessonObjectives}
+                  </P>
+                </div>
               </div>
             )}
-          </header>
 
-          {lesson.lessonObjectives && (
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
-              <H2 className="mb-4">Lesson Objectives</H2>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                <P className="whitespace-pre-line text-muted-foreground">
-                  {lesson.lessonObjectives}
-                </P>
+            {lesson.preRequisites && (
+              <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                <H2 className="mb-4">Prerequisites</H2>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
+                  {renderRichTextFromContentful(lesson.preRequisites)}
+                </div>
               </div>
+            )}
+
+            <div className={classNames(WIDE_CLASSES, "mt-4")}>
+              {renderRichTextFromContentful(lesson.lessonContent)}
             </div>
-          )}
 
-          {lesson.preRequisites && (
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
-              <H2 className="mb-4">Prerequisites</H2>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                {renderRichTextFromContentful(lesson.preRequisites)}
-              </div>
-            </div>
-          )}
-
-          <div className={classNames(WIDE_CLASSES, "mt-4")}>
-            {renderRichTextFromContentful(lesson.lessonContent)}
-          </div>
-
-          {(lesson.previousContent ?? lesson.nextContent) && (
-            <div
-              className={classNames(
-                WIDE_CLASSES,
-                "mt-12 border-t border-gray-200 pt-8"
-              )}
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
-                {lesson.previousContent && (
-                  <Link
-                    href={getContentUrl(lesson.previousContent)}
-                    className="group flex flex-col"
-                  >
-                    <P size="sm" className="text-muted-foreground">
-                      Previous {getContentTypeLabel(lesson.previousContent)}
-                    </P>
-                    <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
-                      &larr; {lesson.previousContent.title}
-                    </span>
-                  </Link>
+            {(lesson.previousContent ?? lesson.nextContent) && (
+              <div
+                className={classNames(
+                  WIDE_CLASSES,
+                  "mt-12 border-t border-gray-200 pt-8"
                 )}
-                {lesson.nextContent && (
-                  <Link
-                    href={getContentUrl(lesson.nextContent)}
-                    className="group flex flex-col items-end sm:items-start"
-                  >
-                    <P size="sm" className="text-muted-foreground">
-                      Next {getContentTypeLabel(lesson.nextContent)}
-                    </P>
-                    <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
-                      {lesson.nextContent.title} &rarr;
-                    </span>
-                  </Link>
-                )}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                  {lesson.previousContent && (
+                    <Link
+                      href={getContentUrl(lesson.previousContent)}
+                      className="group flex flex-col"
+                    >
+                      <P size="sm" className="text-muted-foreground">
+                        Previous {getContentTypeLabel(lesson.previousContent)}
+                      </P>
+                      <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
+                        &larr; {lesson.previousContent.title}
+                      </span>
+                    </Link>
+                  )}
+                  {lesson.nextContent && (
+                    <Link
+                      href={getContentUrl(lesson.nextContent)}
+                      className="group flex flex-col items-end sm:items-start"
+                    >
+                      <P size="sm" className="text-muted-foreground">
+                        Next {getContentTypeLabel(lesson.nextContent)}
+                      </P>
+                      <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
+                        {lesson.nextContent.title} &rarr;
+                      </span>
+                    </Link>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           </Grid>
         </article>
       </div>
