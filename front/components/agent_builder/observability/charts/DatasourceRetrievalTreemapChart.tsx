@@ -15,7 +15,6 @@ import {
   useAgentConfiguration,
   useAgentDatasourceRetrieval,
 } from "@app/lib/swr/assistants";
-import type { WorkspaceType } from "@app/types";
 import { isConnectorProvider } from "@app/types";
 
 interface TreemapNode {
@@ -97,12 +96,12 @@ function TreemapContent({
 }
 
 interface DatasourceRetrievalTreemapChartProps {
-  owner: WorkspaceType;
+  workspaceId: string;
   agentConfigurationId: string;
 }
 
 export function DatasourceRetrievalTreemapChart({
-  owner,
+  workspaceId,
   agentConfigurationId,
 }: DatasourceRetrievalTreemapChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
@@ -113,14 +112,14 @@ export function DatasourceRetrievalTreemapChart({
     isDatasourceRetrievalLoading,
     isDatasourceRetrievalError,
   } = useAgentDatasourceRetrieval({
-    workspaceId: owner.sId,
+    workspaceId,
     agentConfigurationId,
     days: period,
     version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
   const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
+    workspaceId,
     agentConfigurationId,
   });
 
