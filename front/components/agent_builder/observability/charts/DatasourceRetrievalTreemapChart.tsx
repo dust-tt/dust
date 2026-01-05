@@ -77,9 +77,9 @@ function TreemapContent({
             x={x + width / 2}
             y={y + height / 2 - 8}
             textAnchor="middle"
-            className="pointer-events-none fill-foreground text-xs font-medium dark:fill-foreground-night"
+            className="pointer-events-none truncate text-ellipsis fill-foreground text-xs font-medium dark:fill-foreground-night"
           >
-            {name.length > 20 ? `${name.slice(0, 17)}...` : name}
+            {name}
           </text>
           <text
             x={x + width / 2}
@@ -124,11 +124,12 @@ export function DatasourceRetrievalTreemapChart({
   });
 
   const mcpConfigNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+
     if (!agentConfiguration) {
-      return new Map<string, string>();
+      return map;
     }
 
-    const map = new Map<string, string>();
     agentConfiguration.actions.forEach((action) => {
       if (isMCPServerConfiguration(action) && action.name) {
         map.set(action.id.toString(), asDisplayName(action.name));
