@@ -16,6 +16,7 @@ import {
 } from "@app/lib/iam/users";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { isWorkspaceElligibleForTrial } from "@app/pages/api/auth/trial";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { isString } from "@app/types";
 
@@ -188,6 +189,17 @@ export function makeGetServerSidePropsRequirementsWrapper<
             "canUseProduct should never be true outside of a workspace context."
           );
         }
+
+        const redirectTrialPage = await isWorkspaceElligibleForTrial(auth!);
+        if (redirectTrialPage) {
+          return {
+            redirect: {
+              permanent: false,
+              destination: `/w/${context.query.wId}/trial`,
+            },
+          };
+        }
+
         return {
           redirect: {
             permanent: false,
