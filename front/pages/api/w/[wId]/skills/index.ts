@@ -1,12 +1,14 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -30,7 +32,7 @@ export type PostSkillResponseBody = {
   skill: SkillType;
 };
 
-// Schema for GET status query parameter
+// Schema for GET status query parameter.
 const SkillStatusSchema = t.union([
   t.literal("active"),
   t.literal("archived"),
@@ -38,7 +40,16 @@ const SkillStatusSchema = t.union([
   t.undefined,
 ]);
 
-// Request body schema for POST
+// Schema for attached knowledge.
+export const AttachedKnowledgeSchema = t.type({
+  dataSourceViewId: t.string,
+  nodeId: t.string,
+  nodeType: t.union([t.literal("folder"), t.literal("document")]),
+  spaceId: t.string,
+  title: t.string,
+});
+
+// Request body schema for POST.
 const PostSkillRequestBodySchema = t.type({
   name: t.string,
   agentFacingDescription: t.string,
@@ -51,6 +62,7 @@ const PostSkillRequestBodySchema = t.type({
     })
   ),
   extendedSkillId: t.union([t.string, t.null]),
+  attachedKnowledge: t.array(AttachedKnowledgeSchema),
 });
 
 type PostSkillRequestBody = t.TypeOf<typeof PostSkillRequestBodySchema>;
@@ -197,6 +209,38 @@ async function handler(
         mcpServerViews.push(mcpServerView);
       }
 
+      // Validate all data source views from attached knowledge exist and user has access.
+      const { attachedKnowledge } = body;
+      const dataSourceViewIds = uniq(
+        attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
+      );
+
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(
+        auth,
+        dataSourceViewIds
+      );
+      if (dataSourceViews.length !== dataSourceViewIds.length) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
+          },
+        });
+      }
+
+      const dataSourceViewIdMap = new Map(
+        dataSourceViews.map((dsv) => [dsv.sId, dsv])
+      );
+
+      const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
+        (attachment) => ({
+          dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
+          nodeId: attachment.nodeId,
+          nodeType: attachment.nodeType,
+        })
+      );
+
       const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
         auth,
         mcpServerViewIds
@@ -234,6 +278,7 @@ async function handler(
         },
         {
           mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         }
       );
 

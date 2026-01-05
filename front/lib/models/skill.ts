@@ -4,6 +4,8 @@ import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
@@ -227,4 +229,84 @@ SkillConfigurationModel.hasMany(SkillVersionModel, {
 SkillVersionModel.belongsTo(SkillConfigurationModel, {
   foreignKey: { name: "skillConfigurationId", allowNull: false },
   as: "skillConfiguration",
+});
+
+/**
+ * Configuration of Data Sources used by Skills for knowledge attachments.
+ */
+
+export class SkillDataSourceConfigurationModel extends WorkspaceAwareModel<SkillDataSourceConfigurationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare parentsIn: string[];
+
+  declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
+}
+
+SkillDataSourceConfigurationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    skillConfigurationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    dataSourceId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    dataSourceViewId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    parentsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "skill_data_source_configuration",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "skillConfigurationId"],
+        name: "idx_skill_data_source_config_workspace_skill_config",
+      },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        name: "idx_skill_data_source_config_workspace_data_source",
+      },
+      {
+        fields: ["workspaceId", "dataSourceViewId"],
+        name: "idx_skill_data_source_config_workspace_data_source_view",
+      },
+    ],
+  }
+);
+
+SkillConfigurationModel.hasMany(SkillDataSourceConfigurationModel, {
+  foreignKey: "skillConfigurationId",
+});
+
+SkillDataSourceConfigurationModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: "skillConfigurationId",
+});
+
+SkillDataSourceConfigurationModel.belongsTo(DataSourceModel, {
+  foreignKey: "dataSourceId",
+});
+
+SkillDataSourceConfigurationModel.belongsTo(DataSourceViewModel, {
+  foreignKey: "dataSourceViewId",
 });

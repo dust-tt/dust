@@ -67,7 +67,7 @@ function KnowledgeDisplayComponent({
     useDataSourceViewContentNodes({
       owner,
       dataSourceView: needsFetch && dataSourceView ? dataSourceView : undefined,
-      internalIds: needsFetch ? [item.id] : undefined,
+      internalIds: needsFetch ? [item.nodeId] : undefined,
       viewType: "all",
       disabled: !needsFetch || !dataSourceView,
     });
@@ -234,18 +234,20 @@ function KnowledgeSearchComponent({
 
   const knowledgeItems: (FullKnowledgeItem & { description: string })[] =
     useMemo(() => {
-      return dataSourceNodes.map((node) => ({
-        dataSourceViewId: node.dataSourceView.sId,
-        description: getLocationForDataSourceViewContentNodeWithSpace(
-          node,
-          spacesMap
-        ),
-        id: node.internalId,
-        label: node.title,
-        node, // Store the original node for chip display.
-        spaceId: node.dataSourceView.spaceId,
-        nodeType: node.type,
-      }));
+      return dataSourceNodes.map((node) => {
+        return {
+          dataSourceViewId: node.dataSourceView.sId,
+          description: getLocationForDataSourceViewContentNodeWithSpace(
+            node,
+            spacesMap
+          ),
+          nodeId: node.internalId,
+          label: node.title,
+          node, // Store the original node for chip display.
+          spaceId: node.dataSourceView.spaceId,
+          nodeType: node.type,
+        };
+      });
     }, [dataSourceNodes, spacesMap]);
 
   const handleItemSelect = useCallback(
@@ -263,7 +265,7 @@ function KnowledgeSearchComponent({
 
   const handleItemClick = useCallback(
     (item: KnowledgeItem) => {
-      const index = knowledgeItems.findIndex((i) => i.id === item.id);
+      const index = knowledgeItems.findIndex((i) => i.nodeId === item.nodeId);
       if (index !== -1) {
         handleItemSelect(index);
       }
@@ -407,7 +409,7 @@ function KnowledgeSearchComponent({
                 }
                 return (
                   <DropdownMenuItem
-                    key={item.id}
+                    key={item.nodeId}
                     icon={
                       isWebsite(item.node.dataSourceView.dataSource) ||
                       isFolder(item.node.dataSourceView.dataSource) ? (
