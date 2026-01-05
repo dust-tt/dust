@@ -12,38 +12,43 @@ const attachmentChipOverrides = cn(
   "dark:s-bg-background-night dark:s-text-foreground-night"
 );
 
-type AttachmentChipIconProps = IconProps | DoubleIconProps;
+export type AttachmentChipIconProps = IconProps;
+export type AttachmentChipDoubleIconProps = DoubleIconProps;
 
-function isDoubleIconProps(
-  props: AttachmentChipIconProps
-): props is DoubleIconProps {
-  return "mainIcon" in props;
-}
+type AttachmentChipIconOptions =
+  | { icon?: AttachmentChipIconProps; doubleIcon?: never }
+  | { icon?: never; doubleIcon?: AttachmentChipDoubleIconProps };
 
-interface AttachmentChipBaseProps {
+export type AttachmentChipBaseProps = AttachmentChipIconOptions & {
   label: string;
-  icon?: AttachmentChipIconProps;
   size?: (typeof CHIP_SIZES)[number];
   color?: (typeof CHIP_COLORS)[number];
   className?: string;
   isBusy?: boolean;
   onRemove?: () => void;
-  onClick?: () => void;
-}
+  children?: never;
+};
 
-type AttachmentChipButtonProps = AttachmentChipBaseProps & {
+export type AttachmentChipButtonProps = AttachmentChipBaseProps & {
   href?: never;
+  onClick?: () => void;
 } & {
   [K in keyof Omit<LinkWrapperProps, "children">]?: never;
 };
 
-type AttachmentChipLinkProps = AttachmentChipBaseProps &
-  Omit<LinkWrapperProps, "children">;
+export type AttachmentChipLinkProps = AttachmentChipBaseProps &
+  Omit<LinkWrapperProps, "children" | "href"> & {
+    href: string;
+    onClick?: never;
+  };
 
-type AttachmentChipProps = AttachmentChipButtonProps | AttachmentChipLinkProps;
+export type AttachmentChipProps =
+  | AttachmentChipButtonProps
+  | AttachmentChipLinkProps;
 
 export function AttachmentChip({
   icon,
+  doubleIcon,
   className,
   label,
   size,
@@ -53,13 +58,12 @@ export function AttachmentChip({
   onClick,
   ...linkProps
 }: AttachmentChipProps) {
-  const iconElement = icon && (
+  const chipClassName = cn(attachmentChipOverrides, className);
+  const iconElement = (icon || doubleIcon) && (
     <div className="s-shrink-0">
-      {isDoubleIconProps(icon) ? <DoubleIcon {...icon} /> : <Icon {...icon} />}
+      {doubleIcon ? <DoubleIcon {...doubleIcon} /> : <Icon {...icon} />}
     </div>
   );
-
-  const chipClassName = cn(attachmentChipOverrides, className);
 
   if ("href" in linkProps && linkProps.href) {
     return (
