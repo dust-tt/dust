@@ -85,8 +85,30 @@ async function runNpmInstall(dir: string): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
+// Run bun install in a directory
+async function runBunInstall(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["bun", "install"], {
+    cwd: dir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
+// Run bun link in a directory
+async function runBunLink(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["bun", "link"], {
+    cwd: dir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
 export async function syncCommand(targetBranch?: string): Promise<Result<void>> {
-  const startTime = Date.now();
+  const startTimeMs = Date.now();
   const branch = targetBranch ?? "main";
 
   // Find repo root (or use existing cache source)
@@ -158,14 +180,15 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   logger.step("Updating node dependencies...");
   console.log();
 
-  const dirs = [
+  const npmDirs = [
     { name: "sdks/js", path: `${repoRoot}/sdks/js` },
     { name: "front", path: `${repoRoot}/front` },
     { name: "connectors", path: `${repoRoot}/connectors` },
   ];
+  const dustHiveDir = { name: "x/henry/dust-hive", path: `${repoRoot}/x/henry/dust-hive` };
 
   const results = await Promise.all(
-    dirs.map(async ({ name, path }) => {
+    npmDirs.map(async ({ name, path }) => {
       logger.step(`  ${name}...`);
       const success = await runNpmInstall(path);
       if (success) {
@@ -192,7 +215,22 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   }
   logger.success(`Built ${buildResult.built.length} binaries`);
 
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  // Install and link dust-hive globally
+  logger.step(`Installing ${dustHiveDir.name} dependencies...`);
+  const installSuccess = await runBunInstall(dustHiveDir.path);
+  if (!installSuccess) {
+    return Err(new CommandError("Failed to run bun install for dust-hive"));
+  }
+  logger.success(`${dustHiveDir.name} dependencies installed`);
+
+  logger.step(`Linking ${dustHiveDir.name}...`);
+  const linkSuccess = await runBunLink(dustHiveDir.path);
+  if (!linkSuccess) {
+    return Err(new CommandError("Failed to run bun link for dust-hive"));
+  }
+  logger.success("dust-hive linked globally");
+
+  const elapsed = ((Date.now() - startTimeMs) / 1000).toFixed(1);
   console.log();
   logger.success(`Sync complete! (${elapsed}s)`);
   console.log();
