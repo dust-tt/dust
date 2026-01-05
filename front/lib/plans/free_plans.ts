@@ -116,7 +116,10 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     code: FREE_TRIAL_PHONE_PLAN_CODE,
     name: "Free Trial",
     maxMessages: 100,
+<<<<<<< HEAD
     isDeepDiveAllowed: false,
+=======
+>>>>>>> 323f90f0db (Subscribe workspace to new FREE_TRIAL_PHONE_PLAN if phone number code successful)
     maxUsersInWorkspace: 5,
     maxVaultsInWorkspace: 5,
     maxImagesPerWeek: 10,
