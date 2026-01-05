@@ -262,6 +262,11 @@ export const PLAN_FIELDS = {
     error: (plan: EditingPlanType) =>
       errorCheckMaxMessageTimeframe(plan.maxMessagesTimeframe),
   },
+  isDeepDiveAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Deep",
+  },
   dataSourcesCount: {
     type: "number",
     width: "small",
