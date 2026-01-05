@@ -189,6 +189,7 @@ async function writeLayout(
 
 interface OpenOptions {
   warmCommand?: string;
+  noAttach?: boolean;
 }
 
 export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
@@ -218,6 +219,12 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     .some((name) => name === sessionName);
 
   if (sessionExists) {
+    if (options.noAttach) {
+      logger.info(`Session '${sessionName}' already exists.`);
+      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+      return Ok(undefined);
+    }
+
     // Attach to existing session
     logger.info(`Attaching to existing session '${sessionName}'...`);
 
@@ -230,8 +237,6 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     await proc.exited;
   } else {
     // Create new session with layout
-    logger.info(`Creating new zellij session '${sessionName}'...`);
-
     const layoutPath = await writeLayout(
       env.name,
       worktreePath,
@@ -239,6 +244,49 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       watchScriptPath,
       options.warmCommand
     );
+
+    if (options.noAttach) {
+      // Create session in background without attaching
+      // Use 'script' to provide a pseudo-TTY so zellij can run properly
+      logger.info(`Creating zellij session '${sessionName}' in background...`);
+
+      const shellCmd = `script -q /dev/null zellij --session ${shellQuote(sessionName)} --new-session-with-layout ${shellQuote(layoutPath)} &`;
+      const proc = Bun.spawn(["sh", "-c", shellCmd], {
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      await proc.exited;
+
+      // Give zellij a moment to start
+      await Bun.sleep(1000);
+
+      // Verify session was created
+      const checkProc = Bun.spawn(["zellij", "list-sessions"], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const sessionsAfter = await new Response(checkProc.stdout).text();
+      await checkProc.exited;
+
+      const sessionCreated = sessionsAfter
+        .split("\n")
+        .map((line) => stripAnsi(line).trim())
+        .filter((line) => line.length > 0)
+        .map((line) => line.split(/\s+/)[0])
+        .some((name) => name === sessionName);
+
+      if (sessionCreated) {
+        logger.success(`Session '${sessionName}' created successfully.`);
+        logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+      } else {
+        logger.warn(`Session may not have started. Try 'dust-hive open ${env.name}'.`);
+      }
+
+      return Ok(undefined);
+    }
+
+    logger.info(`Creating new zellij session '${sessionName}'...`);
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],
