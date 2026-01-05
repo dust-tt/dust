@@ -13,7 +13,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { WithRetriesError } from "@connectors/types";
+import { type ConnectorErrorType, WithRetriesError } from "@connectors/types";
 
 import {
   DustConnectorWorkflowError,
@@ -47,7 +47,9 @@ export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
+export class ActivityInboundLogInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   public readonly logger: Logger;
   private readonly context: Context;
   private readonly provider: ConnectorProvider;
@@ -209,27 +211,24 @@ export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterc
             );
           }
 
-          if (err instanceof ExternalOAuthTokenError) {
-            await syncFailed(connectorId, "oauth_token_revoked");
-            this.logger.info(
-              {
-                connectorId,
-                workspaceId,
-                dataSourceId,
-              },
-              `Stopping connector manager because of expired token.`
-            );
-          } else {
-            await syncFailed(connectorId, "workspace_quota_exceeded");
-            this.logger.info(
-              {
-                connectorId,
-                workspaceId,
-                dataSourceId,
-              },
-              `Stopping connector manager because of quota exceeded for the workspace.`
-            );
-          }
+          let errorType: ConnectorErrorType =
+            err instanceof ExternalOAuthTokenError
+              ? "oauth_token_revoked"
+              : "workspace_quota_exceeded";
+
+          await syncFailed(connectorId, errorType);
+          this.logger.info(
+            {
+              connectorId,
+              workspaceId,
+              dataSourceId,
+              errorType,
+            },
+            "Stopping connector manager because of " +
+              (errorType === "oauth_token_revoked"
+                ? "expired token."
+                : "quota exceeded for the workspace.")
+          );
 
           const connectorManager = getConnectorManager({
             connectorId: connector.id,
@@ -238,7 +237,10 @@ export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterc
 
           if (connectorManager) {
             await connectorManager.pauseAndStop({
-              reason: "Stopped due to workspace quota exceeded"
+              reason:
+                err instanceof ExternalOAuthTokenError
+                  ? "Stopped due to expired OAuth token"
+                  : "Stopped due to workspace quota exceeded",
             });
           } else {
             this.logger.error(
@@ -246,6 +248,7 @@ export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterc
                 connectorId: connector.id,
                 workspaceId,
                 dataSourceId,
+                errorType,
               },
               `Connector manager not found for connector`
             );
