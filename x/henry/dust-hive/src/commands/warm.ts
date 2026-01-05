@@ -18,6 +18,49 @@ interface WarmOptions {
   forcePorts?: boolean;
 }
 
+// Routes to pre-compile when warming the front service
+// These compile in parallel with the health check to minimize total wait time
+const CRITICAL_ROUTES = [
+  "/",
+  "/w/precompile", // Will 404/redirect but still triggers compilation
+  "/w/precompile/conversation/precompile", // Same - triggers compilation
+];
+
+// Start pre-warming critical Next.js routes immediately (with retry)
+// Uses curl --retry to wait for server to be available, then triggers compilation
+// This runs IN PARALLEL with health check, so all routes compile simultaneously
+function startPreWarmingImmediately(port: number): void {
+  logger.step("Pre-compiling critical pages (parallel with health check)...");
+
+  const baseUrl = `http://localhost:${port}`;
+
+  // Spawn detached curl processes with retry - they'll wait for server then compile
+  // --retry 60 --retry-delay 1 = retry every 1s for up to 60s
+  // --retry-connrefused = retry on connection refused (server not ready yet)
+  for (const route of CRITICAL_ROUTES) {
+    Bun.spawn(
+      [
+        "curl",
+        "-sf",
+        "-o",
+        "/dev/null",
+        "-m",
+        "180", // 3 minute timeout for slow compilation
+        "--retry",
+        "60",
+        "--retry-delay",
+        "1",
+        "--retry-connrefused",
+        `${baseUrl}${route}`,
+      ],
+      {
+        stdout: "ignore",
+        stderr: "ignore",
+      }
+    ).unref();
+  }
+}
+
 // Check if Temporal server is running (default gRPC port 7233)
 async function isTemporalRunning(): Promise<boolean> {
   const proc = Bun.spawn(["temporal", "operator", "namespace", "list", "--namespace", "default"], {
@@ -85,30 +128,44 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  // Start Docker containers (doesn't wait for health)
-  await startDocker(env);
-
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
   const projectName = getDockerProjectName(env.name);
+
+  // Start Docker + front + pre-warming all in parallel
+  // Front can compile pages while Docker starts and init runs
+  // This maximizes parallelism - by the time init is done, pages are compiled
+  logger.info("Starting Docker, services, and page compilation (all parallel)...");
+  console.log();
+
+  // Start Docker (don't await - let it run in background)
+  const dockerPromise = startDocker(env);
+
+  // Start front immediately to begin page compilation
+  // It will retry connections to DB/Redis until they're ready
+  await startService(env, "front");
+
+  // Start pre-warming immediately - curls will retry until Next.js is ready
+  // Pages compile while Docker containers start and init runs
+  startPreWarmingImmediately(env.ports.front);
+
+  // Now wait for Docker and start other services
+  await dockerPromise;
 
   if (needsInit) {
     logger.info("First warm - initializing (parallel)...");
     console.log();
 
-    // Start core + oauth early (they compile while init runs)
-    // Run Temporal + DB inits in parallel
+    // Run all init tasks in parallel with Rust service compilation
     const dbInitPromise = runAllDbInits(env, projectName);
     const temporalRunningPromise = isTemporalRunning();
     const [, , temporalRunning] = await Promise.all([
-      // Start Rust services early - they'll compile while other init happens
+      // Start Rust services - they'll compile while init runs
       startService(env, "core"),
       startService(env, "oauth"),
-      // Check Temporal
       temporalRunningPromise,
     ]);
 
-    // Report Temporal status
     if (!temporalRunning) {
       logger.warn("Temporal server is not running. Workers will fail to connect.");
       logger.warn("Run 'temporal server start-dev' in another terminal.");
@@ -121,7 +178,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
     await Promise.all(initTasks);
 
-    // Run seed script if config exists (creates dev user, workspace, subscription)
+    // Run seed script if config exists
     await runSeedScript(env);
 
     if (!temporalRunning) {
@@ -136,21 +193,13 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
     // Start remaining services
     logger.info("Starting remaining services...");
-    await Promise.all([
-      startService(env, "front"),
-      startService(env, "connectors"),
-      startService(env, "front-workers"),
-    ]);
+    await Promise.all([startService(env, "connectors"), startService(env, "front-workers")]);
   } else {
-    // Not first warm - start all services in parallel
-    logger.info("Starting services (parallel)...");
-    console.log();
-
+    // Not first warm - start remaining services in parallel
     const [, temporalRunning] = await Promise.all([
       Promise.all([
         startService(env, "core"),
         startService(env, "oauth"),
-        startService(env, "front"),
         startService(env, "connectors"),
         startService(env, "front-workers"),
       ]),
@@ -164,6 +213,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   }
 
   // Wait for services with health checks
+  // Pre-warming is already running in parallel (started above)
   // Start forwarder as soon as front is healthy (don't wait for core/oauth)
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
