@@ -20,6 +20,7 @@ export const PlanTypeSchema = t.type({
       isSlackBotAllowed: t.boolean,
       maxMessages: t.number,
       maxMessagesTimeframe: t.union([t.literal("day"), t.literal("lifetime")]),
+      isDeepDiveAllowed: t.boolean,
     }),
     capabilities: t.type({
       images: t.type({
@@ -131,6 +132,7 @@ async function handler(
         maxImagesPerWeek: body.limits.capabilities.images.maxImagesPerWeek,
         maxMessages: body.limits.assistant.maxMessages,
         maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
+        isDeepDiveAllowed: body.limits.assistant.isDeepDiveAllowed,
         isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
         isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
         isManagedNotionAllowed: body.limits.connections.isNotionAllowed,
