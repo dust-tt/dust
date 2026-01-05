@@ -258,6 +258,53 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
+const variantCompactStyles = cva("", {
+  variants: {
+    isSticky: {
+      true: cn(
+        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
+        "s-border-border dark:s-border-border-night"
+      ),
+    },
+  },
+  defaultVariants: {
+    isSticky: false,
+  },
+});
+
+const compactLabelStyles = cva(
+  "s-flex s-px-2 s-py-1 s-text-[10px] s-font-semibold s-text-foreground s-pt-4 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+);
+
+interface NavigationListCompactLabelProps
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof variantCompactStyles> {
+  label: string;
+}
+
+const NavigationListCompactLabel = React.forwardRef<
+  HTMLDivElement,
+  NavigationListCompactLabelProps
+>(({ className, label, isSticky, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      compactLabelStyles(),
+      variantCompactStyles({ isSticky }),
+      "s-pl-3",
+      className
+    )}
+    {...props}
+  >
+    <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
+      <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+    </div>
+  </div>
+));
+
+NavigationListCompactLabel.displayName = "NavigationListCompactLabel";
+
 interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   action?: React.ReactNode;
@@ -267,34 +314,17 @@ interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTM
   children: React.ReactNode;
 }
 
-const collapseableStyles = cva(
-  cn(
-    "s-py-2 s-mt-2 s-px-2.5",
-    "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis ",
-    "s-box-border s-flex s-items-center s-w-full s-gap-1.5",
-    "s-cursor-pointer s-select-none",
-    "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
-    "data-[disabled]:s-pointer-events-none",
-    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
-    "hover:s-text-foreground dark:hover:s-text-foreground-night",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
-  ),
-  {
-    variants: {
-      state: {
-        active: "active:s-bg-primary-150 dark:active:s-bg-primary-200-night",
-        selected: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-primary-100 dark:s-bg-primary-200-night"
-        ),
-        unselected:
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      },
-    },
-    defaultVariants: {
-      state: "unselected",
-    },
-  }
+const collapseableStyles = cn(
+  "s-py-2 s-mt-2 s-px-2.5",
+  "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+  "s-box-border s-flex s-items-center s-w-full s-gap-1.5",
+  "s-cursor-pointer s-select-none",
+  "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
+  "s-text-foreground dark:s-text-foreground-night",
+  "data-[disabled]:s-pointer-events-none",
+  "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
+  "hover:s-text-foreground dark:hover:s-text-foreground-night",
+  "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
 );
 
 const NavigationListCollapsibleSection = React.forwardRef<
@@ -305,9 +335,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     <Collapsible className={className} {...props}>
       <div className="s-group/menu-item s-relative">
         <CollapsibleTrigger>
-          <div className={collapseableStyles({ state: "unselected" })}>
-            {label}
-          </div>
+          <div className={collapseableStyles}>{label}</div>
         </CollapsibleTrigger>
         {action && (
           <div
@@ -336,6 +364,7 @@ NavigationListCollapsibleSection.displayName =
 export {
   NavigationList,
   NavigationListCollapsibleSection,
+  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
