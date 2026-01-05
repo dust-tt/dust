@@ -1,18 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { DatasourceRetrievalData } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { fetchDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional(),
+  days: z.coerce.number().positive().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
 });
 
@@ -26,7 +27,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDatasourceRetrievalResponse>>,
   auth: Authenticator
 ) {
-  if (typeof req.query.aId !== "string") {
+  if (!isString(req.query.aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -69,32 +70,28 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${q.error.message}`,
+            message: `Invalid query parameters: ${fromError(q.error).toString()}`,
           },
         });
       }
 
-      const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const days = q.data.days;
       const version = q.data.version;
       const owner = auth.getNonNullableWorkspace();
 
-      const baseQuery = buildAgentAnalyticsBaseQuery({
+      const datasourceRetrievalResult = await fetchDatasourceRetrievalMetrics({
         workspaceId: owner.sId,
         agentId: assistant.sId,
         days,
         version,
       });
 
-      const datasourceRetrievalResult =
-        await fetchDatasourceRetrievalMetrics(baseQuery);
-
       if (datasourceRetrievalResult.isErr()) {
-        const e = datasourceRetrievalResult.error;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve datasource retrieval metrics: ${e.message}`,
+            message: `Failed to retrieve datasource retrieval metrics: ${fromError(datasourceRetrievalResult.error).toString()}`,
           },
         });
       }
