@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { invalidateActiveSeatsCache } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -171,6 +172,10 @@ export async function seedDevUser(
   const lightWorkspace = renderLightWorkspaceType({ workspace });
   await createAdminMembership(user, lightWorkspace);
   console.log(`  Created membership`);
+
+  // Invalidate seats cache to ensure fresh count after membership creation
+  await invalidateActiveSeatsCache(workspace.sId);
+  console.log(`  Invalidated seats cache`);
 
   return { user, workspaceSId: workspace.sId };
 }

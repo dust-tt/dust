@@ -1,6 +1,6 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function countActiveSeatsInWorkspace(
@@ -17,12 +17,18 @@ export async function countActiveSeatsInWorkspace(
   });
 }
 
+const seatsCacheKeyResolver = (workspaceId: string) =>
+  `count-active-seats-in-workspace:${workspaceId}`;
+
 export const countActiveSeatsInWorkspaceCached = cacheWithRedis(
   countActiveSeatsInWorkspace,
-  (workspaceId) => {
-    return `count-active-seats-in-workspace:${workspaceId}`;
-  },
+  seatsCacheKeyResolver,
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
   }
+);
+
+export const invalidateActiveSeatsCache = invalidateCacheWithRedis(
+  countActiveSeatsInWorkspace,
+  seatsCacheKeyResolver
 );
