@@ -23,7 +23,7 @@ export type KnowledgeItem = BaseKnowledgeItem | FullKnowledgeItem;
 export function isFullKnowledgeItem(
   item: KnowledgeItem
 ): item is FullKnowledgeItem {
-  return item.node !== undefined;
+  return "node" in item && item.node !== undefined;
 }
 
 export interface KnowledgeNodeAttributes {
@@ -59,10 +59,10 @@ export const KnowledgeNode = Node.create<{}>({
       }
 
       const attributesString = match[1];
-      const idMatch = attributesString.match(/id="([^"]+)"/);
-      const titleMatch = attributesString.match(/title="([^"]+)"/);
-      const spaceMatch = attributesString.match(/space="([^"]*)"/);
       const dsvMatch = attributesString.match(/dsv="([^"]*)"/);
+      const idMatch = attributesString.match(/id="([^"]+)"/);
+      const spaceMatch = attributesString.match(/space="([^"]*)"/);
+      const titleMatch = attributesString.match(/title="([^"]+)"/);
       const typeMatch = attributesString.match(/type="([^"]*)"/);
 
       if (!idMatch || !titleMatch) {
@@ -71,12 +71,12 @@ export const KnowledgeNode = Node.create<{}>({
 
       const token = {
         type: "knowledgeNode",
-        raw: match[0],
+        dataSourceViewId: dsvMatch ? dsvMatch[1] : undefined,
         knowledgeId: idMatch[1],
         knowledgeTitle: titleMatch[1],
-        spaceId: spaceMatch ? spaceMatch[1] : undefined,
-        dataSourceViewId: dsvMatch ? dsvMatch[1] : undefined,
         nodeType: typeMatch ? typeMatch[1] : undefined,
+        raw: match[0],
+        spaceId: spaceMatch ? spaceMatch[1] : undefined,
       };
 
       return token;
@@ -98,6 +98,8 @@ export const KnowledgeNode = Node.create<{}>({
     };
   },
 
+  // HTML serialization and deserialization.
+
   parseHTML() {
     return [
       {
@@ -118,7 +120,7 @@ export const KnowledgeNode = Node.create<{}>({
             "data-type": "knowledge-node",
             "data-knowledge-id": selectedItems[0].id,
             "data-knowledge-label": selectedItems[0].label,
-            "data-knowledge-description": selectedItems[0].description || "",
+            "data-knowledge-description": selectedItems[0].description ?? "",
           },
           HTMLAttributes
         ),
@@ -140,53 +142,48 @@ export const KnowledgeNode = Node.create<{}>({
     ];
   },
 
-  renderMarkdown: (node: any) => {
-    const { selectedItems } = node.attrs;
-    if (selectedItems && selectedItems.length > 0) {
-      const item = selectedItems[0];
-      // Serialize essential data for model understanding and API fetching
+  // Markdown serialization and deserialization.
+
+  renderMarkdown: (node) => {
+    if (
+      node.attrs &&
+      "selectedItems" in node.attrs &&
+      node.attrs.selectedItems &&
+      node.attrs.selectedItems.length > 0
+    ) {
+      const [item] = node.attrs.selectedItems;
+
+      // Serialize essential data for model understanding and API fetching.
       let apiParams = "";
       if (item.node?.dataSourceView) {
         const dsv = item.node.dataSourceView;
-        const spaceId = dsv.spaceId || "";
-        const dsvId = dsv.sId || "";
-        const nodeType = item.node.type || "";
+        const spaceId = dsv.spaceId ?? "";
+        const dsvId = dsv.sId ?? "";
+        const nodeType = item.node.type ?? "";
         apiParams = ` space="${spaceId}" dsv="${dsvId}" type="${nodeType}"`;
       }
       return `<knowledge id="${item.id}" title="${item.label}"${apiParams} />`;
     }
-    // Don't serialize search state - empty nodes shouldn't be saved
+
+    // Don't serialize search state, empty nodes shouldn't be saved.
     return "";
   },
 
   parseMarkdown: (token) => {
-    console.log("Parsing markdown token for KnowledgeNode:", token);
+    const selectedItem: BaseKnowledgeItem = {
+      id: token.knowledgeId,
+      label: token.knowledgeTitle,
+      spaceId: token.spaceId,
+      dataSourceViewId: token.dataSourceViewId,
+      nodeType: token.nodeType,
+    };
 
-    // The custom tokenizer provides knowledgeId and knowledgeTitle directly
-    if (
-      token.knowledgeId &&
-      token.knowledgeTitle &&
-      token.spaceId &&
-      token.dataSourceViewId &&
-      token.nodeType
-    ) {
-      const selectedItem: BaseKnowledgeItem = {
-        id: token.knowledgeId,
-        label: token.knowledgeTitle,
-        spaceId: token.spaceId,
-        dataSourceViewId: token.dataSourceViewId,
-        nodeType: token.nodeType,
-      };
-
-      return {
-        type: "knowledgeNode",
-        attrs: {
-          selectedItems: [selectedItem],
-        },
-      };
-    }
-
-    return undefined;
+    return {
+      type: "knowledgeNode",
+      attrs: {
+        selectedItems: [selectedItem],
+      },
+    };
   },
 
   addNodeView() {

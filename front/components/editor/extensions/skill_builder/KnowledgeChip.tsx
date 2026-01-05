@@ -1,4 +1,8 @@
-import { Chip, DoubleIcon } from "@dust-tt/sparkle";
+import {
+  AttachmentChip,
+  DoubleIcon,
+  ExclamationCircleIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
@@ -32,12 +36,34 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
         );
 
   return (
-    <Chip
-      size="mini"
+    <AttachmentChip
+      label={title}
+      icon={{ visual: icon }}
+      target="_blank"
       // TODO(2026-01-02 SKILL): decide on proper color.
       color="highlight"
+      onRemove={onRemove}
+      className="align-middle"
+    />
+  );
+}
+
+interface KnowledgeErrorChipProps {
+  errorMessage?: string;
+  onRemove: () => void;
+  title: string;
+}
+
+export function KnowledgeErrorChip({
+  onRemove,
+  title,
+}: KnowledgeErrorChipProps) {
+  return (
+    <AttachmentChip
       label={title}
-      icon={icon}
+      icon={{ visual: ExclamationCircleIcon }}
+      target="_blank"
+      color="warning"
       onRemove={onRemove}
       className="align-middle"
     />

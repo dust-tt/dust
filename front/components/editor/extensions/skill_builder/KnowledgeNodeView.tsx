@@ -18,8 +18,12 @@ import React, {
   useState,
 } from "react";
 
-import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
+import {
+  KnowledgeChip,
+  KnowledgeErrorChip,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type {
+  FullKnowledgeItem,
   KnowledgeItem,
   KnowledgeNodeAttributes,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
@@ -99,46 +103,40 @@ const KnowledgeDisplayComponent: React.FC<KnowledgeDisplayProps> = ({
       !isFetchingNode)
   ) {
     return (
-      <span
-        className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-warning-100 px-2 py-1 text-sm text-warning-800 hover:bg-warning-200"
-        onClick={onRemove}
-        title={
+      <KnowledgeErrorChip
+        title={item.label}
+        onRemove={onRemove}
+        errorMessage={
           isDataSourceViewError ? "Data source not found" : "Content not found"
         }
-      >
-        <span>⚠️ {item.label}</span>
-        <span className="text-warning-600 hover:text-warning-800">×</span>
-      </span>
+      />
     );
   }
 
-  // Show loading state while fetching node data
-  if (isFetchingNode) {
+  // Show loading state while fetching node data or waiting for upgrade to full item.
+  if (isFetchingNode || (needsFetch && !isFullKnowledgeItem(item))) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-600">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-600"
+        )}
+      >
         <Spinner size="xs" />
         <span>{item.label}</span>
       </span>
     );
   }
 
-  // Show full chip if we have node data
-  if (isFullKnowledgeItem(item)) {
-    return (
-      <KnowledgeChip node={item.node} onRemove={onRemove} title={item.label} />
-    );
-  }
-
-  // Fallback - should rarely happen now that we have fetching
+  // At this point we must have a full item with node data.
   return (
-    <span
-      className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800 hover:bg-blue-200"
-      onClick={onRemove}
-      title="Click to remove"
-    >
-      <span>{item.label}</span>
-      <span className="text-blue-600 hover:text-blue-800">×</span>
-    </span>
+    <KnowledgeChip
+      node={{
+        ...item.node,
+        dataSource: item.node.dataSourceView.dataSource,
+      }}
+      onRemove={onRemove}
+      title={item.label}
+    />
   );
 };
 
@@ -159,7 +157,7 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Get spaces for location display
+  // Get spaces for location display.
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
     disabled: false,
@@ -220,26 +218,32 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
           const dataSourceView = dataSourceViews.find(
             (view) => spacesMap[view.spaceId]
           );
+
           if (!dataSourceView) {
             return null;
           }
+
           return { ...rest, dataSourceView };
         })
       ),
     [searchResults, spacesMap]
   );
 
-  const knowledgeItems: KnowledgeItem[] = useMemo(() => {
-    return dataSourceNodes.map((node) => ({
-      id: node.internalId,
-      label: node.title,
-      description: getLocationForDataSourceViewContentNodeWithSpace(
-        node,
-        spacesMap
-      ),
-      node, // Store the original node for chip display
-    }));
-  }, [dataSourceNodes, spacesMap]);
+  const knowledgeItems: (FullKnowledgeItem & { description: string })[] =
+    useMemo(() => {
+      return dataSourceNodes.map((node) => ({
+        dataSourceViewId: node.dataSourceView.sId,
+        description: getLocationForDataSourceViewContentNodeWithSpace(
+          node,
+          spacesMap
+        ),
+        id: node.internalId,
+        label: node.title,
+        node, // Store the original node for chip display.
+        spaceId: node.dataSourceView.spaceId,
+        nodeType: node.type,
+      }));
+    }, [dataSourceNodes, spacesMap]);
 
   const handleItemSelect = useCallback(
     (index: number) => {
@@ -264,14 +268,14 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
     [knowledgeItems, handleItemSelect]
   );
 
-  // Handle input events
+  // Handle input events.
   const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
     const text = e.currentTarget.textContent ?? "";
     setSearchQuery(text);
     setIsOpen(text.trim().length > 0);
   }, []);
 
-  // Auto-focus when component mounts
+  // Auto-focus when component mounts.
   useEffect(() => {
     if (contentRef.current) {
       setTimeout(() => {
@@ -290,12 +294,12 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
     }
   }, []);
 
-  // Reset selected index when items change
+  // Reset selected index when items change.
   useEffect(() => {
     setSelectedIndex(0);
   }, [knowledgeItems.length]);
 
-  // Delete empty node helper
+  // Delete empty node helper.
   const deleteIfEmpty = useCallback(
     (delay: number = 50) => {
       setTimeout(() => {
@@ -307,7 +311,7 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
     [searchQuery, onCancel]
   );
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isOpen) {
@@ -463,19 +467,11 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
 
   const handleSelect = useCallback(
     (item: KnowledgeItem) => {
-      console.log(">> Selecting knowledge item:", item);
       updateAttributes({
-        selectedItems: [
-          {
-            id: item.id,
-            label: item.label,
-            description: item.description,
-            node: item.node, // Store the node for chip display
-          },
-        ],
+        selectedItems: [item],
       });
 
-      // Return focus to the editor after selection and add a space
+      // Return focus to the editor after selection and add a space.
       setTimeout(() => {
         if (editor) {
           editor.chain().focus().insertContent(" ").run();
