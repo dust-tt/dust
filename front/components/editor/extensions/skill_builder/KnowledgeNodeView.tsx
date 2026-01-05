@@ -46,11 +46,11 @@ interface KnowledgeDisplayProps {
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-const KnowledgeDisplayComponent: React.FC<KnowledgeDisplayProps> = ({
+function KnowledgeDisplayComponent({
   item,
   onRemove,
   updateAttributes,
-}) => {
+}: KnowledgeDisplayProps) {
   const { owner } = useSkillBuilderContext();
 
   // Check if we need to fetch full node data.
@@ -118,7 +118,8 @@ const KnowledgeDisplayComponent: React.FC<KnowledgeDisplayProps> = ({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-600"
+          "inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1",
+          "text-sm text-gray-600"
         )}
       >
         <Spinner size="xs" />
@@ -138,7 +139,7 @@ const KnowledgeDisplayComponent: React.FC<KnowledgeDisplayProps> = ({
       title={item.label}
     />
   );
-};
+}
 
 interface KnowledgeSearchProps {
   onSelect: (item: KnowledgeItem) => void;
@@ -146,11 +147,11 @@ interface KnowledgeSearchProps {
   clientRect?: () => DOMRect | null;
 }
 
-const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
+function KnowledgeSearchComponent({
   onSelect,
   onCancel,
   clientRect,
-}) => {
+}: KnowledgeSearchProps) {
   const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -168,7 +169,7 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
     [spaces]
   );
 
-  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
+  const spaceIds = spaces.map((s) => s.sId);
 
   const isDisabled = !searchQuery || searchQuery.length < 2;
 
@@ -381,7 +382,7 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-96"
-            avoidCollisions={true}
+            avoidCollisions
             onInteractOutside={handleInteractOutside}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
@@ -449,7 +450,7 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
       )}
     </div>
   );
-};
+}
 
 interface ExtendedNodeViewProps extends NodeViewProps {
   clientRect?: () => DOMRect | null;

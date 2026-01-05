@@ -154,15 +154,15 @@ export const KnowledgeNode = Node.create<{}>({
       const [item] = node.attrs.selectedItems;
 
       // Serialize essential data for model understanding and API fetching.
-      let apiParams = "";
+      let nodeParams = "";
       if (item.node?.dataSourceView) {
         const dsv = item.node.dataSourceView;
         const spaceId = dsv.spaceId ?? "";
         const dsvId = dsv.sId ?? "";
         const nodeType = item.node.type ?? "";
-        apiParams = ` space="${spaceId}" dsv="${dsvId}" type="${nodeType}"`;
+        nodeParams = ` space="${spaceId}" dsv="${dsvId}" type="${nodeType}"`;
       }
-      return `<knowledge id="${item.id}" title="${item.label}"${apiParams} />`;
+      return `<knowledge id="${item.id}" title="${item.label}"${nodeParams} />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
