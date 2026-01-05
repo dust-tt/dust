@@ -9,6 +9,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React from "react";
 
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { WorkspaceType } from "@app/types";
 
@@ -52,44 +53,46 @@ export default function Trial({
   ];
 
   return (
-    <Page>
-      <div className="flex h-full flex-col justify-center">
-        <Page.Horizontal>
-          <Page.Vertical sizing="grow" gap="lg">
-            <Page.Header
-              title="Start your free trial"
-              icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-            />
-            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
-              No credit card required
-            </p>
-
-            <ul className="flex flex-col gap-4">
-              {features.map((feature, index) => (
-                <li key={index} className="flex items-center gap-3">
-                  <Icon
-                    visual={CheckIcon}
-                    size="sm"
-                    className="text-primary-500"
-                  />
-                  <span className="text-foreground dark:text-foreground-night">
-                    {feature}
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="flex flex-row gap-3">
-              <Button
-                onClick={startTrial}
-                variant="primary"
-                label="Start free trial"
+    <ThemeProvider>
+      <Page>
+        <div className="flex h-full flex-col justify-center">
+          <Page.Horizontal>
+            <Page.Vertical sizing="grow" gap="lg">
+              <Page.Header
+                title="Start your free trial"
+                icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
               />
-              <Button onClick={skip} variant="outline" label="Skip for now" />
-            </div>
-          </Page.Vertical>
-        </Page.Horizontal>
-      </div>
-    </Page>
+              <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+                No credit card required
+              </p>
+
+              <ul className="flex flex-col gap-4">
+                {features.map((feature, index) => (
+                  <li key={index} className="flex items-center gap-3">
+                    <Icon
+                      visual={CheckIcon}
+                      size="sm"
+                      className="text-primary-500"
+                    />
+                    <span className="text-foreground dark:text-foreground-night">
+                      {feature}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-row gap-3">
+                <Button
+                  onClick={startTrial}
+                  variant="primary"
+                  label="Start free trial"
+                />
+                <Button onClick={skip} variant="outline" label="Skip for now" />
+              </div>
+            </Page.Vertical>
+          </Page.Horizontal>
+        </div>
+      </Page>
+    </ThemeProvider>
   );
 }
