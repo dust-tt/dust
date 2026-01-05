@@ -26,7 +26,7 @@ export function SkillInfoTab({
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
-    disabled: !shouldLoadKnowledgeAndSpaces || !!spaces,
+    disabled: !shouldLoadSpaces || !!spaces,
   });
 
   const resolvedSpaces = spaces ?? spacesFromHook;
@@ -54,9 +54,7 @@ export function SkillInfoTab({
   );
 
   const showSeparator =
-    !!skill.instructions ||
-    sortedMCPServerViews.length > 0 ||
-    shouldLoadKnowledgeAndSpaces;
+    !!skill.instructions || sortedMCPServerViews.length > 0 || shouldLoadSpaces;
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,7 +89,7 @@ export function SkillInfoTab({
         </div>
       )}
 
-      {shouldLoadKnowledgeAndSpaces ? (
+      {shouldLoadSpaces ? (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Spaces
