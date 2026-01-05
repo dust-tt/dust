@@ -86,11 +86,9 @@ export function useDeleteMetadata() {
 
 export function useIsOnboardingConversation(
   conversationId: string | null,
-  workspaceId?: string
+  workspaceId: string
 ) {
-  const metadataKey = workspaceId
-    ? `onboarding:conversation?wId=${workspaceId}`
-    : "onboarding:conversation";
+  const metadataKey = `onboarding:conversation?wId=${workspaceId}`;
 
   const { metadata, isMetadataLoading } = useUserMetadata(metadataKey, {
     disabled: !conversationId,
