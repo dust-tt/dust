@@ -14,9 +14,6 @@ export function makeColumnsForSkills(): ColumnDef<SkillDisplayType>[] {
   return [
     {
       accessorKey: "sId",
-      cell: ({ row }) => {
-        return row.getValue("sId");
-      },
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">
