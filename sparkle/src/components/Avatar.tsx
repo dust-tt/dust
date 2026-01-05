@@ -50,7 +50,7 @@ const avatarVariants = cva(
       {
         rounded: false,
         size: "xxs",
-        className: "s-rounded-[4px]",
+        className: "s-rounded",
       },
       {
         rounded: false,
