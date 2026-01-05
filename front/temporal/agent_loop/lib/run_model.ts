@@ -585,15 +585,17 @@ export async function runModelActivity(
     const chainOfThought =
       (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
+    const completedTs = Date.now();
+
     const updatedAgentMessage = {
       ...agentMessage,
       chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
       content: (agentMessage.content ?? "") + processedContent,
+      completedTs,
       status: "succeeded",
-      completedTs: Date.now(),
       completionDurationMs: getCompletionDuration(
         agentMessage.created,
-        agentMessage.completedTs,
+        completedTs,
         agentMessage.actions
       ),
     } satisfies AgentMessageType;
