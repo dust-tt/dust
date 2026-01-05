@@ -463,7 +463,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
+    await terminateAllWorkflowsForConnectorId({
+      connectorId: this.connectorId,
+      stopReason: "Stopped via connector STOP command",
+    });
     return new Ok(undefined);
   }
 

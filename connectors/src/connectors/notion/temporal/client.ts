@@ -12,8 +12,10 @@ import {
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
 import { notionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
-import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows/";
-import { updateOrphanedResourcesParentsWorkflow } from "@connectors/connectors/notion/temporal/workflows/";
+import {
+  notionSyncWorkflow,
+  updateOrphanedResourcesParentsWorkflow,
+} from "@connectors/connectors/notion/temporal/workflows/";
 import { notionDeletionCrawlWorkflow } from "@connectors/connectors/notion/temporal/workflows/deletion_crawl";
 import { notionGarbageCollectionWorkflow } from "@connectors/connectors/notion/temporal/workflows/garbage_collection";
 import { processDatabaseUpsertQueueWorkflow } from "@connectors/connectors/notion/temporal/workflows/upsert_database_queue";
@@ -172,9 +174,13 @@ export async function launchNotionGarbageCollectorWorkflow(
   );
 }
 
-export async function stopNotionSyncWorkflow(
-  connectorId: ModelId
-): Promise<void> {
+export async function stopNotionSyncWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -221,21 +227,25 @@ export async function stopNotionSyncWorkflow(
     "Terminating existing Notion sync workflow."
   );
 
-  await handle.terminate();
+  await handle.terminate(stopReason);
 
   logger.info(
     { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
     "Terminated Notion sync workflow."
   );
 
-  await stopNotionGarbageCollectorWorkflow(connectorId);
-  await stopProcessDatabaseUpsertQueueWorkflow(connectorId);
-  await stopNotionDeletionCrawlWorkflow(connectorId);
+  await stopNotionGarbageCollectorWorkflow({ connectorId, stopReason });
+  await stopProcessDatabaseUpsertQueueWorkflow({ connectorId, stopReason });
+  await stopNotionDeletionCrawlWorkflow({ connectorId, stopReason });
 }
 
-export async function stopNotionGarbageCollectorWorkflow(
-  connectorId: ModelId
-): Promise<void> {
+export async function stopNotionGarbageCollectorWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -270,7 +280,7 @@ export async function stopNotionGarbageCollectorWorkflow(
     "Terminating existing Notion garbage collector workflow."
   );
 
-  await handle.terminate();
+  await handle.terminate(stopReason);
 
   logger.info(
     { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
@@ -278,9 +288,13 @@ export async function stopNotionGarbageCollectorWorkflow(
   );
 }
 
-export async function stopProcessDatabaseUpsertQueueWorkflow(
-  connectorId: ModelId
-): Promise<void> {
+export async function stopProcessDatabaseUpsertQueueWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -315,7 +329,7 @@ export async function stopProcessDatabaseUpsertQueueWorkflow(
     "Terminating existing Process database upsert queue workflow."
   );
 
-  await handle.terminate();
+  await handle.terminate(stopReason);
 
   logger.info(
     { connectorId },
@@ -323,9 +337,13 @@ export async function stopProcessDatabaseUpsertQueueWorkflow(
   );
 }
 
-export async function stopNotionDeletionCrawlWorkflow(
-  connectorId: ModelId
-): Promise<void> {
+export async function stopNotionDeletionCrawlWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -360,7 +378,7 @@ export async function stopNotionDeletionCrawlWorkflow(
     "Terminating existing Notion deletion crawl workflow."
   );
 
-  await handle.terminate();
+  await handle.terminate(stopReason);
 
   logger.info(
     { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },

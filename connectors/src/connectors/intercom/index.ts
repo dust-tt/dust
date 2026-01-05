@@ -240,7 +240,9 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const res = await stopIntercomSchedulesAndWorkflows(connector);
+    const res = await stopIntercomSchedulesAndWorkflows(connector, {
+      stopReason: "Stopped via connector STOP command",
+    });
     if (res.isErr()) {
       return res;
     }

@@ -720,7 +720,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       );
     }
 
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
+    await terminateAllWorkflowsForConnectorId({
+      connectorId: this.connectorId,
+      stopReason: "Stopped via connector STOP command",
+    });
 
     return new Ok(undefined);
   }

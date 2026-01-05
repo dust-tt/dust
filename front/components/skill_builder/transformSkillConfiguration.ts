@@ -7,18 +7,18 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
  * Transforms a skill configuration (server-side) into skill builder form data (client-side).
  * Editors are intentionally set to empty defaults as they will be populated reactively.
  */
-export function transformSkillConfigurationToFormData(
-  skillConfiguration: SkillType
+export function transformSkillTypeToFormData(
+  skill: SkillType
 ): SkillBuilderFormData {
   return {
-    name: skillConfiguration.name,
-    agentFacingDescription: skillConfiguration.agentFacingDescription,
-    userFacingDescription: skillConfiguration.userFacingDescription,
-    instructions: skillConfiguration.instructions ?? "",
+    name: skill.name,
+    agentFacingDescription: skill.agentFacingDescription,
+    userFacingDescription: skill.userFacingDescription,
+    instructions: skill.instructions ?? "",
     editors: [], // Will be populated reactively from useEditors hook
-    tools: skillConfiguration.tools.map(getDefaultMCPAction),
-    icon: skillConfiguration.icon ?? null,
-    extendedSkillId: skillConfiguration.extendedSkillId,
+    tools: skill.tools.map(getDefaultMCPAction),
+    icon: skill.icon ?? null,
+    extendedSkillId: skill.extendedSkillId,
   };
 }
 

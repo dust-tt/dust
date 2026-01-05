@@ -221,7 +221,7 @@ export function UsageMetricsChart({
             <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
           )}
           cursor={false}
-          wrapperStyle={{ outline: "none" }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
             background: "transparent",
             border: "none",

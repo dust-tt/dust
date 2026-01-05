@@ -1,5 +1,5 @@
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 import {
   AgentMessageModel,
@@ -85,6 +85,26 @@ ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
     {
       fields: ["workspaceId", "conversationId", "agentConfigurationId"],
       name: "idx_conversation_skills_workspace_conv_agent",
+    },
+    {
+      fields: [
+        "workspaceId",
+        "conversationId",
+        "agentConfigurationId",
+        "customSkillId",
+      ],
+      where: { customSkillId: { [Op.ne]: null } },
+      name: "idx_conversation_skills_workspace_conv_agent_custom_skill",
+    },
+    {
+      fields: [
+        "workspaceId",
+        "conversationId",
+        "agentConfigurationId",
+        "globalSkillId",
+      ],
+      where: { globalSkillId: { [Op.ne]: null } },
+      name: "idx_conversation_skills_workspace_conv_agent_global_skill",
     },
   ],
   validate: {

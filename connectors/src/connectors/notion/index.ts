@@ -257,7 +257,10 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      await stopNotionSyncWorkflow(connector.id);
+      await stopNotionSyncWorkflow({
+        connectorId: connector.id,
+        stopReason: "Stopped via connector STOP command",
+      });
     } catch (e) {
       logger.error(
         {

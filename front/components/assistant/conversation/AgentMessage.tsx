@@ -5,6 +5,10 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
   InteractiveImageGrid,
   MoreIcon,
   StopIcon,
@@ -33,12 +37,6 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
-import {
-  ConversationMessageAvatar,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-  NewConversationMessageContainer,
-} from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -660,7 +658,7 @@ export function AgentMessage({
     : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
 
   return (
-    <NewConversationMessageContainer messageType="agent" type="agent">
+    <ConversationMessageContainer messageType="agent" type="agent">
       <div className="inline-flex items-center gap-2 @sm:hidden">
         <ConversationMessageAvatar
           avatarUrl={agentConfiguration.pictureUrl}
@@ -735,7 +733,7 @@ export function AgentMessage({
             <div className="flex justify-start gap-3">{messageButtons}</div>
           )}
       </div>
-    </NewConversationMessageContainer>
+    </ConversationMessageContainer>
   );
 }
 

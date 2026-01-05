@@ -15,6 +15,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
+import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
@@ -846,14 +847,16 @@ export default async function createServer(
             }
           }
 
+          // Transient stream errors (network issues, reconnection exhaustion) should not
+          // trigger alerts as they are typically recoverable infrastructure issues.
+          const isTransient = isTransientStreamError(streamError);
           const normalizedError = normalizeError(streamError);
-          const isNotConnected = normalizedError.message === "Not connected";
           const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
 
           return finalizeAndReturn(
             new Err(
               new MCPError(errorMessage, {
-                tracked: !isNotConnected,
+                tracked: !isTransient,
                 cause: normalizedError,
               })
             )

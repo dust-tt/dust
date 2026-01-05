@@ -126,9 +126,9 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data).toHaveProperty("skillConfiguration");
-    expect(data.skillConfiguration.sId).toBe(skill.sId);
-    expect(data.skillConfiguration.name).toBe("Test Skill");
+    expect(data).toHaveProperty("skill");
+    expect(data.skill.sId).toBe(skill.sId);
+    expect(data.skill.name).toBe("Test Skill");
   });
 
   it("should return 404 for non-existent skill", async () => {
@@ -262,9 +262,9 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     const data = res._getJSONData();
     expect(data).not.toHaveProperty("error");
     expect(res._getStatusCode()).toBe(200);
-    expect(data).toHaveProperty("skillConfiguration");
-    expect(data.skillConfiguration.sId).toBe(skill.sId);
-    expect(data.skillConfiguration.agentFacingDescription).toBe(newDescription);
+    expect(data).toHaveProperty("skill");
+    expect(data.skill.sId).toBe(skill.sId);
+    expect(data.skill.agentFacingDescription).toBe(newDescription);
 
     // Verify the update persisted by fetching the resource
     const updatedSkill = await SkillResource.fetchById(
@@ -322,10 +322,10 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     const data = res._getJSONData();
     expect(data).not.toHaveProperty("error");
     expect(res._getStatusCode()).toBe(200);
-    expect(data.skillConfiguration.tools).toHaveLength(2);
-    expect(data.skillConfiguration.requestedSpaceIds).toHaveLength(2);
-    expect(data.skillConfiguration.requestedSpaceIds).toContain(space1.sId);
-    expect(data.skillConfiguration.requestedSpaceIds).toContain(space2.sId);
+    expect(data.skill.tools).toHaveLength(2);
+    expect(data.skill.requestedSpaceIds).toHaveLength(2);
+    expect(data.skill.requestedSpaceIds).toContain(space1.sId);
+    expect(data.skill.requestedSpaceIds).toContain(space2.sId);
 
     // Verify the update persisted in the database
     const updatedSkill = await SkillResource.fetchById(
@@ -370,8 +370,8 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(200);
 
     // Verify the response contains the updated tools
-    expect(data.skillConfiguration.tools).toHaveLength(1);
-    expect(data.skillConfiguration.tools[0].sId).toBe(serverView.sId);
+    expect(data.skill.tools).toHaveLength(1);
+    expect(data.skill.tools[0].sId).toBe(serverView.sId);
 
     // Verify fetching the skill also shows the tool
     const updatedSkill = await SkillResource.fetchById(

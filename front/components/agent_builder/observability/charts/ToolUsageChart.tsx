@@ -81,12 +81,8 @@ export function ToolUsageChart({
   );
 
   const renderToolUsageTooltip = useCallback(
-    (payload: TooltipContentProps<number, string>) => (
-      <ChartsTooltip
-        {...payload}
-        topTools={topTools}
-        hoveredTool={hoveredTool}
-      />
+    (props: TooltipContentProps<number, string>) => (
+      <ChartsTooltip {...props} topTools={topTools} hoveredTool={hoveredTool} />
     ),
     [topTools, hoveredTool]
   );
@@ -118,6 +114,7 @@ export function ToolUsageChart({
       <BarChart
         data={chartData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+        stackOffset="expand"
       >
         <CartesianGrid
           vertical={false}
@@ -141,15 +138,14 @@ export function ToolUsageChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          domain={[0, 100]}
-          ticks={[0, 20, 40, 60, 80, 100]}
-          tickFormatter={(value) => `${value}%`}
-          allowDecimals={false}
+          domain={[0, 1]}
+          ticks={[0, 0.2, 0.4, 0.6, 0.8, 1]}
+          tickFormatter={(value) => `${Math.round(value * 100)}%`}
         />
         <Tooltip
           cursor={false}
           content={renderToolUsageTooltip}
-          wrapperStyle={{ outline: "none" }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
             background: "transparent",
             border: "none",
@@ -172,7 +168,7 @@ export function ToolUsageChart({
         {topTools.map((toolName) => (
           <Bar
             key={toolName}
-            dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
+            dataKey={(row: ChartDatum) => row.values[toolName]?.count ?? 0}
             stackId="a"
             fill="currentColor"
             className={getIndexedColor(toolName, topTools)}
