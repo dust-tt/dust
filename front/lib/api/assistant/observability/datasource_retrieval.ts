@@ -7,11 +7,13 @@ import {
   withEs,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export type DatasourceRetrievalData = {
   mcpServerConfigId: string;
+  mcpServerConfigName?: string;
   mcpServerName: string;
   count: number;
   datasources: {
@@ -21,15 +23,20 @@ export type DatasourceRetrievalData = {
 };
 
 type TermBucket = {
+  key: number;
+  doc_count: number;
+};
+
+type StringTermBucket = {
   key: string;
   doc_count: number;
 };
 
-type DatasourceBucket = TermBucket;
+type DatasourceBucket = StringTermBucket;
 
 type McpServerConfigBucket = TermBucket & {
   by_datasource?: estypes.AggregationsMultiBucketAggregateBase<DatasourceBucket>;
-  by_mcp_server_name?: estypes.AggregationsMultiBucketAggregateBase<TermBucket>;
+  by_mcp_server_name?: estypes.AggregationsMultiBucketAggregateBase<StringTermBucket>;
 };
 
 type DatasourceRetrievalAggs = {
@@ -105,22 +112,38 @@ export async function fetchDatasourceRetrievalMetrics(
     response.aggregations?.by_mcp_server_config?.buckets
   );
 
+  const configModelIds = Array.from(
+    new Set(mcpServerConfigBuckets.map((b) => b.key))
+  ).filter((id) => Number.isFinite(id) && id > 0);
+
+  const serverConfigs =
+    configModelIds.length > 0
+      ? await AgentMCPServerConfigurationResource.fetchByModelIds(
+          auth,
+          configModelIds
+        )
+      : [];
+  const serverConfigByModelId = new Map(
+    serverConfigs.map((cfg) => [cfg.id, cfg])
+  );
+
   const data: DatasourceRetrievalData[] = mcpServerConfigBuckets.map(
     (mcpConfigBucket) => {
       const datasourceBuckets = bucketsToArray<DatasourceBucket>(
         mcpConfigBucket.by_datasource?.buckets
       );
 
-      const mcpServerNameBuckets = bucketsToArray<TermBucket>(
+      const mcpServerNameBuckets = bucketsToArray<StringTermBucket>(
         mcpConfigBucket.by_mcp_server_name?.buckets
       );
 
+      const config = serverConfigByModelId.get(mcpConfigBucket.key);
+      const mcpServerName = mcpServerNameBuckets[0]?.key ?? "unknown";
+
       return {
-        mcpServerConfigId: mcpConfigBucket.key,
-        mcpServerName:
-          mcpServerNameBuckets.length > 0
-            ? mcpServerNameBuckets[0].key
-            : mcpConfigBucket.key,
+        mcpServerConfigId: config?.sId ?? "unknown",
+        mcpServerConfigName: config?.name ?? undefined,
+        mcpServerName,
         count: mcpConfigBucket.doc_count,
         datasources: datasourceBuckets.map((dsBucket) => ({
           name: dsBucket.key,

@@ -9,12 +9,8 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
-import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import {
-  useAgentConfiguration,
-  useAgentDatasourceRetrieval,
-} from "@app/lib/swr/assistants";
+import { useAgentDatasourceRetrieval } from "@app/lib/swr/assistants";
 import { asDisplayName, isConnectorProvider } from "@app/types";
 
 interface TreemapNode {
@@ -120,26 +116,6 @@ export function DatasourceRetrievalTreemapChart({
     version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId,
-    agentConfigurationId,
-  });
-
-  const mcpConfigNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-
-    if (!agentConfiguration) {
-      return map;
-    }
-
-    agentConfiguration.actions.forEach((action) => {
-      if (isMCPServerConfiguration(action) && action.name) {
-        map.set(action.id.toString(), asDisplayName(action.name));
-      }
-    });
-    return map;
-  }, [agentConfiguration]);
-
   const { treemapData, legendItems } = useMemo(() => {
     if (!datasourceRetrieval.length) {
       return { treemapData: null, legendItems: [] };
@@ -162,8 +138,7 @@ export function DatasourceRetrievalTreemapChart({
         mcpServerConfigIds
       );
       const displayName =
-        mcpConfigNameMap.get(mcp.mcpServerConfigId.toString()) ??
-        mcp.mcpServerName;
+        asDisplayName(mcp.mcpServerConfigName) || mcp.mcpServerName;
 
       if (!seenServers.has(mcp.mcpServerConfigId)) {
         legend.push({
@@ -184,7 +159,7 @@ export function DatasourceRetrievalTreemapChart({
     });
 
     return { treemapData: flattenedData, legendItems: legend };
-  }, [datasourceRetrieval, mcpConfigNameMap]);
+  }, [datasourceRetrieval]);
 
   const renderTooltip = useCallback(
     (props: { payload?: { payload?: TreemapNode }[] }) => {
