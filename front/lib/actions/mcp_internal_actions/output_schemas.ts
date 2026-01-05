@@ -6,12 +6,14 @@ import type {
 import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import {
   CUSTOM_RESOURCE_ALLOWED,
-  type CustomResourceIconType,
   INTERNAL_ALLOWED_ICONS,
-  type InternalAllowedIconType,
-} from "@app/lib/actions/internal_allowed_icons";
+} from "@app/components/resources/resources_icons";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { AllSupportedFileContentType } from "@app/types";
 import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
