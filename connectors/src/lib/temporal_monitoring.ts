@@ -13,7 +13,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { type ConnectorErrorType, WithRetriesError } from "@connectors/types";
+import { WithRetriesError } from "@connectors/types";
 
 import {
   DustConnectorWorkflowError,
