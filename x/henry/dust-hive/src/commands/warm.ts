@@ -22,6 +22,7 @@ interface WarmOptions {
   noForward?: boolean;
   forcePorts?: boolean;
   forceRebuild?: boolean;
+  seed?: boolean;
 }
 
 // Check if Temporal server is running (default gRPC port 7233)
@@ -49,6 +50,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   const noForward = options.noForward ?? false;
   const forcePorts = options.forcePorts ?? false;
   const forceRebuild = options.forceRebuild ?? false;
+  const forceSeed = options.seed ?? false;
 
   // Set cache source to use binaries from main repo
   await timed("setCacheSource", () => setCacheSource(env.metadata.repoRoot));
@@ -165,6 +167,8 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     }
     console.log();
 
+    const shouldSeed = forceSeed || needsInit;
+
     // Start ALL services using pre-compiled binaries (instant startup)
     // Also start seeding and health checks in parallel
     logger.info("Starting services (using pre-compiled binaries)...");
@@ -186,7 +190,9 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
         logger.recordTiming("startService(oauth)", oauthStart)
       ),
       // Other services
-      runSeedScript(env).then(() => logger.recordTiming("runSeedScript", seedStart)),
+      shouldSeed
+        ? runSeedScript(env).then(() => logger.recordTiming("runSeedScript", seedStart))
+        : Promise.resolve(),
       startService(env, "front").then(() => logger.recordTiming("startService(front)", frontStart)),
       startService(env, "connectors").then(() =>
         logger.recordTiming("startService(connectors)", connectorsStart)
@@ -218,6 +224,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     const frontStart = Date.now();
     const connectorsStart = Date.now();
     const workersStart = Date.now();
+    const seedStart = Date.now();
     const [, temporalRunning] = await Promise.all([
       Promise.all([
         startService(env, "core", true).then(() =>
@@ -235,6 +242,9 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
         startService(env, "front-workers").then(() =>
           logger.recordTiming("startService(front-workers)", workersStart)
         ),
+        forceSeed
+          ? runSeedScript(env).then(() => logger.recordTiming("runSeedScript", seedStart))
+          : Promise.resolve(),
       ]),
       isTemporalRunning(),
     ]);

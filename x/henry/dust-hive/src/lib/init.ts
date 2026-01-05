@@ -480,6 +480,32 @@ async function waitForContainer(projectName: string, service: string): Promise<v
   throw new Error(`Container ${service} did not become healthy`);
 }
 
+async function waitForQdrantReady(envVars: Record<string, string>): Promise<void> {
+  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
+  const baseUrl = envVars["QDRANT_URL"] ?? envVars["QDRANT_CLUSTER_0_URL"];
+  if (!baseUrl) {
+    throw new Error("QDRANT_URL is not set");
+  }
+
+  const maxWaitMs = 30000;
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      const response = await fetch(`${baseUrl}/collections`, {
+        signal: AbortSignal.timeout(2000),
+      });
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // keep retrying
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error("Qdrant did not become ready in time");
+}
+
 // Initialize all postgres-related things (runs after postgres is healthy)
 async function initAllPostgres(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
@@ -528,6 +554,8 @@ async function initAllQdrant(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
+
+  await waitForQdrantReady(envVars);
 
   const result = await initQdrant(worktreePath, envVars);
   if (!result.success) {
@@ -788,12 +816,11 @@ export async function runSeedScript(env: Environment): Promise<boolean> {
   const worktreePath = getWorktreeDir(env.name);
   const frontDir = `${worktreePath}/front`;
 
-  // Try Bun first (faster), fall back to tsx if it fails
-  // Bun can run TypeScript directly with minimal startup overhead
+  // Use tsx for compatibility with frontend dependencies
   const command = buildShell({
     sourceEnv: envShPath,
-    sourceNvm: false, // Bun doesn't need nvm
-    run: `bun run admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
+    sourceNvm: true,
+    run: `npx tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {

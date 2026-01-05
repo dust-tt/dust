@@ -100,16 +100,18 @@ cli
   .option("--no-forward", "Disable OAuth port forwarding")
   .option("--force-ports", "Kill processes blocking service ports")
   .option("--force-rebuild", "Force Rust recompilation before starting services")
+  .option("--seed", "Run seed script even if already initialized")
   .action(
     async (
       name: string | undefined,
-      options: { forward?: boolean; forcePorts?: boolean; forceRebuild?: boolean }
+      options: { forward?: boolean; forcePorts?: boolean; forceRebuild?: boolean; seed?: boolean }
     ) => {
       await prepareAndRun(
         warmCommand(name, {
           noForward: options.forward === false,
           forcePorts: Boolean(options.forcePorts),
           forceRebuild: Boolean(options.forceRebuild),
+          seed: Boolean(options.seed),
         })
       );
     }
