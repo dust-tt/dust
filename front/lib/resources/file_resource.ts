@@ -1,6 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
+import type { File } from "@google-cloud/storage";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
@@ -483,6 +484,23 @@ export class FileResource extends BaseResource<FileModel> {
     return this.isUpsertUseCase()
       ? getUpsertQueueBucket()
       : getPrivateUploadBucket();
+  }
+
+  /**
+   * Get sorted file versions from GCS (newest first).
+   * Used for reverting Interactive Content files to previous versions.
+   */
+  async getSortedFileVersions(
+    auth: Authenticator,
+    maxResults?: number
+  ): Promise<File[]> {
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const fileStorage = getPrivateUploadBucket();
+
+    return fileStorage.getSortedFileVersions({
+      filePath,
+      maxResults,
+    });
   }
 
   // Stream logic.

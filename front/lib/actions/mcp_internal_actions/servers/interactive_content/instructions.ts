@@ -35,7 +35,7 @@ This toolset is called Frame in the product, users may refer to it as such.
 - Never attempt to edit without first retrieving the current file content
 
 ### Reverting Files:
-- Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version from GCS versioning.
+- Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version.
 - Each revert moves back one version in the file's history. Reverting multiple times in sequence moves progressively backward through versions (not a toggle).
 - Each edit creates a new version. If you made multiple edits in a single message, one revert will only undo the most recent edit.
 

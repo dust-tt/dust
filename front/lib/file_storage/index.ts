@@ -8,6 +8,7 @@ import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { AllSupportedFileContentType } from "@app/types";
 import { frameContentType, stripNullBytes } from "@app/types";
+import { isNumber } from "lodash";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
@@ -164,14 +165,12 @@ export class FileStorage {
     const versions = files
       .filter((file) => file.name === filePath)
       .sort((a, b) => {
-        const genA =
-          typeof a.metadata.generation === "number"
-            ? a.metadata.generation
-            : Number(a.metadata.generation ?? 0);
-        const genB =
-          typeof b.metadata.generation === "number"
-            ? b.metadata.generation
-            : Number(b.metadata.generation ?? 0);
+        const genA = isNumber(a.metadata.generation)
+          ? a.metadata.generation
+          : Number(a.metadata.generation ?? 0);
+        const genB = isNumber(b.metadata.generation)
+          ? b.metadata.generation
+          : Number(b.metadata.generation ?? 0);
         return genB - genA;
       });
 

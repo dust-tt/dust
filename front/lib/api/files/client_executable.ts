@@ -7,7 +7,6 @@ import {
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -368,17 +367,11 @@ export async function revertClientExecutableFileChanges(
     return new Err({ tracked: true, message: "File not found" });
   }
 
-  // Get the GCS path for this file
-  const filePath = fileResource.getCloudStoragePath(auth, "original");
-  const fileStorage = getPrivateUploadBucket();
-
   // Get all versions of the file (sorted newest to oldest)
   // No maxResults limit - we need all versions to ensure correct sorting
   let versions;
   try {
-    versions = await fileStorage.getSortedFileVersions({
-      filePath,
-    });
+    versions = await fileResource.getSortedFileVersions(auth);
   } catch (error) {
     return new Err({
       tracked: true,

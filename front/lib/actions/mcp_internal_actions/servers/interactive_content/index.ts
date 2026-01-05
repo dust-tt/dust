@@ -190,6 +190,7 @@ function createServer(
   server.tool(
     EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Modifies content within an Interactive Content file by substituting specified text segments. " +
+      "Each edit creates a new version of the Interactive Content file. " +
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
@@ -289,7 +290,7 @@ function createServer(
   );
   server.tool(
     REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Resets an Interactive Content file to its previous version from GCS versioning. " +
+    "Resets an Interactive Content file to its previous version. " +
       "Each revert goes back one version in the file's history. " +
       "Use retrieve to see the current content after reverting.",
     {
