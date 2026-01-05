@@ -33,12 +33,12 @@ interface DestroyOptions {
   force: boolean;
 }
 
-async function cleanupDocker(envName: string, repoRoot: string): Promise<void> {
+async function cleanupDocker(envName: string): Promise<void> {
   const dockerRunning = await isDockerRunning(envName);
   let needsVolumeCleanup = !dockerRunning;
 
   if (dockerRunning) {
-    const dockerStopped = await stopDocker(envName, repoRoot, { removeVolumes: true });
+    const dockerStopped = await stopDocker(envName, { removeVolumes: true });
     needsVolumeCleanup = !dockerStopped;
   }
 
@@ -116,7 +116,7 @@ export async function destroyCommand(
   logger.success("All services stopped");
 
   // Stop Docker and remove volumes
-  await cleanupDocker(env.name, env.metadata.repoRoot);
+  await cleanupDocker(env.name);
 
   // Remove git worktree
   logger.step("Removing git worktree...");

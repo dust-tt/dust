@@ -24,7 +24,7 @@ export const stopCommand = withEnvironment("stop", async (env) => {
   // Stop Docker if running
   const dockerRunning = await isDockerRunning(env.name);
   if (dockerRunning) {
-    const dockerStopped = await stopDocker(env.name, env.metadata.repoRoot);
+    const dockerStopped = await stopDocker(env.name);
     if (!dockerStopped) {
       logger.warn("Docker containers may need manual cleanup");
     }

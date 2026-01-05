@@ -2,6 +2,9 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
+// dust-hive project root (where this package lives)
+export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
+
 // Base directories
 export const DUST_HIVE_HOME = join(homedir(), ".dust-hive");
 export const DUST_HIVE_ENVS = join(DUST_HIVE_HOME, "envs");
@@ -34,6 +37,10 @@ export function getEnvFilePath(name: string): string {
 
 export function getDockerOverridePath(name: string): string {
   return join(getEnvDir(name), "docker-compose.override.yml");
+}
+
+export function getDockerComposePath(): string {
+  return join(DUST_HIVE_ROOT, "docker-compose.yml");
 }
 
 export function getMetadataPath(name: string): string {

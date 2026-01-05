@@ -29,7 +29,7 @@ CLI tool for isolated Dust development environments. Built with Bun + TypeScript
 
 **All processes are CLI-managed daemons** (no mprocs):
 - SDK watch: daemon with log to `~/.dust-hive/envs/NAME/sdk.log`
-- Docker: `docker-compose -f $REPO_ROOT/tools/docker-compose.dust-hive.yml -f docker-compose.override.yml -p dust-hive-NAME up -d`
+- Docker: `docker-compose -f <dust-hive>/docker-compose.yml -f docker-compose.override.yml -p dust-hive-NAME up -d`
 - App services: each runs as daemon with log file (front.log, core.log, etc.)
 
 **Path resolution:** CLI detects repo root (via `.git`) and uses absolute paths for docker-compose files.
@@ -207,7 +207,7 @@ export TEXT_EXTRACTION_URL=http://localhost:10998
 
 ### Docker Compose
 
-**New base file**: `tools/docker-compose.dust-hive.yml`
+**Base file**: `docker-compose.yml` (self-contained in dust-hive project)
 - No `container_name` directives (let docker-compose generate from project name)
 - Includes healthchecks for all services
 - Includes qdrant_primary + qdrant_secondary (clustered mode)
@@ -411,8 +411,7 @@ source ~/.nvm/nvm.sh && nvm use
 
 | File | Action |
 |------|--------|
-| `tools/docker-compose.dust-hive.yml` | Create (base compose with healthchecks, qdrant cluster, apache-tika, no container_name) |
-| `tools/dust-hive/` | Create (CLI source code) |
+| `docker-compose.yml` | Included in dust-hive project (base compose with healthchecks, qdrant cluster, apache-tika, no container_name) |
 | `init_dev_container.sh` | Modify (read ports from env vars: POSTGRES_PORT, QDRANT_URL, etc.) |
 | `core/bin/core_api.rs` | Modify (read port from CORE_PORT env var, default 3001) |
 | `core/bin/oauth.rs` | Modify (read port from OAUTH_PORT env var, default 3006) |

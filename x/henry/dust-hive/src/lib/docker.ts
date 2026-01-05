@@ -1,7 +1,7 @@
 import YAML from "yaml";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { getDockerOverridePath } from "./paths";
+import { getDockerComposePath, getDockerOverridePath } from "./paths";
 import type { PortAllocation } from "./ports";
 
 export interface DockerComposeOverride {
@@ -98,7 +98,7 @@ export async function startDocker(env: Environment): Promise<void> {
 
   const projectName = getDockerProjectName(env.name);
   const overridePath = getDockerOverridePath(env.name);
-  const basePath = `${env.metadata.repoRoot}/tools/docker-compose.dust-hive.yml`;
+  const basePath = getDockerComposePath();
 
   // Start all containers in detached mode (no --wait)
   const proc = Bun.spawn(
@@ -122,14 +122,13 @@ export async function startDocker(env: Environment): Promise<void> {
 // Returns true if stopped successfully, false if docker-compose failed
 export async function stopDocker(
   envName: string,
-  repoRoot: string,
   options: { removeVolumes?: boolean } = {}
 ): Promise<boolean> {
   logger.step("Stopping Docker containers...");
 
   const projectName = getDockerProjectName(envName);
   const overridePath = getDockerOverridePath(envName);
-  const basePath = `${repoRoot}/tools/docker-compose.dust-hive.yml`;
+  const basePath = getDockerComposePath();
 
   const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "down"];
 

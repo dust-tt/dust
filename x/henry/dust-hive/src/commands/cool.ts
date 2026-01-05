@@ -27,7 +27,7 @@ export const coolCommand = withEnvironment("cool", async (env) => {
   logger.success("Services stopped");
 
   // Stop Docker
-  const dockerStopped = await stopDocker(env.name, env.metadata.repoRoot);
+  const dockerStopped = await stopDocker(env.name);
   if (!dockerStopped) {
     logger.warn("Docker containers may need manual cleanup");
   }

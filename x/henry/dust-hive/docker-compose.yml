@@ -1,6 +1,6 @@
 # Base docker-compose for dust-hive environments
 # This file is used with per-environment overrides for port/volume isolation
-# Usage: docker-compose -f tools/docker-compose.dust-hive.yml -f <override>.yml -p dust-hive-<name> up -d
+# Usage: docker-compose -f docker-compose.yml -f <override>.yml -p dust-hive-<name> up -d
 
 services:
   db:
@@ -54,7 +54,7 @@ services:
 
   elasticsearch:
     build:
-      context: ..
+      context: .
       dockerfile: elasticsearch.Dockerfile
       args:
         ES_VERSION: 8.11.3
