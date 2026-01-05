@@ -77,14 +77,15 @@ async function handler(
 
       const days = q.data.days;
       const version = q.data.version;
-      const owner = auth.getNonNullableWorkspace();
 
-      const datasourceRetrievalResult = await fetchDatasourceRetrievalMetrics({
-        workspaceId: owner.sId,
-        agentId: assistant.sId,
-        days,
-        version,
-      });
+      const datasourceRetrievalResult = await fetchDatasourceRetrievalMetrics(
+        auth,
+        {
+          agentId: assistant.sId,
+          days,
+          version,
+        }
+      );
 
       if (datasourceRetrievalResult.isErr()) {
         return apiError(req, res, {

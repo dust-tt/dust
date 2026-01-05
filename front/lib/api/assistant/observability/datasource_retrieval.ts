@@ -6,6 +6,7 @@ import {
   bucketsToArray,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -35,19 +36,21 @@ type DatasourceRetrievalAggs = {
   by_mcp_server_config?: estypes.AggregationsMultiBucketAggregateBase<McpServerConfigBucket>;
 };
 
-export async function fetchDatasourceRetrievalMetrics({
-  workspaceId,
-  agentId,
-  days,
-  version,
-}: {
-  workspaceId: string;
-  agentId: string;
-  days?: number;
-  version?: string;
-}): Promise<Result<DatasourceRetrievalData[], Error>> {
+export async function fetchDatasourceRetrievalMetrics(
+  auth: Authenticator,
+  {
+    agentId,
+    days,
+    version,
+  }: {
+    agentId: string;
+    days?: number;
+    version?: string;
+  }
+): Promise<Result<DatasourceRetrievalData[], Error>> {
+  const workspace = auth.getNonNullableWorkspace();
   const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId,
+    workspaceId: workspace.sId,
     agentId,
     days,
     version,
