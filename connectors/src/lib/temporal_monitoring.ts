@@ -47,9 +47,7 @@ export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-export class ActivityInboundLogInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
   public readonly logger: Logger;
   private readonly context: Context;
   private readonly provider: ConnectorProvider;
