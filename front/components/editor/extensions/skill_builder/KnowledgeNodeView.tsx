@@ -30,6 +30,7 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types";
@@ -51,6 +52,56 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Check if we need to fetch full node data
+  const selectedItem = selectedItems[0];
+  const needsFetch =
+    selectedItem &&
+    !selectedItem.node &&
+    selectedItem.spaceId &&
+    selectedItem.dataSourceViewId;
+
+  // Use the existing hook to fetch node data
+  const { nodes: fetchedNodes, isNodesLoading: isFetchingNode } =
+    useDataSourceViewContentNodes({
+      owner,
+      dataSourceView: needsFetch
+        ? ({
+            sId: selectedItem.dataSourceViewId,
+            spaceId: selectedItem.spaceId,
+          } as any)
+        : undefined,
+      internalIds: needsFetch ? [selectedItem.id] : undefined,
+      viewType: "all",
+      disabled: !needsFetch,
+    });
+
+  // Update the selected item with fetched node data
+  useEffect(() => {
+    if (
+      needsFetch &&
+      fetchedNodes &&
+      fetchedNodes.length > 0 &&
+      !isFetchingNode
+    ) {
+      const fullNode = fetchedNodes[0];
+      updateAttributes({
+        selectedItems: [
+          {
+            ...selectedItem,
+            node: fullNode,
+          },
+        ],
+        isSearching: false,
+      });
+    }
+  }, [
+    fetchedNodes,
+    needsFetch,
+    isFetchingNode,
+    selectedItem,
+    updateAttributes,
+  ]);
 
   // Get spaces for location display.
   const { spaces } = useSpaces({
@@ -143,6 +194,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     (index: number) => {
       const item = knowledgeItems[index];
       if (item) {
+        console.log(">> Selecting knowledge item:", item);
         updateAttributes({
           selectedItems: [
             {
@@ -321,17 +373,44 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [deleteNode]
   );
 
-  if (selectedItems.length > 0 && selectedItems[0].node) {
+  if (selectedItems.length > 0) {
     // Show selected knowledge using the unified chip component.
-    return (
-      <NodeViewWrapper className="inline">
-        <KnowledgeChip
-          node={selectedItems[0].node}
-          onRemove={handleRemove}
-          title={selectedItems[0].label}
-        />
-      </NodeViewWrapper>
-    );
+    // If we have the full node data, use it. Otherwise, show a loading or simple representation.
+    if (selectedItems[0].node) {
+      return (
+        <NodeViewWrapper className="inline">
+          <KnowledgeChip
+            node={selectedItems[0].node}
+            onRemove={handleRemove}
+            title={selectedItems[0].label}
+          />
+        </NodeViewWrapper>
+      );
+    } else if (isFetchingNode) {
+      // Show loading state while fetching node data
+      return (
+        <NodeViewWrapper className="inline">
+          <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-600">
+            <Spinner size="xs" />
+            <span>{selectedItems[0].label}</span>
+          </span>
+        </NodeViewWrapper>
+      );
+    } else {
+      // Fallback for parsed knowledge items without full node data
+      return (
+        <NodeViewWrapper className="inline">
+          <span
+            className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800 hover:bg-blue-200"
+            onClick={handleRemove}
+            title="Click to remove"
+          >
+            <span>{selectedItems[0].label}</span>
+            <span className="text-blue-600 hover:text-blue-800">×</span>
+          </span>
+        </NodeViewWrapper>
+      );
+    }
   }
 
   // Show editable search node.
@@ -340,7 +419,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       <div className="relative inline-block">
         <span
           className={cn(
-            "inline-block cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
+            "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
             "text-gray-600 empty:before:text-gray-400",
             "empty:before:content-[attr(data-placeholder)] focus:outline-none"
           )}

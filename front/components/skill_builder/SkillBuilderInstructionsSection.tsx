@@ -110,7 +110,6 @@ export function SkillBuilderInstructionsSection({
       <SkillBuilderInstructionsEditor
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
-        owner={owner}
       />
     </section>
   );
