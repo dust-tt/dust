@@ -85,6 +85,17 @@ async function runNpmInstall(dir: string): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
+// Run bun link in a directory
+async function runBunLink(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["bun", "link"], {
+    cwd: dir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
 export async function syncCommand(targetBranch?: string): Promise<Result<void>> {
   const startTime = Date.now();
   const branch = targetBranch ?? "main";
@@ -191,6 +202,15 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
     return Err(new CommandError(`Failed to build binaries: ${buildResult.failed.join(", ")}`));
   }
   logger.success(`Built ${buildResult.built.length} binaries`);
+
+  // Link dust-hive globally
+  logger.step("Linking dust-hive...");
+  const dustHiveDir = `${repoRoot}/x/henry/dust-hive`;
+  const linkSuccess = await runBunLink(dustHiveDir);
+  if (!linkSuccess) {
+    return Err(new CommandError("Failed to run bun link for dust-hive"));
+  }
+  logger.success("dust-hive linked globally");
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
