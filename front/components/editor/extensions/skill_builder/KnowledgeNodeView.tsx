@@ -169,7 +169,7 @@ function KnowledgeSearchComponent({
     [spaces]
   );
 
-  const spaceIds = spaces.map((s) => s.sId);
+  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
 
   const isDisabled = !searchQuery || searchQuery.length < 2;
 
