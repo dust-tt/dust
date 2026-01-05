@@ -116,10 +116,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     code: FREE_TRIAL_PHONE_PLAN_CODE,
     name: "Free Trial",
     maxMessages: 100,
-<<<<<<< HEAD
     isDeepDiveAllowed: false,
-=======
->>>>>>> 323f90f0db (Subscribe workspace to new FREE_TRIAL_PHONE_PLAN if phone number code successful)
     maxUsersInWorkspace: 5,
     maxVaultsInWorkspace: 5,
     maxImagesPerWeek: 10,
@@ -145,9 +142,14 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
 
 /**
  * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
+ * @param planCode - Optional plan code to upsert. If not provided, all plans are upserted.
  */
-export const upsertFreePlans = async () => {
-  for (const planData of FREE_PLANS_DATA) {
+export const upsertFreePlans = async (planCode?: string) => {
+  const plansToUpsert = planCode
+    ? FREE_PLANS_DATA.filter((p) => p.code === planCode)
+    : FREE_PLANS_DATA;
+
+  for (const planData of plansToUpsert) {
     const plan = await PlanModel.findOne({
       where: {
         code: planData.code,
