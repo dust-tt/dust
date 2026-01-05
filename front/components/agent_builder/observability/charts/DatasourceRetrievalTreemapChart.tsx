@@ -9,11 +9,13 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   useAgentConfiguration,
   useAgentDatasourceRetrieval,
 } from "@app/lib/swr/assistants";
+import type { WorkspaceType } from "@app/types";
 import { isConnectorProvider } from "@app/types";
 
 interface TreemapNode {
@@ -47,7 +49,7 @@ interface TreemapContentProps {
   color?: string;
 }
 
-function CustomizedContent({
+function TreemapContent({
   x = 0,
   y = 0,
   width = 0,
@@ -94,13 +96,15 @@ function CustomizedContent({
   );
 }
 
-export function DatasourceRetrievalTreemapChart({
-  workspaceId,
-  agentConfigurationId,
-}: {
-  workspaceId: string;
+interface DatasourceRetrievalTreemapChartProps {
+  owner: WorkspaceType;
   agentConfigurationId: string;
-}) {
+}
+
+export function DatasourceRetrievalTreemapChart({
+  owner,
+  agentConfigurationId,
+}: DatasourceRetrievalTreemapChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
   const {
@@ -109,14 +113,14 @@ export function DatasourceRetrievalTreemapChart({
     isDatasourceRetrievalLoading,
     isDatasourceRetrievalError,
   } = useAgentDatasourceRetrieval({
-    workspaceId,
+    workspaceId: owner.sId,
     agentConfigurationId,
     days: period,
     version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
   const { agentConfiguration } = useAgentConfiguration({
-    workspaceId,
+    workspaceId: owner.sId,
     agentConfigurationId,
   });
 
@@ -126,7 +130,7 @@ export function DatasourceRetrievalTreemapChart({
     }
     const map = new Map<string, string>();
     agentConfiguration.actions.forEach((action) => {
-      if (action.type === "mcp_server_configuration" && action.name) {
+      if (isMCPServerConfiguration(action) && action.name) {
         map.set(action.id.toString(), action.name);
       }
     });
@@ -235,7 +239,7 @@ export function DatasourceRetrievalTreemapChart({
           dataKey="size"
           aspectRatio={4 / 3}
           isAnimationActive={false}
-          content={<CustomizedContent />}
+          content={<TreemapContent />}
         >
           <Tooltip
             cursor={false}
