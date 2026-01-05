@@ -3,11 +3,11 @@ import { createHmac, timingSafeEqual } from "crypto";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/internal_allowed_icons";
+} from "@app/components/resources/resources_icons";
 import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
-} from "@app/lib/actions/internal_allowed_icons";
+} from "@app/components/resources/resources_icons";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceSignatureAlgorithm,
