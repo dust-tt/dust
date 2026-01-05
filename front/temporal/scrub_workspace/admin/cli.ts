@@ -18,7 +18,7 @@ const main = async () => {
       console.log(`Found ${workspaces.length} free ended workspaces:`);
       console.log(workspaces.map((w) => w.sId));
       return;
-    case "lauch-workflow-to-downgrade-free-ended-workspaces":
+    case "launch-workflow-to-downgrade-free-ended-workspaces":
       await launchDowngradeFreeEndedWorkspacesWorkflow();
       return;
     case "stop-workflow-to-downgrade-free-ended-workspaces":
