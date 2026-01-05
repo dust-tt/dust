@@ -130,7 +130,6 @@ pub async fn execute_request(
                     provider = ?provider,
                     content_type = %content_type,
                     body_length = b.len(),
-                    body_preview = %String::from_utf8_lossy(&b[..b.len().min(500)]),
                     error = ?json_err,
                     "Failed to parse response body as JSON and not form-encoded"
                 );
