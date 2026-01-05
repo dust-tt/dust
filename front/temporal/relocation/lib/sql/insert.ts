@@ -12,10 +12,14 @@ const JSONB_COLUMNS = [
     tableName: "agent_mcp_actions",
     columns: ["augmentedInputs", "toolConfiguration"],
   },
-  // cachedTools should be an array of objects, but we store it as JSONB
+  // Following columns should be arrays of objects, but we store them as JSONB
   {
     tableName: "remote_mcp_servers",
     columns: ["cachedTools"],
+  },
+  {
+    tableName: "zendesk_configurations",
+    columns: ["customFieldsConfig"],
   },
 ];
 
