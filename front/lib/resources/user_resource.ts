@@ -385,12 +385,12 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
-  async getMetadata(key: string, workspaceId?: number | null) {
+  async getMetadata(key: string, workspaceModelId?: number | null) {
     return UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
-        workspaceId: workspaceId ?? null,
+        workspaceId: workspaceModelId ?? null,
       },
     });
   }
