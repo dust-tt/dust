@@ -439,10 +439,11 @@ export async function runSeedScript(env: Environment): Promise<boolean> {
   const worktreePath = getWorktreeDir(env.name);
   const frontDir = `${worktreePath}/front`;
 
+  // Use tsx directly from node_modules to avoid npx overhead
   const command = buildShell({
     sourceEnv: envShPath,
     sourceNvm: true,
-    run: `npx tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
+    run: `./node_modules/.bin/tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {
