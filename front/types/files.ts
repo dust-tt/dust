@@ -34,7 +34,6 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
   sourceIcon?: string;
-  hasPreviousVersion?: boolean;
 };
 
 export function isConversationFileUseCase(
@@ -53,6 +52,7 @@ export interface FileType {
   version: number;
   fileName: string;
   fileSize: number;
+  hasPreviousVersion: boolean | null;
   sId: string;
   // TODO(spolu): move this to being the ModelId
   id: string;

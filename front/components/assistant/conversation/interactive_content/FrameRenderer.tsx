@@ -314,9 +314,7 @@ export function FrameRenderer({
               lastEditedByAgentConfigurationId={
                 lastEditedByAgentConfigurationId
               }
-              hasPreviousVersion={
-                fileMetadata?.useCaseMetadata?.hasPreviousVersion ?? false
-              }
+              hasPreviousVersion={fileMetadata?.hasPreviousVersion ?? false}
               onRevert={onRevert}
               isFullScreen={isFullScreen}
               exitFullScreen={exitFullScreen}

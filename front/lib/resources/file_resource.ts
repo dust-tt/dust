@@ -601,6 +601,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
+  setHasPreviousVersion(hasPreviousVersion: boolean) {
+    return this.update({ hasPreviousVersion });
+  }
+
   rename(newFileName: string) {
     return this.update({ fileName: newFileName });
   }
@@ -703,6 +707,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      hasPreviousVersion: this.hasPreviousVersion,
       status: this.status,
       useCase: this.useCase,
       version: this.version,
@@ -745,6 +750,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      hasPreviousVersion: this.hasPreviousVersion,
       status: this.status,
       useCase: this.useCase,
       version: this.version,

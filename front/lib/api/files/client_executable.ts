@@ -112,6 +112,7 @@ export async function createClientExecutableFile(
       fileName,
       contentType: mimeType,
       fileSize: 0, // Will be updated in uploadContent.
+      hasPreviousVersion: false, // New file has no previous version.
       // Attach the conversation id so we can use it to control access to the file.
       useCase: "conversation",
       useCaseMetadata: {
@@ -198,16 +199,20 @@ export async function editClientExecutableFile(
   if (editedByAgentConfigurationId) {
     const needsMetadataUpdate =
       fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-        editedByAgentConfigurationId ||
-      !fileResource.useCaseMetadata?.hasPreviousVersion;
+      editedByAgentConfigurationId;
 
     if (needsMetadataUpdate) {
       await fileResource.setUseCaseMetadata({
         ...fileResource.useCaseMetadata,
         lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
-        hasPreviousVersion: true, // Original version is now a previous version
       });
     }
+  }
+
+  // Set hasPreviousVersion flag since we're creating a new version
+  // Only update if it's not already true (covers both false and null cases)
+  if (fileResource.hasPreviousVersion !== true) {
+    await fileResource.setHasPreviousVersion(true);
   }
 
   // Validate the Tailwind classes in the resulting code.
@@ -414,12 +419,14 @@ export async function revertClientExecutableFileChanges(
   }
 
   // Update metadata BEFORE upload (following the pattern from editClientExecutableFile)
-  const stillHasPreviousVersion = versions.length > MIN_VERSIONS_FOR_REVERT;
   await fileResource.setUseCaseMetadata({
     ...fileResource.useCaseMetadata,
     lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
-    hasPreviousVersion: stillHasPreviousVersion,
   });
+
+  // Update hasPreviousVersion flag based on remaining versions
+  const stillHasPreviousVersion = versions.length > MIN_VERSIONS_FOR_REVERT;
+  await fileResource.setHasPreviousVersion(stillHasPreviousVersion);
 
   // Upload the reverted content
   await fileResource.uploadContent(auth, revertedContent);
