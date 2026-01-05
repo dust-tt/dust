@@ -2,28 +2,20 @@ import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 
-import { Grid, H1, P } from "@app/components/home/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { CourseSummary } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 
-export const ACADEMY_PAGE_SIZE = 12;
+export const ACADEMY_PAGE_SIZE = 8;
 
 export function AcademyHeader() {
   return (
-    <div className="col-span-12 flex flex-col items-center gap-0 pt-1 text-center">
-      <Image
-        src="/static/landing/about/Dust_Fade.png"
-        alt="Dust"
-        width={112}
-        height={112}
-        className="h-28 w-28"
-        priority
-      />
-      <H1 className="text-5xl">Academy</H1>
-      <P className="max-w-2xl text-center text-muted-foreground">
-        Learn how to build and deploy AI agents with Dust through our
-        comprehensive courses.
+    <div className="col-span-12 flex flex-col items-start gap-3 pb-8 pt-8">
+      <H2>Dust Academy</H2>
+      <P>
+        Check out our courses, tutorials, and videos to learn everything about
+        Dust
       </P>
     </div>
   );
@@ -37,21 +29,22 @@ export function CourseCard({ course }: CourseCardProps) {
   return (
     <Link
       href={`/academy/${course.slug}`}
-      className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all hover:shadow-lg"
     >
-      {course.image && (
+      <div className="relative aspect-video w-full overflow-hidden">
         <Image
-          src={course.image.url}
-          alt={course.image.alt}
+          src={course.image!.url}
+          alt={course.image!.alt}
           width={640}
           height={360}
           loader={contentfulImageLoader}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="aspect-video w-full object-cover"
+          className="h-full w-full object-cover transition-transform group-hover:scale-105"
         />
-      )}
-      <div className="flex h-full flex-col gap-3 px-6 py-6">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      </div>
+
+      <div className="flex flex-1 flex-col gap-3 p-6">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
           {course.courseId && <span>Course {course.courseId}</span>}
           {course.estimatedDurationMinutes && (
             <>
@@ -60,11 +53,9 @@ export function CourseCard({ course }: CourseCardProps) {
             </>
           )}
         </div>
-        <h3 className="text-xl font-semibold text-foreground">
-          {course.title}
-        </h3>
+        <h3 className="text-2xl font-bold text-gray-900">{course.title}</h3>
         {course.description && (
-          <p className="text-base text-muted-foreground">
+          <p className="text-base leading-relaxed text-gray-600">
             {course.description}
           </p>
         )}
@@ -82,8 +73,8 @@ export function CourseGrid({ courses, emptyMessage }: CourseGridProps) {
   return (
     <div
       className={classNames(
-        "col-span-12 pt-4",
-        "grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
+        "col-span-12 pt-8",
+        "grid gap-6 sm:grid-cols-1 lg:grid-cols-2"
       )}
     >
       {courses.length > 0 ? (
@@ -105,54 +96,47 @@ interface FeaturedCourseProps {
 
 export function FeaturedCourse({ course }: FeaturedCourseProps) {
   return (
-    <div className="col-span-12 pt-4">
-      <div className="grid gap-6 rounded-2xl border border-gray-100 bg-white p-6 lg:grid-cols-12">
-        {course.image && (
-          <Link
-            href={`/academy/${course.slug}`}
-            className="cursor-pointer lg:col-span-7"
-          >
-            <Image
-              src={course.image.url}
-              alt={course.image.alt}
-              width={course.image.width}
-              height={course.image.height}
-              loader={contentfulImageLoader}
-              className="aspect-[16/9] w-full rounded-xl object-cover transition-opacity hover:opacity-90"
-              sizes="(max-width: 1024px) 100vw, 60vw"
-            />
-          </Link>
-        )}
-        <div className="flex h-full flex-col justify-center gap-4 lg:col-span-5">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {course.courseId && <span>Course {course.courseId}</span>}
-            {course.estimatedDurationMinutes && (
-              <>
-                {course.courseId && <span>•</span>}
-                <span>{course.estimatedDurationMinutes} min</span>
-              </>
-            )}
+    <div className="col-span-12 pt-8">
+      <Link
+        href={`/academy/${course.slug}`}
+        className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all hover:shadow-xl lg:flex-row"
+      >
+        <div className="relative w-full overflow-hidden lg:w-1/2">
+          <Image
+            src={course.image!.url}
+            alt={course.image!.alt}
+            width={800}
+            height={600}
+            loader={contentfulImageLoader}
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          />
+        </div>
+
+        <div className="flex w-full flex-col justify-center gap-6 p-10 lg:w-1/2">
+          <div className="inline-block">
+            <span className="rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+              Featured Course
+            </span>
           </div>
-          <Link
-            href={`/academy/${course.slug}`}
-            className="cursor-pointer transition-colors hover:text-highlight"
-          >
-            <h2 className="text-2xl font-semibold text-foreground md:text-3xl">
-              {course.title}
-            </h2>
-          </Link>
+          <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
+            {course.title}
+          </h2>
           {course.description && (
-            <P className="text-muted-foreground">{course.description}</P>
+            <p className="text-lg leading-relaxed text-gray-600">
+              {course.description}
+            </p>
           )}
-          <div className="flex flex-wrap gap-3">
+          <div>
             <Button
-              label="Start course"
+              label="Start learning"
               href={`/academy/${course.slug}`}
-              size="sm"
+              size="md"
+              variant="primary"
             />
           </div>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }

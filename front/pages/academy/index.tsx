@@ -70,15 +70,15 @@ export default function AcademyListing({ courses }: CourseListingPageProps) {
   return (
     <>
       <Head>
-        <title>Academy | Dust</title>
+        <title>Dust Academy</title>
         <meta
           name="description"
-          content="Courses, tutorials and videos to learn everything about Dust"
+          content="Master AI agents with Dust through hands-on courses and interactive lessons"
         />
-        <meta property="og:title" content="Academy | Dust" />
+        <meta property="og:title" content="Dust Academy" />
         <meta
           property="og:description"
-          content="Courses, tutorials and videos to learn everything about Dust"
+          content="Master AI agents with Dust through hands-on courses and interactive lessons"
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://dust.tt/academy" />
@@ -98,7 +98,7 @@ export default function AcademyListing({ courses }: CourseListingPageProps) {
         />
 
         {courses.length > ACADEMY_PAGE_SIZE && (
-          <div className="col-span-12 mt-6 flex items-center justify-center">
+          <div className="col-span-12 mt-12 flex items-center justify-center pb-12">
             <AcademyPagination
               currentPage={currentPage}
               totalPages={totalPages}
