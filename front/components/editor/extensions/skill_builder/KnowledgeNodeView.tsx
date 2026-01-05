@@ -170,12 +170,14 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
 
   const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
 
+  const isDisabled = !searchQuery || searchQuery.length < 2;
+
   const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
     {
       owner,
       query: searchQuery,
       pageSize: 10,
-      disabled: !searchQuery || searchQuery.length < 2,
+      disabled: isDisabled,
       spaceIds,
       // Tables can't be attached to a skill.
       viewType: "document",
@@ -278,11 +280,13 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
   // Auto-focus when component mounts.
   useEffect(() => {
     if (contentRef.current) {
+      // Add a timeout to ensure focus after render.
       setTimeout(() => {
         if (contentRef.current) {
           contentRef.current.focus();
           const range = document.createRange();
           const sel = window.getSelection();
+
           if (sel) {
             range.selectNodeContents(contentRef.current);
             range.collapse(false);
@@ -326,7 +330,10 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
         setSelectedIndex(
           (selectedIndex + knowledgeItems.length - 1) % knowledgeItems.length
         );
-      } else if (e.key === "Enter" && knowledgeItems.length > 0) {
+      } else if (
+        (e.key === "Enter" || e.key === "Tab") &&
+        knowledgeItems.length > 0
+      ) {
         e.preventDefault();
         handleItemSelect(selectedIndex);
       } else if (e.key === "Escape") {
@@ -338,7 +345,7 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
   );
 
   const handleBlur = useCallback(() => {
-    deleteIfEmpty(100);
+    deleteIfEmpty(50);
   }, [deleteIfEmpty]);
 
   const handleInteractOutside = useCallback(() => {
@@ -388,8 +395,8 @@ const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
               </div>
             ) : knowledgeItems.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-gray-500">
-                {searchQuery.length < 3
-                  ? "Type at least 3 characters to search"
+                {searchQuery.length < 2
+                  ? "Type at least 2 characters to search"
                   : "No knowledge found"}
               </div>
             ) : (
