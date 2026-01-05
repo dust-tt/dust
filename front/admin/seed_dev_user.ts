@@ -51,6 +51,7 @@ async function main() {
 
   await seedDevUser(config);
   console.log("Done!");
+  process.exit(0);
 }
 
 main().catch((err) => {
