@@ -20,7 +20,7 @@ const main = async () => {
       await launchTrackerNotificationWorkflow();
       return;
     case "stop":
-      await stopTrackerNotificationWorkflow();
+      await stopTrackerNotificationWorkflow({ stopReason: "Stopped via CLI" });
       return;
     case "run-workflow-for-tracker":
       // This is a debug command to run the tracker notification workflow for a specific tracker.
