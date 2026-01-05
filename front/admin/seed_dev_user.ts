@@ -127,6 +127,13 @@ function ensureDomStubs(): void {
   if (!("navigator" in globalThis)) {
     Reflect.set(globalThis, "navigator", { userAgent: "node" });
   }
+
+  const navigatorValue = Reflect.get(globalThis, "navigator");
+  if (typeof windowValue === "object" && windowValue !== null) {
+    if (typeof Reflect.get(windowValue, "navigator") === "undefined") {
+      Reflect.set(windowValue, "navigator", navigatorValue);
+    }
+  }
 }
 
 async function main() {
