@@ -80,11 +80,11 @@ export const Demo = () => {
                 const itemIndex = allItems.indexOf(title);
                 // Add status based on index for demonstration
                 const getStatus = (idx: number) => {
-                  if (idx % 8 === 0) {
-                    return "error";
-                  }
                   if (idx % 5 === 0) {
                     return "unread";
+                  }
+                  if (idx % 4 === 0) {
+                    return "error";
                   }
                   if (idx % 3 === 0) {
                     return "blocked";
@@ -123,11 +123,11 @@ export const Demo = () => {
                 const itemIndex = allItems.indexOf(title);
                 // Add status based on index for demonstration.
                 const getStatus = (idx: number) => {
-                  if (idx % 8 === 0) {
-                    return "error";
-                  }
                   if (idx % 5 === 0) {
                     return "unread";
+                  }
+                  if (idx % 4 === 0) {
+                    return "error";
                   }
                   if (idx % 3 === 0) {
                     return "blocked";
