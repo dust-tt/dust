@@ -48,6 +48,8 @@ interface TreemapContentProps {
   color?: string;
 }
 
+const RECTANGLE_LABEL_OFFSET = 8;
+
 function TreemapContent({
   x = 0,
   y = 0,
@@ -75,7 +77,7 @@ function TreemapContent({
         <>
           <text
             x={x + width / 2}
-            y={y + height / 2 - 8}
+            y={y + height / 2 - RECTANGLE_LABEL_OFFSET}
             textAnchor="middle"
             className="pointer-events-none truncate text-ellipsis fill-foreground text-xs font-medium dark:fill-foreground-night"
           >
@@ -83,7 +85,7 @@ function TreemapContent({
           </text>
           <text
             x={x + width / 2}
-            y={y + height / 2 + 8}
+            y={y + height / 2 + RECTANGLE_LABEL_OFFSET}
             textAnchor="middle"
             className="pointer-events-none fill-muted-foreground text-xs dark:fill-muted-foreground-night"
           >
