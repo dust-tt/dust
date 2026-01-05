@@ -14,7 +14,7 @@ import { cn } from "@sparkle/lib/utils";
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
-export const CARD_SIZES = ["sm", "md", "lg"] as const;
+export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
@@ -56,6 +56,7 @@ const cardVariants = cva(
         ),
       },
       size: {
+        xs: "s-px-2 s-py-1.5 s-rounded-lg",
         sm: "s-p-3 s-rounded-xl",
         md: "s-p-4 s-rounded-2xl",
         lg: "s-p-5 s-rounded-3xl",
