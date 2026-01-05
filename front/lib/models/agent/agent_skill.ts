@@ -59,10 +59,12 @@ AgentSkillModel.init(
       {
         fields: ["workspaceId", "customSkillId"],
         where: { customSkillId: { [Op.ne]: null } },
+        name: "idx_agent_skills_workspace_custom_skill",
       },
       {
         fields: ["workspaceId", "globalSkillId"],
         where: { globalSkillId: { [Op.ne]: null } },
+        name: "idx_agent_skills_workspace_global_skill",
       },
     ],
     validate: {

@@ -50,11 +50,6 @@ GroupSkillModel.init(
         concurrently: true,
       },
       {
-        unique: true,
-        fields: ["groupId", "skillConfigurationId"],
-        concurrently: true,
-      },
-      {
         fields: ["workspaceId", "skillConfigurationId"],
         concurrently: true,
       },
