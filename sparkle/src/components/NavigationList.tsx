@@ -69,7 +69,7 @@ interface NavigationListItemProps
   label?: string;
   icon?: React.ComponentType;
   moreMenu?: React.ReactNode;
-  status?: "idle" | "unread" | "blocked";
+  status?: "idle" | "unread" | "blocked" | "error";
 }
 
 const NavigationListItem = React.forwardRef<
@@ -107,6 +107,8 @@ const NavigationListItem = React.forwardRef<
           return "s-h-2 s-m-1 s-w-2 s-bg-highlight-500 dark:s-bg-highlight-500-night";
         case "blocked":
           return "s-h-4 s-w-4 s-bg-golden-200 dark:s-bg-golden-800-night s-text-golden-900 dark:s-text-golden-900-night";
+        case "error":
+          return "s-h-2 s-w-2 s-m-1 s-bg-warning dark:s-bg-warning-night";
         default:
           return "";
       }
