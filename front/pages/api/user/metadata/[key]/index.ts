@@ -71,9 +71,6 @@ async function handler(
     const params = new URLSearchParams(queryString);
     const wId = params.get("wId");
     if (wId) {
-      // Need to look up the workspace to get its numeric id
-      // For now, we'll pass the string workspace sId and resolve it in the user resource
-      // But actually, let's just use the user's workspace from the session
       const workspace = user.workspaces.find((w) => w.sId === wId);
       if (workspace) {
         workspaceId = workspace.id;
