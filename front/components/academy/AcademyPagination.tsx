@@ -12,13 +12,12 @@ function buildPageUrl(page: number): string {
   return page === 1 ? "/academy" : `/academy/page/${page}`;
 }
 
-function PaginationLink({
-  page,
-  isCurrent,
-}: {
+interface PaginationLinkProps {
   page: number;
   isCurrent: boolean;
-}) {
+}
+
+function PaginationLink({ page, isCurrent }: PaginationLinkProps) {
   const href = buildPageUrl(page);
 
   if (isCurrent) {
