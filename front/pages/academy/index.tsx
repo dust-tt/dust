@@ -73,12 +73,12 @@ export default function AcademyListing({ courses }: CourseListingPageProps) {
         <title>Academy | Dust</title>
         <meta
           name="description"
-          content="Learn how to build and deploy AI agents with Dust through our comprehensive courses."
+          content="Courses, tutorials and videos to learn everything about Dust"
         />
         <meta property="og:title" content="Academy | Dust" />
         <meta
           property="og:description"
-          content="Learn how to build and deploy AI agents with Dust through our comprehensive courses."
+          content="Courses, tutorials and videos to learn everything about Dust"
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://dust.tt/academy" />
