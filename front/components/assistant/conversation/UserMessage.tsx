@@ -2,7 +2,9 @@ import {
   BoltIcon,
   Button,
   cn,
+  ConversationMessageAvatar,
   ConversationMessageContent,
+  ConversationMessageTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,6 +12,7 @@ import {
   Icon,
   Markdown,
   MoreIcon,
+  ConversationMessageContainer,
   PencilSquareIcon,
   Tooltip,
   TrashIcon,
@@ -25,11 +28,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
-import {
-  ConversationMessageAvatar,
-  ConversationMessageTitle,
-  NewConversationMessageContainer,
-} from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
@@ -350,7 +348,7 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <NewConversationMessageContainer
+        <ConversationMessageContainer
           messageType={isCurrentUser ? "me" : "user"}
           type="user"
           className={isCurrentUser ? "ml-auto" : undefined}
@@ -429,7 +427,7 @@ export function UserMessage({
               />
             </ConversationMessageContent>
           </div>
-        </NewConversationMessageContainer>
+        </ConversationMessageContainer>
       )}
       {showAgentSuggestions && (
         <AgentSuggestion
