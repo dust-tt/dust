@@ -127,19 +127,7 @@ export async function runModelActivity(
     dustRunId?: string
   ): Promise<void> {
     // Check if this is a multi_actions_error that hit max retries
-    let logMessage = `Agent error: ${error.message}`;
-    if (
-      error.code === "multi_actions_error" &&
-      error.metadata?.retriesAttempted === MAX_AUTO_RETRY
-    ) {
-      logMessage = `Agent error: ${error.message} (max retries reached)`;
-    } else if (
-      error.code === "multi_actions_error" &&
-      error.metadata?.category &&
-      error.metadata.category !== "retryable_model_error"
-    ) {
-      logMessage = `Agent error: ${error.message} (not retryable)`;
-    }
+    const logMessage = `Agent error: ${error.message}`;
 
     localLogger.error(
       {
@@ -401,39 +389,42 @@ export async function runModelActivity(
   ) {
     const { isRetryable, message, type } = errorInfo;
 
-    if (isRetryable && autoRetryCount < MAX_AUTO_RETRY) {
-      localLogger.warn(
+    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
+      await publishAgentError(
         {
-          error: message,
-          retryCount: autoRetryCount + 1,
-          maxRetries: MAX_AUTO_RETRY,
+          code: "multi_actions_error",
+          message: USER_FACING_LLM_ERROR_MESSAGES[type],
+          metadata: {
+            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
+            retriesAttempted: autoRetryCount,
+            message: errorInfo.message,
+            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
+          },
         },
-        "Auto-retrying multi-actions agent due to retryable model error."
+        dustRunId
       );
 
-      // Recursively retry with incremented count
-      return runModelActivity(auth, {
-        runAgentData,
-        runIds,
-        step,
-        functionCallStepContentIds,
-        autoRetryCount: autoRetryCount + 1,
-      });
+      return null;
     }
 
-    await publishAgentError(
+    // Should retry
+    localLogger.warn(
       {
-        code: "multi_actions_error",
-        message: USER_FACING_LLM_ERROR_MESSAGES[type],
-        metadata: {
-          category: LLM_ERROR_TYPE_TO_CATEGORY[type],
-          retriesAttempted: autoRetryCount,
-        },
+        error: message,
+        retryCount: autoRetryCount + 1,
+        maxRetries: MAX_AUTO_RETRY,
       },
-      dustRunId
+      "Auto-retrying multi-actions agent due to retryable model error."
     );
 
-    return null;
+    // Recursively retry with incremented count
+    return runModelActivity(auth, {
+      runAgentData,
+      runIds,
+      step,
+      functionCallStepContentIds,
+      autoRetryCount: autoRetryCount + 1,
+    });
   }
 
   const contentParser = new AgentMessageContentParser(
