@@ -12,7 +12,7 @@ import {
   createAdminMembership,
   getOrCreateSuperUser,
   validateSeedConfig,
-} from "./seed_dev_user";
+} from "./dev_seed_user";
 
 describe("seed_dev_user", () => {
   describe("validateSeedConfig", () => {
