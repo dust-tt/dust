@@ -1,0 +1,15 @@
+# Bun configuration for dust-hive
+
+[test]
+# Coverage configuration (informational only, no threshold enforcement)
+coverage = true
+coverageDir = "./coverage"
+
+# Coverage thresholds (informational - won't fail build)
+# coverageThreshold = { line = 0, function = 0, statement = 0 }
+
+# Test timeouts
+timeout = 30000
+
+# Preload test utilities
+# preload = ["./tests/setup.ts"]

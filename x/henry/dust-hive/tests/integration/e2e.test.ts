@@ -210,7 +210,7 @@ services:
       untrackPid(frontPid);
 
       // Stop Docker
-      await stopDocker(ctx.envName, repoPath);
+      await stopDocker(ctx.envName);
 
       // Verify cold state (SDK still running)
       stateInfo = await getStateInfo(env);
@@ -249,7 +249,7 @@ services:
       await stopService(ctx.envName, "sdk");
       untrackPid(sdkPid);
 
-      await stopDocker(ctx.envName, repoPath);
+      await stopDocker(ctx.envName);
 
       // Verify stopped
       stateInfo = await getStateInfo(env);
@@ -279,7 +279,7 @@ services:
       await deleteBranch(repoPath, branchName);
 
       // Remove Docker volumes
-      await stopDocker(ctx.envName, repoPath, { removeVolumes: true });
+      await stopDocker(ctx.envName, { removeVolumes: true });
 
       // Delete environment directory
       await deleteEnvironmentDir(ctx.envName);

@@ -12,11 +12,15 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "test": "bun test tests/lib",
+    "test:unit": "bun test tests/lib tests/commands",
+    "test:commands": "bun test tests/commands",
     "test:watch": "bun test --watch",
     "test:integration": "bun test tests/integration",
     "test:integration:fast": "bun test tests/integration/filesystem.test.ts tests/integration/git.test.ts tests/integration/process.test.ts",
+    "test:integration:docker": "bun test tests/integration/docker.test.ts tests/integration/lifecycle.test.ts tests/integration/commands.test.ts",
     "test:e2e": "bun test tests/integration/e2e.test.ts",
     "test:all": "bun test",
+    "test:coverage": "bun test --coverage",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "devDependencies": {

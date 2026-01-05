@@ -241,7 +241,7 @@ services:
       expect(psOutput.length).toBeGreaterThan(0);
 
       // Stop Docker
-      const stopped = await stopDocker(ctx.envName, repoPath);
+      const stopped = await stopDocker(ctx.envName);
       expect(stopped).toBe(true);
 
       // Verify containers are stopped
