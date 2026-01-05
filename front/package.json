@@ -203,6 +203,7 @@
     "tmp": "^0.2.5",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "turndown": "^7.2.2",
+    "twilio": "^5.11.1",
     "undici": "^7.8.0",
     "unist-util-visit": "^4.1.2",
     "uuid": "^9.0.0",

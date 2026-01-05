@@ -53,7 +53,3 @@ export const LINE_TYPES = [
   "unknown",
 ] as const;
 export type LineType = (typeof LINE_TYPES)[number];
-
-export const SMS_PUMPING_RISK_CATEGORIES = ["low", "medium", "high"] as const;
-export type SmsPumpingRiskCategory =
-  (typeof SMS_PUMPING_RISK_CATEGORIES)[number];

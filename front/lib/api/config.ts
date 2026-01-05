@@ -60,6 +60,16 @@ const config = {
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
   },
+  // Twilio (workspace verification).
+  getTwilioAccountSid: (): string => {
+    return EnvironmentConfig.getEnvVariable("TWILIO_ACCOUNT_SID");
+  },
+  getTwilioAuthToken: (): string => {
+    return EnvironmentConfig.getEnvVariable("TWILIO_AUTH_TOKEN");
+  },
+  getTwilioVerifyServiceSid: (): string => {
+    return EnvironmentConfig.getEnvVariable("TWILIO_VERIFY_SERVICE_SID");
+  },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },
