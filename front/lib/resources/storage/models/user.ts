@@ -141,8 +141,18 @@ UserMetadataModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        fields: ["userId", "key"],
+        unique: true,
+        where: {
+          workspaceId: { [Op.is]: null },
+        },
+      },
+      {
         fields: ["userId", "workspaceId", "key"],
         unique: true,
+        where: {
+          workspaceId: { [Op.ne]: null },
+        },
       },
     ],
   }
