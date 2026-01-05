@@ -67,6 +67,7 @@ export async function getOrCreateSuperUser(
 
   if (!user) {
     // Create new user with isDustSuperUser = true
+    // lastLoginAt must be set for the user to be counted as an active seat
     const userModel = await UserModel.create({
       sId,
       username,
@@ -79,6 +80,7 @@ export async function getOrCreateSuperUser(
       providerId: config.providerId ?? null,
       imageUrl: config.imageUrl ?? null,
       isDustSuperUser: true,
+      lastLoginAt: new Date(),
     });
 
     const newUser = await UserResource.fetchById(userModel.sId);
@@ -88,15 +90,23 @@ export async function getOrCreateSuperUser(
     return { user: newUser, created: true };
   }
 
-  // Ensure existing user is super user with correct workOSUserId
+  // Ensure existing user is super user with correct workOSUserId and lastLoginAt
   const userModel = await UserModel.findOne({ where: { sId: user.sId } });
   if (userModel) {
-    const updates: { isDustSuperUser?: boolean; workOSUserId?: string } = {};
+    const updates: {
+      isDustSuperUser?: boolean;
+      workOSUserId?: string;
+      lastLoginAt?: Date;
+    } = {};
     if (!userModel.isDustSuperUser) {
       updates.isDustSuperUser = true;
     }
     if (config.workOSUserId && userModel.workOSUserId !== config.workOSUserId) {
       updates.workOSUserId = config.workOSUserId;
+    }
+    // lastLoginAt must be set for the user to be counted as an active seat
+    if (!userModel.lastLoginAt) {
+      updates.lastLoginAt = new Date();
     }
     if (Object.keys(updates).length > 0) {
       await userModel.update(updates);
