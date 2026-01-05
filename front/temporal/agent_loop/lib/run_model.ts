@@ -510,7 +510,10 @@ export async function runModelActivity(
       case "shouldRetryMessage":
         // Get the dustRunId from the llm object (if available)
         const errorDustRunId = llm?.getTraceId();
-        return handlePossiblyRetryableError(error.message, errorDustRunId);
+        return handlePossiblyRetryableError(
+          error.content.message,
+          errorDustRunId
+        );
       case "shouldReturnNull":
         return null;
       default:
