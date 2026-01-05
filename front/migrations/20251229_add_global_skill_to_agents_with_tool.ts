@@ -1,4 +1,5 @@
 import chunk from "lodash/chunk";
+import fs from "fs";
 import type { Logger } from "pino";
 
 import {
@@ -12,6 +13,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getInsertSQL, withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -26,7 +28,7 @@ const TOOL_TO_SKILL_MAP: Record<string, GlobalSkillId> = {
   deep_dive: "go-deep",
 };
 
-async function addGlobalSkillToAgentsWithTool(
+async function migrateToolToSkill(
   workspace: LightWorkspaceType,
   logger: Logger,
   {
@@ -36,7 +38,7 @@ async function addGlobalSkillToAgentsWithTool(
     execute: boolean;
     mcpServerName: AutoInternalMCPServerNameType;
   }
-) {
+): Promise<string> {
   const globalSkillId = TOOL_TO_SKILL_MAP[mcpServerName];
   if (!globalSkillId) {
     throw new Error(`No skill mapping for MCP server: ${mcpServerName}`);
@@ -56,7 +58,7 @@ async function addGlobalSkillToAgentsWithTool(
       { mcpServerName, workspaceId: workspace.sId },
       "MCP server view not found, skipping"
     );
-    return;
+    return "";
   }
 
   // 2. Find all agent configs using this MCP server view.
@@ -77,7 +79,7 @@ async function addGlobalSkillToAgentsWithTool(
       },
       `No agents found with tool ${mcpServerName}`
     );
-    return;
+    return "";
   }
 
   logger.info(
@@ -107,44 +109,75 @@ async function addGlobalSkillToAgentsWithTool(
     }
   }
 
-  // 4. Filter agents that need skill creation.
-  const agentsToCreate = agentsWithTool.filter(
+  // 4. Filter agents that need tool to skill migration.
+  const agentsToMigrate = agentsWithTool.filter(
     (a) => !agentsWithSkill.has(a.agentConfigurationId)
   );
 
-  if (agentsToCreate.length === 0) {
+  if (agentsToMigrate.length === 0) {
     logger.info(
       {
         workspaceId: workspace.id,
-        toCreate: agentsToCreate.length,
+        toMigrate: agentsToMigrate.length,
         alreadyHasSkill: agentsWithSkill.size,
       },
-      "No agents need skill creation"
+      `No agents need ${mcpServerName} tool to skill migration`
     );
-    return;
+    return "";
   }
 
   logger.info(
     {
       workspaceId: workspace.id,
-      toCreate: agentsToCreate.length,
+      toMigrate: agentsToMigrate.length,
       alreadyHasSkill: agentsWithSkill.size,
     },
-    "Creating skills for agents"
+    `Migrating ${mcpServerName} tool to skill for agents`
   );
 
+  let revertSql = "";
+
   if (execute) {
-    for (const createChunk of chunk(agentsToCreate, CHUNK_SIZE)) {
-      await AgentSkillModel.bulkCreate(
-        createChunk.map((a) => ({
-          workspaceId: workspace.id,
-          agentConfigurationId: a.agentConfigurationId,
-          globalSkillId,
-          customSkillId: null,
-        }))
-      );
+    for (const migrateChunk of chunk(agentsToMigrate, CHUNK_SIZE)) {
+      // Capture tool configs before transaction for revert SQL.
+      const toolConfigsData = migrateChunk.map((a) => a.get({ plain: true }));
+
+      const createdSkills = await withTransaction(async (transaction) => {
+        // Add skill to agents.
+        const skills = await AgentSkillModel.bulkCreate(
+          migrateChunk.map((a) => ({
+            workspaceId: workspace.id,
+            agentConfigurationId: a.agentConfigurationId,
+            globalSkillId,
+            customSkillId: null,
+          })),
+          { transaction }
+        );
+
+        // Remove tool from agents.
+        await AgentMCPServerConfigurationModel.destroy({
+          where: {
+            workspaceId: workspace.id,
+            id: migrateChunk.map((a) => a.id),
+          },
+          transaction,
+        });
+
+        return skills;
+      });
+
+      // Generate revert SQL after successful transaction.
+      for (const toolConfig of toolConfigsData) {
+        revertSql +=
+          getInsertSQL(AgentMCPServerConfigurationModel, toolConfig) + "\n";
+      }
+      for (const skill of createdSkills) {
+        revertSql += `DELETE FROM "agent_skills" WHERE "id" = ${skill.id};\n`;
+      }
     }
   }
+
+  return revertSql;
 }
 
 makeScript(
@@ -169,22 +202,35 @@ makeScript(
       throw new Error(`Invalid MCP server name: ${mcpServerName}`);
     }
 
+    const now = new Date().toISOString().slice(0, 16).replace(/[-:]/g, "");
     const opts = { execute, mcpServerName };
+    let allRevertSql = "";
+
+    const processWorkspace = async (workspace: LightWorkspaceType) => {
+      const revertSql = await migrateToolToSkill(workspace, logger, opts);
+      if (execute && revertSql) {
+        fs.writeFileSync(
+          `${now}_tool_to_skill_revert_${mcpServerName}_${workspace.sId}.sql`,
+          revertSql
+        );
+      }
+      allRevertSql += revertSql;
+    };
 
     if (workspaceId) {
       const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
-
-      await addGlobalSkillToAgentsWithTool(
-        renderLightWorkspaceType({ workspace }),
-        logger,
-        opts
-      );
+      await processWorkspace(renderLightWorkspaceType({ workspace }));
     } else {
-      await runOnAllWorkspaces(async (workspace) =>
-        addGlobalSkillToAgentsWithTool(workspace, logger, opts)
+      await runOnAllWorkspaces(processWorkspace);
+    }
+
+    if (execute && allRevertSql) {
+      fs.writeFileSync(
+        `${now}_tool_to_skill_revert_${mcpServerName}_all.sql`,
+        allRevertSql
       );
     }
   }
