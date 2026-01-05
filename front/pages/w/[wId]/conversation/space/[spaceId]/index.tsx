@@ -11,14 +11,15 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
@@ -178,15 +179,11 @@ function SpaceConversationListItem({
                   {messageCount} {messageCount === 1 ? "message" : "messages"}
                 </div>
               </div>
-              <AgentMessageMarkdown
+
+              <UserMessageMarkdown
                 owner={owner}
-                content={firstUserMessage?.content}
+                message={firstUserMessage}
                 isLastMessage={false}
-                isStreaming={false}
-                compactSpacing
-                canCopyQuotes={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground dark:text-muted-foreground-night"
               />
             </div>
           </div>
