@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { AcademySidebar } from "@app/components/academy/AcademySidebar";
-import { TableOfContents } from "@app/components/blog/TableOfContents";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -135,6 +134,7 @@ export default function LessonPage({
         <AcademySidebar
           courses={courses}
           currentCourseSlug={lesson.parentCourse?.slug}
+          tocItems={tocItems}
         />
         <article className="flex-1">
           <Grid>
@@ -217,16 +217,7 @@ export default function LessonPage({
           )}
 
           <div className={classNames(WIDE_CLASSES, "mt-4")}>
-            <div className="grid gap-8 lg:grid-cols-12">
-              <div className="lg:col-span-9">
-                {renderRichTextFromContentful(lesson.lessonContent)}
-              </div>
-              {tocItems.length > 0 && (
-                <div className="hidden lg:col-span-3 lg:block">
-                  <TableOfContents items={tocItems} />
-                </div>
-              )}
-            </div>
+            {renderRichTextFromContentful(lesson.lessonContent)}
           </div>
 
           {(lesson.previousContent ?? lesson.nextContent) && (
