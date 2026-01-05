@@ -213,8 +213,8 @@ export function DatasourceRetrievalTreemapChart({
 
   return (
     <ChartContainer
-      title="MCP Servers"
-      description="Number of documents retrieved per MCP server, grouped by datasource."
+      title="Documents retrieved by data sources (BETA)"
+      description="Number of documents retrieved per searches, grouped by datasource."
       isLoading={isDatasourceRetrievalLoading}
       errorMessage={
         isDatasourceRetrievalError
