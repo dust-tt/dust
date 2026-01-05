@@ -26,7 +26,7 @@
 
 import * as fs from "fs";
 
-import { seedDevUser, validateSeedConfig } from "@app/lib/dev/dev_seed_user";
+import { parseSeedConfig, seedDevUser } from "@app/lib/dev/dev_seed_user";
 
 async function main() {
   const configPath = process.argv[2];
@@ -47,13 +47,7 @@ async function main() {
   }
 
   const configContent = fs.readFileSync(configPath, "utf-8");
-  const config: unknown = JSON.parse(configContent);
-
-  if (!validateSeedConfig(config)) {
-    throw new Error(
-      "Config must include: email, name, firstName, workspaceName"
-    );
-  }
+  const config = parseSeedConfig(JSON.parse(configContent));
 
   await seedDevUser(config);
   console.log("Done!");

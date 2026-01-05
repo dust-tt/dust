@@ -38,8 +38,8 @@ const SeedUserConfigSchema = z.object({
 
 export type SeedUserConfig = z.infer<typeof SeedUserConfigSchema>;
 
-export function validateSeedConfig(config: unknown): config is SeedUserConfig {
-  return SeedUserConfigSchema.safeParse(config).success;
+export function parseSeedConfig(config: unknown): SeedUserConfig {
+  return SeedUserConfigSchema.parse(config);
 }
 
 export interface SeedDevUserResult {

@@ -11,22 +11,22 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   createAdminMembership,
   getOrCreateSuperUser,
-  validateSeedConfig,
+  parseSeedConfig,
 } from "./dev_seed_user";
 
 describe("seed_dev_user", () => {
-  describe("validateSeedConfig", () => {
-    it("returns true for valid config with all required fields", () => {
+  describe("parseSeedConfig", () => {
+    it("parses valid config with all required fields", () => {
       const config = {
         email: "test@example.com",
         name: "Test User",
         firstName: "Test",
         workspaceName: "Test Workspace",
       };
-      expect(validateSeedConfig(config)).toBe(true);
+      expect(parseSeedConfig(config)).toEqual(config);
     });
 
-    it("returns true for valid config with optional fields", () => {
+    it("parses valid config with optional fields", () => {
       const config = {
         email: "test@example.com",
         name: "Test User",
@@ -40,80 +40,70 @@ describe("seed_dev_user", () => {
         providerId: "google-123",
         imageUrl: "https://example.com/image.png",
       };
-      expect(validateSeedConfig(config)).toBe(true);
+      expect(parseSeedConfig(config)).toEqual(config);
     });
 
-    it("returns false for null", () => {
-      expect(validateSeedConfig(null)).toBe(false);
+    it("throws for null", () => {
+      expect(() => parseSeedConfig(null)).toThrow();
     });
 
-    it("returns false for undefined", () => {
-      expect(validateSeedConfig(undefined)).toBe(false);
+    it("throws for undefined", () => {
+      expect(() => parseSeedConfig(undefined)).toThrow();
     });
 
-    it("returns false for non-object", () => {
-      expect(validateSeedConfig("string")).toBe(false);
-      expect(validateSeedConfig(123)).toBe(false);
-      expect(validateSeedConfig(true)).toBe(false);
+    it("throws for non-object", () => {
+      expect(() => parseSeedConfig("string")).toThrow();
+      expect(() => parseSeedConfig(123)).toThrow();
+      expect(() => parseSeedConfig(true)).toThrow();
     });
 
-    it("returns false when email is missing", () => {
+    it("throws when email is missing", () => {
       const config = {
         name: "Test User",
         firstName: "Test",
         workspaceName: "Test Workspace",
       };
-      expect(validateSeedConfig(config)).toBe(false);
+      expect(() => parseSeedConfig(config)).toThrow();
     });
 
-    it("returns false when name is missing", () => {
+    it("throws when email is invalid", () => {
+      const config = {
+        email: "not-an-email",
+        name: "Test User",
+        firstName: "Test",
+        workspaceName: "Test Workspace",
+      };
+      expect(() => parseSeedConfig(config)).toThrow();
+    });
+
+    it("throws when name is missing", () => {
       const config = {
         email: "test@example.com",
         firstName: "Test",
         workspaceName: "Test Workspace",
       };
-      expect(validateSeedConfig(config)).toBe(false);
+      expect(() => parseSeedConfig(config)).toThrow();
     });
 
-    it("returns false when firstName is missing", () => {
+    it("throws when firstName is missing", () => {
       const config = {
         email: "test@example.com",
         name: "Test User",
         workspaceName: "Test Workspace",
       };
-      expect(validateSeedConfig(config)).toBe(false);
+      expect(() => parseSeedConfig(config)).toThrow();
     });
 
-    it("returns false when workspaceName is missing", () => {
+    it("throws when workspaceName is missing", () => {
       const config = {
         email: "test@example.com",
         name: "Test User",
         firstName: "Test",
       };
-      expect(validateSeedConfig(config)).toBe(false);
+      expect(() => parseSeedConfig(config)).toThrow();
     });
 
-    it("returns false when email is not a string", () => {
-      const config = {
-        email: 123,
-        name: "Test User",
-        firstName: "Test",
-        workspaceName: "Test Workspace",
-      };
-      expect(validateSeedConfig(config)).toBe(false);
-    });
-
-    it("returns false when name is not a string", () => {
-      const config = {
-        email: "test@example.com",
-        name: { first: "Test" },
-        firstName: "Test",
-        workspaceName: "Test Workspace",
-      };
-      expect(validateSeedConfig(config)).toBe(false);
-    });
-
-    it("returns true with null optional fields", () => {
+    it("parses config with null optional fields", () => {
       const config = {
         email: "test@example.com",
         name: "Test User",
@@ -122,7 +112,18 @@ describe("seed_dev_user", () => {
         lastName: null,
         workOSUserId: null,
       };
-      expect(validateSeedConfig(config)).toBe(true);
+      expect(parseSeedConfig(config)).toEqual(config);
+    });
+
+    it("throws for invalid provider", () => {
+      const config = {
+        email: "test@example.com",
+        name: "Test User",
+        firstName: "Test",
+        workspaceName: "Test Workspace",
+        provider: "invalid-provider",
+      };
+      expect(() => parseSeedConfig(config)).toThrow();
     });
   });
 
@@ -191,7 +192,7 @@ describe("seed_dev_user", () => {
         firstName: faker.person.firstName(),
         lastName: "TestLastName",
         workOSUserId: `workos-${generateRandomModelSId()}`,
-        provider: "google",
+        provider: "google" as const,
         providerId: `google-${generateRandomModelSId()}`,
         imageUrl: "https://example.com/avatar.png",
       };
