@@ -161,11 +161,11 @@ export interface SkillResource extends ReadonlyAttributesType<SkillConfiguration
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
+  readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
   readonly editorGroup: GroupResource | null = null;
   readonly mcpServerViews: MCPServerViewResource[];
   readonly version: number | null = null;
 
-  private readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
   private readonly globalSId: string | null;
 
   private constructor(
@@ -817,7 +817,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon: def.icon,
         extendedSkillId: null,
       },
-      { globalSId: def.sId, mcpServerViews, dataSourceConfigurations: [] }
+      {
+        // Global skills do not have data source configurations.
+        dataSourceConfigurations: [],
+        globalSId: def.sId,
+        mcpServerViews,
+      }
     );
   }
 
