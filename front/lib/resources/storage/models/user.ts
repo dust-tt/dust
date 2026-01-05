@@ -155,3 +155,6 @@ WorkspaceModel.hasMany(UserMetadataModel, {
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
+UserMetadataModel.belongsTo(WorkspaceModel, {
+  foreignKey: { name: "workspaceId", allowNull: true },
+});
