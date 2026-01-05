@@ -268,19 +268,12 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       );
       await addTabsProc.exited;
 
-      // Step 3: Close the default first tab and focus shell tab
-      const closeDefaultProc = Bun.spawn(
-        ["zellij", "--session", sessionName, "action", "go-to-tab", "1"],
+      // Step 3: Focus the shell tab (skip closing the default tab as it hangs on running panes)
+      const focusProc = Bun.spawn(
+        ["zellij", "--session", sessionName, "action", "go-to-tab-name", "shell"],
         { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
       );
-      await closeDefaultProc.exited;
-
-      const closeTabProc = Bun.spawn(["zellij", "--session", sessionName, "action", "close-tab"], {
-        stdin: "ignore",
-        stdout: "ignore",
-        stderr: "ignore",
-      });
-      await closeTabProc.exited;
+      await focusProc.exited;
 
       logger.success(`Session '${sessionName}' created successfully.`);
       logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
