@@ -85,7 +85,7 @@ export const LongLabel: Story = {
 export const WithDoubleIcon: Story = {
   args: {
     label: "My Drive Folder",
-    icon: { mainIcon: FolderIcon, secondaryIcon: DriveLogo, size: "sm" },
+    doubleIcon: { mainIcon: FolderIcon, secondaryIcon: DriveLogo, size: "sm" },
   },
   decorators: [
     (Story) => (
@@ -99,7 +99,11 @@ export const WithDoubleIcon: Story = {
 export const WithDoubleIconAndLink: Story = {
   args: {
     label: "Notion Document",
-    icon: { mainIcon: DocumentIcon, secondaryIcon: NotionLogo, size: "sm" },
+    doubleIcon: {
+      mainIcon: DocumentIcon,
+      secondaryIcon: NotionLogo,
+      size: "sm",
+    },
     href: "https://notion.so",
     target: "_blank",
   },
