@@ -36,6 +36,8 @@ type ElementStub = {
 type DocumentStub = {
   createElement: (tag: string) => ElementStub;
   getElementsByTagName: (tag: string) => ElementStub[];
+  createTextNode: (text: string) => { textContent: string };
+  head?: ElementStub;
 };
 
 function createCanvasContext(): Record<string, unknown> {
@@ -78,12 +80,27 @@ function ensureDomStubs(): void {
             }
           : { ...elementStub },
       getElementsByTagName: () => [{ ...elementStub }],
+      createTextNode: (text: string) => ({ textContent: text }),
     };
+    documentStub.head = { ...elementStub };
     Reflect.set(globalThis, "document", documentStub);
   }
 
+  const documentValue = Reflect.get(globalThis, "document");
+  if (isDocumentStub(documentValue)) {
+    if (typeof documentValue.createTextNode !== "function") {
+      documentValue.createTextNode = (text: string) => ({ textContent: text });
+    }
+    if (!documentValue.head) {
+      documentValue.head = {
+        style: {},
+        setAttribute: () => {},
+        appendChild: () => {},
+      };
+    }
+  }
+
   if (!("window" in globalThis)) {
-    const documentValue = Reflect.get(globalThis, "document");
     if (isDocumentStub(documentValue)) {
       Reflect.set(globalThis, "window", {
         document: documentValue,
