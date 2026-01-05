@@ -37,6 +37,7 @@ import {
   PokeAlertDescription,
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
+import { SkillsDataTable } from "@app/components/poke/skills/table";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import {
   ActiveSubscriptionTable,
@@ -317,6 +318,7 @@ const WorkspacePage = ({
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
 
               <TabsTrigger value="triggers" label="Triggers" />
@@ -344,6 +346,9 @@ const WorkspacePage = ({
                 agentsRetention={agentsRetention}
                 loadOnInit
               />
+            </TabsContent>
+            <TabsContent value="skills">
+              <SkillsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="apps">
               <AppDataTable owner={owner} loadOnInit />
