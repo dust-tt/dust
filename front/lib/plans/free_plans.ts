@@ -32,6 +32,7 @@ export const FREE_NO_PLAN_DATA: PlanAttributes = {
   name: "No Plan",
   maxMessages: 0,
   maxMessagesTimeframe: "lifetime",
+  isDeepDiveAllowed: false,
   maxImagesPerWeek: 0,
   maxUsersInWorkspace: 1,
   maxVaultsInWorkspace: 1,
