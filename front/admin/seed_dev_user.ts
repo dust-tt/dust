@@ -38,6 +38,21 @@ type DocumentStub = {
   getElementsByTagName: (tag: string) => ElementStub[];
 };
 
+function createCanvasContext(): Record<string, unknown> {
+  const noop = () => undefined;
+  return new Proxy<Record<string, unknown>>(
+    {},
+    {
+      get: (_target, prop) => {
+        if (prop === "canvas") {
+          return { width: 1, height: 1 };
+        }
+        return noop;
+      },
+    }
+  );
+}
+
 function isDocumentStub(value: unknown): value is DocumentStub {
   return (
     typeof value === "object" &&
@@ -59,7 +74,7 @@ function ensureDomStubs(): void {
         tag === "canvas"
           ? {
               ...elementStub,
-              getContext: () => ({}),
+              getContext: () => createCanvasContext(),
             }
           : { ...elementStub },
       getElementsByTagName: () => [{ ...elementStub }],
