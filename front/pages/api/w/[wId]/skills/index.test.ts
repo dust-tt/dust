@@ -582,6 +582,12 @@ describe("POST /api/w/[wId]/skills", () => {
       user
     );
 
+    const dataSourceView1 = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+
     req.body = {
       name: "Skill with Knowledge",
       agentFacingDescription: "A skill with knowledge attachments",
@@ -591,18 +597,18 @@ describe("POST /api/w/[wId]/skills", () => {
       tools: [],
       attachedKnowledge: [
         {
-          dataSourceView: {
-            sId: dataSourceView.sId,
-          },
+          dataSourceViewId: dataSourceView.sId,
           nodeId: "node1",
           nodeType: "document",
+          spaceId: dataSourceView.space.sId,
+          title: "Document Node 1",
         },
         {
-          dataSourceView: {
-            sId: dataSourceView.sId,
-          },
+          dataSourceViewId: dataSourceView1.sId,
           nodeId: "node2",
           nodeType: "folder",
+          spaceId: dataSourceView1.space.sId,
+          title: "Folder Node 2",
         },
       ],
       extendedSkillId: null,
@@ -614,8 +620,9 @@ describe("POST /api/w/[wId]/skills", () => {
     const skillId = res._getJSONData().skill.sId;
 
     // Verify persistence by fetching the skill again.
-    const updatedSkill = await SkillResource.fetchById(authenticator, skillId);
-    expect(updatedSkill?.dataSourceConfigurations).toHaveLength(2);
+    const createdSkill = await SkillResource.fetchById(authenticator, skillId);
+    expect(createdSkill).not.toBeNull();
+    expect(createdSkill!.dataSourceConfigurations).toHaveLength(2);
   });
 });
 

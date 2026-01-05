@@ -299,6 +299,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         "skillConfigurationId"
       );
 
+      const dataSourceConfigurations =
+        await SkillDataSourceConfigurationModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: customSkills.map((c) => c.id),
+            },
+          },
+        });
+
+      const dataSourceConfigsBySkillId = groupBy(
+        dataSourceConfigurations,
+        "skillConfigurationId"
+      );
+
       // Fetch editor groups for all skills.
       const skillEditorGroupsMap = new Map<number, GroupResource>();
 
@@ -348,13 +363,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           customSkill.id
         ]?.map((skillConfig) => skillConfig.mcpServerViewId);
 
+        const skillDataSourceConfigs =
+          dataSourceConfigsBySkillId[customSkill.id] ?? [];
+
         return new this(this.model, customSkill.get(), {
           mcpServerViews: allMCPServerViews.filter((view) =>
             skillMCPServerViewIds?.includes(view.id)
           ),
           editorGroup: skillEditorGroupsMap.get(customSkill.id),
-          // TODO(2026-01-05): fetch the associated data source configurations.
-          dataSourceConfigurations: [],
+          dataSourceConfigurations: skillDataSourceConfigs,
         });
       });
     }

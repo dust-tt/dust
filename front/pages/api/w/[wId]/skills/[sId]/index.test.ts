@@ -428,14 +428,18 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       tools: [],
       attachedKnowledge: [
         {
-          dataSourceView: { sId: dataSourceView1.sId },
-          nodeId: "doc1",
-          nodeType: "document",
-        },
-        {
-          dataSourceView: { sId: dataSourceView2.sId },
+          dataSourceViewId: dataSourceView1.sId,
           nodeId: "folder1",
           nodeType: "folder",
+          spaceId: dataSourceView1.space.sId,
+          title: "Folder 1",
+        },
+        {
+          dataSourceViewId: dataSourceView2.sId,
+          nodeId: "folder2",
+          nodeType: "folder",
+          spaceId: dataSourceView2.space.sId,
+          title: "Folder 2",
         },
       ],
     };
@@ -449,6 +453,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       requestUserAuth,
       skill.sId
     );
+    expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.dataSourceConfigurations).toHaveLength(2);
   });
 });
