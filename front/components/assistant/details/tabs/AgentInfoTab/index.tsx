@@ -79,6 +79,7 @@ export function AgentInfoTab({
               content={agentConfiguration.instructions}
               owner={owner}
               compactSpacing={true}
+              isInstructions={true}
             />
           </div>
         </div>

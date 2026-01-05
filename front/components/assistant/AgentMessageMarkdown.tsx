@@ -7,6 +7,11 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
+import {
+  InstructionBlock,
+  instructionBlockDirective,
+  preprocessInstructionBlocks,
+} from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import { toolDirective } from "@app/components/markdown/tool/tool";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
@@ -24,6 +29,7 @@ export const AgentMessageMarkdown = ({
   additionalMarkdownComponents = {} as Components,
   isLastMessage = false,
   isStreaming = false,
+  isInstructions = false,
   textColor,
   compactSpacing,
   forcedTextSize,
@@ -33,12 +39,18 @@ export const AgentMessageMarkdown = ({
   content: string;
   isLastMessage?: boolean;
   isStreaming?: boolean;
+  isInstructions?: boolean;
   additionalMarkdownComponents?: Components;
   textColor?: string;
   compactSpacing?: boolean;
   forcedTextSize?: string;
   canCopyQuotes?: boolean;
 }) => {
+  // Preprocess content to handle instruction blocks
+  const processedContentIfIsInstructions = React.useMemo(() => {
+    return isInstructions ? preprocessInstructionBlocks(content) : content;
+  }, [content, isInstructions]);
+
   const markdownComponents: Components = React.useMemo(
     () => ({
       sup: CiteBlock,
@@ -46,13 +58,14 @@ export const AgentMessageMarkdown = ({
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
+      instruction_block: InstructionBlock,
       ...additionalMarkdownComponents,
     }),
     [owner, additionalMarkdownComponents]
   );
 
-  const additionalMarkdownPlugins = React.useMemo(
-    () => [
+  const additionalMarkdownPlugins = React.useMemo(() => {
+    const directives = [
       agentMentionDirective,
       userMentionDirective,
       getCiteDirective(),
@@ -60,13 +73,16 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
-    ],
-    []
-  );
+    ];
+
+    return isInstructions
+      ? [...directives, instructionBlockDirective]
+      : directives;
+  }, [isInstructions]);
 
   return (
     <Markdown
-      content={content}
+      content={processedContentIfIsInstructions}
       additionalMarkdownComponents={markdownComponents}
       additionalMarkdownPlugins={additionalMarkdownPlugins}
       isLastMessage={isLastMessage}
