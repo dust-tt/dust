@@ -15,7 +15,7 @@ import {
   useAgentConfiguration,
   useAgentDatasourceRetrieval,
 } from "@app/lib/swr/assistants";
-import { isConnectorProvider } from "@app/types";
+import { asDisplayName, isConnectorProvider } from "@app/types";
 
 interface TreemapNode {
   name: string;
@@ -127,10 +127,11 @@ export function DatasourceRetrievalTreemapChart({
     if (!agentConfiguration) {
       return new Map<string, string>();
     }
+
     const map = new Map<string, string>();
     agentConfiguration.actions.forEach((action) => {
       if (isMCPServerConfiguration(action) && action.name) {
-        map.set(action.id.toString(), action.name);
+        map.set(action.id.toString(), asDisplayName(action.name));
       }
     });
     return map;
