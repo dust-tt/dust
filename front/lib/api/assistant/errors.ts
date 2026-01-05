@@ -110,6 +110,23 @@ export const categorizeAgentErrorMessage = (error: {
         publicMessage:
           "Connection interrupted while receiving your answer. Please try again.",
       };
+    } else if (
+      error.message.includes("Server error from anthropic") &&
+      error.message.includes("api_error")
+    ) {
+      return {
+        category: "provider_internal_error",
+        errorTitle: "Anthropic server error",
+        publicMessage:
+          "Anthropic (Claude's provider) encountered an error. Please try again.",
+      };
+    } else if (error.message.includes("Terminated error for")) {
+      return {
+        category: "retryable_model_error",
+        errorTitle: "Connection interrupted",
+        publicMessage:
+          "The connection to the model was interrupted. Please try again.",
+      };
     }
   }
   // The original message is used as a fallback.

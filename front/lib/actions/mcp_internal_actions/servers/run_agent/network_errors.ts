@@ -3,9 +3,14 @@ import type { APIError } from "@dust-tt/client";
 import { normalizeError } from "@app/types";
 
 /**
- * Patterns that indicate transient network errors.
- * These errors are typically caused by infrastructure issues (load balancer timeouts,
- * connection resets, network interruptions) and should not trigger alerts.
+ * Patterns that indicate transient network errors. These errors are typically caused by
+ * infrastructure issues (load balancer timeouts, connection resets, network interruptions) and
+ * should not trigger alerts.
+ *
+ * Examples:
+ * - "TypeError: terminated" - TCP connection terminated unexpectedly
+ * - "Exceeded maximum reconnection attempts" - Stream reconnection exhausted
+ * - "ECONNRESET" - Connection reset by peer
  */
 const TRANSIENT_NETWORK_ERROR_PATTERNS = [
   /terminated/i,
@@ -29,13 +34,6 @@ function matchesTransientPattern(message: string): boolean {
 
 /**
  * Determines if an API error is a transient network error.
- * Transient network errors are caused by infrastructure issues and should not
- * trigger monitoring alerts as they are typically recoverable.
- *
- * Examples:
- * - "TypeError: terminated" - TCP connection terminated unexpectedly
- * - "Exceeded maximum reconnection attempts" - Stream reconnection exhausted
- * - "ECONNRESET" - Connection reset by peer
  */
 export function isTransientNetworkError(error: APIError): boolean {
   const message = error.message || "";
@@ -43,11 +41,8 @@ export function isTransientNetworkError(error: APIError): boolean {
 }
 
 /**
- * Determines if a stream error is a transient network error.
- * Used for errors thrown during agent stream processing.
- *
- * Also handles the "Not connected" error which indicates the stream
- * was disconnected but the operation may have completed.
+ * Determines if a stream error is a transient network error. Used for errors thrown during agent
+ * stream processing.
  */
 export function isTransientStreamError(error: unknown): boolean {
   const normalized = normalizeError(error);
