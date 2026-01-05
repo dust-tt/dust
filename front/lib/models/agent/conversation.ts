@@ -180,6 +180,11 @@ ConversationParticipantModel.init(
       {
         fields: ["workspaceId", "userId", "action"],
       },
+      {
+        fields: ["conversationId"],
+        name: "conversation_participants_conversation_id",
+        concurrently: true,
+      },
     ],
   }
 );
