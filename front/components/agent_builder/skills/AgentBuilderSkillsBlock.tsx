@@ -200,17 +200,18 @@ export function AgentBuilderSkillsBlock() {
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
 
+  // Sheets own closing after save; this handler only upserts into the form state.
   const handleToolEditSave = (updatedAction: BuilderAction) => {
-    if (sheetState.state === "configuration" && sheetState.index !== null) {
-      // Tool edit mode
+    if (
+      (sheetState.state === "configuration" ||
+        sheetState.state === "knowledge") &&
+      sheetState.index !== null
+    ) {
       updateAction(sheetState.index, updatedAction);
-    } else if (sheetState.state === "knowledge" && sheetState.index !== null) {
-      // Knowledge edit mode
-      updateAction(sheetState.index, updatedAction);
-    } else {
-      appendActions(updatedAction);
+      return;
     }
-    setSheetState({ state: "closed" });
+
+    appendActions(updatedAction);
   };
 
   const handleActionEdit = (action: BuilderAction, index: number) => {
