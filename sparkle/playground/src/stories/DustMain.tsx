@@ -22,7 +22,6 @@ import {
   PencilSquareIcon,
   SpaceClosedIcon,
   SearchInput,
-  SidebarRightOpenIcon,
   StarStrokeIcon,
   TrashIcon,
   PlusIcon,
@@ -39,6 +38,8 @@ import {
   ScrollArea,
   AtomIcon,
   ScrollBar,
+  SidebarLeftCloseIcon,
+  ListSelectIcon,
 } from "@dust-tt/sparkle";
 import {
   getAgentById,
@@ -54,7 +55,6 @@ import {
   type Space,
   type User,
 } from "../data";
-import SvgChatBubbleBottomCenterPlus from "@dust-tt/sparkle/dist/esm/icons/app/ChatBubbleBottomCenterPlus";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -423,7 +423,7 @@ function DustMain() {
           <Button
             variant="ghost-secondary"
             size="mini"
-            icon={SidebarRightOpenIcon}
+            icon={SidebarLeftCloseIcon}
             onClick={() => {
               console.log("Sidebar toggle clicked");
             }}
@@ -865,7 +865,8 @@ function DustMain() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem
-                          label="Edit"
+                          label="Edit history"
+                          icon={ListSelectIcon}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -874,6 +875,7 @@ function DustMain() {
                         />
                         <DropdownMenuItem
                           label="Clear history"
+                          icon={TrashIcon}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
