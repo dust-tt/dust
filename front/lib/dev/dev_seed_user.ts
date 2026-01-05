@@ -3,6 +3,8 @@
  * This module is used by admin/seed_dev_user.ts CLI script.
  */
 
+import { z } from "zod";
+
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -10,55 +12,34 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { LightWorkspaceType, UserProviderType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
 
-const VALID_PROVIDERS = [
-  "auth0",
-  "github",
-  "google",
-  "okta",
-  "samlp",
-  "waad",
-] as const;
+const UserProviderSchema = z
+  .enum(["auth0", "github", "google", "okta", "samlp", "waad"])
+  .nullable()
+  .optional();
 
-function isValidProvider(value: unknown): value is UserProviderType {
-  if (value === null || value === undefined) {
-    return true;
-  }
-  return (
-    typeof value === "string" &&
-    VALID_PROVIDERS.includes(value as (typeof VALID_PROVIDERS)[number])
-  );
-}
-
-export interface SeedUserConfig {
+const SeedUserConfigSchema = z.object({
   // Required fields
-  email: string;
-  name: string;
-  firstName: string;
-  workspaceName: string;
+  email: z.string().email(),
+  name: z.string().min(1),
+  firstName: z.string().min(1),
+  workspaceName: z.string().min(1),
   // Optional fields
-  sId?: string;
-  username?: string;
-  lastName?: string | null;
-  workOSUserId?: string | null;
-  provider?: string | null;
-  providerId?: string | null;
-  imageUrl?: string | null;
-}
+  sId: z.string().optional(),
+  username: z.string().optional(),
+  lastName: z.string().nullable().optional(),
+  workOSUserId: z.string().nullable().optional(),
+  provider: UserProviderSchema,
+  providerId: z.string().nullable().optional(),
+  imageUrl: z.string().url().nullable().optional(),
+});
+
+export type SeedUserConfig = z.infer<typeof SeedUserConfigSchema>;
 
 export function validateSeedConfig(config: unknown): config is SeedUserConfig {
-  if (typeof config !== "object" || config === null) {
-    return false;
-  }
-  const c = config as Record<string, unknown>;
-  return (
-    typeof c.email === "string" &&
-    typeof c.name === "string" &&
-    typeof c.firstName === "string" &&
-    typeof c.workspaceName === "string"
-  );
+  return SeedUserConfigSchema.safeParse(config).success;
 }
 
 export interface SeedDevUserResult {
@@ -70,18 +51,9 @@ export interface SeedDevUserResult {
  * Creates or updates a user as a super user.
  * Exported separately for testing.
  */
-export async function getOrCreateSuperUser(config: {
-  email: string;
-  name: string;
-  firstName: string;
-  sId?: string;
-  username?: string;
-  lastName?: string | null;
-  workOSUserId?: string | null;
-  provider?: string | null;
-  providerId?: string | null;
-  imageUrl?: string | null;
-}): Promise<{ user: UserResource; created: boolean }> {
+export async function getOrCreateSuperUser(
+  config: Omit<SeedUserConfig, "workspaceName">
+): Promise<{ user: UserResource; created: boolean }> {
   const sId = config.sId ?? generateRandomModelSId();
   const username = config.username ?? config.email.split("@")[0];
 
@@ -102,7 +74,7 @@ export async function getOrCreateSuperUser(config: {
       firstName: config.firstName,
       lastName: config.lastName ?? null,
       workOSUserId: config.workOSUserId ?? null,
-      provider: isValidProvider(config.provider) ? config.provider : null,
+      provider: config.provider ?? null,
       providerId: config.providerId ?? null,
       imageUrl: config.imageUrl ?? null,
       isDustSuperUser: true,
