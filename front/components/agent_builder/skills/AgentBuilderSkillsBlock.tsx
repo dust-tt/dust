@@ -11,7 +11,7 @@ import {
   ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -25,24 +25,21 @@ import type { SelectedTool } from "@app/components/agent_builder/capabilities/ca
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
+import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
-import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { SpaceType } from "@app/types";
 import { pluralize } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -81,47 +78,6 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
       </div>
     </Card>
   );
-}
-
-function useDerivedSkillsAndActionsState(
-  skillFields: AgentBuilderSkillsType[],
-  actionFields: BuilderAction[],
-  mcpServerViews: MCPServerViewType[],
-  allSkills: SkillType[],
-  spaces: SpaceType[]
-) {
-  return useMemo(() => {
-    const alreadyAddedSkillIds = new Set(skillFields.map((s) => s.sId));
-    const spaceIdToActions = getSpaceIdToActionsMap(
-      actionFields,
-      mcpServerViews
-    );
-
-    const alreadyRequestedSpaceIds = new Set<string>();
-    for (const spaceId of Object.keys(spaceIdToActions)) {
-      if (spaceIdToActions[spaceId]?.length > 0) {
-        alreadyRequestedSpaceIds.add(spaceId);
-      }
-    }
-    for (const skill of allSkills) {
-      if (alreadyAddedSkillIds.has(skill.sId) && skill.canWrite) {
-        for (const spaceId of skill.requestedSpaceIds) {
-          alreadyRequestedSpaceIds.add(spaceId);
-        }
-      }
-    }
-
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
-    const nonGlobalSpacesUsedInActions = nonGlobalSpaces.filter(
-      (s) => spaceIdToActions[s.sId]?.length > 0
-    );
-
-    return {
-      alreadyAddedSkillIds,
-      alreadyRequestedSpaceIds,
-      nonGlobalSpacesUsedInActions,
-    };
-  }, [skillFields, actionFields, mcpServerViews, allSkills, spaces]);
 }
 
 function ActionButtons({
@@ -190,7 +146,7 @@ export function AgentBuilderSkillsBlock() {
     alreadyAddedSkillIds,
     alreadyRequestedSpaceIds,
     nonGlobalSpacesUsedInActions,
-  } = useDerivedSkillsAndActionsState(
+  } = useSkillsAndActionsState(
     skillFields,
     actionFields,
     mcpServerViews,
