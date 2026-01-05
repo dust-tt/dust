@@ -1,5 +1,7 @@
 # dust-hive Development Context
 
+Follow all rules in **CODING_RULES.md** before making changes.
+
 ## Development Workflow
 
 **IMPORTANT**: Run these commands frequently during development:
