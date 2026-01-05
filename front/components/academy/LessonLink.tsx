@@ -1,5 +1,4 @@
 import { Button } from "@dust-tt/sparkle";
-import Link from "next/link";
 
 import { P } from "@app/components/home/ContentComponents";
 
@@ -33,15 +32,13 @@ export function LessonLink({
           )}
           {complexity && (
             <>
-              {(lessonId || estimatedDurationMinutes) && <span>•</span>}
+              {(lessonId ?? estimatedDurationMinutes) && <span>•</span>}
               <span>{complexity}</span>
             </>
           )}
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold text-foreground">
-            {title}
-          </h3>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           {description && (
             <P size="sm" className="text-muted-foreground">
               {description}

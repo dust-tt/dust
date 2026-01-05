@@ -26,7 +26,7 @@ export function AcademySidebar({
   const currentCourse = courses.find((c) => c.slug === currentCourseSlug);
 
   const handleCourseChange = (slug: string) => {
-    router.push(`/academy/${slug}`);
+    void router.push(`/academy/${slug}`);
     setIsDropdownOpen(false);
   };
 
