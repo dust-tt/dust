@@ -425,7 +425,6 @@ describe("POST /api/w/[wId]/skills", () => {
       instructions: "Simple instructions",
       status: "active",
       tools: [],
-      attachedKnowledge: [],
     });
 
     // Verify skill was created in the database
