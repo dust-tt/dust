@@ -132,134 +132,134 @@ export default function CoursePage({
               </Link>
             </div>
 
-          <header className={WIDE_CLASSES}>
-            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {course.courseId && <span>Course {course.courseId}</span>}
-              {course.estimatedDurationMinutes && (
-                <>
-                  {course.courseId && <span>•</span>}
-                  <span>{course.estimatedDurationMinutes} min</span>
-                </>
-              )}
-            </div>
-
-            <H1 className="text-4xl md:text-5xl">{course.title}</H1>
-
-            {(course.author ?? course.dateOfAddition) && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {course.author && (
+            <header className={WIDE_CLASSES}>
+              <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                {course.courseId && <span>Course {course.courseId}</span>}
+                {course.estimatedDurationMinutes && (
                   <>
-                    <div className="flex items-center gap-2">
-                      {course.author.image ? (
-                        <Image
-                          src={course.author.image.url}
-                          alt={course.author.name}
-                          width={24}
-                          height={24}
-                          loader={contentfulImageLoader}
-                          sizes="24px"
-                          className="rounded-full"
-                        />
-                      ) : (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
-                          {course.author.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <span>{course.author.name}</span>
-                    </div>
-                    {course.dateOfAddition && <span>-</span>}
+                    {course.courseId && <span>•</span>}
+                    <span>{course.estimatedDurationMinutes} min</span>
                   </>
                 )}
-                {course.dateOfAddition && (
-                  <span>
-                    {formatTimestampToFriendlyDate(
-                      new Date(course.dateOfAddition).getTime(),
-                      "short"
-                    )}
-                  </span>
-                )}
+              </div>
+
+              <H1 className="text-4xl md:text-5xl">{course.title}</H1>
+
+              {(course.author ?? course.dateOfAddition) && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {course.author && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        {course.author.image ? (
+                          <Image
+                            src={course.author.image.url}
+                            alt={course.author.name}
+                            width={24}
+                            height={24}
+                            loader={contentfulImageLoader}
+                            sizes="24px"
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+                            {course.author.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span>{course.author.name}</span>
+                      </div>
+                      {course.dateOfAddition && <span>-</span>}
+                    </>
+                  )}
+                  {course.dateOfAddition && (
+                    <span>
+                      {formatTimestampToFriendlyDate(
+                        new Date(course.dateOfAddition).getTime(),
+                        "short"
+                      )}
+                    </span>
+                  )}
+                </div>
+              )}
+            </header>
+
+            {course.image && (
+              <div className={classNames(WIDE_CLASSES, "mt-2")}>
+                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                  <Image
+                    src={course.image.url}
+                    alt={course.image.alt}
+                    width={course.image.width}
+                    height={course.image.height}
+                    loader={contentfulImageLoader}
+                    className="h-full w-full object-cover"
+                    sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
+                    priority
+                  />
+                </div>
               </div>
             )}
-          </header>
 
-          {course.image && (
-            <div className={classNames(WIDE_CLASSES, "mt-2")}>
-              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-                <Image
-                  src={course.image.url}
-                  alt={course.image.alt}
-                  width={course.image.width}
-                  height={course.image.height}
-                  loader={contentfulImageLoader}
-                  className="h-full w-full object-cover"
-                  sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
-                  priority
-                />
+            {course.tableOfContents && (
+              <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                <H2 className="mb-4">Course Objectives</H2>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
+                  <P className="whitespace-pre-line text-muted-foreground">
+                    {course.tableOfContents}
+                  </P>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {course.tableOfContents && (
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
-              <H2 className="mb-4">Course Objectives</H2>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                <P className="whitespace-pre-line text-muted-foreground">
-                  {course.tableOfContents}
-                </P>
+            {course.preRequisites && (
+              <div className={classNames(WIDE_CLASSES, "mt-6")}>
+                <H2 className="mb-4">Prerequisites</H2>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
+                  {renderRichTextFromContentful(course.preRequisites)}
+                </div>
               </div>
+            )}
+
+            <div className={classNames(WIDE_CLASSES, "mt-4")}>
+              {renderRichTextFromContentful(course.courseContent)}
             </div>
-          )}
 
-          {course.preRequisites && (
-            <div className={classNames(WIDE_CLASSES, "mt-6")}>
-              <H2 className="mb-4">Prerequisites</H2>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-                {renderRichTextFromContentful(course.preRequisites)}
-              </div>
-            </div>
-          )}
-
-          <div className={classNames(WIDE_CLASSES, "mt-4")}>
-            {renderRichTextFromContentful(course.courseContent)}
-          </div>
-
-          {(course.previousCourse ?? course.nextCourse) && (
-            <div
-              className={classNames(
-                WIDE_CLASSES,
-                "mt-12 border-t border-gray-200 pt-8"
-              )}
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
-                {course.previousCourse && (
-                  <Link
-                    href={`/academy/${course.previousCourse.slug}`}
-                    className="group flex flex-col"
-                  >
-                    <P size="sm" className="text-muted-foreground">
-                      Previous Course
-                    </P>
-                    <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
-                      &larr; {course.previousCourse.title}
-                    </span>
-                  </Link>
+            {(course.previousCourse ?? course.nextCourse) && (
+              <div
+                className={classNames(
+                  WIDE_CLASSES,
+                  "mt-12 border-t border-gray-200 pt-8"
                 )}
-                {course.nextCourse && (
-                  <Link
-                    href={`/academy/${course.nextCourse.slug}`}
-                    className="group flex flex-col items-end sm:items-start"
-                  >
-                    <P size="sm" className="text-muted-foreground">
-                      Next Course
-                    </P>
-                    <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
-                      {course.nextCourse.title} &rarr;
-                    </span>
-                  </Link>
-                )}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                  {course.previousCourse && (
+                    <Link
+                      href={`/academy/${course.previousCourse.slug}`}
+                      className="group flex flex-col"
+                    >
+                      <P size="sm" className="text-muted-foreground">
+                        Previous Course
+                      </P>
+                      <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
+                        &larr; {course.previousCourse.title}
+                      </span>
+                    </Link>
+                  )}
+                  {course.nextCourse && (
+                    <Link
+                      href={`/academy/${course.nextCourse.slug}`}
+                      className="group flex flex-col items-end sm:items-start"
+                    >
+                      <P size="sm" className="text-muted-foreground">
+                        Next Course
+                      </P>
+                      <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
+                        {course.nextCourse.title} &rarr;
+                      </span>
+                    </Link>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           </Grid>
         </article>
       </div>
