@@ -113,29 +113,35 @@ export function SkillBuilderUserFacingDescriptionSection() {
       triggerValidationOnChange={false}
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
-        <div className="relative">
-          <Input
-            ref={registerRef}
-            placeholder="Enter skill description"
-            onChange={(e) => {
-              markAsUserEdited();
-              onChange(e);
-            }}
-            message={errorMessage}
-            messageStatus={hasError ? "error" : "default"}
-            className="pr-10"
-            {...registerProps}
-          />
-          <Button
-            icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
-            variant="outline"
-            size="xs"
-            className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
-            disabled={isGenerating || !canGenerate}
-            onClick={generate}
-            tooltip={getTooltip()}
-          />
-        </div>
+        <>
+          <div className="relative">
+            <Input
+              ref={registerRef}
+              placeholder="Enter skill description"
+              onChange={(e) => {
+                markAsUserEdited();
+                onChange(e);
+              }}
+              isError={hasError}
+              className="pr-10"
+              {...registerProps}
+            />
+            <Button
+              icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
+              variant="outline"
+              size="xs"
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
+              disabled={isGenerating || !canGenerate}
+              onClick={generate}
+              tooltip={getTooltip()}
+            />
+          </div>
+          {errorMessage && (
+            <div className="dark:text-warning-night mt-1 text-xs text-warning">
+              {errorMessage}
+            </div>
+          )}
+        </>
       )}
     </BaseFormFieldSection>
   );

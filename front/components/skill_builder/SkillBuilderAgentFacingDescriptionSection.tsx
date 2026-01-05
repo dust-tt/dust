@@ -92,6 +92,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
             ref={registerRef}
             placeholder="When should this skill be used? What is this skill good for?"
             className="min-h-24 text-base placeholder:italic placeholder:text-gray-400"
+            resize="vertical"
             onChange={(e) => handleDescriptionChange(e, onChange)}
             error={hasError ? errorMessage : undefined}
             showErrorLabel={hasError}

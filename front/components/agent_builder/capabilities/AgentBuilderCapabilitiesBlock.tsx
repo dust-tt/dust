@@ -212,7 +212,7 @@ export function AgentBuilderCapabilitiesBlock({
                   key={field.id}
                   action={field}
                   onRemove={() => remove(index)}
-                  onEdit={() => handleActionEdit(field, index)}
+                  onClick={() => handleActionEdit(field, index)}
                 />
               ))}
             </CardGrid>

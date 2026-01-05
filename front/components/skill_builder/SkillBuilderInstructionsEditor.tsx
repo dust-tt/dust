@@ -21,7 +21,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto border rounded-xl px-3 py-2 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -29,10 +29,11 @@ const editorVariants = cva(
     variants: {
       error: {
         true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus:ring-warning-500 dark:focus:ring-warning-500-night",
-          "focus:outline-warning-500 dark:focus:outline-warning-500-night",
-          "focus:border-warning-500 dark:focus:border-warning-500-night",
+          "border-border-warning/30 dark:border-border-warning-night/60",
+          "ring-warning/0 dark:ring-warning-night/0",
+          "focus-visible:border-border-warning dark:focus-visible:border-border-warning-night",
+          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:ring-warning/10 dark:focus-visible:ring-warning/30",
         ],
         false: [
           "border-border dark:border-border-night",
@@ -217,8 +218,13 @@ export function SkillBuilderInstructionsEditor({
   }, [isInstructionDiffMode, compareVersion, editor]);
 
   return (
-    <div className="relative p-px">
+    <div className="relative space-y-1 p-px">
       <EditorContent editor={editor} />
+      {fieldState.error && (
+        <div className="dark:text-warning-night ml-2 text-xs text-warning">
+          {fieldState.error.message}
+        </div>
+      )}
     </div>
   );
 }
