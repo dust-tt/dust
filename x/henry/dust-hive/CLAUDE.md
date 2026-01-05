@@ -1,9 +1,5 @@
 # dust-hive Development Context
 
-## Specification
-
-The full MVP specification is in **SPEC.md**. Always consult it for architecture decisions, port allocations, service startup order, and implementation details.
-
 ## Development Workflow
 
 **IMPORTANT**: Run these commands frequently during development:
