@@ -23,7 +23,7 @@ export function SkillInfoTab({
   spaces,
   showDescription = true,
 }: SkillInfoTabProps) {
-  const shouldLoadKnowledgeAndSpaces = skill.requestedSpaceIds.length > 0;
+  const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     disabled: !shouldLoadKnowledgeAndSpaces || !!spaces,
