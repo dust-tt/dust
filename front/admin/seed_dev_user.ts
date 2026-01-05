@@ -26,7 +26,51 @@
 
 import * as fs from "fs";
 
-import { parseSeedConfig, seedDevUser } from "@app/lib/dev/dev_seed_user";
+type ElementStub = {
+  style: Record<string, string>;
+  setAttribute: (name: string, value: string) => void;
+  appendChild: (node: unknown) => void;
+};
+
+type DocumentStub = {
+  createElement: (tag: string) => ElementStub;
+  getElementsByTagName: (tag: string) => ElementStub[];
+};
+
+function isDocumentStub(value: unknown): value is DocumentStub {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "createElement" in value &&
+    "getElementsByTagName" in value
+  );
+}
+
+function ensureDomStubs(): void {
+  if (!("document" in globalThis)) {
+    const elementStub: ElementStub = {
+      style: {},
+      setAttribute: () => {},
+      appendChild: () => {},
+    };
+    const documentStub: DocumentStub = {
+      createElement: () => ({ ...elementStub }),
+      getElementsByTagName: () => [{ ...elementStub }],
+    };
+    Reflect.set(globalThis, "document", documentStub);
+  }
+
+  if (!("window" in globalThis)) {
+    const documentValue = Reflect.get(globalThis, "document");
+    if (isDocumentStub(documentValue)) {
+      Reflect.set(globalThis, "window", { document: documentValue });
+    }
+  }
+
+  if (!("navigator" in globalThis)) {
+    Reflect.set(globalThis, "navigator", { userAgent: "node" });
+  }
+}
 
 async function main() {
   const configPath = process.argv[2];
@@ -45,6 +89,9 @@ async function main() {
   if (!fs.existsSync(configPath)) {
     throw new Error(`Config file not found: ${configPath}`);
   }
+
+  ensureDomStubs();
+  const { parseSeedConfig, seedDevUser } = await import("@app/lib/dev/dev_seed_user");
 
   const configContent = fs.readFileSync(configPath, "utf-8");
   const config = parseSeedConfig(JSON.parse(configContent));

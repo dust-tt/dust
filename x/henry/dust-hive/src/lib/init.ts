@@ -190,10 +190,54 @@ async function runBinary(
   options: {
     cwd: string;
     env: Record<string, string>;
+    stdin?: string;
   }
 ): Promise<{ success: boolean; usedCache: boolean; stdout: string; stderr: string }> {
   const cacheSource = await getCacheSource();
   const hasCachedBinary = cacheSource ? await binaryExists(cacheSource, binary) : false;
+  const stdinInput = options.stdin;
+
+  const getFunction = (
+    value: unknown,
+    key: string
+  ): ((...args: unknown[]) => unknown) | null => {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    const candidate = Reflect.get(value, key);
+    return typeof candidate === "function" ? candidate : null;
+  };
+
+  const writeStdin = async (proc: Bun.Process, input: string): Promise<void> => {
+    if (!proc.stdin) {
+      return;
+    }
+
+    const write = getFunction(proc.stdin, "write");
+    if (write) {
+      write.call(proc.stdin, input);
+      const end = getFunction(proc.stdin, "end");
+      if (end) {
+        end.call(proc.stdin);
+      }
+      return;
+    }
+
+    const getWriter = getFunction(proc.stdin, "getWriter");
+    if (!getWriter) {
+      throw new Error("Failed to write to stdin: unsupported stdin type");
+    }
+
+    const writer = getWriter.call(proc.stdin);
+    const writerWrite = getFunction(writer, "write");
+    if (writerWrite) {
+      await writerWrite.call(writer, new TextEncoder().encode(input));
+    }
+    const close = getFunction(writer, "close");
+    if (close) {
+      await close.call(writer);
+    }
+  };
 
   if (hasCachedBinary && cacheSource) {
     // Run cached binary directly
@@ -201,9 +245,14 @@ async function runBinary(
     const proc = Bun.spawn([binaryPath, ...args], {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
+      stdin: stdinInput ? "pipe" : "ignore",
       stdout: "pipe",
       stderr: "pipe",
     });
+
+    if (stdinInput) {
+      await writeStdin(proc, stdinInput);
+    }
 
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
@@ -219,9 +268,14 @@ async function runBinary(
   const proc = Bun.spawn(["bash", "-c", command], {
     cwd: options.cwd,
     env: { ...process.env, ...options.env },
+    stdin: stdinInput ? "pipe" : "ignore",
     stdout: "pipe",
     stderr: "pipe",
   });
+
+  if (stdinInput) {
+    await writeStdin(proc, stdinInput);
+  }
 
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
@@ -283,25 +337,38 @@ async function initQdrant(
   worktreePath: string,
   envVars: Record<string, string>
 ): Promise<{ success: boolean; usedCache: boolean }> {
-  const result = await runBinary(
-    "qdrant_create_collection",
-    ["--cluster", "cluster-0", "--provider", "openai", "--model", "text-embedding-3-large-1536"],
-    {
+  const maxAttempts = 5;
+  const retryDelayMs = 1000;
+  const args = ["--cluster", "cluster-0", "--provider", "openai", "--model", "text-embedding-3-large-1536"];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const result = await runBinary("qdrant_create_collection", args, {
       cwd: `${worktreePath}/core`,
       env: envVars,
+      stdin: "y\n",
+    });
+
+    if (result.success) {
+      return { success: true, usedCache: result.usedCache };
     }
-  );
 
-  // Treat "already exists" as success (idempotent)
-  const alreadyExists =
-    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+    const combinedOutput = `${result.stdout}\n${result.stderr}`.toLowerCase();
+    if (combinedOutput.includes("already exists")) {
+      return { success: true, usedCache: result.usedCache };
+    }
 
-  if (!result.success && !alreadyExists) {
+    if (attempt < maxAttempts) {
+      logger.warn(
+        `Qdrant init failed (attempt ${attempt}/${maxAttempts}). Retrying in ${retryDelayMs}ms...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      continue;
+    }
     console.log(result.stdout);
     console.error(result.stderr);
+    return { success: false, usedCache: result.usedCache };
   }
-
-  return { success: result.success || alreadyExists, usedCache: result.usedCache };
+  return { success: false, usedCache: false };
 }
 
 // Initialize Elasticsearch indices (Rust binaries)
@@ -375,10 +442,11 @@ async function initElasticsearchTS(
       const stderr = await new Response(proc.stderr).text();
       await proc.exited;
 
-      const alreadyExists =
-        stdout.includes("already exists") || stderr.includes("already exists");
-
-      if (proc.exitCode !== 0 && !alreadyExists) {
+      if (proc.exitCode !== 0) {
+        const combinedOutput = `${stdout}\n${stderr}`.toLowerCase();
+        if (combinedOutput.includes("already exists")) {
+          return true;
+        }
         console.log(stdout);
         console.error(stderr);
         return false;
