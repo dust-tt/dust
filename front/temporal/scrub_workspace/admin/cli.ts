@@ -22,7 +22,9 @@ const main = async () => {
       await launchDowngradeFreeEndedWorkspacesWorkflow();
       return;
     case "stop-workflow-to-downgrade-free-ended-workspaces":
-      await stopDowngradeFreeEndedWorkspacesWorkflow({ stopReason: "Stopped via CLI" });
+      await stopDowngradeFreeEndedWorkspacesWorkflow({
+        stopReason: "Stopped via CLI",
+      });
       return;
     default:
       console.error("\x1b[31m%s\x1b[0m", `Error: Unknown command`);
