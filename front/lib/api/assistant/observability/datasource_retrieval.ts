@@ -147,7 +147,7 @@ export async function fetchDatasourceRetrievalMetrics(
   const serverConfigByModelId = new Map(
     serverConfigs.map((cfg) => [cfg.id, cfg])
   );
-  const dataSourceById = new Map(dataSources.map((ds) => [ds.sId, ds]));
+  const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
   const data: DatasourceRetrievalData[] = mcpServerConfigBuckets.map(
     (mcpConfigBucket) => {
@@ -168,7 +168,7 @@ export async function fetchDatasourceRetrievalMetrics(
         mcpServerName,
         count: mcpConfigBucket.doc_count,
         datasources: datasourceBuckets.map((dsBucket) => {
-          const dataSource = dataSourceById.get(dsBucket.key);
+          const dataSource = dataSourceBySId.get(dsBucket.key);
           return {
             dataSourceId: dsBucket.key,
             displayName: dataSource
