@@ -7,7 +7,9 @@ import {
   withEs,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -17,7 +19,8 @@ export type DatasourceRetrievalData = {
   mcpServerName: string;
   count: number;
   datasources: {
-    name: string;
+    dataSourceId: string;
+    displayName: string;
     count: number;
   }[];
 };
@@ -79,7 +82,7 @@ export async function fetchDatasourceRetrievalMetrics(
         },
         by_datasource: {
           terms: {
-            field: "data_source_name",
+            field: "data_source_id",
             size: 50,
           },
         },
@@ -116,6 +119,17 @@ export async function fetchDatasourceRetrievalMetrics(
     new Set(mcpServerConfigBuckets.map((b) => b.key))
   ).filter((id) => Number.isFinite(id) && id > 0);
 
+  // Collect all unique data source IDs from all buckets.
+  const allDataSourceIds = Array.from(
+    new Set(
+      mcpServerConfigBuckets.flatMap((bucket) =>
+        bucketsToArray<DatasourceBucket>(bucket.by_datasource?.buckets).map(
+          (ds) => ds.key
+        )
+      )
+    )
+  );
+
   const serverConfigs =
     configModelIds.length > 0
       ? await AgentMCPServerConfigurationResource.fetchByModelIds(
@@ -123,9 +137,16 @@ export async function fetchDatasourceRetrievalMetrics(
           configModelIds
         )
       : [];
+
+  const dataSources =
+    allDataSourceIds.length > 0
+      ? await DataSourceResource.fetchByIds(auth, allDataSourceIds)
+      : [];
+
   const serverConfigByModelId = new Map(
     serverConfigs.map((cfg) => [cfg.id, cfg])
   );
+  const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
   const data: DatasourceRetrievalData[] = mcpServerConfigBuckets.map(
     (mcpConfigBucket) => {
@@ -145,10 +166,16 @@ export async function fetchDatasourceRetrievalMetrics(
         mcpServerConfigName: config?.name ?? undefined,
         mcpServerName,
         count: mcpConfigBucket.doc_count,
-        datasources: datasourceBuckets.map((dsBucket) => ({
-          name: dsBucket.key,
-          count: dsBucket.doc_count,
-        })),
+        datasources: datasourceBuckets.map((dsBucket) => {
+          const dataSource = dataSourceBySId.get(dsBucket.key);
+          return {
+            dataSourceId: dsBucket.key,
+            displayName: dataSource
+              ? getDisplayNameForDataSource(dataSource.toJSON())
+              : dsBucket.key,
+            count: dsBucket.doc_count,
+          };
+        }),
       };
     }
   );
