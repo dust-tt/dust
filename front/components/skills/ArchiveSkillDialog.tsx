@@ -15,20 +15,20 @@ import { pluralize } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 interface DeleteSkillDialogProps {
-  skillConfiguration: SkillWithRelationsType;
+  skill: SkillWithRelationsType;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
 
 export function ArchiveSkillDialog({
-  skillConfiguration,
+  skill,
   isOpen,
   onClose,
   owner,
 }: DeleteSkillDialogProps) {
   const [isArchiving, setIsArchiving] = useState(false);
-  const doArchive = useArchiveSkill({ owner, skillConfiguration });
+  const doArchive = useArchiveSkill({ owner, skill: skill });
 
   return (
     <Dialog
@@ -45,10 +45,10 @@ export function ArchiveSkillDialog({
           <DialogDescription>
             <div>
               This will archive the skill{" "}
-              <span className="font-bold">{skillConfiguration?.name}</span>{" "}
-              {skillConfiguration.relations.usage.count === 0
+              <span className="font-bold">{skill?.name}</span>{" "}
+              {skill.relations.usage.count === 0
                 ? "for everyone."
-                : `used by ${skillConfiguration.relations.usage.count} agent${pluralize(skillConfiguration.relations.usage.count)}.`}
+                : `used by ${skill.relations.usage.count} agent${pluralize(skill.relations.usage.count)}.`}
             </div>
           </DialogDescription>
         </DialogHeader>

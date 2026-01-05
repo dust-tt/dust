@@ -251,7 +251,8 @@ export function MCPRunAgentActionDetails({
                       <AttachmentChip
                         key={id}
                         label={getMcpServerViewDisplayName(mcpServerView)}
-                        icon={getIcon(mcpServerView.server.icon)}
+                        icon={{ visual: getIcon(mcpServerView.server.icon) }}
+                        color="highlight"
                       />
                     );
                   })}

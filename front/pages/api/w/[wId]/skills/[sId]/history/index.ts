@@ -8,17 +8,17 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
-import { GetSkillConfigurationsHistoryQuerySchema } from "@app/types/api/internal/skill";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
+import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 
-export type GetSkillConfigurationsHistoryResponseBody = {
-  history: SkillType[];
+export type GetSkillHistoryResponseBody = {
+  history: SkillWithVersionType[];
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetSkillConfigurationsHistoryResponseBody | void>
+    WithAPIErrorResponse<GetSkillHistoryResponseBody | void>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -49,7 +49,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetSkillConfigurationsHistoryQuerySchema.decode({
+      const queryValidation = GetSkillHistoryQuerySchema.decode({
         ...req.query,
         limit:
           typeof req.query.limit === "string"
@@ -75,9 +75,10 @@ async function handler(
         skillVersionResources = skillVersionResources.slice(0, limit);
       }
 
-      const skillVersions = skillVersionResources.map((resource) =>
-        resource.toJSON(auth)
-      );
+      const skillVersions = skillVersionResources.map((resource) => ({
+        ...resource.toJSON(auth),
+        version: resource.version,
+      }));
 
       return res.status(200).json({ history: skillVersions });
     default:

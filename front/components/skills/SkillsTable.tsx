@@ -268,7 +268,7 @@ export function SkillsTable({
         <ArchiveSkillDialog
           owner={owner}
           isOpen={true}
-          skillConfiguration={skillToArchive}
+          skill={skillToArchive}
           onClose={() => {
             setSkillToArchive(null);
           }}

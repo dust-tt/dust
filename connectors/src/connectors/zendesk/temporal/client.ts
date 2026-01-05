@@ -101,7 +101,12 @@ export async function launchZendeskSyncWorkflow(
 }
 
 export async function stopZendeskWorkflows(
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  {
+    stopReason,
+  }: {
+    stopReason: string;
+  }
 ): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
 
@@ -114,7 +119,7 @@ export async function stopZendeskWorkflows(
       const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =
         client.workflow.getHandle(workflowId);
       try {
-        await handle.terminate();
+        await handle.terminate(stopReason);
       } catch (e) {
         if (!(e instanceof WorkflowNotFoundError)) {
           throw e;

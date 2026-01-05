@@ -1,33 +1,32 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PostSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/skills";
-import type { PatchSkillConfigurationResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
+import type { PostSkillResponseBody } from "@app/pages/api/w/[wId]/skills";
+import type { PatchSkillResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { Result, UserType, WorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export async function submitSkillBuilderForm({
   formData,
   owner,
-  skillConfigurationId,
+  skillId,
   currentEditors = [],
 }: {
   formData: SkillBuilderFormData;
   owner: WorkspaceType;
-  skillConfigurationId?: string;
+  skillId?: string;
   currentEditors?: UserType[];
 }): Promise<
   Result<
-    | PostSkillConfigurationResponseBody["skillConfiguration"]
-    | PatchSkillConfigurationResponseBody["skillConfiguration"],
+    PostSkillResponseBody["skill"] | PatchSkillResponseBody["skill"],
     Error
   >
 > {
   try {
-    const endpoint = skillConfigurationId
-      ? `/api/w/${owner.sId}/skills/${skillConfigurationId}`
+    const endpoint = skillId
+      ? `/api/w/${owner.sId}/skills/${skillId}`
       : `/api/w/${owner.sId}/skills`;
 
-    const method = skillConfigurationId ? "PATCH" : "POST";
+    const method = skillId ? "PATCH" : "POST";
 
     const response = await clientFetch(endpoint, {
       method,
@@ -52,22 +51,19 @@ export async function submitSkillBuilderForm({
       return new Err(
         new Error(
           errorData.error?.message ??
-            (skillConfigurationId
-              ? "Failed to update skill"
-              : "Failed to create skill")
+            (skillId ? "Failed to update skill" : "Failed to create skill")
         )
       );
     }
 
-    const result:
-      | PostSkillConfigurationResponseBody
-      | PatchSkillConfigurationResponseBody = await response.json();
+    const result: PostSkillResponseBody | PatchSkillResponseBody =
+      await response.json();
 
-    const skillConfiguration = result.skillConfiguration;
+    const { skill } = result;
 
     // Only sync editors for existing skills (updates), not for newly created skills
     // When creating a skill, the backend automatically adds the creator to the editors group
-    if (skillConfigurationId) {
+    if (skillId) {
       const desiredEditorIds = new Set(formData.editors.map((e) => e.sId));
       const currentEditorIds = new Set(currentEditors.map((e) => e.sId));
 
@@ -90,7 +86,7 @@ export async function submitSkillBuilderForm({
 
       if (addEditorIds.length > 0 || removeEditorIds.length > 0) {
         const editorsResponse = await clientFetch(
-          `/api/w/${owner.sId}/skills/${skillConfiguration.sId}/editors`,
+          `/api/w/${owner.sId}/skills/${skill.sId}/editors`,
           {
             method: "PATCH",
             headers: {
@@ -114,12 +110,12 @@ export async function submitSkillBuilderForm({
       }
     }
 
-    return new Ok(skillConfiguration);
+    return new Ok(skill);
   } catch (error) {
     const normalizedError = normalizeError(error);
     return new Err(
       new Error(
-        `Unexpected error ${skillConfigurationId ? "updating" : "creating"} skill: ${normalizedError.message}`
+        `Unexpected error ${skillId ? "updating" : "creating"} skill: ${normalizedError.message}`
       )
     );
   }

@@ -16,21 +16,17 @@ import type { SkillWithRelationsType } from "@app/types/assistant/skill_configur
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
   user: UserType;
-  skillConfiguration: SkillWithRelationsType;
+  skill: SkillWithRelationsType;
 };
 
-export function SkillEditorsTab({
-  owner,
-  user,
-  skillConfiguration,
-}: AgentEditorsTabProps) {
+export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   const updateEditors = useUpdateSkillEditors({
     owner,
-    skillConfigurationId: skillConfiguration.sId,
+    skillId: skill.sId,
   });
   const { editors, isEditorsLoading } = useSkillEditors({
     owner,
-    skillConfigurationId: skillConfiguration.sId,
+    skillId: skill.sId,
   });
 
   const isCurrentUserEditor =

@@ -124,7 +124,7 @@ export function FeedbackDistributionChart({
         <Tooltip
           content={FeedbackDistributionTooltip}
           cursor={false}
-          wrapperStyle={{ outline: "none" }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
             background: "transparent",
             border: "none",

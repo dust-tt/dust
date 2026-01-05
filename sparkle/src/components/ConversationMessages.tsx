@@ -1,27 +1,29 @@
-import { Avatar, CitationGrid, cn } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import React from "react";
+
+import { Avatar, CitationGrid } from "@sparkle/components";
+import { cn } from "@sparkle/lib/utils";
 
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
 
-const wrapperVariants = cva("flex flex-col @container @sm:flex-row", {
+const wrapperVariants = cva("s-flex s-flex-col s-@container @sm:s-flex-row", {
   variants: {
     messageType: {
-      agent: "pr-0",
-      me: "pl-9",
-      user: "pr-9",
+      agent: "s-pr-0",
+      me: "s-pl-9",
+      user: "s-pr-9",
     },
   },
   defaultVariants: {
     messageType: "agent",
   },
 });
-const messageVariants = cva("flex rounded-2xl max-w-full", {
+const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   variants: {
     type: {
-      user: "bg-muted-background dark:bg-muted-background-night px-3 py-3 gap-2 w-fit",
-      agent: "w-full gap-3 p-4 @sm:flex-row flex-col",
+      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-3 s-py-3 s-gap-2 s-w-fit",
+      agent: "s-w-full s-gap-3 s-p-4 @sm:s-flex-row s-flex-col",
     },
   },
   defaultVariants: {
@@ -29,14 +31,14 @@ const messageVariants = cva("flex rounded-2xl max-w-full", {
   },
 });
 
-interface NewConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ConversationMessageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   messageType: MessageType;
   type: ConversationMessageType;
 }
 
-export const NewConversationMessageContainer = React.forwardRef<
+export const ConversationMessageContainer = React.forwardRef<
   HTMLDivElement,
-  NewConversationMessageContainerProps
+  ConversationMessageContainerProps
 >(({ children, className, messageType, type, ...props }, ref) => {
   return (
     <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
@@ -46,6 +48,8 @@ export const NewConversationMessageContainer = React.forwardRef<
     </div>
   );
 });
+
+ConversationMessageContainer.displayName = "ConversationMessageContainer";
 
 interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -61,10 +65,10 @@ export const ConversationMessageContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("flex min-w-0 flex-col gap-1", className)}
+      className={cn("s-flex s-min-w-0 s-flex-col s-gap-1", className)}
       {...props}
     >
-      <div className="text-base text-foreground dark:text-foreground-night">
+      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
         {children}
       </div>
       {citations && citations.length > 0 && (
@@ -95,11 +99,11 @@ export const ConversationMessageAvatar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn("conversation:p-0 flex gap-2", className)}
+        className={cn("conversation:s-p-0 s-flex s-gap-2", className)}
         {...props}
       >
         <Avatar
-          className="@sm:hidden"
+          className="@sm:s-hidden"
           name={name}
           visual={avatarUrl}
           busy={isBusy}
@@ -108,7 +112,7 @@ export const ConversationMessageAvatar = React.forwardRef<
           size="xs"
         />
         <Avatar
-          className="hidden @sm:flex"
+          className="s-hidden @sm:s-flex"
           name={name}
           visual={avatarUrl}
           busy={isBusy}
@@ -151,21 +155,21 @@ export const ConversationMessageTitle = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "inline-flex flex-1 items-center justify-between gap-0.5",
+          "s-inline-flex s-flex-1 s-items-center s-justify-between s-gap-0.5",
           className
         )}
         {...props}
       >
-        <div className="inline-flex items-center gap-2 text-foreground dark:text-foreground-night">
-          <span className="heading-sm">{renderName(name)}</span>
-          <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
+        <div className="s-inline-flex s-items-center s-gap-2 s-text-foreground dark:s-text-foreground-night">
+          <span className="s-heading-sm">{renderName(name)}</span>
+          <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
             {timestamp}
           </span>
           {infoChip && (
-            <div className="inline-flex items-center">{infoChip}</div>
+            <div className="s-inline-flex s-items-center">{infoChip}</div>
           )}
         </div>
-        <div className="ml-1 inline-flex items-center">
+        <div className="s-ml-1 s-inline-flex s-items-center">
           {completionStatus ?? null}
         </div>
       </div>

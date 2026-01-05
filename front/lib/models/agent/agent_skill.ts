@@ -1,5 +1,5 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -47,7 +47,19 @@ AgentSkillModel.init(
   {
     modelName: "agent_skills",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "agentConfigurationId"] }],
+    indexes: [
+      { fields: ["workspaceId", "agentConfigurationId"] },
+      {
+        fields: ["workspaceId", "customSkillId"],
+        where: { customSkillId: { [Op.ne]: null } },
+        name: "idx_agent_skills_workspace_custom_skill",
+      },
+      {
+        fields: ["workspaceId", "globalSkillId"],
+        where: { globalSkillId: { [Op.ne]: null } },
+        name: "idx_agent_skills_workspace_global_skill",
+      },
+    ],
     validate: {
       eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
     },

@@ -236,7 +236,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       throw new Error("[Zendesk] Connector not found.");
     }
-    return stopZendeskWorkflows(connector);
+    return stopZendeskWorkflows(connector, {
+      stopReason: "Stopped via connector STOP command",
+    });
   }
 
   /**

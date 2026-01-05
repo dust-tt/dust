@@ -40,7 +40,7 @@ export function SkillDetailsButtonBar({
       <ArchiveSkillDialog
         owner={owner}
         isOpen={showArchiveDialog}
-        skillConfiguration={skill}
+        skill={skill}
         onClose={() => {
           setShowArchiveDialog(false);
           onClose();

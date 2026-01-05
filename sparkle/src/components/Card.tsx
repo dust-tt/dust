@@ -14,7 +14,7 @@ import { cn } from "@sparkle/lib/utils";
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
-export const CARD_SIZES = ["sm", "md", "lg"] as const;
+export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
@@ -56,6 +56,7 @@ const cardVariants = cva(
         ),
       },
       size: {
+        xs: "s-px-2 s-py-1.5 s-rounded-lg",
         sm: "s-p-3 s-rounded-xl",
         md: "s-p-4 s-rounded-2xl",
         lg: "s-p-5 s-rounded-3xl",
@@ -212,7 +213,7 @@ const CardActions = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-right-2 s-top-2 sm:s-opacity-0 s-transition-opacity",
+        "s-absolute s-right-2 s-top-2 s-transition-opacity sm:s-opacity-0",
         "group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
       )}
       {...props}

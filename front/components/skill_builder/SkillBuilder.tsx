@@ -22,11 +22,11 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
-import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import {
   getDefaultSkillFormData,
-  transformSkillConfigurationToFormData,
-} from "@app/components/skill_builder/transformSkillConfiguration";
+  transformSkillTypeToFormData,
+} from "@app/components/skill_builder/skillFormData";
+import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
@@ -35,12 +35,12 @@ import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
-  skillConfiguration?: SkillType;
+  skill?: SkillType;
   extendedSkill?: SkillType;
 }
 
 export default function SkillBuilder({
-  skillConfiguration,
+  skill,
   extendedSkill,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
@@ -50,19 +50,19 @@ export default function SkillBuilder({
 
   const { editors } = useSkillEditors({
     owner,
-    skillConfigurationId: skillConfiguration?.sId ?? null,
+    skillId: skill?.sId ?? null,
   });
 
   const defaultValues = useMemo(() => {
-    if (skillConfiguration) {
-      return transformSkillConfigurationToFormData(skillConfiguration);
+    if (skill) {
+      return transformSkillTypeToFormData(skill);
     }
 
     return getDefaultSkillFormData({
       user,
       extendedSkillId: extendedSkill?.sId ?? null,
     });
-  }, [skillConfiguration, user, extendedSkill]);
+  }, [skill, user, extendedSkill]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -79,11 +79,11 @@ export default function SkillBuilder({
 
     form.reset({
       ...currentValues,
-      editors: skillConfiguration || editors.length > 0 ? editors : [user],
+      editors: skill || editors.length > 0 ? editors : [user],
     });
-  }, [editors, form, user, skillConfiguration]);
+  }, [editors, form, user, skill]);
 
-  const isCreatingNew = !skillConfiguration;
+  const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
   useNavigationLock(isDirty && !isSaving);
@@ -94,9 +94,7 @@ export default function SkillBuilder({
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      skillConfigurationId: !isCreatingNew
-        ? skillConfiguration?.sId
-        : undefined,
+      skillId: !isCreatingNew ? skill?.sId : undefined,
       currentEditors: editors,
     });
 
@@ -151,9 +149,7 @@ export default function SkillBuilder({
               variant="default"
               className="mx-4"
               title={
-                (skillConfiguration
-                  ? `Edit skill ${skillConfiguration.name}`
-                  : "Create new skill") +
+                (skill ? `Edit skill ${skill.name}` : "Create new skill") +
                 (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
               }
               rightActions={
@@ -178,9 +174,7 @@ export default function SkillBuilder({
                 </div>
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
-                <SkillBuilderInstructionsSection
-                  skillConfiguration={skillConfiguration}
-                />
+                <SkillBuilderInstructionsSection skill={skill} />
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />
               </div>

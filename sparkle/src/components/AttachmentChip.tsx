@@ -1,54 +1,97 @@
-import { cva } from "class-variance-authority";
 import React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-import { Icon } from "./Icon";
-import { LinkWrapper, LinkWrapperProps } from "./LinkWrapper";
+import { Chip, CHIP_COLORS, CHIP_SIZES } from "./Chip";
+import { DoubleIcon, DoubleIconProps, Icon, IconProps } from "./Icon";
+import { LinkWrapperProps } from "./LinkWrapper";
 
-const attachmentChipVariants = cva(
-  cn(
-    "s-box-border s-inline-flex s-items-center s-gap-1.5 s-rounded-lg s-px-2 s-py-1 s-heading-sm",
-    "s-border-border s-bg-background",
-    "dark:s-border-border-night dark:s-bg-background-night",
-    "s-text-foreground dark:s-text-foreground-night",
-    "s-max-w-44"
-  )
+const attachmentChipOverrides = cn(
+  "s-rounded-lg s-px-2 s-py-1 s-heading-sm s-gap-1.5",
+  "s-bg-background s-text-foreground s-max-w-44",
+  "dark:s-bg-background-night dark:s-text-foreground-night"
 );
 
-interface AttachmentChipBaseProps {
-  label: string;
-  icon?: React.ComponentType;
-  className?: string;
-}
+export type AttachmentChipIconProps = IconProps;
+export type AttachmentChipDoubleIconProps = DoubleIconProps;
 
-type AttachmentChipButtonProps = AttachmentChipBaseProps & {
+type AttachmentChipIconOptions =
+  | { icon?: AttachmentChipIconProps; doubleIcon?: never }
+  | { icon?: never; doubleIcon?: AttachmentChipDoubleIconProps };
+
+export type AttachmentChipBaseProps = AttachmentChipIconOptions & {
+  label: string;
+  size?: (typeof CHIP_SIZES)[number];
+  color?: (typeof CHIP_COLORS)[number];
+  className?: string;
+  isBusy?: boolean;
+  onRemove?: () => void;
+  children?: never;
+};
+
+export type AttachmentChipButtonProps = AttachmentChipBaseProps & {
   href?: never;
+  onClick?: () => void;
 } & {
   [K in keyof Omit<LinkWrapperProps, "children">]?: never;
 };
 
-type AttachmentChipLinkProps = AttachmentChipBaseProps &
-  Omit<LinkWrapperProps, "children">;
+export type AttachmentChipLinkProps = AttachmentChipBaseProps &
+  Omit<LinkWrapperProps, "children" | "href"> & {
+    href: string;
+    onClick?: never;
+  };
 
-type AttachmentChipProps = AttachmentChipButtonProps | AttachmentChipLinkProps;
+export type AttachmentChipProps =
+  | AttachmentChipButtonProps
+  | AttachmentChipLinkProps;
 
 export function AttachmentChip({
-  label,
   icon,
+  doubleIcon,
   className,
-  ...props
+  label,
+  size,
+  color,
+  isBusy,
+  onRemove,
+  onClick,
+  ...linkProps
 }: AttachmentChipProps) {
-  const chipContent = (
-    <div className={cn(attachmentChipVariants({}), className)}>
-      <Icon visual={icon} size="xs" className="s-shrink-0" />
-      <span className="s-pointer s-grow s-truncate">{label}</span>
+  const chipClassName = cn(attachmentChipOverrides, className);
+  const iconElement = (icon || doubleIcon) && (
+    <div className="s-shrink-0">
+      {doubleIcon ? <DoubleIcon {...doubleIcon} /> : <Icon {...icon} />}
     </div>
   );
 
-  return "href" in props && props.href ? (
-    <LinkWrapper {...props}>{chipContent}</LinkWrapper>
-  ) : (
-    chipContent
+  if ("href" in linkProps && linkProps.href) {
+    return (
+      <Chip
+        className={chipClassName}
+        label={label}
+        size={size}
+        color={color}
+        isBusy={isBusy}
+        onRemove={onRemove}
+        {...linkProps}
+      >
+        {iconElement}
+      </Chip>
+    );
+  }
+
+  return (
+    <Chip
+      className={chipClassName}
+      label={label}
+      size={size}
+      color={color}
+      isBusy={isBusy}
+      onRemove={onRemove}
+      onClick={onClick}
+    >
+      {iconElement}
+    </Chip>
   );
 }

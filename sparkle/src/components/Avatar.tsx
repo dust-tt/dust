@@ -7,6 +7,7 @@ import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
 export const AVATAR_SIZES = [
+  "xxs",
   "xs",
   "sm",
   "md",
@@ -25,6 +26,7 @@ const avatarVariants = cva(
   {
     variants: {
       size: {
+        xxs: "s-h-5 s-w-5",
         xs: "s-h-6 s-w-6",
         sm: "s-h-8 s-w-8",
         md: "s-h-10 s-w-10",
@@ -45,6 +47,11 @@ const avatarVariants = cva(
       },
     },
     compoundVariants: [
+      {
+        rounded: false,
+        size: "xxs",
+        className: "s-rounded",
+      },
       {
         rounded: false,
         size: "xs",
@@ -92,6 +99,7 @@ const avatarVariants = cva(
 const textVariants = cva("s-select-none s-font-semibold", {
   variants: {
     size: {
+      xxs: "s-text-[10px]",
       xs: "s-text-xs",
       sm: "s-text-sm",
       md: "s-text-base",

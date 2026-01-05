@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { AttachmentChip } from "@sparkle/components";
-import { DocumentIcon, DocumentTextIcon } from "@sparkle/icons/app";
-import { NotionLogo } from "@sparkle/logo";
+import { DocumentIcon, DocumentTextIcon, FolderIcon } from "@sparkle/icons/app";
+import { DriveLogo, NotionLogo } from "@sparkle/logo";
 
 const meta = {
   title: "Components/AttachmentChip",
@@ -29,7 +29,7 @@ const ParagraphWrapper = ({ children }: { children: React.ReactNode }) => (
 export const Document: Story = {
   args: {
     label: "document.pdf",
-    icon: NotionLogo,
+    icon: { visual: NotionLogo },
   },
   decorators: [
     (Story) => (
@@ -43,7 +43,7 @@ export const Document: Story = {
 export const Image: Story = {
   args: {
     label: "image.jpg",
-    icon: NotionLogo,
+    icon: { visual: NotionLogo },
   },
   decorators: [
     (Story) => (
@@ -57,7 +57,7 @@ export const Image: Story = {
 export const Text: Story = {
   args: {
     label: "text.txt",
-    icon: DocumentTextIcon,
+    icon: { visual: DocumentTextIcon },
   },
   decorators: [
     (Story) => (
@@ -71,7 +71,56 @@ export const Text: Story = {
 export const LongLabel: Story = {
   args: {
     label: "very_long_document_name_that_will_be_truncated.pdf",
-    icon: DocumentIcon,
+    icon: { visual: DocumentIcon },
+  },
+  decorators: [
+    (Story) => (
+      <ParagraphWrapper>
+        <Story />
+      </ParagraphWrapper>
+    ),
+  ],
+};
+
+export const WithDoubleIcon: Story = {
+  args: {
+    label: "My Drive Folder",
+    doubleIcon: { mainIcon: FolderIcon, secondaryIcon: DriveLogo, size: "sm" },
+  },
+  decorators: [
+    (Story) => (
+      <ParagraphWrapper>
+        <Story />
+      </ParagraphWrapper>
+    ),
+  ],
+};
+
+export const WithDoubleIconAndLink: Story = {
+  args: {
+    label: "Notion Document",
+    doubleIcon: {
+      mainIcon: DocumentIcon,
+      secondaryIcon: NotionLogo,
+      size: "sm",
+    },
+    href: "https://notion.so",
+    target: "_blank",
+  },
+  decorators: [
+    (Story) => (
+      <ParagraphWrapper>
+        <Story />
+      </ParagraphWrapper>
+    ),
+  ],
+};
+
+export const WithChipColor: Story = {
+  args: {
+    label: "Success chip",
+    icon: { visual: DocumentIcon },
+    color: "success",
   },
   decorators: [
     (Story) => (

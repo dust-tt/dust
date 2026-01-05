@@ -105,7 +105,11 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       await SalesforceSyncedQueryResource.fetchByConnector(connector);
     await Promise.all(
       queries.map((query) =>
-        stopSalesforceSyncQueryWorkflow(connector.id, query.id)
+        stopSalesforceSyncQueryWorkflow({
+          connectorId: connector.id,
+          queryId: query.id,
+          stopReason: "Stopped to update connector configuration",
+        })
       )
     );
     await connector.update({ connectionId });
@@ -142,10 +146,17 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
 
     await Promise.all(
       queries.map((query) =>
-        stopSalesforceSyncQueryWorkflow(connector.id, query.id)
+        stopSalesforceSyncQueryWorkflow({
+          connectorId: connector.id,
+          queryId: query.id,
+          stopReason: "Stopped via connector STOP command",
+        })
       )
     );
-    const stopRes = await stopSalesforceSyncWorkflow(this.connectorId);
+    const stopRes = await stopSalesforceSyncWorkflow({
+      connectorId: this.connectorId,
+      stopReason: "Stopped via connector STOP command",
+    });
     if (stopRes.isErr()) {
       return stopRes;
     }

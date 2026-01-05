@@ -14,26 +14,30 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillType,
+  SkillWithVersionType,
+} from "@app/types/assistant/skill_configuration";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 
 interface SkillBuilderInstructionsSectionProps {
-  skillConfiguration?: SkillType;
+  skill?: SkillType;
 }
 
 export function SkillBuilderInstructionsSection({
-  skillConfiguration,
+  skill,
 }: SkillBuilderInstructionsSectionProps) {
   const { owner } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
-  const [compareVersion, setCompareVersion] = useState<SkillType | null>(null);
+  const [compareVersion, setCompareVersion] =
+    useState<SkillWithVersionType | null>(null);
   const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
 
   const { skillHistory } = useSkillHistory({
     owner,
-    skillConfiguration,
-    disabled: !skillConfiguration,
+    skill,
+    disabled: !skill,
     limit: 30,
   });
 
@@ -51,8 +55,9 @@ export function SkillBuilderInstructionsSection({
     setIsInstructionDiffMode(false);
   };
 
-  const headerActions = skillHistory && skillHistory.length > 1 && (
+  const headerActions = skill && skillHistory && skillHistory.length > 1 && (
     <SkillInstructionsHistory
+      currentSkill={skill}
       history={skillHistory}
       selectedConfig={compareVersion}
       onSelect={(config) => {

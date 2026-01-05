@@ -70,11 +70,7 @@ export function SkillInfoPage({
             </TabsContent>
             <TabsContent value="editors">
               {hasRelations(skill) && (
-                <SkillEditorsTab
-                  skillConfiguration={skill}
-                  owner={owner}
-                  user={user}
-                />
+                <SkillEditorsTab skill={skill} owner={owner} user={user} />
               )}
             </TabsContent>
           </div>

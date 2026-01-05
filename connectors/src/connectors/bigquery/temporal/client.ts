@@ -60,9 +60,13 @@ export async function launchBigQuerySyncWorkflow(
   return new Ok(workflowId);
 }
 
-export async function stopBigQuerySyncWorkflow(
-  connectorId: ModelId
-): Promise<Result<void, Error>> {
+export async function stopBigQuerySyncWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -77,7 +81,7 @@ export async function stopBigQuerySyncWorkflow(
     const handle: WorkflowHandle<typeof bigquerySyncWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await handle.terminate(stopReason);
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;
