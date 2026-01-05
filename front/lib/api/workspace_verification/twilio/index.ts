@@ -8,8 +8,6 @@ export {
 export {
   checkOtp,
   sendOtp,
-  SendOtpError,
-  type SendOtpErrorCode,
   type SendOtpResult,
   VerifyOtpError,
   type VerifyOtpErrorCode,
