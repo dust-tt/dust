@@ -1,13 +1,16 @@
 // Data-driven database initialization with binary caching
 
+import { join } from "node:path";
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getWorktreeDir } from "./paths";
+import { DUST_HIVE_HOME, getEnvFilePath, getWorktreeDir } from "./paths";
 import { buildShell } from "./shell";
 import { getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
+
+export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
 // Load environment variables from env.sh
 async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
@@ -417,4 +420,56 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   }
 
   logger.success("Temporal namespaces created");
+}
+
+export async function hasSeedConfig(): Promise<boolean> {
+  const file = Bun.file(SEED_USER_PATH);
+  return file.exists();
+}
+
+export async function runSeedScript(env: Environment): Promise<boolean> {
+  const configExists = await hasSeedConfig();
+  if (!configExists) {
+    return false;
+  }
+
+  logger.step("Seeding database with dev user...");
+
+  const envShPath = getEnvFilePath(env.name);
+  const worktreePath = getWorktreeDir(env.name);
+  const frontDir = `${worktreePath}/front`;
+
+  // Use tsx directly from node_modules to avoid npx overhead
+  const command = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: `./node_modules/.bin/tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
+  });
+
+  const proc = Bun.spawn(["bash", "-c", command], {
+    cwd: frontDir,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, NODE_ENV: "development" },
+  });
+
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    logger.warn("Seed script failed (non-fatal):");
+    if (stdout.trim()) console.log(stdout);
+    if (stderr.trim()) console.error(stderr);
+    return false;
+  }
+
+  if (stdout.trim()) {
+    for (const line of stdout.trim().split("\n")) {
+      console.log(`  ${line}`);
+    }
+  }
+
+  logger.success("Database seeded with dev user");
+  return true;
 }

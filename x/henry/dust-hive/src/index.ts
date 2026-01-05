@@ -11,6 +11,7 @@ import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
 import { reloadCommand } from "./commands/reload";
 import { restartCommand } from "./commands/restart";
+import { seedConfigCommand } from "./commands/seed-config";
 import { spawnCommand } from "./commands/spawn";
 import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
@@ -190,6 +191,15 @@ cli
   .command("sync [branch]", "Rebase on branch (default: main), rebuild binaries, refresh deps")
   .action(async (branch: string | undefined) => {
     await prepareAndRun(syncCommand(branch));
+  });
+
+cli
+  .command(
+    "seed-config <postgres-uri>",
+    "Extract user data from existing DB for seeding new environments"
+  )
+  .action(async (postgresUri: string) => {
+    await prepareAndRun(seedConfigCommand(postgresUri));
   });
 
 cli.help();
