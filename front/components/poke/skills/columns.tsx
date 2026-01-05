@@ -1,4 +1,4 @@
-import { IconButton } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -18,8 +18,8 @@ export function makeColumnsForSkills(): ColumnDef<SkillDisplayType>[] {
         return (
           <div className="flex space-x-2">
             <p>Id</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -35,8 +35,8 @@ export function makeColumnsForSkills(): ColumnDef<SkillDisplayType>[] {
         return (
           <div className="flex space-x-2">
             <p>Name</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
