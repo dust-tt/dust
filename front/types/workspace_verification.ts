@@ -38,7 +38,7 @@ export type VerificationErrorResponse = {
   error: {
     type: VerificationErrorType;
     message: string;
-    retryAfter?: number; // Unix timestamp (seconds).
+    retryAfterSeconds?: number; // Unix timestamp (seconds).
   };
 };
 
