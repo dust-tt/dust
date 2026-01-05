@@ -116,6 +116,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     code: FREE_TRIAL_PHONE_PLAN_CODE,
     name: "Free Trial",
     maxMessages: 100,
+    isDeepDiveAllowed: false,
     maxUsersInWorkspace: 5,
     maxVaultsInWorkspace: 5,
     maxImagesPerWeek: 10,

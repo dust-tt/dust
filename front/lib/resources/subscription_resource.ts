@@ -29,7 +29,7 @@ import {
   getStripeSubscription,
   upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
-import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial_limits";
+import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
