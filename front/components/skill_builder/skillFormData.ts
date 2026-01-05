@@ -4,7 +4,7 @@ import type { UserType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 /**
- * Transforms a skill configuration (server-side) into skill builder form data (client-side).
+ * Transforms a skill type (serialized server-side) into skill builder form data (client-side).
  * Editors are intentionally set to empty defaults as they will be populated reactively.
  */
 export function transformSkillTypeToFormData(

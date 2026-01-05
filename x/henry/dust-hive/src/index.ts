@@ -4,7 +4,7 @@ import { cac } from "cac";
 import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
-import { doctorCommand } from "./commands/doctor";
+import { doctorCommand, setupCommand } from "./commands/doctor";
 import { forwardCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
@@ -147,7 +147,14 @@ cli.command("url [name]", "Print front URL").action(async (name: string | undefi
   await prepareAndRun(urlCommand(name));
 });
 
-cli.command("doctor", "Check prerequisites").action(async () => {
+cli
+  .command("setup", "Interactive setup wizard for prerequisites")
+  .option("-y, --non-interactive", "Run in non-interactive mode (same as doctor)")
+  .action(async (options: { nonInteractive?: boolean }) => {
+    await prepareAndRun(setupCommand({ nonInteractive: Boolean(options.nonInteractive) }));
+  });
+
+cli.command("doctor", "Check prerequisites (alias for setup)").action(async () => {
   await prepareAndRun(doctorCommand());
 });
 

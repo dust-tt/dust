@@ -9,6 +9,7 @@ export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
 export const DUST_HIVE_HOME = join(homedir(), ".dust-hive");
 export const DUST_HIVE_ENVS = join(DUST_HIVE_HOME, "envs");
 export const DUST_HIVE_ZELLIJ = join(DUST_HIVE_HOME, "zellij");
+export const DUST_HIVE_SCRIPTS = join(DUST_HIVE_HOME, "scripts");
 export const DUST_HIVE_WORKTREES = join(homedir(), "dust-hive");
 
 // Global config
@@ -66,6 +67,11 @@ export function getLogPath(name: string, service: string): string {
 // Zellij
 export function getZellijLayoutPath(): string {
   return join(DUST_HIVE_ZELLIJ, "layout.kdl");
+}
+
+// Scripts
+export function getWatchScriptPath(): string {
+  return join(DUST_HIVE_SCRIPTS, "watch-logs.sh");
 }
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {

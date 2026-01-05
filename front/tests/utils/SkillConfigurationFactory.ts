@@ -15,6 +15,7 @@ export class SkillConfigurationFactory {
       userFacingDescription: string;
       instructions: string;
       status: SkillStatus;
+      version: number;
     }> = {}
   ): Promise<SkillResource> {
     const user = auth.user();

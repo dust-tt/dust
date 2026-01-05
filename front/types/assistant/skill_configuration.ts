@@ -33,3 +33,7 @@ export type SkillRelations = {
 export type SkillWithRelationsType = SkillType & {
   relations: SkillRelations;
 };
+
+export type SkillWithVersionType = SkillType & {
+  version: number;
+};

@@ -2,9 +2,10 @@ import { mkdir } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import {
+  DUST_HIVE_SCRIPTS,
   DUST_HIVE_ZELLIJ,
   getEnvFilePath,
-  getLogPath,
+  getWatchScriptPath,
   getWorktreeDir,
   getZellijLayoutPath,
 } from "../lib/paths";
@@ -45,26 +46,79 @@ function getUserShell(): string {
   return process.env["SHELL"] ?? "zsh";
 }
 
-function buildLogTailCommand(logPath: string): string {
-  const quotedPath = shellQuote(logPath);
-  return [
-    "while true; do",
-    `  if [ ! -e ${quotedPath} ]; then touch ${quotedPath}; fi;`,
-    `  tail -n 500 -F ${quotedPath};`,
-    "  sleep 1;",
-    "done",
-  ].join(" ");
+// Watch script content - written to ~/.dust-hive/scripts/watch-logs.sh
+const WATCH_SCRIPT_CONTENT = `#!/bin/bash
+# Log watcher with Ctrl+C menu for restart/clear/quit
+# Usage: watch-logs.sh <env-name> <service>
+
+ENV_NAME="\$1"
+SERVICE="\$2"
+
+if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
+  echo "Usage: watch-logs.sh <env-name> <service>"
+  exit 1
+fi
+
+LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
+
+mkdir -p "\$(dirname "\$LOG_FILE")"
+touch "\$LOG_FILE"
+
+# Trap SIGINT to prevent script from exiting on Ctrl+C
+trap '' SIGINT
+
+show_menu() {
+  echo ""
+  echo -e "\\033[100m [\$SERVICE] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
+  read -r -n 1 cmd
+  echo ""
+
+  case "\$cmd" in
+    r|R)
+      echo -e "\\033[33m[Restarting \$SERVICE...]\\033[0m"
+      dust-hive restart "\$ENV_NAME" "\$SERVICE"
+      echo -e "\\033[32m[\$SERVICE restarted]\\033[0m"
+      sleep 1
+      ;;
+    c|C)
+      clear
+      ;;
+    q|Q)
+      exit 0
+      ;;
+  esac
 }
 
-// Generate a single service tab
-function generateServiceTab(envName: string, service: ServiceName): string {
-  const logPath = getLogPath(envName, service);
+while true; do
+  echo -e "\\033[100m [\$SERVICE] Ctrl+C for menu \\033[0m"
+  echo ""
+  # Run tail in a subshell that doesn't ignore SIGINT
+  (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE") || true
+  show_menu
+done
+`;
+
+async function ensureWatchScript(): Promise<string> {
+  await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
+  const scriptPath = getWatchScriptPath();
+  await Bun.write(scriptPath, WATCH_SCRIPT_CONTENT);
+  // Make executable
+  const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
+  await proc.exited;
+  return scriptPath;
+}
+
+// Generate a single service tab with log watching and restart menu
+function generateServiceTab(
+  envName: string,
+  service: ServiceName,
+  watchScriptPath: string
+): string {
   const tabName = TAB_NAMES[service];
-  const tailCommand = buildLogTailCommand(logPath);
   return `    tab name="${tabName}" {
         pane {
-            command "sh"
-            args "-c" "${kdlEscape(tailCommand)}"
+            command "${kdlEscape(watchScriptPath)}"
+            args "${kdlEscape(envName)}" "${kdlEscape(service)}"
             start_suspended false
         }
     }`;
@@ -75,6 +129,7 @@ function generateLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
+  watchScriptPath: string,
   warmCommand?: string
 ): string {
   const shellPath = getUserShell();
@@ -89,9 +144,9 @@ function generateLayout(
         }
     }`
     : "";
-  const serviceTabs = ALL_SERVICES.map((service) => generateServiceTab(envName, service)).join(
-    "\n\n"
-  );
+  const serviceTabs = ALL_SERVICES.map((service) =>
+    generateServiceTab(envName, service, watchScriptPath)
+  ).join("\n\n");
 
   return `layout {
     default_tab_template {
@@ -120,12 +175,13 @@ async function writeLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
+  watchScriptPath: string,
   warmCommand?: string
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(envName, worktreePath, envShPath, warmCommand);
+  const content = generateLayout(envName, worktreePath, envShPath, watchScriptPath, warmCommand);
   await Bun.write(layoutPath, content);
 
   return layoutPath;
@@ -139,6 +195,9 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   const worktreePath = getWorktreeDir(env.name);
   const envShPath = getEnvFilePath(env.name);
   const sessionName = `dust-hive-${env.name}`;
+
+  // Ensure watch script exists
+  const watchScriptPath = await ensureWatchScript();
 
   // Check if session already exists
   const checkProc = Bun.spawn(["zellij", "list-sessions"], {
@@ -173,7 +232,13 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     // Create new session with layout
     logger.info(`Creating new zellij session '${sessionName}'...`);
 
-    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, options.warmCommand);
+    const layoutPath = await writeLayout(
+      env.name,
+      worktreePath,
+      envShPath,
+      watchScriptPath,
+      options.warmCommand
+    );
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],

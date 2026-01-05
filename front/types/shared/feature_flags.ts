@@ -235,6 +235,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
+  phone_trial_paywall: {
+    description: "Phone verification during trial sign-up",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

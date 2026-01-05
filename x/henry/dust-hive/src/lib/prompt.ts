@@ -1,4 +1,4 @@
-// Interactive prompts for environment selection
+// Interactive prompts for environment selection and confirmations
 // Uses simple line input (no raw mode) for compatibility with terminal multiplexers
 
 import { getLastActiveEnv } from "./activity";
@@ -16,6 +16,23 @@ async function readLine(prompt: string): Promise<string | null> {
     return line.trim();
   }
   return null;
+}
+
+// Prompt user for yes/no confirmation
+// Returns true for yes, false for no
+export async function confirm(message: string, defaultYes = true): Promise<boolean> {
+  const hint = defaultYes ? "[Y/n]" : "[y/N]";
+  const input = await readLine(`${message} ${hint} `);
+
+  if (input === null) {
+    return false;
+  }
+
+  const normalized = input.toLowerCase();
+  if (normalized === "") {
+    return defaultYes;
+  }
+  return normalized === "y" || normalized === "yes";
 }
 
 function sortEnvs(

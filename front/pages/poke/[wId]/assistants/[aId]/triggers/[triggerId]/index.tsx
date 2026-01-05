@@ -9,9 +9,11 @@ import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -20,6 +22,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
+  editorUser: UserType | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -48,11 +51,18 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
+  // Fetch editor user
+  const editorUsers = trigger.editor
+    ? await UserResource.fetchByModelIds([trigger.editor])
+    : [];
+  const editorUser = editorUsers.length > 0 ? editorUsers[0].toJSON() : null;
+
   return {
     props: {
       trigger: trigger.toJSON(),
       agent: agentConfiguration,
       owner,
+      editorUser,
     },
   };
 });
@@ -61,6 +71,7 @@ export default function TriggerPage({
   trigger,
   agent,
   owner,
+  editorUser,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <>
@@ -71,7 +82,12 @@ export default function TriggerPage({
         </a>
       </h3>
       <div className="flex flex-row gap-x-6">
-        <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
+        <ViewTriggerTable
+          trigger={trigger}
+          agent={agent}
+          owner={owner}
+          editorUser={editorUser}
+        />
         <div className="mt-4 flex grow flex-col">
           <PluginList
             pluginResourceTarget={{

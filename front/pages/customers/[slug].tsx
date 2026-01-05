@@ -1,4 +1,4 @@
-import { Button, Chip } from "@dust-tt/sparkle";
+import { Chip } from "@dust-tt/sparkle";
 import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -205,44 +205,22 @@ export default function CustomerStoryPage({
             )}
           </header>
 
-          {story.heroImage && (
-            <div className={classNames(WIDE_CLASSES, "mt-4")}>
-              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-                <Image
-                  src={story.heroImage.url}
-                  alt={story.heroImage.alt}
-                  width={story.heroImage.width}
-                  height={story.heroImage.height}
-                  loader={contentfulImageLoader}
-                  sizes="(min-width: 1536px) 1280px, (min-width: 1280px) 1067px, (min-width: 1024px) 853px, 100vw"
-                  className="h-full w-full object-cover"
-                  priority
-                />
-              </div>
-            </div>
-          )}
-
-          {!story.heroImage && story.companyLogo && (
-            <div className={classNames(WIDE_CLASSES, "mt-4")}>
-              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-12">
-                <div className="flex items-center justify-center">
-                  <Image
-                    src={story.companyLogo.url}
-                    alt={story.companyLogo.alt}
-                    width={320}
-                    height={160}
-                    loader={contentfulImageLoader}
-                    sizes="320px"
-                    className="max-h-32 w-auto object-contain"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className={classNames(WIDE_CLASSES, "mt-4")}>
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-8">
               <dl className="flex flex-wrap items-center justify-between gap-8">
+                {story.companyLogo && (
+                  <div>
+                    <Image
+                      src={story.companyLogo.url}
+                      alt={story.companyLogo.alt}
+                      width={120}
+                      height={60}
+                      loader={contentfulImageLoader}
+                      sizes="120px"
+                      className="max-h-12 w-auto object-contain"
+                    />
+                  </div>
+                )}
                 {story.industries.length > 0 && (
                   <div>
                     <dt className="text-sm font-medium text-muted-foreground">
@@ -287,24 +265,6 @@ export default function CustomerStoryPage({
                         </Link>
                       ))}
                     </dd>
-                  </div>
-                )}
-                {story.companyWebsite && (
-                  <div className="ml-auto">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      label="Visit website"
-                      onClick={() => {
-                        if (story.companyWebsite) {
-                          window.open(
-                            story.companyWebsite,
-                            "_blank",
-                            "noopener,noreferrer"
-                          );
-                        }
-                      }}
-                    />
                   </div>
                 )}
               </dl>

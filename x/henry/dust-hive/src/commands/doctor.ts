@@ -1,6 +1,8 @@
 import { configEnvExists } from "../lib/config";
+import { createConfigEnvTemplate, hasHomebrew, hasInstaller, tryInstall } from "../lib/installer";
 import { logger } from "../lib/logger";
 import { CONFIG_ENV_PATH, findRepoRoot } from "../lib/paths";
+import { confirm } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 
 interface CheckResult {
@@ -9,6 +11,11 @@ interface CheckResult {
   message: string;
   fix?: string;
   optional?: boolean; // If true, failing this check doesn't fail the overall doctor
+  installable?: boolean; // If true, we can offer to install this
+}
+
+export interface SetupOptions {
+  nonInteractive?: boolean;
 }
 
 async function checkCommand(command: string, args: string[] = []): Promise<boolean> {
@@ -41,6 +48,17 @@ async function getCommandVersion(command: string): Promise<string | null> {
   }
 }
 
+async function checkHomebrew(): Promise<CheckResult> {
+  const exists = await hasHomebrew();
+  return {
+    name: "Homebrew",
+    ok: exists,
+    message: exists ? "Available" : "Not found",
+    fix: "Install Homebrew: https://brew.sh",
+    installable: true,
+  };
+}
+
 async function checkBun(): Promise<CheckResult> {
   const version = await getCommandVersion("bun");
   return {
@@ -48,6 +66,7 @@ async function checkBun(): Promise<CheckResult> {
     ok: version !== null,
     message: version ?? "Not found",
     fix: "Install Bun: curl -fsSL https://bun.sh/install | bash",
+    installable: true,
   };
 }
 
@@ -58,6 +77,7 @@ async function checkZellij(): Promise<CheckResult> {
     ok: version !== null,
     message: version ?? "Not found",
     fix: "Install Zellij: brew install zellij",
+    installable: true,
   };
 }
 
@@ -70,6 +90,7 @@ async function checkDocker(): Promise<CheckResult> {
     ok: version !== null && running,
     message,
     fix: version ? "Start Docker Desktop" : "Install Docker Desktop",
+    installable: false,
   };
 }
 
@@ -80,6 +101,7 @@ async function checkDockerCompose(): Promise<CheckResult> {
     ok: available,
     message: available ? "Available" : "Not available",
     fix: "Docker Compose should be included with Docker Desktop",
+    installable: false,
   };
 }
 
@@ -93,12 +115,14 @@ async function checkTemporal(): Promise<{ cli: CheckResult; server: CheckResult 
       ok: version !== null,
       message: version ?? "Not found",
       fix: "Install Temporal: brew install temporal",
+      installable: true,
     },
     server: {
       name: "Temporal Server",
       ok: running,
       message: running ? "Running" : "Not running",
       fix: "Start Temporal: temporal server start-dev",
+      installable: false,
     },
   };
 }
@@ -110,6 +134,7 @@ async function checkNvm(): Promise<CheckResult> {
     ok: exists,
     message: exists ? "Available" : "Not found",
     fix: "Install nvm: https://github.com/nvm-sh/nvm",
+    installable: true,
   };
 }
 
@@ -120,6 +145,7 @@ async function checkCargo(): Promise<CheckResult> {
     ok: version !== null,
     message: version ?? "Not found",
     fix: "Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
+    installable: true,
   };
 }
 
@@ -132,6 +158,7 @@ async function checkSccache(): Promise<CheckResult> {
       optional: true,
       message: "Not found (recommended for faster rebuilds)",
       fix: "Install sccache: brew install sccache",
+      installable: true,
     };
   }
 
@@ -149,6 +176,7 @@ async function checkSccache(): Promise<CheckResult> {
       optional: true,
       message: `${version} (not configured)`,
       fix: configFix,
+      installable: true,
     };
   }
 
@@ -169,6 +197,7 @@ async function checkSccache(): Promise<CheckResult> {
     optional: true,
     message: `${version} (not configured)`,
     fix: configFix,
+    installable: true,
   };
 }
 
@@ -179,6 +208,7 @@ async function checkRepo(): Promise<CheckResult> {
     ok: root !== null,
     message: root ?? "Not found",
     fix: "Run dust-hive from within the Dust repository",
+    installable: false,
   };
 }
 
@@ -189,6 +219,7 @@ async function checkConfig(): Promise<CheckResult> {
     ok: exists,
     message: exists ? CONFIG_ENV_PATH : "Not found",
     fix: `Create ${CONFIG_ENV_PATH} with required environment variables`,
+    installable: true,
   };
 }
 
@@ -217,12 +248,11 @@ function printResults(results: CheckResult[]): boolean {
   return allOk;
 }
 
-export async function doctorCommand(): Promise<Result<void>> {
-  logger.info("Checking prerequisites...\n");
-
+async function runAllChecks(): Promise<CheckResult[]> {
   const temporal = await checkTemporal();
 
-  const results: CheckResult[] = [
+  return [
+    await checkHomebrew(),
     await checkBun(),
     await checkZellij(),
     await checkDocker(),
@@ -235,9 +265,73 @@ export async function doctorCommand(): Promise<Result<void>> {
     await checkRepo(),
     await checkConfig(),
   ];
+}
+
+function getInstallableFailures(results: CheckResult[]): CheckResult[] {
+  return results.filter((r) => !r.ok && r.installable);
+}
+
+function getManualFailures(results: CheckResult[]): CheckResult[] {
+  return results.filter((r) => !(r.ok || r.installable || r.optional));
+}
+
+async function installConfigEnv(): Promise<boolean> {
+  const shouldCreate = await confirm("Create config.env template?", true);
+  if (!shouldCreate) {
+    logger.info("→ Skipped");
+    return false;
+  }
+  await createConfigEnvTemplate(CONFIG_ENV_PATH);
+  return true;
+}
+
+async function installPrerequisite(
+  check: CheckResult,
+  hasBrew: boolean
+): Promise<{ installed: boolean; brewInstalled: boolean }> {
+  if (!hasInstaller(check.name)) {
+    return { installed: false, brewInstalled: false };
+  }
+
+  const installed = await tryInstall(check.name, check.optional ?? false, hasBrew);
+  const brewInstalled = installed && check.name === "Homebrew";
+  return { installed, brewInstalled };
+}
+
+async function interactiveInstall(results: CheckResult[]): Promise<boolean> {
+  const installable = getInstallableFailures(results);
+  if (installable.length === 0) {
+    return false;
+  }
 
   console.log();
-  const allOk = printResults(results);
+  logger.info("Some prerequisites can be installed automatically.\n");
+
+  const brewCheck = results.find((r) => r.name === "Homebrew");
+  let hasBrew = brewCheck?.ok ?? false;
+  let anyInstalled = false;
+
+  for (const check of installable) {
+    if (check.name === "config.env") {
+      anyInstalled = (await installConfigEnv()) || anyInstalled;
+      continue;
+    }
+
+    const result = await installPrerequisite(check, hasBrew);
+    anyInstalled = result.installed || anyInstalled;
+    hasBrew = result.brewInstalled || hasBrew;
+  }
+
+  return anyInstalled;
+}
+
+export async function setupCommand(options: SetupOptions = {}): Promise<Result<void>> {
+  logger.info("Checking prerequisites...\n");
+
+  let results = await runAllChecks();
+
+  console.log();
+  let allOk = printResults(results);
   console.log();
 
   if (allOk) {
@@ -245,6 +339,47 @@ export async function doctorCommand(): Promise<Result<void>> {
     return Ok(undefined);
   }
 
-  logger.warn("Some prerequisites are missing. Please install them to use dust-hive.");
+  // In non-interactive mode, just report and exit
+  if (options.nonInteractive) {
+    logger.warn("Some prerequisites are missing. Please install them to use dust-hive.");
+    return Err(new CommandError("Prerequisites check failed"));
+  }
+
+  // Interactive mode: offer to install what we can
+  const anyInstalled = await interactiveInstall(results);
+
+  if (anyInstalled) {
+    // Re-run checks after installations
+    console.log();
+    logger.info("Re-checking prerequisites...\n");
+    results = await runAllChecks();
+    console.log();
+    allOk = printResults(results);
+    console.log();
+  }
+
+  if (allOk) {
+    logger.success("All prerequisites met!");
+    return Ok(undefined);
+  }
+
+  // Report remaining manual fixes needed
+  const manualFixes = getManualFailures(results);
+  if (manualFixes.length > 0) {
+    logger.warn("Some prerequisites require manual action:");
+    for (const fix of manualFixes) {
+      if (fix.fix) {
+        console.log(`  • ${fix.name}: ${fix.fix}`);
+      }
+    }
+    console.log();
+  }
+
+  logger.info("Ready to create environments once all prerequisites are met!");
   return Err(new CommandError("Prerequisites check failed"));
+}
+
+// Alias for backwards compatibility
+export async function doctorCommand(): Promise<Result<void>> {
+  return setupCommand({ nonInteractive: false });
 }
