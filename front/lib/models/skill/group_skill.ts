@@ -47,10 +47,12 @@ GroupSkillModel.init(
     indexes: [
       {
         fields: ["workspaceId"],
+        concurrently: true,
       },
       {
         unique: true,
         fields: ["groupId", "skillConfigurationId"],
+        concurrently: true,
       },
       {
         fields: ["workspaceId", "skillConfigurationId"],
