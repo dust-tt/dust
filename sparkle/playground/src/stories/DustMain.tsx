@@ -16,6 +16,7 @@ import {
   MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
+  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   PencilSquareIcon,
@@ -40,13 +41,16 @@ import {
   ScrollBar,
 } from "@dust-tt/sparkle";
 import {
+  getAgentById,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
+  getUserById,
   mockAgents,
   mockConversations,
   mockUsers,
   type Agent,
+  type Conversation,
   type Space,
   type User,
 } from "../data";
@@ -56,12 +60,45 @@ type Collaborator =
   | { type: "agent"; data: Agent }
   | { type: "person"; data: User };
 
+type Participant =
+  | { type: "user"; data: User }
+  | { type: "agent"; data: Agent };
+
+function getRandomParticipants(conversation: Conversation): Participant[] {
+  const allParticipants: Participant[] = [];
+
+  // Add user participants
+  conversation.userParticipants.forEach((userId) => {
+    const user = getUserById(userId);
+    if (user) {
+      allParticipants.push({ type: "user", data: user });
+    }
+  });
+
+  // Add agent participants
+  conversation.agentParticipants.forEach((agentId) => {
+    const agent = getAgentById(agentId);
+    if (agent) {
+      allParticipants.push({ type: "agent", data: agent });
+    }
+  });
+
+  // Shuffle and select 1-6 participants
+  const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
+  const count = Math.min(
+    Math.max(1, Math.floor(Math.random() * 6) + 1),
+    shuffled.length
+  );
+  return shuffled.slice(0, count);
+}
+
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
   const [agentSearchText, setAgentSearchText] = useState("");
+  const [peopleSearchText, setPeopleSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -107,6 +144,42 @@ function DustMain() {
     );
   }, [searchText]);
 
+  const groupedConversations = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    const lastMonth = new Date(today);
+    lastMonth.setDate(lastMonth.getDate() - 30);
+
+    const groups = {
+      today: [] as typeof filteredConversations,
+      yesterday: [] as typeof filteredConversations,
+      lastWeek: [] as typeof filteredConversations,
+      lastMonth: [] as typeof filteredConversations,
+    };
+
+    filteredConversations.forEach((conv) => {
+      const updatedAt = conv.updatedAt;
+      if (updatedAt >= today) {
+        groups.today.push(conv);
+      } else if (updatedAt >= yesterday) {
+        groups.yesterday.push(conv);
+      } else if (updatedAt >= lastWeek) {
+        groups.lastWeek.push(conv);
+      } else if (updatedAt >= lastMonth) {
+        groups.lastMonth.push(conv);
+      }
+    });
+
+    return groups;
+  }, [filteredConversations]);
+
   const filteredAgents = useMemo(() => {
     if (!agentSearchText.trim()) {
       return mockAgents;
@@ -116,6 +189,18 @@ function DustMain() {
       agent.name.toLowerCase().includes(lowerSearch)
     );
   }, [agentSearchText]);
+
+  const filteredPeople = useMemo(() => {
+    if (!peopleSearchText.trim()) {
+      return mockUsers;
+    }
+    const lowerSearch = peopleSearchText.toLowerCase();
+    return mockUsers.filter(
+      (person) =>
+        person.fullName.toLowerCase().includes(lowerSearch) ||
+        person.email.toLowerCase().includes(lowerSearch)
+    );
+  }, [peopleSearchText]);
 
   const sortedCollaborators = useMemo(() => {
     return [...collaborators].sort((a, b) => {
@@ -175,6 +260,95 @@ function DustMain() {
     );
   }, [searchText, sortedSpaces]);
 
+  const getConversationMoreMenu = (conversation: Conversation) => {
+    const participants = getRandomParticipants(conversation);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <NavigationListItemAction />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            label="Rename"
+            icon={PencilSquareIcon}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("Rename conversation:", conversation.id);
+            }}
+          />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={ContactsUserIcon}
+              label="Participant list"
+            />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                {participants.length > 0 ? (
+                  participants.map((participant) => (
+                    <DropdownMenuItem
+                      key={
+                        participant.type === "user"
+                          ? `user-${participant.data.id}`
+                          : `agent-${participant.data.id}`
+                      }
+                      label={
+                        participant.type === "user"
+                          ? participant.data.fullName
+                          : participant.data.name
+                      }
+                      icon={
+                        participant.type === "user" ? (
+                          <Avatar
+                            size="xxs"
+                            name={participant.data.fullName}
+                            visual={participant.data.portrait}
+                            isRounded={true}
+                          />
+                        ) : (
+                          <Avatar
+                            size="xxs"
+                            name={participant.data.name}
+                            emoji={participant.data.emoji}
+                            backgroundColor={participant.data.backgroundColor}
+                            isRounded={false}
+                          />
+                        )
+                      }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log(
+                          "View participant:",
+                          participant.type,
+                          participant.data.id
+                        );
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                    No participants
+                  </div>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+          <DropdownMenuItem
+            label="Delete"
+            icon={TrashIcon}
+            variant="warning"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("Delete conversation:", conversation.id);
+            }}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   if (!user) {
     return (
       <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
@@ -207,7 +381,7 @@ function DustMain() {
                     isRounded={true}
                   />
                   <div className="s-flex s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                    {user.fullName}
+                    <span className="s-heading-sm">{user.fullName}</span>
                     <span className="-s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
                       ACME
                     </span>
@@ -409,6 +583,7 @@ function DustMain() {
                       size="xmini"
                       icon={PlusIcon}
                       variant="ghost"
+                      tooltip="Create an Agent"
                       aria-label="Agents options"
                       onClick={(e) => {
                         e.preventDefault();
@@ -461,25 +636,29 @@ function DustMain() {
                                 name="agent-search"
                               />
                               {filteredAgents.length > 0 ? (
-                                filteredAgents.map((agent) => (
-                                  <DropdownMenuItem
-                                    key={agent.id}
-                                    label={agent.name}
-                                    icon={
-                                      <Avatar
-                                        size="xxs"
-                                        name={agent.name}
-                                        emoji={agent.emoji}
-                                        backgroundColor={agent.backgroundColor}
-                                      />
-                                    }
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      console.log("Edit agent:", agent.id);
-                                    }}
-                                  />
-                                ))
+                                [...filteredAgents]
+                                  .sort((a, b) => a.name.localeCompare(b.name))
+                                  .map((agent) => (
+                                    <DropdownMenuItem
+                                      key={agent.id}
+                                      label={agent.name}
+                                      icon={
+                                        <Avatar
+                                          size="xxs"
+                                          name={agent.name}
+                                          emoji={agent.emoji}
+                                          backgroundColor={
+                                            agent.backgroundColor
+                                          }
+                                        />
+                                      }
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log("Edit agent:", agent.id);
+                                      }}
+                                    />
+                                  ))
                               ) : (
                                 <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
                                   No agents found
@@ -489,15 +668,50 @@ function DustMain() {
                           </DropdownMenuPortal>
                         </DropdownMenuSub>
                         <DropdownMenuLabel>People</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          icon={ContactsUserIcon}
-                          label="Browse"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Invite Collaborators");
-                          }}
-                        />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger
+                            icon={ContactsUserIcon}
+                            label="Browse"
+                          />
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              <DropdownMenuSearchbar
+                                value={peopleSearchText}
+                                onChange={setPeopleSearchText}
+                                name="people-search"
+                              />
+                              {filteredPeople.length > 0 ? (
+                                [...filteredPeople]
+                                  .sort((a, b) =>
+                                    a.fullName.localeCompare(b.fullName)
+                                  )
+                                  .map((person) => (
+                                    <DropdownMenuItem
+                                      key={person.id}
+                                      label={person.fullName}
+                                      icon={
+                                        <Avatar
+                                          size="xxs"
+                                          name={person.fullName}
+                                          visual={person.portrait}
+                                          isRounded={true}
+                                        />
+                                      }
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log("Edit person:", person.id);
+                                      }}
+                                    />
+                                  ))
+                              ) : (
+                                <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                                  No people found
+                                </div>
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </>
@@ -624,50 +838,128 @@ function DustMain() {
                 label="Conversations"
                 defaultOpen={true}
                 action={
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="xmini"
-                        icon={MoreIcon}
-                        variant="ghost"
-                        aria-label="Conversations options"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        label="Edit"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log("Edit Conversations");
-                        }}
-                      />
-                      <DropdownMenuItem
-                        label="Clear history"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log("Clear history");
-                        }}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <>
+                    <Button
+                      size="xmini"
+                      icon={ChatBubbleLeftRightIcon}
+                      variant="ghost"
+                      aria-label="New Conversation"
+                      tooltip="New Conversation"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xmini"
+                          icon={MoreIcon}
+                          variant="ghost"
+                          aria-label="Conversations options"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          label="Edit"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log("Edit Conversations");
+                          }}
+                        />
+                        <DropdownMenuItem
+                          label="Clear history"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log("Clear history");
+                          }}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
                 }
               >
-                {filteredConversations.map((conversation) => (
-                  <NavigationListItem
-                    key={conversation.id}
-                    label={conversation.title}
-                    onClick={() => {
-                      // Handle conversation click
-                      console.log("Selected conversation:", conversation.id);
-                    }}
-                  />
-                ))}
+                {groupedConversations.today.length > 0 && (
+                  <>
+                    {groupedConversations.today.map((conversation) => (
+                      <NavigationListItem
+                        key={conversation.id}
+                        label={conversation.title}
+                        moreMenu={getConversationMoreMenu(conversation)}
+                        onClick={() => {
+                          // Handle conversation click
+                          console.log(
+                            "Selected conversation:",
+                            conversation.id
+                          );
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                {groupedConversations.yesterday.length > 0 && (
+                  <>
+                    <NavigationListCompactLabel label="Yesterday" />
+                    {groupedConversations.yesterday.map((conversation) => (
+                      <NavigationListItem
+                        key={conversation.id}
+                        label={conversation.title}
+                        moreMenu={getConversationMoreMenu(conversation)}
+                        onClick={() => {
+                          // Handle conversation click
+                          console.log(
+                            "Selected conversation:",
+                            conversation.id
+                          );
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                {groupedConversations.lastWeek.length > 0 && (
+                  <>
+                    <NavigationListCompactLabel label="Last week" />
+                    {groupedConversations.lastWeek.map((conversation) => (
+                      <NavigationListItem
+                        key={conversation.id}
+                        label={conversation.title}
+                        moreMenu={getConversationMoreMenu(conversation)}
+                        onClick={() => {
+                          // Handle conversation click
+                          console.log(
+                            "Selected conversation:",
+                            conversation.id
+                          );
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                {groupedConversations.lastMonth.length > 0 && (
+                  <>
+                    <NavigationListCompactLabel label="Last month" />
+                    {groupedConversations.lastMonth.map((conversation) => (
+                      <NavigationListItem
+                        key={conversation.id}
+                        label={conversation.title}
+                        moreMenu={getConversationMoreMenu(conversation)}
+                        onClick={() => {
+                          // Handle conversation click
+                          console.log(
+                            "Selected conversation:",
+                            conversation.id
+                          );
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
               </NavigationListCollapsibleSection>
             )}
           </NavigationList>
