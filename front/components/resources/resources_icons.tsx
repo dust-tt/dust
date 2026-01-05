@@ -59,6 +59,13 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
 
+// Re-export from the shared module (backend-safe, no Sparkle imports)
+export {
+  INTERNAL_ALLOWED_ICONS,
+  isInternalAllowedIcon,
+} from "@app/lib/actions/internal_allowed_icons";
+export type { InternalAllowedIconType } from "@app/lib/actions/internal_allowed_icons";
+
 interface ResourceAvatarProps extends ComponentProps<typeof Avatar> {}
 
 /**
@@ -141,21 +148,12 @@ export const InternalActionIcons = {
   ZendeskLogo,
 };
 
-export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
-
 export type CustomResourceIconType = keyof typeof ActionIcons;
 
 export const isCustomResourceIconType = (
   icon: string
 ): icon is CustomResourceIconType =>
   CUSTOM_RESOURCE_ALLOWED.includes(icon as CustomResourceIconType);
-
-export type InternalAllowedIconType = keyof typeof InternalActionIcons;
-
-export const isInternalAllowedIcon = (
-  icon: string
-): icon is InternalAllowedIconType =>
-  INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
 
 export const getAvatarFromIcon = (
   icon: InternalAllowedIconType | CustomResourceIconType,

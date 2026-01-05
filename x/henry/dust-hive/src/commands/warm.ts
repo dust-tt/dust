@@ -121,8 +121,9 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
     await Promise.all(initTasks);
 
-    // Run seed script if config exists (creates dev user, workspace, subscription)
-    await runSeedScript(env);
+    // Start seeding in background while we continue with service startup
+    // This allows seeding to run in parallel with starting remaining services
+    const seedPromise = runSeedScript(env);
 
     if (!temporalRunning) {
       logger.warn(
@@ -134,9 +135,10 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     }
     console.log();
 
-    // Start remaining services
+    // Start remaining services in parallel with seeding
     logger.info("Starting remaining services...");
     await Promise.all([
+      seedPromise, // Wait for seeding to complete alongside service startup
       startService(env, "front"),
       startService(env, "connectors"),
       startService(env, "front-workers"),

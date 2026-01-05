@@ -1,12 +1,12 @@
 import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
 
-import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
+import { isInternalAllowedIcon } from "@app/lib/actions/internal_allowed_icons";
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons_constants";
 import type {
   InternalMCPServerDefinitionType,
   MCPServerDefinitionType,
