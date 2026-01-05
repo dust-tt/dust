@@ -9,7 +9,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
  * - It has the "phone_trial_paywall" feature flag enabled.
  * - It has never had another subscription before.
  */
-export async function isWorkspaceElligibleForTrial(
+export async function isWorkspaceEligibleForTrial(
   auth: Authenticator
 ): Promise<boolean> {
   const owner = auth.getNonNullableWorkspace();

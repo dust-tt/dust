@@ -14,7 +14,7 @@ import React, { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { isWorkspaceElligibleForTrial } from "@app/pages/api/auth/trial";
+import { isWorkspaceEligibleForTrial } from "@app/pages/api/auth/trial";
 import type { WorkspaceType } from "@app/types";
 
 // NOTE: This is a limited list of country codes for demonstration purposes.
@@ -42,7 +42,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
 
-  const isValidForTrial = await isWorkspaceElligibleForTrial(auth);
+  const isValidForTrial = await isWorkspaceEligibleForTrial(auth);
   if (!isValidForTrial) {
     return {
       notFound: true,

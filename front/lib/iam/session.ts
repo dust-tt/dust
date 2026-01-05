@@ -16,7 +16,7 @@ import {
 } from "@app/lib/iam/users";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import { isWorkspaceElligibleForTrial } from "@app/pages/api/auth/trial";
+import { isWorkspaceEligibleForTrial } from "@app/pages/api/auth/trial";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { isString } from "@app/types";
 
@@ -190,7 +190,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
           );
         }
 
-        const redirectTrialPage = await isWorkspaceElligibleForTrial(auth!);
+        const redirectTrialPage = await isWorkspaceEligibleForTrial(auth!);
         if (redirectTrialPage) {
           return {
             redirect: {
