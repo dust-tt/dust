@@ -9,7 +9,7 @@ import { isProcessRunning, killProcess } from "./process";
 // Port offsets from base (spec-defined).
 // Offsets chosen so base_port + offset resembles standard ports:
 // postgres: 432 -> 10432 (resembles 5432), redis: 379 -> 10379 (resembles 6379),
-// qdrant: 334 -> 10334 (resembles 6334), elasticsearch: 200 -> 10200 (resembles 9200)
+// qdrant: 333 -> 10333 (resembles 6333 HTTP), elasticsearch: 200 -> 10200 (resembles 9200)
 export const PORT_OFFSETS = {
   front: 0,
   core: 1,
@@ -17,8 +17,8 @@ export const PORT_OFFSETS = {
   oauth: 6,
   postgres: 432,
   redis: 379,
-  qdrantHttp: 334,
-  qdrantGrpc: 333,
+  qdrantHttp: 333,
+  qdrantGrpc: 334,
   elasticsearch: 200,
   apacheTika: 998,
 } as const;

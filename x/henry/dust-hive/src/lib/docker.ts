@@ -58,7 +58,7 @@ export function generateDockerComposeOverride(
         ports: [`${ports.redis}:6379`],
       },
       qdrant_primary: {
-        ports: [`${ports.qdrantHttp}:6334`, `${ports.qdrantGrpc}:6333`],
+        ports: [`${ports.qdrantHttp}:6333`, `${ports.qdrantGrpc}:6334`],
         volumes: [`${getVolumeName(name, "qdrant-primary")}:/qdrant/storage`],
       },
       qdrant_secondary: {
