@@ -170,27 +170,8 @@ makeScript(
       `Found ${agents.length} agent(s) to delete`
     );
 
-    let successCount = 0;
-    let errorCount = 0;
-
     for (const agent of agents) {
-      try {
-        const deleted = await deleteAgentAndRelatedResources(
-          auth,
-          agent,
-          logger,
-          execute
-        );
-        if (deleted) {
-          successCount++;
-        }
-      } catch (error) {
-        logger.error(
-          { agentSId: agent.sId, agentId: agent.id, error },
-          "Failed to delete agent"
-        );
-        errorCount++;
-      }
+      await deleteAgentAndRelatedResources(auth, agent, logger, execute);
     }
 
     logger.info(
@@ -198,13 +179,11 @@ makeScript(
         workspaceId,
         userId,
         totalAgents: agents.length,
-        successCount,
-        errorCount,
         dryRun: !execute,
       },
       execute
-        ? `Completed: deleted ${successCount}/${agents.length} agents`
-        : `Dry run: would delete ${successCount}/${agents.length} agents`
+        ? `Completed: deleted ${agents.length} agents`
+        : `Dry run: would delete ${agents.length} agents`
     );
   }
 );
