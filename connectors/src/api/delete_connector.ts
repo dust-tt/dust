@@ -29,7 +29,9 @@ const _deleteConnectorAPIHandler = async (
     connectorId: connector.id,
   });
 
-  const stopRes = await connectorManager.stop();
+  const stopRes = await connectorManager.stop({
+    reason: "Connector deleted via API",
+  });
 
   if (stopRes.isErr() && !force) {
     return apiError(req, res, {

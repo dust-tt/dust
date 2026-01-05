@@ -237,7 +237,9 @@ export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterc
           });
 
           if (connectorManager) {
-            await connectorManager.pauseAndStop();
+            await connectorManager.pauseAndStop({
+              reason: "Stopped due to workspace quota exceeded"
+            });
           } else {
             this.logger.error(
               {

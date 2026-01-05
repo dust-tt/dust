@@ -787,10 +787,14 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return launchGoogleGarbageCollector(this.connectorId);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     await terminateAllWorkflowsForConnectorId({
       connectorId: this.connectorId,
-      stopReason: "Stopped via connector STOP command",
+      stopReason: reason,
     });
     return new Ok(undefined);
   }

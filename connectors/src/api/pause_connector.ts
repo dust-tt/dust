@@ -32,7 +32,7 @@ const _pauseConnectorAPIHandler = async (
     const pauseRes = await getConnectorManager({
       connectorProvider: connector.type,
       connectorId: connector.id,
-    }).pauseAndStop();
+    }).pauseAndStop({ reason: "Paused via connector PAUSE API" });
 
     if (pauseRes.isErr()) {
       return apiError(req, res, {
