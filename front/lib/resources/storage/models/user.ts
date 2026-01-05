@@ -113,7 +113,7 @@ export class UserMetadataModel extends BaseModel<UserMetadataModel> {
   declare key: string;
   declare value: string;
   declare userId: ForeignKey<UserModel["id"]>;
-  declare workspaceId: ForeignKey<number> | null;
+  declare workspaceId: ForeignKey<WorkspaceModel["id"]> | null;
 }
 UserMetadataModel.init(
   {
@@ -134,15 +134,6 @@ UserMetadataModel.init(
     value: {
       type: DataTypes.TEXT,
       allowNull: false,
-    },
-    workspaceId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      references: {
-        model: WorkspaceModel.tableName,
-        key: "id",
-      },
-      onDelete: "CASCADE",
     },
   },
   {

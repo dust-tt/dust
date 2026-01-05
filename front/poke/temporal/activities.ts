@@ -53,6 +53,7 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -719,6 +720,36 @@ export async function deleteTagsActivity({
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+export async function deleteWorkspaceUserMetadataActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspace = await WorkspaceModel.findOne({
+    where: { sId: workspaceId },
+  });
+
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "Workspace not found, skipping user metadata deletion"
+    );
+    return;
+  }
+
+  // Delete all workspace-scoped user metadata
+  const deletedCount = await UserMetadataModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deletedCount },
+    "Deleted workspace-scoped user metadata"
+  );
 }
 
 export async function deleteWorkOSOrganization({
