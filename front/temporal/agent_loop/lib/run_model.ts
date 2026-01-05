@@ -47,7 +47,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, ModelId } from "@app/types";
+import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
@@ -55,9 +55,6 @@ const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
-//
-// TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
-// be refactored in a follow up PR.
 export async function runModelActivity(
   auth: Authenticator,
   {
@@ -585,25 +582,23 @@ export async function runModelActivity(
       );
     }
 
-    // TODO(DURABLE-AGENTS 2025-07-20): Avoid mutating agentMessage here
     const chainOfThought =
       (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
-    if (chainOfThought.length) {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      if (!agentMessage.chainOfThought) {
-        agentMessage.chainOfThought = "";
-      }
-      agentMessage.chainOfThought += chainOfThought;
-    }
-    agentMessage.content = (agentMessage.content ?? "") + processedContent;
-    agentMessage.status = "succeeded";
-    agentMessage.completedTs = Date.now();
-    agentMessage.completionDurationMs = getCompletionDuration(
-      agentMessage.created,
-      agentMessage.completedTs,
-      agentMessage.actions
-    );
+    const completedTs = Date.now();
+
+    const updatedAgentMessage = {
+      ...agentMessage,
+      chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
+      content: (agentMessage.content ?? "") + processedContent,
+      completedTs,
+      status: "succeeded",
+      completionDurationMs: getCompletionDuration(
+        agentMessage.created,
+        completedTs,
+        agentMessage.actions
+      ),
+    } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {
       event: {
@@ -611,7 +606,7 @@ export async function runModelActivity(
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        message: agentMessage,
+        message: updatedAgentMessage,
         // TODO(OBSERVABILITY 2025-11-04): Create a row in run with the associated usage.
         runIds: [...runIds, dustRunId],
       },
