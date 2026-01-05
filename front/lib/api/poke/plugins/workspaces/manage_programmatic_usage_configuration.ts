@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { Authenticator } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
@@ -17,12 +18,13 @@ import {
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-const MAX_FREE_CREDITS_DOLLARS = 1_000;
-const MAX_PAYG_CAP_DOLLARS = 10_000;
+export const MAX_FREE_CREDITS_DOLLARS = 1_000;
+export const MAX_PAYG_CAP_DOLLARS = 10_000;
 
-const ManageProgrammaticUsageConfigurationSchema = z
+export const ProgrammaticUsageConfigurationSchema = z
   .object({
     freeCreditsOverrideEnabled: z.boolean(),
     freeCreditsDollars: z
@@ -83,6 +85,28 @@ const ManageProgrammaticUsageConfigurationSchema = z
       path: ["paygCapDollars"],
     }
   );
+
+export async function upsertProgrammaticUsageConfiguration(
+  auth: Authenticator,
+  config: {
+    freeCreditMicroUsd: number | null;
+    defaultDiscountPercent: number;
+    paygCapMicroUsd: number | null;
+  }
+): Promise<Result<ProgrammaticUsageConfigurationResource, Error>> {
+  const existingConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  if (existingConfig) {
+    const updateResult = await existingConfig.updateConfiguration(auth, config);
+    if (updateResult.isErr()) {
+      return updateResult;
+    }
+    return new Ok(existingConfig);
+  }
+
+  return ProgrammaticUsageConfigurationResource.makeNew(auth, config);
+}
 
 export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   manifest: {
@@ -177,7 +201,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
   execute: async (auth, _, args) => {
     const parseResult =
-      ManageProgrammaticUsageConfigurationSchema.safeParse(args);
+      ProgrammaticUsageConfigurationSchema.safeParse(args);
 
     if (!parseResult.success) {
       return new Err(
