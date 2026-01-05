@@ -82,7 +82,7 @@ async function handler(
             type: error.type,
             message: error.message,
             ...(error.retryAfterSeconds !== undefined && {
-              retryAfter: error.retryAfterSeconds,
+              retryAfterSeconds: error.retryAfterSeconds,
             }),
           },
         });
