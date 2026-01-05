@@ -34,15 +34,3 @@ export function buildAgentAnalyticsBaseQuery({
     },
   };
 }
-
-export function buildFeedbackQuery({
-  dismissed,
-}: {
-  dismissed: boolean;
-}): estypes.QueryDslQueryContainer {
-  return {
-    bool: {
-      filter: [{ term: { "feedbacks.dismissed": dismissed } }],
-    },
-  };
-}
