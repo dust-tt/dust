@@ -2,6 +2,7 @@
 
 import { stat } from "node:fs/promises";
 import type { Environment } from "./environment";
+import { type RustServiceBinary, getRustBinaryPath, rustBinaryExists } from "./init";
 import { logger } from "./logger";
 import { getEnvFilePath, getLogPath, getWorktreeDir } from "./paths";
 import type { PortAllocation } from "./ports";
@@ -28,6 +29,8 @@ export interface ServiceConfig {
   readinessCheck?: ReadinessCheck;
   // Port key from PortAllocation (for display purposes)
   portKey?: keyof PortAllocation;
+  // Rust binary name (if this service can run a pre-compiled binary)
+  rustBinary?: RustServiceBinary;
 }
 
 // Service registry - defines how each service runs
@@ -63,6 +66,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
       url: (ports) => `http://localhost:${ports.core}/`,
     },
     portKey: "core",
+    rustBinary: "core-api",
   },
   oauth: {
     cwd: "core",
@@ -74,6 +78,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
       url: (ports) => `http://localhost:${ports.oauth}/`,
     },
     portKey: "oauth",
+    rustBinary: "oauth",
   },
   connectors: {
     cwd: "connectors",
@@ -106,22 +111,37 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter((service) => service !== "sdk");
 
 // Build the full shell command for a service
-// Note: For Rust services, cargo run is used with a symlinked target directory
-// This gives us incremental compilation - only changed code is recompiled
-function buildServiceCommand(env: Environment, service: ServiceName): string {
+// For Rust services with pre-compiled binaries, runs the binary directly
+// Otherwise falls back to cargo run for compilation
+async function buildServiceCommand(
+  env: Environment,
+  service: ServiceName,
+  usePrecompiledBinary = false
+): Promise<string> {
   const config = SERVICE_REGISTRY[service];
+  const worktreePath = getWorktreeDir(env.name);
+
+  // Check if we should use a pre-compiled binary
+  let command = config.buildCommand(env);
+  if (usePrecompiledBinary && config.rustBinary) {
+    const binaryExists = await rustBinaryExists(worktreePath, config.rustBinary);
+    if (binaryExists) {
+      const binaryPath = getRustBinaryPath(worktreePath, config.rustBinary);
+      command = binaryPath;
+    }
+  }
 
   if (config.needsEnvSh) {
     return buildShell({
       sourceEnv: getEnvFilePath(env.name),
       sourceNvm: config.needsNvm,
-      run: config.buildCommand(env),
+      run: command,
     });
   }
 
   return buildShell({
     sourceNvm: config.needsNvm,
-    run: config.buildCommand(env),
+    run: command,
   });
 }
 
@@ -133,7 +153,12 @@ function getServiceCwd(env: Environment, service: ServiceName): string {
 }
 
 // Start a single service (assumes dependencies are already running)
-export async function startService(env: Environment, service: ServiceName): Promise<void> {
+// If usePrecompiledBinary is true and the binary exists, runs it directly
+export async function startService(
+  env: Environment,
+  service: ServiceName,
+  usePrecompiledBinary = false
+): Promise<void> {
   if (await isServiceRunning(env.name, service)) {
     logger.info(`${service} already running`);
     return;
@@ -141,7 +166,7 @@ export async function startService(env: Environment, service: ServiceName): Prom
 
   logger.step(`Starting ${service}...`);
 
-  const command = buildServiceCommand(env, service);
+  const command = await buildServiceCommand(env, service, usePrecompiledBinary);
   const cwd = getServiceCwd(env, service);
 
   await spawnShellDaemon(env.name, service, command, { cwd });

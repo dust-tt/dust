@@ -12,6 +12,51 @@ export { getTemporalNamespaces } from "./temporal";
 
 export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
+// Rust service binaries that can be pre-compiled
+export const RUST_SERVICE_BINARIES = ["core-api", "oauth"] as const;
+export type RustServiceBinary = (typeof RUST_SERVICE_BINARIES)[number];
+
+// Get the path to a Rust binary in the worktree's target directory
+export function getRustBinaryPath(worktreePath: string, binary: RustServiceBinary): string {
+  return join(worktreePath, "core", "target", "debug", binary);
+}
+
+// Check if a Rust binary exists
+export async function rustBinaryExists(
+  worktreePath: string,
+  binary: RustServiceBinary
+): Promise<boolean> {
+  const path = getRustBinaryPath(worktreePath, binary);
+  const file = Bun.file(path);
+  return file.exists();
+}
+
+// Pre-compile Rust service binaries (runs in background, returns promise)
+// This allows compilation to happen in parallel with other init tasks
+export async function preCompileRustBinaries(env: Environment): Promise<void> {
+  const worktreePath = getWorktreeDir(env.name);
+  const envShPath = getEnvFilePath(env.name);
+  const coreDir = join(worktreePath, "core");
+
+  // Build both binaries in a single cargo invocation (more efficient)
+  const command = buildShell({
+    sourceEnv: envShPath,
+    run: "cargo build --bin core-api --bin oauth",
+  });
+
+  const proc = Bun.spawn(["bash", "-c", command], {
+    cwd: coreDir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  await proc.exited;
+  if (proc.exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text();
+    throw new Error(`Failed to pre-compile Rust binaries: ${stderr.trim()}`);
+  }
+}
+
 // Load environment variables from env.sh
 async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
   // Source the env.sh and export all vars
@@ -90,7 +135,7 @@ async function runBinary(
   return { success: proc.exitCode === 0, usedCache: false, stdout, stderr };
 }
 
-// Initialize PostgreSQL databases
+// Initialize PostgreSQL databases (parallel creation)
 async function initPostgres(envVars: Record<string, string>): Promise<void> {
   // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
   const host = envVars["POSTGRES_HOST"] ?? "localhost";
@@ -108,31 +153,34 @@ async function initPostgres(envVars: Record<string, string>): Promise<void> {
     "dust_oauth",
   ];
 
-  for (const db of databases) {
-    const existsProc = Bun.spawn(
-      ["psql", uri, "-tAc", `SELECT 1 FROM pg_database WHERE datname='${db}';`],
-      { stdout: "pipe", stderr: "pipe" }
-    );
-    const existsOut = await new Response(existsProc.stdout).text();
-    const existsErr = await new Response(existsProc.stderr).text();
-    await existsProc.exited;
-    if (existsProc.exitCode !== 0) {
-      throw new Error(`Failed to check database ${db}: ${existsErr.trim() || "unknown error"}`);
-    }
-    if (existsOut.trim() === "1") {
-      continue;
-    }
+  // Create all databases in parallel
+  await Promise.all(
+    databases.map(async (db) => {
+      const existsProc = Bun.spawn(
+        ["psql", uri, "-tAc", `SELECT 1 FROM pg_database WHERE datname='${db}';`],
+        { stdout: "pipe", stderr: "pipe" }
+      );
+      const existsOut = await new Response(existsProc.stdout).text();
+      const existsErr = await new Response(existsProc.stderr).text();
+      await existsProc.exited;
+      if (existsProc.exitCode !== 0) {
+        throw new Error(`Failed to check database ${db}: ${existsErr.trim() || "unknown error"}`);
+      }
+      if (existsOut.trim() === "1") {
+        return; // Already exists
+      }
 
-    const proc = Bun.spawn(["psql", uri, "-c", `CREATE DATABASE "${db}";`], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const stderr = await new Response(proc.stderr).text();
-    await proc.exited;
-    if (proc.exitCode !== 0) {
-      throw new Error(`Failed to create database ${db}: ${stderr.trim() || "unknown error"}`);
-    }
-  }
+      const proc = Bun.spawn(["psql", uri, "-c", `CREATE DATABASE "${db}";`], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const stderr = await new Response(proc.stderr).text();
+      await proc.exited;
+      if (proc.exitCode !== 0) {
+        throw new Error(`Failed to create database ${db}: ${stderr.trim() || "unknown error"}`);
+      }
+    })
+  );
 }
 
 // Initialize Qdrant collections
@@ -198,7 +246,7 @@ async function initElasticsearchRust(
   return { success: true, usedCache };
 }
 
-// Initialize Elasticsearch indices (TypeScript scripts)
+// Initialize Elasticsearch indices (TypeScript scripts) - parallel
 async function initElasticsearchTS(
   worktreePath: string,
   envVars: Record<string, string>
@@ -212,35 +260,39 @@ async function initElasticsearchTS(
   const envShPath = envVars["__ENV_SH_PATH__"] ?? "";
   const frontDir = `${worktreePath}/front`;
 
-  for (const { name, version } of indices) {
-    const command = buildShell({
-      sourceEnv: envShPath,
-      sourceNvm: true,
-      run: `npx tsx ./scripts/create_elasticsearch_index.ts --index-name ${name} --index-version ${version} --skip-confirmation`,
-    });
+  // Create all indices in parallel
+  const results = await Promise.all(
+    indices.map(async ({ name, version }) => {
+      const command = buildShell({
+        sourceEnv: envShPath,
+        sourceNvm: true,
+        run: `npx tsx ./scripts/create_elasticsearch_index.ts --index-name ${name} --index-version ${version} --skip-confirmation`,
+      });
 
-    const proc = Bun.spawn(["bash", "-c", command], {
-      cwd: frontDir,
-      env: { ...process.env, ...envVars },
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+      const proc = Bun.spawn(["bash", "-c", command], {
+        cwd: frontDir,
+        env: { ...process.env, ...envVars },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    await proc.exited;
+      const stdout = await new Response(proc.stdout).text();
+      const stderr = await new Response(proc.stderr).text();
+      await proc.exited;
 
-    // Treat "already exists" as success (idempotent)
-    const alreadyExists = stderr.includes("already exists") || stdout.includes("already exists");
+      const alreadyExists =
+        stdout.includes("already exists") || stderr.includes("already exists");
 
-    if (proc.exitCode !== 0 && !alreadyExists) {
-      console.log(stdout);
-      console.error(stderr);
-      return false;
-    }
-  }
+      if (proc.exitCode !== 0 && !alreadyExists) {
+        console.log(stdout);
+        console.error(stderr);
+        return false;
+      }
+      return true;
+    })
+  );
 
-  return true;
+  return results.every((r) => r);
 }
 
 // Wait for a Docker container to be healthy
@@ -573,11 +625,12 @@ export async function runSeedScript(env: Environment): Promise<boolean> {
   const worktreePath = getWorktreeDir(env.name);
   const frontDir = `${worktreePath}/front`;
 
-  // Use tsx directly from node_modules to avoid npx overhead
+  // Try Bun first (faster), fall back to tsx if it fails
+  // Bun can run TypeScript directly with minimal startup overhead
   const command = buildShell({
     sourceEnv: envShPath,
-    sourceNvm: true,
-    run: `./node_modules/.bin/tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
+    sourceNvm: false, // Bun doesn't need nvm
+    run: `bun run admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {

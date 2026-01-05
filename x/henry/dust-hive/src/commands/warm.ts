@@ -4,7 +4,12 @@ import { getDockerProjectName, startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
-import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
+import {
+  createTemporalNamespaces,
+  preCompileRustBinaries,
+  runAllDbInits,
+  runSeedScript,
+} from "../lib/init";
 import { logger } from "../lib/logger";
 import { cleanupServicePorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
@@ -100,37 +105,34 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   const needsInit = !(await isInitialized(env.name));
   const projectName = getDockerProjectName(env.name);
 
-  // Start Docker containers first
-  await timed("startDocker", () => startDocker(env));
-
   if (needsInit) {
+    // FIRST WARM: Start Docker + pre-compile Rust binaries in parallel
+    // This hides compilation time behind Docker startup and DB init
     logger.info("First warm - initializing (parallel)...");
     console.log();
 
-    // Start core + oauth early (they compile while DB init runs)
-    const coreStart = Date.now();
-    const oauthStart = Date.now();
-    const corePromise = startService(env, "core").then(() =>
-      logger.recordTiming("startService(core)", coreStart)
+    const dockerStart = Date.now();
+    const compileStart = Date.now();
+
+    // Start Docker and Rust compilation in parallel
+    const dockerPromise = startDocker(env).then(() =>
+      logger.recordTiming("startDocker", dockerStart)
     );
-    const oauthPromise = startService(env, "oauth").then(() =>
-      logger.recordTiming("startService(oauth)", oauthStart)
+    const compilePromise = preCompileRustBinaries(env).then(() =>
+      logger.recordTiming("preCompileRustBinaries", compileStart)
     );
 
-    // Run DB inits + check Temporal in parallel with core/oauth compilation
+    // Wait for Docker (needed for DB init)
+    await dockerPromise;
+
+    // Run DB inits + check Temporal in parallel with ongoing Rust compilation
     const dbInitStart = Date.now();
     const dbInitPromise = runAllDbInits(env, projectName).then(() => {
       logger.recordTiming("runAllDbInits", dbInitStart);
     });
 
     const temporalRunningPromise = isTemporalRunning();
-
-    // Wait for core/oauth to start (just process spawn, not compilation)
-    const [, , temporalRunning] = await Promise.all([
-      corePromise,
-      oauthPromise,
-      temporalRunningPromise,
-    ]);
+    const [temporalRunning] = await Promise.all([temporalRunningPromise]);
 
     // Report Temporal status
     if (!temporalRunning) {
@@ -148,7 +150,8 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
       );
     }
 
-    await Promise.all(initTasks);
+    // Wait for DB init and Rust compilation to complete
+    await Promise.all([...initTasks, compilePromise]);
 
     if (!temporalRunning) {
       logger.warn(
@@ -160,9 +163,11 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     }
     console.log();
 
-    // Start seeding + remaining services + core/oauth health checks ALL in parallel
-    // Health checks can start immediately - they poll until service is ready
-    logger.info("Starting remaining services...");
+    // Start ALL services using pre-compiled binaries (instant startup)
+    // Also start seeding and health checks in parallel
+    logger.info("Starting services (using pre-compiled binaries)...");
+    const coreStart = Date.now();
+    const oauthStart = Date.now();
     const seedStart = Date.now();
     const frontStart = Date.now();
     const connectorsStart = Date.now();
@@ -171,6 +176,14 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     const oauthHealthStart = Date.now();
 
     await Promise.all([
+      // Start Rust services with pre-compiled binaries (no cargo overhead)
+      startService(env, "core", true).then(() =>
+        logger.recordTiming("startService(core)", coreStart)
+      ),
+      startService(env, "oauth", true).then(() =>
+        logger.recordTiming("startService(oauth)", oauthStart)
+      ),
+      // Other services
       runSeedScript(env).then(() => logger.recordTiming("runSeedScript", seedStart)),
       startService(env, "front").then(() => logger.recordTiming("startService(front)", frontStart)),
       startService(env, "connectors").then(() =>
@@ -179,7 +192,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
       startService(env, "front-workers").then(() =>
         logger.recordTiming("startService(front-workers)", workersStart)
       ),
-      // Start health checks early - don't wait for seeding
+      // Health checks (services start instantly with pre-compiled binaries)
       waitForServiceReady(env, "core").then(() =>
         logger.recordTiming("waitForServiceReady(core)", coreHealthStart)
       ),
@@ -188,6 +201,8 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
       ),
     ]);
   } else {
+    // SUBSEQUENT WARM: Start Docker first
+    await timed("startDocker", () => startDocker(env));
     // Not first warm - start all services in parallel
     logger.info("Starting services (parallel)...");
     console.log();
