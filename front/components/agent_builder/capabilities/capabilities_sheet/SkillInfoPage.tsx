@@ -9,7 +9,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
@@ -90,8 +89,6 @@ function SkillInfoContent({
   skill: SkillWithRelationsType;
 }) {
   const { spaces } = useSpacesContext();
-  const { supportedDataSourceViews, isDataSourceViewsLoading } =
-    useDataSourceViewsContext();
 
   const editedAt = useMemo(() => {
     if (!skill.updatedAt) {
@@ -147,8 +144,6 @@ function SkillInfoContent({
         skill={skill}
         showDescription
         spaces={spaces}
-        dataSourceViews={supportedDataSourceViews}
-        isDataSourceViewsLoading={isDataSourceViewsLoading}
       />
     </div>
   );
