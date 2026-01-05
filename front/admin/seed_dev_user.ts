@@ -30,6 +30,7 @@ type ElementStub = {
   style: Record<string, string>;
   setAttribute: (name: string, value: string) => void;
   appendChild: (node: unknown) => void;
+  getContext?: (type: string) => object;
 };
 
 type DocumentStub = {
@@ -54,7 +55,13 @@ function ensureDomStubs(): void {
       appendChild: () => {},
     };
     const documentStub: DocumentStub = {
-      createElement: () => ({ ...elementStub }),
+      createElement: (tag: string) =>
+        tag === "canvas"
+          ? {
+              ...elementStub,
+              getContext: () => ({}),
+            }
+          : { ...elementStub },
       getElementsByTagName: () => [{ ...elementStub }],
     };
     Reflect.set(globalThis, "document", documentStub);
