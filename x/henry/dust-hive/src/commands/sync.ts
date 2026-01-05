@@ -85,6 +85,17 @@ async function runNpmInstall(dir: string): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
+// Run bun install in a directory
+async function runBunInstall(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["bun", "install"], {
+    cwd: dir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
 // Run bun link in a directory
 async function runBunLink(dir: string): Promise<boolean> {
   const proc = Bun.spawn(["bun", "link"], {
@@ -204,7 +215,14 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   }
   logger.success(`Built ${buildResult.built.length} binaries`);
 
-  // Link dust-hive globally
+  // Install and link dust-hive globally
+  logger.step(`Installing ${dustHiveDir.name} dependencies...`);
+  const installSuccess = await runBunInstall(dustHiveDir.path);
+  if (!installSuccess) {
+    return Err(new CommandError("Failed to run bun install for dust-hive"));
+  }
+  logger.success(`${dustHiveDir.name} dependencies installed`);
+
   logger.step(`Linking ${dustHiveDir.name}...`);
   const linkSuccess = await runBunLink(dustHiveDir.path);
   if (!linkSuccess) {
