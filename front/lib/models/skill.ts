@@ -97,8 +97,13 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
   sequelize: frontSequelize,
   indexes: [
     {
+      fields: ["workspaceId"],
+    },
+    {
       fields: ["workspaceId", "status"],
-      name: "idx_skill_configuration_workspace_status",
+    },
+    {
+      fields: ["workspaceId", "name", "status"],
     },
   ],
 });
@@ -130,9 +135,11 @@ SkillVersionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        fields: ["workspaceId"],
+      },
+      {
         unique: true,
         fields: ["workspaceId", "skillConfigurationId", "version"],
-        name: "idx_skill_versions_workspace_configuration_id_version",
       },
     ],
   }
@@ -192,6 +199,10 @@ SkillMCPServerConfigurationModel.init(
     modelName: "skill_mcp_server_configuration",
     sequelize: frontSequelize,
     indexes: [
+      {
+        fields: ["workspaceId"],
+        name: "idx_skill_mcp_server_config_workspace",
+      },
       {
         fields: ["workspaceId", "skillConfigurationId"],
         name: "idx_skill_mcp_server_config_workspace_skill_config",

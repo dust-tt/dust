@@ -48,7 +48,12 @@ AgentSkillModel.init(
     modelName: "agent_skills",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId", "agentConfigurationId"] },
+      {
+        fields: ["workspaceId"],
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+      },
       {
         fields: ["workspaceId", "customSkillId"],
         where: { customSkillId: { [Op.ne]: null } },

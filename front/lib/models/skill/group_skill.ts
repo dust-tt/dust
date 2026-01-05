@@ -46,10 +46,16 @@ GroupSkillModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        fields: ["workspaceId"],
+      },
+      {
         unique: true,
         fields: ["groupId", "skillConfigurationId"],
       },
-      { fields: ["workspaceId", "skillConfigurationId"], concurrently: true },
+      {
+        fields: ["workspaceId", "skillConfigurationId"],
+        concurrently: true,
+      },
     ],
   }
 );
