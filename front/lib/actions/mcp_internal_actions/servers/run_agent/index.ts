@@ -666,6 +666,19 @@ export default async function createServer(
         });
 
         if (streamRes.isErr()) {
+          // TODO(spolu): remove once `Failed to retrieve agent message` error is understood
+          logger.info(
+            {
+              error: streamRes.error,
+              conversationId: conversation.sId,
+              userMessageId,
+              isNewConversation,
+              hasResumeState:
+                !!agentLoopContext.runContext.stepContext.resumeState,
+            },
+            "[DEBUG] Failed to stream agent answer in run_agent"
+          );
+
           const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
           return finalizeAndReturn(new Err(new MCPError(errorMessage)));
         }
