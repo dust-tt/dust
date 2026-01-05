@@ -11,9 +11,7 @@ import type {
 } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-type TriggerDisplayType = TriggerWithProviderType & {
-  agentName?: string;
-};
+type TriggerDisplayType = TriggerWithProviderType;
 
 export function makeColumnsForTriggers(
   owner: LightWorkspaceType,
@@ -143,6 +141,17 @@ export function makeColumnsForTriggers(
       header: "Enabled",
       cell: ({ row }) => {
         return row.getValue("enabled") ? "Yes" : "No";
+      },
+    },
+    {
+      id: "editorEmail",
+      header: "Editor",
+      cell: ({ row }) => {
+        const trigger = row.original;
+        if (trigger.editorUser) {
+          return `${trigger.editorUser.email}`;
+        }
+        return trigger.editor?.toString() ?? "-";
       },
     },
     {

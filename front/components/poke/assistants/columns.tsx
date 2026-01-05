@@ -12,23 +12,14 @@ import Link from "next/link";
 
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { LightWorkspaceType } from "@app/types";
-
-type AgentConfigurationDisplayType = {
-  // TODO(2024-02-28 flav) Add description preview.
-  // description: string;
-  name: string;
-  scope: string;
-  sId: string;
-  status: string;
-  versionCreatedAt: string | null;
-};
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,
   agentsRetention: Record<string, number>,
   onAgentArchivedOrRestored: () => Promise<void>
-): ColumnDef<AgentConfigurationDisplayType>[] {
+): ColumnDef<PokeAgentConfigurationType>[] {
   return [
     {
       accessorKey: "sId",
@@ -95,6 +86,17 @@ export function makeColumnsForAssistants(
       },
     },
     {
+      id: "author",
+      header: "Author",
+      cell: ({ row }) => {
+        const author = row.original.versionAuthor;
+        if (author) {
+          return author.email;
+        }
+        return row.original.versionAuthorId?.toString() ?? "-";
+      },
+    },
+    {
       accessorKey: "retention",
       header: "Conversation retention",
       cell: ({ row }) => {
@@ -155,7 +157,7 @@ export function makeColumnsForAssistants(
 async function archiveAssistant(
   owner: LightWorkspaceType,
   onAgentArchived: () => Promise<void>,
-  agentConfiguration: AgentConfigurationDisplayType
+  agentConfiguration: PokeAgentConfigurationType
 ) {
   if (
     !window.confirm(
@@ -189,7 +191,7 @@ async function archiveAssistant(
 async function restoreAssistant(
   owner: LightWorkspaceType,
   onAgentRestored: () => Promise<void>,
-  agentConfiguration: AgentConfigurationDisplayType
+  agentConfiguration: PokeAgentConfigurationType
 ) {
   if (
     !window.confirm(
