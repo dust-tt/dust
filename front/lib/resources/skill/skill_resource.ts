@@ -1,3 +1,4 @@
+import assert from "assert";
 import groupBy from "lodash/groupBy";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
@@ -61,11 +62,13 @@ type SkillResourceConstructorOptions =
       editorGroup?: undefined;
       globalSId: string;
       mcpServerViews: MCPServerViewResource[];
+      version?: number;
     }
   | {
       editorGroup?: GroupResource;
       globalSId?: undefined;
       mcpServerViews: MCPServerViewResource[];
+      version?: number;
     };
 
 type SkillVersionCreationAttributes =
@@ -87,6 +90,12 @@ type ConversationSkillCreationAttributes =
           agentConfigurationId: string;
         }
     );
+
+function isSkillResourceWithVersion(
+  skill: SkillResource
+): skill is SkillResource & { version: number } {
+  return skill.version !== null;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -142,19 +151,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   readonly editorGroup: GroupResource | null = null;
   readonly mcpServerViews: MCPServerViewResource[];
+  readonly version: number | null = null;
 
   private readonly globalSId: string | null;
 
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
-    { globalSId, mcpServerViews, editorGroup }: SkillResourceConstructorOptions
+    {
+      globalSId,
+      mcpServerViews,
+      editorGroup,
+      version,
+    }: SkillResourceConstructorOptions
   ) {
     super(SkillConfigurationModel, blob);
 
     this.editorGroup = editorGroup ?? null;
     this.globalSId = globalSId ?? null;
     this.mcpServerViews = mcpServerViews;
+    this.version = version ?? null;
   }
 
   get sId(): string {
@@ -817,10 +833,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  async listVersions(auth: Authenticator): Promise<SkillResource[]> {
+  async listVersions(
+    auth: Authenticator
+  ): Promise<(SkillResource & { version: number })[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch all historical versions from skill_versions table
+    // Fetch all historical versions from the skill_versions table.
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: workspace.id,
       skillConfigurationId: this.id,
@@ -830,13 +848,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
     });
 
-    // Sort application-side
+    // Sort application-side by version number DESC.
     const sortedVersionModels = versionModels.sort(
       (a, b) => b.version - a.version
     );
 
-    // Convert version models to SkillResource instances
-    const historicalVersions: SkillResource[] = await concurrentExecutor(
+    // Convert version models to SkillResource instances.
+    return concurrentExecutor(
       sortedVersionModels,
       async (versionModel) => {
         // TODO(skills 2025-12-23): add caching on the MCP server views across versions.
@@ -845,7 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           versionModel.mcpServerViewIds
         );
 
-        return new SkillResource(
+        const skill = new SkillResource(
           this.model,
           {
             id: this.id,
@@ -865,14 +883,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             editorGroup: this.editorGroup ?? undefined,
             mcpServerViews,
+            version: versionModel.version,
           }
         );
+        assert(isSkillResourceWithVersion(skill));
+        return skill;
       },
       { concurrency: 5 }
     );
-
-    // Return current version + all historical versions
-    return [this, ...historicalVersions];
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
@@ -1259,7 +1277,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch current MCP server configuration IDs for this skill
+    // Fetch current MCP server configuration IDs for this skill.
     const mcpServerConfigurations =
       await SkillMCPServerConfigurationModel.findAll({
         where: {
@@ -1273,7 +1291,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (config) => config.mcpServerViewId
     );
 
-    // Calculate the next version number by counting existing versions
+    // Calculate the next version number by counting existing versions.
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: this.workspaceId,
       skillConfigurationId: this.id,
@@ -1286,7 +1304,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const versionNumber = existingVersionsCount + 1;
 
-    // Create a new version entry with the current state
+    // Create a new version entry with the current state.
     const versionData: SkillVersionCreationAttributes = {
       workspaceId: this.workspaceId,
       skillConfigurationId: this.id,
@@ -1303,6 +1321,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       updatedAt: this.updatedAt,
     };
 
-    await SkillVersionModel.create(versionData, { transaction });
+    await SkillVersionModel.create(versionData, {
+      transaction,
+    });
   }
 }
