@@ -44,8 +44,6 @@ interface TreemapContentProps {
   color?: string;
 }
 
-const RECTANGLE_LABEL_OFFSET = 8;
-
 function TreemapContent({
   x = 0,
   y = 0,
@@ -55,7 +53,7 @@ function TreemapContent({
   value = 0,
   color = INDEXED_COLORS[0],
 }: TreemapContentProps) {
-  const shouldShowText = width > 50 && height > 30;
+  const shouldShowText = width > 0 && height > 0;
 
   return (
     <g>
@@ -70,24 +68,22 @@ function TreemapContent({
         strokeWidth={2}
       />
       {shouldShowText && (
-        <>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 - RECTANGLE_LABEL_OFFSET}
-            textAnchor="middle"
-            className="pointer-events-none truncate text-ellipsis fill-foreground text-xs font-medium dark:fill-foreground-night"
-          >
-            {name}
-          </text>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + RECTANGLE_LABEL_OFFSET}
-            textAnchor="middle"
-            className="pointer-events-none fill-muted-foreground text-xs dark:fill-muted-foreground-night"
-          >
-            {value}
-          </text>
-        </>
+        <foreignObject
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          pointerEvents="none"
+        >
+          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 overflow-hidden p-1 text-center">
+            <div className="w-full truncate text-ellipsis text-xs font-medium text-foreground dark:text-foreground-night">
+              {name}
+            </div>
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {value}
+            </div>
+          </div>
+        </foreignObject>
       )}
     </g>
   );
