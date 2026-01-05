@@ -6,7 +6,7 @@ import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { DUST_HIVE_HOME, getEnvFilePath, getWorktreeDir } from "./paths";
 import { buildShell } from "./shell";
-import { getTemporalNamespaces } from "./temporal";
+import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
 
@@ -397,6 +397,39 @@ export async function runAllDbInits(env: Environment, projectName: string): Prom
   logger.success("All databases initialized");
 }
 
+// Create a search attribute on a namespace (idempotent - ignores "already exists")
+async function createSearchAttribute(namespace: string, name: string, type: string): Promise<void> {
+  const proc = Bun.spawn(
+    [
+      "temporal",
+      "operator",
+      "search-attribute",
+      "create",
+      "--name",
+      name,
+      "--type",
+      type,
+      "--namespace",
+      namespace,
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+  if (proc.exitCode !== 0) {
+    const message = stderr.trim();
+    // Ignore if attribute already exists
+    if (!message.toLowerCase().includes("already exists")) {
+      throw new Error(
+        `Failed to create search attribute ${name} on ${namespace}: ${message || "unknown error"}`
+      );
+    }
+  }
+}
+
 // Create Temporal namespaces for an environment
 export async function createTemporalNamespaces(env: Environment): Promise<void> {
   logger.step("Creating Temporal namespaces...");
@@ -420,6 +453,19 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   }
 
   logger.success("Temporal namespaces created");
+
+  // Add search attributes to each namespace
+  logger.step("Creating Temporal search attributes...");
+
+  for (const config of TEMPORAL_NAMESPACE_CONFIG) {
+    const namespace = `dust-hive-${env.name}${config.suffix}`;
+    for (const attrName of config.searchAttributes) {
+      const attrType = SEARCH_ATTRIBUTES[attrName];
+      await createSearchAttribute(namespace, attrName, attrType);
+    }
+  }
+
+  logger.success("Temporal search attributes created");
 }
 
 export async function hasSeedConfig(): Promise<boolean> {
