@@ -51,7 +51,7 @@ async function handler(
     });
   }
 
-  let { key } = req.query;
+  const { key, workspaceId: wId } = req.query;
 
   if (typeof key !== "string") {
     return apiError(req, res, {
@@ -63,18 +63,12 @@ async function handler(
     });
   }
 
-  // Parse optional wId query parameter from the key (e.g., "onboarding:conversation?wId=A1B2C3D4")
+  // Resolve optional workspaceId query parameter to workspace model ID.
   let workspaceId: number | undefined;
-  if (key.includes("?wId=")) {
-    const [actualKey, queryString] = key.split("?");
-    key = actualKey;
-    const params = new URLSearchParams(queryString);
-    const wId = params.get("wId");
-    if (wId) {
-      const workspace = user.workspaces.find((w) => w.sId === wId);
-      if (workspace) {
-        workspaceId = workspace.id;
-      }
+  if (typeof wId === "string") {
+    const workspace = user.workspaces.find((w) => w.sId === wId);
+    if (workspace) {
+      workspaceId = workspace.id;
     }
   }
 
