@@ -1,5 +1,6 @@
 // Git worktree operations
 
+import { directoryExists } from "./fs";
 import { logger } from "./logger";
 
 // Get the current git branch
@@ -45,6 +46,18 @@ export async function createWorktree(
 
 // Remove a git worktree
 export async function removeWorktree(repoRoot: string, worktreePath: string): Promise<void> {
+  // If repoRoot doesn't exist, the worktree is orphaned - just check if worktreePath exists
+  const repoExists = await directoryExists(repoRoot);
+  if (!repoExists) {
+    // Can't run git commands without a valid repo, but worktree dir may still exist
+    const worktreeExists = await directoryExists(worktreePath);
+    if (worktreeExists) {
+      logger.warn(`Repo root '${repoRoot}' no longer exists, removing worktree directory directly`);
+      await Bun.spawn(["rm", "-rf", worktreePath]).exited;
+    }
+    return;
+  }
+
   const proc = Bun.spawn(["git", "worktree", "remove", worktreePath, "--force"], {
     cwd: repoRoot,
     stdout: "pipe",
@@ -79,6 +92,13 @@ export async function hasUncommittedChanges(worktreePath: string): Promise<boole
 
 // Delete a git branch
 export async function deleteBranch(repoRoot: string, branchName: string): Promise<void> {
+  // If repoRoot doesn't exist, we can't delete the branch - just skip
+  const repoExists = await directoryExists(repoRoot);
+  if (!repoExists) {
+    logger.warn(`Repo root '${repoRoot}' no longer exists, skipping branch deletion`);
+    return;
+  }
+
   const proc = Bun.spawn(["git", "branch", "-D", branchName], {
     cwd: repoRoot,
     stdout: "pipe",
