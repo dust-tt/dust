@@ -1,5 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
   bucketsToArray,
@@ -34,9 +35,24 @@ type DatasourceRetrievalAggs = {
   by_mcp_server_config?: estypes.AggregationsMultiBucketAggregateBase<McpServerConfigBucket>;
 };
 
-export async function fetchDatasourceRetrievalMetrics(
-  baseQuery: estypes.QueryDslQueryContainer
-): Promise<Result<DatasourceRetrievalData[], Error>> {
+export async function fetchDatasourceRetrievalMetrics({
+  workspaceId,
+  agentId,
+  days,
+  version,
+}: {
+  workspaceId: string;
+  agentId: string;
+  days?: number;
+  version?: string;
+}): Promise<Result<DatasourceRetrievalData[], Error>> {
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId,
+    agentId,
+    days,
+    version,
+  });
+
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_mcp_server_config: {
       terms: {

@@ -1095,8 +1095,11 @@ export function useAgentDatasourceRetrieval({
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetDatasourceRetrievalResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval?days=${days}${versionParam}`;
+  const params = new URLSearchParams({ days: days.toString() });
+  if (version) {
+    params.set("version", version);
+  }
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval?${params.toString()}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
