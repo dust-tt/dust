@@ -2,7 +2,7 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { UserProviderType } from "@app/types";
 
@@ -149,5 +149,9 @@ UserMetadataModel.init(
 );
 UserModel.hasMany(UserMetadataModel, {
   foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+WorkspaceModel.hasMany(UserMetadataModel, {
+  foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
