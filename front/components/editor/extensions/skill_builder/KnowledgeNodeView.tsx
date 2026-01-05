@@ -23,6 +23,7 @@ import type {
   KnowledgeItem,
   KnowledgeNodeAttributes,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
@@ -32,51 +33,42 @@ import {
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types";
 
-interface ExtendedNodeViewProps extends NodeViewProps {
-  clientRect?: () => DOMRect | null;
+interface KnowledgeDisplayProps {
+  item: KnowledgeItem;
+  onRemove: () => void;
+  updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
-  clientRect,
-  deleteNode,
-  editor,
-  node,
+const KnowledgeDisplayComponent: React.FC<KnowledgeDisplayProps> = ({
+  item,
+  onRemove,
   updateAttributes,
 }) => {
-  const { selectedItems, isSearching } = node.attrs as KnowledgeNodeAttributes;
   const { owner } = useSkillBuilderContext();
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Check if we need to fetch full node data
-  const selectedItem = selectedItems[0];
-  const needsFetch =
-    selectedItem &&
-    !selectedItem.node &&
-    selectedItem.spaceId &&
-    selectedItem.dataSourceViewId;
+  // Check if we need to fetch full node data.
+  const needsFetch = !isFullKnowledgeItem(item);
 
-  // Use the existing hook to fetch node data
+  const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
+    dataSourceViewId: item.dataSourceViewId,
+    disabled: !needsFetch,
+    owner,
+    spaceId: item.spaceId,
+  });
+
   const { nodes: fetchedNodes, isNodesLoading: isFetchingNode } =
     useDataSourceViewContentNodes({
       owner,
-      dataSourceView: needsFetch
-        ? ({
-            sId: selectedItem.dataSourceViewId,
-            spaceId: selectedItem.spaceId,
-          } as any)
-        : undefined,
-      internalIds: needsFetch ? [selectedItem.id] : undefined,
+      dataSourceView: needsFetch && dataSourceView ? dataSourceView : undefined,
+      internalIds: needsFetch ? [item.id] : undefined,
       viewType: "all",
-      disabled: !needsFetch,
+      disabled: !needsFetch || !dataSourceView,
     });
 
-  // Update the selected item with fetched node data
+  // Update the item with fetched node data.
   useEffect(() => {
     if (
       needsFetch &&
@@ -85,25 +77,89 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       !isFetchingNode
     ) {
       const fullNode = fetchedNodes[0];
+
       updateAttributes({
         selectedItems: [
           {
-            ...selectedItem,
+            ...item,
             node: fullNode,
           },
         ],
-        isSearching: false,
       });
     }
-  }, [
-    fetchedNodes,
-    needsFetch,
-    isFetchingNode,
-    selectedItem,
-    updateAttributes,
-  ]);
+  }, [fetchedNodes, needsFetch, isFetchingNode, item, updateAttributes]);
 
-  // Get spaces for location display.
+  // Show error state if data source view or content node can't be found.
+  if (
+    isDataSourceViewError ||
+    (needsFetch &&
+      dataSourceView &&
+      fetchedNodes &&
+      fetchedNodes.length === 0 &&
+      !isFetchingNode)
+  ) {
+    return (
+      <span
+        className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-warning-100 px-2 py-1 text-sm text-warning-800 hover:bg-warning-200"
+        onClick={onRemove}
+        title={
+          isDataSourceViewError ? "Data source not found" : "Content not found"
+        }
+      >
+        <span>⚠️ {item.label}</span>
+        <span className="text-warning-600 hover:text-warning-800">×</span>
+      </span>
+    );
+  }
+
+  // Show loading state while fetching node data
+  if (isFetchingNode) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-600">
+        <Spinner size="xs" />
+        <span>{item.label}</span>
+      </span>
+    );
+  }
+
+  // Show full chip if we have node data
+  if (isFullKnowledgeItem(item)) {
+    return (
+      <KnowledgeChip node={item.node} onRemove={onRemove} title={item.label} />
+    );
+  }
+
+  // Fallback - should rarely happen now that we have fetching
+  return (
+    <span
+      className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800 hover:bg-blue-200"
+      onClick={onRemove}
+      title="Click to remove"
+    >
+      <span>{item.label}</span>
+      <span className="text-blue-600 hover:text-blue-800">×</span>
+    </span>
+  );
+};
+
+interface KnowledgeSearchProps {
+  onSelect: (item: KnowledgeItem) => void;
+  onCancel: () => void;
+  clientRect?: () => DOMRect | null;
+}
+
+const KnowledgeSearchComponent: React.FC<KnowledgeSearchProps> = ({
+  onSelect,
+  onCancel,
+  clientRect,
+}) => {
+  const { owner } = useSkillBuilderContext();
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Get spaces for location display
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
     disabled: false,
@@ -123,8 +179,9 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       pageSize: 10,
       disabled: !searchQuery || searchQuery.length < 2,
       spaceIds,
-      viewType: "all",
-      includeDataSources: true,
+      // Tables can't be attached to a skill.
+      viewType: "document",
+      includeDataSources: false,
       searchSourceUrls: false,
       includeTools: false,
     }
@@ -154,25 +211,19 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     updateTriggerPosition();
   }, [updateTriggerPosition]);
 
-  // Convert API results to properly formatted nodes with hierarchy.
+  // Convert API results to properly formatted nodes.
   const dataSourceNodes = useMemo(
     () =>
       removeNulls(
         searchResults.map((node) => {
           const { dataSourceViews, ...rest } = node;
-
           const dataSourceView = dataSourceViews.find(
             (view) => spacesMap[view.spaceId]
           );
-
           if (!dataSourceView) {
             return null;
           }
-
-          return {
-            ...rest,
-            dataSourceView,
-          };
+          return { ...rest, dataSourceView };
         })
       ),
     [searchResults, spacesMap]
@@ -194,31 +245,13 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     (index: number) => {
       const item = knowledgeItems[index];
       if (item) {
-        console.log(">> Selecting knowledge item:", item);
-        updateAttributes({
-          selectedItems: [
-            {
-              id: item.id,
-              label: item.label,
-              description: item.description,
-              node: item.node, // Store the node for chip display
-            },
-          ],
-          isSearching: false,
-        });
+        onSelect(item);
         setIsOpen(false);
         setSelectedIndex(0);
         setSearchQuery("");
-
-        // Return focus to the editor after selection and add a space.
-        setTimeout(() => {
-          if (editor) {
-            editor.chain().focus().insertContent(" ").run();
-          }
-        }, 10);
       }
     },
-    [knowledgeItems, updateAttributes, editor]
+    [knowledgeItems, onSelect]
   );
 
   const handleItemClick = useCallback(
@@ -231,34 +264,19 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [knowledgeItems, handleItemSelect]
   );
 
-  // Listen for input events to update search query and dropdown state.
-  const handleInput = useCallback(
-    (e: React.FormEvent<HTMLSpanElement>) => {
-      const text = e.currentTarget.textContent ?? "";
-      setSearchQuery(text);
+  // Handle input events
+  const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
+    const text = e.currentTarget.textContent ?? "";
+    setSearchQuery(text);
+    setIsOpen(text.trim().length > 0);
+  }, []);
 
-      if (text.trim()) {
-        if (!isOpen) {
-          setIsOpen(true);
-        }
-      } else {
-        if (isOpen) {
-          setIsOpen(false);
-        }
-      }
-    },
-    [isOpen]
-  );
-
-  // Auto-focus when node is created or component mounts.
+  // Auto-focus when component mounts
   useEffect(() => {
-    if (isSearching && selectedItems.length === 0 && contentRef.current) {
-      // Use setTimeout to ensure the DOM is ready.
+    if (contentRef.current) {
       setTimeout(() => {
         if (contentRef.current) {
           contentRef.current.focus();
-
-          // Set cursor at the end of any existing text.
           const range = document.createRange();
           const sel = window.getSelection();
           if (sel) {
@@ -268,63 +286,31 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
             sel.addRange(range);
           }
         }
-      }, 10); // Slightly longer delay to ensure the node is fully rendered.
+      }, 10);
     }
-  }, [isSearching, selectedItems.length]);
+  }, []);
 
-  // Additional focus trigger on mount.
-  useEffect(() => {
-    if (isSearching && selectedItems.length === 0) {
-      const focusTimer = setTimeout(() => {
-        if (contentRef.current) {
-          contentRef.current.focus();
-        }
-      }, 50);
-
-      return () => clearTimeout(focusTimer);
-    }
-  }); // Only run on mount.
-
-  // Reset selected index when items change.
+  // Reset selected index when items change
   useEffect(() => {
     setSelectedIndex(0);
   }, [knowledgeItems.length]);
 
-  // Delete empty node helper.
+  // Delete empty node helper
   const deleteIfEmpty = useCallback(
     (delay: number = 50) => {
       setTimeout(() => {
-        if (isSearching && selectedItems.length === 0 && !searchQuery.trim()) {
-          deleteNode();
+        if (!searchQuery.trim()) {
+          onCancel();
         }
       }, delay);
     },
-    [isSearching, selectedItems.length, searchQuery, deleteNode]
+    [searchQuery, onCancel]
   );
 
-  // Add global click handler to catch clicks outside when dropdown isn't open.
-  useEffect(() => {
-    if (!isSearching || selectedItems.length > 0) {
-      return;
-    }
-
-    const handleGlobalClick = (event: MouseEvent) => {
-      if (
-        contentRef.current &&
-        !contentRef.current.contains(event.target as Node)
-      ) {
-        deleteIfEmpty(50);
-      }
-    };
-
-    document.addEventListener("click", handleGlobalClick, true);
-    return () => document.removeEventListener("click", handleGlobalClick, true);
-  }, [isSearching, selectedItems.length, deleteIfEmpty]);
-
-  // Handle keyboard navigation.
+  // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!isOpen || selectedItems.length > 0) {
+      if (!isOpen) {
         return;
       }
 
@@ -341,179 +327,185 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
         handleItemSelect(selectedIndex);
       } else if (e.key === "Escape") {
         e.preventDefault();
-        deleteNode();
+        onCancel();
       }
     },
-    [
-      isOpen,
-      selectedItems.length,
-      selectedIndex,
-      knowledgeItems.length,
-      handleItemSelect,
-      deleteNode,
-    ]
+    [isOpen, selectedIndex, knowledgeItems.length, handleItemSelect, onCancel]
   );
 
-  // Handle blur: delete node if it's empty and in search mode.
   const handleBlur = useCallback(() => {
     deleteIfEmpty(100);
   }, [deleteIfEmpty]);
 
-  // Handle click outside: also delete node if empty.
   const handleInteractOutside = useCallback(() => {
     setIsOpen(false);
     deleteIfEmpty(50);
   }, [deleteIfEmpty]);
 
+  return (
+    <div className="relative inline-block">
+      <span
+        className={cn(
+          "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
+          "text-gray-600 empty:before:text-gray-400",
+          "empty:before:content-[attr(data-placeholder)] focus:outline-none"
+        )}
+        contentEditable
+        suppressContentEditableWarning
+        ref={contentRef}
+        onKeyDown={handleKeyDown}
+        onInput={handleInput}
+        onBlur={handleBlur}
+        data-placeholder="Search for knowledge..."
+        style={{
+          minWidth: searchQuery ? "auto" : "150px",
+          textAlign: "left",
+        }}
+      />
+
+      {isOpen && knowledgeItems.length > 0 && (
+        <DropdownMenu open={true}>
+          <DropdownMenuTrigger asChild>
+            <div ref={triggerRef} style={virtualTriggerStyle} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-96"
+            avoidCollisions={true}
+            onInteractOutside={handleInteractOutside}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
+            {isSearchLoading ? (
+              <div className="flex items-center justify-center px-4 py-8">
+                <Spinner size="sm" />
+                <span className="ml-2 text-sm text-gray-500">
+                  Searching knowledge...
+                </span>
+              </div>
+            ) : knowledgeItems.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-gray-500">
+                {searchQuery.length < 3
+                  ? "Type at least 3 characters to search"
+                  : "No knowledge found"}
+              </div>
+            ) : (
+              knowledgeItems.map((item, index) => {
+                if (!item.node) {
+                  return null;
+                }
+                return (
+                  <DropdownMenuItem
+                    key={item.id}
+                    icon={
+                      isWebsite(item.node.dataSourceView.dataSource) ||
+                      isFolder(item.node.dataSourceView.dataSource) ? (
+                        <Icon
+                          visual={getVisualForDataSourceViewContentNode(
+                            item.node
+                          )}
+                          size="md"
+                        />
+                      ) : (
+                        <DoubleIcon
+                          size="md"
+                          mainIcon={getVisualForDataSourceViewContentNode(
+                            item.node
+                          )}
+                          secondaryIcon={getConnectorProviderLogoWithFallback({
+                            provider:
+                              item.node.dataSourceView.dataSource
+                                .connectorProvider,
+                          })}
+                        />
+                      )
+                    }
+                    label={item.label}
+                    description={item.description}
+                    truncateText
+                    onClick={() => handleItemClick(item)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    className={
+                      index === selectedIndex
+                        ? "bg-gray-100 dark:bg-gray-800"
+                        : ""
+                    }
+                  />
+                );
+              })
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+};
+
+interface ExtendedNodeViewProps extends NodeViewProps {
+  clientRect?: () => DOMRect | null;
+}
+
+export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
+  clientRect,
+  deleteNode,
+  editor,
+  node,
+  updateAttributes,
+}) => {
+  const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
+
   const handleRemove = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
       deleteNode();
     },
     [deleteNode]
   );
 
+  const handleSelect = useCallback(
+    (item: KnowledgeItem) => {
+      console.log(">> Selecting knowledge item:", item);
+      updateAttributes({
+        selectedItems: [
+          {
+            id: item.id,
+            label: item.label,
+            description: item.description,
+            node: item.node, // Store the node for chip display
+          },
+        ],
+      });
+
+      // Return focus to the editor after selection and add a space
+      setTimeout(() => {
+        if (editor) {
+          editor.chain().focus().insertContent(" ").run();
+        }
+      }, 10);
+    },
+    [updateAttributes, editor]
+  );
+
+  // Show selected knowledge.
   if (selectedItems.length > 0) {
-    // Show selected knowledge using the unified chip component.
-    // If we have the full node data, use it. Otherwise, show a loading or simple representation.
-    if (selectedItems[0].node) {
-      return (
-        <NodeViewWrapper className="inline">
-          <KnowledgeChip
-            node={selectedItems[0].node}
-            onRemove={handleRemove}
-            title={selectedItems[0].label}
-          />
-        </NodeViewWrapper>
-      );
-    } else if (isFetchingNode) {
-      // Show loading state while fetching node data
-      return (
-        <NodeViewWrapper className="inline">
-          <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-sm text-gray-600">
-            <Spinner size="xs" />
-            <span>{selectedItems[0].label}</span>
-          </span>
-        </NodeViewWrapper>
-      );
-    } else {
-      // Fallback for parsed knowledge items without full node data
-      return (
-        <NodeViewWrapper className="inline">
-          <span
-            className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800 hover:bg-blue-200"
-            onClick={handleRemove}
-            title="Click to remove"
-          >
-            <span>{selectedItems[0].label}</span>
-            <span className="text-blue-600 hover:text-blue-800">×</span>
-          </span>
-        </NodeViewWrapper>
-      );
-    }
+    return (
+      <NodeViewWrapper className="inline">
+        <KnowledgeDisplayComponent
+          item={selectedItems[0]}
+          onRemove={handleRemove}
+          updateAttributes={updateAttributes}
+        />
+      </NodeViewWrapper>
+    );
   }
 
-  // Show editable search node.
+  // Show search interface.
   return (
     <NodeViewWrapper className="inline">
-      <div className="relative inline-block">
-        <span
-          className={cn(
-            "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
-            "text-gray-600 empty:before:text-gray-400",
-            "empty:before:content-[attr(data-placeholder)] focus:outline-none"
-          )}
-          contentEditable
-          suppressContentEditableWarning
-          ref={contentRef}
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          onBlur={handleBlur}
-          data-placeholder="Search for knowledge..."
-          style={{
-            minWidth: searchQuery ? "auto" : "150px",
-            textAlign: "left",
-          }}
-        ></span>
-
-        {isOpen && knowledgeItems.length > 0 && (
-          <DropdownMenu open={true}>
-            <DropdownMenuTrigger asChild>
-              <div ref={triggerRef} style={virtualTriggerStyle} />
-            </DropdownMenuTrigger>
-            {/* TODO(2026-01-02 SKILL) Fix dropdow display to avoid overlap with input */}
-            <DropdownMenuContent
-              className="w-96"
-              avoidCollisions={true}
-              onInteractOutside={handleInteractOutside}
-              onOpenAutoFocus={(e) => e.preventDefault()}
-              onCloseAutoFocus={(e) => e.preventDefault()}
-            >
-              {isSearchLoading ? (
-                <div className="flex items-center justify-center px-4 py-8">
-                  <Spinner size="sm" />
-                  <span className="ml-2 text-sm text-gray-500">
-                    Searching knowledge...
-                  </span>
-                </div>
-              ) : knowledgeItems.length === 0 ? (
-                <div className="px-4 py-8 text-center text-sm text-gray-500">
-                  {searchQuery.length < 3
-                    ? "Type at least 3 characters to search"
-                    : "No knowledge found"}
-                </div>
-              ) : (
-                knowledgeItems.map((item, index) => {
-                  if (!item.node) {
-                    return null;
-                  }
-
-                  return (
-                    <DropdownMenuItem
-                      key={item.id}
-                      icon={
-                        isWebsite(item.node.dataSourceView.dataSource) ||
-                        isFolder(item.node.dataSourceView.dataSource) ? (
-                          <Icon
-                            visual={getVisualForDataSourceViewContentNode(
-                              item.node
-                            )}
-                            size="md"
-                          />
-                        ) : (
-                          <DoubleIcon
-                            size="md"
-                            mainIcon={getVisualForDataSourceViewContentNode(
-                              item.node
-                            )}
-                            secondaryIcon={getConnectorProviderLogoWithFallback(
-                              {
-                                provider:
-                                  item.node.dataSourceView.dataSource
-                                    .connectorProvider,
-                              }
-                            )}
-                          />
-                        )
-                      }
-                      label={item.label}
-                      description={item.description}
-                      truncateText
-                      onClick={() => handleItemClick(item)}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                      className={
-                        index === selectedIndex
-                          ? "bg-gray-100 dark:bg-gray-800"
-                          : ""
-                      }
-                    />
-                  );
-                })
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+      <KnowledgeSearchComponent
+        onSelect={handleSelect}
+        onCancel={deleteNode}
+        clientRect={clientRect}
+      />
     </NodeViewWrapper>
   );
 };

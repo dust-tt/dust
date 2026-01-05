@@ -4,17 +4,29 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
-export interface KnowledgeItem {
-  description?: string;
+// Minimal data from serialization
+export interface BaseKnowledgeItem {
+  dataSourceViewId: string;
   id: string;
   label: string;
-  node?: DataSourceViewContentNode;
-  spaceId?: string;
-  dataSourceViewId?: string;
+  nodeType: string;
+  spaceId: string;
+}
+
+// Fresh selection from search with complete node data
+export interface FullKnowledgeItem extends BaseKnowledgeItem {
+  node: DataSourceViewContentNode;
+}
+
+export type KnowledgeItem = BaseKnowledgeItem | FullKnowledgeItem;
+
+export function isFullKnowledgeItem(
+  item: KnowledgeItem
+): item is FullKnowledgeItem {
+  return item.node !== undefined;
 }
 
 export interface KnowledgeNodeAttributes {
-  isSearching: boolean;
   selectedItems: KnowledgeItem[];
 }
 
@@ -51,6 +63,7 @@ export const KnowledgeNode = Node.create<{}>({
       const titleMatch = attributesString.match(/title="([^"]+)"/);
       const spaceMatch = attributesString.match(/space="([^"]*)"/);
       const dsvMatch = attributesString.match(/dsv="([^"]*)"/);
+      const typeMatch = attributesString.match(/type="([^"]*)"/);
 
       if (!idMatch || !titleMatch) {
         return undefined;
@@ -63,6 +76,7 @@ export const KnowledgeNode = Node.create<{}>({
         knowledgeTitle: titleMatch[1],
         spaceId: spaceMatch ? spaceMatch[1] : undefined,
         dataSourceViewId: dsvMatch ? dsvMatch[1] : undefined,
+        nodeType: typeMatch ? typeMatch[1] : undefined,
       };
 
       return token;
@@ -79,16 +93,6 @@ export const KnowledgeNode = Node.create<{}>({
         },
         renderHTML: (attributes) => ({
           "data-selected-items": JSON.stringify(attributes.selectedItems),
-        }),
-      },
-      isSearching: {
-        default: true,
-        parseHTML: (element) => {
-          const data = element.getAttribute("data-is-searching");
-          return data === "true";
-        },
-        renderHTML: (attributes) => ({
-          "data-is-searching": attributes.isSearching.toString(),
         }),
       },
     };
@@ -146,7 +150,8 @@ export const KnowledgeNode = Node.create<{}>({
         const dsv = item.node.dataSourceView;
         const spaceId = dsv.spaceId || "";
         const dsvId = dsv.sId || "";
-        apiParams = ` space="${spaceId}" dsv="${dsvId}"`;
+        const nodeType = item.node.type || "";
+        apiParams = ` space="${spaceId}" dsv="${dsvId}" type="${nodeType}"`;
       }
       return `<knowledge id="${item.id}" title="${item.label}"${apiParams} />`;
     }
@@ -154,28 +159,29 @@ export const KnowledgeNode = Node.create<{}>({
     return "";
   },
 
-  parseMarkdown: (token, helpers) => {
+  parseMarkdown: (token) => {
     console.log("Parsing markdown token for KnowledgeNode:", token);
 
     // The custom tokenizer provides knowledgeId and knowledgeTitle directly
-    if (token.knowledgeId && token.knowledgeTitle) {
-      const selectedItem = {
+    if (
+      token.knowledgeId &&
+      token.knowledgeTitle &&
+      token.spaceId &&
+      token.dataSourceViewId &&
+      token.nodeType
+    ) {
+      const selectedItem: BaseKnowledgeItem = {
         id: token.knowledgeId,
         label: token.knowledgeTitle,
-        description: "", // No description needed for serialization
+        spaceId: token.spaceId,
+        dataSourceViewId: token.dataSourceViewId,
+        nodeType: token.nodeType,
       };
-
-      // Include API parameters for fetching full node data if available
-      if (token.spaceId && token.dataSourceViewId) {
-        selectedItem.spaceId = token.spaceId;
-        selectedItem.dataSourceViewId = token.dataSourceViewId;
-      }
 
       return {
         type: "knowledgeNode",
         attrs: {
           selectedItems: [selectedItem],
-          isSearching: false,
         },
       };
     }
@@ -196,7 +202,6 @@ export const KnowledgeNode = Node.create<{}>({
             type: this.name,
             attrs: {
               selectedItems: [],
-              isSearching: true,
             },
           });
         },
