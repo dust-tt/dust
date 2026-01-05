@@ -8,7 +8,11 @@ import { editorUserSchema } from "@app/types/editors";
 export const attachedKnowledgeSchema = z.object({
   dataSourceViewId: z.string(),
   nodeId: z.string(),
-  nodeType: z.union([z.literal("folder"), z.literal("document")]),
+  nodeType: z.union([
+    z.literal("folder"),
+    z.literal("document"),
+    z.literal("table"),
+  ]),
   spaceId: z.string(),
   title: z.string(),
 });
