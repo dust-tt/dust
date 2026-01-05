@@ -397,12 +397,8 @@ export async function runModelActivity(
     message: string,
     dustRunId?: string
   ) {
-    const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
-      {
-        code: "multi_actions_error",
-        message,
-      }
-    );
+    const { category, publicMessage, errorTitle } =
+      categorizeAgentErrorMessage(message);
 
     const isRetryableModelError = [
       "retryable_model_error",

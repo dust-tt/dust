@@ -22,101 +22,98 @@ const CONTEXT_WINDOW_EXCEEDED_MESSAGE =
  *
  * @param error - The error object containing message and type
  **/
-export const categorizeAgentErrorMessage = (error: {
-  message: string;
-  code: string;
-}): {
+export const categorizeAgentErrorMessage = (
+  errorMessage: string
+): {
   category: AgentErrorCategory;
   errorTitle: string;
   publicMessage: string;
 } => {
-  if (error.code === "multi_actions_error") {
-    if (error.message.includes("AnthropicError")) {
-      if (
-        error.message.includes("overloaded_error") ||
-        error.message.includes("503 Service Unavailable")
-      ) {
-        return {
-          category: "retryable_model_error",
-          errorTitle: "Anthropic service disruption",
-          publicMessage:
-            "Anthropic is currently experiencing issues and cannot process requests for " +
-            "this model. You can temporarily switch to a different model such as GPT-4.1.",
-        };
-      } else if (
-        error.message.includes("at least one message is required") ||
-        error.message.includes("exceed context limit")
-      ) {
-        return {
-          category: "context_window_exceeded",
-          errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
-          publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
-        };
-      } else if (error.message.includes("Internal server error")) {
-        return {
-          category: "provider_internal_error",
-          errorTitle: "Anthropic server error",
-          publicMessage:
-            "Anthropic (Claude's provider) encountered an error. Please try again.",
-        };
-      }
-    } else if (
-      error.message.includes("OpenAIError") ||
-      error.message.includes("OpenAI: Response failed")
-    ) {
-      if (error.message.includes("maximum context length")) {
-        return {
-          category: "context_window_exceeded",
-          errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
-          publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
-        };
-      } else if (error.message.includes("Invalid schema for response_format")) {
-        const contextPart = error.message.split("In context=")[1];
-        return {
-          category: "invalid_response_format_configuration",
-          errorTitle: "Invalid response format",
-          publicMessage:
-            "Your agent is configured to return a response in a format that is not supported by " +
-            `the model: ${contextPart}. Please update your agent configuration in Instructions > ` +
-            "Advanced Settings > Structured Response Format.",
-        };
-      } else if (error.message.includes("server_error")) {
-        return {
-          category: "provider_internal_error",
-          errorTitle: "OpenAI server error",
-          publicMessage: "OpenAI encountered an error. Please try again.",
-        };
-      } else if (
-        error.message.includes(
-          "An error occurred while processing your request."
-        ) &&
-        error.message.includes(
-          "contact us through our help center at help.openai.com if the error persists"
-        )
-      ) {
-        return {
-          category: "retryable_model_error",
-          errorTitle: "OpenAI server error",
-          publicMessage: "OpenAI encountered an error. Please try again.",
-        };
-      }
-    } else if (
-      error.message.includes("Error streaming chunks") ||
-      error.message.includes("Error parsing error")
+  if (errorMessage.includes("AnthropicError")) {
+    if (
+      errorMessage.includes("overloaded_error") ||
+      errorMessage.includes("503 Service Unavailable")
     ) {
       return {
-        category: "stream_error",
-        errorTitle: "Streaming error",
+        category: "retryable_model_error",
+        errorTitle: "Anthropic service disruption",
         publicMessage:
-          "Connection interrupted while receiving your answer. Please try again.",
+          "Anthropic is currently experiencing issues and cannot process requests for " +
+          "this model. You can temporarily switch to a different model such as GPT-4.1.",
+      };
+    } else if (
+      errorMessage.includes("at least one message is required") ||
+      errorMessage.includes("exceed context limit")
+    ) {
+      return {
+        category: "context_window_exceeded",
+        errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
+        publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
+      };
+    } else if (errorMessage.includes("Internal server error")) {
+      return {
+        category: "provider_internal_error",
+        errorTitle: "Anthropic server error",
+        publicMessage:
+          "Anthropic (Claude's provider) encountered an error. Please try again.",
       };
     }
+  } else if (
+    errorMessage.includes("OpenAIError") ||
+    errorMessage.includes("OpenAI: Response failed")
+  ) {
+    if (errorMessage.includes("maximum context length")) {
+      return {
+        category: "context_window_exceeded",
+        errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
+        publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
+      };
+    } else if (errorMessage.includes("Invalid schema for response_format")) {
+      const contextPart = errorMessage.split("In context=")[1];
+      return {
+        category: "invalid_response_format_configuration",
+        errorTitle: "Invalid response format",
+        publicMessage:
+          "Your agent is configured to return a response in a format that is not supported by " +
+          `the model: ${contextPart}. Please update your agent configuration in Instructions > ` +
+          "Advanced Settings > Structured Response Format.",
+      };
+    } else if (errorMessage.includes("server_error")) {
+      return {
+        category: "provider_internal_error",
+        errorTitle: "OpenAI server error",
+        publicMessage: "OpenAI encountered an error. Please try again.",
+      };
+    } else if (
+      errorMessage.includes(
+        "An error occurred while processing your request."
+      ) &&
+      errorMessage.includes(
+        "contact us through our help center at help.openai.com if the error persists"
+      )
+    ) {
+      return {
+        category: "retryable_model_error",
+        errorTitle: "OpenAI server error",
+        publicMessage: "OpenAI encountered an error. Please try again.",
+      };
+    }
+  } else if (
+    errorMessage.includes("Error streaming chunks") ||
+    errorMessage.includes("Error parsing error")
+  ) {
+    return {
+      category: "stream_error",
+      errorTitle: "Streaming error",
+      publicMessage:
+        "Connection interrupted while receiving your answer. Please try again.",
+    };
   }
   // The original message is used as a fallback.
   return {
     category: "unknown_error",
     errorTitle: "Agent error",
-    publicMessage: `Error running agent: [${error.code}] ${error.message}`,
+    publicMessage: `Error running agent: [multi_actions_error] ${errorMessage}`,
   };
 };
 
