@@ -11,6 +11,26 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightWorkspaceType, UserProviderType } from "@app/types";
+import { isDevelopment } from "@app/types";
+
+const VALID_PROVIDERS = [
+  "auth0",
+  "github",
+  "google",
+  "okta",
+  "samlp",
+  "waad",
+] as const;
+
+function isValidProvider(value: unknown): value is UserProviderType {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  return (
+    typeof value === "string" &&
+    VALID_PROVIDERS.includes(value as (typeof VALID_PROVIDERS)[number])
+  );
+}
 
 export interface SeedUserConfig {
   // Required fields
@@ -82,7 +102,7 @@ export async function getOrCreateSuperUser(config: {
       firstName: config.firstName,
       lastName: config.lastName ?? null,
       workOSUserId: config.workOSUserId ?? null,
-      provider: (config.provider as UserProviderType) ?? null,
+      provider: isValidProvider(config.provider) ? config.provider : null,
       providerId: config.providerId ?? null,
       imageUrl: config.imageUrl ?? null,
       isDustSuperUser: true,
@@ -147,10 +167,15 @@ export async function createAdminMembership(
 
 /**
  * Seeds the database with a user, workspace, and membership.
+ * Only runs in development mode.
  */
 export async function seedDevUser(
   config: SeedUserConfig
 ): Promise<SeedDevUserResult> {
+  if (!isDevelopment()) {
+    throw new Error("seedDevUser can only be called in development mode");
+  }
+
   const { user, created } = await getOrCreateSuperUser(config);
 
   if (created) {
@@ -177,6 +202,7 @@ export async function seedDevUser(
     segmentation: null,
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
+    metadata: null,
   });
   console.log(`  Created membership`);
 

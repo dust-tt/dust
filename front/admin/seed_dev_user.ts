@@ -21,7 +21,7 @@
  *     "imageUrl": "https://..."
  *   }
  *
- * SAFETY: Only runs when NODE_ENV=development.
+ * SAFETY: Only runs in development mode (enforced by seedDevUser).
  */
 
 import * as fs from "fs";
@@ -29,12 +29,6 @@ import * as fs from "fs";
 import { seedDevUser, validateSeedConfig } from "@app/lib/dev/dev_seed_user";
 
 async function main() {
-  if (process.env.NODE_ENV !== "development") {
-    throw new Error(
-      `This script can only run in development. Current NODE_ENV: ${process.env.NODE_ENV}`
-    );
-  }
-
   const configPath = process.argv[2];
   if (!configPath) {
     console.error("Usage: npx tsx admin/seed_dev_user.ts <config.json>");
