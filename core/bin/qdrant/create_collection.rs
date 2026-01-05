@@ -10,6 +10,7 @@ use dust::{
     },
     utils,
 };
+use futures::future::join_all;
 use qdrant_client::{
     qdrant::{
         self, quantization_config::Quantization, CreateCollectionBuilder,
@@ -41,45 +42,38 @@ async fn create_indexes_for_collection(
     cluster: &QdrantCluster,
     collection_name: &String,
 ) -> Result<()> {
-    let _ = raw_client
-        .create_field_index(CreateFieldIndexCollectionBuilder::new(
-            collection_name,
-            "document_id_hash",
-            qdrant::FieldType::Keyword,
-        ))
-        .await?;
+    // Create all field indexes in parallel
+    let indexes = vec![
+        ("document_id_hash", qdrant::FieldType::Keyword),
+        ("data_source_internal_id", qdrant::FieldType::Keyword),
+        ("tags", qdrant::FieldType::Keyword),
+        ("parents", qdrant::FieldType::Keyword),
+        ("timestamp", qdrant::FieldType::Integer),
+    ];
 
-    let _ = raw_client
-        .create_field_index(CreateFieldIndexCollectionBuilder::new(
-            collection_name,
-            "data_source_internal_id",
-            qdrant::FieldType::Keyword,
-        ))
-        .await?;
+    let index_futures: Vec<_> = indexes
+        .into_iter()
+        .map(|(field_name, field_type)| {
+            let raw_client = Arc::clone(raw_client);
+            let collection_name = collection_name.clone();
 
-    let _ = raw_client
-        .create_field_index(CreateFieldIndexCollectionBuilder::new(
-            collection_name,
-            "tags",
-            qdrant::FieldType::Keyword,
-        ))
-        .await?;
+            async move {
+                raw_client
+                    .create_field_index(CreateFieldIndexCollectionBuilder::new(
+                        &collection_name,
+                        field_name,
+                        field_type,
+                    ))
+                    .await
+                    .map_err(|e| anyhow!("Error creating index {}: {}", field_name, e))
+            }
+        })
+        .collect();
 
-    let _ = raw_client
-        .create_field_index(CreateFieldIndexCollectionBuilder::new(
-            collection_name,
-            "parents",
-            qdrant::FieldType::Keyword,
-        ))
-        .await?;
-
-    let _ = raw_client
-        .create_field_index(CreateFieldIndexCollectionBuilder::new(
-            collection_name,
-            "timestamp",
-            qdrant::FieldType::Integer,
-        ))
-        .await?;
+    let results = join_all(index_futures).await;
+    for result in results {
+        result?;
+    }
 
     println!(
         "Done creating indexes for collection {} on cluster {}",
@@ -161,31 +155,44 @@ async fn create_qdrant_collection(
         false => Err(anyhow!("Collection not created!")),
     }?;
 
-    // Then, we create the 24 shard_keys.
-    for i in 0..SHARD_KEY_COUNT {
-        let shard_key = format!("{}_{}", client.shard_key_prefix(), i);
+    // Create all 24 shard_keys in parallel for faster initialization
+    let shard_key_futures: Vec<_> = (0..SHARD_KEY_COUNT)
+        .map(|i| {
+            let raw_client = Arc::clone(&raw_client);
+            let collection_name = collection_name.clone();
+            let shard_key_prefix = client.shard_key_prefix();
+            let cluster = cluster.clone();
 
-        let operation_result = raw_client
-            .create_shard_key(
-                CreateShardKeyRequestBuilder::new(collection_name.clone()).request(
-                    CreateShardKeyBuilder::default()
-                        .shard_key(qdrant::shard_key::Key::Keyword(shard_key.clone())),
-                ),
-            )
-            .await
-            .map_err(|e| anyhow!("Error creating shard key: {}", e))?;
+            async move {
+                let shard_key = format!("{}_{}", shard_key_prefix, i);
 
-        match operation_result.result {
-            true => {
-                println!(
-                    "Done creating shard key [{}] for collection {} on cluster {}",
-                    shard_key, collection_name, cluster
-                );
+                let operation_result = raw_client
+                    .create_shard_key(
+                        CreateShardKeyRequestBuilder::new(collection_name.clone()).request(
+                            CreateShardKeyBuilder::default()
+                                .shard_key(qdrant::shard_key::Key::Keyword(shard_key.clone())),
+                        ),
+                    )
+                    .await
+                    .map_err(|e| anyhow!("Error creating shard key {}: {}", shard_key, e))?;
 
-                Ok(())
+                match operation_result.result {
+                    true => {
+                        println!(
+                            "Done creating shard key [{}] for collection {} on cluster {}",
+                            shard_key, collection_name, cluster
+                        );
+                        Ok(())
+                    }
+                    false => Err(anyhow!("Shard key {} not created!", shard_key)),
+                }
             }
-            false => Err(anyhow!("Collection not created!")),
-        }?;
+        })
+        .collect();
+
+    let results = join_all(shard_key_futures).await;
+    for result in results {
+        result?;
     }
 
     create_indexes_for_collection(&raw_client, &cluster, &collection_name)

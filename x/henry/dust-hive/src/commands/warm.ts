@@ -28,23 +28,32 @@ async function isTemporalRunning(): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
+// Helper to time an async operation
+async function timed<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  const result = await fn();
+  logger.recordTiming(name, start);
+  return result;
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
 export const warmCommand = withEnvironment("warm", async (env, options: WarmOptions) => {
   const startTime = Date.now();
+  logger.startTiming();
   const noForward = options.noForward ?? false;
   const forcePorts = options.forcePorts ?? false;
 
   // Set cache source to use binaries from main repo
-  await setCacheSource(env.metadata.repoRoot);
+  await timed("setCacheSource", () => setCacheSource(env.metadata.repoRoot));
 
   // Check if SDK is running (should be in cold state)
-  const sdkRunning = await isServiceRunning(env.name, "sdk");
+  const sdkRunning = await timed("isServiceRunning(sdk)", () => isServiceRunning(env.name, "sdk"));
   if (!sdkRunning) {
     return Err(new CommandError("SDK watch is not running. Run 'dust-hive start' first."));
   }
 
   // Check if already warm
-  const dockerRunning = await isDockerRunning(env.name);
+  const dockerRunning = await timed("isDockerRunning", () => isDockerRunning(env.name));
   if (dockerRunning) {
     const frontRunning = await isServiceRunning(env.name, "front");
     if (frontRunning) {
@@ -60,10 +69,12 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   const portServices: ServiceName[] = ["front", "core", "connectors", "oauth"];
   const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
-  const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
-    allowedPids,
-    force: forcePorts,
-  });
+  const { killedPorts, blockedPorts } = await timed("cleanupServicePorts", () =>
+    cleanupServicePorts(env.ports, {
+      allowedPids,
+      force: forcePorts,
+    })
+  );
 
   if (blockedPorts.length > 0) {
     const details = blockedPorts
@@ -85,26 +96,39 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  // Start Docker containers (doesn't wait for health)
-  await startDocker(env);
-
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
   const projectName = getDockerProjectName(env.name);
+
+  // Start Docker containers first
+  await timed("startDocker", () => startDocker(env));
 
   if (needsInit) {
     logger.info("First warm - initializing (parallel)...");
     console.log();
 
-    // Start core + oauth early (they compile while init runs)
-    // Run Temporal + DB inits in parallel
-    const dbInitPromise = runAllDbInits(env, projectName);
+    // Start core + oauth early (they compile while DB init runs)
+    const coreStart = Date.now();
+    const oauthStart = Date.now();
+    const corePromise = startService(env, "core").then(() =>
+      logger.recordTiming("startService(core)", coreStart)
+    );
+    const oauthPromise = startService(env, "oauth").then(() =>
+      logger.recordTiming("startService(oauth)", oauthStart)
+    );
+
+    // Run DB inits + check Temporal in parallel with core/oauth compilation
+    const dbInitStart = Date.now();
+    const dbInitPromise = runAllDbInits(env, projectName).then(() => {
+      logger.recordTiming("runAllDbInits", dbInitStart);
+    });
+
     const temporalRunningPromise = isTemporalRunning();
+
+    // Wait for core/oauth to start (just process spawn, not compilation)
     const [, , temporalRunning] = await Promise.all([
-      // Start Rust services early - they'll compile while other init happens
-      startService(env, "core"),
-      startService(env, "oauth"),
-      // Check Temporal
+      corePromise,
+      oauthPromise,
       temporalRunningPromise,
     ]);
 
@@ -116,14 +140,15 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
     const initTasks: Promise<void>[] = [dbInitPromise];
     if (temporalRunning) {
-      initTasks.push(createTemporalNamespaces(env));
+      const temporalStart = Date.now();
+      initTasks.push(
+        createTemporalNamespaces(env).then(() =>
+          logger.recordTiming("createTemporalNamespaces", temporalStart)
+        )
+      );
     }
 
     await Promise.all(initTasks);
-
-    // Start seeding in background while we continue with service startup
-    // This allows seeding to run in parallel with starting remaining services
-    const seedPromise = runSeedScript(env);
 
     if (!temporalRunning) {
       logger.warn(
@@ -135,26 +160,58 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     }
     console.log();
 
-    // Start remaining services in parallel with seeding
+    // Start seeding + remaining services + core/oauth health checks ALL in parallel
+    // Health checks can start immediately - they poll until service is ready
     logger.info("Starting remaining services...");
+    const seedStart = Date.now();
+    const frontStart = Date.now();
+    const connectorsStart = Date.now();
+    const workersStart = Date.now();
+    const coreHealthStart = Date.now();
+    const oauthHealthStart = Date.now();
+
     await Promise.all([
-      seedPromise, // Wait for seeding to complete alongside service startup
-      startService(env, "front"),
-      startService(env, "connectors"),
-      startService(env, "front-workers"),
+      runSeedScript(env).then(() => logger.recordTiming("runSeedScript", seedStart)),
+      startService(env, "front").then(() => logger.recordTiming("startService(front)", frontStart)),
+      startService(env, "connectors").then(() =>
+        logger.recordTiming("startService(connectors)", connectorsStart)
+      ),
+      startService(env, "front-workers").then(() =>
+        logger.recordTiming("startService(front-workers)", workersStart)
+      ),
+      // Start health checks early - don't wait for seeding
+      waitForServiceReady(env, "core").then(() =>
+        logger.recordTiming("waitForServiceReady(core)", coreHealthStart)
+      ),
+      waitForServiceReady(env, "oauth").then(() =>
+        logger.recordTiming("waitForServiceReady(oauth)", oauthHealthStart)
+      ),
     ]);
   } else {
     // Not first warm - start all services in parallel
     logger.info("Starting services (parallel)...");
     console.log();
 
+    const coreStart = Date.now();
+    const oauthStart = Date.now();
+    const frontStart = Date.now();
+    const connectorsStart = Date.now();
+    const workersStart = Date.now();
     const [, temporalRunning] = await Promise.all([
       Promise.all([
-        startService(env, "core"),
-        startService(env, "oauth"),
-        startService(env, "front"),
-        startService(env, "connectors"),
-        startService(env, "front-workers"),
+        startService(env, "core").then(() => logger.recordTiming("startService(core)", coreStart)),
+        startService(env, "oauth").then(() =>
+          logger.recordTiming("startService(oauth)", oauthStart)
+        ),
+        startService(env, "front").then(() =>
+          logger.recordTiming("startService(front)", frontStart)
+        ),
+        startService(env, "connectors").then(() =>
+          logger.recordTiming("startService(connectors)", connectorsStart)
+        ),
+        startService(env, "front-workers").then(() =>
+          logger.recordTiming("startService(front-workers)", workersStart)
+        ),
       ]),
       isTemporalRunning(),
     ]);
@@ -165,21 +222,41 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     }
   }
 
-  // Wait for services with health checks
-  // Start forwarder as soon as front is healthy (don't wait for core/oauth)
+  // Wait for front to be healthy (ensures seeding is complete before use)
+  // Core/OAuth health already checked above for first warm
   logger.step("Waiting for services to be healthy...");
-  await Promise.all([
-    waitForServiceReady(env, "front").then(async () => {
+  const frontHealthStart = Date.now();
+  if (needsInit) {
+    // First warm: core/oauth health already checked, just wait for front
+    await waitForServiceReady(env, "front").then(async () => {
+      logger.recordTiming("waitForServiceReady(front)", frontHealthStart);
       if (!noForward) {
-        await startForwarder(env.ports.base, env.name);
+        await timed("startForwarder", () => startForwarder(env.ports.base, env.name));
       }
-    }),
-    waitForServiceReady(env, "core"),
-    waitForServiceReady(env, "oauth"),
-  ]);
+    });
+  } else {
+    // Subsequent warm: check all health in parallel
+    const coreHealthStart = Date.now();
+    const oauthHealthStart = Date.now();
+    await Promise.all([
+      waitForServiceReady(env, "front").then(async () => {
+        logger.recordTiming("waitForServiceReady(front)", frontHealthStart);
+        if (!noForward) {
+          await timed("startForwarder", () => startForwarder(env.ports.base, env.name));
+        }
+      }),
+      waitForServiceReady(env, "core").then(() =>
+        logger.recordTiming("waitForServiceReady(core)", coreHealthStart)
+      ),
+      waitForServiceReady(env, "oauth").then(() =>
+        logger.recordTiming("waitForServiceReady(oauth)", oauthHealthStart)
+      ),
+    ]);
+  }
   logger.success("All services healthy");
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  logger.printTimingReport();
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
   console.log();

@@ -268,17 +268,33 @@ async function waitForContainer(projectName: string, service: string): Promise<v
 // Initialize all postgres-related things (runs after postgres is healthy)
 async function initAllPostgres(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
+  const loadEnvStart = Date.now();
   const envVars = await loadEnvVars(envShPath);
+  logger.recordTiming("loadEnvVars(postgres)", loadEnvStart);
 
   // Create databases first
+  const createDbStart = Date.now();
   await initPostgres(envVars);
+  logger.recordTiming("initPostgres(createDBs)", createDbStart);
   logger.success("PostgreSQL databases created");
 
   // Then run schema migrations in parallel
+  const coreStart = Date.now();
+  const frontStart = Date.now();
+  const connectorsStart = Date.now();
   const [coreResult, frontResult, connectorsResult] = await Promise.all([
-    runCoreDbInit(env),
-    runFrontDbInit(env),
-    runConnectorsDbInit(env),
+    runCoreDbInit(env).then((r) => {
+      logger.recordTiming("runCoreDbInit", coreStart);
+      return r;
+    }),
+    runFrontDbInit(env).then((r) => {
+      logger.recordTiming("runFrontDbInit", frontStart);
+      return r;
+    }),
+    runConnectorsDbInit(env).then((r) => {
+      logger.recordTiming("runConnectorsDbInit", connectorsStart);
+      return r;
+    }),
   ]);
 
   const failed: string[] = [];
@@ -429,13 +445,41 @@ export async function runAllDbInits(env: Environment, projectName: string): Prom
   logger.info("Initializing databases (parallel)...");
 
   // Run all inits in parallel - each waits for its container first
+  const postgresStart = Date.now();
+  const qdrantStart = Date.now();
+  const esStart = Date.now();
+
   await Promise.all([
     // Postgres: wait for container → create DBs → run schema inits
-    waitForContainer(projectName, "db").then(() => initAllPostgres(env)),
+    (async () => {
+      const waitStart = Date.now();
+      await waitForContainer(projectName, "db");
+      logger.recordTiming("waitForContainer(db)", waitStart);
+      const initStart = Date.now();
+      await initAllPostgres(env);
+      logger.recordTiming("initAllPostgres", initStart);
+      logger.recordTiming("postgres-total", postgresStart);
+    })(),
     // Qdrant: wait for container → create collections
-    waitForContainer(projectName, "qdrant_primary").then(() => initAllQdrant(env)),
+    (async () => {
+      const waitStart = Date.now();
+      await waitForContainer(projectName, "qdrant_primary");
+      logger.recordTiming("waitForContainer(qdrant)", waitStart);
+      const initStart = Date.now();
+      await initAllQdrant(env);
+      logger.recordTiming("initAllQdrant", initStart);
+      logger.recordTiming("qdrant-total", qdrantStart);
+    })(),
     // Elasticsearch: wait for container → create indices
-    waitForContainer(projectName, "elasticsearch").then(() => initAllElasticsearch(env)),
+    (async () => {
+      const waitStart = Date.now();
+      await waitForContainer(projectName, "elasticsearch");
+      logger.recordTiming("waitForContainer(elasticsearch)", waitStart);
+      const initStart = Date.now();
+      await initAllElasticsearch(env);
+      logger.recordTiming("initAllElasticsearch", initStart);
+      logger.recordTiming("elasticsearch-total", esStart);
+    })(),
   ]);
 
   logger.success("All databases initialized");
