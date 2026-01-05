@@ -5,13 +5,13 @@
 
 import { z } from "zod";
 
-import { createAndLogMembership } from "@app/lib/api/signup";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
 
@@ -129,7 +129,9 @@ export async function createAdminMembership(
     return;
   }
 
-  await createAndLogMembership({
+  // Use MembershipResource directly to avoid tracking side effects
+  // that can cause stale seat count caching
+  await MembershipResource.createMembership({
     user,
     workspace,
     role: "admin",
@@ -166,16 +168,8 @@ export async function seedDevUser(
   console.log(`  Created workspace: ${workspace.name}`);
 
   // Create admin membership
-  await createAdminMembership(user, {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "admin",
-    segmentation: null,
-    whiteListedProviders: null,
-    defaultEmbeddingProvider: null,
-    metadata: null,
-  });
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  await createAdminMembership(user, lightWorkspace);
   console.log(`  Created membership`);
 
   return { user, workspaceSId: workspace.sId };
