@@ -163,7 +163,7 @@ const NavigationListItem = React.forwardRef<
                 )}
               />
             )}
-            {icon && <Icon visual={icon} size="sm" />}
+            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
             {avatar}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-7 group-data-[selected=true]/menu-item:s-pr-7">
