@@ -8,13 +8,13 @@ import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
   maskPhoneNumber,
   RESEND_COOLDOWN_SECONDS,
-} from "@app/pages/api/auth/phone_verification";
-import { isWorkspaceEligibleForTrial } from "@app/pages/api/auth/trial";
+} from "@app/lib/plans/trial/phone";
 import type { WorkspaceType } from "@app/types";
 
 type Step = "phone" | "code";

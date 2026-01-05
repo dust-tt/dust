@@ -5,12 +5,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
 import {
   activatePhoneTrial,
-  isValidVerificationCode,
   isWorkspaceEligibleForTrial,
-} from "@app/pages/api/auth/trial";
+} from "@app/lib/plans/trial";
+import { isValidVerificationCode } from "@app/lib/plans/trial/phone";
+import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type PostTrialVerifyResponseBody = {

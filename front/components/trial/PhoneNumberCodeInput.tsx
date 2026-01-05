@@ -1,7 +1,7 @@
 import { cn } from "@dust-tt/sparkle";
 import React from "react";
 
-import { CODE_LENGTH } from "@app/pages/api/auth/phone_verification";
+import { CODE_LENGTH } from "@app/lib/plans/trial/phone";
 
 interface CodeInputProps {
   code: string[];

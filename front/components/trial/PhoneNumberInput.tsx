@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { COUNTRY_CODES } from "@app/pages/api/auth/phone_verification";
+import { COUNTRY_CODES } from "@app/lib/plans/trial/phone";
 
 interface PhoneNumberInputProps {
   countryCode: string;
