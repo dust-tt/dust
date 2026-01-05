@@ -4,7 +4,7 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
-// Minimal data from serialization
+// Minimal data from serialization.
 export interface BaseKnowledgeItem {
   dataSourceViewId: string;
   id: string;
@@ -13,7 +13,7 @@ export interface BaseKnowledgeItem {
   spaceId: string;
 }
 
-// Fresh selection from search with complete node data
+// Fresh selection from search with complete node data.
 export interface FullKnowledgeItem extends BaseKnowledgeItem {
   node: DataSourceViewContentNode;
 }

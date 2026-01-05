@@ -4,7 +4,6 @@ import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { Suggestion } from "@tiptap/suggestion";
 
-
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -60,15 +59,7 @@ export const SlashCommandExtension =
         Suggestion({
           editor: this.editor,
           ...this.options.suggestion,
-          command: ({
-            editor,
-            range,
-            props,
-          }: {
-            editor: any;
-            range: any;
-            props: SlashCommand;
-          }) => {
+          command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
               editor
                 .chain()

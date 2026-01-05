@@ -16,10 +16,10 @@ import React, {
 } from "react";
 
 export interface SlashCommand {
+  action: string;
+  description: string;
   id: string;
   label: string;
-  description: string;
-  action: string;
 }
 
 export interface SlashCommandDropdownProps extends SuggestionProps<SlashCommand> {}
