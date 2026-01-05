@@ -1,10 +1,12 @@
 import { Button, DustLogoSquare, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import {
   CODE_LENGTH,
@@ -34,8 +36,9 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 });
 
 export default function Verify({
-  owner: _owner,
+  owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
 
   const [countryCode, setCountryCode] = useState("+33");
@@ -104,8 +107,23 @@ export default function Verify({
       return;
     }
 
-    // TODO: Integrate with verification service.
-    // TODO: on success, we call the api to create a sub on the new phone trial plan and redirect to /welcome page.
+    try {
+      const response = await clientFetch(`/api/w/${owner.sId}/trial/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: fullCode }),
+      });
+
+      if (response.ok) {
+        await router.push(`/w/${owner.sId}/welcome`);
+        return;
+      }
+
+      const data = await response.json();
+      setCodeError(data.error?.message ?? "Invalid verification code.");
+    } catch {
+      setCodeError("An error occurred. Please try again.");
+    }
   };
 
   const handleCodeChange = useCallback((index: number, value: string) => {
@@ -336,6 +354,7 @@ function CodeVerificationStep({
                     variant="primary"
                     label="Verify now"
                     onClick={onVerify}
+                    disabled={code.some((digit) => !digit)}
                   />
                 </div>
               </div>
