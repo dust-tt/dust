@@ -1,5 +1,6 @@
 // Data-driven database initialization with binary caching
 
+import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
 import type { Environment } from "./environment";
@@ -16,6 +17,9 @@ export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 export const RUST_SERVICE_BINARIES = ["core-api", "oauth"] as const;
 export type RustServiceBinary = (typeof RUST_SERVICE_BINARIES)[number];
 
+const RUST_SOURCE_DIRS = ["src", "bin"] as const;
+const RUST_SOURCE_FILES = ["Cargo.toml", "Cargo.lock"] as const;
+
 // Get the path to a Rust binary in the worktree's target directory
 export function getRustBinaryPath(worktreePath: string, binary: RustServiceBinary): string {
   return join(worktreePath, "core", "target", "debug", binary);
@@ -31,10 +35,101 @@ export async function rustBinaryExists(
   return file.exists();
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
+}
+
+async function getFileMtime(path: string): Promise<number> {
+  try {
+    const info = await stat(path);
+    return info.mtimeMs;
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return 0;
+    }
+    throw error;
+  }
+}
+
+async function getLatestRustMtimeInDir(dir: string): Promise<number> {
+  let latest = 0;
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const childLatest = await getLatestRustMtimeInDir(path);
+        if (childLatest > latest) {
+          latest = childLatest;
+        }
+      } else if (entry.isFile() && entry.name.endsWith(".rs")) {
+        const mtime = await getFileMtime(path);
+        if (mtime > latest) {
+          latest = mtime;
+        }
+      }
+    }
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return 0;
+    }
+    throw error;
+  }
+  return latest;
+}
+
+async function getLatestRustSourceMtime(worktreePath: string): Promise<number> {
+  const coreDir = join(worktreePath, "core");
+  let latest = 0;
+
+  for (const file of RUST_SOURCE_FILES) {
+    const mtime = await getFileMtime(join(coreDir, file));
+    if (mtime > latest) {
+      latest = mtime;
+    }
+  }
+
+  for (const dir of RUST_SOURCE_DIRS) {
+    const mtime = await getLatestRustMtimeInDir(join(coreDir, dir));
+    if (mtime > latest) {
+      latest = mtime;
+    }
+  }
+
+  return latest;
+}
+
+async function rustBinariesNeedRebuild(worktreePath: string): Promise<boolean> {
+  const latestSource = await getLatestRustSourceMtime(worktreePath);
+  if (latestSource === 0) {
+    return true;
+  }
+
+  const [coreBinaryMtime, oauthBinaryMtime] = await Promise.all([
+    getFileMtime(getRustBinaryPath(worktreePath, "core-api")),
+    getFileMtime(getRustBinaryPath(worktreePath, "oauth")),
+  ]);
+
+  const oldestBinary = Math.min(coreBinaryMtime, oauthBinaryMtime);
+  return oldestBinary === 0 || oldestBinary < latestSource;
+}
+
 // Pre-compile Rust service binaries (runs in background, returns promise)
 // This allows compilation to happen in parallel with other init tasks
-export async function preCompileRustBinaries(env: Environment): Promise<void> {
+export async function preCompileRustBinaries(
+  env: Environment,
+  options?: { force?: boolean }
+): Promise<void> {
   const worktreePath = getWorktreeDir(env.name);
+  const force = options?.force ?? false;
+  const needsRebuild = await rustBinariesNeedRebuild(worktreePath);
+  if (!needsRebuild && !force) {
+    logger.dim("Rust binaries up-to-date; skipping compile");
+    return;
+  }
+  if (force) {
+    logger.dim("Forcing Rust rebuild");
+  }
   const envShPath = getEnvFilePath(env.name);
   const coreDir = join(worktreePath, "core");
 

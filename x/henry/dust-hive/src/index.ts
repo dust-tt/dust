@@ -99,12 +99,17 @@ cli
   .command("warm [name]", "Start docker and all services")
   .option("--no-forward", "Disable OAuth port forwarding")
   .option("--force-ports", "Kill processes blocking service ports")
+  .option("--force-rebuild", "Force Rust recompilation before starting services")
   .action(
-    async (name: string | undefined, options: { forward?: boolean; forcePorts?: boolean }) => {
+    async (
+      name: string | undefined,
+      options: { forward?: boolean; forcePorts?: boolean; forceRebuild?: boolean }
+    ) => {
       await prepareAndRun(
         warmCommand(name, {
           noForward: options.forward === false,
           forcePorts: Boolean(options.forcePorts),
+          forceRebuild: Boolean(options.forceRebuild),
         })
       );
     }

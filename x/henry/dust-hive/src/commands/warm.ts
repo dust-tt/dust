@@ -21,6 +21,7 @@ import { isDockerRunning } from "../lib/state";
 interface WarmOptions {
   noForward?: boolean;
   forcePorts?: boolean;
+  forceRebuild?: boolean;
 }
 
 // Check if Temporal server is running (default gRPC port 7233)
@@ -47,6 +48,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   logger.startTiming();
   const noForward = options.noForward ?? false;
   const forcePorts = options.forcePorts ?? false;
+  const forceRebuild = options.forceRebuild ?? false;
 
   // Set cache source to use binaries from main repo
   await timed("setCacheSource", () => setCacheSource(env.metadata.repoRoot));
@@ -118,7 +120,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     const dockerPromise = startDocker(env).then(() =>
       logger.recordTiming("startDocker", dockerStart)
     );
-    const compilePromise = preCompileRustBinaries(env).then(() =>
+    const compilePromise = preCompileRustBinaries(env, { force: forceRebuild }).then(() =>
       logger.recordTiming("preCompileRustBinaries", compileStart)
     );
 
@@ -203,6 +205,10 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   } else {
     // SUBSEQUENT WARM: Start Docker first
     await timed("startDocker", () => startDocker(env));
+    const compileStart = Date.now();
+    await preCompileRustBinaries(env, { force: forceRebuild }).then(() =>
+      logger.recordTiming("preCompileRustBinaries", compileStart)
+    );
     // Not first warm - start all services in parallel
     logger.info("Starting services (parallel)...");
     console.log();
@@ -214,8 +220,10 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     const workersStart = Date.now();
     const [, temporalRunning] = await Promise.all([
       Promise.all([
-        startService(env, "core").then(() => logger.recordTiming("startService(core)", coreStart)),
-        startService(env, "oauth").then(() =>
+        startService(env, "core", true).then(() =>
+          logger.recordTiming("startService(core)", coreStart)
+        ),
+        startService(env, "oauth", true).then(() =>
           logger.recordTiming("startService(oauth)", oauthStart)
         ),
         startService(env, "front").then(() =>
