@@ -124,49 +124,77 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
   });
 
   describe("Instruction Block Preprocessing", () => {
-    it.skip("preprocesses and renders instruction blocks", () => {
+    it("does not process instructions block when not enabled", () => {
       const content = "<instructions>Follow these steps</instructions>";
       const { container } = render(
         <AgentMessageMarkdown owner={mockOwner} content={content} />
       );
-      // Check that the instruction block was preprocessed and rendered
-      expect(container.textContent).toContain("INSTRUCTIONS");
-      expect(container.textContent).toContain("Follow these steps");
+      // no processing
+      expect(container.textContent).toBe(
+        "<instructions>Follow these steps</instructions>"
+      );
     });
 
-    it.skip("handles custom tag names in instruction blocks", () => {
-      const content = "<my_custom_tag>Custom content</my_custom_tag>";
-      const { container } = render(
-        <AgentMessageMarkdown owner={mockOwner} content={content} />
-      );
-      expect(container.textContent).toContain("MY_CUSTOM_TAG");
-      expect(container.textContent).toContain("Custom content");
-    });
+    describe("when isInstructions enabled", () => {
+      it("preprocesses and renders instruction blocks", () => {
+        const content = "<instructions>Follow these steps</instructions>";
+        const { container } = render(
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={content}
+            isInstructions={true}
+          />
+        );
+        expect(container.textContent).toContain("INSTRUCTIONS");
+        expect(container.textContent).toContain("Follow these steps");
+      });
 
-    it.skip("handles multiple instruction blocks", () => {
-      const content = "<tag1>Content 1</tag1>\n\n<tag2>Content 2</tag2>";
-      const { container } = render(
-        <AgentMessageMarkdown owner={mockOwner} content={content} />
-      );
-      expect(container.textContent).toContain("TAG1");
-      expect(container.textContent).toContain("Content 1");
-      expect(container.textContent).toContain("TAG2");
-      expect(container.textContent).toContain("Content 2");
-    });
+      it("handles custom tag names in instruction blocks", () => {
+        const content = "<my_custom_tag>Custom content</my_custom_tag>";
+        const { container } = render(
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={content}
+            isInstructions={true}
+          />
+        );
+        expect(container.textContent).toContain("MY_CUSTOM_TAG");
+        expect(container.textContent).toContain("Custom content");
+      });
 
-    it.skip("renders markdown inside instruction blocks", () => {
-      const content =
-        "<instructions>**Bold** and *italic* content</instructions>";
-      const { container } = render(
-        <AgentMessageMarkdown owner={mockOwner} content={content} />
-      );
-      expect(container.querySelector("strong")).toBeInTheDocument();
-      expect(container.querySelector("em")).toBeInTheDocument();
+      it("handles multiple instruction blocks", () => {
+        const content = "<tag1>Content 1</tag1>\n\n<tag2>Content 2</tag2>";
+        const { container } = render(
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={content}
+            isInstructions={true}
+          />
+        );
+        expect(container.textContent).toContain("TAG1");
+        expect(container.textContent).toContain("Content 1");
+        expect(container.textContent).toContain("TAG2");
+        expect(container.textContent).toContain("Content 2");
+      });
+
+      it("renders markdown inside instruction blocks", () => {
+        const content =
+          "<instructions>**Bold** and *italic* content</instructions>";
+        const { container } = render(
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={content}
+            isInstructions={true}
+          />
+        );
+        expect(container.querySelector("strong")).toBeInTheDocument();
+        expect(container.querySelector("em")).toBeInTheDocument();
+      });
     });
   });
 
   describe("Complex Content Scenarios", () => {
-    it.skip("renders mixed markdown and instruction blocks", () => {
+    it("renders mixed markdown and instruction blocks", () => {
       const content = `# Heading
 
 Regular paragraph with **bold** text.
@@ -178,7 +206,11 @@ Regular paragraph with **bold** text.
 
 More content after.`;
       const { container } = render(
-        <AgentMessageMarkdown owner={mockOwner} content={content} />
+        <AgentMessageMarkdown
+          owner={mockOwner}
+          content={content}
+          isInstructions={true}
+        />
       );
       expect(container.querySelector("h1")).toBeInTheDocument();
       expect(container.querySelector("strong")).toBeInTheDocument();
