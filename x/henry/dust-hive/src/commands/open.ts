@@ -246,34 +246,26 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     );
 
     if (options.noAttach) {
-      // Create session in background using zellij's native --create-background
+      // Create session in background with our layout using zellij's native options
       logger.info(`Creating zellij session '${sessionName}' in background...`);
 
-      // Step 1: Create a detached background session
-      const createProc = Bun.spawn(["zellij", "attach", sessionName, "--create-background"], {
-        stdin: "ignore",
-        stdout: "ignore",
-        stderr: "pipe",
-      });
-      await createProc.exited;
-
-      // Step 2: Add our layout tabs to the session
-      const addTabsProc = Bun.spawn(
-        ["zellij", "--session", sessionName, "action", "new-tab", "--layout", layoutPath],
+      const proc = Bun.spawn(
+        [
+          "zellij",
+          "attach",
+          sessionName,
+          "--create-background",
+          "options",
+          "--default-layout",
+          layoutPath,
+        ],
         {
           stdin: "ignore",
           stdout: "ignore",
           stderr: "pipe",
         }
       );
-      await addTabsProc.exited;
-
-      // Step 3: Focus the shell tab (skip closing the default tab as it hangs on running panes)
-      const focusProc = Bun.spawn(
-        ["zellij", "--session", sessionName, "action", "go-to-tab-name", "shell"],
-        { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
-      );
-      await focusProc.exited;
+      await proc.exited;
 
       logger.success(`Session '${sessionName}' created successfully.`);
       logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
