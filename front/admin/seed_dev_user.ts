@@ -67,6 +67,7 @@ function ensureDomStubs(): void {
         document: documentValue,
         addEventListener: () => {},
         removeEventListener: () => {},
+        location: { href: "http://localhost" },
       });
     }
   }
@@ -78,6 +79,9 @@ function ensureDomStubs(): void {
     }
     if (typeof Reflect.get(windowValue, "removeEventListener") !== "function") {
       Reflect.set(windowValue, "removeEventListener", () => {});
+    }
+    if (typeof Reflect.get(windowValue, "location") !== "object") {
+      Reflect.set(windowValue, "location", { href: "http://localhost" });
     }
   }
 
