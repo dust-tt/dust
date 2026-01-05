@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { AcademySidebar } from "@app/components/academy/AcademySidebar";
 import { TableOfContents } from "@app/components/blog/TableOfContents";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -10,6 +11,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import {
   buildPreviewQueryString,
   CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCourses,
   getLessonBySlug,
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
@@ -58,9 +60,13 @@ export const getStaticProps: GetStaticProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
+  const coursesResult = await getAllCourses(resolvedUrl);
+  const courses = coursesResult.isOk() ? coursesResult.value : [];
+
   return {
     props: {
       lesson,
+      courses,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
@@ -87,7 +93,11 @@ function getContentTypeLabel(content: ContentSummary): string {
   return "Lesson";
 }
 
-export default function LessonPage({ lesson, preview }: LessonPageProps) {
+export default function LessonPage({
+  lesson,
+  courses,
+  preview,
+}: LessonPageProps) {
   const canonicalUrl = `https://dust.tt/academy/lessons/${lesson.slug}`;
   const tocItems = extractTableOfContents(lesson.lessonContent);
 
@@ -121,15 +131,20 @@ export default function LessonPage({ lesson, preview }: LessonPageProps) {
         )}
       </Head>
 
-      <article>
-        <Grid>
-          <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
-            {lesson.parentCourse ? (
-              <Link
-                href={`/academy/${lesson.parentCourse.slug}`}
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <span>&larr;</span> Back to {lesson.parentCourse.title}
+      <div className="flex min-h-screen">
+        <AcademySidebar
+          courses={courses}
+          currentCourseSlug={lesson.parentCourse?.slug}
+        />
+        <article className="flex-1">
+          <Grid>
+            <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+              {lesson.parentCourse ? (
+                <Link
+                  href={`/academy/${lesson.parentCourse.slug}`}
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <span>&larr;</span> Back to {lesson.parentCourse.title}
               </Link>
             ) : (
               <Link
@@ -150,9 +165,35 @@ export default function LessonPage({ lesson, preview }: LessonPageProps) {
                   <span>{lesson.estimatedDurationMinutes} min</span>
                 </>
               )}
+              {lesson.complexity && (
+                <>
+                  {(lesson.lessonId || lesson.estimatedDurationMinutes) && (
+                    <span>•</span>
+                  )}
+                  <span>{lesson.complexity}</span>
+                </>
+              )}
             </div>
 
             <H1 className="text-4xl md:text-5xl">{lesson.title}</H1>
+
+            {(lesson.category || lesson.tools.length > 0) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {lesson.category && (
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                    {lesson.category}
+                  </span>
+                )}
+                {lesson.tools.map((tool) => (
+                  <span
+                    key={tool}
+                    className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800"
+                  >
+                    {tool}
+                  </span>
+                ))}
+              </div>
+            )}
           </header>
 
           {lesson.lessonObjectives && (
@@ -225,8 +266,9 @@ export default function LessonPage({ lesson, preview }: LessonPageProps) {
               </div>
             </div>
           )}
-        </Grid>
-      </article>
+          </Grid>
+        </article>
+      </div>
     </>
   );
 }

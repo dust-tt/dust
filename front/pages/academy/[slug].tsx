@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { AcademySidebar } from "@app/components/academy/AcademySidebar";
 import { TableOfContents } from "@app/components/blog/TableOfContents";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -11,6 +12,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import {
   buildPreviewQueryString,
   CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCourses,
   getCourseBySlug,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
@@ -57,9 +59,13 @@ export const getStaticProps: GetStaticProps<CoursePageProps> = async (
     return { notFound: true };
   }
 
+  const coursesResult = await getAllCourses(resolvedUrl);
+  const courses = coursesResult.isOk() ? coursesResult.value : [];
+
   return {
     props: {
       course,
+      courses,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
@@ -69,7 +75,11 @@ export const getStaticProps: GetStaticProps<CoursePageProps> = async (
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
-export default function CoursePage({ course, preview }: CoursePageProps) {
+export default function CoursePage({
+  course,
+  courses,
+  preview,
+}: CoursePageProps) {
   const ogImageUrl = course.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/academy/${course.slug}`;
   const tocItems = extractTableOfContents(course.courseContent);
@@ -106,16 +116,18 @@ export default function CoursePage({ course, preview }: CoursePageProps) {
         <meta name="twitter:image" content={ogImageUrl} />
       </Head>
 
-      <article>
-        <Grid>
-          <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
-            <Link
-              href="/academy"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <span>&larr;</span> Back to Academy
-            </Link>
-          </div>
+      <div className="flex min-h-screen">
+        <AcademySidebar courses={courses} currentCourseSlug={course.slug} />
+        <article className="flex-1">
+          <Grid>
+            <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
+              <Link
+                href="/academy"
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span>&larr;</span> Back to Academy
+              </Link>
+            </div>
 
           <header className={WIDE_CLASSES}>
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -254,8 +266,9 @@ export default function CoursePage({ course, preview }: CoursePageProps) {
               </div>
             </div>
           )}
-        </Grid>
-      </article>
+          </Grid>
+        </article>
+      </div>
     </>
   );
 }

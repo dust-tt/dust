@@ -9,6 +9,7 @@ interface LessonLinkProps {
   description?: string | null;
   lessonId?: string | null;
   estimatedDurationMinutes?: number | null;
+  complexity?: string | null;
 }
 
 export function LessonLink({
@@ -17,6 +18,7 @@ export function LessonLink({
   description,
   lessonId,
   estimatedDurationMinutes,
+  complexity,
 }: LessonLinkProps) {
   return (
     <div className="my-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
@@ -27,6 +29,12 @@ export function LessonLink({
             <>
               {lessonId && <span>•</span>}
               <span>{estimatedDurationMinutes} min</span>
+            </>
+          )}
+          {complexity && (
+            <>
+              {(lessonId || estimatedDurationMinutes) && <span>•</span>}
+              <span>{complexity}</span>
             </>
           )}
         </div>

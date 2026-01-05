@@ -330,6 +330,9 @@ const renderOptions: Options = {
           typeof fields.estimatedDurationMinutes === "number"
             ? fields.estimatedDurationMinutes
             : null;
+        const complexity = isString(fields.complexity)
+          ? fields.complexity
+          : null;
 
         if (!title || !slug) {
           return null;
@@ -342,6 +345,7 @@ const renderOptions: Options = {
             description={description}
             lessonId={lessonId}
             estimatedDurationMinutes={estimatedDurationMinutes}
+            complexity={complexity}
           />
         );
       }

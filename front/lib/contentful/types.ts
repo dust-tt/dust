@@ -251,6 +251,7 @@ export interface CourseListingPageProps {
 
 export interface CoursePageProps {
   course: Course;
+  courses: CourseSummary[];
   gtmTrackingId: string | null;
   preview?: boolean;
 }
@@ -312,6 +313,7 @@ export interface LessonSummary {
 
 export interface LessonPageProps {
   lesson: Lesson;
+  courses: CourseSummary[];
   gtmTrackingId: string | null;
   preview?: boolean;
 }

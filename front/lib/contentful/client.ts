@@ -209,6 +209,10 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
           ? { lessonId: entry.fields.lessonId }
           : {};
 
+        const complexityField = "complexity" in entry.fields
+          ? { complexity: entry.fields.complexity }
+          : {};
+
         return {
           ...node,
           data: {
@@ -221,6 +225,7 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
                 description: entry.fields.description,
                 ...idField,
                 estimatedDurationMinutes: entry.fields.estimatedDurationMinutes,
+                ...complexityField,
               },
             },
           },
