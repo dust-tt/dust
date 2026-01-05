@@ -70,7 +70,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${q.error.message}`,
+            message: `Invalid query parameters: ${fromError(q.error).toString()}`,
           },
         });
       }
