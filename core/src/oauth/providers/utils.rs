@@ -8,7 +8,7 @@ use reqwest::RequestBuilder;
 use std::io::prelude::*;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::{error, warn};
+use tracing::{error, info};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderHttpRequestError {
@@ -89,12 +89,6 @@ pub async fn execute_request(
     let is_form_encoded = content_type.contains("application/x-www-form-urlencoded");
 
     if is_form_encoded {
-        warn!(
-            provider = ?provider,
-            content_type = %content_type,
-            "Parsing form-encoded response from OAuth provider token endpoint"
-        );
-
         let form_data: std::collections::HashMap<String, String> =
             url::form_urlencoded::parse(body_str.as_bytes())
                 .into_owned()
