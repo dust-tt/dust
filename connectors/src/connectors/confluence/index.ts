@@ -191,7 +191,10 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const res = await stopConfluenceSyncWorkflow(this.connectorId);
+    const res = await stopConfluenceSyncWorkflow({
+      connectorId: this.connectorId,
+      stopReason: "Stopped via connector STOP command",
+    });
     if (res.isErr()) {
       return res;
     }

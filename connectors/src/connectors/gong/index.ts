@@ -205,6 +205,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const result = await pauseSchedule({
       connector,
       scheduleId: makeGongSyncScheduleId(connector),
+      stopReason: "Stopped via connector STOP command",
     });
     if (result.isErr()) {
       return result;
