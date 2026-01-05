@@ -201,6 +201,14 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
           typeof node.data === "object" && node.data !== null
             ? Object.assign({}, node.data)
             : {};
+
+        // Handle both course and lesson entries
+        const idField = "courseId" in entry.fields
+          ? { courseId: entry.fields.courseId }
+          : "lessonId" in entry.fields
+          ? { lessonId: entry.fields.lessonId }
+          : {};
+
         return {
           ...node,
           data: {
@@ -211,7 +219,7 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
                 title: entry.fields.title,
                 slug: entry.fields.slug,
                 description: entry.fields.description,
-                courseId: entry.fields.courseId,
+                ...idField,
                 estimatedDurationMinutes: entry.fields.estimatedDurationMinutes,
               },
             },
@@ -1132,8 +1140,8 @@ function contentfulEntryToLessonSummary(
     const slugField = entry.fields.slug;
     const slug = isString(slugField) ? slugField : slugify(title);
 
-    const courseIdField = entry.fields.courseId;
-    const courseId = isString(courseIdField) ? courseIdField : null;
+    const lessonIdField = entry.fields.lessonId;
+    const lessonId = isString(lessonIdField) ? lessonIdField : null;
 
     const descriptionField = entry.fields.description;
     const description = isString(descriptionField) ? descriptionField : null;
@@ -1149,7 +1157,7 @@ function contentfulEntryToLessonSummary(
       slug,
       title,
       description,
-      courseId,
+      lessonId,
       estimatedDurationMinutes,
       createdAt: entry.sys.createdAt,
     };
@@ -1169,8 +1177,8 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
   const slugField = fields.slug;
   const slug = isString(slugField) ? slugField : slugify(title);
 
-  const courseIdField = fields.courseId;
-  const courseId = isString(courseIdField) ? courseIdField : null;
+  const lessonIdField = fields.lessonId;
+  const lessonId = isString(lessonIdField) ? lessonIdField : null;
 
   const descriptionField = fields.description;
   const description = isString(descriptionField) ? descriptionField : null;
@@ -1211,12 +1219,29 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
     nextContent = contentfulEntryToLessonSummary(nextContentEntry);
   }
 
+  const categoryField = fields.Category;
+  const category = isString(categoryField) ? categoryField : null;
+
+  const toolsField = fields.tools;
+  const tools = Array.isArray(toolsField)
+    ? toolsField.filter((t): t is string => isString(t))
+    : [];
+
+  const complexityField = fields.complexity;
+  const complexity = isString(complexityField) ? complexityField : null;
+
+  const parentCourseEntry = fields.parentCourse;
+  let parentCourse: CourseSummary | null = null;
+  if (isContentfulEntryForCourse(parentCourseEntry)) {
+    parentCourse = contentfulEntryToCourseSummary(parentCourseEntry);
+  }
+
   return {
     id: sys.id,
     slug,
     title,
     description,
-    courseId,
+    lessonId,
     dateOfAddition,
     estimatedDurationMinutes,
     lessonObjectives,
@@ -1224,6 +1249,10 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
     preRequisites,
     previousContent,
     nextContent,
+    category,
+    tools,
+    complexity,
+    parentCourse,
     createdAt: sys.createdAt,
     updatedAt: sys.updatedAt,
   };

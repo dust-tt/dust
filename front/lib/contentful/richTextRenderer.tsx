@@ -325,7 +325,7 @@ const renderOptions: Options = {
         const description = isString(fields.description)
           ? fields.description
           : null;
-        const courseId = isString(fields.courseId) ? fields.courseId : null;
+        const lessonId = isString(fields.lessonId) ? fields.lessonId : null;
         const estimatedDurationMinutes =
           typeof fields.estimatedDurationMinutes === "number"
             ? fields.estimatedDurationMinutes
@@ -340,7 +340,7 @@ const renderOptions: Options = {
             title={title}
             slug={slug}
             description={description}
-            courseId={courseId}
+            lessonId={lessonId}
             estimatedDurationMinutes={estimatedDurationMinutes}
           />
         );

@@ -124,20 +124,29 @@ export default function LessonPage({ lesson, preview }: LessonPageProps) {
       <article>
         <Grid>
           <div className={classNames(WIDE_CLASSES, "pb-2 pt-6")}>
-            <Link
-              href="/academy"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <span>&larr;</span> Back to Academy
-            </Link>
+            {lesson.parentCourse ? (
+              <Link
+                href={`/academy/${lesson.parentCourse.slug}`}
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span>&larr;</span> Back to {lesson.parentCourse.title}
+              </Link>
+            ) : (
+              <Link
+                href="/academy"
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span>&larr;</span> Back to Academy
+              </Link>
+            )}
           </div>
 
           <header className={WIDE_CLASSES}>
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {lesson.courseId && <span>Lesson {lesson.courseId}</span>}
+              {lesson.lessonId && <span>Lesson {lesson.lessonId}</span>}
               {lesson.estimatedDurationMinutes && (
                 <>
-                  {lesson.courseId && <span>•</span>}
+                  {lesson.lessonId && <span>•</span>}
                   <span>{lesson.estimatedDurationMinutes} min</span>
                 </>
               )}

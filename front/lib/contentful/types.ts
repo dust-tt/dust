@@ -262,13 +262,17 @@ export interface LessonFields {
   dateOfAddition: string;
   description: string;
   lessonObjectives?: string;
-  courseId: string;
+  lessonId: string;
   slug: string;
   estimatedDurationMinutes?: number;
   preRequisites?: Document;
   lessonContent: Document;
   previousContent?: Entry<CourseSkeleton | LessonSkeleton>;
   nextContent?: Entry<CourseSkeleton | LessonSkeleton>;
+  Category?: string;
+  tools?: string[];
+  complexity?: string;
+  parentCourse?: Entry<CourseSkeleton>;
 }
 
 export type LessonSkeleton = EntrySkeletonType<LessonFields, "lesson">;
@@ -280,7 +284,7 @@ export interface Lesson {
   slug: string;
   title: string;
   description: string | null;
-  courseId: string | null;
+  lessonId: string | null;
   dateOfAddition: string | null;
   estimatedDurationMinutes: number | null;
   lessonObjectives: string | null;
@@ -288,6 +292,10 @@ export interface Lesson {
   preRequisites: Document | null;
   previousContent: ContentSummary | null;
   nextContent: ContentSummary | null;
+  category: string | null;
+  tools: string[];
+  complexity: string | null;
+  parentCourse: CourseSummary | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -297,7 +305,7 @@ export interface LessonSummary {
   slug: string;
   title: string;
   description: string | null;
-  courseId: string | null;
+  lessonId: string | null;
   estimatedDurationMinutes: number | null;
   createdAt: string;
 }

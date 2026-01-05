@@ -7,7 +7,7 @@ interface LessonLinkProps {
   title: string;
   slug: string;
   description?: string | null;
-  courseId?: string | null;
+  lessonId?: string | null;
   estimatedDurationMinutes?: number | null;
 }
 
@@ -15,26 +15,23 @@ export function LessonLink({
   title,
   slug,
   description,
-  courseId,
+  lessonId,
   estimatedDurationMinutes,
 }: LessonLinkProps) {
   return (
-    <div className="my-6 rounded-lg border border-gray-200 bg-gray-50 p-6 transition-colors hover:border-gray-300 hover:bg-gray-100">
+    <div className="my-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          {courseId && <span>Lesson {courseId}</span>}
+          {lessonId && <span>Lesson {lessonId}</span>}
           {estimatedDurationMinutes && (
             <>
-              {courseId && <span>•</span>}
+              {lessonId && <span>•</span>}
               <span>{estimatedDurationMinutes} min</span>
             </>
           )}
         </div>
-        <Link
-          href={`/academy/lessons/${slug}`}
-          className="group flex flex-col gap-2"
-        >
-          <h3 className="text-lg font-semibold text-foreground transition-colors group-hover:text-highlight">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-lg font-semibold text-foreground">
             {title}
           </h3>
           {description && (
@@ -42,7 +39,7 @@ export function LessonLink({
               {description}
             </P>
           )}
-        </Link>
+        </div>
         <div className="mt-2">
           <Button
             label="View lesson"
