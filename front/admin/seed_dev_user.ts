@@ -63,7 +63,21 @@ function ensureDomStubs(): void {
   if (!("window" in globalThis)) {
     const documentValue = Reflect.get(globalThis, "document");
     if (isDocumentStub(documentValue)) {
-      Reflect.set(globalThis, "window", { document: documentValue });
+      Reflect.set(globalThis, "window", {
+        document: documentValue,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      });
+    }
+  }
+
+  const windowValue = Reflect.get(globalThis, "window");
+  if (typeof windowValue === "object" && windowValue !== null) {
+    if (typeof Reflect.get(windowValue, "addEventListener") !== "function") {
+      Reflect.set(windowValue, "addEventListener", () => {});
+    }
+    if (typeof Reflect.get(windowValue, "removeEventListener") !== "function") {
+      Reflect.set(windowValue, "removeEventListener", () => {});
     }
   }
 
