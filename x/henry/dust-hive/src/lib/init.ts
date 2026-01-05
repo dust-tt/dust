@@ -149,12 +149,16 @@ async function initQdrant(
     }
   );
 
-  if (!result.success) {
+  // Treat "already exists" as success (idempotent)
+  const alreadyExists =
+    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+  if (!result.success && !alreadyExists) {
     console.log(result.stdout);
     console.error(result.stderr);
   }
 
-  return { success: result.success, usedCache: result.usedCache };
+  return { success: result.success || alreadyExists, usedCache: result.usedCache };
 }
 
 // Initialize Elasticsearch indices (Rust binaries)
@@ -178,7 +182,11 @@ async function initElasticsearchRust(
       }
     );
 
-    if (!result.success) {
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists =
+      result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+    if (!result.success && !alreadyExists) {
       console.log(result.stdout);
       console.error(result.stderr);
       return { success: false, usedCache };
@@ -222,7 +230,10 @@ async function initElasticsearchTS(
     const stderr = await new Response(proc.stderr).text();
     await proc.exited;
 
-    if (proc.exitCode !== 0) {
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists = stderr.includes("already exists") || stdout.includes("already exists");
+
+    if (proc.exitCode !== 0 && !alreadyExists) {
       console.log(stdout);
       console.error(stderr);
       return false;
@@ -323,10 +334,16 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
 
-  return await runBinary("init_db", [], {
+  const result = await runBinary("init_db", [], {
     cwd: `${worktreePath}/core`,
     env: envVars,
   });
+
+  // Treat "already exists" as success (idempotent)
+  const alreadyExists =
+    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+  return { success: result.success || alreadyExists, usedCache: result.usedCache };
 }
 
 // Run front database init
@@ -349,8 +366,19 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
       stderr: "pipe",
     });
 
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
     await proc.exited;
-    if (proc.exitCode !== 0) {
+
+    // Treat "already exists" or "No migrations" as success (idempotent)
+    const alreadyExists =
+      stderr.includes("already exists") ||
+      stdout.includes("already exists") ||
+      stdout.includes("No migrations");
+
+    if (proc.exitCode !== 0 && !alreadyExists) {
+      console.log(stdout);
+      console.error(stderr);
       return false;
     }
   }
@@ -375,8 +403,24 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
     stderr: "pipe",
   });
 
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
-  return proc.exitCode === 0;
+
+  // Treat "already exists" or "relation already exists" as success (idempotent)
+  const alreadyExists =
+    stderr.includes("already exists") ||
+    stdout.includes("already exists") ||
+    stderr.includes("relation") ||
+    stdout.includes("No migrations");
+
+  if (proc.exitCode !== 0 && !alreadyExists) {
+    console.log(stdout);
+    console.error(stderr);
+    return false;
+  }
+
+  return true;
 }
 
 // Run all DB initialization steps in parallel
