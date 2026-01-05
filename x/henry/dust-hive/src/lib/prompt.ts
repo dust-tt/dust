@@ -18,6 +18,50 @@ async function readLine(prompt: string): Promise<string | null> {
   return null;
 }
 
+// Simple y/n prompt - returns true for yes, false for no (no default)
+export async function promptYesNo(question: string): Promise<boolean> {
+  for (;;) {
+    const input = await readLine(`${question} (y/n): `);
+    if (input === null) {
+      throw new Error("No input received");
+    }
+    const normalized = input.toLowerCase();
+    if (normalized === "y" || normalized === "yes") {
+      return true;
+    }
+    if (normalized === "n" || normalized === "no") {
+      return false;
+    }
+    console.log("Please enter 'y' or 'n'");
+  }
+}
+
+// Choice prompt - returns the selected option
+export async function promptChoice<T extends string>(
+  question: string,
+  options: readonly T[]
+): Promise<T> {
+  console.log(question);
+  for (let i = 0; i < options.length; i++) {
+    console.log(`  ${i + 1}) ${options[i]}`);
+  }
+
+  for (;;) {
+    const input = await readLine("Enter choice (number): ");
+    if (input === null) {
+      throw new Error("No input received");
+    }
+    const num = Number.parseInt(input, 10);
+    if (num >= 1 && num <= options.length) {
+      const selected = options[num - 1];
+      if (selected !== undefined) {
+        return selected;
+      }
+    }
+    console.log(`Please enter a number between 1 and ${options.length}`);
+  }
+}
+
 // Prompt user for yes/no confirmation
 // Returns true for yes, false for no
 export async function confirm(message: string, defaultYes = true): Promise<boolean> {
