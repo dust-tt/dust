@@ -86,10 +86,7 @@ pub async fn execute_request(
 
     // Check content_type to determine parsing strategy
     // OAuth 2.0 spec allows token endpoints to return either JSON or form-encoded
-    let is_form_encoded = content_type.contains("application/x-www-form-urlencoded")
-        || (!content_type.contains("application/json")
-            && body_str.contains('=')
-            && body_str.contains('&'));
+    let is_form_encoded = content_type.contains("application/x-www-form-urlencoded");
 
     if is_form_encoded {
         warn!(
