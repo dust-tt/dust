@@ -1,215 +1,77 @@
 // Installation helpers for dust-hive setup
-// Handles automatic installation of prerequisites
 
 import { logger } from "./logger";
 import { confirm } from "./prompt";
 
-export interface InstallResult {
-  success: boolean;
-  message: string;
-}
-
-// Check if a command exists and is executable
-async function commandExists(command: string): Promise<boolean> {
-  try {
-    const proc = Bun.spawn(["which", command], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    await proc.exited;
-    return proc.exitCode === 0;
-  } catch {
-    return false;
-  }
-}
-
 // Check if homebrew is available
 export async function hasHomebrew(): Promise<boolean> {
-  return commandExists("brew");
+  const proc = Bun.spawn(["which", "brew"], { stdout: "pipe", stderr: "pipe" });
+  await proc.exited;
+  return proc.exitCode === 0;
 }
 
-// Run an installation command with progress output
-export async function runInstall(
-  name: string,
-  command: string[],
-  options?: { shell?: boolean }
-): Promise<InstallResult> {
-  const displayCommand = command.join(" ");
-  logger.info(`→ Running: ${displayCommand}`);
+// Installation commands for each prerequisite
+// Key must match CheckResult.name exactly
+const installCommands: Record<string, { cmd: string; requiresBrew: boolean }> = {
+  Homebrew: {
+    cmd: '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+    requiresBrew: false,
+  },
+  Bun: {
+    cmd: "curl -fsSL https://bun.sh/install | bash",
+    requiresBrew: false,
+  },
+  Zellij: {
+    cmd: "brew install zellij",
+    requiresBrew: true,
+  },
+  "Temporal CLI": {
+    cmd: "brew install temporal",
+    requiresBrew: true,
+  },
+  nvm: {
+    cmd: "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash",
+    requiresBrew: false,
+  },
+  Cargo: {
+    cmd: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y',
+    requiresBrew: false,
+  },
+  "sccache (optional)": {
+    cmd: "brew install sccache",
+    requiresBrew: true,
+  },
+};
 
-  try {
-    let proc: ReturnType<typeof Bun.spawn>;
-
-    if (options?.shell) {
-      // For commands that need shell execution (pipes, etc.)
-      proc = Bun.spawn(["bash", "-c", command.join(" ")], {
-        stdout: "inherit",
-        stderr: "inherit",
-        stdin: "inherit",
-      });
-    } else {
-      proc = Bun.spawn(command, {
-        stdout: "inherit",
-        stderr: "inherit",
-        stdin: "inherit",
-      });
-    }
-
-    await proc.exited;
-
-    if (proc.exitCode === 0) {
-      logger.success(`${name} installed`);
-      return { success: true, message: `${name} installed successfully` };
-    }
-    return { success: false, message: `Installation failed with exit code ${proc.exitCode}` };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { success: false, message };
-  }
-}
-
-// Install homebrew if not present
-export async function installHomebrew(): Promise<InstallResult> {
-  const script =
-    '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"';
-  return runInstall("Homebrew", [script], { shell: true });
-}
-
-// Install bun
-export async function installBun(): Promise<InstallResult> {
-  return runInstall("Bun", ["curl", "-fsSL", "https://bun.sh/install", "|", "bash"], {
-    shell: true,
+// Run a shell command and return success status
+async function runShellCommand(cmd: string): Promise<boolean> {
+  logger.info(`→ Running: ${cmd}`);
+  const proc = Bun.spawn(["bash", "-c", cmd], {
+    stdout: "inherit",
+    stderr: "inherit",
+    stdin: "inherit",
   });
+  await proc.exited;
+  return proc.exitCode === 0;
 }
 
-// Install zellij via homebrew
-export async function installZellij(): Promise<InstallResult> {
-  return runInstall("Zellij", ["brew", "install", "zellij"]);
-}
-
-// Install temporal CLI via homebrew
-export async function installTemporal(): Promise<InstallResult> {
-  return runInstall("Temporal CLI", ["brew", "install", "temporal"]);
-}
-
-// Install nvm
-export async function installNvm(): Promise<InstallResult> {
-  const script = "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash";
-  return runInstall("nvm", [script], { shell: true });
-}
-
-// Install cargo (rustup)
-export async function installCargo(): Promise<InstallResult> {
-  const script = 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y';
-  return runInstall("Cargo", [script], { shell: true });
-}
-
-// Install sccache via homebrew
-export async function installSccache(): Promise<InstallResult> {
-  const result = await runInstall("sccache", ["brew", "install", "sccache"]);
-  if (!result.success) {
-    return result;
-  }
-
-  // Configure sccache in cargo config
+// Configure sccache in cargo config after installation
+async function configureSccache(): Promise<void> {
   const { HOME: home = "" } = process.env;
   const configPath = `${home}/.cargo/config.toml`;
   const file = Bun.file(configPath);
 
-  try {
-    let content = "";
-    if (await file.exists()) {
-      content = await file.text();
-    }
-
-    if (!content.includes("sccache")) {
-      const sccacheConfig = '\n[build]\nrustc-wrapper = "sccache"\n';
-      await Bun.write(configPath, content + sccacheConfig);
-      logger.info("→ Configured sccache in ~/.cargo/config.toml");
-    }
-  } catch {
-    logger.warn("Could not configure sccache in cargo config");
+  let content = "";
+  if (await file.exists()) {
+    content = await file.text();
   }
 
-  return result;
-}
-
-// Create config.env template
-export async function createConfigEnvTemplate(configPath: string): Promise<InstallResult> {
-  const template = `# dust-hive configuration
-# Fill in the required values below
-
-# Required: Your Dust API credentials
-DUST_CLIENT_ID=
-DUST_CLIENT_SECRET=
-
-# Required: OpenAI API key for embeddings
-OPENAI_API_KEY=
-
-# Optional: Anthropic API key
-ANTHROPIC_API_KEY=
-
-# Optional: Other API keys as needed
-# GITHUB_TOKEN=
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
-`;
-
-  try {
-    await Bun.write(configPath, template);
-    logger.success(`Created config template at ${configPath}`);
-    logger.info("→ Please edit the file and add your credentials");
-    return { success: true, message: "Config template created" };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { success: false, message };
+  if (!content.includes("sccache")) {
+    const sccacheConfig = '\n[build]\nrustc-wrapper = "sccache"\n';
+    await Bun.write(configPath, content + sccacheConfig);
+    logger.info("→ Configured sccache in ~/.cargo/config.toml");
   }
 }
-
-// Installer registry - maps check names to their installers
-export interface Installer {
-  name: string;
-  requiresBrew: boolean;
-  install: () => Promise<InstallResult>;
-}
-
-export const installers: Record<string, Installer> = {
-  Homebrew: {
-    name: "Homebrew",
-    requiresBrew: false,
-    install: installHomebrew,
-  },
-  Bun: {
-    name: "Bun",
-    requiresBrew: false,
-    install: installBun,
-  },
-  Zellij: {
-    name: "Zellij",
-    requiresBrew: true,
-    install: installZellij,
-  },
-  "Temporal CLI": {
-    name: "Temporal CLI",
-    requiresBrew: true,
-    install: installTemporal,
-  },
-  nvm: {
-    name: "nvm",
-    requiresBrew: false,
-    install: installNvm,
-  },
-  Cargo: {
-    name: "Cargo",
-    requiresBrew: false,
-    install: installCargo,
-  },
-  "sccache (optional)": {
-    name: "sccache",
-    requiresBrew: true,
-    install: installSccache,
-  },
-};
 
 // Attempt to install a prerequisite interactively
 export async function tryInstall(
@@ -217,27 +79,62 @@ export async function tryInstall(
   optional: boolean,
   hasBrew: boolean
 ): Promise<boolean> {
-  const installer = installers[name];
+  const installer = installCommands[name];
   if (!installer) {
     return false;
   }
 
-  // Check if homebrew is needed but missing
   if (installer.requiresBrew && !hasBrew) {
     logger.warn(`${name} requires Homebrew, which is not installed`);
     return false;
   }
 
-  // Ask for confirmation
   const defaultYes = !optional;
   const suffix = optional ? " (optional)" : "";
-  const confirmed = await confirm(`Install ${installer.name}${suffix}?`, defaultYes);
+  const confirmed = await confirm(`Install ${name}${suffix}?`, defaultYes);
 
   if (!confirmed) {
     logger.info("→ Skipped");
     return false;
   }
 
-  const result = await installer.install();
-  return result.success;
+  const success = await runShellCommand(installer.cmd);
+
+  if (success) {
+    logger.success(`${name} installed`);
+
+    // Post-install: configure sccache if we just installed it
+    if (name === "sccache (optional)") {
+      await configureSccache();
+    }
+  } else {
+    logger.error(`Failed to install ${name}`);
+  }
+
+  return success;
+}
+
+// Check if a prerequisite has an installer
+export function hasInstaller(name: string): boolean {
+  return name in installCommands;
+}
+
+// Create config.env template
+export async function createConfigEnvTemplate(configPath: string): Promise<boolean> {
+  // Template uses export statements as required by env.sh sourcing
+  // See local-dev-setup.md for the full list of required variables
+  const template = `# dust-hive configuration
+# This file is sourced by env.sh - use 'export VAR=value' syntax
+# See local-dev-setup.md for the full list of required variables
+
+# Copy your environment variables from your existing .env file here
+# Example:
+# export OPENAI_API_KEY=sk-...
+# export DUST_API_KEY=...
+`;
+
+  await Bun.write(configPath, template);
+  logger.success(`Created config template at ${configPath}`);
+  logger.info("→ Please copy your environment variables from your existing .env file");
+  return true;
 }

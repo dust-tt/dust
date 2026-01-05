@@ -1,5 +1,5 @@
 import { configEnvExists } from "../lib/config";
-import { createConfigEnvTemplate, hasHomebrew, installers, tryInstall } from "../lib/installer";
+import { createConfigEnvTemplate, hasHomebrew, hasInstaller, tryInstall } from "../lib/installer";
 import { logger } from "../lib/logger";
 import { CONFIG_ENV_PATH, findRepoRoot } from "../lib/paths";
 import { confirm } from "../lib/prompt";
@@ -275,6 +275,29 @@ function getManualFailures(results: CheckResult[]): CheckResult[] {
   return results.filter((r) => !(r.ok || r.installable || r.optional));
 }
 
+async function installConfigEnv(): Promise<boolean> {
+  const shouldCreate = await confirm("Create config.env template?", true);
+  if (!shouldCreate) {
+    logger.info("→ Skipped");
+    return false;
+  }
+  await createConfigEnvTemplate(CONFIG_ENV_PATH);
+  return true;
+}
+
+async function installPrerequisite(
+  check: CheckResult,
+  hasBrew: boolean
+): Promise<{ installed: boolean; brewInstalled: boolean }> {
+  if (!hasInstaller(check.name)) {
+    return { installed: false, brewInstalled: false };
+  }
+
+  const installed = await tryInstall(check.name, check.optional ?? false, hasBrew);
+  const brewInstalled = installed && check.name === "Homebrew";
+  return { installed, brewInstalled };
+}
+
 async function interactiveInstall(results: CheckResult[]): Promise<boolean> {
   const installable = getInstallableFailures(results);
   if (installable.length === 0) {
@@ -284,30 +307,19 @@ async function interactiveInstall(results: CheckResult[]): Promise<boolean> {
   console.log();
   logger.info("Some prerequisites can be installed automatically.\n");
 
-  // Check if we have homebrew (needed for some installs)
-  const hasBrew = await hasHomebrew();
+  const brewCheck = results.find((r) => r.name === "Homebrew");
+  let hasBrew = brewCheck?.ok ?? false;
   let anyInstalled = false;
 
   for (const check of installable) {
-    // Special case: config.env
     if (check.name === "config.env") {
-      const shouldCreate = await confirm("Create config.env template?", true);
-      if (shouldCreate) {
-        await createConfigEnvTemplate(CONFIG_ENV_PATH);
-        anyInstalled = true;
-      } else {
-        logger.info("→ Skipped");
-      }
+      anyInstalled = (await installConfigEnv()) || anyInstalled;
       continue;
     }
 
-    // Check if this prerequisite has an installer
-    if (installers[check.name]) {
-      const installed = await tryInstall(check.name, check.optional ?? false, hasBrew);
-      if (installed) {
-        anyInstalled = true;
-      }
-    }
+    const result = await installPrerequisite(check, hasBrew);
+    anyInstalled = result.installed || anyInstalled;
+    hasBrew = result.brewInstalled || hasBrew;
   }
 
   return anyInstalled;
