@@ -211,24 +211,27 @@ export class ActivityInboundLogInterceptor
             );
           }
 
-          let errorType: ConnectorErrorType =
-            err instanceof ExternalOAuthTokenError
-              ? "oauth_token_revoked"
-              : "workspace_quota_exceeded";
-
-          await syncFailed(connectorId, errorType);
-          this.logger.info(
-            {
-              connectorId,
-              workspaceId,
-              dataSourceId,
-              errorType,
-            },
-            "Stopping connector manager because of " +
-              (errorType === "oauth_token_revoked"
-                ? "expired token."
-                : "quota exceeded for the workspace.")
-          );
+          if (err instanceof ExternalOAuthTokenError) {
+            await syncFailed(connectorId, "oauth_token_revoked");
+            this.logger.info(
+              {
+                connectorId,
+                workspaceId,
+                dataSourceId,
+              },
+              `Stopping connector manager because of expired token.`
+            );
+          } else {
+            await syncFailed(connectorId, "workspace_quota_exceeded");
+            this.logger.info(
+              {
+                connectorId,
+                workspaceId,
+                dataSourceId,
+              },
+              `Stopping connector manager because of quota exceeded for the workspace.`
+            );
+          }
 
           const connectorManager = getConnectorManager({
             connectorId: connector.id,
@@ -237,10 +240,7 @@ export class ActivityInboundLogInterceptor
 
           if (connectorManager) {
             await connectorManager.pauseAndStop({
-              reason:
-                err instanceof ExternalOAuthTokenError
-                  ? "Stopped due to expired OAuth token"
-                  : "Stopped due to workspace quota exceeded",
+              reason: `Stopped on ${err.name}`,
             });
           } else {
             this.logger.error(
@@ -248,7 +248,6 @@ export class ActivityInboundLogInterceptor
                 connectorId: connector.id,
                 workspaceId,
                 dataSourceId,
-                errorType,
               },
               `Connector manager not found for connector`
             );
