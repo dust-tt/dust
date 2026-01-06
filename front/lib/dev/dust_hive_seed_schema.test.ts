@@ -1,3 +1,4 @@
+/* eslint-disable dust/no-raw-sql */
 /**
  * Schema validation test for dust-hive SQL seed.
  *
@@ -10,7 +11,6 @@
 
 import * as fs from "fs";
 import * as path from "path";
-
 import { QueryTypes } from "sequelize";
 import { afterAll, describe, expect, it } from "vitest";
 
