@@ -61,6 +61,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -80,7 +81,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;
@@ -163,7 +164,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const hasSpaceConversations = hasFeature("projects");
 
-  const { summary } = useSpaceConversationsSummary({
+  const { summary, mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: !hasSpaceConversations },
   });
@@ -173,6 +174,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
+    useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -347,6 +350,20 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
+      />
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
+        owner={owner}
+        onCreated={(space) => {
+          setIsCreateProjectModalOpen(false);
+          void mutateSpaceSummary();
+          sendNotification({
+            type: "success",
+            title: "Project created",
+            description: `Project "${space.name}" has been created.`,
+          });
+        }}
       />
       <div className="relative flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
@@ -543,6 +560,22 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                   <NavigationListCollapsibleSection
                     label="Projects"
                     defaultOpen
+                    action={
+                      isAdmin(owner) ? (
+                        <Button
+                          size="xs"
+                          icon={PlusIcon}
+                          label="New"
+                          variant="ghost"
+                          // aria-label="Create new project"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsCreateProjectModalOpen(true);
+                          }}
+                        />
+                      ) : null
+                    }
                   >
                     <SpacesList owner={owner} summary={summary} />
                   </NavigationListCollapsibleSection>
