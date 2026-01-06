@@ -115,20 +115,21 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   };
 
   // Replace Sequelize-style :paramName placeholders with actual values
+  // Use word boundaries to avoid partial matches (e.g., :provider matching :providerId)
   const finalSql = sql
-    .replace(/:userSid/g, escapeSql(userSid))
-    .replace(/:workspaceSid/g, escapeSql(workspaceSid))
-    .replace(/:subscriptionSid/g, escapeSql(subscriptionSid))
-    .replace(/:email/g, escapeSql(config.email))
-    .replace(/:username/g, escapeSql(username))
-    .replace(/:name/g, escapeSql(config.name))
-    .replace(/:firstName/g, escapeSql(config.firstName))
-    .replace(/:lastName/g, escapeSql(config.lastName))
-    .replace(/:workspaceName/g, escapeSql(config.workspaceName))
-    .replace(/:workOSUserId/g, escapeSql(config.workOSUserId))
-    .replace(/:provider/g, escapeSql(config.provider))
-    .replace(/:providerId/g, escapeSql(config.providerId))
-    .replace(/:imageUrl/g, escapeSql(config.imageUrl));
+    .replace(/:userSid\b/g, escapeSql(userSid))
+    .replace(/:workspaceSid\b/g, escapeSql(workspaceSid))
+    .replace(/:subscriptionSid\b/g, escapeSql(subscriptionSid))
+    .replace(/:email\b/g, escapeSql(config.email))
+    .replace(/:username\b/g, escapeSql(username))
+    .replace(/:firstName\b/g, escapeSql(config.firstName))
+    .replace(/:lastName\b/g, escapeSql(config.lastName))
+    .replace(/:workspaceName\b/g, escapeSql(config.workspaceName))
+    .replace(/:workOSUserId\b/g, escapeSql(config.workOSUserId))
+    .replace(/:providerId\b/g, escapeSql(config.providerId))
+    .replace(/:provider\b/g, escapeSql(config.provider))
+    .replace(/:imageUrl\b/g, escapeSql(config.imageUrl))
+    .replace(/:name\b/g, escapeSql(config.name));
 
   // Execute via psql
   const proc = Bun.spawn(["psql", dbUri, "-c", finalSql], {
