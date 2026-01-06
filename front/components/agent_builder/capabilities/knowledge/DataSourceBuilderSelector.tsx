@@ -47,7 +47,8 @@ export const DataSourceBuilderSelector = ({
   const { spaces } = useSpacesContext();
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
-  const { navigationHistory, navigateTo } = useDataSourceBuilderContext();
+  const { navigationHistory, navigateTo, setSpaceEntry } =
+    useDataSourceBuilderContext();
   const router = useRouter();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
   const currentNavigationEntry =
@@ -79,7 +80,9 @@ export const DataSourceBuilderSelector = ({
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
     const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
-    return spaces.filter((s) => spaceIds.has(s.sId));
+    // TODO(projects): Remove projects from the list until we fix the wording accordingly to avoid confusion.
+    // Projects will be useful for using their conversations or context as datasources.
+    return spaces.filter((s) => spaceIds.has(s.sId) && s.kind !== "project");
   }, [spaces, dataSourceViews]);
 
   // Get current space and node for search - memoized to prevent re-rendering issues
@@ -96,6 +99,12 @@ export const DataSourceBuilderSelector = ({
     () => findDataSourceViewFromNavigationHistory(navigationHistory),
     [navigationHistory]
   );
+
+  useEffect(() => {
+    if (filteredSpaces.length === 1) {
+      setSpaceEntry(filteredSpaces[0]);
+    }
+  }, [filteredSpaces]);
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 
