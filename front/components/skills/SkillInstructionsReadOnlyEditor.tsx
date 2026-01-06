@@ -4,7 +4,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
-import { KnowledgeOwnerProvider } from "@app/components/editor/extensions/skill_builder/KnowledgeOwnerContext";
+import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
@@ -75,7 +75,7 @@ export function SkillInstructionsReadOnlyEditor({
   );
 
   return (
-    <KnowledgeOwnerProvider owner={owner}>
+    <SpacesProvider owner={owner}>
       <div
         className={cn(
           "min-h-60 w-full min-w-0 rounded-xl border p-3",
@@ -85,6 +85,6 @@ export function SkillInstructionsReadOnlyEditor({
       >
         <EditorContent editor={editor} />
       </div>
-    </KnowledgeOwnerProvider>
+    </SpacesProvider>
   );
 }

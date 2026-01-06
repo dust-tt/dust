@@ -18,6 +18,7 @@ import React, {
   useState,
 } from "react";
 
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   KnowledgeChip,
   KnowledgeErrorChip,
@@ -31,7 +32,6 @@ import {
   computeHasChildren,
   isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNodeWithSpace,
@@ -157,7 +157,7 @@ function KnowledgeSearchComponent({
   onCancel,
   clientRect,
 }: KnowledgeSearchProps) {
-  const { owner } = useSkillBuilderContext();
+  const { owner } = useSpacesContext();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -468,7 +468,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
-  const { owner } = useSkillBuilderContext();
+  const { owner } = useSpacesContext();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
