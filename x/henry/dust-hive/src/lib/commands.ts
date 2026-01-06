@@ -2,7 +2,7 @@
 
 import { setLastActiveEnv } from "./activity";
 import { type Environment, getEnvironment } from "./environment";
-import { restoreTerminal, selectEnvironment } from "./prompt";
+import { selectEnvironment } from "./prompt";
 import { CommandError, Err, Ok, type Result, envNotFoundError } from "./result";
 
 // Require an environment to exist, returning error if not found
@@ -18,10 +18,6 @@ export async function requireEnvironment(
     const selected = await selectEnvironment({
       message: `Select environment for ${commandName}`,
     });
-
-    // Restore terminal to cooked mode after interactive prompt
-    // This prevents terminal corruption when spawning subprocesses like zellij
-    restoreTerminal();
 
     if (!selected) {
       return Err(new CommandError("No environment selected"));
