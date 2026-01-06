@@ -49,7 +49,7 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
 
 interface KnowledgeErrorChipProps {
   errorMessage?: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   title: string;
 }
 

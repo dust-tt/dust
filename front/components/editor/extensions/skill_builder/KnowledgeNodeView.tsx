@@ -41,21 +41,22 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
+import type { LightWorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;
-  onRemove: () => void;
-  updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
+  owner: LightWorkspaceType;
+  onRemove?: () => void;
+  updateAttributes?: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-function KnowledgeDisplayComponent({
+export function KnowledgeDisplayComponent({
   item,
+  owner,
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
-  const { owner } = useSkillBuilderContext();
-
   // Check if we need to fetch full node data.
   const needsFetch = !isFullKnowledgeItem(item);
 
@@ -78,6 +79,7 @@ function KnowledgeDisplayComponent({
   // Update the item with fetched node data.
   useEffect(() => {
     if (
+      updateAttributes &&
       needsFetch &&
       fetchedNodes &&
       fetchedNodes.length > 0 &&
@@ -466,6 +468,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
+  const { owner } = useSkillBuilderContext();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -498,8 +501,9 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       <NodeViewWrapper className="inline">
         <KnowledgeDisplayComponent
           item={selectedItems[0]}
-          onRemove={handleRemove}
-          updateAttributes={updateAttributes}
+          owner={owner}
+          onRemove={editor.isEditable ? handleRemove : undefined}
+          updateAttributes={editor.isEditable ? updateAttributes : undefined}
         />
       </NodeViewWrapper>
     );
