@@ -2,24 +2,9 @@
 
 import { open, rename, unlink } from "node:fs/promises";
 import { createConnection } from "node:net";
+import { isErrnoException } from "./errors";
 import { TEMPORAL_LOG_PATH, TEMPORAL_PID_PATH, TEMPORAL_PORT } from "./paths";
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
-
-// Check if a process is running by PID
-function isProcessRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ESRCH") {
-      return false;
-    }
-    throw error;
-  }
-}
+import { isProcessRunning, killProcess } from "./process";
 
 // Check if something is listening on the temporal port
 export async function isTemporalPortInUse(): Promise<boolean> {
@@ -82,26 +67,6 @@ async function cleanupTemporalPidFile(): Promise<void> {
       return;
     }
     throw error;
-  }
-}
-
-// Kill the temporal process
-async function killTemporalProcess(pid: number, signal: NodeJS.Signals = "SIGTERM"): Promise<void> {
-  try {
-    process.kill(-pid, signal);
-    return;
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ESRCH") {
-      return;
-    }
-    try {
-      process.kill(pid, signal);
-    } catch (innerError) {
-      if (isErrnoException(innerError) && innerError.code === "ESRCH") {
-        return;
-      }
-      throw innerError;
-    }
   }
 }
 
@@ -213,7 +178,7 @@ export async function stopTemporalServer(): Promise<{ success: boolean; wasRunni
     return { success: true, wasRunning: false };
   }
 
-  await killTemporalProcess(pid, "SIGTERM");
+  await killProcess(pid, "SIGTERM");
 
   // Wait for process to exit
   const start = Date.now();
@@ -226,7 +191,7 @@ export async function stopTemporalServer(): Promise<{ success: boolean; wasRunni
   }
 
   // Force kill if still running
-  await killTemporalProcess(pid, "SIGKILL");
+  await killProcess(pid, "SIGKILL");
   await cleanupTemporalPidFile();
 
   return { success: true, wasRunning: true };

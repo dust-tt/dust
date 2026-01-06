@@ -38,8 +38,8 @@ async function checkPreconditions(repoRoot: string): Promise<Result<void>> {
     );
   }
 
-  // Must have clean working directory
-  const hasChanges = await hasUncommittedChanges(repoRoot);
+  // Must have clean working directory (ignoring untracked files, since git pull --rebase handles them)
+  const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
   if (hasChanges) {
     return Err(
       new CommandError(

@@ -412,9 +412,7 @@ export async function openMainSession(
 ): Promise<void> {
   const sessionName = MAIN_SESSION_NAME;
 
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const inZellij = process.env["ZELLIJ"] !== undefined;
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const currentSession = process.env["ZELLIJ_SESSION_NAME"];
 
   // Ensure watch script exists (same script, will be called with --temporal)
