@@ -274,7 +274,11 @@ export async function hardDeleteSpace(
 
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
-  params: { name: string; isRestricted: boolean } & (
+  params: {
+    name: string;
+    isRestricted: boolean;
+    conversationsEnabled?: boolean;
+  } & (
     | { memberIds: string[]; managementMode: "manual" }
     | { groupIds: string[]; managementMode: "group" }
   ),
@@ -306,7 +310,7 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted } = params;
+    const { name, isRestricted, conversationsEnabled } = params;
     const managementMode = isRestricted ? params.managementMode : "manual";
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
@@ -342,6 +346,7 @@ export async function createRegularSpaceAndGroup(
         kind: "regular",
         managementMode,
         workspaceId: owner.id,
+        conversationsEnabled: conversationsEnabled ?? false,
       },
       groups,
       t
