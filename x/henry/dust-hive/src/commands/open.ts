@@ -9,6 +9,7 @@ import {
   getWorktreeDir,
   getZellijLayoutPath,
 } from "../lib/paths";
+import { restoreTerminal } from "../lib/prompt";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
 
@@ -303,6 +304,9 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     // Attach to existing session
     logger.info(`Attaching to existing session '${sessionName}'...`);
 
+    // Ensure terminal is fully restored before spawning zellij
+    restoreTerminal();
+
     const proc = Bun.spawn(["zellij", "attach", sessionName], {
       stdin: "inherit",
       stdout: "inherit",
@@ -327,6 +331,9 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     }
 
     logger.info(`Creating new zellij session '${sessionName}'...`);
+
+    // Ensure terminal is fully restored before spawning zellij
+    restoreTerminal();
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],

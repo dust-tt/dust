@@ -1,6 +1,7 @@
 // Interactive prompts for environment selection and confirmations
-// Uses simple line input (no raw mode) for compatibility with terminal multiplexers
+// Uses @clack/prompts for beautiful arrow-key navigation
 
+import * as p from "@clack/prompts";
 import { getLastActiveEnv } from "./activity";
 import { listEnvironments } from "./environment";
 import { detectEnvFromCwd } from "./paths";
@@ -9,31 +10,48 @@ export interface SelectEnvironmentOptions {
   message?: string;
 }
 
-// Simple line reader using Bun's console async iterator (same as spawn.ts)
-async function readLine(prompt: string): Promise<string | null> {
-  process.stdout.write(prompt);
-  for await (const line of console) {
-    return line.trim();
+/**
+ * Restore terminal to cooked mode and clean up stdin.
+ * IMPORTANT: Call this before spawning any subprocess that takes over the terminal
+ * (like zellij) to prevent terminal corruption.
+ *
+ * This does three things:
+ * 1. Exits raw mode (restores cooked mode)
+ * 2. Pauses stdin to stop reading
+ * 3. Removes all listeners that clack may have attached
+ */
+export function restoreTerminal(): void {
+  try {
+    // Exit raw mode if we're in a TTY
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+
+    // Pause stdin to stop it from reading
+    process.stdin.pause();
+
+    // Remove all listeners that clack may have attached
+    // This is critical - without this, clack's listeners will interfere
+    // with child processes that inherit stdin
+    process.stdin.removeAllListeners("data");
+    process.stdin.removeAllListeners("keypress");
+    process.stdin.removeAllListeners("readable");
+  } catch {
+    // Ignore errors - best effort cleanup
   }
-  return null;
 }
 
 // Simple y/n prompt - returns true for yes, false for no (no default)
 export async function promptYesNo(question: string): Promise<boolean> {
-  for (;;) {
-    const input = await readLine(`${question} (y/n): `);
-    if (input === null) {
-      throw new Error("No input received");
-    }
-    const normalized = input.toLowerCase();
-    if (normalized === "y" || normalized === "yes") {
-      return true;
-    }
-    if (normalized === "n" || normalized === "no") {
-      return false;
-    }
-    console.log("Please enter 'y' or 'n'");
+  const result = await p.confirm({
+    message: question,
+  });
+
+  if (p.isCancel(result)) {
+    throw new Error("Prompt cancelled");
   }
+
+  return result;
 }
 
 // Choice prompt - returns the selected option
@@ -41,42 +59,30 @@ export async function promptChoice<T extends string>(
   question: string,
   options: readonly T[]
 ): Promise<T> {
-  console.log(question);
-  for (let i = 0; i < options.length; i++) {
-    console.log(`  ${i + 1}) ${options[i]}`);
+  const result = await p.select({
+    message: question,
+    options: options.map((opt) => ({ value: opt as string, label: opt })),
+  });
+
+  if (p.isCancel(result)) {
+    throw new Error("Prompt cancelled");
   }
 
-  for (;;) {
-    const input = await readLine("Enter choice (number): ");
-    if (input === null) {
-      throw new Error("No input received");
-    }
-    const num = Number.parseInt(input, 10);
-    if (num >= 1 && num <= options.length) {
-      const selected = options[num - 1];
-      if (selected !== undefined) {
-        return selected;
-      }
-    }
-    console.log(`Please enter a number between 1 and ${options.length}`);
-  }
+  return result as T;
 }
 
-// Prompt user for yes/no confirmation
-// Returns true for yes, false for no
+// Prompt user for yes/no confirmation with default
 export async function confirm(message: string, defaultYes = true): Promise<boolean> {
-  const hint = defaultYes ? "[Y/n]" : "[y/N]";
-  const input = await readLine(`${message} ${hint} `);
+  const result = await p.confirm({
+    message,
+    initialValue: defaultYes,
+  });
 
-  if (input === null) {
+  if (p.isCancel(result)) {
     return false;
   }
 
-  const normalized = input.toLowerCase();
-  if (normalized === "") {
-    return defaultYes;
-  }
-  return normalized === "y" || normalized === "yes";
+  return result;
 }
 
 function sortEnvs(
@@ -93,56 +99,22 @@ function sortEnvs(
   });
 }
 
-function findDefault(
+function findInitialValue(
   sortedEnvs: string[],
   envs: string[],
   currentEnv: string | null,
   lastActiveEnv: string | null
-): number {
+): string | undefined {
   if (currentEnv && envs.includes(currentEnv)) {
-    return sortedEnvs.indexOf(currentEnv);
+    return currentEnv;
   }
   if (lastActiveEnv && envs.includes(lastActiveEnv)) {
-    return sortedEnvs.indexOf(lastActiveEnv);
+    return lastActiveEnv;
   }
-  return 0;
+  return sortedEnvs[0];
 }
 
-function printList(
-  sortedEnvs: string[],
-  defaultIndex: number,
-  currentEnv: string | null,
-  lastActiveEnv: string | null,
-  message: string
-): void {
-  console.log();
-  console.log(message);
-  for (let i = 0; i < sortedEnvs.length; i++) {
-    const name = sortedEnvs[i];
-    let suffix = "";
-    if (name === currentEnv) {
-      suffix = " (current)";
-    } else if (name === lastActiveEnv) {
-      suffix = " (last)";
-    }
-    const marker = i === defaultIndex ? ">" : " ";
-    console.log(`  ${marker} ${i + 1}. ${name}${suffix}`);
-  }
-}
-
-function parseInput(input: string, count: number, defaultIndex: number): number | null {
-  if (input === "") {
-    return defaultIndex;
-  }
-  const num = Number.parseInt(input, 10);
-  if (Number.isNaN(num) || num < 1 || num > count) {
-    console.log("Invalid selection");
-    return null;
-  }
-  return num - 1;
-}
-
-// Interactively select an environment using simple numbered list
+// Interactively select an environment using arrow keys
 export async function selectEnvironment(
   options?: SelectEnvironmentOptions
 ): Promise<string | null> {
@@ -154,25 +126,25 @@ export async function selectEnvironment(
   const currentEnv = detectEnvFromCwd();
   const lastActiveEnv = await getLastActiveEnv();
   const sortedEnvs = sortEnvs(envs, currentEnv, lastActiveEnv);
-  const defaultIndex = findDefault(sortedEnvs, envs, currentEnv, lastActiveEnv);
+  const initialValue = findInitialValue(sortedEnvs, envs, currentEnv, lastActiveEnv);
 
-  printList(
-    sortedEnvs,
-    defaultIndex,
-    currentEnv,
-    lastActiveEnv,
-    options?.message ?? "Select environment:"
-  );
+  const result = await p.select({
+    message: options?.message ?? "Select environment",
+    initialValue,
+    options: sortedEnvs.map((name) => {
+      if (name === currentEnv) {
+        return { value: name, label: name, hint: "current" };
+      }
+      if (name === lastActiveEnv) {
+        return { value: name, label: name, hint: "last" };
+      }
+      return { value: name, label: name };
+    }),
+  });
 
-  const input = await readLine(`[${defaultIndex + 1}]: `);
-  if (input === null) {
+  if (p.isCancel(result)) {
     return null;
   }
 
-  const selected = parseInput(input, sortedEnvs.length, defaultIndex);
-  if (selected === null) {
-    return null;
-  }
-
-  return sortedEnvs[selected] ?? null;
+  return result as string;
 }
