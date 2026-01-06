@@ -941,16 +941,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
-    const workspace = auth.getNonNullableWorkspace();
+    assert(this.canWrite(auth), "User is not authorized to archive this skill");
 
+    const workspace = auth.getNonNullableWorkspace();
     let affectedCount = 0;
 
     await withTransaction(async (transaction) => {
-      affectedCount = await this.updateWithAuthorization(
-        auth,
-        { status: "archived" },
-        { transaction }
-      );
+      [affectedCount] = await this.update({ status: "archived" }, transaction);
 
       await AgentSkillModel.destroy({
         where: {
@@ -965,9 +962,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
-    const affectedCount = await this.updateWithAuthorization(auth, {
-      status: "active",
-    });
+    assert(this.canWrite(auth), "User is not authorized to restore this skill");
+
+    const [affectedCount] = await this.update({ status: "active" });
 
     return { affectedCount };
   }
@@ -992,14 +989,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
     }
   ): Promise<void> {
+    assert(this.canWrite(auth), "User is not authorized to update this skill");
+
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
       const authorId = auth.user()?.id;
 
-      await this.updateWithAuthorization(
-        auth,
+      await this.update(
         {
           name,
           agentFacingDescription,
@@ -1009,7 +1007,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds,
           authorId,
         },
-        { transaction }
+        transaction
       );
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
@@ -1070,20 +1068,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Update instance to avoid stale data.
     this.mcpServerViews = mcpServerViews;
-  }
-
-  private async updateWithAuthorization(
-    auth: Authenticator,
-    blob: Partial<Attributes<SkillConfigurationModel>>,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<number> {
-    // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
-    if (!this.canWrite(auth)) {
-      throw new Error("User does not have permission to update this skill.");
-    }
-
-    const [affectedCount] = await this.update(blob, transaction);
-    return affectedCount;
   }
 
   async delete(
