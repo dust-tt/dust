@@ -42,10 +42,11 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
       target="_blank"
       // TODO(2026-01-02 SKILL): decide on proper color.
       color="highlight"
+      // TODO(2026-01-02 SKILL): Stop propagating event so it does not open the link.
       onRemove={onRemove}
       className="rounded-md bg-white align-middle font-medium drop-shadow"
       // TODO(2026-01-02 SKILL): Make href optional in AttachmentChip.
-      href={node.sourceUrl ?? ""}
+      href={""}
       size="xs"
     />
   );
