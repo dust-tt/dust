@@ -278,8 +278,8 @@ dust-hive stop my-feature
 
 ```bash
 # Create and warm two environments
-dust-hive spawn env-a && dust-hive warm env-a
-dust-hive spawn env-b && dust-hive warm env-b
+dust-hive spawn env-a --warm
+dust-hive spawn env-b --warm
 
 # Both running simultaneously
 dust-hive list
