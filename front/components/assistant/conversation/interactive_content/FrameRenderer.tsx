@@ -366,7 +366,11 @@ function PreviewActionButtons({
       />
       {lastEditedByAgentConfigurationId && (
         <Tooltip
-          label="Revert the last change"
+          label={
+            hasPreviousVersion
+              ? "Revert the last change"
+              : "No previous version"
+          }
           side="left"
           tooltipTriggerAsChild
           trigger={

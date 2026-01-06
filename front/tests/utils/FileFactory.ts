@@ -38,6 +38,7 @@ export class FileFactory {
       contentType,
       fileName,
       fileSize,
+      version: 0,
       useCase,
       useCaseMetadata,
       snippet,
