@@ -1,9 +1,12 @@
 import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import {
   DUST_HIVE_SCRIPTS,
   DUST_HIVE_ZELLIJ,
+  MAIN_SESSION_NAME,
+  TEMPORAL_LOG_PATH,
   getEnvFilePath,
   getWatchScriptPath,
   getWorktreeDir,
@@ -344,3 +347,187 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
 
   return Ok(undefined);
 });
+
+// Temporal watch script - different from env watch script since it uses dust-hive temporal restart
+function getTemporalWatchScriptContent(): string {
+  return `#!/bin/bash
+# Log watcher for Temporal server with Ctrl+C menu
+# Usage: watch-temporal.sh
+
+LOG_FILE="${TEMPORAL_LOG_PATH}"
+
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"
+
+# Trap SIGINT to prevent script from exiting on Ctrl+C
+trap '' SIGINT
+
+show_menu() {
+  echo ""
+  echo -e "\\033[100m [temporal] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
+  read -r -n 1 cmd
+  echo ""
+
+  case "$cmd" in
+    r|R)
+      echo -e "\\033[33m[Restarting temporal...]\\033[0m"
+      dust-hive temporal restart
+      echo -e "\\033[32m[temporal restarted]\\033[0m"
+      sleep 1
+      ;;
+    c|C)
+      clear
+      ;;
+    q|Q)
+      exit 0
+      ;;
+  esac
+}
+
+while true; do
+  echo -e "\\033[100m [temporal] Ctrl+C for menu \\033[0m"
+  echo ""
+  # Run tail in a subshell that doesn't ignore SIGINT
+  (trap - SIGINT; exec tail -n 500 -F "$LOG_FILE") || true
+  show_menu
+done
+`;
+}
+
+function getTemporalWatchScriptPath(): string {
+  return join(DUST_HIVE_SCRIPTS, "watch-temporal.sh");
+}
+
+async function ensureTemporalWatchScript(): Promise<string> {
+  await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
+  const scriptPath = getTemporalWatchScriptPath();
+  await Bun.write(scriptPath, getTemporalWatchScriptContent());
+  const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
+  await proc.exited;
+  return scriptPath;
+}
+
+// Generate layout for main session (repo root + temporal logs)
+function generateMainLayout(repoRoot: string, temporalWatchScriptPath: string): string {
+  const shellPath = getUserShell();
+
+  return `layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+        children
+    }
+
+    tab name="main" focus=true {
+        pane {
+            cwd "${kdlEscape(repoRoot)}"
+            command "${kdlEscape(shellPath)}"
+            start_suspended false
+        }
+    }
+
+    tab name="temporal" {
+        pane {
+            command "${kdlEscape(temporalWatchScriptPath)}"
+            start_suspended false
+        }
+    }
+}
+`;
+}
+
+async function writeMainLayout(repoRoot: string, temporalWatchScriptPath: string): Promise<string> {
+  await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
+  const layoutPath = join(DUST_HIVE_ZELLIJ, "main-layout.kdl");
+  const content = generateMainLayout(repoRoot, temporalWatchScriptPath);
+  await Bun.write(layoutPath, content);
+  return layoutPath;
+}
+
+interface MainSessionOptions {
+  attach?: boolean;
+}
+
+// Open the main session (for managed services mode)
+export async function openMainSession(
+  repoRoot: string,
+  options: MainSessionOptions = {}
+): Promise<void> {
+  const sessionName = MAIN_SESSION_NAME;
+
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+  const inZellij = process.env["ZELLIJ"] !== undefined;
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+  const currentSession = process.env["ZELLIJ_SESSION_NAME"];
+
+  // Ensure temporal watch script exists
+  const temporalWatchScriptPath = await ensureTemporalWatchScript();
+
+  // Check if session exists
+  const sessionExists = await checkSessionExists(sessionName);
+
+  if (inZellij && options.attach) {
+    if (currentSession === sessionName) {
+      logger.info(`Already in session '${sessionName}'`);
+      return;
+    }
+
+    if (!sessionExists) {
+      const layoutPath = await writeMainLayout(repoRoot, temporalWatchScriptPath);
+      await createSessionInBackground(sessionName, layoutPath);
+    }
+
+    // Switch to session
+    logger.info(`Switching to session '${sessionName}'...`);
+    const switchProc = Bun.spawn(
+      [
+        "zellij",
+        "pipe",
+        "--plugin",
+        "https://github.com/mostafaqanbaryan/zellij-switch/releases/download/0.2.1/zellij-switch.wasm",
+        "--",
+        `--session ${sessionName}`,
+      ],
+      { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
+    );
+    await switchProc.exited;
+    return;
+  }
+
+  if (sessionExists) {
+    if (!options.attach) {
+      logger.info(`Main session '${sessionName}' already exists.`);
+      return;
+    }
+
+    logger.info(`Attaching to main session '${sessionName}'...`);
+    restoreTerminal();
+    const proc = Bun.spawn(["zellij", "attach", sessionName], {
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await proc.exited;
+  } else {
+    const layoutPath = await writeMainLayout(repoRoot, temporalWatchScriptPath);
+
+    if (!options.attach) {
+      await createSessionInBackground(sessionName, layoutPath);
+      logger.info(`Main session '${sessionName}' created.`);
+      return;
+    }
+
+    logger.info(`Creating main session '${sessionName}'...`);
+    restoreTerminal();
+    const proc = Bun.spawn(
+      ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],
+      {
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      }
+    );
+    await proc.exited;
+  }
+}

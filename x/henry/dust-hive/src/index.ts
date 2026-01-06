@@ -17,6 +17,12 @@ import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
 import { syncCommand } from "./commands/sync";
+import {
+  temporalRestartCommand,
+  temporalStartCommand,
+  temporalStatusCommand,
+  temporalStopCommand,
+} from "./commands/temporal";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
@@ -132,17 +138,19 @@ cli
   });
 
 cli
-  .command("start [name]", "Resume stopped environment")
+  .command("start [name]", "Start managed services or resume environment")
   .alias("up")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(startCommand(name));
+  .option("-a, --attach", "Attach to main zellij session (managed services mode)")
+  .action(async (name: string | undefined, options: { attach?: boolean }) => {
+    await prepareAndRun(startCommand(name, { attach: Boolean(options.attach) }));
   });
 
 cli
-  .command("stop [name]", "Full stop of all services")
+  .command("stop [name]", "Stop all services or specific environment")
   .alias("x")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(stopCommand(name));
+  .option("-f, --force", "Skip confirmation (managed services mode)")
+  .action(async (name: string | undefined, options: { force?: boolean }) => {
+    await prepareAndRun(stopCommand(name, { force: Boolean(options.force) }));
   });
 
 cli
@@ -209,6 +217,23 @@ cli
 
 cli.command("sync", "Pull latest main, rebuild binaries, refresh deps").action(async () => {
   await prepareAndRun(syncCommand());
+});
+
+// Temporal subcommands
+cli.command("temporal start", "Start Temporal server").action(async () => {
+  await prepareAndRun(temporalStartCommand());
+});
+
+cli.command("temporal stop", "Stop Temporal server").action(async () => {
+  await prepareAndRun(temporalStopCommand());
+});
+
+cli.command("temporal restart", "Restart Temporal server").action(async () => {
+  await prepareAndRun(temporalRestartCommand());
+});
+
+cli.command("temporal status", "Show Temporal server status").action(async () => {
+  await prepareAndRun(temporalStatusCommand());
 });
 
 cli

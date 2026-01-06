@@ -24,6 +24,14 @@ export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
 // Activity tracking (last-interacted environment)
 export const ACTIVITY_PATH = join(DUST_HIVE_HOME, "activity.json");
 
+// Temporal server paths (global, not per-env)
+export const TEMPORAL_PID_PATH = join(DUST_HIVE_HOME, "temporal.pid");
+export const TEMPORAL_LOG_PATH = join(DUST_HIVE_HOME, "temporal.log");
+export const TEMPORAL_PORT = 7233;
+
+// Main zellij session
+export const MAIN_SESSION_NAME = "dust-hive-main";
+
 // Seed user configuration
 export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
