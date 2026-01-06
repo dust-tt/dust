@@ -88,7 +88,14 @@ export function CreateProjectModal({
       });
       handleClose();
     }
-  }, [projectName, doCreate, handleClose]);
+  }, [
+    projectName,
+    doCreate,
+    handleClose,
+    sendNotification,
+    mutateSpaceSummary,
+    user,
+  ]);
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
