@@ -6,6 +6,7 @@ import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
+import { confirm, restoreTerminal } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";

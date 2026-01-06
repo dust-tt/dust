@@ -3,9 +3,9 @@
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getWorktreeDir, SEED_USER_PATH } from "./paths";
-import { buildShell } from "./shell";
+import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
 import { runSqlSeed } from "./seed";
+import { buildShell } from "./shell";
 import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
@@ -154,7 +154,7 @@ async function initQdrant(
   const alreadyExists =
     result.stderr.includes("already exists") || result.stdout.includes("already exists");
 
-  if (!result.success && !alreadyExists) {
+  if (!(result.success || alreadyExists)) {
     console.log(result.stdout);
     console.error(result.stderr);
   }
@@ -187,7 +187,7 @@ async function initElasticsearchRust(
     const alreadyExists =
       result.stderr.includes("already exists") || result.stdout.includes("already exists");
 
-    if (!result.success && !alreadyExists) {
+    if (!(result.success || alreadyExists)) {
       console.log(result.stdout);
       console.error(result.stderr);
       return { success: false, usedCache };
