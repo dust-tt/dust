@@ -50,7 +50,7 @@ AgentSkillModel.init(
     indexes: [
       {
         fields: ["workspaceId", "agentConfigurationId"],
-        concurrently: true,
+        name: "idx_agent_skills_workspace_agent_configuration",
       },
       {
         fields: ["workspaceId", "customSkillId"],
