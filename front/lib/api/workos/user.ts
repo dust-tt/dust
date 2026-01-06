@@ -132,6 +132,15 @@ export async function getWorkOSSessionFromCookie(
   } = await unsealData<SessionCookie>(workOSSessionCookie, {
     password: config.getWorkOSCookiePassword(),
   });
+
+  if (!sessionData) {
+    return {
+      // Clear the cookie if unsealing fails.
+      cookie: "",
+      session: undefined,
+    };
+  }
+
   const session = getWorkOS().userManagement.loadSealedSession({
     sessionData,
     cookiePassword: config.getWorkOSCookiePassword(),
