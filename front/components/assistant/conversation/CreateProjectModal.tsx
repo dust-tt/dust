@@ -11,11 +11,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
+import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { LightWorkspaceType } from "@app/types";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
