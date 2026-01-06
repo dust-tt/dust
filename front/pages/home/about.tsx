@@ -464,6 +464,41 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/bruno-murray-2539682b9/",
     github: "https://github.com/bruno-murray",
   },
+  ambra: {
+    name: "Ambra Zhang",
+    title: "Chief of Staff",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A1YTZATCP-4f46317bbf0d-512",
+    linkedIn: "https://uk.linkedin.com/in/ambrazhang/",
+    github: "https://github.com/ambra-z",
+  },
+  elia: {
+    name: "Elia Kemp",
+    title: "Solutions Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A2CA90QCE-af4cacd4fec8-512",
+    linkedIn: "https://www.linkedin.com/in/eliakemp/",
+    github: "",
+  },
+  sarah: {
+    name: "Sarah Breen",
+    title: "Forward Deployed Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A2EBECJEN-6c9022987019-512",
+    linkedIn: "https://www.linkedin.com/in/smb2268/",
+    github: "https://github.com/smb2268",
+  },
+  josh: {
+    name: "Josh Cohen",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A6U9Y7ER1-6031f3f55d28-512",
+    linkedIn: "https://www.linkedin.com/in/josh-cohen-3b415348/",
+    github: "",
+  },
+  remy: {
+    name: "Rémy Frenoy",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A6X8L7CPP-6ee891885467-512",
+    linkedIn: "https://www.linkedin.com/in/rfrenoy/",
+    github: "https://github.com/rfrenoy",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
