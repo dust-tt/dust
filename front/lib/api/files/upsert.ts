@@ -435,7 +435,8 @@ const getProcessingFunction = ({
       if (
         useCase === "conversation" ||
         useCase === "tool_output" ||
-        useCase === "upsert_table"
+        useCase === "upsert_table" ||
+        useCase === "project_context"
       ) {
         return upsertTableToDatasource;
       } else if (
@@ -454,7 +455,11 @@ const getProcessingFunction = ({
       }
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
     case "application/vnd.ms-excel":
-      if (useCase === "conversation" || useCase === "upsert_table") {
+      if (
+        useCase === "conversation" ||
+        useCase === "upsert_table" ||
+        useCase === "project_context"
+      ) {
         return upsertExcelToDatasource;
       } else if (
         useCase === "upsert_document" ||
@@ -467,7 +472,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (useCase === "conversation" || useCase === "upsert_document") {
+    if (
+      useCase === "conversation" ||
+      useCase === "upsert_document" ||
+      useCase === "project_context"
+    ) {
       return upsertDocumentToDatasource;
     }
     return undefined;
@@ -480,6 +489,7 @@ const getProcessingFunction = ({
       "tool_output",
       "upsert_document",
       "folders_document",
+      "project_context",
     ].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
