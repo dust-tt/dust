@@ -208,9 +208,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
-      .filter((c) =>
-        c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
-      )
+      .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
       .map(
         (c) =>
           new this(
@@ -227,8 +225,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
-          // Parse as Number since Sequelize array of BigInts are returned as strings.
-          c.requestedSpaceIds.map((id) => Number(id))
+          c.requestedSpaceIds
         )
       )
     );
@@ -339,7 +336,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         !auth.canRead(
           createResourcePermissionsFromSpacesWithMap(
             spaceIdToGroupsMap,
-            conversation.requestedSpaceIds.map((id) => Number(id))
+            conversation.requestedSpaceIds
           )
         )
       ) {

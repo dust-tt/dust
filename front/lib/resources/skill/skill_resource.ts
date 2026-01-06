@@ -307,16 +307,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
 
     const validCustomSkills = customSkills.filter((skill) =>
-      // Parse as Number since Sequelize array of BigInts are returned as strings.
-      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
-          // Parse as Number since Sequelize array of BigInts are returned as strings.
-          skill.requestedSpaceIds.map((id) => Number(id))
+          skill.requestedSpaceIds
         )
       )
     );
@@ -1475,7 +1473,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   toJSON(auth: Authenticator): SkillType {
     const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
       SpaceResource.modelIdToSId({
-        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        id: spaceId,
         workspaceId: this.workspaceId,
       })
     );
