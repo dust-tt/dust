@@ -77,6 +77,10 @@ function getSkillSearchString(skill: SkillWithRelationsType): string {
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
 }
 
+function sortSkillsByName(skills: SkillWithRelationsType[]) {
+  return [...skills].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -156,13 +160,17 @@ export default function WorkspaceSkills({
     disabled: activeTab !== "suggested",
   });
 
-  const skillsByTab = useMemo(
-    () => ({
-      active: activeSkills,
-      editable_by_me: activeSkills.filter((s) => s.canWrite),
-      default: activeSkills.filter((s) => !s.relations.editors),
-      archived: archivedSkills,
-      suggested: suggestedSkills,
+  const skillsByTab = useMemo(() => {
+    const sortedActiveSkills = sortSkillsByName(activeSkills);
+    const sortedArchivedSkills = sortSkillsByName(archivedSkills);
+    const sortedSuggestedSkills = sortSkillsByName(suggestedSkills);
+
+    return {
+      active: sortedActiveSkills,
+      editable_by_me: sortedActiveSkills.filter((s) => s.canWrite),
+      default: sortedActiveSkills.filter((s) => !s.relations.editors),
+      archived: sortedArchivedSkills,
+      suggested: sortedSuggestedSkills,
       search: activeSkills
         .filter((s) =>
           subFilter(skillSearch.toLowerCase(), getSkillSearchString(s))
@@ -174,9 +182,8 @@ export default function WorkspaceSkills({
             getSkillSearchString(b)
           )
         ),
-    }),
-    [activeSkills, archivedSkills, suggestedSkills, skillSearch]
-  );
+    };
+  }, [activeSkills, archivedSkills, suggestedSkills, skillSearch]);
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
