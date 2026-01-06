@@ -1,6 +1,6 @@
 Dust is a platform to build and operate agents for work. `front` is our main service and web application.
 
-## Tech Stack
+# Tech Stack
 
 - **Framework**: Next.js 14 (Pages Router with SSR)
 - **Language**: TypeScript (strict mode)
@@ -9,7 +9,7 @@ Dust is a platform to build and operate agents for work. `front` is our main ser
 - **Database**: PostgreSQL via Sequelize ORM (with Resources abstraction)
 - **State Management**: SWR for data fetching
 
-## Codebase structure
+# Codebase structure
 
 ```
 front/
@@ -31,7 +31,7 @@ front/
 └── public/ # Static assets
 ```
 
-## Development setup
+# Development setup
 
 - You can use `./admin/check.ts` to run all checks (lint, type-check, format) concurrently.
   - Use `npx prettier --check/--write` to check or format code based on our local configuration.
@@ -39,7 +39,7 @@ front/
   - Use `npm run lint` to run ESLint
 - Read `runbooks/TEST.md` for all things related to testing.
 
-### Runbooks
+# Runbooks
 
 Runbooks for various typical development tasks are located under `runbooks/`:
 
@@ -52,12 +52,6 @@ Runbooks for various typical development tasks are located under `runbooks/`:
 
 Read these files on-demand when working on tasks.
 
----
-
 @CODING_RULES.md
-
----
-
-Possibly empty user specific instructions:
 
 @AGENTS.local.md
