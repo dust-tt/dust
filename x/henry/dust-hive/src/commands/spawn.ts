@@ -1,5 +1,4 @@
 import { setCacheSource } from "../lib/cache";
-import { compareBranchToMain } from "../lib/diff";
 import { writeDockerComposeOverride } from "../lib/docker";
 import { writeEnvSh } from "../lib/envgen";
 import {
@@ -14,17 +13,15 @@ import { logger } from "../lib/logger";
 import { findRepoRoot, getWorktreeDir } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
-import { promptYesNo } from "../lib/prompt";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { type DependencyConfig, installAllDependencies } from "../lib/setup";
-import { cleanupPartialEnvironment, createWorktree, getCurrentBranch } from "../lib/worktree";
+import { installAllDependencies } from "../lib/setup";
+import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
 import { openCommand } from "./open";
 import { warmCommand } from "./warm";
 
 interface SpawnOptions {
   name?: string;
-  base?: string;
   noOpen?: boolean;
   noAttach?: boolean;
   warm?: boolean;
@@ -97,8 +94,7 @@ async function setupEnvironmentFiles(
 async function setupWorktree(
   metadata: EnvironmentMetadata,
   worktreePath: string,
-  workspaceBranch: string,
-  depConfig?: DependencyConfig
+  workspaceBranch: string
 ): Promise<Result<void, CommandError>> {
   try {
     await createWorktree(metadata.repoRoot, worktreePath, workspaceBranch, metadata.baseBranch);
@@ -110,7 +106,7 @@ async function setupWorktree(
   }
 
   try {
-    await installAllDependencies(worktreePath, metadata.repoRoot, depConfig);
+    await installAllDependencies(worktreePath, metadata.repoRoot);
   } catch (error) {
     logger.error("Spawn failed during dependency linking, cleaning up...");
     await cleanupPartialEnvironment(metadata.repoRoot, worktreePath, workspaceBranch).catch((e) =>
@@ -150,16 +146,18 @@ async function startSdk(
   return Ok(undefined);
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with multiple phases
 export async function spawnCommand(options: SpawnOptions): Promise<Result<void>> {
-  // Find repo root
-  const repoRoot = await findRepoRoot();
-  if (!repoRoot) {
+  // Find repo root (could be main repo or worktree)
+  const currentRepoRoot = await findRepoRoot();
+  if (!currentRepoRoot) {
     return Err(new CommandError("Not in a git repository. Please run from within the Dust repo."));
   }
 
+  // Always use the main repo for cache and worktree creation
+  const mainRepoRoot = await getMainRepoPath(currentRepoRoot);
+
   // Set cache source to use binaries from main repo
-  await setCacheSource(repoRoot);
+  await setCacheSource(mainRepoRoot);
 
   // Get or prompt for name
   let name = options.name;
@@ -178,58 +176,8 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     return Err(new CommandError(`Environment '${name}' already exists`));
   }
 
-  // Determine base branch and dependency config
-  const currentBranch = await getCurrentBranch(repoRoot);
-  let baseBranch: string;
-  let depConfig: DependencyConfig | undefined;
-
-  if (options.base) {
-    // Explicit base branch provided
-    baseBranch = options.base;
-  } else if (currentBranch === "main") {
-    // On main, use main with full cache
-    baseBranch = "main";
-  } else {
-    // Not on main - prompt user
-    console.log();
-    const useFeatureBranch = await promptYesNo(`Base on '${currentBranch}' instead of main?`);
-    console.log();
-
-    if (useFeatureBranch) {
-      baseBranch = currentBranch;
-      // Compare feature branch to main to determine cache usage
-      logger.step("Comparing branch to main for cache usage...");
-      const comparison = await compareBranchToMain(repoRoot);
-
-      depConfig = {
-        rust: comparison.rust.canUseCache ? "symlink" : "build",
-        sdks: comparison.sdks.canUseCache ? "symlink" : "install",
-        front: comparison.front.canUseCache ? "symlink" : "install",
-        connectors: comparison.connectors.canUseCache ? "symlink" : "install",
-      };
-
-      // Show comparison summary
-      console.log();
-      console.log("Cache comparison:");
-      console.log(
-        `  Rust binaries: ${comparison.rust.canUseCache ? "Using cache" : "Will build"} (${comparison.rust.reason})`
-      );
-      console.log(
-        `  sdks/js: ${comparison.sdks.canUseCache ? "Using cache" : "Will install"} (${comparison.sdks.reason})`
-      );
-      console.log(
-        `  front: ${comparison.front.canUseCache ? "Using cache" : "Will install"} (${comparison.front.reason})`
-      );
-      console.log(
-        `  connectors: ${comparison.connectors.canUseCache ? "Using cache" : "Will install"} (${comparison.connectors.reason})`
-      );
-      console.log();
-    } else {
-      // User chose main
-      baseBranch = "main";
-    }
-  }
-
+  // Always base on main branch
+  const baseBranch = "main";
   const workspaceBranch = `${name}-workspace`;
   const worktreePath = getWorktreeDir(name);
 
@@ -246,7 +194,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     baseBranch,
     workspaceBranch,
     createdAt: new Date().toISOString(),
-    repoRoot,
+    repoRoot: mainRepoRoot,
   };
 
   // Phase 1: Setup environment files
@@ -254,7 +202,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   if (!filesResult.ok) return filesResult;
 
   // Phase 2: Setup worktree
-  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch, depConfig);
+  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch);
   if (!worktreeResult.ok) return worktreeResult;
 
   // Phase 3: Start SDK

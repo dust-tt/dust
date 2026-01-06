@@ -41,28 +41,23 @@ const cli = cac("dust-hive");
 cli
   .command("spawn [name]", "Create a new environment")
   .option("--name <name>", "Environment name")
-  .option("--base <branch>", "Base branch")
   .option("--no-open", "Do not open zellij session after spawn")
   .option("--no-attach", "Create zellij session but don't attach to it")
   .option("--warm", "Open zellij with a warm tab running dust-hive warm")
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; base?: string; open?: boolean; attach?: boolean; warm?: boolean }
+      options: { name?: string; open?: boolean; attach?: boolean; warm?: boolean }
     ) => {
       const resolvedName = name ?? options.name;
       const spawnOptions: {
         name?: string;
-        base?: string;
         noOpen?: boolean;
         noAttach?: boolean;
         warm?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
-      }
-      if (options.base !== undefined) {
-        spawnOptions.base = options.base;
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;
@@ -169,27 +164,9 @@ cli.command("doctor", "Check prerequisites (alias for setup)").action(async () =
   await prepareAndRun(doctorCommand());
 });
 
-cli
-  .command("cache [action]", "Show or rebuild binary cache")
-  .option("--rebuild", "Rebuild cache")
-  .option("--status", "Show cache status")
-  .action(async (action: string | undefined, options: { rebuild?: boolean; status?: boolean }) => {
-    const resolved = {
-      rebuild: options.rebuild ?? false,
-      status: options.status ?? false,
-    };
-
-    if (action === "rebuild") {
-      resolved.rebuild = true;
-    } else if (action === "status") {
-      resolved.status = true;
-    } else if (action !== undefined) {
-      logger.error(`Unknown cache action: ${action}`);
-      process.exit(1);
-    }
-
-    await prepareAndRun(cacheCommand(resolved));
-  });
+cli.command("cache", "Show binary cache status").action(async () => {
+  await prepareAndRun(cacheCommand());
+});
 
 cli
   .command("forward [target]", "Manage OAuth port forwarding")
@@ -197,18 +174,9 @@ cli
     await prepareAndRun(forwardCommand(target));
   });
 
-cli
-  .command("sync [branch]", "Rebase on branch (default: main), rebuild binaries, refresh deps")
-  .option("--switch", "Switch to target branch instead of rebasing onto it")
-  .action(async (branch: string | undefined, options: { switch?: boolean }) => {
-    const syncOptions: { targetBranch?: string; switch?: boolean } = {
-      switch: Boolean(options.switch),
-    };
-    if (branch !== undefined) {
-      syncOptions.targetBranch = branch;
-    }
-    await prepareAndRun(syncCommand(syncOptions));
-  });
+cli.command("sync", "Pull latest main, rebuild binaries, refresh deps").action(async () => {
+  await prepareAndRun(syncCommand());
+});
 
 cli
   .command(
