@@ -1,4 +1,4 @@
-import "allotment/dist/style.css";
+import "../styles/allotment.css";
 
 import { Allotment } from "allotment";
 import * as React from "react";
