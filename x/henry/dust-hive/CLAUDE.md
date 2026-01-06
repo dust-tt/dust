@@ -60,11 +60,13 @@ src/
 │   ├── restart.ts     # Restart a single service
 │   ├── seed-config.ts # Extract user data from existing DB
 │   ├── spawn.ts       # Create environment
-│   ├── start.ts       # Start managed services or resume env
+│   ├── start.ts       # Resume stopped environment (SDK watch)
 │   ├── status.ts      # Show service health
-│   ├── stop.ts        # Stop all services or specific env
+│   ├── stop.ts        # Stop all services in environment
 │   ├── sync.ts        # Pull main, rebuild binaries, refresh deps
 │   ├── temporal.ts    # Temporal server subcommands
+│   ├── up.ts          # Start managed services (temporal + main session)
+│   ├── down.ts        # Stop all envs, temporal, and zellij sessions
 │   ├── url.ts         # Print front URL
 │   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
@@ -125,7 +127,7 @@ tests/
 2. **Zellij is passive** - Only shows logs via `tail -F`, closing it doesn't stop services
 3. **Port isolation** - Base port 10000, +1000 per environment
 4. **Git worktrees** - Each env gets a new branch: `NAME-workspace`
-5. **Managed Temporal** - `dust-hive start` runs Temporal as a daemon, namespaces created per env
+5. **Managed Temporal** - `dust-hive up` runs Temporal as a daemon, namespaces created per env
 
 ## Commands Reference
 
@@ -133,8 +135,8 @@ tests/
 
 | Command | Description |
 |---------|-------------|
-| `start [-a]` | Start temporal + sync + create main session (from main repo, requires clean main branch) |
-| `stop [-f]` | Stop all envs, temporal, and zellij sessions (requires confirmation or --force) |
+| `up [-a]` | Start temporal + sync + create main session (from main repo, requires clean main branch) |
+| `down [-f]` | Stop all envs, temporal, and zellij sessions (requires confirmation or --force) |
 | `temporal start/stop/restart/status` | Direct temporal server control |
 
 ### Environment Commands
@@ -144,8 +146,8 @@ tests/
 | `spawn` | Create environment (worktree + symlinks + SDK watch); supports --warm, --no-attach, --wait |
 | `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
 | `cool` | Stop services, keep SDK watch |
-| `start [NAME]` | Resume stopped env (when NAME provided or in worktree) |
-| `stop [NAME]` | Full stop of env (when NAME provided or in worktree) |
+| `start [NAME]` | Resume stopped env (start SDK watch) |
+| `stop [NAME]` | Full stop of env (stop all services + docker) |
 | `destroy` | Remove environment |
 | `open` | Attach to zellij session |
 | `reload` | Kill and reopen zellij session |

@@ -5,6 +5,7 @@ import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
+import { downCommand } from "./commands/down";
 import { forwardCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
@@ -23,6 +24,7 @@ import {
   temporalStatusCommand,
   temporalStopCommand,
 } from "./commands/temporal";
+import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
@@ -138,19 +140,30 @@ cli
   });
 
 cli
-  .command("start [name]", "Start managed services or resume environment")
-  .alias("up")
-  .option("-a, --attach", "Attach to main zellij session (managed services mode)")
-  .action(async (name: string | undefined, options: { attach?: boolean }) => {
-    await prepareAndRun(startCommand(name, { attach: Boolean(options.attach) }));
+  .command("start [name]", "Resume stopped environment (start SDK watch)")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(startCommand(name));
   });
 
 cli
-  .command("stop [name]", "Stop all services or specific environment")
+  .command("stop [name]", "Stop all services in environment")
   .alias("x")
-  .option("-f, --force", "Skip confirmation (managed services mode)")
-  .action(async (name: string | undefined, options: { force?: boolean }) => {
-    await prepareAndRun(stopCommand(name, { force: Boolean(options.force) }));
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(stopCommand(name));
+  });
+
+cli
+  .command("up", "Start managed services (temporal + main session)")
+  .option("-a, --attach", "Attach to main zellij session")
+  .action(async (options: { attach?: boolean }) => {
+    await prepareAndRun(upCommand({ attach: Boolean(options.attach) }));
+  });
+
+cli
+  .command("down", "Stop all dust-hive services")
+  .option("-f, --force", "Skip confirmation prompt")
+  .action(async (options: { force?: boolean }) => {
+    await prepareAndRun(downCommand({ force: Boolean(options.force) }));
   });
 
 cli

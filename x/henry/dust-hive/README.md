@@ -64,10 +64,10 @@ The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It c
 
 ```bash
 # From the main Dust repo (on main branch, clean working directory)
-dust-hive start
+dust-hive up
 
 # Or attach to the main zellij session immediately
-dust-hive start -a
+dust-hive up -a
 ```
 
 This runs `dust-hive sync` to update dependencies, starts the Temporal server as a managed daemon, and creates a main zellij session with tabs for the repo shell and temporal logs.
@@ -76,7 +76,7 @@ This runs `dust-hive sync` to update dependencies, starts the Temporal server as
 
 ```bash
 # Start managed services (temporal + main session)
-dust-hive start
+dust-hive up
 
 # Create a new environment
 dust-hive spawn myenv
@@ -95,7 +95,7 @@ dust-hive url myenv
 open $(dust-hive url myenv)
 
 # Stop everything when done
-dust-hive stop
+dust-hive down
 ```
 
 ## Commands
@@ -104,8 +104,8 @@ dust-hive stop
 
 | Command | Description |
 |---------|-------------|
-| `start [-a\|--attach]` | Start temporal + sync + create main session (from main repo) |
-| `stop [-f\|--force]` | Stop all environments, temporal, and zellij sessions |
+| `up [-a\|--attach]` | Start temporal + sync + create main session (from main repo) |
+| `down [-f\|--force]` | Stop all environments, temporal, and zellij sessions |
 | `temporal start` | Start Temporal server only |
 | `temporal stop` | Stop Temporal server only |
 | `temporal restart` | Restart Temporal server |
@@ -211,12 +211,12 @@ If those ports are owned by a different process, the command will fail with deta
 
 ### Main Session
 
-When you run `dust-hive start`, a main session (`dust-hive-main`) is created with:
+When you run `dust-hive up`, a main session (`dust-hive-main`) is created with:
 
 - **main** - Shell at the repo root
 - **temporal** - Temporal server logs with Ctrl+C menu (r=restart, c=clear, q=quit)
 
-Attach to it with `dust-hive start -a` or by running zellij directly: `zellij attach dust-hive-main`.
+Attach to it with `dust-hive up -a` or by running zellij directly: `zellij attach dust-hive-main`.
 
 ### Environment Sessions
 
