@@ -115,7 +115,7 @@ dust-hive down
 
 | Command | Description |
 |---------|-------------|
-| `spawn [--name NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
+| `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool [NAME]` | Stop services, keep SDK watch |
 | `start [NAME]` | Resume stopped environment (when NAME provided) |
@@ -259,8 +259,8 @@ This creates the zellij session and starts services, but leaves you in your curr
 ### Working on a feature
 
 ```bash
-# Create environment from current branch
-dust-hive spawn --name my-feature
+# Create environment
+dust-hive spawn my-feature
 
 # Start everything
 dust-hive warm my-feature
@@ -274,21 +274,17 @@ dust-hive open my-feature
 dust-hive stop my-feature
 ```
 
-### Running two environments
+### Running multiple environments
 
 ```bash
-# First environment
-dust-hive spawn --name env-a --base main
-dust-hive warm env-a
-
-# Second environment
-dust-hive spawn --name env-b --base feature-branch
-dust-hive warm env-b
+# Create and warm two environments
+dust-hive spawn env-a && dust-hive warm env-a
+dust-hive spawn env-b && dust-hive warm env-b
 
 # Both running simultaneously
 dust-hive list
-# env-a    warm    10000-10999
-# env-b    warm    11000-11999
+# env-a    warm    http://localhost:10000
+# env-b    warm    http://localhost:11000
 
 # Access both
 open http://localhost:10000  # env-a
