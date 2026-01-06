@@ -146,7 +146,7 @@ export function SpaceAboutTab({
           variant="primary"
           label={isSaving ? "Saving..." : "Save"}
           onClick={onSave}
-          disabled={!hasChanges || !canSave || isSaving}
+          disabled={!canSave || isSaving}
         />
       </div>
     </div>
