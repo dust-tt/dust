@@ -34,7 +34,7 @@ export default function SpaceConversations({
   }
 
   return (
-    <SpaceTabsWrapper owner={owner} spaceId={spaceId}>
+    <SpaceTabsWrapper owner={owner}>
       <SpaceConversationsTab owner={owner} user={user} spaceId={spaceId} />
     </SpaceTabsWrapper>
   );

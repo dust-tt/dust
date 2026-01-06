@@ -15,6 +15,7 @@ import React, { useMemo } from "react";
 
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
+import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 
 interface SpaceTabConfig {
   id: string;
@@ -54,16 +55,12 @@ const getSpaceTabs = (): SpaceTabConfig[] => {
 
 interface SpaceTabsWrapperProps {
   owner: WorkspaceType;
-  spaceId: string | null;
   children: ReactNode;
 }
 
-export function SpaceTabsWrapper({
-  owner,
-  spaceId,
-  children,
-}: SpaceTabsWrapperProps) {
+export function SpaceTabsWrapper({ owner, children }: SpaceTabsWrapperProps) {
   const router = useRouter();
+  const spaceId = useActiveSpaceId();
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
@@ -86,7 +83,7 @@ export function SpaceTabsWrapper({
 
   return (
     <div className="flex w-full items-center justify-center overflow-auto">
-      <div className="flex max-h-dvh w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
+      <div className="max-h-dvh flex w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
         <ContentMessage title="Experimental feature" variant="info" size="lg">
           <p>
             This feature is currently in alpha, and only available in the Dust
