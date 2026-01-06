@@ -64,17 +64,17 @@ async function handler(
   }
 
   // Resolve optional workspaceId query parameter to workspace model ID.
-  let workspaceId: number | undefined;
+  let workspaceModelId: number | undefined;
   if (typeof wId === "string") {
     const workspace = user.workspaces.find((w) => w.sId === wId);
     if (workspace) {
-      workspaceId = workspace.id;
+      workspaceModelId = workspace.id;
     }
   }
 
   switch (req.method) {
     case "GET":
-      const metadata = await u.getMetadata(key, workspaceId);
+      const metadata = await u.getMetadata(key, workspaceModelId);
 
       res.status(200).json({
         metadata,
@@ -92,7 +92,7 @@ async function handler(
         });
       }
 
-      await u.setMetadata(key, req.body.value, workspaceId);
+      await u.setMetadata(key, req.body.value, workspaceModelId);
 
       res.status(200).json({
         metadata: {
