@@ -77,6 +77,11 @@ ConversationMCPServerViewModel.init(
         fields: ["workspaceId", "conversationId"],
         name: "conversation_mcp_server_views_workspace_conversation_idx",
       },
+      {
+        fields: ["conversationId"],
+        name: "conversation_mcp_server_views_conversation_id",
+        concurrently: true,
+      },
     ],
   }
 );

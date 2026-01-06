@@ -5,13 +5,14 @@
 
 import { z } from "zod";
 
-import { createAndLogMembership } from "@app/lib/api/signup";
+import { getRedisClient } from "@app/lib/api/redis";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
 
@@ -66,6 +67,7 @@ export async function getOrCreateSuperUser(
 
   if (!user) {
     // Create new user with isDustSuperUser = true
+    // lastLoginAt must be set for the user to be counted as an active seat
     const userModel = await UserModel.create({
       sId,
       username,
@@ -78,6 +80,7 @@ export async function getOrCreateSuperUser(
       providerId: config.providerId ?? null,
       imageUrl: config.imageUrl ?? null,
       isDustSuperUser: true,
+      lastLoginAt: new Date(),
     });
 
     const newUser = await UserResource.fetchById(userModel.sId);
@@ -87,15 +90,23 @@ export async function getOrCreateSuperUser(
     return { user: newUser, created: true };
   }
 
-  // Ensure existing user is super user with correct workOSUserId
+  // Ensure existing user is super user with correct workOSUserId and lastLoginAt
   const userModel = await UserModel.findOne({ where: { sId: user.sId } });
   if (userModel) {
-    const updates: { isDustSuperUser?: boolean; workOSUserId?: string } = {};
+    const updates: {
+      isDustSuperUser?: boolean;
+      workOSUserId?: string;
+      lastLoginAt?: Date;
+    } = {};
     if (!userModel.isDustSuperUser) {
       updates.isDustSuperUser = true;
     }
     if (config.workOSUserId && userModel.workOSUserId !== config.workOSUserId) {
       updates.workOSUserId = config.workOSUserId;
+    }
+    // lastLoginAt must be set for the user to be counted as an active seat
+    if (!userModel.lastLoginAt) {
+      updates.lastLoginAt = new Date();
     }
     if (Object.keys(updates).length > 0) {
       await userModel.update(updates);
@@ -129,7 +140,9 @@ export async function createAdminMembership(
     return;
   }
 
-  await createAndLogMembership({
+  // Use MembershipResource directly to avoid tracking side effects
+  // that can cause stale seat count caching
+  await MembershipResource.createMembership({
     user,
     workspace,
     role: "admin",
@@ -166,17 +179,17 @@ export async function seedDevUser(
   console.log(`  Created workspace: ${workspace.name}`);
 
   // Create admin membership
-  await createAdminMembership(user, {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: "admin",
-    segmentation: null,
-    whiteListedProviders: null,
-    defaultEmbeddingProvider: null,
-    metadata: null,
-  });
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  await createAdminMembership(user, lightWorkspace);
   console.log(`  Created membership`);
+
+  // Invalidate seats cache to ensure fresh count after membership creation.
+  // This must match the cache key format used by cacheWithRedis in seats.ts:
+  // `cacheWithRedis-${fn.name}-${resolver(...args)}`
+  const seatsCacheKey = `cacheWithRedis-countActiveSeatsInWorkspace-count-active-seats-in-workspace:${workspace.sId}`;
+  const redis = await getRedisClient({ origin: "cache_with_redis" });
+  await redis.del(seatsCacheKey);
+  console.log(`  Invalidated seats cache`);
 
   return { user, workspaceSId: workspace.sId };
 }

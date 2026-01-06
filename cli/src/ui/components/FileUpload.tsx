@@ -69,7 +69,7 @@ export const FileUpload: FC<FileUploadProps> = ({
           setUploadStatus((prev) => ({ ...prev, [file.path]: "Uploading..." }));
           setUploadProgress((prev) => ({ ...prev, [file.path]: 30 }));
 
-          const fileObject = new File([fileContent], file.name, {
+          const fileObject = new File([Buffer.from(fileContent)], file.name, {
             type: file.type,
           });
 

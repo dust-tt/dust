@@ -15,6 +15,9 @@ export const COUNTRY_CODES = [
   { code: "+61", flag: "\u{1F1E6}\u{1F1FA}", country: "Australia" },
 ] as const;
 
+// TODO: Replace with actual verification service.
+const VALID_TEST_CODE = "424242";
+
 export type CountryCode = (typeof COUNTRY_CODES)[number];
 
 // NOTE: Placeholder implementation. Will be reworked with the phone validation service.
@@ -23,7 +26,9 @@ export function isValidPhoneNumber(phone: string): boolean {
   return /^\d{6,15}$/.test(digitsOnly);
 }
 
-// Masks a phone number for display: "+33 6 ** ** 78".
+/**
+ * Masks a phone number for display, showing only the first and last two digits.
+ */
 export function maskPhoneNumber(countryCode: string, phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 3) {
@@ -34,4 +39,12 @@ export function maskPhoneNumber(countryCode: string, phone: string): string {
   const middleLength = digits.length - 3;
   const masked = "** ".repeat(Math.ceil(middleLength / 2)).trim();
   return `${countryCode} ${first} ${masked} ${last}`;
+}
+
+/**
+ * Verifies the phone verification code.
+ * TODO: Replace with actual SMS verification service.
+ */
+export function isValidVerificationCode(code: string): boolean {
+  return code === VALID_TEST_CODE;
 }

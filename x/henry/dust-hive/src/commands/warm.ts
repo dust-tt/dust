@@ -4,7 +4,7 @@ import { getDockerProjectName, startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
-import { createTemporalNamespaces, runAllDbInits } from "../lib/init";
+import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
 import { cleanupServicePorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
@@ -120,6 +120,9 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     }
 
     await Promise.all(initTasks);
+
+    // Run seed script if config exists (creates dev user, workspace, subscription)
+    await runSeedScript(env);
 
     if (!temporalRunning) {
       logger.warn(

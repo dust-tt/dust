@@ -900,7 +900,7 @@ const renderSubmenuItem = (
     <DropdownMenuPortal>
       <DropdownMenuSubContent>
         <ScrollArea
-          className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+          className="s-flex s-max-h-72 s-min-w-24 s-flex-col"
           hideScrollBar
         >
           {item.items.map((subItem) => (
@@ -1096,7 +1096,6 @@ DataTable.CellContent = function CellContent({
           avatars={avatarStack.items}
           nbVisibleItems={avatarStack.nbVisibleItems}
           size="xs"
-          isRounded={roundedAvatar ?? false}
         />
       )}
       {icon && (

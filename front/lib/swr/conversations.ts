@@ -309,7 +309,7 @@ export function useConversationSkills({
   const conversationSkillsFetcher: Fetcher<FetchConversationSkillsResponse> =
     fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`
       : null,
@@ -318,11 +318,9 @@ export function useConversationSkills({
   );
 
   return {
-    conversationSkills: data
-      ? data.skills
-      : emptyArray<FetchConversationSkillsResponse["skills"][number]>(),
-    isConversationSkillsLoading: !error && !data,
-    isConversationSkillsError: error,
+    conversationSkills: data?.skills ?? emptyArray(),
+    isConversationSkillsLoading: !options?.disabled && isLoading,
+    isConversationSkillsError: !!error,
     mutateConversationSkills: mutate,
   };
 }
@@ -733,7 +731,7 @@ export function useAgentMessageSkills({
 }) {
   const skillsFetcher: Fetcher<GetAgentMessageSkillsResponseBody> = fetcher;
 
-  const { data, error, isLoading } = useSWRWithDefaults(
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     conversation && messageId
       ? `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/skills`
       : null,
@@ -744,7 +742,8 @@ export function useAgentMessageSkills({
   return {
     skills: data?.skills ?? emptyArray(),
     isSkillsLoading: !options?.disabled && isLoading,
-    isSkillsError: error,
+    isSkillsError: !!error,
+    mutateSkills: mutate,
   };
 }
 

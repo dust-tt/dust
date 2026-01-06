@@ -83,7 +83,7 @@ export async function getOutputFromLLMStream(
       await flushParserTokens();
       return new Err({
         type: "shouldRetryMessage",
-        message: event.content.message,
+        content: event.content,
       });
     }
 
@@ -225,7 +225,11 @@ export async function getOutputFromLLMStream(
   if (contents.length === 0 && actions.length === 0) {
     return new Err({
       type: "shouldRetryMessage",
-      message: "Agent execution didn't complete.",
+      content: {
+        type: "unknown_error",
+        message: "Agent execution didn't complete.",
+        isRetryable: true,
+      },
     });
   }
 

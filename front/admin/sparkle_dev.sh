@@ -37,6 +37,8 @@ build_sparkle() {
     
     # Build in sparkle directory with terser disabled
     cd "$SPARKLE_DIR"
+
+    npm install
     
     if DISABLE_TERSER=1 npm run build > /dev/null 2>&1; then
         log "✅ Sparkle built successfully" "$GREEN"

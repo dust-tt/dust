@@ -17,10 +17,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
-import {
-  categorizeAgentErrorMessage,
-  categorizeConversationRenderErrorMessage,
-} from "@app/lib/api/assistant/errors";
+import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -33,6 +30,11 @@ import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
+import {
+  LLM_ERROR_TYPE_TO_CATEGORY,
+  USER_FACING_LLM_ERROR_MESSAGES,
+} from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -125,19 +127,7 @@ export async function runModelActivity(
     dustRunId?: string
   ): Promise<void> {
     // Check if this is a multi_actions_error that hit max retries
-    let logMessage = `Agent error: ${error.message}`;
-    if (
-      error.code === "multi_actions_error" &&
-      error.metadata?.retriesAttempted === MAX_AUTO_RETRY
-    ) {
-      logMessage = `Agent error: ${error.message} (max retries reached)`;
-    } else if (
-      error.code === "multi_actions_error" &&
-      error.metadata?.category &&
-      error.metadata.category !== "retryable_model_error"
-    ) {
-      logMessage = `Agent error: ${error.message} (not retryable)`;
-    }
+    const logMessage = `Agent error: ${error.message}`;
 
     localLogger.error(
       {
@@ -394,55 +384,47 @@ export async function runModelActivity(
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
   async function handlePossiblyRetryableError(
-    message: string,
+    errorInfo: LLMErrorInfo,
     dustRunId?: string
   ) {
-    const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
-      {
-        code: "multi_actions_error",
-        message,
-      }
-    );
+    const { isRetryable, message, type } = errorInfo;
 
-    const isRetryableModelError = [
-      "retryable_model_error",
-      "stream_error",
-    ].includes(category);
-
-    if (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY) {
-      localLogger.warn(
+    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
+      await publishAgentError(
         {
-          error: message,
-          retryCount: autoRetryCount + 1,
-          maxRetries: MAX_AUTO_RETRY,
+          code: "multi_actions_error",
+          message: USER_FACING_LLM_ERROR_MESSAGES[type],
+          metadata: {
+            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
+            retriesAttempted: autoRetryCount,
+            message: errorInfo.message,
+            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
+          },
         },
-        "Auto-retrying multi-actions agent due to retryable model error."
+        dustRunId
       );
 
-      // Recursively retry with incremented count
-      return runModelActivity(auth, {
-        runAgentData,
-        runIds,
-        step,
-        functionCallStepContentIds,
-        autoRetryCount: autoRetryCount + 1,
-      });
+      return null;
     }
 
-    await publishAgentError(
+    // Should retry
+    localLogger.warn(
       {
-        code: "multi_actions_error",
-        message: publicMessage,
-        metadata: {
-          category,
-          errorTitle,
-          retriesAttempted: autoRetryCount,
-        },
+        error: message,
+        retryCount: autoRetryCount + 1,
+        maxRetries: MAX_AUTO_RETRY,
       },
-      dustRunId
+      "Auto-retrying multi-actions agent due to retryable model error."
     );
 
-    return null;
+    // Recursively retry with incremented count
+    return runModelActivity(auth, {
+      runAgentData,
+      runIds,
+      step,
+      functionCallStepContentIds,
+      autoRetryCount: autoRetryCount + 1,
+    });
   }
 
   const contentParser = new AgentMessageContentParser(
@@ -514,7 +496,7 @@ export async function runModelActivity(
       case "shouldRetryMessage":
         // Get the dustRunId from the llm object (if available)
         const errorDustRunId = llm?.getTraceId();
-        return handlePossiblyRetryableError(error.message, errorDustRunId);
+        return handlePossiblyRetryableError(error.content, errorDustRunId);
       case "shouldReturnNull":
         return null;
       default:

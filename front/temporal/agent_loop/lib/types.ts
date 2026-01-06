@@ -1,6 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type {
@@ -80,5 +81,6 @@ export type GetOutputResponse = Result<
     nativeChainOfThought: string;
     timeToFirstEvent?: number;
   },
-  { type: "shouldRetryMessage"; message: string } | { type: "shouldReturnNull" }
+  | { type: "shouldRetryMessage"; content: LLMErrorInfo }
+  | { type: "shouldReturnNull" }
 >;

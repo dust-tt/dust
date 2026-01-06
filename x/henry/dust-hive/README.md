@@ -90,7 +90,7 @@ open $(dust-hive url myenv)
 
 | Command | Description |
 |---------|-------------|
-| `spawn [--name NAME] [--base BRANCH] [--no-open] [--warm]` | Create new environment |
+| `spawn [--name NAME] [--base BRANCH] [--no-open] [--no-attach] [--warm]` | Create new environment |
 | `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool [NAME]` | Stop services, keep SDK watch |
 | `start [NAME]` | Resume stopped environment |
@@ -195,6 +195,14 @@ dust-hive spawn myenv --warm
 ```
 
 This opens zellij with an extra **warm** tab that runs `dust-hive warm myenv`.
+
+To create the session in the background without attaching (useful for scripts or CI):
+
+```bash
+dust-hive spawn myenv --warm --no-attach
+```
+
+This creates the zellij session and starts services, but leaves you in your current terminal. Use `dust-hive open myenv` to attach later.
 
 ### Zellij Shortcuts
 

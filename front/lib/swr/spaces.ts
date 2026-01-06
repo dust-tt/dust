@@ -122,15 +122,15 @@ export function useSpaceInfo({
 }
 
 export function useSpaceDataSourceView({
-  owner,
-  spaceId,
   dataSourceViewId,
   disabled,
+  owner,
+  spaceId,
 }: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  dataSourceViewId?: string;
+  dataSourceViewId: string | null;
   disabled?: boolean;
+  owner: LightWorkspaceType;
+  spaceId: string | null;
 }) {
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
     fetcher;

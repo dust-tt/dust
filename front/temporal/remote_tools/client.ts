@@ -16,7 +16,7 @@ export async function createRemoteMCPServersSyncSchedule(): Promise<
   try {
     try {
       const handle = client.workflow.getHandle(workflowId);
-      await handle.terminate();
+      await handle.terminate("Terminating before creating schedule");
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;

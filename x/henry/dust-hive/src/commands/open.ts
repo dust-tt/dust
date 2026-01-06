@@ -189,6 +189,7 @@ async function writeLayout(
 
 interface OpenOptions {
   warmCommand?: string;
+  noAttach?: boolean;
 }
 
 export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
@@ -218,6 +219,12 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     .some((name) => name === sessionName);
 
   if (sessionExists) {
+    if (options.noAttach) {
+      logger.info(`Session '${sessionName}' already exists.`);
+      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+      return Ok(undefined);
+    }
+
     // Attach to existing session
     logger.info(`Attaching to existing session '${sessionName}'...`);
 
@@ -230,8 +237,6 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     await proc.exited;
   } else {
     // Create new session with layout
-    logger.info(`Creating new zellij session '${sessionName}'...`);
-
     const layoutPath = await writeLayout(
       env.name,
       worktreePath,
@@ -239,6 +244,36 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       watchScriptPath,
       options.warmCommand
     );
+
+    if (options.noAttach) {
+      // Create session in background with our layout using zellij's native options
+      logger.info(`Creating zellij session '${sessionName}' in background...`);
+
+      const proc = Bun.spawn(
+        [
+          "zellij",
+          "attach",
+          sessionName,
+          "--create-background",
+          "options",
+          "--default-layout",
+          layoutPath,
+        ],
+        {
+          stdin: "ignore",
+          stdout: "ignore",
+          stderr: "pipe",
+        }
+      );
+      await proc.exited;
+
+      logger.success(`Session '${sessionName}' created successfully.`);
+      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+
+      return Ok(undefined);
+    }
+
+    logger.info(`Creating new zellij session '${sessionName}'...`);
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],

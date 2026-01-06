@@ -19,7 +19,7 @@ const main = async () => {
       await launchDataRetentionWorkflow();
       return;
     case "stop":
-      await stopDataRetentionWorkflow();
+      await stopDataRetentionWorkflow({ stopReason: "Stopped via CLI" });
       return;
     case "run-now":
       const client = await getTemporalClientForFrontNamespace();

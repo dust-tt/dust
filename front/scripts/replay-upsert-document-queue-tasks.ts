@@ -12,7 +12,7 @@ async function terminateWorkflow(workflowId: string, logger: Logger) {
   const client = await getTemporalClientForFrontNamespace();
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);
-    await workflowHandle.terminate();
+    await workflowHandle.terminate("Terminated via script for replay");
     logger.info({ workflowId }, "Workflow successfully terminated.");
     return true;
   } catch (e) {
