@@ -8,8 +8,8 @@ import { Suggestion } from "@tiptap/suggestion";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
-} from "./SlashCommandDropdown";
-import { SlashCommandDropdown } from "./SlashCommandDropdown";
+} from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
 
@@ -18,11 +18,11 @@ const INSERT_KNOWLEDGE_NODE_ACTION = "insert-knowledge-node";
 // Define available slash commands.
 const SLASH_COMMANDS: SlashCommand[] = [
   {
-    id: "attach-knowledge",
-    label: "Attach knowledge",
-    description: "Search and attach knowledge to your skill",
+    id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
+    description: "Use company knowledge for context",
     icon: BookOpenIcon,
+    label: "Add knowledge",
   },
 ];
 

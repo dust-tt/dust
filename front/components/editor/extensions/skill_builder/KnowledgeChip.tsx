@@ -44,7 +44,8 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
       color="highlight"
       onRemove={onRemove}
       className="rounded-md bg-white align-middle font-medium drop-shadow"
-      href=""
+      // TODO(2026-01-02 SKILL): Make href optional in AttachmentChip.
+      href={node.sourceUrl ?? ""}
       size="xs"
     />
   );
