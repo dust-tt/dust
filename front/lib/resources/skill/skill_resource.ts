@@ -940,39 +940,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  async archive(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<{ affectedCount: number }> {
+  async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Remove all agent skill links before archiving.
-    await AgentSkillModel.destroy({
-      where: {
-        customSkillId: this.id,
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
+    let affectedCount = 0;
 
-    const affectedCount = await this.updateWithAuthorization(
-      auth,
-      { status: "archived" },
-      { transaction }
-    );
+    await withTransaction(async (transaction) => {
+      affectedCount = await this.updateWithAuthorization(
+        auth,
+        { status: "archived" },
+        { transaction }
+      );
+
+      await AgentSkillModel.destroy({
+        where: {
+          customSkillId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+    });
 
     return { affectedCount };
   }
 
-  async restore(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<{ affectedCount: number }> {
-    const affectedCount = await this.updateWithAuthorization(
-      auth,
-      { status: "active" },
-      { transaction }
-    );
+  async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
+    const affectedCount = await this.updateWithAuthorization(auth, {
+      status: "active",
+    });
 
     return { affectedCount };
   }
