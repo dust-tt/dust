@@ -8,6 +8,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
+import { getProjectContextDatasourceName } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -294,6 +295,22 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
 
     return dataSources;
+  }
+
+  static async fetchByProjectId(
+    auth: Authenticator,
+    spaceId: ModelId,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await this.baseFetch(auth, options, {
+      where: {
+        name: getProjectContextDatasourceName(spaceId),
+        vaultId: spaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return dataSource ?? null;
   }
 
   static async fetchByModelIds(
