@@ -76,7 +76,7 @@ export function MCPServerCard({
         // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
         footer={{
-          label: "More info",
+          label: "Tool Details",
           onClick: onToolInfoClick,
         }}
       />
