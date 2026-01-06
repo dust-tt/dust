@@ -199,8 +199,15 @@ cli
 
 cli
   .command("sync [branch]", "Rebase on branch (default: main), rebuild binaries, refresh deps")
-  .action(async (branch: string | undefined) => {
-    await prepareAndRun(syncCommand(branch));
+  .option("--switch", "Switch to target branch instead of rebasing onto it")
+  .action(async (branch: string | undefined, options: { switch?: boolean }) => {
+    const syncOptions: { targetBranch?: string; switch?: boolean } = {
+      switch: Boolean(options.switch),
+    };
+    if (branch !== undefined) {
+      syncOptions.targetBranch = branch;
+    }
+    await prepareAndRun(syncCommand(syncOptions));
   });
 
 cli
