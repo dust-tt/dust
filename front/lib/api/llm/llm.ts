@@ -179,31 +179,34 @@ export abstract class LLM {
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
-    try {
-      for await (const event of this.completeStream({
-        conversation,
-        prompt,
-        specifications,
-      })) {
-        if (currentEvent === null) {
-          timeToFirstEventMs = Date.now() - startTime;
-        }
-        currentEvent = event;
-        buffer.addEvent(event);
 
-        if (event.type === "interaction_id") {
-          buffer.setModelInteractionId(event.content.modelInteractionId);
-          generation.updateTrace({
-            metadata: {
-              modelInteractionId: event.content.modelInteractionId,
-            },
-          });
-        }
-
-        yield event;
+    for await (const event of this.completeStream({
+      conversation,
+      prompt,
+      specifications,
+    })) {
+      if (currentEvent === null) {
+        timeToFirstEventMs = Date.now() - startTime;
       }
-    } finally {
-      if (currentEvent?.type === "error") {
+      currentEvent = event;
+      buffer.addEvent(currentEvent);
+
+      if (currentEvent.type === "interaction_id") {
+        buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
+        generation.updateTrace({
+          metadata: {
+            modelInteractionId: currentEvent.content.modelInteractionId,
+          },
+        });
+      }
+
+      if (currentEvent.type !== "success" && currentEvent.type !== "error") {
+        yield currentEvent;
+        continue;
+      }
+
+      // Logging before it gets stopped and retried downstream
+      if (currentEvent.type === "error") {
         // Temporary: track LLM error metric
         statsDClient.increment("llm_error.count", 1, metricTags);
         generation.updateTrace({
@@ -220,7 +223,9 @@ export abstract class LLM {
           },
           "LLM Error"
         );
-      } else if (currentEvent?.type === "success") {
+      }
+
+      if (currentEvent.type === "success") {
         // Temporary: track LLM success metric
         statsDClient.increment("llm_success.count", 1, metricTags);
 
@@ -285,6 +290,10 @@ export abstract class LLM {
       if (buffer.runTokenUsage) {
         await run.recordTokenUsage(buffer.runTokenUsage, this.modelId);
       }
+
+      yield currentEvent;
+
+      break;
     }
   }
 
