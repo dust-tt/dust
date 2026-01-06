@@ -30,7 +30,6 @@ interface RestrictedAccessBodyProps {
   initialGroups?: GroupType[];
   initialManagementType?: MembersManagementType;
   initialMembers?: UserType[];
-  isRestricted: boolean;
   onChange?: (data: {
     groups: GroupType[];
     managementType: MembersManagementType;
@@ -44,7 +43,6 @@ export function RestrictedAccessBody({
   initialGroups = [],
   initialManagementType = "manual",
   initialMembers = [],
-  isRestricted,
   onChange,
   owner,
   planAllowsSCIM,
@@ -99,130 +97,126 @@ export function RestrictedAccessBody({
 
   const isManual = !planAllowsSCIM || managementType === "manual";
 
-  if (isRestricted) {
-    return (
-      <>
-        {planAllowsSCIM ? (
-          <div className="flex flex-row items-center justify-between">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  isSelect
-                  label={
-                    managementType === "manual"
-                      ? "Manual access"
-                      : "Provisioned group access"
-                  }
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Manual access"
-                  onClick={() => {
-                    handleManagementTypeChange("manual");
-                  }}
-                />
-                <DropdownMenuItem
-                  label="Provisioned group access"
-                  onClick={() => {
-                    handleManagementTypeChange("group");
-                  }}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {isManual && selectedMembers.length > 0 && (
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={handleMembersUpdated}
+  return (
+    <>
+      {planAllowsSCIM ? (
+        <div className="flex flex-row items-center justify-between">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                isSelect
+                label={
+                  managementType === "manual"
+                    ? "Manual access"
+                    : "Provisioned group access"
+                }
               />
-            )}
-            {!isManual && selectedGroups.length > 0 && (
-              <SearchGroupsDropdown
-                owner={owner}
-                selectedGroups={selectedGroups}
-                onGroupsUpdated={handleGroupsUpdated}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label="Manual access"
+                onClick={() => {
+                  handleManagementTypeChange("manual");
+                }}
               />
-            )}
+              <DropdownMenuItem
+                label="Provisioned group access"
+                onClick={() => {
+                  handleManagementTypeChange("group");
+                }}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {isManual && selectedMembers.length > 0 && (
+            <SearchMembersDropdown
+              owner={owner}
+              selectedMembers={selectedMembers}
+              onMembersUpdated={handleMembersUpdated}
+            />
+          )}
+          {!isManual && selectedGroups.length > 0 && (
+            <SearchGroupsDropdown
+              owner={owner}
+              selectedGroups={selectedGroups}
+              onGroupsUpdated={handleGroupsUpdated}
+            />
+          )}
+        </div>
+      ) : (
+        isManual &&
+        selectedMembers.length > 0 && (
+          <div className="flex w-full justify-end">
+            <SearchMembersDropdown
+              owner={owner}
+              selectedMembers={selectedMembers}
+              onMembersUpdated={handleMembersUpdated}
+            />
           </div>
-        ) : (
-          isManual &&
-          selectedMembers.length > 0 && (
-            <div className="flex w-full justify-end">
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={handleMembersUpdated}
-              />
-            </div>
-          )
-        )}
+        )
+      )}
 
-        {isManual && selectedMembers.length === 0 && (
-          <EmptyCTA
-            action={
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={handleMembersUpdated}
-              />
-            }
-            message="Add members to the space"
-          />
-        )}
-        {!isManual && selectedGroups.length === 0 && (
-          <EmptyCTA
-            action={
-              <SearchGroupsDropdown
-                owner={owner}
-                selectedGroups={selectedGroups}
-                onGroupsUpdated={handleGroupsUpdated}
-              />
-            }
-            message="Add groups to the space"
-          />
-        )}
-
-        {isManual && selectedMembers.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder="Search (email)"
-              value={searchSelectedMembers}
-              onChange={setSearchSelectedMembers}
+      {isManual && selectedMembers.length === 0 && (
+        <EmptyCTA
+          action={
+            <SearchMembersDropdown
+              owner={owner}
+              selectedMembers={selectedMembers}
+              onMembersUpdated={handleMembersUpdated}
             />
-            <ScrollArea className="h-full">
-              <MembersTable
-                onMembersUpdated={handleMembersUpdated}
-                selectedMembers={selectedMembers}
-                searchSelectedMembers={searchSelectedMembers}
-              />
-            </ScrollArea>
-          </>
-        )}
-        {!isManual && selectedGroups.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder={"Search groups"}
-              value={searchSelectedMembers}
-              onChange={setSearchSelectedMembers}
+          }
+          message="Add members to the space"
+        />
+      )}
+      {!isManual && selectedGroups.length === 0 && (
+        <EmptyCTA
+          action={
+            <SearchGroupsDropdown
+              owner={owner}
+              selectedGroups={selectedGroups}
+              onGroupsUpdated={handleGroupsUpdated}
             />
-            <ScrollArea className="h-full">
-              <GroupsTable
-                onGroupsUpdated={handleGroupsUpdated}
-                selectedGroups={selectedGroups}
-                searchSelectedGroups={searchSelectedMembers}
-              />
-            </ScrollArea>
-          </>
-        )}
-      </>
-    );
-  }
+          }
+          message="Add groups to the space"
+        />
+      )}
 
-  return null;
+      {isManual && selectedMembers.length > 0 && (
+        <>
+          <SearchInput
+            name="search"
+            placeholder="Search (email)"
+            value={searchSelectedMembers}
+            onChange={setSearchSelectedMembers}
+          />
+          <ScrollArea className="h-full">
+            <MembersTable
+              onMembersUpdated={handleMembersUpdated}
+              selectedMembers={selectedMembers}
+              searchSelectedMembers={searchSelectedMembers}
+            />
+          </ScrollArea>
+        </>
+      )}
+      {!isManual && selectedGroups.length > 0 && (
+        <>
+          <SearchInput
+            name="search"
+            placeholder={"Search groups"}
+            value={searchSelectedMembers}
+            onChange={setSearchSelectedMembers}
+          />
+          <ScrollArea className="h-full">
+            <GroupsTable
+              onGroupsUpdated={handleGroupsUpdated}
+              selectedGroups={selectedGroups}
+              searchSelectedGroups={searchSelectedMembers}
+            />
+          </ScrollArea>
+        </>
+      )}
+    </>
+  );
 }
 
 interface GroupsTableProps {

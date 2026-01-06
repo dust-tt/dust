@@ -116,7 +116,6 @@ export default function SpaceAbout({
     <SpaceTabsWrapper owner={owner}>
       <div className="flex w-full flex-col gap-4 p-4">
         <RestrictedAccessBody
-          isRestricted={false}
           planAllowsSCIM={planAllowsSCIM}
           owner={owner}
           initialMembers={spaceInfo?.members ?? []}

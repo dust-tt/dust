@@ -435,19 +435,20 @@ export function CreateOrEditSpaceModal({
                 }
               }}
             />
-            <RestrictedAccessBody
-              isRestricted={isRestricted}
-              planAllowsSCIM={planAllowsSCIM}
-              owner={owner}
-              initialMembers={initialMembers}
-              initialGroups={initialGroups}
-              initialManagementType={initialManagementType}
-              onChange={(data) => {
-                if (onChangeRef.current) {
-                  void onChangeRef.current(data);
-                }
-              }}
-            />
+            {isRestricted && (
+              <RestrictedAccessBody
+                planAllowsSCIM={planAllowsSCIM}
+                owner={owner}
+                initialMembers={initialMembers}
+                initialGroups={initialGroups}
+                initialManagementType={initialManagementType}
+                onChange={(data) => {
+                  if (onChangeRef.current) {
+                    void onChangeRef.current(data);
+                  }
+                }}
+              />
+            )}
           </div>
         </SheetContainer>
         <SheetFooter
