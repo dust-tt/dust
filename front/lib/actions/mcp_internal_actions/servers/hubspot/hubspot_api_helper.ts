@@ -1465,6 +1465,13 @@ export const searchCrmObjects = async ({
       paging: searchResponse.paging,
     };
   } catch (error: any) {
+    if (error.code === 404) {
+      localLogger.warn(
+        { objectType, filters, query },
+        `Error 404 when searching ${objectType}. Returning empty results.`
+      );
+      return { results: [], paging: undefined };
+    }
     localLogger.error({ error }, `Error searching ${objectType}:`);
     throw normalizeError(error);
   }
