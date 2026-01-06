@@ -8,6 +8,7 @@ use reqwest::RequestBuilder;
 use std::io::prelude::*;
 use std::time::Duration;
 use tokio::time::timeout;
+use tracing::{error, info};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderHttpRequestError {
@@ -50,6 +51,14 @@ pub async fn execute_request(
         });
     }
 
+    // Get Content-Type header before consuming the response body
+    let content_type = res
+        .headers()
+        .get("content-type")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("")
+        .to_lowercase();
+
     let body = timeout(
         Duration::from_secs(PROVIDER_TIMEOUT_SECONDS - (utils::now_secs() - now)),
         res.bytes(),
@@ -63,5 +72,55 @@ pub async fn execute_request(
         .read_to_end(&mut b)
         .map_err(|e| ProviderHttpRequestError::InvalidResponse(e.into()))?;
 
-    serde_json::from_slice(&b).map_err(|e| ProviderHttpRequestError::InvalidResponse(e.into()))
+    // Log response body for debugging JSON parsing errors
+    let body_str = String::from_utf8_lossy(&b);
+    if body_str.is_empty() {
+        error!(
+            provider = ?provider,
+            "Empty response body from OAuth provider token endpoint"
+        );
+        return Err(ProviderHttpRequestError::InvalidResponse(
+            anyhow::anyhow!("Empty response body").into(),
+        ));
+    }
+
+    // Check content_type to determine parsing strategy
+    // OAuth 2.0 spec allows token endpoints to return either JSON or form-encoded
+    let is_form_encoded = content_type.contains("application/x-www-form-urlencoded");
+
+    if is_form_encoded {
+        let form_data: std::collections::HashMap<String, String> =
+            url::form_urlencoded::parse(body_str.as_bytes())
+                .into_owned()
+                .collect();
+
+        // Convert to JSON, handling numeric values for expires_in
+        let mut json_obj = serde_json::Map::new();
+        for (key, value) in form_data {
+            // expires_in should be a number, not a string
+            if key == "expires_in" {
+                if let Ok(num) = value.parse::<u64>() {
+                    json_obj.insert(key, serde_json::Value::Number(num.into()));
+                } else {
+                    json_obj.insert(key, serde_json::Value::String(value));
+                }
+            } else {
+                json_obj.insert(key, serde_json::Value::String(value));
+            }
+        }
+
+        Ok(serde_json::Value::Object(json_obj))
+    } else {
+        // Default to JSON parsing
+        serde_json::from_slice::<serde_json::Value>(&b).map_err(|json_err| {
+            error!(
+                provider = ?provider,
+                content_type = %content_type,
+                body_length = b.len(),
+                error = ?json_err,
+                "Failed to parse response body as JSON"
+            );
+            ProviderHttpRequestError::InvalidResponse(json_err.into())
+        })
+    }
 }
