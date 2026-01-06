@@ -12,6 +12,7 @@ import {
 import { restoreTerminal } from "../lib/prompt";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
+import { shellQuote } from "../lib/shell";
 
 // Tab display names (shorter names for better zellij tab bar)
 const TAB_NAMES: Record<ServiceName, string> = {
@@ -34,16 +35,11 @@ if (missingTabs.length > 0 || extraTabs.length > 0) {
   );
 }
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
 function kdlEscape(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function getUserShell(): string {
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   return process.env["SHELL"] ?? "zsh";
 }
 
@@ -244,9 +240,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   const sessionName = `dust-hive-${env.name}`;
 
   // Detect if running inside zellij to avoid nesting
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const inZellij = process.env["ZELLIJ"] !== undefined;
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const currentSession = process.env["ZELLIJ_SESSION_NAME"];
 
   // If inside zellij and trying to attach, use session manager instead

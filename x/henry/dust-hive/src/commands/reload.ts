@@ -1,12 +1,9 @@
 import { unlink } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
+import { isErrnoException } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { getZellijLayoutPath } from "../lib/paths";
 import { openCommand } from "./open";
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
 
 export const reloadCommand = withEnvironment("reload", async (env) => {
   const sessionName = `dust-hive-${env.name}`;

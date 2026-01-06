@@ -90,7 +90,7 @@ open $(dust-hive url myenv)
 
 | Command | Description |
 |---------|-------------|
-| `spawn [--name NAME] [--base BRANCH] [--no-open] [--no-attach] [--warm]` | Create new environment |
+| `spawn [--name NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool [NAME]` | Stop services, keep SDK watch |
 | `start [NAME]` | Resume stopped environment |
@@ -104,9 +104,10 @@ open $(dust-hive url myenv)
 | `logs [NAME] [SERVICE] [-f]` | View service logs |
 | `url [NAME]` | Print front URL |
 | `doctor` | Check prerequisites |
-| `cache [status\|rebuild] [--status] [--rebuild]` | Show or rebuild binary cache |
+| `cache` | Show binary cache status |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
-| `sync [BRANCH]` | Rebase on branch (default: main), rebuild binaries, refresh deps |
+| `sync` | Pull latest main, rebuild binaries, refresh deps |
+| `seed-config <postgres-uri>` | Extract user data from existing DB for seeding |
 
 > **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
 > It pre-selects the current environment (if you're in a worktree) or the last one you used.
@@ -337,10 +338,7 @@ The cache uses your main Dust repo as source:
 # Check cache status
 dust-hive cache
 
-# Build missing binaries
-dust-hive cache --rebuild
-
-# Update main repo with latest and refresh everything
+# Update main repo with latest, rebuild binaries, refresh deps
 dust-hive sync
 ```
 

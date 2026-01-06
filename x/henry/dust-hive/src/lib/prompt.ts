@@ -45,36 +45,6 @@ export function restoreTerminal(): void {
   }
 }
 
-// Simple y/n prompt - returns true for yes, false for no (no default)
-export async function promptYesNo(question: string): Promise<boolean> {
-  const result = await p.confirm({
-    message: question,
-  });
-
-  if (p.isCancel(result)) {
-    throw new Error("Prompt cancelled");
-  }
-
-  return result;
-}
-
-// Choice prompt - returns the selected option
-export async function promptChoice<T extends string>(
-  question: string,
-  options: readonly T[]
-): Promise<T> {
-  const result = await p.select({
-    message: question,
-    options: options.map((opt) => ({ value: opt as string, label: opt })),
-  });
-
-  if (p.isCancel(result)) {
-    throw new Error("Prompt cancelled");
-  }
-
-  return result as T;
-}
-
 // Prompt user for yes/no confirmation with default
 export async function confirm(message: string, defaultYes = true): Promise<boolean> {
   const result = await p.confirm({

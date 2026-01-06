@@ -18,11 +18,6 @@ export class CommandError extends Error {
   }
 }
 
-// Helper to create usage error
-export function usageError(commandName: string): CommandError {
-  return new CommandError(`Usage: dust-hive ${commandName} NAME`);
-}
-
 // Helper to create "environment not found" error
 export function envNotFoundError(name: string): CommandError {
   return new CommandError(`Environment '${name}' not found`);

@@ -1,11 +1,7 @@
 import { withEnvironment } from "../lib/commands";
 import { getLogPath } from "../lib/paths";
 import { CommandError, Err, Ok } from "../lib/result";
-import { ALL_SERVICES, type ServiceName } from "../lib/services";
-
-function isServiceName(value: string | undefined): value is ServiceName {
-  return value !== undefined && ALL_SERVICES.includes(value as ServiceName);
-}
+import { ALL_SERVICES, type ServiceName, isServiceName } from "../lib/services";
 
 interface LogsOptions {
   follow?: boolean;
