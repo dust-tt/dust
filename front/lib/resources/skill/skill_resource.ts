@@ -46,6 +46,7 @@ import type {
   AgentConfigurationType,
   AgentsUsageType,
   ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   ModelId,
   Result,
@@ -540,30 +541,36 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List enabled skills for a given conversation and agent configuration.
-   * Returns only active skills.
+   * List enabled skills for a conversation.
+   *
+   * If agentConfiguration is provided, includes both agent enabled and conversation enabled skills.
+   *
+   * Otherwise, returns only conversation enabled skills (JIT).
    */
-  private static async listEnabledForConversation(
+  static async listEnabledByConversation(
     auth: Authenticator,
     {
-      agentConfiguration,
       conversation,
+      agentConfiguration,
     }: {
-      agentConfiguration: AgentConfigurationType;
-      conversation: ConversationType;
+      conversation: ConversationWithoutContentType;
+      agentConfiguration?: AgentConfigurationType;
     }
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Fetch the conversation skills for this agent and the ones for all agents.
     const conversationSkills = await ConversationSkillModel.findAll({
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        [Op.or]: [
-          { agentConfigurationId: agentConfiguration.sId },
-          { agentConfigurationId: null },
-        ],
+        ...(agentConfiguration
+          ? {
+              [Op.or]: [
+                { agentConfigurationId: agentConfiguration.sId },
+                { agentConfigurationId: null },
+              ],
+            }
+          : { agentConfigurationId: null }),
       },
     });
 
@@ -588,11 +595,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }> {
-    const conversationEnabledSkills = await this.listEnabledForConversation(
+    const conversationEnabledSkills = await this.listEnabledByConversation(
       auth,
       {
-        agentConfiguration,
         conversation,
+        agentConfiguration,
       }
     );
     const allAgentSkills = await this.listByAgentConfiguration(
@@ -645,20 +652,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           : null,
       })
     );
-  }
-
-  static async fetchConversationSkills(
-    auth: Authenticator,
-    conversationId: ModelId
-  ): Promise<SkillResource[]> {
-    const conversationSkills = await ConversationSkillModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId,
-      },
-    });
-
-    return this.fetchBySkillReferences(auth, conversationSkills);
   }
 
   async upsertToConversation(
@@ -1166,7 +1159,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         workspaceId: workspace.id,
         conversationId,
-        agentConfigurationId,
+        [Op.or]: [{ agentConfigurationId }, { agentConfigurationId: null }],
       },
     });
 

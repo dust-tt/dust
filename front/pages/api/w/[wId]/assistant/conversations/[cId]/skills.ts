@@ -59,9 +59,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversationSkills = await SkillResource.fetchConversationSkills(
+      const conversationSkills = await SkillResource.listEnabledByConversation(
         auth,
-        conversationWithoutContent.id
+        { conversation: conversationWithoutContent }
       );
 
       return res
