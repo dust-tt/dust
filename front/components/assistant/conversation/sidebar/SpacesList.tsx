@@ -67,7 +67,7 @@ export function SpacesList({ owner, summary }: SpacesListProps) {
   }
 
   return (
-    <div className="mx-3 flex flex-col gap-0.5">
+    <div className="mt-0.5 px-3 sm:flex sm:flex-col sm:gap-0.5">
       {summary.map(({ space, unreadConversations }) => (
         <SpaceListItem
           key={space.sId}
