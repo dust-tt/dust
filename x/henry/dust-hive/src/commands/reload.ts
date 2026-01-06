@@ -15,26 +15,16 @@ export const reloadCommand = withEnvironment("reload", async (env) => {
 
   // Kill session first (stops it)
   const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
-  // Consume pipes to prevent hanging the event loop
-  await Promise.all([
-    new Response(killProc.stdout).text(),
-    new Response(killProc.stderr).text(),
-  ]);
   await killProc.exited;
 
   // Then delete it (removes from list)
   const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
-  // Consume pipes to prevent hanging the event loop
-  await Promise.all([
-    new Response(deleteProc.stdout).text(),
-    new Response(deleteProc.stderr).text(),
-  ]);
   await deleteProc.exited;
 
   // Remove old layout

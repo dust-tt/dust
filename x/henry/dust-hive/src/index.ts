@@ -29,6 +29,8 @@ async function runCommand(resultPromise: Promise<Result<void>>): Promise<void> {
     logger.error(result.error.message);
     process.exit(1);
   }
+  // Exit explicitly to avoid hanging on unconsumed Bun.spawn pipe handles
+  process.exit(0);
 }
 
 async function prepareAndRun(resultPromise: Promise<Result<void>>): Promise<void> {
