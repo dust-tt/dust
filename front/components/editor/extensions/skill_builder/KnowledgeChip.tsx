@@ -70,6 +70,7 @@ export function KnowledgeErrorChip({
       target="_blank"
       color="warning"
       onRemove={onRemove}
+      // TODO(2026-01-02 SKILL): Create proper variant in Sparkle.
       className="rounded-md bg-white align-middle font-medium drop-shadow"
       size="xs"
       href=""
