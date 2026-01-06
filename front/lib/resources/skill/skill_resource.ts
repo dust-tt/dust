@@ -1022,8 +1022,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    // Delete existing tool associations.
-    await SkillMCPServerConfigurationModel.destroy({
+    const existingConfigs = await SkillMCPServerConfigurationModel.findAll({
       where: {
         workspaceId: workspace.id,
         skillConfigurationId: this.id,
@@ -1031,15 +1030,38 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    // Create new tool associations.
-    await SkillMCPServerConfigurationModel.bulkCreate(
-      mcpServerViews.map((mcpServerView) => ({
-        workspaceId: workspace.id,
-        skillConfigurationId: this.id,
-        mcpServerViewId: mcpServerView.id,
-      })),
-      { transaction }
+    const existingMcpServerViewIds = new Set(
+      existingConfigs.map((config) => config.mcpServerViewId)
     );
+    const mcpServerViewIds = new Set(mcpServerViews.map((msv) => msv.id));
+
+    // Delete removed tools
+    const idsToDelete = existingConfigs
+      .filter((config) => !mcpServerViewIds.has(config.mcpServerViewId))
+      .map((config) => config.id);
+    if (idsToDelete.length > 0) {
+      await SkillMCPServerConfigurationModel.destroy({
+        where: {
+          id: { [Op.in]: idsToDelete },
+        },
+        transaction,
+      });
+    }
+
+    // Create new tools
+    const toCreate = mcpServerViews.filter(
+      (msv) => !existingMcpServerViewIds.has(msv.id)
+    );
+    if (toCreate.length > 0) {
+      await SkillMCPServerConfigurationModel.bulkCreate(
+        toCreate.map((mcpServerView) => ({
+          workspaceId: workspace.id,
+          skillConfigurationId: this.id,
+          mcpServerViewId: mcpServerView.id,
+        })),
+        { transaction }
+      );
+    }
 
     // Update the current instance with the new tools to avoid stale data. (Similar to BaseResource update)
     Object.assign(this, { mcpServerViews });
