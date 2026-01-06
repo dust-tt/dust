@@ -1,28 +1,17 @@
-import { AttachmentIcon, Button, markdownStyles } from "@dust-tt/sparkle";
-import { CharacterCount, Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
+import { AttachmentIcon, Button } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
-import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import {
-  KNOWLEDGE_NODE_TYPE,
-  KnowledgeNode,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
+import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { useSkillInstructionsExtensions } from "@app/components/editor/SkillInstructionsEditor";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-
-export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const editorVariants = cva(
   [
@@ -114,61 +103,7 @@ export function SkillBuilderInstructionsEditor({
     [extractAttachedKnowledge, attachedKnowledgeField]
   );
 
-  const extensions = useMemo(() => {
-    return [
-      Markdown,
-      StarterKit.configure({
-        orderedList: false, // we use custom OrderedListExtension instead
-        listItem: false, // we use custom ListItemExtension instead
-        bulletList: {
-          HTMLAttributes: {
-            class: markdownStyles.unorderedList(),
-          },
-        },
-        blockquote: false,
-        horizontalRule: false,
-        strike: false,
-        code: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-        codeBlock: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-        paragraph: {
-          HTMLAttributes: {
-            class: markdownStyles.paragraph(),
-          },
-        },
-      }),
-      SlashCommandExtension,
-      KnowledgeNode,
-      // Custom ordered list and list item extensions to preserve start attribute
-      OrderedListExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.orderedList(),
-        },
-      }),
-      ListItemExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.list(),
-        },
-      }),
-      AgentInstructionDiffExtension,
-      Placeholder.configure({
-        placeholder:
-          "How should this work? What company-specific knowledge applies here?",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
-      }),
-      CharacterCount.configure({
-        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-      }),
-    ];
-  }, []);
+  const extensions = useSkillInstructionsExtensions(false);
 
   const debouncedUpdate = useMemo(
     () =>
