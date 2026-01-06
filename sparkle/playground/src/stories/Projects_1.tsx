@@ -35,6 +35,7 @@ import {
   ScrollBar,
   SearchInput,
   SidebarLayout,
+  type SidebarLayoutRef,
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
   SpaceClosedIcon,
@@ -42,7 +43,6 @@ import {
   StarStrokeIcon,
   TrashIcon,
   UserIcon,
-  type SidebarLayoutRef,
 } from "@dust-tt/sparkle";
 import {
   getAgentById,
