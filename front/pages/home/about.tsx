@@ -485,6 +485,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/smb2268/",
     github: "https://github.com/smb2268",
   },
+  matthieu: {
+    name: "Matthieu Mourey",
+    title: "Finance",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A2T982L2V-bc6d5d8f965d-512",
+    linkedIn: "https://www.linkedin.com/in/matthieumourey/",
+    github: "https://github.com/matthieu-mourey",
+  },
   josh: {
     name: "Josh Cohen",
     title: "Account Executive",
