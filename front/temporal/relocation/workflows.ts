@@ -165,6 +165,9 @@ export async function workspaceRelocateFrontWorkflow({
       },
     ],
   });
+
+  // 4) Recreate the user search index in the destination region.
+  await destinationRegionActivities.recreateUserSearchIndex({ workspaceId });
 }
 
 export async function workspaceRelocateFrontTableWorkflow({
