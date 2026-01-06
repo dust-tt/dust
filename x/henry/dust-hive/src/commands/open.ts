@@ -46,20 +46,35 @@ function getUserShell(): string {
   return process.env["SHELL"] ?? "zsh";
 }
 
-// Watch script content - written to ~/.dust-hive/scripts/watch-logs.sh
-const WATCH_SCRIPT_CONTENT = `#!/bin/bash
+// Unified watch script content - handles both env services and temporal
+// Usage: watch-logs.sh --temporal
+//        watch-logs.sh <env-name> <service>
+function getWatchScriptContent(): string {
+  return `#!/bin/bash
 # Log watcher with Ctrl+C menu for restart/clear/quit
-# Usage: watch-logs.sh <env-name> <service>
+# Usage: watch-logs.sh --temporal
+#        watch-logs.sh <env-name> <service>
 
-ENV_NAME="\$1"
-SERVICE="\$2"
+if [[ "\$1" == "--temporal" ]]; then
+  # Temporal mode
+  LABEL="temporal"
+  LOG_FILE="${TEMPORAL_LOG_PATH}"
+  RESTART_CMD="dust-hive temporal restart"
+else
+  # Environment service mode
+  ENV_NAME="\$1"
+  SERVICE="\$2"
 
-if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
-  echo "Usage: watch-logs.sh <env-name> <service>"
-  exit 1
+  if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
+    echo "Usage: watch-logs.sh --temporal"
+    echo "       watch-logs.sh <env-name> <service>"
+    exit 1
+  fi
+
+  LABEL="\$SERVICE"
+  LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
+  RESTART_CMD="dust-hive restart \\"\$ENV_NAME\\" \\"\$SERVICE\\""
 fi
-
-LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
 
 mkdir -p "\$(dirname "\$LOG_FILE")"
 touch "\$LOG_FILE"
@@ -69,15 +84,15 @@ trap '' SIGINT
 
 show_menu() {
   echo ""
-  echo -e "\\033[100m [\$SERVICE] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
+  echo -e "\\033[100m [\$LABEL] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
   read -r -n 1 cmd
   echo ""
 
   case "\$cmd" in
     r|R)
-      echo -e "\\033[33m[Restarting \$SERVICE...]\\033[0m"
-      dust-hive restart "\$ENV_NAME" "\$SERVICE"
-      echo -e "\\033[32m[\$SERVICE restarted]\\033[0m"
+      echo -e "\\033[33m[Restarting \$LABEL...]\\033[0m"
+      eval "\$RESTART_CMD"
+      echo -e "\\033[32m[\$LABEL restarted]\\033[0m"
       sleep 1
       ;;
     c|C)
@@ -90,18 +105,19 @@ show_menu() {
 }
 
 while true; do
-  echo -e "\\033[100m [\$SERVICE] Ctrl+C for menu \\033[0m"
+  echo -e "\\033[100m [\$LABEL] Ctrl+C for menu \\033[0m"
   echo ""
   # Run tail in a subshell that doesn't ignore SIGINT
   (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE") || true
   show_menu
 done
 `;
+}
 
 async function ensureWatchScript(): Promise<string> {
   await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
   const scriptPath = getWatchScriptPath();
-  await Bun.write(scriptPath, WATCH_SCRIPT_CONTENT);
+  await Bun.write(scriptPath, getWatchScriptContent());
   // Make executable
   const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
   await proc.exited;
@@ -348,67 +364,8 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   return Ok(undefined);
 });
 
-// Temporal watch script - different from env watch script since it uses dust-hive temporal restart
-function getTemporalWatchScriptContent(): string {
-  return `#!/bin/bash
-# Log watcher for Temporal server with Ctrl+C menu
-# Usage: watch-temporal.sh
-
-LOG_FILE="${TEMPORAL_LOG_PATH}"
-
-mkdir -p "$(dirname "$LOG_FILE")"
-touch "$LOG_FILE"
-
-# Trap SIGINT to prevent script from exiting on Ctrl+C
-trap '' SIGINT
-
-show_menu() {
-  echo ""
-  echo -e "\\033[100m [temporal] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
-  read -r -n 1 cmd
-  echo ""
-
-  case "$cmd" in
-    r|R)
-      echo -e "\\033[33m[Restarting temporal...]\\033[0m"
-      dust-hive temporal restart
-      echo -e "\\033[32m[temporal restarted]\\033[0m"
-      sleep 1
-      ;;
-    c|C)
-      clear
-      ;;
-    q|Q)
-      exit 0
-      ;;
-  esac
-}
-
-while true; do
-  echo -e "\\033[100m [temporal] Ctrl+C for menu \\033[0m"
-  echo ""
-  # Run tail in a subshell that doesn't ignore SIGINT
-  (trap - SIGINT; exec tail -n 500 -F "$LOG_FILE") || true
-  show_menu
-done
-`;
-}
-
-function getTemporalWatchScriptPath(): string {
-  return join(DUST_HIVE_SCRIPTS, "watch-temporal.sh");
-}
-
-async function ensureTemporalWatchScript(): Promise<string> {
-  await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
-  const scriptPath = getTemporalWatchScriptPath();
-  await Bun.write(scriptPath, getTemporalWatchScriptContent());
-  const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
-  await proc.exited;
-  return scriptPath;
-}
-
 // Generate layout for main session (repo root + temporal logs)
-function generateMainLayout(repoRoot: string, temporalWatchScriptPath: string): string {
+function generateMainLayout(repoRoot: string, watchScriptPath: string): string {
   const shellPath = getUserShell();
 
   return `layout {
@@ -429,7 +386,8 @@ function generateMainLayout(repoRoot: string, temporalWatchScriptPath: string): 
 
     tab name="temporal" {
         pane {
-            command "${kdlEscape(temporalWatchScriptPath)}"
+            command "${kdlEscape(watchScriptPath)}"
+            args "--temporal"
             start_suspended false
         }
     }
@@ -437,10 +395,10 @@ function generateMainLayout(repoRoot: string, temporalWatchScriptPath: string): 
 `;
 }
 
-async function writeMainLayout(repoRoot: string, temporalWatchScriptPath: string): Promise<string> {
+async function writeMainLayout(repoRoot: string, watchScriptPath: string): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
   const layoutPath = join(DUST_HIVE_ZELLIJ, "main-layout.kdl");
-  const content = generateMainLayout(repoRoot, temporalWatchScriptPath);
+  const content = generateMainLayout(repoRoot, watchScriptPath);
   await Bun.write(layoutPath, content);
   return layoutPath;
 }
@@ -461,8 +419,8 @@ export async function openMainSession(
   // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const currentSession = process.env["ZELLIJ_SESSION_NAME"];
 
-  // Ensure temporal watch script exists
-  const temporalWatchScriptPath = await ensureTemporalWatchScript();
+  // Ensure watch script exists (same script, will be called with --temporal)
+  const watchScriptPath = await ensureWatchScript();
 
   // Check if session exists
   const sessionExists = await checkSessionExists(sessionName);
@@ -474,7 +432,7 @@ export async function openMainSession(
     }
 
     if (!sessionExists) {
-      const layoutPath = await writeMainLayout(repoRoot, temporalWatchScriptPath);
+      const layoutPath = await writeMainLayout(repoRoot, watchScriptPath);
       await createSessionInBackground(sessionName, layoutPath);
     }
 
@@ -510,7 +468,7 @@ export async function openMainSession(
     });
     await proc.exited;
   } else {
-    const layoutPath = await writeMainLayout(repoRoot, temporalWatchScriptPath);
+    const layoutPath = await writeMainLayout(repoRoot, watchScriptPath);
 
     if (!options.attach) {
       await createSessionInBackground(sessionName, layoutPath);

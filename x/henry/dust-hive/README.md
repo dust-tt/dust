@@ -403,8 +403,7 @@ dust-hive sync
 │       ├── *.pid              # Process IDs
 │       └── *.log              # Service logs
 ├── scripts/
-│   ├── watch-logs.sh          # Log watcher for env services
-│   └── watch-temporal.sh      # Log watcher for temporal
+│   └── watch-logs.sh          # Log watcher (supports --temporal flag)
 └── zellij/
     ├── layout.kdl             # Environment zellij layout
     └── main-layout.kdl        # Main session layout
