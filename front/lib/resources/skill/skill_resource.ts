@@ -1,5 +1,4 @@
 import assert from "assert";
-import difference from "lodash/difference";
 import groupBy from "lodash/groupBy";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
@@ -1029,39 +1028,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const existingAssociations = await SkillMCPServerConfigurationModel.findAll(
-      {
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: this.id,
-        },
-        transaction,
-      }
+    const existingConfigs = await SkillMCPServerConfigurationModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: this.id,
+      },
+      transaction,
+    });
+
+    const existingMcpServerViewIds = new Set(
+      existingConfigs.map((config) => config.mcpServerViewId)
     );
+    const mcpServerViewIds = new Set(mcpServerViews.map((msv) => msv.id));
 
-    const existingViewIds = existingAssociations.map((a) => a.mcpServerViewId);
-    const newViewIds = mcpServerViews.map((v) => v.id);
-
-    const idsToDelete = difference(existingViewIds, newViewIds);
-    const idsToCreate = difference(newViewIds, existingViewIds);
-
+    // Delete removed tools
+    const idsToDelete = existingConfigs
+      .filter((config) => !mcpServerViewIds.has(config.mcpServerViewId))
+      .map((config) => config.id);
     if (idsToDelete.length > 0) {
       await SkillMCPServerConfigurationModel.destroy({
         where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: this.id,
-          mcpServerViewId: idsToDelete,
+          id: { [Op.in]: idsToDelete },
         },
         transaction,
       });
     }
 
-    if (idsToCreate.length > 0) {
+    // Create new tools
+    const toCreate = mcpServerViews.filter(
+      (msv) => !existingMcpServerViewIds.has(msv.id)
+    );
+    if (toCreate.length > 0) {
       await SkillMCPServerConfigurationModel.bulkCreate(
-        idsToCreate.map((mcpServerViewId) => ({
+        toCreate.map((mcpServerView) => ({
           workspaceId: workspace.id,
           skillConfigurationId: this.id,
-          mcpServerViewId,
+          mcpServerViewId: mcpServerView.id,
         })),
         { transaction }
       );

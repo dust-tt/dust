@@ -1,7 +1,7 @@
 import { cn } from "@dust-tt/sparkle";
 import React from "react";
 
-import { CODE_LENGTH } from "@app/pages/api/auth/phone_verification";
+import { CODE_LENGTH } from "@app/lib/plans/trial/phone";
 
 interface CodeInputProps {
   code: string[];
@@ -33,6 +33,7 @@ export function PhoneNumberCodeInput({
           onChange={(e) => onChange(index, e.target.value)}
           onKeyDown={(e) => onKeyDown(index, e)}
           onPaste={onPaste}
+          onFocus={(e) => e.target.select()}
           className={cn(
             "h-20 w-16",
             "rounded-xl text-center text-2xl",

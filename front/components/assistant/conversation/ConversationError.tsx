@@ -75,7 +75,7 @@ interface ErrorDisplayProps {
 
 export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
-    <div className="h-dvh flex flex-col items-center justify-center gap-3">
+    <div className="flex h-dvh flex-col items-center justify-center gap-3">
       {icon && (
         <Icon
           visual={icon}

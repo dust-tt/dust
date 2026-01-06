@@ -126,7 +126,7 @@ export default function DataSourcePicker({
         {readOnly ? (
           selectedDataSourceView ? (
             <MaybeLink href={getEditLink(selectedDataSourceView)}>
-              <div className="max-w-20 mr-1 truncate">
+              <div className="mr-1 max-w-20 truncate">
                 {selectedDataSourceView.dataSource.name}
               </div>
             </MaybeLink>

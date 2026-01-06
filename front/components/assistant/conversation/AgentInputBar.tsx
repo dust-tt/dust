@@ -157,7 +157,7 @@ export const AgentInputBar = ({
   return (
     <div
       className={
-        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
+        "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
       <div
@@ -198,7 +198,7 @@ export const AgentInputBar = ({
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
-          className="max-h-dvh mb-5 flex w-full"
+          className="mb-5 flex max-h-dvh w-full"
         >
           <span className="font-bold">
             {blockedActions.length} manual action
