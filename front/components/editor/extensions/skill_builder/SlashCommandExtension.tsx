@@ -1,3 +1,4 @@
+import { BookOpenIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
@@ -21,6 +22,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
     label: "Attach knowledge",
     description: "Search and attach knowledge to your skill",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
+    icon: BookOpenIcon,
   },
 ];
 
