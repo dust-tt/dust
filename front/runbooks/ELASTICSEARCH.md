@@ -949,31 +949,23 @@ export async function recreateYourIndex({
 }
 ```
 
-### Step 2: Export the Activity
+### Step 2: Call the Activity from the ES Indexation Workflow
 
-Ensure your activity is exported from `temporal/relocation/activities/destination_region/front/index.ts`:
-
-```typescript
-export * from "./es_indexation";
-export * from "./file_storage";
-export * from "./sql";
-```
-
-### Step 3: Call the Activity from the Relocation Workflow
-
-Add a call to your activity in `temporal/relocation/workflows.ts` within the `workspaceRelocateFrontWorkflow` function. The activity should be called after the front tables have been relocated (so the data exists in the destination region's database):
+Add a call to your activity in `temporal/relocation/workflows.ts` within the `workspaceRelocateFrontEsIndexationWorkflow` function. This workflow is called after the front tables and file storage have been relocated:
 
 ```typescript
-export async function workspaceRelocateFrontWorkflow({
-  sourceRegion,
+export async function workspaceRelocateFrontEsIndexationWorkflow({
   destRegion,
   workspaceId,
 }: RelocationWorkflowBase) {
-  // ...
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(destRegion);
 
-  // 4) Recreate Elasticsearch indices in the destination region.
+  // Recreate user search index.
   await destinationRegionActivities.recreateUserSearchIndex({ workspaceId });
-  await destinationRegionActivities.recreateYourIndex({ workspaceId }); // Add your index here
+
+  // Add your index here:
+  await destinationRegionActivities.recreateYourIndex({ workspaceId });
 }
 ```
 
@@ -982,4 +974,4 @@ export async function workspaceRelocateFrontWorkflow({
 The user search index (`front.user_search`) is recreated during relocation using this pattern. See:
 
 - **Activity:** `temporal/relocation/activities/destination_region/front/es_indexation.ts` - `recreateUserSearchIndex`
-- **Workflow call:** `temporal/relocation/workflows.ts` - Called in `workspaceRelocateFrontWorkflow`
+- **Workflow:** `temporal/relocation/workflows.ts` - `workspaceRelocateFrontEsIndexationWorkflow`
