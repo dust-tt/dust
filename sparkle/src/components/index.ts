@@ -79,6 +79,8 @@ export {
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
+  DropdownTooltipTriggerProps,
+  DropdownTooltipProps,
 } from "./Dropdown";
 export {
   DropdownMenu,
@@ -100,6 +102,7 @@ export {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";

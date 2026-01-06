@@ -1,4 +1,5 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
@@ -242,9 +243,8 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
-interface DropdownMenuContentProps extends React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.Content
-> {
+interface DropdownMenuContentProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
@@ -487,10 +487,8 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-interface DropdownMenuTagItemProps extends Omit<
-  DropdownMenuItemProps,
-  "label" | "icon" | "onClick"
-> {
+interface DropdownMenuTagItemProps
+  extends Omit<DropdownMenuItemProps, "label" | "icon" | "onClick"> {
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
@@ -727,6 +725,104 @@ const DropdownMenuFilters = React.forwardRef<
 
 DropdownMenuFilters.displayName = "DropdownMenuFilters";
 
+// DropdownTooltip: Simple tooltip with consistent layout: optional media at top, description below.
+export interface DropdownTooltipProps {
+  description: string;
+  media?: React.ReactNode;
+}
+
+const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
+  <div className="s-space-y-4">
+    {/* Media at top */}
+    {media && <div className="s-rounded-sm">{media}</div>}
+
+    {/* Description */}
+    <p className="text-foreground dark:text-foreground-night s-text-xs s-font-normal">
+      {description}
+    </p>
+  </div>
+);
+
+DropdownTooltip.displayName = "DropdownTooltip";
+
+export interface DropdownTooltipTriggerProps {
+  children: React.ReactElement;
+  className?: string;
+  description: string;
+  media?: React.ReactNode;
+  mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
+  onVisibilityChange?: (visible: boolean) => void;
+  side?: "left" | "right" | "top" | "bottom";
+  sideOffset?: number;
+}
+
+const DropdownTooltipTrigger = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Trigger>,
+  DropdownTooltipTriggerProps
+>(
+  (
+    {
+      children,
+      className,
+      description,
+      media,
+      mountPortal = true,
+      mountPortalContainer,
+      onVisibilityChange,
+      side = "right",
+      sideOffset = 8,
+    },
+    ref
+  ) => {
+    const tooltipContent = (
+      <TooltipPrimitive.Content
+        side={side}
+        sideOffset={sideOffset}
+        className={cn(
+          menuStyleClasses.container,
+          "s-w-80 s-max-w-sm s-p-3 s-shadow-lg"
+        )}
+      >
+        <DropdownTooltip description={description} media={media} />
+      </TooltipPrimitive.Content>
+    );
+
+    const [container, setContainer] = React.useState<Element | undefined>(
+      mountPortalContainer
+    );
+
+    React.useEffect(() => {
+      if (mountPortal && !container) {
+        const dialogElements = document.querySelectorAll(
+          ".s-sheet[role=dialog][data-state=open]"
+        );
+        const defaultContainer = dialogElements[dialogElements.length - 1];
+        setContainer(defaultContainer);
+      }
+    }, [mountPortal, container]);
+
+    return (
+      <TooltipPrimitive.Provider delayDuration={300}>
+        <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
+          <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
+            {children}
+          </TooltipPrimitive.Trigger>
+          {mountPortal ? (
+            <TooltipPrimitive.Portal container={container}>
+              {tooltipContent}
+            </TooltipPrimitive.Portal>
+          ) : (
+            tooltipContent
+          )}
+        </TooltipPrimitive.Root>
+      </TooltipPrimitive.Provider>
+    );
+  }
+);
+
+DropdownTooltipTrigger.displayName = "DropdownTooltipTrigger";
+
 interface DropdownMenuStaticItemProps {
   label: string;
   value?: string;
@@ -783,4 +879,5 @@ export {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
 };
