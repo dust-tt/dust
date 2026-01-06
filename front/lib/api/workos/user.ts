@@ -24,6 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
+import { normalizeError } from "@app/types";
 import { Err, Ok, sha256 } from "@app/types";
 
 export type SessionCookie = {
@@ -123,15 +124,34 @@ export async function getWorkOSSessionFromCookie(
   cookie: string | undefined;
   session: SessionWithUser | undefined;
 }> {
-  const {
-    sessionData,
-    organizationId,
-    authenticationMethod,
-    workspaceId,
-    region,
-  } = await unsealData<SessionCookie>(workOSSessionCookie, {
-    password: config.getWorkOSCookiePassword(),
-  });
+  let sessionData: string;
+  let organizationId: string | undefined;
+  let authenticationMethod:
+    | WorkOSAuthenticationResponse["authenticationMethod"]
+    | undefined;
+  let workspaceId: string | undefined;
+  let region: RegionType;
+
+  try {
+    const unsealed = await unsealData<SessionCookie>(workOSSessionCookie, {
+      password: config.getWorkOSCookiePassword(),
+    });
+    sessionData = unsealed.sessionData;
+    organizationId = unsealed.organizationId;
+    authenticationMethod = unsealed.authenticationMethod;
+    workspaceId = unsealed.workspaceId;
+    region = unsealed.region;
+  } catch (error) {
+    logger.error(
+      { err: normalizeError(error) },
+      "Failed to unseal session cookie"
+    ); // Return empty cookie to clear the invalid session cookie.
+    return {
+      cookie: "",
+      session: undefined,
+    };
+  }
+
   const session = getWorkOS().userManagement.loadSealedSession({
     sessionData,
     cookiePassword: config.getWorkOSCookiePassword(),
