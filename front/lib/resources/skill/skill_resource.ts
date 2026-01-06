@@ -244,12 +244,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       // Compute what data source configurations to create (no existing configs for new skill).
-      const { toUpsert } = this.computeDataSourceConfigurationChanges(
-        owner,
+      const { toUpsert } = this.computeDataSourceConfigurationChanges(owner, {
         attachedKnowledge,
-        [], // No existing configs for new skill.
-        skill.id
-      );
+        existingConfigurations: [], // No existing configs for new skill.
+        skillConfigurationId: skill.id,
+      });
 
       const dataSourceConfigurations =
         await SkillDataSourceConfigurationModel.bulkCreate(toUpsert, {
@@ -1115,9 +1114,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static computeDataSourceConfigurationChanges(
     owner: LightWorkspaceType,
-    attachedKnowledge: SkillAttachedKnowledge[],
-    existingConfigurations: SkillDataSourceConfigurationModel[] = [],
-    skillConfigurationId: ModelId
+    {
+      attachedKnowledge,
+      existingConfigurations,
+      skillConfigurationId,
+    }: {
+      attachedKnowledge: SkillAttachedKnowledge[];
+      existingConfigurations: SkillDataSourceConfigurationModel[];
+      skillConfigurationId: ModelId;
+    }
   ): {
     toDelete: SkillDataSourceConfigurationModel[];
     toUpsert: Array<CreationAttributes<SkillDataSourceConfigurationModel>>;
@@ -1229,12 +1234,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
     const { toDelete, toUpsert } =
-      SkillResource.computeDataSourceConfigurationChanges(
-        workspace,
+      SkillResource.computeDataSourceConfigurationChanges(workspace, {
         attachedKnowledge,
         existingConfigurations,
-        this.id
-      );
+        skillConfigurationId: this.id,
+      });
 
     // Delete configurations that are no longer needed.
     for (const config of toDelete) {

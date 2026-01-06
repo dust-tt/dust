@@ -88,9 +88,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          [], // No existing configurations.
-          123 // Mock skill ID.
+          {
+            attachedKnowledge,
+            existingConfigurations: [], // No existing configurations.
+            skillConfigurationId: 123, // Mock skill ID.
+          }
         );
 
       expect(toDelete).toHaveLength(0);
@@ -137,9 +139,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          [],
-          123
+          {
+            attachedKnowledge,
+            existingConfigurations: [],
+            skillConfigurationId: 123,
+          }
         );
 
       expect(toDelete).toHaveLength(0);
@@ -190,9 +194,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          existingConfigurations,
-          123
+          {
+            attachedKnowledge,
+            existingConfigurations,
+            skillConfigurationId: 123,
+          }
         );
 
       expect(toDelete).toHaveLength(1);
@@ -232,9 +238,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          existingConfigurations,
-          123
+          {
+            attachedKnowledge,
+            existingConfigurations,
+            skillConfigurationId: 123,
+          }
         );
 
       expect(toDelete).toHaveLength(0);
@@ -273,9 +281,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          existingConfigurations,
-          123
+          {
+            attachedKnowledge,
+            existingConfigurations,
+            skillConfigurationId: 123,
+          }
         );
 
       expect(toDelete).toHaveLength(0);
@@ -323,9 +333,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          existingConfigurations,
-          123
+          {
+            attachedKnowledge,
+            existingConfigurations,
+            skillConfigurationId: 123,
+          }
         );
 
       // Should delete dataSourceView2.
@@ -368,9 +380,11 @@ describe("SkillResource", () => {
       const { toDelete, toUpsert } =
         SkillResource.computeDataSourceConfigurationChanges(
           testContext.workspace,
-          attachedKnowledge,
-          [],
-          123
+          {
+            attachedKnowledge,
+            existingConfigurations: [],
+            skillConfigurationId: 123,
+          }
         );
 
       expect(toDelete).toHaveLength(0);

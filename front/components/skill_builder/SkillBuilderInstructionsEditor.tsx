@@ -7,7 +7,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useController } from "react-hook-form";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
@@ -63,15 +63,19 @@ export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
 }: SkillBuilderInstructionsEditorProps) {
-  const { field, fieldState } = useController<
-    SkillBuilderFormData,
-    "instructions"
-  >({
-    name: "instructions",
+  const { field: instructionsField, fieldState: instructionsFieldState } =
+    useController<SkillBuilderFormData, "instructions">({
+      name: "instructions",
+    });
+  const {
+    field: attachedKnowledgeField,
+    fieldState: attachedKnowledgeFieldState,
+  } = useController<SkillBuilderFormData, "attachedKnowledge">({
+    name: "attachedKnowledge",
   });
 
-  const { setValue } = useFormContext<SkillBuilderFormData>();
-  const displayError = !!fieldState.error;
+  const displayError =
+    !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
 
   // Helper function to extract attached knowledge and update form.
   const extractAttachedKnowledge = useCallback((editor: Editor) => {
@@ -106,11 +110,9 @@ export function SkillBuilderInstructionsEditor({
         title: item.label,
       }));
 
-      setValue("attachedKnowledge", transformedAttachments, {
-        shouldDirty: true,
-      });
+      attachedKnowledgeField.onChange(transformedAttachments);
     },
-    [extractAttachedKnowledge, setValue]
+    [extractAttachedKnowledge, attachedKnowledgeField]
   );
 
   const extensions = useMemo(() => {
@@ -172,19 +174,19 @@ export function SkillBuilderInstructionsEditor({
     () =>
       debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          field.onChange(editor.getMarkdown());
+          instructionsField.onChange(editor.getMarkdown());
 
           // Also update attached knowledge in the form.
           updateAttachedKnowledge(editor);
         }
       }, 250),
-    [field, isInstructionDiffMode, updateAttachedKnowledge]
+    [instructionsField, isInstructionDiffMode, updateAttachedKnowledge]
   );
 
   const editor = useEditor(
     {
       extensions,
-      content: field.value || undefined, // display placeholder if instructions are empty
+      content: instructionsField.value || undefined, // display placeholder if instructions are empty
       contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
@@ -226,7 +228,7 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || field.value === undefined) {
+    if (!editor || instructionsField.value === undefined) {
       return;
     }
 
@@ -234,15 +236,15 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
     const currentContent = editor.getMarkdown();
-    if (currentContent !== field.value) {
+    if (currentContent !== instructionsField.value) {
       setTimeout(() => {
-        editor.commands.setContent(field.value, {
+        editor.commands.setContent(instructionsField.value, {
           emitUpdate: false,
           contentType: "markdown",
         });
       }, 0);
     }
-  }, [editor, field.value]);
+  }, [editor, instructionsField.value]);
 
   useEffect(() => {
     if (!editor) {
@@ -270,9 +272,9 @@ export function SkillBuilderInstructionsEditor({
   return (
     <div className="relative space-y-1 p-px">
       <EditorContent editor={editor} />
-      {fieldState.error && (
+      {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">
-          {fieldState.error.message}
+          {instructionsFieldState.error.message}
         </div>
       )}
     </div>
