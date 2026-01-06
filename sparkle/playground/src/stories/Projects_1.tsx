@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AtomIcon,
   Avatar,
@@ -44,7 +43,11 @@ import {
   TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import {
+  type Agent,
+  type Conversation,
   getAgentById,
   getRandomAgents,
   getRandomSpaces,
@@ -53,8 +56,6 @@ import {
   mockAgents,
   mockConversations,
   mockUsers,
-  type Agent,
-  type Conversation,
   type Space,
   type User,
 } from "../data";

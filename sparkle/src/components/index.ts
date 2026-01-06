@@ -169,8 +169,6 @@ export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
-export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
-export { SidebarLayout } from "./SidebarLayout";
 export {
   Sheet,
   SheetClose,
@@ -184,6 +182,8 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./Sheet";
+export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
+export { SidebarLayout } from "./SidebarLayout";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { FlexSplitButton } from "./SplitButton";
