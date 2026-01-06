@@ -19,7 +19,16 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
+import type {
+  AuthMethod,
+  CreateMCPServerFormValues,
+} from "@app/components/actions/mcp/forms/createMCPServerFormSchema";
+import {
+  getCreateMCPServerFormDefaults,
+  isFormSubmittable,
+} from "@app/components/actions/mcp/forms/createMCPServerFormSchema";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type {
   CustomResourceIconType,
@@ -41,11 +50,7 @@ import {
   useCreateRemoteMCPServer,
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
-import type {
-  MCPOAuthUseCase,
-  OAuthCredentials,
-  WorkspaceType,
-} from "@app/types";
+import type { WorkspaceType } from "@app/types";
 import {
   OAUTH_PROVIDER_NAMES,
   sanitizeHeadersArray,
@@ -54,8 +59,6 @@ import {
 } from "@app/types";
 
 import { McpServerHeaders } from "./MCPServerHeaders";
-
-const DEFAULT_AUTH_METHOD = "oauth-dynamic";
 
 type CreateMCPServerDialogProps = {
   owner: WorkspaceType;
@@ -77,31 +80,49 @@ export function CreateMCPServerDialog({
   defaultServerConfig,
 }: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+
+  // Non-form state (these are transient/derived state, not form data)
   const [
     remoteMCPServerOAuthDiscoveryDone,
     setRemoteMCPServerOAuthDiscoveryDone,
   ] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [remoteServerUrl, setRemoteServerUrl] = useState("");
-  const [sharedSecret, setSharedSecret] = useState<string | undefined>(
-    undefined
-  );
-  const [useCase, setUseCase] = useState<MCPOAuthUseCase | null>(null);
-  const [authCredentials, setAuthCredentials] =
-    useState<OAuthCredentials | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOAuthFormValid, setIsOAuthFormValid] = useState(true);
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
 
-  const [authMethod, setAuthMethod] = useState<
-    "oauth-dynamic" | "oauth-static" | "bearer"
-  >(DEFAULT_AUTH_METHOD);
-  const [useCustomHeaders, setUseCustomHeaders] = useState(false);
-  const [customHeaders, setCustomHeaders] = useState<
-    { key: string; value: string }[]
-  >([]);
+  // Form state managed by React Hook Form
+  const defaults = useMemo(
+    () =>
+      getCreateMCPServerFormDefaults({
+        internalMCPServer,
+        defaultServerConfig,
+      }),
+    [internalMCPServer, defaultServerConfig]
+  );
+
+  const form = useForm<CreateMCPServerFormValues>({
+    defaultValues: defaults,
+    mode: "onChange",
+  });
+
+  const {
+    watch,
+    setValue,
+    reset: formReset,
+    getValues,
+  } = form;
+
+  // Watch form values for reactive updates
+  const remoteServerUrl = watch("remoteServerUrl");
+  const authMethod = watch("authMethod");
+  const sharedSecret = watch("sharedSecret");
+  const useCase = watch("useCase");
+  const authCredentials = watch("authCredentials");
+  const useCustomHeaders = watch("useCustomHeaders");
+  const customHeaders = watch("customHeaders");
 
   const sanitizeHeaders = useCallback(
     (headers: { key: string; value: string }[]) =>
@@ -113,15 +134,23 @@ export function CreateMCPServerDialog({
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
-  useEffect(() => {
-    if (defaultServerConfig?.url && isOpen) {
-      setRemoteServerUrl(defaultServerConfig.url);
-    }
-    if (defaultServerConfig && isOpen) {
-      setAuthMethod(defaultServerConfig.authMethod ?? DEFAULT_AUTH_METHOD);
-    }
-  }, [defaultServerConfig, isOpen]);
+  const requiresBearerToken = internalMCPServer
+    ? requiresBearerTokenConfiguration(internalMCPServer)
+    : false;
 
+  // Reset form when dialog opens with new config
+  useEffect(() => {
+    if (isOpen) {
+      formReset(
+        getCreateMCPServerFormDefaults({
+          internalMCPServer,
+          defaultServerConfig,
+        })
+      );
+    }
+  }, [isOpen, internalMCPServer, defaultServerConfig, formReset]);
+
+  // Initialize authorization from internalMCPServer
   useEffect(() => {
     if (internalMCPServer && isOpen) {
       setAuthorization(internalMCPServer.authorization);
@@ -134,24 +163,20 @@ export function CreateMCPServerDialog({
     setIsLoading(false);
     setExternalIsLoading(false);
     setError(null);
-    setRemoteServerUrl("");
     setRemoteMCPServerOAuthDiscoveryDone(false);
-    setSharedSecret(undefined);
-    setUseCase(null);
-    setAuthCredentials(null);
-    setAuthMethod(DEFAULT_AUTH_METHOD);
     setIsOAuthFormValid(true);
     setAuthorization(null);
-    setUseCustomHeaders(false);
-    setCustomHeaders([]);
-  }, [setExternalIsLoading]);
+    formReset(defaults);
+  }, [setExternalIsLoading, formReset, defaults]);
 
   const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
     let oauthConnection: MCPConnectionType | undefined;
     setIsLoading(true);
 
-    if (remoteServerUrl) {
-      const urlValidation = validateUrl(remoteServerUrl);
+    const formValues = getValues();
+
+    if (formValues.remoteServerUrl) {
+      const urlValidation = validateUrl(formValues.remoteServerUrl);
 
       if (!urlValidation.valid) {
         e.preventDefault();
@@ -162,11 +187,13 @@ export function CreateMCPServerDialog({
         return;
       }
 
-      if (authMethod === "oauth-dynamic") {
+      if (formValues.authMethod === "oauth-dynamic") {
         if (!remoteMCPServerOAuthDiscoveryDone) {
           const discoverOAuthMetadataRes = await discoverOAuthMetadata(
-            remoteServerUrl,
-            useCustomHeaders ? sanitizeHeaders(customHeaders) : undefined
+            formValues.remoteServerUrl,
+            formValues.useCustomHeaders
+              ? sanitizeHeaders(formValues.customHeaders)
+              : undefined
           );
           setRemoteMCPServerOAuthDiscoveryDone(true);
 
@@ -177,7 +204,8 @@ export function CreateMCPServerDialog({
                 supported_use_cases: ["platform_actions", "personal_actions"],
               });
 
-              setAuthCredentials(
+              setValue(
+                "authCredentials",
                 discoverOAuthMetadataRes.value.connectionMetadata
               );
               // Returning here as now the user must select the use case.
@@ -188,7 +216,7 @@ export function CreateMCPServerDialog({
             sendNotification({
               type: "error",
               title: "Failed to discover OAuth metadata for MCP server",
-              description: `${discoverOAuthMetadataRes.error.message} (${remoteServerUrl})`,
+              description: `${discoverOAuthMetadataRes.error.message} (${formValues.remoteServerUrl})`,
             });
             setRemoteMCPServerOAuthDiscoveryDone(false);
             setIsLoading(false);
@@ -198,7 +226,7 @@ export function CreateMCPServerDialog({
       }
     }
 
-    if (authorization && !useCase) {
+    if (authorization && !formValues.useCase) {
       // Should not happen as the button should be disabled if the use case is not selected.
       sendNotification({
         type: "error",
@@ -219,7 +247,7 @@ export function CreateMCPServerDialog({
         // During setup, the use case is always "platform_actions".
         useCase: "platform_actions",
         extraConfig: {
-          ...(authCredentials ?? {}),
+          ...(formValues.authCredentials ?? {}),
           ...(authorization.scope ? { scope: authorization.scope } : {}),
         },
       });
@@ -232,7 +260,7 @@ export function CreateMCPServerDialog({
         return;
       }
       oauthConnection = {
-        useCase: useCase!,
+        useCase: formValues.useCase!,
         connectionId: cRes.value.connection_id,
       };
     }
@@ -243,8 +271,8 @@ export function CreateMCPServerDialog({
     if (internalMCPServer) {
       const sanitizedHeaders =
         requiresBearerTokenConfiguration(internalMCPServer) &&
-        customHeaders.length > 0
-          ? sanitizeHeadersArray(customHeaders)
+        formValues.customHeaders.length > 0
+          ? sanitizeHeadersArray(formValues.customHeaders)
           : undefined;
 
       const createRes = await createInternalMCPServer({
@@ -252,9 +280,10 @@ export function CreateMCPServerDialog({
         oauthConnection,
         includeGlobal: true,
         ...(requiresBearerTokenConfiguration(internalMCPServer) &&
-        (sharedSecret !== undefined || customHeaders.length > 0)
+        (formValues.sharedSecret !== undefined ||
+          formValues.customHeaders.length > 0)
           ? {
-              sharedSecret: sharedSecret,
+              sharedSecret: formValues.sharedSecret || undefined,
               customHeaders:
                 sanitizedHeaders && sanitizedHeaders.length > 0
                   ? sanitizedHeaders
@@ -276,14 +305,17 @@ export function CreateMCPServerDialog({
       server = createRes.value.server;
     }
 
-    if (remoteServerUrl) {
+    if (formValues.remoteServerUrl) {
       const createRes = await createWithURL({
-        url: remoteServerUrl,
+        url: formValues.remoteServerUrl,
         includeGlobal: true,
-        sharedSecret: authMethod === "bearer" ? sharedSecret : undefined,
+        sharedSecret:
+          formValues.authMethod === "bearer"
+            ? formValues.sharedSecret || undefined
+            : undefined,
         oauthConnection,
-        customHeaders: useCustomHeaders
-          ? sanitizeHeaders(customHeaders)
+        customHeaders: formValues.useCustomHeaders
+          ? sanitizeHeaders(formValues.customHeaders)
           : undefined,
       });
 
@@ -324,6 +356,20 @@ export function CreateMCPServerDialog({
     return "Static OAuth";
   };
 
+  const handleAuthMethodChange = (newMethod: AuthMethod) => {
+    setValue("authMethod", newMethod);
+    if (newMethod === "oauth-static") {
+      setAuthorization({
+        provider: "mcp_static",
+        supported_use_cases: ["platform_actions", "personal_actions"],
+      });
+      setIsOAuthFormValid(false);
+    } else {
+      setAuthorization(null);
+      setIsOAuthFormValid(true);
+    }
+  };
+
   const toolName: string = useMemo(() => {
     if (internalMCPServer) {
       return getMcpServerDisplayName(internalMCPServer);
@@ -344,6 +390,15 @@ export function CreateMCPServerDialog({
       }
       return DEFAULT_MCP_SERVER_ICON;
     }, [internalMCPServer, defaultServerConfig]);
+
+  const isSubmitDisabled = !isFormSubmittable(getValues(), {
+    internalMCPServer,
+    defaultServerConfig,
+    authorization,
+    requiresBearerToken,
+    isOAuthFormValid,
+    isLoading,
+  });
 
   return (
     <Dialog
@@ -402,7 +457,9 @@ export function CreateMCPServerDialog({
                             id="url"
                             placeholder="https://example.com/api/mcp"
                             value={remoteServerUrl}
-                            onChange={(e) => setRemoteServerUrl(e.target.value)}
+                            onChange={(e) =>
+                              setValue("remoteServerUrl", e.target.value)
+                            }
                             isError={!!error}
                             message={error}
                             autoFocus
@@ -443,11 +500,9 @@ export function CreateMCPServerDialog({
                                 <DropdownMenuRadioItem
                                   value="oauth-dynamic"
                                   label="Automatic"
-                                  onClick={() => {
-                                    setAuthMethod("oauth-dynamic");
-                                    setAuthorization(null);
-                                    setIsOAuthFormValid(true);
-                                  }}
+                                  onClick={() =>
+                                    handleAuthMethodChange("oauth-dynamic")
+                                  }
                                 />
                               )}
                               {(!defaultServerConfig ||
@@ -460,28 +515,18 @@ export function CreateMCPServerDialog({
                                       ? `${defaultServerConfig.name} API Key`
                                       : "Bearer token"
                                   }
-                                  onClick={() => {
-                                    setAuthMethod("bearer");
-                                    setAuthorization(null);
-                                    setIsOAuthFormValid(true);
-                                  }}
+                                  onClick={() =>
+                                    handleAuthMethodChange("bearer")
+                                  }
                                 />
                               )}
                               {!defaultServerConfig && (
                                 <DropdownMenuRadioItem
                                   value="oauth-static"
                                   label="Static OAuth"
-                                  onClick={() => {
-                                    setAuthMethod("oauth-static");
-                                    setAuthorization({
-                                      provider: "mcp_static",
-                                      supported_use_cases: [
-                                        "platform_actions",
-                                        "personal_actions",
-                                      ],
-                                    });
-                                    setIsOAuthFormValid(false);
-                                  }}
+                                  onClick={() =>
+                                    handleAuthMethodChange("oauth-static")
+                                  }
                                 />
                               )}
                             </DropdownMenuRadioGroup>
@@ -513,7 +558,9 @@ export function CreateMCPServerDialog({
                             }
                             disabled={authMethod !== "bearer"}
                             value={sharedSecret}
-                            onChange={(e) => setSharedSecret(e.target.value)}
+                            onChange={(e) =>
+                              setValue("sharedSecret", e.target.value)
+                            }
                             isError={
                               defaultServerConfig?.authMethod === "bearer" &&
                               !sharedSecret
@@ -541,8 +588,10 @@ export function CreateMCPServerDialog({
                 authorization={authorization}
                 authCredentials={authCredentials}
                 useCase={useCase}
-                setUseCase={setUseCase}
-                setAuthCredentials={setAuthCredentials}
+                setUseCase={(uc) => setValue("useCase", uc)}
+                setAuthCredentials={(creds) =>
+                  setValue("authCredentials", creds)
+                }
                 setIsFormValid={setIsOAuthFormValid}
                 documentationUrl={
                   internalMCPServer?.documentationUrl ?? undefined
@@ -572,7 +621,7 @@ export function CreateMCPServerDialog({
                     id="bearerToken"
                     placeholder="Paste the Bearer Token here"
                     value={sharedSecret ?? ""}
-                    onChange={(e) => setSharedSecret(e.target.value)}
+                    onChange={(e) => setValue("sharedSecret", e.target.value)}
                     isError={!sharedSecret}
                     message={
                       !sharedSecret ? "Bearer token is required" : undefined
@@ -602,7 +651,9 @@ export function CreateMCPServerDialog({
                     <SliderToggle
                       disabled={false}
                       selected={useCustomHeaders}
-                      onClick={() => setUseCustomHeaders(!useCustomHeaders)}
+                      onClick={() =>
+                        setValue("useCustomHeaders", !useCustomHeaders)
+                      }
                     />
                   </div>
                 </div>
@@ -611,7 +662,9 @@ export function CreateMCPServerDialog({
             {useCustomHeaders && (
               <McpServerHeaders
                 headers={customHeaders}
-                onHeadersChange={(headers) => setCustomHeaders(headers)}
+                onHeadersChange={(headers) =>
+                  setValue("customHeaders", headers)
+                }
               />
             )}
           </div>
@@ -633,18 +686,7 @@ export function CreateMCPServerDialog({
                 ? "Setup connection"
                 : "Save",
             variant: "primary",
-            disabled:
-              /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-              !isOAuthFormValid ||
-              (authorization && !useCase) ||
-              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
-              (internalMCPServer &&
-                !authorization &&
-                requiresBearerTokenConfiguration(internalMCPServer) &&
-                !sharedSecret) ||
-              (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
-              isLoading,
-            /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
+            disabled: isSubmitDisabled,
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();
