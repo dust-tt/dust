@@ -20,6 +20,11 @@ async function cleanupZellijSession(envName: string): Promise<void> {
     stdout: "pipe",
     stderr: "pipe",
   });
+  // Consume pipes to prevent hanging the event loop
+  await Promise.all([
+    new Response(killProc.stdout).text(),
+    new Response(killProc.stderr).text(),
+  ]);
   await killProc.exited;
 
   // Then delete it (removes from list)
@@ -27,6 +32,11 @@ async function cleanupZellijSession(envName: string): Promise<void> {
     stdout: "pipe",
     stderr: "pipe",
   });
+  // Consume pipes to prevent hanging the event loop
+  await Promise.all([
+    new Response(deleteProc.stdout).text(),
+    new Response(deleteProc.stderr).text(),
+  ]);
   await deleteProc.exited;
 }
 
