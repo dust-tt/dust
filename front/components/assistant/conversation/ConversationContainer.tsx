@@ -172,7 +172,7 @@ export function ConversationContainerVirtuoso({
           </div>
           <div
             className={classNames(
-              "max-h-dvh sticky bottom-0 z-20 flex w-full",
+              "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
               "sm:w-full sm:max-w-3xl sm:pb-4"
             )}

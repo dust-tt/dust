@@ -393,7 +393,7 @@ export default function SpaceConversations({
       title="Attach files to the conversation"
     >
       <div className="flex w-full items-center justify-center overflow-auto">
-        <div className="max-h-dvh flex w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
+        <div className="flex max-h-dvh w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
           <div className="flex w-full flex-col gap-4">
             <ContentMessage
               title="Experimental feature"

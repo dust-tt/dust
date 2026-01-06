@@ -333,8 +333,9 @@ export function DataTable<TData extends TBaseData>({
   );
 }
 
-export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends DataTableProps<TData> {
+export interface ScrollableDataTableProps<
+  TData extends TBaseData,
+> extends DataTableProps<TData> {
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
@@ -871,8 +872,7 @@ interface BaseMenuItem {
 }
 
 interface RegularMenuItem
-  extends BaseMenuItem,
-    Omit<DropdownMenuItemProps, "children" | "label"> {
+  extends BaseMenuItem, Omit<DropdownMenuItemProps, "children" | "label"> {
   kind: "item";
 }
 
@@ -900,7 +900,7 @@ const renderSubmenuItem = (
     <DropdownMenuPortal>
       <DropdownMenuSubContent>
         <ScrollArea
-          className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+          className="s-flex s-max-h-72 s-min-w-24 s-flex-col"
           hideScrollBar
         >
           {item.items.map((subItem) => (
