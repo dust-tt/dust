@@ -1450,6 +1450,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
+    await SkillDataSourceConfigurationModel.destroy({
+      where: { workspaceId },
+    });
+
     await SkillMCPServerConfigurationModel.destroy({
       where: { workspaceId },
     });

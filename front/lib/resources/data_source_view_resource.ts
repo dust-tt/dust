@@ -19,6 +19,7 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -790,6 +791,14 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
 
     await AgentTablesQueryConfigurationTableModel.destroy({
+      where: {
+        dataSourceViewId: this.id,
+        workspaceId,
+      },
+      transaction,
+    });
+
+    await SkillDataSourceConfigurationModel.destroy({
       where: {
         dataSourceViewId: this.id,
         workspaceId,
