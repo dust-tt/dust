@@ -152,17 +152,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
-  private _mcpServerViews: MCPServerViewResource[];
-
-  get mcpServerViews(): MCPServerViewResource[] {
-    return this._mcpServerViews;
-  }
-
-  private set mcpServerViews(value: MCPServerViewResource[]) {
-    this._mcpServerViews = value;
-  }
 
   private readonly globalSId: string | null;
+
+  private _mcpServerViews: MCPServerViewResource[];
 
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
@@ -191,6 +184,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  get mcpServerViews(): MCPServerViewResource[] {
+    return this._mcpServerViews;
+  }
+
+  private set mcpServerViews(value: MCPServerViewResource[]) {
+    this._mcpServerViews = value;
   }
 
   static async makeNew(
@@ -1000,6 +1001,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
+      const authorId = auth.user()?.id;
+
       await this.updateWithAuthorization(
         auth,
         {
@@ -1009,6 +1012,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructions,
           icon,
           requestedSpaceIds,
+          authorId,
         },
         { transaction }
       );
