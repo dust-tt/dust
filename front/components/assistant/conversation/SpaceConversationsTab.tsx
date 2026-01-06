@@ -229,13 +229,15 @@ export function SpaceConversationsTab({
         <div className="flex max-h-dvh w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
           <div className="flex w-full flex-col gap-4">
             <div className="heading-lg">New conversation</div>
-            <InputBar
-              owner={owner}
-              user={user}
-              onSubmit={onSubmit}
-              conversationId={null}
-              disableAutoFocus={false}
-            />
+            <div className="mx-1">
+              <InputBar
+                owner={owner}
+                user={user}
+                onSubmit={onSubmit}
+                conversationId={null}
+                disableAutoFocus={false}
+              />
+            </div>
           </div>
           {/* Space conversations section */}
           <div className="w-full">

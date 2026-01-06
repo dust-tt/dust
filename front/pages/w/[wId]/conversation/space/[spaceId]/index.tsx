@@ -34,6 +34,7 @@ import type { DustError } from "@app/lib/error";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
+import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
@@ -100,11 +101,19 @@ export default function SpaceConversations({
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
+    includeAllMembers: true,
   });
 
   const { conversations, mutateConversations } = useSpaceConversations({
     workspaceId: owner.sId,
     spaceId,
+  });
+
+  const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
+  const { groups } = useGroups({
+    owner,
+    kinds: ["provisioned"],
+    disabled: !planAllowsSCIM,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -306,7 +315,25 @@ export default function SpaceConversations({
           </TabsContent>
 
           <TabsContent value="about">
-            <SpaceAboutTab />
+            {spaceInfo && (
+              <SpaceAboutTab
+                owner={owner}
+                space={spaceInfo}
+                plan={subscription.plan}
+                initialMembers={spaceInfo.members || []}
+                initialGroups={
+                  planAllowsSCIM &&
+                  spaceInfo.groupIds &&
+                  spaceInfo.groupIds.length > 0 &&
+                  groups
+                    ? groups.filter((group) =>
+                        spaceInfo.groupIds.includes(group.sId)
+                      )
+                    : []
+                }
+                initialManagementMode={spaceInfo.managementMode || "manual"}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
