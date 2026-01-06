@@ -145,7 +145,26 @@ export function makeColumnsForTriggers(
     },
     {
       id: "editorEmail",
-      header: "Editor",
+      accessorFn: (row) => {
+        if (row.editorUser) {
+          return row.editorUser.email;
+        }
+        return row.editor?.toString() ?? "";
+      },
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Editor</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
       cell: ({ row }) => {
         const trigger = row.original;
         if (trigger.editorUser) {
