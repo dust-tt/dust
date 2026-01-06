@@ -40,11 +40,15 @@ const cli = cac("dust-hive");
 
 cli
   .command("spawn [name]", "Create a new environment")
-  .option("--name <name>", "Environment name")
-  .option("--no-open", "Do not open zellij session after spawn")
-  .option("--no-attach", "Create zellij session but don't attach to it")
-  .option("--warm", "Open zellij with a warm tab running dust-hive warm")
-  .option("--wait", "Wait for SDK to build before opening zellij (cannot be used with --no-open)")
+  .alias("s")
+  .option("-n, --name <name>", "Environment name")
+  .option("-O, --no-open", "Do not open zellij session after spawn")
+  .option("-A, --no-attach", "Create zellij session but don't attach to it")
+  .option("-w, --warm", "Open zellij with a warm tab running dust-hive warm")
+  .option(
+    "-W, --wait",
+    "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
+  )
   .action(
     async (
       name: string | undefined,
@@ -85,6 +89,7 @@ cli
 
 cli
   .command("open [name]", "Open environment's zellij session")
+  .alias("o")
   .action(async (name: string | undefined) => {
     await prepareAndRun(openCommand(name));
   });
@@ -103,8 +108,9 @@ cli
 
 cli
   .command("warm [name]", "Start docker and all services")
-  .option("--no-forward", "Disable OAuth port forwarding")
-  .option("--force-ports", "Kill processes blocking service ports")
+  .alias("w")
+  .option("-F, --no-forward", "Disable OAuth port forwarding")
+  .option("-p, --force-ports", "Kill processes blocking service ports")
   .action(
     async (name: string | undefined, options: { forward?: boolean; forcePorts?: boolean }) => {
       await prepareAndRun(
@@ -118,37 +124,51 @@ cli
 
 cli
   .command("cool [name]", "Stop services, keep SDK watch")
+  .alias("c")
   .action(async (name: string | undefined) => {
     await prepareAndRun(coolCommand(name));
   });
 
 cli
   .command("start [name]", "Resume stopped environment")
+  .alias("up")
   .action(async (name: string | undefined) => {
     await prepareAndRun(startCommand(name));
   });
 
-cli.command("stop [name]", "Full stop of all services").action(async (name: string | undefined) => {
-  await prepareAndRun(stopCommand(name));
-});
+cli
+  .command("stop [name]", "Full stop of all services")
+  .alias("x")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(stopCommand(name));
+  });
 
 cli
   .command("destroy [name]", "Remove environment")
+  .alias("rm")
   .option("-f, --force", "Force destroy even with uncommitted changes")
   .action(async (name: string | undefined, options: { force?: boolean }) => {
     await prepareAndRun(destroyCommand(name, { force: Boolean(options.force) }));
   });
 
-cli.command("list", "Show all environments").action(async () => {
-  await prepareAndRun(listCommand());
-});
+cli
+  .command("list", "Show all environments")
+  .alias("ls")
+  .alias("l")
+  .action(async () => {
+    await prepareAndRun(listCommand());
+  });
 
-cli.command("status [name]", "Show service health").action(async (name: string | undefined) => {
-  await prepareAndRun(statusCommand(name));
-});
+cli
+  .command("status [name]", "Show service health")
+  .alias("st")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(statusCommand(name));
+  });
 
 cli
   .command("logs [name] [service]", "Show service logs")
+  .alias("log")
   .option("-f, --follow", "Follow log output")
   .action(
     async (
