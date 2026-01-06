@@ -49,10 +49,6 @@ AgentSkillModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId"],
-        concurrently: true,
-      },
-      {
         fields: ["workspaceId", "agentConfigurationId"],
         concurrently: true,
       },

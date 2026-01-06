@@ -97,10 +97,6 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
   sequelize: frontSequelize,
   indexes: [
     {
-      fields: ["workspaceId"],
-      concurrently: true,
-    },
-    {
       fields: ["workspaceId", "status"],
       concurrently: true,
     },
@@ -138,10 +134,6 @@ SkillVersionModel.init(
     modelName: "skill_version",
     sequelize: frontSequelize,
     indexes: [
-      {
-        fields: ["workspaceId"],
-        concurrently: true,
-      },
       {
         fields: ["workspaceId", "skillConfigurationId"],
         concurrently: true,
@@ -209,10 +201,6 @@ SkillMCPServerConfigurationModel.init(
     modelName: "skill_mcp_server_configuration",
     sequelize: frontSequelize,
     indexes: [
-      {
-        fields: ["workspaceId"],
-        name: "idx_skill_mcp_server_config_workspace",
-      },
       {
         fields: ["workspaceId", "skillConfigurationId"],
         name: "idx_skill_mcp_server_config_workspace_skill_config",
