@@ -154,7 +154,7 @@ export const KnowledgeNode = Node.create<{}>({
       node.attrs.selectedItems &&
       node.attrs.selectedItems.length > 0
     ) {
-      const [item] = node.attrs.selectedItems;
+      const [item] = node.attrs.selectedItems as FullKnowledgeItem[];
 
       // Serialize essential data for model understanding and API fetching.
       let nodeParams = "";
@@ -165,7 +165,8 @@ export const KnowledgeNode = Node.create<{}>({
         const nodeType = item.node.type ?? "";
         nodeParams = ` space="${spaceId}" dsv="${dsvId}" type="${nodeType}"`;
       }
-      return `<knowledge id="${item.id}" title="${item.label}"${nodeParams} />`;
+
+      return `<knowledge id="${item.nodeId}" title="${item.label}"${nodeParams} />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
