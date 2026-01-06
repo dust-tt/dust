@@ -13,7 +13,12 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
+
+type CreatePAYGCreditError = {
+  error_type: "already_exists" | "invalid_discount" | "unknown";
+  error_message: string;
+};
 
 async function createPAYGCreditForPeriod({
   auth,
@@ -27,13 +32,12 @@ async function createPAYGCreditForPeriod({
   discountPercent: number;
   periodStart: Date;
   periodEnd: Date;
-}): Promise<Result<CreditResource, Error>> {
+}): Promise<Result<CreditResource, CreatePAYGCreditError>> {
   if (discountPercent > MAX_DISCOUNT_PERCENT) {
-    return new Err(
-      new Error(
-        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
-      )
-    );
+    return new Err({
+      error_type: "invalid_discount",
+      error_message: `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`,
+    });
   }
 
   const existingCredit = await CreditResource.fetchByTypeAndDates(
@@ -44,7 +48,10 @@ async function createPAYGCreditForPeriod({
   );
 
   if (existingCredit) {
-    return new Err(new Error("Credit already exists for this period"));
+    return new Err({
+      error_type: "already_exists",
+      error_message: "Credit already exists for this period",
+    });
   }
 
   const credit = await CreditResource.makeNew(auth, {
@@ -60,7 +67,10 @@ async function createPAYGCreditForPeriod({
     expirationDate: periodEnd,
   });
   if (startResult.isErr()) {
-    return new Err(startResult.error);
+    return new Err({
+      error_type: "unknown",
+      error_message: startResult.error.message,
+    });
   }
   return new Ok(credit);
 }
@@ -94,11 +104,25 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   });
 
   if (result.isErr()) {
-    logger.info(
-      { workspaceId: workspace.sId, error: result.error.message },
-      "[Credit PAYG] Failed to create PAYG credit for this period, skipping allocation"
-    );
-    return;
+    const { error_type, error_message } = result.error;
+    switch (error_type) {
+      case "already_exists":
+        logger.info(
+          { workspaceId: workspace.sId },
+          "[Credit PAYG] Credit already exists for this period, skipping allocation"
+        );
+        return;
+      case "invalid_discount":
+      case "unknown":
+        // for eng-oncall: this is a P0 panic, do not hesitate to ping @pr or @jd to jump immediately on it
+        logger.error(
+          { workspaceId: workspace.sId, error: error_message, panic: true },
+          "[Credit PAYG] Failed to create PAYG credit for this period. Potentially blocking customer's automations"
+        );
+        return;
+      default:
+        assertNever(error_type);
+    }
   }
   logger.info(
     {
@@ -186,10 +210,25 @@ export async function startOrResumeEnterprisePAYG({
     });
 
     if (result.isErr()) {
-      logger.info(
-        { workspaceId: workspace.sId, error: result.error.message },
-        "[Credit PAYG] Failed to create PAYG credit for current period"
-      );
+      const { error_type, error_message } = result.error;
+      switch (error_type) {
+        case "already_exists":
+          logger.info(
+            { workspaceId: workspace.sId },
+            "[Credit PAYG] Credit already exists for current period"
+          );
+          break;
+        case "invalid_discount":
+        case "unknown":
+          // for eng-oncall: this is a P0 panic, do not hesitate to ping @pr or @jd to jump immediately on it
+          logger.error(
+            { workspaceId: workspace.sId, error: error_message, panic: true },
+            "[Credit PAYG] Failed to create PAYG credit for current period. Potentially blocking customer's automations."
+          );
+          break;
+        default:
+          assertNever(error_type);
+      }
     } else {
       logger.info(
         {
