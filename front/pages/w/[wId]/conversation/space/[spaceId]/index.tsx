@@ -10,12 +10,11 @@ import {
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 import { useCallback, useState } from "react";
-
-import Link from "next/link";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -36,6 +35,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
 
@@ -101,7 +101,6 @@ export default function SpaceConversations({
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
-    includeAllMembers: true,
   });
 
   const { conversations, mutateConversations } = useSpaceConversations({
@@ -204,7 +203,7 @@ export default function SpaceConversations({
       } else {
         // Navigate to the new conversation
         await router.push(
-          `/w/${owner.sId}/conversation/${conversationRes.value.sId}`,
+          getConversationRoute(owner.sId, conversationRes.value.sId),
           undefined,
           { shallow: true }
         );

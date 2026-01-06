@@ -13,6 +13,7 @@ import React, { useContext, useMemo } from "react";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
+import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { classNames } from "@app/lib/utils";
@@ -30,7 +31,6 @@ import {
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
-import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 
 type GroupLabel =
   | "Today"
