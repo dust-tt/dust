@@ -44,17 +44,25 @@ cli
   .option("--no-open", "Do not open zellij session after spawn")
   .option("--no-attach", "Create zellij session but don't attach to it")
   .option("--warm", "Open zellij with a warm tab running dust-hive warm")
+  .option("--wait", "Wait for SDK to build before opening zellij (cannot be used with --no-open)")
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; open?: boolean; attach?: boolean; warm?: boolean }
+      options: { name?: string; open?: boolean; attach?: boolean; warm?: boolean; wait?: boolean }
     ) => {
+      // Validate --wait cannot be used with --no-open
+      if (options.wait && options.open === false) {
+        logger.error("--wait cannot be used with --no-open (--no-open always waits)");
+        process.exit(1);
+      }
+
       const resolvedName = name ?? options.name;
       const spawnOptions: {
         name?: string;
         noOpen?: boolean;
         noAttach?: boolean;
         warm?: boolean;
+        wait?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -67,6 +75,9 @@ cli
       }
       if (options.warm) {
         spawnOptions.warm = true;
+      }
+      if (options.wait) {
+        spawnOptions.wait = true;
       }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
