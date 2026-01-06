@@ -61,6 +61,7 @@ function isRetryableStreamError(error: unknown): boolean {
     "other side closed",
     "ECONNRESET",
     "socket hang up",
+    "terminated", // undici fetch stream termination
   ];
 
   return retryableMessages.some((msg) =>

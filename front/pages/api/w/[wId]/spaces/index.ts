@@ -12,10 +12,15 @@ import type { SpaceType, WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types";
 
 const PostSpaceRequestBodySchema = t.intersection([
-  t.type({
-    isRestricted: t.boolean,
-    name: t.string,
-  }),
+  t.intersection([
+    t.type({
+      isRestricted: t.boolean,
+      name: t.string,
+    }),
+    t.partial({
+      conversationsEnabled: t.boolean,
+    }),
+  ]),
   t.union([
     t.type({
       memberIds: t.array(t.string),

@@ -40,29 +40,36 @@ const cli = cac("dust-hive");
 
 cli
   .command("spawn [name]", "Create a new environment")
-  .option("--name <name>", "Environment name")
-  .option("--base <branch>", "Base branch")
-  .option("--no-open", "Do not open zellij session after spawn")
-  .option("--no-attach", "Create zellij session but don't attach to it")
-  .option("--warm", "Open zellij with a warm tab running dust-hive warm")
+  .alias("s")
+  .option("-n, --name <name>", "Environment name")
+  .option("-O, --no-open", "Do not open zellij session after spawn")
+  .option("-A, --no-attach", "Create zellij session but don't attach to it")
+  .option("-w, --warm", "Open zellij with a warm tab running dust-hive warm")
+  .option(
+    "-W, --wait",
+    "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
+  )
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; base?: string; open?: boolean; attach?: boolean; warm?: boolean }
+      options: { name?: string; open?: boolean; attach?: boolean; warm?: boolean; wait?: boolean }
     ) => {
+      // Validate --wait cannot be used with --no-open
+      if (options.wait && options.open === false) {
+        logger.error("--wait cannot be used with --no-open (--no-open always waits)");
+        process.exit(1);
+      }
+
       const resolvedName = name ?? options.name;
       const spawnOptions: {
         name?: string;
-        base?: string;
         noOpen?: boolean;
         noAttach?: boolean;
         warm?: boolean;
+        wait?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
-      }
-      if (options.base !== undefined) {
-        spawnOptions.base = options.base;
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;
@@ -73,12 +80,16 @@ cli
       if (options.warm) {
         spawnOptions.warm = true;
       }
+      if (options.wait) {
+        spawnOptions.wait = true;
+      }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
   );
 
 cli
   .command("open [name]", "Open environment's zellij session")
+  .alias("o")
   .action(async (name: string | undefined) => {
     await prepareAndRun(openCommand(name));
   });
@@ -97,8 +108,9 @@ cli
 
 cli
   .command("warm [name]", "Start docker and all services")
-  .option("--no-forward", "Disable OAuth port forwarding")
-  .option("--force-ports", "Kill processes blocking service ports")
+  .alias("w")
+  .option("-F, --no-forward", "Disable OAuth port forwarding")
+  .option("-p, --force-ports", "Kill processes blocking service ports")
   .action(
     async (name: string | undefined, options: { forward?: boolean; forcePorts?: boolean }) => {
       await prepareAndRun(
@@ -112,37 +124,51 @@ cli
 
 cli
   .command("cool [name]", "Stop services, keep SDK watch")
+  .alias("c")
   .action(async (name: string | undefined) => {
     await prepareAndRun(coolCommand(name));
   });
 
 cli
   .command("start [name]", "Resume stopped environment")
+  .alias("up")
   .action(async (name: string | undefined) => {
     await prepareAndRun(startCommand(name));
   });
 
-cli.command("stop [name]", "Full stop of all services").action(async (name: string | undefined) => {
-  await prepareAndRun(stopCommand(name));
-});
+cli
+  .command("stop [name]", "Full stop of all services")
+  .alias("x")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(stopCommand(name));
+  });
 
 cli
-  .command("destroy <name>", "Remove environment")
+  .command("destroy [name]", "Remove environment")
+  .alias("rm")
   .option("-f, --force", "Force destroy even with uncommitted changes")
-  .action(async (name: string, options: { force?: boolean }) => {
+  .action(async (name: string | undefined, options: { force?: boolean }) => {
     await prepareAndRun(destroyCommand(name, { force: Boolean(options.force) }));
   });
 
-cli.command("list", "Show all environments").action(async () => {
-  await prepareAndRun(listCommand());
-});
+cli
+  .command("list", "Show all environments")
+  .alias("ls")
+  .alias("l")
+  .action(async () => {
+    await prepareAndRun(listCommand());
+  });
 
-cli.command("status [name]", "Show service health").action(async (name: string | undefined) => {
-  await prepareAndRun(statusCommand(name));
-});
+cli
+  .command("status [name]", "Show service health")
+  .alias("st")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(statusCommand(name));
+  });
 
 cli
   .command("logs [name] [service]", "Show service logs")
+  .alias("log")
   .option("-f, --follow", "Follow log output")
   .action(
     async (
@@ -169,27 +195,9 @@ cli.command("doctor", "Check prerequisites (alias for setup)").action(async () =
   await prepareAndRun(doctorCommand());
 });
 
-cli
-  .command("cache [action]", "Show or rebuild binary cache")
-  .option("--rebuild", "Rebuild cache")
-  .option("--status", "Show cache status")
-  .action(async (action: string | undefined, options: { rebuild?: boolean; status?: boolean }) => {
-    const resolved = {
-      rebuild: options.rebuild ?? false,
-      status: options.status ?? false,
-    };
-
-    if (action === "rebuild") {
-      resolved.rebuild = true;
-    } else if (action === "status") {
-      resolved.status = true;
-    } else if (action !== undefined) {
-      logger.error(`Unknown cache action: ${action}`);
-      process.exit(1);
-    }
-
-    await prepareAndRun(cacheCommand(resolved));
-  });
+cli.command("cache", "Show binary cache status").action(async () => {
+  await prepareAndRun(cacheCommand());
+});
 
 cli
   .command("forward [target]", "Manage OAuth port forwarding")
@@ -197,18 +205,9 @@ cli
     await prepareAndRun(forwardCommand(target));
   });
 
-cli
-  .command("sync [branch]", "Rebase on branch (default: main), rebuild binaries, refresh deps")
-  .option("--switch", "Switch to target branch instead of rebasing onto it")
-  .action(async (branch: string | undefined, options: { switch?: boolean }) => {
-    const syncOptions: { targetBranch?: string; switch?: boolean } = {
-      switch: Boolean(options.switch),
-    };
-    if (branch !== undefined) {
-      syncOptions.targetBranch = branch;
-    }
-    await prepareAndRun(syncCommand(syncOptions));
-  });
+cli.command("sync", "Pull latest main, rebuild binaries, refresh deps").action(async () => {
+  await prepareAndRun(syncCommand());
+});
 
 cli
   .command(

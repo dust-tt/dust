@@ -5,6 +5,18 @@ import { z } from "zod";
 import { actionSchema } from "@app/components/shared/tools_picker/types";
 import { editorUserSchema } from "@app/types/editors";
 
+export const attachedKnowledgeSchema = z.object({
+  dataSourceViewId: z.string(),
+  nodeId: z.string(),
+  nodeType: z.union([
+    z.literal("folder"),
+    z.literal("document"),
+    z.literal("table"),
+  ]),
+  spaceId: z.string(),
+  title: z.string(),
+});
+
 export const skillBuilderFormSchema = z.object({
   name: z
     .string()
@@ -19,6 +31,7 @@ export const skillBuilderFormSchema = z.object({
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
   extendedSkillId: z.string().nullable(),
+  attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;

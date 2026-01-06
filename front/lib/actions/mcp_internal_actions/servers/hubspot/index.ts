@@ -1043,12 +1043,16 @@ function createServer(): McpServer {
             limit: input.limit,
             after: input.after,
           });
-          if (!result || result.results.length === 0) {
+          if (!result) {
             return {
               isError: true,
-              content: [
-                { type: "text", text: "Search failed or returned no results." },
-              ],
+              content: [{ type: "text", text: "Search failed." }],
+            };
+          }
+          if (result.results.length === 0) {
+            return {
+              isError: false,
+              content: [{ type: "text", text: "No results found." }],
             };
           }
 
@@ -1145,7 +1149,7 @@ function createServer(): McpServer {
       }
       if (!allResults.length) {
         return {
-          isError: true,
+          isError: false,
           content: [{ type: "text", text: "No objects found for export." }],
         };
       }

@@ -50,6 +50,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   SkillConfigurationModel,
+  SkillDataSourceConfigurationModel,
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
@@ -202,6 +203,7 @@ async function main() {
   await OnboardingTaskModel.sync({ alter: true });
 
   await SkillConfigurationModel.sync({ alter: true });
+  await SkillDataSourceConfigurationModel.sync({ alter: true });
   await SkillVersionModel.sync({ alter: true });
   await GroupSkillModel.sync({ alter: true });
   await AgentSkillModel.sync({ alter: true });

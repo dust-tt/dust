@@ -163,7 +163,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
-              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
           {data.visibility !== "deleted" &&

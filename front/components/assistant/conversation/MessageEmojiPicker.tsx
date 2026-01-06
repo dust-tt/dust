@@ -15,15 +15,13 @@ interface MessageEmojiPickerProps {
 }
 
 export function MessageEmojiPicker({ onEmojiSelect }: MessageEmojiPickerProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
   const handleSelect = (emoji: string) => {
     onEmojiSelect(emoji);
-    setIsOpen(false);
   };
   const theme = useTheme();
 
   return (
-    <PopoverRoot open={isOpen}>
+    <PopoverRoot>
       <PopoverTrigger asChild>
         <Button
           key="emoji-picker-button"
@@ -31,8 +29,6 @@ export function MessageEmojiPicker({ onEmojiSelect }: MessageEmojiPickerProps) {
           variant="ghost-secondary"
           size="xs"
           icon={EmotionLaughIcon}
-          className="text-muted-foreground"
-          onClick={() => setIsOpen(!isOpen)}
         />
       </PopoverTrigger>
       <PopoverContent fullWidth>

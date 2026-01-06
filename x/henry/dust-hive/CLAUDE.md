@@ -4,15 +4,16 @@ Follow all rules in **CODING_RULES.md** before making changes.
 
 ## Development Workflow
 
-**IMPORTANT**: Run these commands frequently during development:
+**CRITICAL**: Always run `bun run check` before committing. This runs typecheck, lint, and tests. Never commit code that fails these checks.
 
 ```bash
-# Before committing - run ALL checks
+# Before committing - run ALL checks (MANDATORY)
 bun run check
 
 # Individual checks
 bun run typecheck    # TypeScript strict checks
 bun run lint         # Biome linting
+bun run lint:fix     # Auto-fix lint issues
 bun run format       # Code formatting
 bun run test         # All tests
 ```

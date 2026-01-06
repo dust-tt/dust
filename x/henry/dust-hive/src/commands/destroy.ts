@@ -6,6 +6,7 @@ import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
+import { confirm, restoreTerminal } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
@@ -56,7 +57,10 @@ export async function destroyCommand(
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, ...options };
 
-  const envResult = await requireEnvironment(name, "destroy");
+  // When using interactive selection, ask for confirmation before proceeding
+  const envResult = await requireEnvironment(name, "destroy", {
+    confirmMessage: "Destroy environment '{name}'?",
+  });
   if (!envResult.ok) return envResult;
   const env = envResult.value;
 
