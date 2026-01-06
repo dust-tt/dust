@@ -48,7 +48,7 @@ interface KnowledgeDisplayProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
   onRemove?: () => void;
-  updateAttributes?: (attrs: Partial<KnowledgeNodeAttributes>) => void;
+  updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
 export function KnowledgeDisplayComponent({
@@ -503,7 +503,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
           item={selectedItems[0]}
           owner={owner}
           onRemove={editor.isEditable ? handleRemove : undefined}
-          updateAttributes={editor.isEditable ? updateAttributes : undefined}
+          updateAttributes={updateAttributes}
         />
       </NodeViewWrapper>
     );
