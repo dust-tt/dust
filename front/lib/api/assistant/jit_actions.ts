@@ -25,13 +25,14 @@ import {
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -301,6 +302,23 @@ export async function getJITServers(
     attachments
   );
 
+  // Get project context datasource view and add project context files to the map.
+  const projectContextView = await getProjectContextDataSourceView(auth, conversation);
+  if (projectContextView) {
+    // Add all project context file attachments to the datasource view map.
+    for (const attachment of attachments) {
+      if (isFileAttachmentType(attachment)) {
+        const file = await FileResource.fetchById(auth, attachment.fileId);
+        if (file && file.useCase === "project_context") {
+          fileIdToDataSourceViewMap.set(
+            attachment.fileId,
+            projectContextView
+          );
+        }
+      }
+    }
+  }
+
   // Assign tables to multi-sheet spreadsheets.
   await concurrentExecutor(
     filesUsableAsTableQuery.filter((f) =>
@@ -507,6 +525,50 @@ export async function getJITServers(
   }
 
   return jitServers;
+}
+
+/**
+ * Get the project context datasource view for a conversation's space (if any).
+ * Returns null if conversation not in a space or no project context datasource exists.
+ */
+export async function getProjectContextDataSourceView(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<DataSourceViewResource | null> {
+  if (!conversation.spaceId) {
+    // Conversation not in a space (private conversation).
+    return null;
+  }
+
+  // Fetch space.
+  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+  if (!space) {
+    logger.warn(
+      {
+        conversationId: conversation.sId,
+        spaceId: conversation.spaceId,
+      },
+      "Space not found for conversation"
+    );
+    return null;
+  }
+
+  // Try to fetch project context datasource.
+  const name = `__project_context__${space.id}`;
+  const dataSource = await DataSourceResource.fetchByName(auth, name);
+
+  if (!dataSource) {
+    // No project context datasource exists yet.
+    return null;
+  }
+
+  // Fetch default view for the datasource in this space.
+  const views = await DataSourceViewResource.listBySpace(auth, space);
+  const view = views.find(
+    (v) => v.dataSource.id === dataSource.id && v.kind === "default"
+  );
+
+  return view || null;
 }
 
 /**
