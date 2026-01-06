@@ -1,6 +1,6 @@
+import { mockAgents } from "./agents";
 import type { Conversation } from "./types";
 import { mockUsers } from "./users";
-import { mockAgents } from "./agents";
 
 // Helper function to get random user IDs
 function getRandomUserIds(count: number): string[] {

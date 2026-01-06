@@ -1,31 +1,18 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AtomIcon,
+  InboxIcon,
   Avatar,
-  BoltOffIcon,
-  BookOpenIcon,
   Button,
-  Card,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  ContactsRobotIcon,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  HeartIcon,
-  InboxIcon,
-  LightbulbIcon,
-  ListSelectIcon,
-  LogoutIcon,
-  MagnifyingGlassIcon,
+  SpaceOpenIcon,
   MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -33,32 +20,32 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   PencilSquareIcon,
-  PlusIcon,
-  ScrollArea,
-  ScrollBar,
-  SearchInput,
-  SidebarLayout,
-  type SidebarLayoutRef,
-  SidebarLeftCloseIcon,
-  SidebarLeftOpenIcon,
-  SlackLogo,
   SpaceClosedIcon,
-  SpaceOpenIcon,
+  SearchInput,
   StarStrokeIcon,
   TrashIcon,
+  PlusIcon,
+  DropdownMenuLabel,
+  ContactsUserIcon,
+  ContactsRobotIcon,
   UserIcon,
+  Card,
+  MagnifyingGlassIcon,
+  DropdownMenuSeparator,
+  LogoutIcon,
+  Cog6ToothIcon,
+  ChatBubbleLeftRightIcon,
+  ScrollArea,
+  AtomIcon,
+  ScrollBar,
+  SidebarLeftCloseIcon,
+  SidebarLeftOpenIcon,
+  ListSelectIcon,
+  SidebarLayout,
+  type SidebarLayoutRef,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import { ConversationView } from "../components/ConversationView";
-import { GroupConversationView } from "../components/GroupConversationView";
-import { InputBar } from "../components/InputBar";
 import {
-  type Agent,
-  type Conversation,
-  createConversationsWithMessages,
   getAgentById,
-  getConversationsBySpaceId,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
@@ -66,6 +53,8 @@ import {
   mockAgents,
   mockConversations,
   mockUsers,
+  type Agent,
+  type Conversation,
   type Space,
   type User,
 } from "../data";
@@ -107,23 +96,15 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
 }
 
 function DustMain() {
-  const [_activeTab, _setActiveTab] = useState<"chat" | "spaces" | "admin">(
+  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
   const [agentSearchText, setAgentSearchText] = useState("");
   const [peopleSearchText, setPeopleSearchText] = useState("");
-  const [documentSearchText, setDocumentSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<
-    string | null
-  >(null);
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
-  const [conversationsWithMessages, setConversationsWithMessages] = useState<
-    Conversation[]
-  >([]);
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -158,26 +139,17 @@ function DustMain() {
     const spaceCount = Math.floor(Math.random() * (9 - 3 + 1)) + 3;
     const randomSpaces = getRandomSpaces(spaceCount);
     setSpaces(randomSpaces);
-
-    // Create conversations with messages
-    const convsWithMessages = createConversationsWithMessages(randomUser.id);
-    setConversationsWithMessages(convsWithMessages);
   }, []);
-
-  // Combine mock conversations with conversations that have messages
-  const allConversations = useMemo(() => {
-    return [...conversationsWithMessages, ...mockConversations];
-  }, [conversationsWithMessages]);
 
   const filteredConversations = useMemo(() => {
     if (!searchText.trim()) {
-      return allConversations;
+      return mockConversations;
     }
     const lowerSearch = searchText.toLowerCase();
-    return allConversations.filter((conv) =>
+    return mockConversations.filter((conv) =>
       conv.title.toLowerCase().includes(lowerSearch)
     );
-  }, [searchText, allConversations]);
+  }, [searchText]);
 
   const groupedConversations = useMemo(() => {
     const today = new Date();
@@ -294,26 +266,6 @@ function DustMain() {
         space.description.toLowerCase().includes(lowerSearch)
     );
   }, [searchText, sortedSpaces]);
-
-  // Find selected conversation from all conversations
-  const selectedConversation = useMemo(() => {
-    if (!selectedConversationId) return null;
-    return (
-      allConversations.find((c) => c.id === selectedConversationId) || null
-    );
-  }, [selectedConversationId, allConversations]);
-
-  // Find selected space
-  const selectedSpace = useMemo(() => {
-    if (!selectedSpaceId) return null;
-    return spaces.find((s) => s.id === selectedSpaceId) || null;
-  }, [selectedSpaceId, spaces]);
-
-  // Get conversations for selected space
-  const spaceConversations = useMemo(() => {
-    if (!selectedSpaceId) return [];
-    return getConversationsBySpaceId(selectedSpaceId);
-  }, [selectedSpaceId]);
 
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
@@ -464,79 +416,6 @@ function DustMain() {
                 console.log("Administration");
               }}
             />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <DropdownMenuLabel label="Learn about Dust" />
-                  <DropdownMenuItem
-                    label="Quickstart Guide"
-                    icon={LightbulbIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("Quickstart Guide");
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="Guides & Documentation"
-                    icon={BookOpenIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("Guides & Documentation");
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="Join the Slack Community"
-                    icon={SlackLogo}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("Join the Slack Community");
-                    }}
-                  />
-                  <DropdownMenuLabel label="Ask questions" />
-                  <DropdownMenuItem
-                    label="Ask @help"
-                    description="Ask anything about Dust"
-                    icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("Ask @help");
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="How to invite new users?"
-                    icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("How to invite new users?");
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="How to use agents in Slack workflow?"
-                    icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("How to use agents in Slack workflow?");
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="How to manage billing?"
-                    icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("How to manage billing?");
-                    }}
-                  />
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
@@ -567,34 +446,23 @@ function DustMain() {
             placeholder="Search"
             className="s-flex-1"
           />
-          {/* <Button
+          <Button
+            label="New"
             variant="primary"
-            tooltip="New Conversation"
             size="sm"
             icon={ChatBubbleLeftRightIcon}
-          /> */}
+          />
         </div>
         {/* Collapsible Sections */}
         <NavigationList className="s-px-2">
           {!searchText.trim() ? (
-            <>
-              <NavigationListItem
-                label="Inbox"
-                icon={InboxIcon}
-                onClick={() => {
-                  console.log("Selected Inbox");
-                }}
-              />
-              <NavigationListItem
-                label="New Conversation"
-                icon={ChatBubbleLeftRightIcon}
-                selected={selectedConversationId === "new-conversation"}
-                onClick={() => {
-                  setSelectedConversationId("new-conversation");
-                  setSelectedSpaceId(null);
-                }}
-              />
-            </>
+            <NavigationListItem
+              label="Inbox"
+              icon={InboxIcon}
+              onClick={() => {
+                console.log("Selected Inbox");
+              }}
+            />
           ) : (
             <>
               <NavigationListItem
@@ -616,7 +484,6 @@ function DustMain() {
           {(filteredSpaces.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="Spaces"
-              type="collapse"
               defaultOpen={true}
               action={
                 <>
@@ -676,7 +543,6 @@ function DustMain() {
                     key={space.id}
                     label={space.name}
                     icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
-                    selected={space.id === selectedSpaceId}
                     moreMenu={
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -705,8 +571,7 @@ function DustMain() {
                       </DropdownMenu>
                     }
                     onClick={() => {
-                      setSelectedSpaceId(space.id);
-                      setSelectedConversationId(null);
+                      console.log("Selected space:", space.id);
                     }}
                   />
                 );
@@ -717,7 +582,6 @@ function DustMain() {
           {(filteredCollaborators.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="People & Agents"
-              type="collapse"
               defaultOpen={true}
               action={
                 <>
@@ -973,7 +837,6 @@ function DustMain() {
           {(filteredConversations.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="Conversations"
-              type="collapse"
               defaultOpen={true}
               action={
                 <>
@@ -1002,16 +865,6 @@ function DustMain() {
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuLabel label="Conversations" />
-                      <DropdownMenuItem
-                        label="Hide triggered"
-                        icon={BoltOffIcon}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log("Edit Conversations");
-                        }}
-                      />
                       <DropdownMenuItem
                         label="Edit history"
                         icon={ListSelectIcon}
@@ -1023,7 +876,6 @@ function DustMain() {
                       />
                       <DropdownMenuItem
                         label="Clear history"
-                        variant="warning"
                         icon={TrashIcon}
                         onClick={(e) => {
                           e.preventDefault();
@@ -1042,11 +894,10 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
                       }}
                     />
                   ))}
@@ -1059,11 +910,10 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
                       }}
                     />
                   ))}
@@ -1076,11 +926,10 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
                       }}
                     />
                   ))}
@@ -1093,11 +942,10 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
                       }}
                     />
                   ))}
@@ -1111,55 +959,15 @@ function DustMain() {
   );
 
   // Main content
-  const mainContent =
-    // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
-    selectedConversationId &&
-    selectedConversationId !== "new-conversation" &&
-    selectedConversation &&
-    user ? (
-      <ConversationView
-        conversation={selectedConversation}
-        locutor={user}
-        users={mockUsers}
-        agents={mockAgents}
-        conversationsWithMessages={conversationsWithMessages}
-      />
-    ) : // Priority 2: Show space view if a space is selected
-    selectedSpace && selectedSpaceId ? (
-      <GroupConversationView
-        space={selectedSpace}
-        conversations={spaceConversations}
-        users={mockUsers}
-        agents={mockAgents}
-        onConversationClick={(conversation) => {
-          setSelectedConversationId(conversation.id);
-          setSelectedSpaceId(null);
-        }}
-      />
-    ) : (
-      // Priority 3: Show welcome/new conversation view
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground">
-            Welcome, Edouard!{" "}
-          </div>
-          <InputBar placeholder="Ask a question" />
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <div className="s-heading-lg s-text-foreground">
-              Universal search
-            </div>
-            <SearchInput
-              name="document-search"
-              value={documentSearchText}
-              onChange={setDocumentSearchText}
-              placeholder="Find company documents, Agents, People…"
-              className="s-w-full"
-            />
-          </div>
-          <div className="s-heading-lg s-text-foreground">Chat with…</div>
-        </div>
+  const mainContent = (
+    <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
+      <div className="s-text-center">
+        <p className="s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+          Select a conversation to view
+        </p>
       </div>
-    );
+    </div>
+  );
 
   return (
     <div className="s-flex s-h-screen s-w-full s-bg-background">
