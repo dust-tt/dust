@@ -151,10 +151,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly editorGroup: GroupResource | null = null;
-  readonly mcpServerViews: MCPServerViewResource[];
   readonly version: number | null = null;
 
   private readonly globalSId: string | null;
+
+  private _mcpServerViews: MCPServerViewResource[];
 
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
@@ -170,7 +171,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     this.editorGroup = editorGroup ?? null;
     this.globalSId = globalSId ?? null;
-    this.mcpServerViews = mcpServerViews;
+    this._mcpServerViews = mcpServerViews;
     this.version = version ?? null;
   }
 
@@ -183,6 +184,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  get mcpServerViews(): MCPServerViewResource[] {
+    return this._mcpServerViews;
+  }
+
+  private set mcpServerViews(value: MCPServerViewResource[]) {
+    this._mcpServerViews = value;
   }
 
   static async makeNew(
@@ -977,6 +986,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions,
       icon,
       requestedSpaceIds,
+      mcpServerViews,
     }: {
       name: string;
       agentFacingDescription: string;
@@ -984,42 +994,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructions: string;
       icon: string | null;
       requestedSpaceIds: ModelId[];
-    },
-    { transaction }: { transaction?: Transaction } = {}
+      mcpServerViews: MCPServerViewResource[];
+    }
   ): Promise<void> {
-    // Save the current version before updating.
-    await this.saveVersion(auth, { transaction });
+    await withTransaction(async (transaction) => {
+      // Save the current version before updating.
+      await this.saveVersion(auth, { transaction });
 
-    const authorId = auth.user()?.id;
+      const authorId = auth.user()?.id;
 
-    await this.updateWithAuthorization(
-      auth,
-      {
-        name,
-        agentFacingDescription,
-        userFacingDescription,
-        instructions,
-        icon,
-        requestedSpaceIds,
-        authorId,
-      },
-      { transaction }
-    );
+      await this.updateWithAuthorization(
+        auth,
+        {
+          name,
+          agentFacingDescription,
+          userFacingDescription,
+          instructions,
+          icon,
+          requestedSpaceIds,
+          authorId,
+        },
+        { transaction }
+      );
+
+      await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
+    });
   }
 
-  async updateTools(
+  /**
+   * Efficiently updates MCP server view associations by computing the diff and only
+   * deleting/creating what changed.
+   */
+  private async updateMCPServerViews(
     auth: Authenticator,
-    {
-      mcpServerViews,
-    }: {
-      mcpServerViews: MCPServerViewResource[];
-    },
+    mcpServerViews: MCPServerViewResource[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    if (!this.canWrite(auth)) {
-      throw new Error("User does not have permission to update this skill.");
-    }
-
     const workspace = auth.getNonNullableWorkspace();
 
     const existingConfigs = await SkillMCPServerConfigurationModel.findAll({
@@ -1063,8 +1073,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    // Update the current instance with the new tools to avoid stale data. (Similar to BaseResource update)
-    Object.assign(this, { mcpServerViews });
+    // Update instance to avoid stale data.
+    this.mcpServerViews = mcpServerViews;
   }
 
   private async updateWithAuthorization(

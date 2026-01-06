@@ -10,7 +10,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder, isString } from "@app/types";
@@ -226,28 +225,14 @@ async function handler(
         mcpServerViewIds
       );
 
-      // Wrap everything in a transaction to avoid inconsistent state.
-      await withTransaction(async (transaction) => {
-        await skillResource.updateSkill(
-          auth,
-          {
-            name: body.name,
-            agentFacingDescription: body.agentFacingDescription,
-            userFacingDescription: body.userFacingDescription,
-            instructions: body.instructions,
-            icon: body.icon,
-            requestedSpaceIds,
-          },
-          { transaction }
-        );
-
-        await skillResource.updateTools(
-          auth,
-          {
-            mcpServerViews,
-          },
-          { transaction }
-        );
+      await skillResource.updateSkill(auth, {
+        name: body.name,
+        agentFacingDescription: body.agentFacingDescription,
+        userFacingDescription: body.userFacingDescription,
+        instructions: body.instructions,
+        icon: body.icon,
+        requestedSpaceIds,
+        mcpServerViews,
       });
 
       return res.status(200).json({
