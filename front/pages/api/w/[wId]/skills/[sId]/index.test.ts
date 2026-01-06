@@ -283,14 +283,18 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   });
 
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {
-    const { req, res, skill, workspace, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
+    const { req, res, skill, workspace, requestUser, requestUserAuth } =
+      await setupTest({
+        requestUserRole: "admin",
+        method: "PATCH",
+      });
 
     // Create two regular spaces
     const space1 = await SpaceFactory.regular(workspace);
+    await space1.addMembers(requestUserAuth, { userIds: [requestUser.sId] });
     const space2 = await SpaceFactory.regular(workspace);
+    await space2.addMembers(requestUserAuth, { userIds: [requestUser.sId] });
+    await requestUserAuth.refresh();
 
     // Create MCP servers and views in each space
     const server1 = await RemoteMCPServerFactory.create(workspace, {
@@ -345,13 +349,16 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   });
 
   it("should correctly reflect updated tools in the response", async () => {
-    const { req, res, skill, workspace, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-      method: "PATCH",
-    });
+    const { req, res, skill, workspace, requestUser, requestUserAuth } =
+      await setupTest({
+        requestUserRole: "admin",
+        method: "PATCH",
+      });
 
     // Create a regular space with an MCP server view
     const space = await SpaceFactory.regular(workspace);
+    await space.addMembers(requestUserAuth, { userIds: [requestUser.sId] });
+    await requestUserAuth.refresh();
     const server = await RemoteMCPServerFactory.create(workspace, {
       name: "Test Server",
     });

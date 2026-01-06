@@ -31,6 +31,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import {
+  createResourcePermissionsFromSpacesWithMap,
+  createSpaceIdToGroupsMap,
+} from "@app/lib/resources/permission_utils";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -291,14 +295,41 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       include: includes,
     });
 
-    let customSkillsRes: SkillResource[] = [];
-    if (customSkills.length > 0) {
+    // Check if user has access to skill requested spaces
+    const uniqueRequestedSpaceIds = uniq(
+      customSkills.flatMap((c) => c.requestedSpaceIds)
+    );
+    const spaces =
+      uniqueRequestedSpaceIds.length > 0
+        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds)
+        : [];
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+
+    const validCustomSkills = customSkills.filter((skill) =>
+      // Parse as Number since Sequelize array of BigInts are returned as strings.
+      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+    );
+
+    const allowedCustomSkills = validCustomSkills.filter((skill) =>
+      auth.canRead(
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          // Parse as Number since Sequelize array of BigInts are returned as strings.
+          skill.requestedSpaceIds.map((id) => Number(id))
+        )
+      )
+    );
+    const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
+
+    let allowedCustomSkillsRes: SkillResource[] = [];
+    if (allowedCustomSkills.length > 0) {
       const mcpServerConfigurations =
         await SkillMCPServerConfigurationModel.findAll({
           where: {
             workspaceId: workspace.id,
             skillConfigurationId: {
-              [Op.in]: customSkills.map((c) => c.id),
+              [Op.in]: allowedCustomSkillIds,
             },
           },
         });
@@ -330,7 +361,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const editorGroupSkills = await GroupSkillModel.findAll({
         where: {
           skillConfigurationId: {
-            [Op.in]: customSkills.map((s) => s.id),
+            [Op.in]: allowedCustomSkillIds,
           },
           workspaceId: workspace.id,
         },
@@ -367,7 +398,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId))
       );
 
-      customSkillsRes = customSkills.map((customSkill) => {
+      allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
         const skillMCPServerViewIds = skillMCPServerConfigsBySkillId[
           customSkill.id
         ]?.map((skillConfig) => skillConfig.mcpServerViewId);
@@ -387,7 +418,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Only include global skills if onlyCustom is not true.
     if (onlyCustom === true) {
-      return customSkillsRes;
+      return allowedCustomSkillsRes;
     }
 
     const globalSkillDefinitions = GlobalSkillsRegistry.findAll(where);
@@ -399,7 +430,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       { concurrency: 5 }
     );
 
-    return [...customSkillsRes, ...globalSkills];
+    return [...allowedCustomSkillsRes, ...globalSkills];
   }
 
   static async fetchByModelIdWithAuth(
@@ -439,9 +470,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     sId: string
   ): Promise<SkillResource | null> {
-    const [skill] = await this.fetchByIds(auth, [sId]);
+    const result = await this.fetchByIds(auth, [sId]);
 
-    return skill;
+    return result.at(0) ?? null;
   }
 
   static async fetchByIds(
@@ -1461,7 +1492,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: this.userFacingDescription,
       // We don't want to leak global skills instructions to frontend
       instructions: this.globalSId ? null : this.instructions,
-      requestedSpaceIds: requestedSpaceIds,
+      requestedSpaceIds,
       icon: this.icon ?? null,
       tools: this.mcpServerViews.map((view) => {
         const serializedView = view.toJSON();

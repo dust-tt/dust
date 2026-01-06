@@ -195,6 +195,68 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
+
+  it("should not return skills with requestedSpaceIds user cannot access", async () => {
+    const { req, res, workspace, authenticator } = await setupTest();
+
+    // Create a skill in global space (user has access)
+    await SkillConfigurationFactory.create(authenticator, {
+      name: "Accessible Skill",
+    });
+
+    // Create a restricted space without adding user to it
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+
+    // Create a skill and manually set its requestedSpaceIds to the restricted space
+    const restrictedSkill = await SkillConfigurationFactory.create(
+      authenticator,
+      { name: "Restricted Skill" }
+    );
+    await SkillConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { id: restrictedSkill.id } }
+    );
+
+    req.query = { ...req.query, wId: workspace.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
+    expect(skillNames).toContain("Accessible Skill");
+    expect(skillNames).not.toContain("Restricted Skill");
+  });
+
+  it("should return skills when user has access to requestedSpaceIds", async () => {
+    const { req, res, workspace, user, authenticator } = await setupTest(
+      "GET",
+      "admin"
+    );
+
+    // Required for proper group/space structure in permission checks.
+    await SpaceFactory.defaults(authenticator);
+
+    // Create a restricted space and add user to it
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
+
+    // Create a skill and set its requestedSpaceIds to the restricted space
+    const skill = await SkillConfigurationFactory.create(authenticator, {
+      name: "Skill In Restricted Space",
+    });
+    await SkillConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { id: skill.id } }
+    );
+
+    req.query = { ...req.query, wId: workspace.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
+    expect(skillNames).toContain("Skill In Restricted Space");
+  });
 });
 
 describe("GET /api/w/[wId]/skills?withRelations=true", () => {
