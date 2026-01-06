@@ -5,7 +5,6 @@ import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts } from "../lib/ports";
-import { confirm, restoreTerminal } from "../lib/prompt";
 import { readPid, stopAllServices } from "../lib/process";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
@@ -57,23 +56,12 @@ export async function destroyCommand(
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, ...options };
 
-  // Track if we used interactive selection (name was not provided)
-  const usedSelector = name === undefined;
-
-  const envResult = await requireEnvironment(name, "destroy");
+  // When using interactive selection, ask for confirmation before proceeding
+  const envResult = await requireEnvironment(name, "destroy", {
+    confirmMessage: "Destroy environment '{name}'?",
+  });
   if (!envResult.ok) return envResult;
   const env = envResult.value;
-
-  // If we used the selector, ask for confirmation before destroying
-  if (usedSelector) {
-    const confirmed = await confirm(`Destroy environment '${env.name}'?`, false);
-    restoreTerminal();
-
-    if (!confirmed) {
-      logger.info("Cancelled");
-      return Ok(undefined);
-    }
-  }
 
   const worktreePath = getWorktreeDir(env.name);
 
