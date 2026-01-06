@@ -124,7 +124,7 @@ When quadratic complexity cannot be avoided:
 
 Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console
 methods are prohibited in the codebase. Always use the application logger for all logging,
-debugging, and error reporting purposes.  This ensures consistent log formatting, proper log
+debugging, and error reporting purposes. This ensures consistent log formatting, proper log
 routing, and easier log management across environments.
 
 Example:
@@ -378,7 +378,7 @@ interface UpdateResourceBody {
 
 When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
 objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
-scans when deleting objects from table `A`. 
+scans when deleting objects from table `A`.
 
 ```
 AgentMCPActionModel.belongsTo(AgentMessageModel, {
@@ -397,8 +397,6 @@ AgentMessageModel.hasMany(AgentMCPActionModel, {
   concurrently: true,
 }
 ```
-
-
 
 ## MCP
 
