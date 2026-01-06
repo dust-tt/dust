@@ -5,6 +5,7 @@ import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { getEnvFilePath, getWorktreeDir, SEED_USER_PATH } from "./paths";
 import { buildShell } from "./shell";
+import { runSqlSeed } from "./seed";
 import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
@@ -518,7 +519,5 @@ export async function hasSeedConfig(): Promise<boolean> {
 }
 
 export async function runSeedScript(env: Environment): Promise<boolean> {
-  // Use the fast SQL-based seed
-  const { runSqlSeed } = await import("./seed");
   return runSqlSeed(env);
 }
