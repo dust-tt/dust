@@ -1,8 +1,9 @@
+import "../../dist/sparkle.css";
+import "./index.css";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import "../../dist/sparkle.css";
-import "./index.css";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
