@@ -66,7 +66,7 @@ export const SidebarLayout = React.forwardRef<
   },
   ref
 ) {
-  const allotmentRef = React.useRef<Allotment>(null);
+  const allotmentRef = React.useRef<React.ComponentRef<typeof Allotment>>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isHovering, setIsHovering] = React.useState(false);
   const [lastSidebarSize, setLastSidebarSize] =
