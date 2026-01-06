@@ -35,6 +35,7 @@ if (isDevelopment() || isTest()) {
     name: "Pro",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxVaultsInWorkspace: 1,
@@ -60,6 +61,7 @@ if (isDevelopment() || isTest()) {
     name: "Pro Business",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxVaultsInWorkspace: 5,
@@ -83,10 +85,15 @@ if (isDevelopment() || isTest()) {
 }
 
 /**
- * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
+ * Function to call when we edit something in PRO_PLANS_DATA to update the database. It will create or update the plans.
+ * @param planCode - Optional plan code to upsert. If not provided, all plans are upserted.
  */
-export const upsertProPlans = async () => {
-  for (const planData of PRO_PLANS_DATA) {
+export const upsertProPlans = async (planCode?: string) => {
+  const plansToUpsert = planCode
+    ? PRO_PLANS_DATA.filter((p) => p.code === planCode)
+    : PRO_PLANS_DATA;
+
+  for (const planData of plansToUpsert) {
     const plan = await PlanModel.findOne({
       where: {
         code: planData.code,

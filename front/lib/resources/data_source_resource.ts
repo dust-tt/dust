@@ -11,6 +11,7 @@ import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -443,9 +444,12 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     await AgentDataSourceConfigurationModel.destroy({
       where: {
         dataSourceId: this.id,
+        workspaceId,
       },
       transaction,
     });
@@ -453,6 +457,15 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     await AgentTablesQueryConfigurationTableModel.destroy({
       where: {
         dataSourceId: this.id,
+        workspaceId,
+      },
+      transaction,
+    });
+
+    await SkillDataSourceConfigurationModel.destroy({
+      where: {
+        dataSourceId: this.id,
+        workspaceId,
       },
       transaction,
     });
@@ -460,8 +473,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     // Directly delete the DataSourceViewModel here to avoid a circular dependency.
     await DataSourceViewModel.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
+        workspaceId,
       },
       transaction,
       // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,

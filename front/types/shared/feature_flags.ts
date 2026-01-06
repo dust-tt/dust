@@ -231,9 +231,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable use Spaces as Projects",
     stage: "dust_only",
   },
+  reactions: {
+    description: "Enable reactions (like thumbs up) on messages and items",
+    stage: "dust_only",
+  },
   databricks_tool: {
     description: "Databricks MCP tool",
     stage: "on_demand",
+  },
+  phone_trial_paywall: {
+    description: "Phone verification during trial sign-up",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

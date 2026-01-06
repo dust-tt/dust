@@ -122,15 +122,15 @@ export function useSpaceInfo({
 }
 
 export function useSpaceDataSourceView({
-  owner,
-  spaceId,
   dataSourceViewId,
   disabled,
+  owner,
+  spaceId,
 }: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  dataSourceViewId?: string;
+  dataSourceViewId: string | null;
   disabled?: boolean;
+  owner: LightWorkspaceType;
+  spaceId: string | null;
 }) {
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
     fetcher;
@@ -394,7 +394,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doCreate = async (params: PostSpaceRequestBodyType) => {
-    const { name, managementMode, isRestricted } = params;
+    const { name, managementMode, isRestricted, conversationsEnabled } = params;
 
     if (!name) {
       return null;
@@ -421,6 +421,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
           memberIds,
           managementMode,
           isRestricted,
+          conversationsEnabled: conversationsEnabled ?? false,
         }),
       });
     } else if (managementMode === "group") {

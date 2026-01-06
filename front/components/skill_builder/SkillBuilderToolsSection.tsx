@@ -13,6 +13,7 @@ import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
@@ -41,6 +42,10 @@ export function SkillBuilderToolsSection() {
 
   const handleOpenSheet = () => {
     setSheetMode({ type: "add" });
+  };
+
+  const handleClickActionCard = (action: BuilderAction) => {
+    setSheetMode({ type: "info", action, source: "addedTool" });
   };
 
   const headerActions = fields.length > 0 && (
@@ -87,6 +92,7 @@ export function SkillBuilderToolsSection() {
                 key={field.id}
                 action={field}
                 onRemove={() => remove(index)}
+                onClick={() => handleClickActionCard(field)}
               />
             ))}
           </CardGrid>

@@ -1,18 +1,23 @@
 import { markdownStyles } from "@dust-tt/sparkle";
-import type { Editor as CoreEditor } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
-import type { Editor as ReactEditor } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import {
+  KNOWLEDGE_NODE_TYPE,
+  KnowledgeNode,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -21,7 +26,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto border rounded-xl px-3 py-2 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -29,10 +34,11 @@ const editorVariants = cva(
     variants: {
       error: {
         true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus:ring-warning-500 dark:focus:ring-warning-500-night",
-          "focus:outline-warning-500 dark:focus:outline-warning-500-night",
-          "focus:border-warning-500 dark:focus:border-warning-500-night",
+          "border-border-warning/30 dark:border-border-warning-night/60",
+          "ring-warning/0 dark:ring-warning-night/0",
+          "focus-visible:border-border-warning dark:focus-visible:border-border-warning-night",
+          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:ring-warning/10 dark:focus-visible:ring-warning/30",
         ],
         false: [
           "border-border dark:border-border-night",
@@ -56,16 +62,58 @@ interface SkillBuilderInstructionsEditorProps {
 export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
-}: SkillBuilderInstructionsEditorProps = {}) {
-  const { field, fieldState } = useController<
-    SkillBuilderFormData,
-    "instructions"
-  >({
-    name: "instructions",
+}: SkillBuilderInstructionsEditorProps) {
+  const { field: instructionsField, fieldState: instructionsFieldState } =
+    useController<SkillBuilderFormData, "instructions">({
+      name: "instructions",
+    });
+  const {
+    field: attachedKnowledgeField,
+    fieldState: attachedKnowledgeFieldState,
+  } = useController<SkillBuilderFormData, "attachedKnowledge">({
+    name: "attachedKnowledge",
   });
 
-  const editorRef = useRef<ReactEditor | null>(null);
-  const displayError = !!fieldState.error;
+  const displayError =
+    !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
+
+  // Helper function to extract attached knowledge and update form.
+  const extractAttachedKnowledge = useCallback((editor: Editor) => {
+    const knowledgeItems: KnowledgeItem[] = [];
+
+    // Use TipTap's document traversal API to recursively find all knowledge nodes.
+    // Note: $nodes() only searches top-level nodes, not nested inline nodes.
+    const { state } = editor;
+    const { doc } = state;
+
+    doc.descendants((node) => {
+      if (node.type.name === KNOWLEDGE_NODE_TYPE && node.attrs?.selectedItems) {
+        const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
+        knowledgeItems.push(...selectedItems);
+      }
+    });
+
+    return knowledgeItems;
+  }, []);
+
+  // Update form whenever attached knowledge changes.
+  const updateAttachedKnowledge = useCallback(
+    (editor: Editor) => {
+      const attachedKnowledge = extractAttachedKnowledge(editor);
+
+      // Transform for form storage.
+      const transformedAttachments = attachedKnowledge.map((item) => ({
+        dataSourceViewId: item.dataSourceViewId,
+        nodeId: item.nodeId, // This is the node ID from the data source view content node.
+        nodeType: item.nodeType,
+        spaceId: item.spaceId,
+        title: item.label,
+      }));
+
+      attachedKnowledgeField.onChange(transformedAttachments);
+    },
+    [extractAttachedKnowledge, attachedKnowledgeField]
+  );
 
   const extensions = useMemo(() => {
     return [
@@ -97,6 +145,8 @@ export function SkillBuilderInstructionsEditor({
           },
         },
       }),
+      SlashCommandExtension,
+      KnowledgeNode,
       // Custom ordered list and list item extensions to preserve start attribute
       OrderedListExtension.configure({
         HTMLAttributes: {
@@ -122,18 +172,21 @@ export function SkillBuilderInstructionsEditor({
 
   const debouncedUpdate = useMemo(
     () =>
-      debounce((editor: CoreEditor | ReactEditor) => {
+      debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          field.onChange(editor.getMarkdown());
+          instructionsField.onChange(editor.getMarkdown());
+
+          // Also update attached knowledge in the form.
+          updateAttachedKnowledge(editor);
         }
       }, 250),
-    [field, isInstructionDiffMode]
+    [instructionsField, isInstructionDiffMode, updateAttachedKnowledge]
   );
 
   const editor = useEditor(
     {
       extensions,
-      content: field.value || undefined, // display placeholder if instructions are empty
+      content: instructionsField.value || undefined, // display placeholder if instructions are empty
       contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
@@ -145,14 +198,14 @@ export function SkillBuilderInstructionsEditor({
           new CustomEvent(SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT)
         );
       },
+      onDelete: ({ editor }) => {
+        // Ensure attached knowledge is updated on node deletion.
+        updateAttachedKnowledge(editor);
+      },
       immediatelyRender: false,
     },
     [extensions]
   );
-
-  useEffect(() => {
-    editorRef.current = editor;
-  }, [editor]);
 
   useEffect(() => {
     return () => {
@@ -175,7 +228,7 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || field.value === undefined) {
+    if (!editor || instructionsField.value === undefined) {
       return;
     }
 
@@ -183,15 +236,15 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
     const currentContent = editor.getMarkdown();
-    if (currentContent !== field.value) {
+    if (currentContent !== instructionsField.value) {
       setTimeout(() => {
-        editor.commands.setContent(field.value, {
+        editor.commands.setContent(instructionsField.value, {
           emitUpdate: false,
           contentType: "markdown",
         });
       }, 0);
     }
-  }, [editor, field.value]);
+  }, [editor, instructionsField.value]);
 
   useEffect(() => {
     if (!editor) {
@@ -217,8 +270,13 @@ export function SkillBuilderInstructionsEditor({
   }, [isInstructionDiffMode, compareVersion, editor]);
 
   return (
-    <div className="relative p-px">
+    <div className="relative space-y-1 p-px">
       <EditorContent editor={editor} />
+      {instructionsFieldState.error && (
+        <div className="dark:text-warning-night ml-2 text-xs text-warning">
+          {instructionsFieldState.error.message}
+        </div>
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
@@ -226,6 +227,22 @@ export async function hardDeleteSpace(
     { includeDeleted: true }
   );
   for (const webhookSourceView of webhookSourceViews) {
+    // Delete triggers referencing this webhook source view first.
+    const triggers = await TriggerResource.listByWebhookSourceViewId(
+      auth,
+      webhookSourceView.id
+    );
+    await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        const triggerRes = await trigger.delete(auth);
+        if (triggerRes.isErr()) {
+          throw triggerRes.error;
+        }
+      },
+      { concurrency: 4 }
+    );
+
     const res = await webhookSourceView.hardDelete(auth);
     if (res.isErr()) {
       return res;
@@ -257,7 +274,11 @@ export async function hardDeleteSpace(
 
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
-  params: { name: string; isRestricted: boolean } & (
+  params: {
+    name: string;
+    isRestricted: boolean;
+    conversationsEnabled?: boolean;
+  } & (
     | { memberIds: string[]; managementMode: "manual" }
     | { groupIds: string[]; managementMode: "group" }
   ),
@@ -289,7 +310,7 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted } = params;
+    const { name, isRestricted, conversationsEnabled } = params;
     const managementMode = isRestricted ? params.managementMode : "manual";
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
@@ -325,6 +346,7 @@ export async function createRegularSpaceAndGroup(
         kind: "regular",
         managementMode,
         workspaceId: owner.id,
+        conversationsEnabled: conversationsEnabled ?? false,
       },
       groups,
       t

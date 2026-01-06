@@ -331,6 +331,13 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
+                <PokeTableCell>Is Deep Dive allowed?</PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.limits.assistant.isDeepDiveAllowed ? "✅" : "❌"}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
                 <PokeTableCell>Max number of data sources</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.dataSources.count === -1

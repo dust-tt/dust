@@ -56,7 +56,10 @@ export async function destroyCommand(
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, ...options };
 
-  const envResult = await requireEnvironment(name, "destroy");
+  // When using interactive selection, ask for confirmation before proceeding
+  const envResult = await requireEnvironment(name, "destroy", {
+    confirmMessage: "Destroy environment '{name}'?",
+  });
   if (!envResult.ok) return envResult;
   const env = envResult.value;
 

@@ -58,13 +58,17 @@ export async function launchTrackerNotificationWorkflow(
   });
 }
 
-export async function stopTrackerNotificationWorkflow() {
+export async function stopTrackerNotificationWorkflow({
+  stopReason,
+}: {
+  stopReason: string;
+}) {
   const client = await getTemporalClientForFrontNamespace();
 
   try {
     const handle: WorkflowHandle<typeof trackersNotificationsWorkflow> =
       client.workflow.getHandle("tracker-notify-workflow");
-    await handle.terminate();
+    await handle.terminate(stopReason);
   } catch (e) {
     logger.error(
       {

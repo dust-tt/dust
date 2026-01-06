@@ -1,17 +1,19 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
+import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder, isString } from "@app/types";
 import type {
@@ -55,6 +57,7 @@ const PatchSkillRequestBodySchema = t.type({
       mcpServerViewId: t.string,
     })
   ),
+  attachedKnowledge: t.array(AttachedKnowledgeSchema),
 });
 
 type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
@@ -94,7 +97,8 @@ async function handler(
     });
   }
 
-  if (!isString(req.query.sId)) {
+  const { sId } = req.query;
+  if (!isString(sId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -104,9 +108,7 @@ async function handler(
     });
   }
 
-  const sId = req.query.sId;
   const skillResource = await SkillResource.fetchById(auth, sId);
-
   if (!skillResource) {
     return apiError(req, res, {
       status_code: 404,
@@ -175,7 +177,7 @@ async function handler(
         });
       }
 
-      // Check for existing active skill with the same name (excluding current skill)
+      // Check for existing active skill with the same name (excluding current skill).
       const existingSkill = await SkillResource.fetchActiveByName(
         auth,
         body.name
@@ -191,7 +193,7 @@ async function handler(
         });
       }
 
-      // Validate MCP server view IDs
+      // Validate MCP server view IDs.
       for (const tool of body.tools) {
         if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
           return apiError(req, res, {
@@ -204,7 +206,7 @@ async function handler(
         }
       }
 
-      // Fetch MCP server views first to compute requestedSpaceIds
+      // Fetch MCP server views first to compute requestedSpaceIds.
       const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
@@ -226,28 +228,47 @@ async function handler(
         mcpServerViewIds
       );
 
-      // Wrap everything in a transaction to avoid inconsistent state.
-      await withTransaction(async (transaction) => {
-        await skillResource.updateSkill(
-          auth,
-          {
-            name: body.name,
-            agentFacingDescription: body.agentFacingDescription,
-            userFacingDescription: body.userFacingDescription,
-            instructions: body.instructions,
-            icon: body.icon,
-            requestedSpaceIds,
-          },
-          { transaction }
-        );
+      // Validate all data source views from attached knowledge exist and user has access.
+      const { attachedKnowledge } = body;
+      const dataSourceViewIds = uniq(
+        attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
+      );
 
-        await skillResource.updateTools(
-          auth,
-          {
-            mcpServerViews,
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(
+        auth,
+        dataSourceViewIds
+      );
+      if (dataSourceViews.length !== dataSourceViewIds.length) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
           },
-          { transaction }
-        );
+        });
+      }
+
+      const dataSourceViewIdMap = new Map(
+        dataSourceViews.map((dsv) => [dsv.sId, dsv])
+      );
+
+      const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
+        (attachment) => ({
+          dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
+          nodeId: attachment.nodeId,
+          nodeType: attachment.nodeType,
+        })
+      );
+
+      await skillResource.updateSkill(auth, {
+        agentFacingDescription: body.agentFacingDescription,
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        icon: body.icon,
+        instructions: body.instructions,
+        mcpServerViews,
+        name: body.name,
+        requestedSpaceIds,
+        userFacingDescription: body.userFacingDescription,
       });
 
       return res.status(200).json({

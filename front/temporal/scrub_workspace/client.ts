@@ -91,15 +91,17 @@ export async function launchImmediateWorkspaceScrubWorkflow({
 
 export async function terminateScheduleWorkspaceScrubWorkflow({
   workspaceId,
+  stopReason,
 }: {
   workspaceId: string;
+  stopReason: string;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = getWorkflowId(workspaceId);
   try {
     const handle: WorkflowHandle<typeof scheduleWorkspaceScrubWorkflowV2> =
       client.workflow.getHandle(workflowId);
-    await handle.terminate();
+    await handle.terminate(stopReason);
     logger.info(
       {
         workflowId,
@@ -142,13 +144,17 @@ export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
   return new Ok(undefined);
 }
 
-export async function stopDowngradeFreeEndedWorkspacesWorkflow() {
+export async function stopDowngradeFreeEndedWorkspacesWorkflow({
+  stopReason,
+}: {
+  stopReason: string;
+}) {
   const client = await getTemporalClientForFrontNamespace();
 
   try {
     const handle: WorkflowHandle<typeof downgradeFreeEndedWorkspacesWorkflow> =
       client.workflow.getHandle(DOWNGRADE_FREE_ENDED_WORKSPACES_WORKFLOW_ID);
-    await handle.terminate();
+    await handle.terminate(stopReason);
   } catch (e) {
     logger.error(
       {

@@ -2,12 +2,14 @@ import { mkdir } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import {
+  DUST_HIVE_SCRIPTS,
   DUST_HIVE_ZELLIJ,
   getEnvFilePath,
-  getLogPath,
+  getWatchScriptPath,
   getWorktreeDir,
   getZellijLayoutPath,
 } from "../lib/paths";
+import { restoreTerminal } from "../lib/prompt";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
 
@@ -45,26 +47,79 @@ function getUserShell(): string {
   return process.env["SHELL"] ?? "zsh";
 }
 
-function buildLogTailCommand(logPath: string): string {
-  const quotedPath = shellQuote(logPath);
-  return [
-    "while true; do",
-    `  if [ ! -e ${quotedPath} ]; then touch ${quotedPath}; fi;`,
-    `  tail -n 500 -F ${quotedPath};`,
-    "  sleep 1;",
-    "done",
-  ].join(" ");
+// Watch script content - written to ~/.dust-hive/scripts/watch-logs.sh
+const WATCH_SCRIPT_CONTENT = `#!/bin/bash
+# Log watcher with Ctrl+C menu for restart/clear/quit
+# Usage: watch-logs.sh <env-name> <service>
+
+ENV_NAME="\$1"
+SERVICE="\$2"
+
+if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
+  echo "Usage: watch-logs.sh <env-name> <service>"
+  exit 1
+fi
+
+LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
+
+mkdir -p "\$(dirname "\$LOG_FILE")"
+touch "\$LOG_FILE"
+
+# Trap SIGINT to prevent script from exiting on Ctrl+C
+trap '' SIGINT
+
+show_menu() {
+  echo ""
+  echo -e "\\033[100m [\$SERVICE] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
+  read -r -n 1 cmd
+  echo ""
+
+  case "\$cmd" in
+    r|R)
+      echo -e "\\033[33m[Restarting \$SERVICE...]\\033[0m"
+      dust-hive restart "\$ENV_NAME" "\$SERVICE"
+      echo -e "\\033[32m[\$SERVICE restarted]\\033[0m"
+      sleep 1
+      ;;
+    c|C)
+      clear
+      ;;
+    q|Q)
+      exit 0
+      ;;
+  esac
 }
 
-// Generate a single service tab
-function generateServiceTab(envName: string, service: ServiceName): string {
-  const logPath = getLogPath(envName, service);
+while true; do
+  echo -e "\\033[100m [\$SERVICE] Ctrl+C for menu \\033[0m"
+  echo ""
+  # Run tail in a subshell that doesn't ignore SIGINT
+  (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE") || true
+  show_menu
+done
+`;
+
+async function ensureWatchScript(): Promise<string> {
+  await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
+  const scriptPath = getWatchScriptPath();
+  await Bun.write(scriptPath, WATCH_SCRIPT_CONTENT);
+  // Make executable
+  const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
+  await proc.exited;
+  return scriptPath;
+}
+
+// Generate a single service tab with log watching and restart menu
+function generateServiceTab(
+  envName: string,
+  service: ServiceName,
+  watchScriptPath: string
+): string {
   const tabName = TAB_NAMES[service];
-  const tailCommand = buildLogTailCommand(logPath);
   return `    tab name="${tabName}" {
         pane {
-            command "sh"
-            args "-c" "${kdlEscape(tailCommand)}"
+            command "${kdlEscape(watchScriptPath)}"
+            args "${kdlEscape(envName)}" "${kdlEscape(service)}"
             start_suspended false
         }
     }`;
@@ -75,6 +130,7 @@ function generateLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
+  watchScriptPath: string,
   warmCommand?: string
 ): string {
   const shellPath = getUserShell();
@@ -89,9 +145,9 @@ function generateLayout(
         }
     }`
     : "";
-  const serviceTabs = ALL_SERVICES.map((service) => generateServiceTab(envName, service)).join(
-    "\n\n"
-  );
+  const serviceTabs = ALL_SERVICES.map((service) =>
+    generateServiceTab(envName, service, watchScriptPath)
+  ).join("\n\n");
 
   return `layout {
     default_tab_template {
@@ -101,7 +157,7 @@ function generateLayout(
         children
     }
 
-    tab name="shell" focus=true {
+    tab name="${kdlEscape(envName)}" focus=true {
         pane {
             cwd "${kdlEscape(worktreePath)}"
             command "sh"
@@ -120,12 +176,13 @@ async function writeLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
+  watchScriptPath: string,
   warmCommand?: string
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(envName, worktreePath, envShPath, warmCommand);
+  const content = generateLayout(envName, worktreePath, envShPath, watchScriptPath, warmCommand);
   await Bun.write(layoutPath, content);
 
   return layoutPath;
@@ -133,14 +190,11 @@ async function writeLayout(
 
 interface OpenOptions {
   warmCommand?: string;
+  noAttach?: boolean;
 }
 
-export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
-  const worktreePath = getWorktreeDir(env.name);
-  const envShPath = getEnvFilePath(env.name);
-  const sessionName = `dust-hive-${env.name}`;
-
-  // Check if session already exists
+// Check if a zellij session exists
+async function checkSessionExists(sessionName: string): Promise<boolean> {
   const checkProc = Bun.spawn(["zellij", "list-sessions"], {
     stdout: "pipe",
     stderr: "pipe",
@@ -151,16 +205,108 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   // Strip ANSI codes for comparison
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional for ANSI escape code stripping
   const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
-  const sessionExists = sessions
+  return sessions
     .split("\n")
     .map((line) => stripAnsi(line).trim())
     .filter((line) => line.length > 0)
     .map((line) => line.split(/\s+/)[0])
     .some((name) => name === sessionName);
+}
+
+// Create a zellij session in background (does not attach)
+async function createSessionInBackground(sessionName: string, layoutPath: string): Promise<void> {
+  logger.info(`Creating zellij session '${sessionName}' in background...`);
+
+  const proc = Bun.spawn(
+    [
+      "zellij",
+      "attach",
+      sessionName,
+      "--create-background",
+      "options",
+      "--default-layout",
+      layoutPath,
+    ],
+    {
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "pipe",
+    }
+  );
+  await proc.exited;
+
+  logger.success(`Session '${sessionName}' created successfully.`);
+}
+
+export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
+  const worktreePath = getWorktreeDir(env.name);
+  const envShPath = getEnvFilePath(env.name);
+  const sessionName = `dust-hive-${env.name}`;
+
+  // Detect if running inside zellij to avoid nesting
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+  const inZellij = process.env["ZELLIJ"] !== undefined;
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+  const currentSession = process.env["ZELLIJ_SESSION_NAME"];
+
+  // If inside zellij and trying to attach, use session manager instead
+  if (inZellij && !options.noAttach) {
+    // If already in the target session, nothing to do
+    if (currentSession === sessionName) {
+      logger.info(`Already in session '${sessionName}'`);
+      return Ok(undefined);
+    }
+
+    // Ensure session exists (create in background if needed)
+    const sessionExists = await checkSessionExists(sessionName);
+    if (!sessionExists) {
+      const watchScriptPath = await ensureWatchScript();
+      const layoutPath = await writeLayout(
+        env.name,
+        worktreePath,
+        envShPath,
+        watchScriptPath,
+        options.warmCommand
+      );
+      await createSessionInBackground(sessionName, layoutPath);
+    }
+
+    // Switch to target session using zellij-switch plugin
+    logger.info(`Switching to session '${sessionName}'...`);
+    const switchProc = Bun.spawn(
+      [
+        "zellij",
+        "pipe",
+        "--plugin",
+        "https://github.com/mostafaqanbaryan/zellij-switch/releases/download/0.2.1/zellij-switch.wasm",
+        "--",
+        `--session ${sessionName}`,
+      ],
+      { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
+    );
+    await switchProc.exited;
+
+    return Ok(undefined);
+  }
+
+  // Ensure watch script exists
+  const watchScriptPath = await ensureWatchScript();
+
+  // Check if session already exists
+  const sessionExists = await checkSessionExists(sessionName);
 
   if (sessionExists) {
+    if (options.noAttach) {
+      logger.info(`Session '${sessionName}' already exists.`);
+      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+      return Ok(undefined);
+    }
+
     // Attach to existing session
     logger.info(`Attaching to existing session '${sessionName}'...`);
+
+    // Ensure terminal is fully restored before spawning zellij
+    restoreTerminal();
 
     const proc = Bun.spawn(["zellij", "attach", sessionName], {
       stdin: "inherit",
@@ -171,9 +317,24 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     await proc.exited;
   } else {
     // Create new session with layout
+    const layoutPath = await writeLayout(
+      env.name,
+      worktreePath,
+      envShPath,
+      watchScriptPath,
+      options.warmCommand
+    );
+
+    if (options.noAttach) {
+      await createSessionInBackground(sessionName, layoutPath);
+      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+      return Ok(undefined);
+    }
+
     logger.info(`Creating new zellij session '${sessionName}'...`);
 
-    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, options.warmCommand);
+    // Ensure terminal is fully restored before spawning zellij
+    restoreTerminal();
 
     const proc = Bun.spawn(
       ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],

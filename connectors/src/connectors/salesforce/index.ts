@@ -135,7 +135,11 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       throw new Error(`Connector ${this.connectorId} not found`);
@@ -149,13 +153,13 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
         stopSalesforceSyncQueryWorkflow({
           connectorId: connector.id,
           queryId: query.id,
-          stopReason: "Stopped via connector STOP command",
+          stopReason: reason,
         })
       )
     );
     const stopRes = await stopSalesforceSyncWorkflow({
       connectorId: this.connectorId,
-      stopReason: "Stopped via connector STOP command",
+      stopReason: reason,
     });
     if (stopRes.isErr()) {
       return stopRes;

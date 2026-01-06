@@ -14,6 +14,7 @@ import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
+import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces } from "@app/types";
@@ -188,6 +189,17 @@ export function makeGetServerSidePropsRequirementsWrapper<
             "canUseProduct should never be true outside of a workspace context."
           );
         }
+
+        const redirectTrialPage = await isWorkspaceEligibleForTrial(auth!);
+        if (redirectTrialPage) {
+          return {
+            redirect: {
+              permanent: false,
+              destination: `/w/${context.query.wId}/trial`,
+            },
+          };
+        }
+
         return {
           redirect: {
             permanent: false,

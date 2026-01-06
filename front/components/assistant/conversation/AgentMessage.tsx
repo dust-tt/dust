@@ -707,24 +707,26 @@ export function AgentMessage({
           {isDeleted ? (
             <DeletedMessage />
           ) : (
-            <AgentMessageContent
-              onQuickReplySend={handleQuickReply}
-              owner={owner}
-              conversationId={conversationId}
-              retryHandler={retryHandler}
-              isLastMessage={isLastMessage}
-              agentMessage={agentMessage}
-              references={references}
-              streaming={shouldStream}
-              lastTokenClassification={
-                agentMessage.streaming.agentState === "thinking"
-                  ? "tokens"
-                  : null
-              }
-              activeReferences={activeReferences}
-              setActiveReferences={setActiveReferences}
-              triggeringUser={triggeringUser}
-            />
+            <>
+              <AgentMessageContent
+                onQuickReplySend={handleQuickReply}
+                owner={owner}
+                conversationId={conversationId}
+                retryHandler={retryHandler}
+                isLastMessage={isLastMessage}
+                agentMessage={agentMessage}
+                references={references}
+                streaming={shouldStream}
+                lastTokenClassification={
+                  agentMessage.streaming.agentState === "thinking"
+                    ? "tokens"
+                    : null
+                }
+                activeReferences={activeReferences}
+                setActiveReferences={setActiveReferences}
+                triggeringUser={triggeringUser}
+              />
+            </>
           )}
         </ConversationMessageContent>
         {!isCancelledOrDeleted &&

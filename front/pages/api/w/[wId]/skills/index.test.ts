@@ -9,6 +9,7 @@ import {
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -410,6 +411,7 @@ describe("POST /api/w/[wId]/skills", () => {
       icon: null,
       tools: [],
       extendedSkillId: null,
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -468,6 +470,7 @@ describe("POST /api/w/[wId]/skills", () => {
         { mcpServerViewId: serverView2.sId },
       ],
       extendedSkillId: null,
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -545,6 +548,7 @@ describe("POST /api/w/[wId]/skills", () => {
       icon: null,
       tools: [{ mcpServerViewId: serverView.sId }],
       extendedSkillId: null,
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -566,6 +570,59 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(skillConfiguration!.requestedSpaceIds).toEqual([
       String(regularSpace.id), // BigInt array returned as string
     ]);
+  });
+
+  it("creates a skill with attached knowledge", async () => {
+    const { req, res, authenticator, workspace, user, globalSpace } =
+      await setupTest("POST", "admin");
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+
+    const dataSourceView1 = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+
+    req.body = {
+      name: "Skill with Knowledge",
+      agentFacingDescription: "A skill with knowledge attachments",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [
+        {
+          dataSourceViewId: dataSourceView.sId,
+          nodeId: "node1",
+          nodeType: "document",
+          spaceId: dataSourceView.space.sId,
+          title: "Document Node 1",
+        },
+        {
+          dataSourceViewId: dataSourceView1.sId,
+          nodeId: "node2",
+          nodeType: "folder",
+          spaceId: dataSourceView1.space.sId,
+          title: "Folder Node 2",
+        },
+      ],
+      extendedSkillId: null,
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const skillId = res._getJSONData().skill.sId;
+
+    // Verify persistence by fetching the skill again.
+    const createdSkill = await SkillResource.fetchById(authenticator, skillId);
+    expect(createdSkill).not.toBeNull();
+    expect(createdSkill!.dataSourceConfigurations).toHaveLength(2);
   });
 });
 

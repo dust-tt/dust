@@ -603,9 +603,13 @@ export function _getDeepDiveGlobalAgent(
     action.id = -i;
   });
 
+  const status = auth.plan()?.limits.assistant.isDeepDiveAllowed
+    ? "active"
+    : "disabled_free_workspace";
+
   return {
     ...deepAgent,
-    status: "active",
+    status,
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };

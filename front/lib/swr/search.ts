@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
 import type {
+  ContentNodesViewType,
   ContentNodeWithParent,
   DataSourceType,
   DataSourceViewType,
@@ -42,7 +43,7 @@ export function useUnifiedSearch({
   pageSize?: number;
   disabled?: boolean;
   spaceIds?: string[];
-  viewType?: "all" | "documents" | "tables";
+  viewType?: Exclude<ContentNodesViewType, "data_warehouse">;
   includeDataSources?: boolean;
   searchSourceUrls?: boolean;
   includeTools?: boolean;

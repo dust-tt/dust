@@ -30,10 +30,10 @@ function actionDisplayName(
 export interface ActionCardProps {
   action: BuilderAction;
   onRemove: () => void;
-  onEdit?: () => void;
+  onClick?: () => void;
 }
 
-export function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
+export function ActionCard({ action, onRemove, onClick }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -51,7 +51,7 @@ export function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
     <Card
       variant="primary"
       className="h-28"
-      onClick={onEdit}
+      onClick={onClick}
       action={
         <CardActionButton
           size="mini"

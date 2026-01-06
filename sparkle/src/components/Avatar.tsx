@@ -262,7 +262,6 @@ interface AvatarStackProps {
   avatars: AvatarProps[];
   nbVisibleItems?: number;
   size?: AvatarStackSizeType;
-  isRounded?: boolean;
   hasMagnifier?: boolean;
   tooltipTriggerAsChild?: boolean;
   orientation?: "horizontal" | "vertical";
@@ -278,7 +277,6 @@ Avatar.Stack = function ({
   avatars,
   nbVisibleItems,
   size = "sm",
-  isRounded = false,
   hasMagnifier = true,
   tooltipTriggerAsChild = false,
   orientation = "horizontal",
@@ -384,14 +382,10 @@ Avatar.Stack = function ({
                       })`,
                     }}
                   >
-                    <Avatar
-                      {...avatarProps}
-                      size={size}
-                      isRounded={isRounded}
-                    />
+                    <Avatar {...avatarProps} size={size} />
                   </div>
                 ) : (
-                  <Avatar {...avatarProps} size={size} isRounded={isRounded} />
+                  <Avatar {...avatarProps} size={size} />
                 )}
               </div>
             ))}
@@ -415,7 +409,6 @@ Avatar.Stack = function ({
                     "+" +
                     String(Number(remainingCount) < 10 ? remainingCount : "")
                   }
-                  isRounded={isRounded}
                   clickable
                 />
               </div>

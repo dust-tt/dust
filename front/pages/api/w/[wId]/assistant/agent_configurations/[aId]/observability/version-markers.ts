@@ -10,9 +10,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional(),
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
 export type GetVersionMarkersResponse = {
@@ -24,7 +25,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetVersionMarkersResponse>>,
   auth: Authenticator
 ) {
-  if (typeof req.query.aId !== "string") {
+  if (!isString(req.query.aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -72,7 +73,7 @@ async function handler(
         });
       }
 
-      const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const days = q.data.days;
 
       const owner = auth.getNonNullableWorkspace();
 

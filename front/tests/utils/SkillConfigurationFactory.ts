@@ -6,6 +6,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ModelId } from "@app/types";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 
+// TODO(SKILLS 2026-01-05) Rename to SkillFactory.
 export class SkillConfigurationFactory {
   static async create(
     auth: Authenticator,

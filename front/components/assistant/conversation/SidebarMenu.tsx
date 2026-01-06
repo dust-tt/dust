@@ -4,7 +4,6 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  CollapsibleComponent,
   ContactsRobotIcon,
   DocumentIcon,
   DropdownMenu,
@@ -22,6 +21,7 @@ import {
   MagicIcon,
   MoreIcon,
   NavigationList,
+  NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
@@ -52,6 +52,7 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -80,7 +81,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;
@@ -173,6 +174,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
+    useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -347,6 +350,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
+      />
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
+        owner={owner}
       />
       <div className="relative flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
@@ -540,28 +548,35 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             <>
               {hasSpaceConversations && summary.length > 0 ? (
                 <div className="overflow-y-auto">
-                  <CollapsibleComponent
-                    rootProps={{ defaultOpen: summary.length <= 5 }}
-                    triggerChildren={
-                      <div className="text-sm text-foreground dark:text-foreground-night">
-                        Projects
-                      </div>
+                  <NavigationListCollapsibleSection
+                    label="Projects"
+                    defaultOpen
+                    action={
+                      isAdmin(owner) ? (
+                        <Button
+                          size="xs"
+                          icon={PlusIcon}
+                          label="New"
+                          variant="ghost"
+                          // aria-label="Create new project"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsCreateProjectModalOpen(true);
+                          }}
+                        />
+                      ) : null
                     }
-                    contentChildren={
-                      <SpacesList owner={owner} summary={summary} />
-                    }
-                  />
-                  <CollapsibleComponent
-                    rootProps={{
-                      defaultOpen: true,
-                    }}
-                    triggerChildren={
-                      <div className="text-sm text-foreground dark:text-foreground-night">
-                        My conversations
-                      </div>
-                    }
-                    contentChildren={conversationsList}
-                  />
+                  >
+                    <SpacesList owner={owner} summary={summary} />
+                  </NavigationListCollapsibleSection>
+
+                  <NavigationListCollapsibleSection
+                    label="My conversations"
+                    defaultOpen
+                  >
+                    {conversationsList}
+                  </NavigationListCollapsibleSection>
                 </div>
               ) : (
                 conversationsList

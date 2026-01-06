@@ -428,7 +428,9 @@ function buildFilteredListResponse<T, U = T>(
     {
       type: "text" as const,
       text:
-        contextMessage(items.length, true, nameFilter) + " but none matching",
+        `No items match the filter "${nameFilter}". ` +
+        contextMessage(items.length, false) +
+        " Showing all available items instead:",
     },
     {
       type: "text" as const,

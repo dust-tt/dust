@@ -138,7 +138,7 @@ export default function TablePicker({
       <div className="flex items-center">
         {readOnly ? (
           currentTable ? (
-            <div className="max-w-20 copy-sm mr-1 truncate font-semibold text-highlight-500 dark:text-highlight-500-night">
+            <div className="copy-sm mr-1 max-w-20 truncate font-semibold text-highlight-500 dark:text-highlight-500-night">
               {currentTable.title}
             </div>
           ) : (

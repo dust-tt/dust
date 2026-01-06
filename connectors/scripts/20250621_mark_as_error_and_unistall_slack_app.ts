@@ -35,7 +35,9 @@ async function markConnectorAsErrorAndUninstall({
 
   if (execute) {
     // Stop the workflows.
-    await connectorManager.pauseAndStop();
+    await connectorManager.pauseAndStop({
+      reason: "Stopped to uninstall Slack app (script)",
+    });
 
     // Mark the connector as error so it's not picked up by monitors.
     await connector.markAsError("third_party_internal_error");
