@@ -79,7 +79,6 @@ export function KnowledgeDisplayComponent({
   // Update the item with fetched node data.
   useEffect(() => {
     if (
-      updateAttributes &&
       needsFetch &&
       fetchedNodes &&
       fetchedNodes.length > 0 &&
