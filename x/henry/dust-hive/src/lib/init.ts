@@ -316,9 +316,14 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name);
 
-  const commands = ["./admin/init_db.sh --unsafe", "./admin/init_plans.sh --unsafe"];
+  // Commands and their expected completion markers
+  // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
+  const commands = [
+    { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true },
+    { cmd: "./admin/init_plans.sh --unsafe", name: "init_plans", expectDone: true },
+  ];
 
-  for (const cmd of commands) {
+  for (const { cmd, name, expectDone } of commands) {
     const command = buildShell({
       sourceEnv: envShPath,
       sourceNvm: true,
@@ -342,6 +347,15 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
       stdout.includes("No migrations");
 
     if (proc.exitCode !== 0 && !alreadyExists) {
+      console.log(stdout);
+      console.error(stderr);
+      return false;
+    }
+
+    // Verify script completed successfully by checking for "Done" marker
+    // This catches cases where script exits 0 but didn't actually complete
+    if (expectDone && !stdout.includes("Done")) {
+      logger.error(`${name} did not complete successfully (missing "Done" in output)`);
       console.log(stdout);
       console.error(stderr);
       return false;

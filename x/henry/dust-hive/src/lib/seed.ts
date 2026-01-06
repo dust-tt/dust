@@ -118,11 +118,52 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
     return false;
   }
 
+  // Parse output to verify subscription was created
+  // Output format: " user_id | workspace_id | subscription_id \n---------+--------------+-----------------\n 1 | 1 | 1"
+  const subscriptionCreated = verifySubscriptionCreated(stdout);
+  if (!subscriptionCreated) {
+    logger.error("SQL seed failed: subscription was not created.");
+    logger.error("This usually means the FREE_UPGRADED_PLAN doesn't exist in the plans table.");
+    logger.error("Ensure init_plans.sh ran successfully before seeding.");
+    if (stdout.trim()) console.log(stdout);
+    return false;
+  }
+
   // Log created workspace
   console.log(`  Created user: ${config.email}`);
   console.log(`  Created workspace: ${config.workspaceName}`);
   console.log("  Created membership");
+  console.log("  Created subscription");
 
   logger.success("Database seeded with dev user (SQL)");
   return true;
+}
+
+// Verify that the SQL seed output includes a non-null subscription_id
+function verifySubscriptionCreated(stdout: string): boolean {
+  // psql output format for SELECT with 3 columns:
+  // " user_id | workspace_id | subscription_id "
+  // "---------+--------------+-----------------"
+  // "       1 |            1 |               1"
+  // "(1 row)"
+  //
+  // If subscription wasn't created, subscription_id will be empty:
+  // "       1 |            1 |                "
+
+  const lines = stdout.trim().split("\n");
+  // Find the data row (skip header and separator)
+  const dataLine = lines.find(
+    (line) => line.includes("|") && !line.includes("user_id") && !line.includes("---")
+  );
+
+  if (!dataLine) {
+    return false;
+  }
+
+  const parts = dataLine.split("|").map((p) => p.trim());
+  // subscription_id is the third column (index 2)
+  const subscriptionId = parts[2];
+
+  // Check if subscription_id is a non-empty number
+  return subscriptionId !== "" && !Number.isNaN(Number(subscriptionId));
 }
