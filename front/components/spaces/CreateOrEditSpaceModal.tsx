@@ -86,81 +86,6 @@ export function CreateOrEditSpaceModal({
   const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
   const { user } = useUser();
 
-  // Handle changes from RestrictedAccessBody
-  const handleChange = useCallback(
-    async (data: {
-      groups: GroupType[];
-      managementType: MembersManagementType;
-      members: UserType[];
-    }) => {
-      // Check if management type changed
-      if (data.managementType !== currentManagementType) {
-        if (!planAllowsSCIM) {
-          return;
-        }
-
-        // If switching from manual to group mode with manually added members
-        if (
-          currentManagementType === "manual" &&
-          data.managementType === "group" &&
-          currentMembers.length > 0
-        ) {
-          const confirmed = await confirm({
-            title: "Switch to groups",
-            message:
-              "This switches from manual member to group-based access. " +
-              "Your current member list will be saved but no longer active.",
-            validateLabel: "Confirm",
-            validateVariant: "primary",
-          });
-
-          if (!confirmed) {
-            // Reset to previous type
-            setInitialManagementType(currentManagementType);
-            return;
-          }
-        }
-        // If switching from group to manual mode with selected groups
-        else if (
-          currentManagementType === "group" &&
-          data.managementType === "manual" &&
-          currentGroups.length > 0
-        ) {
-          const confirmed = await confirm({
-            title: "Switch to members",
-            message:
-              "This switches from group-based access to manual member management. " +
-              "Your current group settings will be saved but no longer active.",
-            validateLabel: "Confirm",
-            validateVariant: "primary",
-          });
-
-          if (!confirmed) {
-            // Reset to previous type
-            setInitialManagementType(currentManagementType);
-            return;
-          }
-        }
-      }
-
-      setCurrentMembers(data.members);
-      setCurrentGroups(data.groups);
-      setCurrentManagementType(data.managementType);
-      setIsDirty(true);
-    },
-    [
-      confirm,
-      currentGroups.length,
-      currentManagementType,
-      currentMembers.length,
-      planAllowsSCIM,
-    ]
-  );
-
-  useEffect(() => {
-    onChangeRef.current = handleChange;
-  }, [handleChange]);
-
   useEffect(() => {
     if (!planAllowsSCIM) {
       setCurrentManagementType("manual");
@@ -366,6 +291,81 @@ export function CreateOrEditSpaceModal({
       await router.push(`/w/${owner.sId}/spaces`);
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
+
+  // Handle changes from RestrictedAccessBody
+  const handleChange = useCallback(
+    async (data: {
+      groups: GroupType[];
+      managementType: MembersManagementType;
+      members: UserType[];
+    }) => {
+      // Check if management type changed
+      if (data.managementType !== currentManagementType) {
+        if (!planAllowsSCIM) {
+          return;
+        }
+
+        // If switching from manual to group mode with manually added members
+        if (
+          currentManagementType === "manual" &&
+          data.managementType === "group" &&
+          currentMembers.length > 0
+        ) {
+          const confirmed = await confirm({
+            title: "Switch to groups",
+            message:
+              "This switches from manual member to group-based access. " +
+              "Your current member list will be saved but no longer active.",
+            validateLabel: "Confirm",
+            validateVariant: "primary",
+          });
+
+          if (!confirmed) {
+            // Reset to previous type
+            setInitialManagementType(currentManagementType);
+            return;
+          }
+        }
+        // If switching from group to manual mode with selected groups
+        else if (
+          currentManagementType === "group" &&
+          data.managementType === "manual" &&
+          currentGroups.length > 0
+        ) {
+          const confirmed = await confirm({
+            title: "Switch to members",
+            message:
+              "This switches from group-based access to manual member management. " +
+              "Your current group settings will be saved but no longer active.",
+            validateLabel: "Confirm",
+            validateVariant: "primary",
+          });
+
+          if (!confirmed) {
+            // Reset to previous type
+            setInitialManagementType(currentManagementType);
+            return;
+          }
+        }
+      }
+
+      setCurrentMembers(data.members);
+      setCurrentGroups(data.groups);
+      setCurrentManagementType(data.managementType);
+      setIsDirty(true);
+    },
+    [
+      confirm,
+      currentGroups.length,
+      currentManagementType,
+      currentMembers.length,
+      planAllowsSCIM,
+    ]
+  );
+
+  useEffect(() => {
+    onChangeRef.current = handleChange;
+  }, [handleChange]);
 
   const disabled = useMemo(() => {
     const hasName = spaceName.trim().length > 0;
