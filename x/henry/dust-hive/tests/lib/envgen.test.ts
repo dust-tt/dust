@@ -43,7 +43,7 @@ describe("envgen", () => {
       const content = generateEnvSh("test", ports);
       expect(content).toContain("export POSTGRES_PORT=10432");
       expect(content).toContain("export POSTGRES_HOST=localhost");
-      expect(content).toContain("export QDRANT_URL=http://localhost:10334");
+      expect(content).toContain("export QDRANT_URL=http://localhost:10333");
       expect(content).toContain("export ELASTICSEARCH_INIT_URL=http://localhost:10200");
     });
 

@@ -13,8 +13,8 @@ describe("ports", () => {
       expect(ports.oauth).toBe(10006);
       expect(ports.postgres).toBe(10432);
       expect(ports.redis).toBe(10379);
-      expect(ports.qdrantHttp).toBe(10334);
-      expect(ports.qdrantGrpc).toBe(10333);
+      expect(ports.qdrantHttp).toBe(10333);
+      expect(ports.qdrantGrpc).toBe(10334);
       expect(ports.elasticsearch).toBe(10200);
       expect(ports.apacheTika).toBe(10998);
     });
