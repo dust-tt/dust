@@ -1,6 +1,4 @@
-// This component is a work in ProgressEvent. Not ready for production.
-
-import "../styles/allotment.css";
+import "allotment/dist/style.css";
 
 import { Allotment } from "allotment";
 import * as React from "react";
@@ -68,7 +66,7 @@ export const SidebarLayout = React.forwardRef<
   },
   ref
 ) {
-  const allotmentRef = React.useRef<React.ComponentRef<typeof Allotment>>(null);
+  const allotmentRef = React.useRef<Allotment>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isHovering, setIsHovering] = React.useState(false);
   const [lastSidebarSize, setLastSidebarSize] =

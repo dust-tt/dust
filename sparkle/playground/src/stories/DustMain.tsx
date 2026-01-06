@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   InboxIcon,
   Avatar,
@@ -39,7 +39,10 @@ import {
   AtomIcon,
   ScrollBar,
   SidebarLeftCloseIcon,
+  SidebarLeftOpenIcon,
   ListSelectIcon,
+  SidebarLayout,
+  type SidebarLayoutRef,
 } from "@dust-tt/sparkle";
 import {
   getAgentById,
@@ -102,6 +105,10 @@ function DustMain() {
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
+
+  // Track sidebar collapsed state for toggle button icon
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   useEffect(() => {
     const randomUser = getRandomUsers(1)[0];
@@ -359,184 +366,377 @@ function DustMain() {
     );
   }
 
-  return (
-    <div className="s-flex s-h-screen s-w-full s-bg-background">
-      {/* Sidebar */}
-      <div className="s-flex s-w-[280px] s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-        {/* Top Bar */}
-        <div className="s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-py-1 s-pl-1 s-pr-2 dark:s-border-border-night">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Card
-                size="xs"
-                onClick={(e) => e.preventDefault()}
-                className="s-p-1"
-                containerClassName="s-flex-1 s-min-w-0"
-              >
-                <div className="s-flex s-items-center s-gap-2 s-pr-1">
-                  <Avatar
-                    name={user.fullName}
-                    visual={user.portrait}
-                    size="sm"
-                    isRounded={true}
-                  />
-                  <div className="s-flex s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                    <span className="s-heading-sm">{user.fullName}</span>
-                    <span className="-s-mt-0.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      ACME
-                    </span>
-                  </div>
+  // Sidebar content
+  const sidebarContent = (
+    <div className="s-flex s-h-full s-flex-col s-bg-muted-background">
+      {/* Top Bar */}
+      <div className="s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-py-1 s-pl-1 s-pr-2 dark:s-border-border-night">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Card
+              size="xs"
+              onClick={(e) => e.preventDefault()}
+              className="s-p-1"
+              containerClassName="s-flex-1 s-min-w-0"
+            >
+              <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+                <Avatar
+                  name={user.fullName}
+                  visual={user.portrait}
+                  size="sm"
+                  isRounded={true}
+                />
+                <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
+                  <span className="s-heading-sm s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+                    {user.fullName}
+                  </span>
+                  <span className="-s-mt-0.5 s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    ACME
+                  </span>
                 </div>
-              </Card>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Profile"
-                icon={UserIcon}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("View profile");
-                }}
-              />
-              <DropdownMenuItem
-                label="Administration"
-                icon={Cog6ToothIcon}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("Administration");
-                }}
-              />
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                label="Signout"
-                icon={LogoutIcon}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("Signout");
-                }}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </div>
+            </Card>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              label="Profile"
+              icon={UserIcon}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("View profile");
+              }}
+            />
+            <DropdownMenuItem
+              label="Administration"
+              icon={Cog6ToothIcon}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Administration");
+              }}
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              label="Signout"
+              icon={LogoutIcon}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Signout");
+              }}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          variant="ghost-secondary"
+          size="mini"
+          icon={isSidebarCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
+          onClick={() => sidebarLayoutRef.current?.toggle()}
+        />
+      </div>
+      <ScrollArea className="s-flex-1">
+        <ScrollBar orientation="vertical" size="minimal" />
+        {/* Search Bar */}
+        <div className="s-flex s-gap-2 s-p-2 s-px-2">
+          <SearchInput
+            name="conversation-search"
+            value={searchText}
+            onChange={setSearchText}
+            placeholder="Search"
+            className="s-flex-1"
+          />
           <Button
-            variant="ghost-secondary"
-            size="mini"
-            icon={SidebarLeftCloseIcon}
-            onClick={() => {
-              console.log("Sidebar toggle clicked");
-            }}
+            label="New"
+            variant="primary"
+            size="sm"
+            icon={ChatBubbleLeftRightIcon}
           />
         </div>
-        <ScrollArea className="s-flex-1">
-          <ScrollBar orientation="vertical" size="minimal" />
-          {/* Search Bar */}
-          <div className="s-flex s-gap-2 s-p-2 s-px-2">
-            <SearchInput
-              name="conversation-search"
-              value={searchText}
-              onChange={setSearchText}
-              placeholder="Search"
-              className="s-flex-1"
+        {/* Collapsible Sections */}
+        <NavigationList className="s-px-2">
+          {!searchText.trim() ? (
+            <NavigationListItem
+              label="Inbox"
+              icon={InboxIcon}
+              onClick={() => {
+                console.log("Selected Inbox");
+              }}
             />
-            <Button
-              label="New"
-              variant="primary"
-              size="sm"
-              icon={ChatBubbleLeftRightIcon}
-            />
-          </div>
-          {/* Collapsible Sections */}
-          <NavigationList className="s-px-2">
-            {!searchText.trim() ? (
+          ) : (
+            <>
               <NavigationListItem
-                label="Inbox"
-                icon={InboxIcon}
+                label="Search Documents"
+                icon={MagnifyingGlassIcon}
                 onClick={() => {
-                  console.log("Selected Inbox");
+                  console.log("Start a Search Doc");
                 }}
               />
-            ) : (
-              <>
-                <NavigationListItem
-                  label="Search Documents"
-                  icon={MagnifyingGlassIcon}
-                  onClick={() => {
-                    console.log("Start a Search Doc");
-                  }}
-                />
-                <NavigationListItem
-                  label="Start a Deep Dive"
-                  icon={AtomIcon}
-                  onClick={() => {
-                    console.log("Start a Deep Dive");
-                  }}
-                />
-              </>
-            )}
-            {(filteredSpaces.length > 0 || !searchText.trim()) && (
-              <NavigationListCollapsibleSection
-                label="Spaces"
-                defaultOpen={true}
-                action={
-                  <>
-                    <Button
-                      size="xmini"
-                      icon={PlusIcon}
-                      variant="ghost"
-                      aria-label="Agents options"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xmini"
-                          icon={MoreIcon}
-                          variant="ghost"
-                          aria-label="Spaces options"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          label="Browse"
+              <NavigationListItem
+                label="Start a Deep Dive"
+                icon={AtomIcon}
+                onClick={() => {
+                  console.log("Start a Deep Dive");
+                }}
+              />
+            </>
+          )}
+          {(filteredSpaces.length > 0 || !searchText.trim()) && (
+            <NavigationListCollapsibleSection
+              label="Spaces"
+              defaultOpen={true}
+              action={
+                <>
+                  <Button
+                    size="xmini"
+                    icon={PlusIcon}
+                    variant="ghost"
+                    aria-label="Agents options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xmini"
+                        icon={MoreIcon}
+                        variant="ghost"
+                        aria-label="Spaces options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Browse"
+                        icon={PencilSquareIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Manage Spaces");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        icon={PlusIcon}
+                        label="Create"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Create Space");
+                        }}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              }
+            >
+              {filteredSpaces.map((space) => {
+                // Deterministically assign open or restricted status based on space ID
+                const isRestricted =
+                  space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+                return (
+                  <NavigationListItem
+                    key={space.id}
+                    label={space.name}
+                    icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                    moreMenu={
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <NavigationListItemAction />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            label="Edit"
+                            icon={PencilSquareIcon}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log("Edit space:", space.id);
+                            }}
+                          />
+                          <DropdownMenuItem
+                            label="Explore"
+                            icon={MagnifyingGlassIcon}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log("Explore space:", space.id);
+                            }}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    }
+                    onClick={() => {
+                      console.log("Selected space:", space.id);
+                    }}
+                  />
+                );
+              })}
+            </NavigationListCollapsibleSection>
+          )}
+
+          {(filteredCollaborators.length > 0 || !searchText.trim()) && (
+            <NavigationListCollapsibleSection
+              label="People & Agents"
+              defaultOpen={true}
+              action={
+                <>
+                  <Button
+                    size="xmini"
+                    icon={PlusIcon}
+                    variant="ghost"
+                    tooltip="Create an Agent"
+                    aria-label="Agents options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xmini"
+                        icon={MoreIcon}
+                        variant="ghost"
+                        aria-label="Agents options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel>Agents</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        label="Create agent"
+                        icon={PlusIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Create Agent");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        icon={ContactsRobotIcon}
+                        label="Manage"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Manage Agents");
+                        }}
+                      />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
                           icon={PencilSquareIcon}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Manage Spaces");
-                          }}
+                          label="Edit"
                         />
-                        <DropdownMenuItem
-                          icon={PlusIcon}
-                          label="Create"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Create Space");
-                          }}
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuSearchbar
+                              value={agentSearchText}
+                              onChange={setAgentSearchText}
+                              name="agent-search"
+                            />
+                            {filteredAgents.length > 0 ? (
+                              [...filteredAgents]
+                                .sort((a, b) => a.name.localeCompare(b.name))
+                                .map((agent) => (
+                                  <DropdownMenuItem
+                                    key={agent.id}
+                                    label={agent.name}
+                                    icon={
+                                      <Avatar
+                                        size="xxs"
+                                        name={agent.name}
+                                        emoji={agent.emoji}
+                                        backgroundColor={agent.backgroundColor}
+                                      />
+                                    }
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      console.log("Edit agent:", agent.id);
+                                    }}
+                                  />
+                                ))
+                            ) : (
+                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                                No agents found
+                              </div>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                      <DropdownMenuLabel>People</DropdownMenuLabel>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
+                          icon={ContactsUserIcon}
+                          label="Browse"
                         />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                }
-              >
-                {filteredSpaces.map((space) => {
-                  // Deterministically assign open or restricted status based on space ID
-                  const isRestricted =
-                    space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuSearchbar
+                              value={peopleSearchText}
+                              onChange={setPeopleSearchText}
+                              name="people-search"
+                            />
+                            {filteredPeople.length > 0 ? (
+                              [...filteredPeople]
+                                .sort((a, b) =>
+                                  a.fullName.localeCompare(b.fullName)
+                                )
+                                .map((person) => (
+                                  <DropdownMenuItem
+                                    key={person.id}
+                                    label={person.fullName}
+                                    icon={
+                                      <Avatar
+                                        size="xxs"
+                                        name={person.fullName}
+                                        visual={person.portrait}
+                                        isRounded={true}
+                                      />
+                                    }
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      console.log("Edit person:", person.id);
+                                    }}
+                                  />
+                                ))
+                            ) : (
+                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                                No people found
+                              </div>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              }
+            >
+              {filteredCollaborators.map((collaborator) => {
+                if (collaborator.type === "agent") {
+                  const agent = collaborator.data;
                   return (
                     <NavigationListItem
-                      key={space.id}
-                      label={space.name}
-                      icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                      key={`agent-${agent.id}`}
+                      label={agent.name}
+                      avatar={
+                        <Avatar
+                          size="xxs"
+                          name={agent.name}
+                          emoji={agent.emoji}
+                          backgroundColor={agent.backgroundColor}
+                          isRounded={false}
+                        />
+                      }
                       moreMenu={
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -549,433 +749,238 @@ function DustMain() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log("Edit space:", space.id);
+                                console.log("Edit agent:", agent.id);
                               }}
                             />
                             <DropdownMenuItem
-                              label="Explore"
-                              icon={MagnifyingGlassIcon}
+                              label="Remove from favorites"
+                              icon={StarStrokeIcon}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log("Explore space:", space.id);
+                                console.log("Remove from favorites:", agent.id);
+                              }}
+                            />
+                            <DropdownMenuItem
+                              label="Delete"
+                              icon={TrashIcon}
+                              variant="warning"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("Delete agent:", agent.id);
                               }}
                             />
                           </DropdownMenuContent>
                         </DropdownMenu>
                       }
                       onClick={() => {
-                        console.log("Selected space:", space.id);
+                        console.log("Selected agent:", agent.id);
                       }}
                     />
                   );
-                })}
-              </NavigationListCollapsibleSection>
-            )}
-
-            {(filteredCollaborators.length > 0 || !searchText.trim()) && (
-              <NavigationListCollapsibleSection
-                label="People & Agents"
-                defaultOpen={true}
-                action={
-                  <>
-                    <Button
-                      size="xmini"
-                      icon={PlusIcon}
-                      variant="ghost"
-                      tooltip="Create an Agent"
-                      aria-label="Agents options"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                } else {
+                  const person = collaborator.data;
+                  return (
+                    <NavigationListItem
+                      key={`person-${person.id}`}
+                      label={person.fullName}
+                      avatar={
+                        <Avatar
+                          size="xxs"
+                          name={person.fullName}
+                          visual={person.portrait}
+                          isRounded={true}
+                        />
+                      }
+                      moreMenu={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <NavigationListItemAction />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              label="View profile"
+                              icon={UserIcon}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("View profile:", person.id);
+                              }}
+                            />
+                            <DropdownMenuItem
+                              label="Remove from favorites"
+                              icon={TrashIcon}
+                              variant="warning"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log(
+                                  "Remove from favorites:",
+                                  person.id
+                                );
+                              }}
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
+                      onClick={() => {
+                        console.log("Selected person:", person.id);
                       }}
                     />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xmini"
-                          icon={MoreIcon}
-                          variant="ghost"
-                          aria-label="Agents options"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          label="Create agent"
-                          icon={PlusIcon}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Create Agent");
-                          }}
-                        />
-                        <DropdownMenuItem
-                          icon={ContactsRobotIcon}
-                          label="Manage"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Manage Agents");
-                          }}
-                        />
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger
-                            icon={PencilSquareIcon}
-                            label="Edit"
-                          />
-                          <DropdownMenuPortal>
-                            <DropdownMenuSubContent>
-                              <DropdownMenuSearchbar
-                                value={agentSearchText}
-                                onChange={setAgentSearchText}
-                                name="agent-search"
-                              />
-                              {filteredAgents.length > 0 ? (
-                                [...filteredAgents]
-                                  .sort((a, b) => a.name.localeCompare(b.name))
-                                  .map((agent) => (
-                                    <DropdownMenuItem
-                                      key={agent.id}
-                                      label={agent.name}
-                                      icon={
-                                        <Avatar
-                                          size="xxs"
-                                          name={agent.name}
-                                          emoji={agent.emoji}
-                                          backgroundColor={
-                                            agent.backgroundColor
-                                          }
-                                        />
-                                      }
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        console.log("Edit agent:", agent.id);
-                                      }}
-                                    />
-                                  ))
-                              ) : (
-                                <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
-                                  No agents found
-                                </div>
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                        <DropdownMenuLabel>People</DropdownMenuLabel>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger
-                            icon={ContactsUserIcon}
-                            label="Browse"
-                          />
-                          <DropdownMenuPortal>
-                            <DropdownMenuSubContent>
-                              <DropdownMenuSearchbar
-                                value={peopleSearchText}
-                                onChange={setPeopleSearchText}
-                                name="people-search"
-                              />
-                              {filteredPeople.length > 0 ? (
-                                [...filteredPeople]
-                                  .sort((a, b) =>
-                                    a.fullName.localeCompare(b.fullName)
-                                  )
-                                  .map((person) => (
-                                    <DropdownMenuItem
-                                      key={person.id}
-                                      label={person.fullName}
-                                      icon={
-                                        <Avatar
-                                          size="xxs"
-                                          name={person.fullName}
-                                          visual={person.portrait}
-                                          isRounded={true}
-                                        />
-                                      }
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        console.log("Edit person:", person.id);
-                                      }}
-                                    />
-                                  ))
-                              ) : (
-                                <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
-                                  No people found
-                                </div>
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
+                  );
                 }
-              >
-                {filteredCollaborators.map((collaborator) => {
-                  if (collaborator.type === "agent") {
-                    const agent = collaborator.data;
-                    return (
-                      <NavigationListItem
-                        key={`agent-${agent.id}`}
-                        label={agent.name}
-                        avatar={
-                          <Avatar
-                            size="xxs"
-                            name={agent.name}
-                            emoji={agent.emoji}
-                            backgroundColor={agent.backgroundColor}
-                            isRounded={false}
-                          />
-                        }
-                        moreMenu={
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <NavigationListItemAction />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem
-                                label="Edit"
-                                icon={PencilSquareIcon}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log("Edit agent:", agent.id);
-                                }}
-                              />
-                              <DropdownMenuItem
-                                label="Remove from favorites"
-                                icon={StarStrokeIcon}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log(
-                                    "Remove from favorites:",
-                                    agent.id
-                                  );
-                                }}
-                              />
-                              <DropdownMenuItem
-                                label="Delete"
-                                icon={TrashIcon}
-                                variant="warning"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log("Delete agent:", agent.id);
-                                }}
-                              />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        }
-                        onClick={() => {
-                          console.log("Selected agent:", agent.id);
-                        }}
-                      />
-                    );
-                  } else {
-                    const person = collaborator.data;
-                    return (
-                      <NavigationListItem
-                        key={`person-${person.id}`}
-                        label={person.fullName}
-                        avatar={
-                          <Avatar
-                            size="xxs"
-                            name={person.fullName}
-                            visual={person.portrait}
-                            isRounded={true}
-                          />
-                        }
-                        moreMenu={
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <NavigationListItemAction />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem
-                                label="View profile"
-                                icon={UserIcon}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log("View profile:", person.id);
-                                }}
-                              />
-                              <DropdownMenuItem
-                                label="Remove from favorites"
-                                icon={TrashIcon}
-                                variant="warning"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log(
-                                    "Remove from favorites:",
-                                    person.id
-                                  );
-                                }}
-                              />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        }
-                        onClick={() => {
-                          console.log("Selected person:", person.id);
-                        }}
-                      />
-                    );
-                  }
-                })}
-              </NavigationListCollapsibleSection>
-            )}
+              })}
+            </NavigationListCollapsibleSection>
+          )}
 
-            {(filteredConversations.length > 0 || !searchText.trim()) && (
-              <NavigationListCollapsibleSection
-                label="Conversations"
-                defaultOpen={true}
-                action={
-                  <>
-                    <Button
-                      size="xmini"
-                      icon={ChatBubbleLeftRightIcon}
-                      variant="ghost"
-                      aria-label="New Conversation"
-                      tooltip="New Conversation"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+          {(filteredConversations.length > 0 || !searchText.trim()) && (
+            <NavigationListCollapsibleSection
+              label="Conversations"
+              defaultOpen={true}
+              action={
+                <>
+                  <Button
+                    size="xmini"
+                    icon={ChatBubbleLeftRightIcon}
+                    variant="ghost"
+                    aria-label="New Conversation"
+                    tooltip="New Conversation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xmini"
+                        icon={MoreIcon}
+                        variant="ghost"
+                        aria-label="Conversations options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Edit history"
+                        icon={ListSelectIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Edit Conversations");
+                        }}
+                      />
+                      <DropdownMenuItem
+                        label="Clear history"
+                        icon={TrashIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Clear history");
+                        }}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              }
+            >
+              {groupedConversations.today.length > 0 && (
+                <>
+                  {groupedConversations.today.map((conversation) => (
+                    <NavigationListItem
+                      key={conversation.id}
+                      label={conversation.title}
+                      moreMenu={getConversationMoreMenu(conversation)}
+                      onClick={() => {
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
                       }}
                     />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xmini"
-                          icon={MoreIcon}
-                          variant="ghost"
-                          aria-label="Conversations options"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          label="Edit history"
-                          icon={ListSelectIcon}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Edit Conversations");
-                          }}
-                        />
-                        <DropdownMenuItem
-                          label="Clear history"
-                          icon={TrashIcon}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Clear history");
-                          }}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                }
-              >
-                {groupedConversations.today.length > 0 && (
-                  <>
-                    {groupedConversations.today.map((conversation) => (
-                      <NavigationListItem
-                        key={conversation.id}
-                        label={conversation.title}
-                        moreMenu={getConversationMoreMenu(conversation)}
-                        onClick={() => {
-                          // Handle conversation click
-                          console.log(
-                            "Selected conversation:",
-                            conversation.id
-                          );
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-                {groupedConversations.yesterday.length > 0 && (
-                  <>
-                    <NavigationListCompactLabel label="Yesterday" />
-                    {groupedConversations.yesterday.map((conversation) => (
-                      <NavigationListItem
-                        key={conversation.id}
-                        label={conversation.title}
-                        moreMenu={getConversationMoreMenu(conversation)}
-                        onClick={() => {
-                          // Handle conversation click
-                          console.log(
-                            "Selected conversation:",
-                            conversation.id
-                          );
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-                {groupedConversations.lastWeek.length > 0 && (
-                  <>
-                    <NavigationListCompactLabel label="Last week" />
-                    {groupedConversations.lastWeek.map((conversation) => (
-                      <NavigationListItem
-                        key={conversation.id}
-                        label={conversation.title}
-                        moreMenu={getConversationMoreMenu(conversation)}
-                        onClick={() => {
-                          // Handle conversation click
-                          console.log(
-                            "Selected conversation:",
-                            conversation.id
-                          );
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-                {groupedConversations.lastMonth.length > 0 && (
-                  <>
-                    <NavigationListCompactLabel label="Last month" />
-                    {groupedConversations.lastMonth.map((conversation) => (
-                      <NavigationListItem
-                        key={conversation.id}
-                        label={conversation.title}
-                        moreMenu={getConversationMoreMenu(conversation)}
-                        onClick={() => {
-                          // Handle conversation click
-                          console.log(
-                            "Selected conversation:",
-                            conversation.id
-                          );
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-              </NavigationListCollapsibleSection>
-            )}
-          </NavigationList>
-        </ScrollArea>
-      </div>
+                  ))}
+                </>
+              )}
+              {groupedConversations.yesterday.length > 0 && (
+                <>
+                  <NavigationListCompactLabel label="Yesterday" />
+                  {groupedConversations.yesterday.map((conversation) => (
+                    <NavigationListItem
+                      key={conversation.id}
+                      label={conversation.title}
+                      moreMenu={getConversationMoreMenu(conversation)}
+                      onClick={() => {
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+              {groupedConversations.lastWeek.length > 0 && (
+                <>
+                  <NavigationListCompactLabel label="Last week" />
+                  {groupedConversations.lastWeek.map((conversation) => (
+                    <NavigationListItem
+                      key={conversation.id}
+                      label={conversation.title}
+                      moreMenu={getConversationMoreMenu(conversation)}
+                      onClick={() => {
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+              {groupedConversations.lastMonth.length > 0 && (
+                <>
+                  <NavigationListCompactLabel label="Last month" />
+                  {groupedConversations.lastMonth.map((conversation) => (
+                    <NavigationListItem
+                      key={conversation.id}
+                      label={conversation.title}
+                      moreMenu={getConversationMoreMenu(conversation)}
+                      onClick={() => {
+                        // Handle conversation click
+                        console.log("Selected conversation:", conversation.id);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+            </NavigationListCollapsibleSection>
+          )}
+        </NavigationList>
+      </ScrollArea>
+    </div>
+  );
 
-      {/* Main Content Area */}
-      <div className="s-flex s-flex-1 s-items-center s-justify-center s-bg-background">
-        <div className="s-text-center">
-          <p className="s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
-            Select a conversation to view
-          </p>
-        </div>
+  // Main content
+  const mainContent = (
+    <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
+      <div className="s-text-center">
+        <p className="s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+          Select a conversation to view
+        </p>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="s-flex s-h-screen s-w-full s-bg-background">
+      <SidebarLayout
+        ref={sidebarLayoutRef}
+        sidebar={sidebarContent}
+        content={mainContent}
+        defaultSidebarWidth={280}
+        minSidebarWidth={200}
+        maxSidebarWidth={400}
+        collapsible={true}
+        onSidebarToggle={setIsSidebarCollapsed}
+      />
     </div>
   );
 }
