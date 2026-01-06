@@ -1,4 +1,4 @@
-import { markdownStyles } from "@dust-tt/sparkle";
+import { AttachmentIcon, Button, markdownStyles } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
@@ -207,6 +207,12 @@ export function SkillBuilderInstructionsEditor({
     [extensions]
   );
 
+  const handleAddKnowledge = useCallback(() => {
+    if (editor) {
+      editor.chain().focus().insertKnowledgeNode().run();
+    }
+  }, [editor]);
+
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
@@ -271,7 +277,19 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="relative space-y-1 p-px">
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="leading-7" />
+
+      {/* Floating Add Knowledge Button */}
+      <Button
+        size="xs"
+        variant="ghost"
+        icon={AttachmentIcon}
+        onClick={handleAddKnowledge}
+        className="absolute bottom-2 left-2"
+        tooltip="Add knowledge"
+        disabled={!editor}
+      />
+
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">
           {instructionsFieldState.error.message}
