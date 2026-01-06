@@ -1,5 +1,8 @@
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
-import { SkillInstructionsEditor } from "@app/components/editor/SkillInstructionsEditor";
+import {
+  SkillInstructionsEditorContent,
+  useSkillInstructionsEditor,
+} from "@app/components/editor/SkillInstructionsEditor";
 import type { LightWorkspaceType } from "@app/types";
 
 interface SkillInstructionsReadOnlyEditorProps {
@@ -11,9 +14,14 @@ export function SkillInstructionsReadOnlyEditor({
   content,
   owner,
 }: SkillInstructionsReadOnlyEditorProps) {
+  const { editor } = useSkillInstructionsEditor({
+    content,
+    isReadOnly: true,
+  });
+
   return (
     <SpacesProvider owner={owner}>
-      <SkillInstructionsEditor content={content} isReadOnly />
+      <SkillInstructionsEditorContent editor={editor} isReadOnly />
     </SpacesProvider>
   );
 }
