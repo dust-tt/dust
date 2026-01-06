@@ -1274,12 +1274,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<number, Error>> {
-    assert(
-      this.canWrite(auth),
-      "User does not have permission to delete this skill."
-    );
-
     try {
+      assert(
+        this.canWrite(auth),
+        "User does not have permission to delete this skill."
+      );
+
       const workspace = auth.getNonNullableWorkspace();
 
       await SkillDataSourceConfigurationModel.destroy({
