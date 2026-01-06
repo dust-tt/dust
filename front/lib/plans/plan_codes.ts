@@ -5,6 +5,7 @@ export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";
 export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
 export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
 export const TRIAL_PLAN_CODE = "TRIAL_PLAN_CODE";
+export const FREE_TRIAL_PHONE_PLAN_CODE = "FREE_TRIAL_PHONE_PLAN";
 
 // Current pro plans:
 export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
