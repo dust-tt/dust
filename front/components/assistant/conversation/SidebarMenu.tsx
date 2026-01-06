@@ -164,7 +164,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const hasSpaceConversations = hasFeature("projects");
 
-  const { summary, mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { summary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: !hasSpaceConversations },
   });
@@ -355,15 +355,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         isOpen={isCreateProjectModalOpen}
         onClose={() => setIsCreateProjectModalOpen(false)}
         owner={owner}
-        onCreated={(space) => {
-          setIsCreateProjectModalOpen(false);
-          void mutateSpaceSummary();
-          sendNotification({
-            type: "success",
-            title: "Project created",
-            description: `Project "${space.name}" has been created.`,
-          });
-        }}
       />
       <div className="relative flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">

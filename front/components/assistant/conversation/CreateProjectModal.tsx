@@ -7,24 +7,25 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated?: (space: SpaceType) => void;
   owner: LightWorkspaceType;
 }
 
 export function CreateProjectModal({
   isOpen,
   onClose,
-  onCreated,
   owner,
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState<string>("");
@@ -32,6 +33,18 @@ export function CreateProjectModal({
 
   const doCreate = useCreateSpace({ owner });
   const { user } = useUser();
+
+  const sendNotification = useSendNotification();
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasSpaceConversations = hasFeature("projects");
+
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !hasSpaceConversations },
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -66,12 +79,16 @@ export function CreateProjectModal({
 
     setIsSaving(false);
 
-    if (createdSpace && onCreated) {
-      onCreated(createdSpace);
+    if (createdSpace) {
+      void mutateSpaceSummary();
+      sendNotification({
+        type: "success",
+        title: "Project created",
+        description: `Project "${trimmedName}" has been created.`,
+      });
+      handleClose();
     }
-
-    handleClose();
-  }, [projectName, doCreate, onCreated, handleClose]);
+  }, [projectName, doCreate, handleClose]);
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
