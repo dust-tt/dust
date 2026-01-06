@@ -19,11 +19,10 @@ export interface SelectEnvironmentOptions {
  * IMPORTANT: Call this before spawning any subprocess that takes over the terminal
  * (like zellij) to prevent terminal corruption.
  *
- * This does four things:
+ * This does three things:
  * 1. Exits raw mode (restores cooked mode)
  * 2. Pauses stdin to stop reading
  * 3. Removes all listeners that clack may have attached
- * 4. Unrefs stdin so it doesn't keep the event loop alive
  */
 export function restoreTerminal(): void {
   try {
@@ -41,10 +40,6 @@ export function restoreTerminal(): void {
     process.stdin.removeAllListeners("data");
     process.stdin.removeAllListeners("keypress");
     process.stdin.removeAllListeners("readable");
-
-    // Unref stdin so it doesn't keep the event loop alive
-    // This allows the process to exit naturally after interactive prompts
-    process.stdin.unref();
   } catch {
     // Ignore errors - best effort cleanup
   }
