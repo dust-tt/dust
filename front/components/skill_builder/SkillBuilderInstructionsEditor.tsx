@@ -271,7 +271,7 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="relative space-y-1 p-px">
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="leading-7" />
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">
           {instructionsFieldState.error.message}

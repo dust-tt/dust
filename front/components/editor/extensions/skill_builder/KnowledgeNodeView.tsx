@@ -374,7 +374,7 @@ function KnowledgeSearchComponent({
         data-placeholder="Search for knowledge..."
       />
 
-      {isOpen && knowledgeItems.length > 0 && (
+      {isOpen && (
         <DropdownMenu open={true}>
           <DropdownMenuTrigger asChild>
             <div ref={triggerRef} style={virtualTriggerStyle} />
@@ -388,14 +388,14 @@ function KnowledgeSearchComponent({
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             {isSearchLoading ? (
-              <div className="flex items-center justify-center px-4 py-8">
+              <div className="flex h-14 items-center justify-center">
                 <Spinner size="sm" />
                 <span className="ml-2 text-sm text-gray-500">
                   Searching knowledge...
                 </span>
               </div>
             ) : knowledgeItems.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">
+              <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500">
                 {searchQuery.length < 2
                   ? "Type at least 2 characters to search"
                   : "No knowledge found"}

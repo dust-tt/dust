@@ -43,8 +43,9 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
       // TODO(2026-01-02 SKILL): decide on proper color.
       color="highlight"
       onRemove={onRemove}
-      className="align-middle"
+      className="rounded-md bg-white align-middle font-medium drop-shadow"
       href=""
+      size="xs"
     />
   );
 }
@@ -66,7 +67,8 @@ export function KnowledgeErrorChip({
       target="_blank"
       color="warning"
       onRemove={onRemove}
-      className="align-middle"
+      className="rounded-md bg-white align-middle font-medium drop-shadow"
+      size="xs"
       href=""
     />
   );
