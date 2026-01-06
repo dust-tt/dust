@@ -454,10 +454,13 @@ export async function createOnboardingConversationIfNeeded(
   // Only create onboarding conversation for brand-new workspaces (only one member,
   // no conversations) unless force flag is set.
   if (!force) {
-    const existingMetadata = await user.getMetadata("onboarding:conversation");
+    const existingMetadata = await user.getMetadata(
+      "onboarding:conversation",
+      owner.id
+    );
 
     if (existingMetadata?.value) {
-      // User already has an onboarding conversation.
+      // User already has an onboarding conversation for this workspace.
       return new Ok(null);
     }
 
@@ -480,8 +483,6 @@ export async function createOnboardingConversationIfNeeded(
 
   const userJson = user.toJSON();
 
-  const workspaceMetadataPrefix = `workspace:${owner.sId}:`;
-
   // Email provider is user-scoped (same email across all workspaces).
   const emailProviderMetadata = await user.getMetadata(
     "onboarding:email_provider"
@@ -502,7 +503,8 @@ export async function createOnboardingConversationIfNeeded(
 
   // Favorite platforms is workspace-scoped.
   const favoritePlatformsMetadata = await user.getMetadata(
-    `${workspaceMetadataPrefix}favorite_platforms`
+    "favorite_platforms",
+    owner.id
   );
 
   let favoritePlatforms: FavoritePlatform[] = [];
@@ -566,7 +568,7 @@ export async function createOnboardingConversationIfNeeded(
     return postRes;
   }
 
-  await user.setMetadata("onboarding:conversation", conversation.sId);
+  await user.setMetadata("onboarding:conversation", conversation.sId, owner.id);
 
   return new Ok(conversation.sId);
 }
