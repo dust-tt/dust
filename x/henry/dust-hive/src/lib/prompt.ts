@@ -8,6 +8,10 @@ import { detectEnvFromCwd } from "./paths";
 
 export interface SelectEnvironmentOptions {
   message?: string;
+  /** If provided, shows a confirmation prompt after selection with this message template.
+   * Use {name} as placeholder for the selected environment name.
+   * Returns null if user declines confirmation. */
+  confirmMessage?: string;
 }
 
 /**
@@ -146,5 +150,20 @@ export async function selectEnvironment(
     return null;
   }
 
-  return result as string;
+  const selectedName = result as string;
+
+  // If confirmation requested, ask before returning
+  if (options?.confirmMessage) {
+    const confirmMsg = options.confirmMessage.replace("{name}", selectedName);
+    const confirmed = await p.confirm({
+      message: confirmMsg,
+      initialValue: false,
+    });
+
+    if (p.isCancel(confirmed) || !confirmed) {
+      return null;
+    }
+  }
+
+  return selectedName;
 }

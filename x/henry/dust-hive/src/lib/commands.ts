@@ -5,11 +5,18 @@ import { type Environment, getEnvironment } from "./environment";
 import { restoreTerminal, selectEnvironment } from "./prompt";
 import { CommandError, Err, Ok, type Result, envNotFoundError } from "./result";
 
+export interface RequireEnvironmentOptions {
+  /** If provided, shows a confirmation prompt after selection.
+   * Use {name} as placeholder for the selected environment name. */
+  confirmMessage?: string;
+}
+
 // Require an environment to exist, returning error if not found
 // If nameArg is not provided, shows interactive selection prompt
 export async function requireEnvironment(
   nameArg: string | undefined,
-  commandName: string
+  commandName: string,
+  options?: RequireEnvironmentOptions
 ): Promise<Result<Environment, CommandError>> {
   let name = nameArg;
 
@@ -17,6 +24,7 @@ export async function requireEnvironment(
   if (!name) {
     const selected = await selectEnvironment({
       message: `Select environment for ${commandName}`,
+      ...(options?.confirmMessage && { confirmMessage: options.confirmMessage }),
     });
 
     // Restore terminal to cooked mode after interactive prompt
