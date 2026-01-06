@@ -12,7 +12,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -261,36 +260,15 @@ async function handler(
         })
       );
 
-      // Wrap everything in a transaction to avoid inconsistent state.
-      await withTransaction(async (transaction) => {
-        await skillResource.updateSkill(
-          auth,
-          {
-            name: body.name,
-            agentFacingDescription: body.agentFacingDescription,
-            userFacingDescription: body.userFacingDescription,
-            instructions: body.instructions,
-            icon: body.icon,
-            requestedSpaceIds,
-          },
-          { transaction }
-        );
-
-        await skillResource.updateTools(
-          auth,
-          {
-            mcpServerViews,
-          },
-          { transaction }
-        );
-
-        await skillResource.setAttachedKnowledge(
-          auth,
-          {
-            attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-          },
-          { transaction }
-        );
+      await skillResource.updateSkill(auth, {
+        agentFacingDescription: body.agentFacingDescription,
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        icon: body.icon,
+        instructions: body.instructions,
+        mcpServerViews,
+        name: body.name,
+        requestedSpaceIds,
+        userFacingDescription: body.userFacingDescription,
       });
 
       return res.status(200).json({
