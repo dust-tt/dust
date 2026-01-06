@@ -3,11 +3,7 @@ import { logger } from "../lib/logger";
 import { stopService } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
-import { ALL_SERVICES, type ServiceName } from "../lib/services";
-
-function isServiceName(value: string | undefined): value is ServiceName {
-  return value !== undefined && ALL_SERVICES.includes(value as ServiceName);
-}
+import { ALL_SERVICES, isServiceName } from "../lib/services";
 
 export const restartCommand = withEnvironment("restart", async (env, serviceArg: string) => {
   if (!isServiceName(serviceArg)) {

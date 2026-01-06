@@ -12,6 +12,7 @@ import {
 import { restoreTerminal } from "../lib/prompt";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
+import { shellQuote } from "../lib/shell";
 
 // Tab display names (shorter names for better zellij tab bar)
 const TAB_NAMES: Record<ServiceName, string> = {
@@ -32,10 +33,6 @@ if (missingTabs.length > 0 || extraTabs.length > 0) {
       extraTabs.join(", ") || "none"
     }.`
   );
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 function kdlEscape(value: string): string {

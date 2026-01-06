@@ -1,6 +1,7 @@
 // Data-driven database initialization with binary caching
 
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
+import { loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
@@ -12,37 +13,6 @@ export { getTemporalNamespaces } from "./temporal";
 
 // Re-export from paths.ts for backwards compatibility
 export { SEED_USER_PATH } from "./paths";
-
-// Load environment variables from env.sh
-async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
-  // Source the env.sh and export all vars
-  const command = `source "${envShPath}" && env`;
-  const proc = Bun.spawn(["bash", "-c", command], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stdoutPromise = new Response(proc.stdout).text();
-  const stderrPromise = new Response(proc.stderr).text();
-  await proc.exited;
-  const output = await stdoutPromise;
-  const stderr = await stderrPromise;
-
-  if (proc.exitCode !== 0) {
-    throw new Error(`Failed to load env vars: ${stderr.trim() || "unknown error"}`);
-  }
-
-  const env: Record<string, string> = {};
-  for (const line of output.split("\n")) {
-    const idx = line.indexOf("=");
-    if (idx > 0) {
-      const key = line.substring(0, idx);
-      const value = line.substring(idx + 1);
-      env[key] = value;
-    }
-  }
-  return env;
-}
 
 // Run a binary directly or fall back to cargo run
 async function runBinary(

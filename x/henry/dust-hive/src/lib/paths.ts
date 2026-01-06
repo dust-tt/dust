@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { isErrnoException } from "./errors";
 
 // dust-hive project root (where this package lives)
 export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
@@ -75,10 +76,6 @@ export function getZellijLayoutPath(): string {
 // Scripts
 export function getWatchScriptPath(): string {
   return join(DUST_HIVE_SCRIPTS, "watch-logs.sh");
-}
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
 }
 
 // Find repo root by looking for .git directory

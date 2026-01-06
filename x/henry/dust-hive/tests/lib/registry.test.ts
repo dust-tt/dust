@@ -1,11 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { calculatePorts } from "../../src/lib/ports";
-import {
-  SERVICE_REGISTRY,
-  WARM_SERVICES,
-  getHealthChecks,
-  getServicePort,
-} from "../../src/lib/registry";
+import { SERVICE_REGISTRY, WARM_SERVICES, getHealthChecks } from "../../src/lib/registry";
 import { ALL_SERVICES, type ServiceName } from "../../src/lib/services";
 
 describe("registry", () => {
@@ -136,28 +131,6 @@ describe("registry", () => {
 
       const coreCheck = checks.find((c) => c.service === "core");
       expect(coreCheck?.url).toBe("http://localhost:11001/");
-    });
-  });
-
-  describe("getServicePort", () => {
-    const ports = calculatePorts(10000);
-
-    it("returns port for services with portKey", () => {
-      expect(getServicePort("front", ports)).toBe(10000);
-      expect(getServicePort("core", ports)).toBe(10001);
-      expect(getServicePort("connectors", ports)).toBe(10002);
-      expect(getServicePort("oauth", ports)).toBe(10006);
-    });
-
-    it("returns undefined for services without portKey", () => {
-      expect(getServicePort("sdk", ports)).toBeUndefined();
-      expect(getServicePort("front-workers", ports)).toBeUndefined();
-    });
-
-    it("uses correct ports for second environment", () => {
-      const secondPorts = calculatePorts(11000);
-      expect(getServicePort("front", secondPorts)).toBe(11000);
-      expect(getServicePort("core", secondPorts)).toBe(11001);
     });
   });
 
