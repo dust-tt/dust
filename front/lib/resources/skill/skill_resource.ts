@@ -264,14 +264,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     // Check if user has access to skill requested spaces
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      uniq(customSkills.flatMap((c) => c.requestedSpaceIds))
+    const uniqueRequestedSpaceIds = uniq(
+      customSkills.flatMap((c) => c.requestedSpaceIds)
     );
+    const spaces =
+      uniqueRequestedSpaceIds.length > 0
+        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds)
+        : [];
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
 
     const validCustomSkills = customSkills.filter((skill) =>
+      // Parse as Number since Sequelize array of BigInts are returned as strings.
       skill.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
     );
 
