@@ -11,8 +11,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { useCreateSpace } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { useUser } from "@app/lib/swr/user";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface CreateProjectModalProps {
   isOpen: boolean;

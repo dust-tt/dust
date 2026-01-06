@@ -52,6 +52,7 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -61,7 +62,6 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
