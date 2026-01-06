@@ -415,9 +415,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     sId: string
   ): Promise<SkillResource | null> {
-    const [skill] = await this.fetchByIds(auth, [sId]);
+    const result = await this.fetchByIds(auth, [sId]);
 
-    return skill;
+    return result.at(0) ?? null;
   }
 
   static async fetchByIds(
