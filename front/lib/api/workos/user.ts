@@ -99,6 +99,7 @@ export async function _getRefreshedCookie(
       },
       {
         password: config.getWorkOSCookiePassword(),
+        ttl: 0,
       }
     );
     return sealedCookie;
