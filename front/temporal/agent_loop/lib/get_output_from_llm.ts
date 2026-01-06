@@ -50,8 +50,7 @@ async function* withPeriodicHeartbeat<T>(
 
     if (streamResult.done) {
       streamExhausted = true;
-      yield streamResult.value;
-      continue;
+      break;
     }
 
     yield streamResult.value;
