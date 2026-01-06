@@ -36,6 +36,7 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
         );
 
   return (
+    // TODO(2026-01-02 SKILL): Add support truncate + elipsis if title is too long.
     <AttachmentChip
       label={title}
       icon={{ visual: icon }}

@@ -1,4 +1,4 @@
-import { BookOpenIcon } from "@dust-tt/sparkle";
+import { AttachmentIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
@@ -21,7 +21,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
     id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
     description: "Use company knowledge for context",
-    icon: BookOpenIcon,
+    icon: AttachmentIcon,
     label: "Add knowledge",
   },
 ];
