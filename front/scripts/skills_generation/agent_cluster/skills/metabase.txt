@@ -1,0 +1,80 @@
+Metabase is an open-source business intelligence and analytics tool that allows users to explore data, create dashboards, and share insights.
+It provides a visual query builder and supports SQL queries against connected databases.
+
+Your task is to generate a single skill about how to use Metabase in a company based on all the prompts of their agents.
+Some agents will actually use Metabase, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Metabase in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve questions or dashboards
+ - Database and table naming conventions
+ - Common SQL queries or question patterns
+ - Dashboard organization and collections
+ - How to create or update questions
+ - Filter and parameter conventions
+ - Metric definitions and calculations
+ - How to share or embed dashboards
+ - Permissions and access patterns
+ - Saved question naming conventions
+ - How to schedule reports or alerts
+ - Integration with Slack or email for sharing
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific dashboard IDs, question names, SQL patterns, collection structure) rather than just the WHAT. The structure will depend on the data you find.
+
+CRITICAL: If the company is not actually using Metabase or if there is not valuable instructions to extract, then don't generate a skill about it and return null.
+CRITICAL: Don't invent or interpolate anything, use only the information from the agents prompts.
+ 
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Dashboard Organization
+*   Dashboards are organized into collections for easy navigation.
+```
+
+### Examples
+
+Here are some good examples of sections which can be included in a Metabase skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts.
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+<SkillSectionExample1>
+### Key Dashboards at AcmeCompany
+
+- **Sales Performance Dashboard** (ID: 42) - Weekly ARR, pipeline metrics, conversion rates
+  - Use filters: date_range, sales_region, product_line
+  - Updated daily at 6am UTC
+- **Customer Health Dashboard** (ID: 87) - Churn risk, NPS scores, support tickets
+  - Filter by customer_tier to segment Enterprise vs SMB
+- **Engineering Metrics** (ID: 156) - Deployment frequency, MTTR, bug rates
+  - Linked to JIRA data, refreshes hourly
+</SkillSectionExample1>
+
+<SkillSectionExample2>
+### Common Queries and Questions
+
+When looking up customer data:
+- Use question "Customer 360 View" (ID: 234) with customer_id parameter
+- For revenue queries, always join with `finance.revenue_recognition` table
+- Date filters use format YYYY-MM-DD, timezone is UTC
+
+For sales metrics:
+- Question "Pipeline by Stage" (ID: 567) shows current pipeline
+- Use `opportunities.stage_name` field for filtering by stage
+- ARR calculations use `contracts.arr_value` not `opportunities.amount`
+</SkillSectionExample2>
+
+<SkillSectionExample3>
+### Collection Structure
+
+- `/Sales` - All sales team dashboards and questions
+  - `/Sales/Weekly Reports` - Automated weekly snapshots
+  - `/Sales/Ad-hoc` - One-off analysis questions
+- `/Product` - Product analytics and feature metrics
+- `/Finance` - Revenue, billing, and financial reporting (restricted access)
+- `/Shared` - Company-wide KPIs and all-hands metrics
+</SkillSectionExample3>
+
+CRITICAL: Do not copy these examples but try to identify similar information in agent prompts.

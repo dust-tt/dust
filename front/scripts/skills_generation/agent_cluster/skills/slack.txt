@@ -1,0 +1,25 @@
+Slack is a business communication platform that enables team messaging, file sharing, and integrations with other tools.
+It organizes conversations into channels and supports direct messages, threads, and various notification features.
+
+Your task is to generate a single skill about how to use Slack in a company based on all the prompts of their agents.
+Some agents will actually use Slack, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Slack in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for messages and conversations
+ - Which channels to use for specific types of communication
+ - Message formatting and tone guidelines
+ - How to use threads vs channel messages
+ - Notification and mention etiquette
+ - How to post updates or announcements
+ - Integration with bots and workflows
+ - How to retrieve context from Slack conversations
+ - Best practices for cross-posting or linking to Slack threads
+ - Channel naming conventions
+ - How to handle sensitive information in Slack
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+CRITICAL: Don't invent or interpolate anything, use only the information from the agents prompts.

@@ -1,0 +1,249 @@
+GitHub is a web-based platform for hosting and managing code using Git version control.
+It helps developers collaborate, track changes, and share software projects.
+
+Your task is to generate a single skill about how to use Github in a company based on all the prompts of their agents.
+Some agents will actually use github, some are not.
+Read all the prompt of all the agents and extract relevant information related to interacting with github in this company
+
+Information that fit inside a skill can be about:
+ - repository names to use
+ - best practice when writing tickets, including examples of tickets
+ - where to find code guidelines
+ - who to assign to tickets or PR
+ - how to determine what tags to put on tickets
+ - how to do PR reviews...
+
+This is not an exhaustive list and not all companies will have all these 
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+CRITICAL: If the company is not actually using Github or if there is not valuable instructions to extract, then don't generate a skill about it and return null.
+
+### Examples
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+**Repository Naming Conventions:**
+*   There is no explicit repository naming convention mentioned.
+```
+
+
+#### Full example
+
+Here is the full example for a github skill in an other company.
+Every instructions is super specific to the other company so it should be copy/pasted as is, but use as a base example of what is a desired format.
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+<SkillExample>
+**Repositories:**
+*   Main code repository: https://github.com/dust-tt/dust (public)
+*   Tasks tracking: https://github.com/dust-tt/tasks (private)
+*   Decisions: https://github.com/dust-tt/decisions (private)
+
+**Creating Eng Runner Cards:**
+*   Eng Runner cards are GitHub issues in the `tasks` repository of the `dust-tt` organization.
+*   Use the `github___create_issue` tool to create a card.
+*   Replicate the context available without trying to give an explanation for the problem at stake.
+*   In the body of the issue, write natural language lists of a few comma separated items instead of numbered or bullet-pointed lists.
+*   Mention in the issue's body the name of the user who requested it (without using a @ mention).
+*   If invoked from Slack, include in the issue's body the URL of the slack thread.
+*   Eng runner card descriptions need to be very concise and straight to the point, and must absolutely not be condescending.
+*   Eng runner card must be informative and contain all the context useful to their resolution.
+*   Example:
+    ```
+    TITLE: [${project or product name if applicable}] ${short description of the task}
+    BODY:
+    From: ${user email or username if available}
+    Context: ${URL to any context available, eg a slack thread or other document}
+    ${content}
+    ```
+
+**Writing a conclusion for an issue:**
+*   Title of the page is always:
+    ```
+    # Proposed Conclusion
+    ```
+*   Output in markdown for GitHub in a codeblock.
+
+**Formatting for GitHub:**
+*   When asked to change to markdown format for GitHub, output it in a codeblock.
+*   When asked to draft a roadmap card, use available context to fill in the different sections. Be very concise and factual. Output in Markdown format for Notion in a codeblock. If external links are mentioned, you can browse them to get additional context. As much as possible, keep links to original context.
+*   The format of a roadmap card is:
+    ```
+    # Motivation & Context
+    ## User feedback
+    # Scope
+    ## Out of scope
+    # Fake announcements blog posts
+    # Use cases
+    ```
+
+**Pull Request Reviews:**
+*   When reviewing a pull request, start by retrieving the coding rules for both our `front` component (our main app, nextJS stack, typescript) and `core` component (internal service written in Rust).
+*   Analyze the diff for elements that might not follow coding rules.
+*   If you find elements that do not comply with coding rules, create a pull request review (COMMENT) with line comments.
+*   For each instance, comment with the coding rule name and title along with a concise explanation of why a change is required (which can be skipped if obvious from the coding rule itself).
+*   If the coding rule violation can be fixed with a one-liner change use GitHub Suggestion Blocks to makes it one-click for the author to apply.
+*   Example line comment:
+    ```
+    **[{rule_id}]** _{name of the rule}_
+    Extremely concise reason why the rule is broken. Extremely concise remediation proposal.
+    ```
+*   If you don't find any violation of coding rules, create a review (COMMENT) saying `Coding Rules LGTM \o/`
+*   Pay attention to the diff markers:
+    *   Lines start with a number between square brackets such as `[10]` for instance. Following this number there can be a - or a +.
+    *   Lines prefixed with - are being REMOVED from the codebase.
+    *   Lines prefixed with + are being ADDED to the codebase.
+*   Do not flag issues on removed lines (-).
+*   Focus your review on the new code being introduced, not the old code being deleted.
+
+**Mermaid Diagrams**
+*   Here is an example for a simple flow chart in GitHub:
+    ```
+    mermaid
+    graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+    ```
+
+**Accessing Pull Request Diffs:**
+*   When provided with a Github PullRequest URL on the dust-tt/dust repo, use the web browsing tool to read the PR description and the PR diff by navigating to `${PULL_REQUEST_URI}.diff`
+</SkillExample>
+
+Here is another example, in yet anoher company.
+Again every instruction is specific to the other company and should not be copied.
+
+<SkillExample2>
+**Repository Conventions:**
+*   The primary repositories are under the `persona-id` organization. Examples include:
+    *   `persona-id/persona-web` (often referred to as 'web' when discussing code)
+    *   `persona-id/persona-infrastructure`
+    *   `persona-id/persona-kubernetes`
+    *   `persona-id/design-tokens`
+    *   `persona-id/persona-ios`
+    *   `persona-id/persona-android`
+    *   `persona-id/persona-react-native`
+*   Customer-facing repositories under the `persona-id` org should be queried for changelogs (web, api, flows, cases, records, documents, verifications, digital-id, mobile SDKs, platform, integrations, etc.)
+
+**Issue and Pull Request Conventions:**
+*   When creating feature requests, use Jira and follow the specified template:
+    *   Title: `[Customer] Feature Request Name` (e.g., `[Acme Corp] Add color customization for icons in Document Home module`)
+    *   Populate all required fields, including:
+        *   Ticket Owner: Requestor’s name and relevant team members
+        *   Who is this request for?: Internal use-case OR customer/prospect
+        *   Customer(s): Names of customers requesting this feature
+        *   Customer Tier: Tier or “Prospect”
+        *   Need: Urgency scale (0-3)
+        *   Product Team(s): Select correct product team (filter by pod)
+    *   Assign the `FR – Eng Owner` by identifying the most recent engineer who worked on the relevant code in GitHub.
+*   For changelog generation, PR titles should start with specific keywords:
+    *   `feat:`
+    *   `add:`
+    *   `enable:`
+    *   `activate:`
+    *   `expose:`
+    *   `support:`
+    *   `introduce:`
+
+**Code Contribution Workflow:**
+*   All infrastructure changes should be made via Terraform authored in the `persona-id/persona-infrastructure` repository.
+*   Use the Atlantis workflow for planning and applying changes via pull request to GitHub.
+*   Do not use the Google Cloud Console, Google Cloud APIs, or the CLI to make infrastructure changes.
+
+**Changelog Generation:**
+*   Use GitHub PRs as the primary source of truth for shipped features.
+*   A feature is considered "shipped" when its PR merges into the main branch and represents a complete, coherent improvement or addition to the product.
+*   Exclude PRs that are refactors, cleanup, dependency bumps, internal-only scaffolding, cosmetic UI-only changes, or test-only changes.
+*   Assign one or more teams from the canonical list.
+*   Use the following format for changelog entries:
+```
+# Changelog Version
+## <Feature Name>
+Launched: <merge date or date range>
+Teams: <team(s)>
+Type: Feature
+**What's New:**
+• Description of the functionality completed by the merged PR(s)
+**Why it Matters:**
+• Customer, business, or platform impact
+**How to Access:**
+• How to enable or request usage
+• Use [at]{username} internally
+• If unclear: “Standard availability; no special configuration required.”
+```
+</SkillExample2>
+
+Another example:
+
+<SkillExample3>
+**Repositories:**
+*   `company-creation-de`: DE, IT, ES CC + capital increase
+*   `qonto-api`: Post contract signed logic + FR CC + capital increase
+*   `partner-register`: Partner onboarding
+*   `qonto-register`: Generic user onboarding
+*   `avatars`: Avatars and AI logo generation
+*   `tf-github-repositories`: Used to manage GitHub repositories in the qonto-private and qonto-pci organizations using Terraform-based YAML configurations.
+
+**Accessing Code:**
+*   Use semantic search on the GitHub data source to find code snippets with context.
+*   Do not browse GitHub URLs or read files directly.
+
+**Creating Repositories:**
+*   Create a new YAML file in the appropriate team folder under `repositories/` in the `tf-github-repositories` repository.
+*   Name the file `<repository-name>.yaml`.
+*   Add the repository configuration to the YAML file:
+
+```yaml
+name: <repository-name>
+tf_id: <repository-name>  # Terraform identifier - never change this
+description: <repository-description>
+
+# Grant your team access
+teams_access:
+  - team_name: <your-team-name>  # Replace with your team name
+    permission: push  # Options: pull, triage, push, maintain, admin
+
+# Or grant yourself individual access
+users_access:
+  - username: <your-username_qonto>  # Your GitHub username
+    permission: push  # Options: pull, triage, push, maintain, admin
+```
+
+**Managing Repository Access:**
+*   Edit the YAML configuration file for the repository.
+*   Add or modify the `teams_access` or `users_access` sections.
+*   Team access is generally preferred over individual user access.
+
+```yaml
+teams_access:
+    team_name: <your-team-name>
+    permission: push # Options: pull, triage, push, maintain, admin
+```
+
+```yaml
+users_access:
+    username: <your-username_qonto>
+    permission: push # Options: pull, triage, push, maintain, admin
+```
+
+**YAML Configuration:**
+*   Use YAML configuration files to manage GitHub repositories.
+*   The configuration files are located in the `tf-github-repositories` repository.
+*   The schema for the YAML files is defined in `json.schema`.
+
+**Pull Requests:**
+*   Commit changes to the YAML configuration files and open a pull request.
+*   Get the pull request reviewed by anyone on your team.
+*   No special approval is required.
+*   Once the pull request is merged, the changes will be automatically provisioned.
+
+**Accessing Repositories:**
+*   To grant yourself access to a repository:
+    1.  Find and edit the configuration file for the repository.
+    2.  Add your team or yourself to the `teams_access` or `users_access` section.
+    3.  Commit and open a pull request.
+    4.  Once merged, your access will be automatically provisioned.
+</SkillExample3>

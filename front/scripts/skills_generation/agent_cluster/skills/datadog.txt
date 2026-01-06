@@ -1,0 +1,141 @@
+Datadog is a monitoring and observability platform for cloud-scale applications.
+It provides infrastructure monitoring, APM (Application Performance Monitoring), log management, and alerting.
+
+Your task is to generate a single skill about how to use Datadog in a company based on all the prompts of their agents.
+Some agents will actually use Datadog, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Datadog in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and query logs
+ - Dashboard navigation and key dashboards to use
+ - Alert and monitor conventions
+ - How to investigate incidents using Datadog
+ - APM trace analysis and service dependencies
+ - Metric queries and aggregations
+ - Tag conventions and filtering patterns
+ - How to correlate logs, metrics, and traces
+ - Service catalog and ownership information
+ - SLO/SLI definitions and tracking
+ - Integration with incident management workflows
+ - How to create or update monitors
+ - Log parsing and facet conventions
+ - Common queries for troubleshooting specific services
+ - On-call and escalation context from Datadog
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Dashboards and Navigation
+*   Familiarize yourself with key Datadog dashboards to gain insights into system performance and identify potential issues.
+```
+
+### Examples
+
+Here are some good examples of sections which can be included in a Datadog skill.
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+This example shows how to use fictive service specific filters in a fictive AcmeCompany:
+<SkillSectionExample1>
+### Service-Specific Log Filters at AcmeCompany
+
+When investigating issues, use these service-specific filters:
+- `service:api-gateway` - Main API service
+- `service:worker` - Background job processor
+- `service:connectors` - Third-party integration service
+- `@dd.env:prod` - Production environment only
+- `status:error` - Error-level logs only
+
+Example queries:
+- `"API error" service:api-gateway @dd.env:prod`
+- `"Activity failed" OR "Unhandled error" @dd.service:worker`
+- `@workspaceId:<workspace_id> status:error` - Isolate workspace-specific issues
+</SkillSectionExample1>
+
+<SkillSectionExample2>
+### Incident Investigation Workflow
+
+1. **Initial Triage**
+   - Search for error patterns using `get_logs` with relevant keywords
+   - Filter by timeframe around incident window (start with ±15 minutes)
+   - Use structured fields (`@error.kind`, `@http.status_code`) over free text
+
+2. **Correlation**
+   - Check for recent deployments: `event_type:deployment`
+   - Review triggered alerts during incident window
+   - Compare metrics before/after: error rates, latency p95/p99
+
+3. **Root Cause Analysis**
+   - Use `get_trace` with `trace_id` for full request flow
+   - Check downstream dependencies: DB, cache, external APIs
+   - Verify infrastructure: CPU, memory, load balancer health
+
+4. **Criticality Assessment**
+   - P0: Production down, major customer impact (< 1h response)
+   - P1: Significant feature broken (< 4h response)
+   - P2: Important but workaround available (< 24h response)
+   - P3: Low impact, minimal urgency
+</SkillSectionExample2>
+
+<SkillSectionExample3>
+### Key Datadog Fields and Tags
+
+Custom fields used for filtering:
+- `@workspaceId` / `@tenantId` - Customer/workspace identifier
+- `@dd.service` - Service name
+- `@dd.env` - Environment (prod, staging, dev)
+- `@route` - API endpoint path
+- `@statusCode` - HTTP response code
+- `@error.kind` - Error type classification
+- `@attempt` - Retry attempt number (for background jobs)
+
+Common metric patterns:
+- Error rates: `sum:trace.*.errors{service:api}.as_count()`
+- Latency: `avg:trace.servlet.request.duration{service:api}`
+- Resource usage: `avg:system.cpu.user{service:worker}`
+</SkillSectionExample3>
+
+<SkillSectionExample4>
+### Log Query Best Practices
+
+1. Start broad, narrow iteratively:
+   `service:api` → `service:api status:error` → `service:api status:error @error.kind:Timeout`
+
+2. Use appropriate time windows:
+   - Quick check: 15-30 minutes
+   - Pattern analysis: 1-6 hours
+   - Trend analysis: 24h-7d
+
+3. Combine filters logically:
+   `service:api @http.status_code:>=500 @route:"/api/v1/users/*"`
+
+4. For volume estimation (no native aggregation):
+   - Sample counts across multiple windows
+   - Use derived metrics: `sum:error.count{service:X}.as_count()`
+</SkillSectionExample4>
+
+<SkillSectionExample5>
+### Alert and Monitor Conventions
+
+Monitor naming convention: `[Service] - [Metric Type] - [Condition]`
+Examples:
+- `[API] - Error Rate - Above 5%`
+- `[Worker] - Queue Depth - Above 1000`
+- `[DB] - Connection Pool - Exhausted`
+
+Alert escalation:
+- Warning: Slack channel #alerts-warning
+- Critical: PagerDuty on-call rotation
+- P0: Incident commander paged, war room opened
+
+Standard thresholds:
+- Error rate warning: > 1%, critical: > 5%
+- Latency p99 warning: > 500ms, critical: > 2s
+- CPU usage warning: > 70%, critical: > 90%
+</SkillSectionExample5>
+
+CRITICAL: Do not copy these examples but try to identify similar information in agent prompts.
+ALWAYS GENERATE SKILL CONTENT BASED ON PROMPTS CONTENT.

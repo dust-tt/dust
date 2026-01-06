@@ -1,0 +1,163 @@
+BigQuery is Google Cloud's fully managed, serverless data warehouse that enables scalable analysis over large datasets.
+It allows companies to run SQL queries, build data pipelines, and perform analytics at scale.
+
+Your task is to generate a single skill about how to use BigQuery in a company based on all the prompts of their agents.
+Some agents will actually use BigQuery, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with BigQuery in this company.
+
+Information that fits inside a skill can be about:
+ - Project, dataset, and table naming conventions
+ - Key tables and views to query
+ - Common SQL patterns and query templates
+ - Data models and relationships between tables
+ - Performance optimization tips (partitioning, clustering, query structure)
+ - How to handle date ranges, time zones, and timestamps
+ - Metric definitions and calculations
+ - Cost management and query optimization best practices
+ - How to join different data sources and datasets
+ - Error handling and data quality checks
+ - Dashboard and reporting query patterns
+ - Scheduled queries and materialized views
+ - Access patterns and IAM roles
+ - Integration with other GCP services (Data Studio, Looker, Cloud Functions)
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+### Key Tables and Views
+*   Specific tables and views will vary depending on the use case. Refer to the data model documentation for details on available datasets and tables.
+```
+
+### Examples
+
+Here are some good examples of sections which can be included in a BigQuery skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts.
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+<SkillSectionExample1>
+### Table and Schema Conventions at AcmeCompany
+
+When writing SQL queries:
+- Always prefix tables with the dataset name: `analytics.dim_customers`, `raw.events`
+- Use `pg_merged` prefix for replicated Postgres tables: `pg_merged.organization`
+- For production analytics, prefer `analytics.dim_*` tables over raw tables as they filter out test data
+
+Key datasets:
+- `raw.*` - Raw ingested data, unprocessed
+- `staging.*` - Cleaned and validated data
+- `analytics.*` - Business-ready dimension and fact tables
+- `exports.*` - Tables optimized for external reporting tools
+</SkillSectionExample1>
+
+<SkillSectionExample2>
+### Key Tables and Their Relationships
+
+Customer data tables:
+- `analytics.dim_organization` - Master customer table (filters out test/demo orgs)
+- `analytics.dim_users` - User accounts, join to org via `org_id`
+- `analytics.fact_subscriptions` - Subscription history with `start_date`, `end_date`
+
+Important join patterns:
+```sql
+-- Users don't have direct org_id, use org_access table
+SELECT u.*, o.name as org_name
+FROM pg_merged.users u
+JOIN pg_merged.org_access oa ON u.id = oa.user_id
+JOIN analytics.dim_organization o ON oa.org_id = o.id
+
+-- For single-org users, can use primary_login_org_id directly
+SELECT * FROM pg_merged.users WHERE primary_login_org_id = 'xxx'
+```
+
+Soft-delete handling:
+- Many tables have `deleted_at` column - exclude unless specifically requested
+- Some tables use `record_end_at` instead of `deleted_at`
+</SkillSectionExample2>
+
+<SkillSectionExample3>
+### Common Query Patterns
+
+**Filtering out test/demo data:**
+```sql
+-- Demo orgs are marked with specific flags
+SELECT * FROM analytics.dim_organization
+WHERE demo_org = FALSE
+  AND test_org = FALSE
+  AND staging_org = FALSE
+  AND is_root = FALSE
+```
+
+**Date interval overlap check (exclusive-end dates):**
+```sql
+-- Check if two date ranges overlap
+WHERE NOT(first_end <= second_start OR first_start >= second_end)
+```
+
+**Type casting (BigQuery syntax):**
+```sql
+-- Use CAST, not :: operator
+CAST(value AS STRING)  -- correct
+value::STRING          -- incorrect in BigQuery
+```
+
+**Query best practices:**
+- Always add `LIMIT` clause for exploration queries: `LIMIT 200`
+- Start with `SELECT COUNT(*)` to verify table access before complex queries
+- Test column names individually when debugging: `SELECT DISTINCT column_name FROM table LIMIT 10`
+</SkillSectionExample3>
+
+<SkillSectionExample4>
+### Metric Definitions and Calculations
+
+Standard metrics at AcmeCompany:
+- **ARR**: `SUM(subscription_value * 12)` from monthly contracts
+- **Churn Rate**: `COUNT(churned_customers) / COUNT(total_customers_start_of_period)`
+- **NRR**: `(Starting_MRR + Expansion - Contraction - Churn) / Starting_MRR`
+
+Date handling conventions:
+- All dates stored in UTC
+- Use `DATE_TRUNC('month', date_column)` for monthly aggregations
+- Fiscal year starts April 1st: `EXTRACT(YEAR FROM date_column - INTERVAL 3 MONTH)`
+
+Common aggregation patterns:
+```sql
+-- Monthly active users with cohort
+SELECT
+  DATE_TRUNC('month', activity_date) as month,
+  DATE_TRUNC('month', signup_date) as cohort,
+  COUNT(DISTINCT user_id) as mau
+FROM analytics.fact_user_activity
+GROUP BY 1, 2
+ORDER BY 1, 2
+```
+</SkillSectionExample4>
+
+<SkillSectionExample5>
+### Performance and Cost Optimization
+
+Query optimization rules:
+- Always filter on partitioned columns first (usually `_PARTITIONDATE` or `created_at`)
+- Use `SELECT specific_columns` not `SELECT *` to reduce bytes scanned
+- Put most restrictive filters early in WHERE clause
+- Use approximate functions for large datasets: `APPROX_COUNT_DISTINCT()` instead of `COUNT(DISTINCT)`
+
+Partition patterns:
+```sql
+-- Filter on partition to reduce cost
+WHERE _PARTITIONDATE BETWEEN '2024-01-01' AND '2024-01-31'
+
+-- For tables partitioned by created_at
+WHERE created_at >= TIMESTAMP('2024-01-01')
+  AND created_at < TIMESTAMP('2024-02-01')
+```
+
+Cost estimation:
+- Before running large queries, use `--dry_run` flag to estimate bytes processed
+- Target < 10GB for interactive queries, schedule larger queries during off-peak
+</SkillSectionExample5>
+
+CRITICAL: Do not copy these examples but try to identify similar information in agent prompts.

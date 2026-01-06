@@ -1,0 +1,78 @@
+Figma is a collaborative design platform used for UI/UX design, prototyping, and design systems.
+It organizes work into files, pages, frames, and components with real-time collaboration features.
+
+Your task is to generate a single skill about how to use Figma in a company based on all the prompts of their agents.
+Some agents will actually use Figma, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Figma in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve design files or components
+ - Project and file organization conventions
+ - Design system and component library usage
+ - How to link designs to documentation or tickets
+ - Naming conventions for files, pages, and frames
+ - Version history and branching practices
+ - How to extract design specs or assets
+ - Handoff process between design and engineering
+ - Comment and feedback workflows
+ - Prototype and presentation sharing
+ - Integration with other tools (Jira, Notion, Slack)
+ - Design token and style conventions
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific file URLs, project names, component libraries, handoff processes) rather than just the WHAT. The structure will depend on the data you find.
+
+CRITICAL: If the company is not actually using Figma or if there is not valuable instructions to extract, then don't generate a skill about it and return null.
+
+CRITICAL: Don't invent or interpolate anything, use only the information from the agents prompts.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Design System
+*   Use the company's design system components for consistency.
+```
+
+### Examples
+
+Here are some good examples of sections which can be included in a Figma skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts.
+
+<SkillSectionExample1>
+### Project Structure at AcmeCompany
+
+- **Product Design** - All production feature designs
+  - Naming: `[Feature Name] - [Version]` (e.g., "Checkout Flow - v2.3")
+  - Each file has pages: Exploration, Final Design, Handoff, Archive
+- **Design System** - Component library and foundations
+  - File: "Acme Design System" (link: figma.com/file/abc123)
+  - Contains: Colors, Typography, Icons, Components, Patterns
+- **Marketing** - Campaign assets and brand materials
+- **Archive** - Deprecated designs, moved after 6 months of inactivity
+</SkillSectionExample1>
+
+<SkillSectionExample2>
+### Design-to-Engineering Handoff
+
+When preparing designs for development:
+1. Move final designs to the "Handoff" page in the file
+2. Add dev mode annotations for spacing, interactions, and states
+3. Link the Figma frame URL in the JIRA ticket's "Design Link" field
+4. Tag the assigned engineer in a Figma comment with handoff notes
+5. Export assets to the shared Google Drive folder `/Design Assets/[Feature]/`
+6. Update the feature spec in Confluence with embedded Figma preview
+</SkillSectionExample2>
+
+<SkillSectionExample3>
+### Component Library Usage
+
+When creating new designs:
+- Always pull components from "Acme Design System" library (Team Library > Acme Design System)
+- Button variants: Primary, Secondary, Tertiary, Destructive, Ghost
+- Never detach components - use overrides for customization
+- If a new component is needed, add to "Component Requests" page in Design System file
+- Color tokens: Use semantic colors (surface/primary, text/secondary) not raw hex values
+</SkillSectionExample3>
+
+CRITICAL: Do not copy these examples but try to identify similar information in agent prompts.

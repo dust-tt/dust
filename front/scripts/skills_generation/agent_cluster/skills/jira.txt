@@ -1,0 +1,106 @@
+Jira is Atlassian's project management and issue tracking platform widely used by software development teams.
+It manages issues, bugs, tasks, epics, sprints, and workflows throughout the software development lifecycle.
+
+Your task is to generate a single skill about how to use Jira in a company based on all the prompts of their agents.
+Some agents will actually use Jira, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Jira in this company.
+
+Information that fits inside a skill can be about:
+ - Project keys and naming conventions
+ - Issue types used (bugs, tasks, stories, epics, subtasks)
+ - How to search for issues using JQL (Jira Query Language)
+ - Workflow states and transitions
+ - How to create, update, or comment on issues
+ - Sprint and board conventions
+ - Priority and severity definitions
+ - Label and component usage
+ - How to link related issues
+ - Assignment rules and team ownership
+ - Custom fields used by the company
+ - Integration with development tools (GitHub, Bitbucket, CI/CD)
+ - How to handle bug reports or feature requests
+ - Release and version tracking
+ - Estimation and story point conventions
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific JQL queries, project keys, workflow states, field names) rather than just the WHAT. The structure will depend on the data you find.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Custom Fields
+*   Familiarize yourself with custom fields used by the company.
+```
+
+### Examples
+
+Here are some good examples of sections which can be included in a JiraTicketCreation skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts. 
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON AGENT'S PROMPT CONTENT.
+
+This example section is useful because it defines the priority levels
+<SkillSectionExample1>
+### Priority Levels (Response Time SLA for Google engineers)
+
+* P0 - Critical → Immediate response, production down or major customer impact
+        Response: < 1 hour, Resolution target: < 4 hours
+        Auto-assigns to on-call engineer, triggers PagerDuty alert
+* P1 - High → Urgent, significant feature broken or multiple customers affected
+        Response: < 4 hours, Resolution target: < 24 hours
+        Must be addressed in current sprint
+* P2 - Medium → Important but not urgent, workaround available
+        Response: < 1 day, Resolution target: Next sprint
+        Default priority for most stories and tasks
+ * P3 - Low → Nice to have, minimal impact
+        Response: < 1 week, Resolution target: Backlog prioritization
+        Can be deferred for capacity planning
+</SkillSectionExample1>
+
+This example describe what are the projects to help the agent interact with Jira in general
+<SkillSectionExample2>
+## Projects Structure at AcmeCompany
+
+    ENG - Engineering Project
+        Primary project for all engineering work including features, bugs, and technical debt.
+        Issue types: Story, Bug, Task, Epic, Spike
+        Custom fields: Story Points, Sprint, Team, Affected Services, Root Cause Category
+    SUPPORT - Customer Support Project
+        Tracks customer-reported issues and support requests.
+        Issue types: Support Request, Bug, Incident
+        Custom fields: Customer ID, Severity Level, SLA Due Date, Support Tier, Customer Segment
+    TECH-DEBT - Technical Debt Registry
+        Centralized tracking of technical debt items across all services.
+        Issue types: Tech Debt, Refactoring, Security Vulnerability
+        Custom fields: Debt Category, Impact Score, Estimated Effort, Affected Codebase, Business Risk
+<SkillSectionExample2>
+
+
+This helps the agent understand what labels to use
+</SkillSectionExample3>
+
+### Issues labels 
+
+All the created issues must be correctly labeled.
+
+#### Required Labels for Bug Issues
+ - Severity labels (pick one): severity-critical, severity-high, severity-medium, severity-low
+ - Environment labels: production, staging, development, customer-facing, internal-only
+ - Source labels: user-reported, monitoring-alert, security-scan, regression, discovered-in-qa
+
+#### Feature Development Labels
+ - Feature flags: feature-flag-required, feature-flag-enabled, feature-flag-removed
+ - Release tracking: release-blocker, release-candidate, hotfix-candidate
+ - Cross-team: backend-dependency, frontend-dependency, mobile-dependency, design-needed, legal-review (use this one carefully)
+</SkillSectionExample3>
+
+
+This example shows the process to handle an incident:
+<SkillSectionExample4>
+## Incident Detection and Response
+
+*   When multiple JIRA tickets arrive with similar issues:
+    *   Tag all related tickets with an appropriate label (e.g., `performance_outage`).
+    *   Set priority to `HIGH`.
+    *   Send a customer-first reply on JIRA: "Hi, thank you for reaching out! We've been investigating the issue. Updates at status.acme.com . We keep you posted. thank you for your patience"
+</SkillSectionExample4>

@@ -1,0 +1,24 @@
+Gong is a revenue intelligence platform that records, transcribes, and analyzes sales calls and meetings.
+It provides insights into customer conversations, deal health, and sales performance.
+
+Your task is to generate a single skill about how to use Gong in a company based on all the prompts of their agents.
+Some agents will actually use Gong, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Gong in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve call transcripts
+ - Extracting key information from call recordings (pain points, objections, next steps)
+ - How to filter calls by date, participant, account, or deal
+ - Best practices for summarizing call content
+ - How to identify action items and commitments from calls
+ - Integration with CRM (Salesforce, HubSpot) for deal context
+ - How to track competitor mentions or specific topics
+ - Deal intelligence and risk signals from conversations
+ - How to prepare for meetings using past call history
+ - Extracting quotes or specific moments from calls
+ - Coaching and call quality analysis patterns
+ - How to handle multiple calls for the same account/deal
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
