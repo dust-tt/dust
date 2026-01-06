@@ -217,5 +217,10 @@ async function generateConversationTitle(
     return new Ok(title);
   }
 
+  logger.error(
+    { arguments: res.value.actions?.[0]?.arguments },
+    "No title found in LLM response (log with response)"
+  );
+
   return new Err(new Error("No title found in LLM response"));
 }
