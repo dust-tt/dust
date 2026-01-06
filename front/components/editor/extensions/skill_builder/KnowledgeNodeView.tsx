@@ -362,7 +362,8 @@ function KnowledgeSearchComponent({
         className={cn(
           "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
           "text-gray-600 empty:before:text-gray-400",
-          "empty:before:content-[attr(data-placeholder)] focus:outline-none"
+          "empty:before:content-[attr(data-placeholder)] focus:outline-none",
+          "min-w-36 text-left"
         )}
         contentEditable
         suppressContentEditableWarning
@@ -371,10 +372,6 @@ function KnowledgeSearchComponent({
         onInput={handleInput}
         onBlur={handleBlur}
         data-placeholder="Search for knowledge..."
-        style={{
-          minWidth: searchQuery ? "auto" : "150px",
-          textAlign: "left",
-        }}
       />
 
       {isOpen && knowledgeItems.length > 0 && (
@@ -384,6 +381,7 @@ function KnowledgeSearchComponent({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-96"
+            align="start"
             avoidCollisions
             onInteractOutside={handleInteractOutside}
             onOpenAutoFocus={(e) => e.preventDefault()}
