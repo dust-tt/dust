@@ -1,28 +1,20 @@
 -- Seed script for dust-hive dev environment
--- This SQL file seeds a dev user, workspace, and associated resources
+-- This SQL file seeds a dev user, workspace, and associated resources.
 --
--- MAINTAINABILITY NOTES:
+-- SINGLE SOURCE OF TRUTH: This file is used by both:
+-- - dust-hive (x/henry/dust-hive) for seeding dev environments
+-- - front/lib/dev/dust_hive_seed_schema.test.ts for schema validation
+--
+-- MAINTAINABILITY:
 -- 1. Column names and table names match the Sequelize models exactly
--- 2. If schema drifts, this will fail with clear errors (missing column, wrong type)
--- 3. Run `psql -f seed.sql` after schema changes to validate compatibility
--- 4. All sIds are passed as parameters $1, $2, etc.
+-- 2. If schema drifts, the test will fail with clear errors
+-- 3. The test outputs a prompt for Claude Code to fix the drift
 --
--- Parameters (in order):
---   $1: user_sid
---   $2: workspace_sid
---   $3: subscription_sid
---   $4: email
---   $5: username
---   $6: name
---   $7: first_name
---   $8: last_name (nullable)
---   $9: workspace_name
---   $10: work_os_user_id (nullable)
---   $11: provider (nullable)
---   $12: provider_id (nullable)
---   $13: image_url (nullable)
---
--- Usage: Called via prepared statement from TypeScript
+-- PARAMETERS (using Sequelize replacements :paramName syntax):
+--   :userSid, :workspaceSid, :subscriptionSid
+--   :email, :username, :name, :firstName, :lastName
+--   :workspaceName
+--   :workOSUserId, :provider, :providerId, :imageUrl
 
 WITH
 -- Step 1: Upsert user
@@ -33,17 +25,17 @@ inserted_user AS (
     "isDustSuperUser", "lastLoginAt", "createdAt", "updatedAt"
   )
   VALUES (
-    $1,           -- user_sid
-    $5,           -- username
-    lower($4),    -- email
-    $6,           -- name
-    $7,           -- first_name
-    $8,           -- last_name
-    $10,          -- work_os_user_id
-    $11,          -- provider
-    $12,          -- provider_id
-    $13,          -- image_url
-    true,         -- isDustSuperUser
+    :userSid,
+    :username,
+    lower(:email),
+    :name,
+    :firstName,
+    :lastName,
+    :workOSUserId,
+    :provider,
+    :providerId,
+    :imageUrl,
+    true,
     NOW(),
     NOW(),
     NOW()
@@ -63,8 +55,8 @@ inserted_workspace AS (
     "workOSOrganizationId", metadata, "createdAt", "updatedAt"
   )
   VALUES (
-    $2,           -- workspace_sid
-    $9,           -- workspace_name
+    :workspaceSid,
+    :workspaceName,
     NULL,
     NULL,
     false,
@@ -160,7 +152,7 @@ inserted_subscription AS (
   )
   SELECT
     w.id,
-    $3,           -- subscription_sid
+    :subscriptionSid,
     'active',
     false,
     NULL,
@@ -179,5 +171,4 @@ inserted_subscription AS (
 -- Return summary
 SELECT
   (SELECT id FROM inserted_user) AS user_id,
-  (SELECT id FROM inserted_workspace) AS workspace_id,
-  $2 AS workspace_sid;
+  (SELECT id FROM inserted_workspace) AS workspace_id;

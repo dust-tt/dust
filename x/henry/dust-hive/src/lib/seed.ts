@@ -3,17 +3,13 @@
 // This replaces the slow TypeScript-based seed process with raw SQL.
 // The SQL is executed via psql for maximum speed (no Node runtime overhead for the DB work).
 //
-// MAINTAINABILITY:
-// - The seed.sql file uses exact column names from Sequelize models
-// - If schema changes, the SQL will fail with clear error messages
-// - The SQL can be validated by running it against a fresh DB
-// - This file only handles sId generation and parameter passing
-
-import { join } from "node:path";
+// SINGLE SOURCE OF TRUTH:
+// The SQL is defined in front/lib/dev/dust_hive_seed.sql
+// This file only handles sId generation and parameter passing.
 
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { DUST_HIVE_ROOT, SEED_USER_PATH, getEnvFilePath } from "./paths";
+import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
 
 // Generate a random 10-character alphanumeric ID
 // This is compatible with front's generateRandomModelSId() output format
@@ -102,8 +98,9 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   const subscriptionSid = generateRandomModelSId();
   const username = config.username ?? config.email.split("@")[0];
 
-  // Read the SQL file
-  const sqlPath = join(DUST_HIVE_ROOT, "seed.sql");
+  // Read the SQL file from front (single source of truth)
+  const worktreePath = getWorktreeDir(env.name);
+  const sqlPath = `${worktreePath}/front/lib/dev/dust_hive_seed.sql`;
   const sqlFile = Bun.file(sqlPath);
   if (!(await sqlFile.exists())) {
     logger.error(`SQL seed file not found at ${sqlPath}`);
@@ -117,22 +114,21 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
     return `'${s.replace(/'/g, "''")}'`;
   };
 
-  // Replace placeholders with actual values
-  // Using negative lookahead to avoid replacing $10 when replacing $1
+  // Replace Sequelize-style :paramName placeholders with actual values
   const finalSql = sql
-    .replace(/\$1(?!\d)/g, escapeSql(userSid))
-    .replace(/\$2(?!\d)/g, escapeSql(workspaceSid))
-    .replace(/\$3(?!\d)/g, escapeSql(subscriptionSid))
-    .replace(/\$4(?!\d)/g, escapeSql(config.email))
-    .replace(/\$5(?!\d)/g, escapeSql(username))
-    .replace(/\$6(?!\d)/g, escapeSql(config.name))
-    .replace(/\$7(?!\d)/g, escapeSql(config.firstName))
-    .replace(/\$8(?!\d)/g, escapeSql(config.lastName))
-    .replace(/\$9(?!\d)/g, escapeSql(config.workspaceName))
-    .replace(/\$10(?!\d)/g, escapeSql(config.workOSUserId))
-    .replace(/\$11(?!\d)/g, escapeSql(config.provider))
-    .replace(/\$12(?!\d)/g, escapeSql(config.providerId))
-    .replace(/\$13(?!\d)/g, escapeSql(config.imageUrl));
+    .replace(/:userSid/g, escapeSql(userSid))
+    .replace(/:workspaceSid/g, escapeSql(workspaceSid))
+    .replace(/:subscriptionSid/g, escapeSql(subscriptionSid))
+    .replace(/:email/g, escapeSql(config.email))
+    .replace(/:username/g, escapeSql(username))
+    .replace(/:name/g, escapeSql(config.name))
+    .replace(/:firstName/g, escapeSql(config.firstName))
+    .replace(/:lastName/g, escapeSql(config.lastName))
+    .replace(/:workspaceName/g, escapeSql(config.workspaceName))
+    .replace(/:workOSUserId/g, escapeSql(config.workOSUserId))
+    .replace(/:provider/g, escapeSql(config.provider))
+    .replace(/:providerId/g, escapeSql(config.providerId))
+    .replace(/:imageUrl/g, escapeSql(config.imageUrl));
 
   // Execute via psql
   const proc = Bun.spawn(["psql", dbUri, "-c", finalSql], {
