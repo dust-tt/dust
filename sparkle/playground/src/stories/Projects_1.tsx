@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  InboxIcon,
+  AtomIcon,
   Avatar,
   Button,
+  Card,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  ContactsRobotIcon,
+  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  SpaceOpenIcon,
+  InboxIcon,
+  ListSelectIcon,
+  LogoutIcon,
+  MagnifyingGlassIcon,
   MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -20,28 +30,18 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   PencilSquareIcon,
-  SpaceClosedIcon,
-  SearchInput,
-  StarStrokeIcon,
-  TrashIcon,
   PlusIcon,
-  DropdownMenuLabel,
-  ContactsUserIcon,
-  ContactsRobotIcon,
-  UserIcon,
-  Card,
-  MagnifyingGlassIcon,
-  DropdownMenuSeparator,
-  LogoutIcon,
-  Cog6ToothIcon,
-  ChatBubbleLeftRightIcon,
   ScrollArea,
-  AtomIcon,
   ScrollBar,
+  SearchInput,
+  SidebarLayout,
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
-  ListSelectIcon,
-  SidebarLayout,
+  SpaceClosedIcon,
+  SpaceOpenIcon,
+  StarStrokeIcon,
+  TrashIcon,
+  UserIcon,
   type SidebarLayoutRef,
 } from "@dust-tt/sparkle";
 import {
@@ -96,7 +96,7 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
 }
 
 function DustMain() {
-  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+  const [_activeTab, _setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");

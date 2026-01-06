@@ -155,6 +155,14 @@ export default [
     },
   },
 
+  // Allow require() in CommonJS config files
+  {
+    files: ["**/*.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+
   // Prettier config (must be last)
   eslintConfigPrettier,
 ];
