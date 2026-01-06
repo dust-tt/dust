@@ -122,9 +122,10 @@ When quadratic complexity cannot be avoided:
 
 ### [GEN8] Do not use console.log, console.error, etc. — always use the app logger
 
-Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console methods are
-prohibited in the codebase. Always use the application logger for all logging, debugging, and error reporting purposes.
-This ensures consistent log formatting, proper log routing, and easier log management across environments.
+Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console
+methods are prohibited in the codebase. Always use the application logger for all logging,
+debugging, and error reporting purposes.  This ensures consistent log formatting, proper log
+routing, and easier log management across environments.
 
 Example:
 
@@ -308,8 +309,10 @@ their interfaces. This pattern ensures consistency across the codebase and prope
 
 When extracting identifiers from resource objects into variables, follow this naming convention:
 
-- For the string identifier (`sId` field): use `<resourceName>Id` (e.g., `agentId`, `conversationId`)
-- For the numeric identifier (`id` field): use `<resourceName>ModelId` (e.g., `agentModelId`, `conversationModelId`)
+- For the string identifier (`sId` field): use `<resourceName>Id` (e.g., `agentId`,
+  `conversationId`)
+- For the numeric identifier (`id` field): use `<resourceName>ModelId` (e.g., `agentModelId`,
+  `conversationModelId`)
 
 Example:
 
@@ -349,7 +352,10 @@ class ConversationModel extends Model { }
 
 ### [BACK12] Endpoint backward compatibility
 
-When updating an existing endpoint and its expected payload, ensure backward compatibility with clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must be optional and accept `undefined` as a value even if the latest client code always sends a value.
+When updating an existing endpoint and its expected payload, ensure backward compatibility with
+clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must
+be optional and accept `undefined` as a value even if the latest client code always sends a value.
+
 This prevents breaking clients who are still running an older version.
 
 Example:
@@ -367,6 +373,32 @@ interface UpdateResourceBody {
   newField?: string;  // Optional, with server-side default if needed
 }
 ```
+
+### [BACK13] Foreign key must be indexed
+
+When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
+objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
+scans when deleting objects from table `A`. 
+
+```
+AgentMCPActionModel.belongsTo(AgentMessageModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
+});
+
+AgentMessageModel.hasMany(AgentMCPActionModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+// Must be accompanied above in the model definition by index:
+
+{
+  fields: ["agentMessageId"],
+  concurrently: true,
+}
+```
+
+
 
 ## MCP
 
