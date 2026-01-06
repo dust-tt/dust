@@ -129,7 +129,11 @@ export async function removeWorktree(repoRoot: string, worktreePath: string): Pr
 }
 
 // Check if a git worktree has uncommitted changes
-export async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
+// When ignoreUntracked is true, only checks staged/modified files (not untracked)
+export async function hasUncommittedChanges(
+  worktreePath: string,
+  options: { ignoreUntracked?: boolean } = {}
+): Promise<boolean> {
   const proc = Bun.spawn(["git", "status", "--porcelain"], {
     cwd: worktreePath,
     stdout: "pipe",
@@ -141,6 +145,16 @@ export async function hasUncommittedChanges(worktreePath: string): Promise<boole
   if (proc.exitCode !== 0) {
     throw new Error(`Failed to check git status: ${stderr.trim() || "unknown error"}`);
   }
+
+  if (options.ignoreUntracked) {
+    // Filter out untracked files (lines starting with ??)
+    const lines = output
+      .trim()
+      .split("\n")
+      .filter((line) => line && !line.startsWith("??"));
+    return lines.length > 0;
+  }
+
   return output.trim().length > 0;
 }
 

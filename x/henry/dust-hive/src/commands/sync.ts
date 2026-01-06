@@ -5,25 +5,12 @@ import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { runNpmInstall } from "../lib/setup";
-import { getCurrentBranch, getMainRepoPath, isWorktree } from "../lib/worktree";
-
-// Check if repo has uncommitted changes (ignores untracked files)
-async function hasUncommittedChanges(repoRoot: string): Promise<boolean> {
-  const proc = Bun.spawn(["git", "status", "--porcelain"], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
-
-  // Filter out untracked files (lines starting with ??)
-  const lines = output
-    .trim()
-    .split("\n")
-    .filter((line) => line && !line.startsWith("??"));
-  return lines.length > 0;
-}
+import {
+  getCurrentBranch,
+  getMainRepoPath,
+  hasUncommittedChanges,
+  isWorktree,
+} from "../lib/worktree";
 
 // Pull latest from origin (with rebase)
 async function gitPull(repoRoot: string): Promise<{ success: boolean; error?: string }> {
@@ -91,9 +78,9 @@ export async function syncCommand(): Promise<Result<void>> {
     );
   }
 
-  // Precondition: Must have clean working directory
+  // Precondition: Must have clean working directory (ignoring untracked files)
   logger.step("Checking for uncommitted changes...");
-  const hasChanges = await hasUncommittedChanges(repoRoot);
+  const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
   if (hasChanges) {
     return Err(
       new CommandError("Repository has uncommitted changes. Commit or stash them before syncing.")

@@ -5,6 +5,7 @@ import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
+import { downCommand } from "./commands/down";
 import { forwardCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
@@ -17,6 +18,13 @@ import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
 import { syncCommand } from "./commands/sync";
+import {
+  temporalRestartCommand,
+  temporalStartCommand,
+  temporalStatusCommand,
+  temporalStopCommand,
+} from "./commands/temporal";
+import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
@@ -132,17 +140,30 @@ cli
   });
 
 cli
-  .command("start [name]", "Resume stopped environment")
-  .alias("up")
+  .command("start [name]", "Resume stopped environment (start SDK watch)")
   .action(async (name: string | undefined) => {
     await prepareAndRun(startCommand(name));
   });
 
 cli
-  .command("stop [name]", "Full stop of all services")
+  .command("stop [name]", "Stop all services in environment")
   .alias("x")
   .action(async (name: string | undefined) => {
     await prepareAndRun(stopCommand(name));
+  });
+
+cli
+  .command("up", "Start managed services (temporal + main session)")
+  .option("-a, --attach", "Attach to main zellij session")
+  .action(async (options: { attach?: boolean }) => {
+    await prepareAndRun(upCommand({ attach: Boolean(options.attach) }));
+  });
+
+cli
+  .command("down", "Stop all dust-hive services")
+  .option("-f, --force", "Skip confirmation prompt")
+  .action(async (options: { force?: boolean }) => {
+    await prepareAndRun(downCommand({ force: Boolean(options.force) }));
   });
 
 cli
@@ -209,6 +230,23 @@ cli
 
 cli.command("sync", "Pull latest main, rebuild binaries, refresh deps").action(async () => {
   await prepareAndRun(syncCommand());
+});
+
+// Temporal subcommands
+cli.command("temporal start", "Start Temporal server").action(async () => {
+  await prepareAndRun(temporalStartCommand());
+});
+
+cli.command("temporal stop", "Stop Temporal server").action(async () => {
+  await prepareAndRun(temporalStopCommand());
+});
+
+cli.command("temporal restart", "Restart Temporal server").action(async () => {
+  await prepareAndRun(temporalRestartCommand());
+});
+
+cli.command("temporal status", "Show Temporal server status").action(async () => {
+  await prepareAndRun(temporalStatusCommand());
 });
 
 cli

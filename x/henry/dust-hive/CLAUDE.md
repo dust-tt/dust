@@ -55,15 +55,18 @@ src/
 │   ├── forward.ts     # OAuth port forwarding management
 │   ├── list.ts        # List environments
 │   ├── logs.ts        # View service logs
-│   ├── open.ts        # Attach to zellij session
+│   ├── open.ts        # Attach to zellij session (env + main)
 │   ├── reload.ts      # Kill and reopen zellij session
 │   ├── restart.ts     # Restart a single service
 │   ├── seed-config.ts # Extract user data from existing DB
 │   ├── spawn.ts       # Create environment
-│   ├── start.ts       # Resume stopped env
+│   ├── start.ts       # Resume stopped environment (SDK watch)
 │   ├── status.ts      # Show service health
-│   ├── stop.ts        # Full stop
+│   ├── stop.ts        # Stop all services in environment
 │   ├── sync.ts        # Pull main, rebuild binaries, refresh deps
+│   ├── temporal.ts    # Temporal server subcommands
+│   ├── up.ts          # Start managed services (temporal + main session)
+│   ├── down.ts        # Stop all envs, temporal, and zellij sessions
 │   ├── url.ts         # Print front URL
 │   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
@@ -92,7 +95,8 @@ src/
     ├── setup.ts       # Dependency installation
     ├── shell.ts       # Shell command builder
     ├── state.ts       # State detection (stopped/cold/warm)
-    ├── temporal.ts    # Temporal namespace config
+    ├── temporal.ts    # Temporal namespace config (per-env)
+    ├── temporal-server.ts # Temporal server management (global daemon)
     └── worktree.ts    # Git worktree operations
 
 tests/
@@ -123,17 +127,27 @@ tests/
 2. **Zellij is passive** - Only shows logs via `tail -F`, closing it doesn't stop services
 3. **Port isolation** - Base port 10000, +1000 per environment
 4. **Git worktrees** - Each env gets a new branch: `NAME-workspace`
-5. **Shared Temporal** - User runs `temporal server start-dev`, we create namespaces per env
+5. **Managed Temporal** - `dust-hive up` runs Temporal as a daemon, namespaces created per env
 
 ## Commands Reference
+
+### Managed Services (global)
+
+| Command | Description |
+|---------|-------------|
+| `up [-a]` | Start temporal + sync + create main session (from main repo, requires clean main branch) |
+| `down [-f]` | Stop all envs, temporal, and zellij sessions (requires confirmation or --force) |
+| `temporal start/stop/restart/status` | Direct temporal server control |
+
+### Environment Commands
 
 | Command | Description |
 |---------|-------------|
 | `spawn` | Create environment (worktree + symlinks + SDK watch); supports --warm, --no-attach, --wait |
 | `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
 | `cool` | Stop services, keep SDK watch |
-| `start` | Resume stopped env |
-| `stop` | Full stop |
+| `start [NAME]` | Resume stopped env (start SDK watch) |
+| `stop [NAME]` | Full stop of env (stop all services + docker) |
 | `destroy` | Remove environment |
 | `open` | Attach to zellij session |
 | `reload` | Kill and reopen zellij session |
