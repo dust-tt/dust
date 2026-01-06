@@ -317,7 +317,7 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
     expect(agentConfigurationModel).not.toBeNull();
     const openSpaceModelId = getResourceIdFromSId(openSpace.sId);
     expect(agentConfigurationModel?.requestedSpaceIds).toContain(
-      openSpaceModelId?.toString()
+      openSpaceModelId
     );
   });
 
