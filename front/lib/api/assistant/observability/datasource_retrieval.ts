@@ -115,6 +115,7 @@ export async function fetchDatasourceRetrievalMetrics(
     response.aggregations?.by_mcp_server_config?.buckets
   );
 
+  // Filtering out JIT MCP servers
   const configModelIds = Array.from(
     new Set(mcpServerConfigBuckets.map((b) => b.key))
   ).filter((id) => Number.isFinite(id) && id > 0);
@@ -146,7 +147,7 @@ export async function fetchDatasourceRetrievalMetrics(
   const serverConfigByModelId = new Map(
     serverConfigs.map((cfg) => [cfg.id, cfg])
   );
-  const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
+  const dataSourceById = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
   const data: DatasourceRetrievalData[] = mcpServerConfigBuckets.map(
     (mcpConfigBucket) => {
@@ -167,7 +168,7 @@ export async function fetchDatasourceRetrievalMetrics(
         mcpServerName,
         count: mcpConfigBucket.doc_count,
         datasources: datasourceBuckets.map((dsBucket) => {
-          const dataSource = dataSourceBySId.get(dsBucket.key);
+          const dataSource = dataSourceById.get(dsBucket.key);
           return {
             dataSourceId: dsBucket.key,
             displayName: dataSource
