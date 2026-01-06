@@ -1,5 +1,6 @@
 import assert from "assert";
 import groupBy from "lodash/groupBy";
+import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import type {
@@ -17,6 +18,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
+  SkillDataSourceConfigurationModel,
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
@@ -45,9 +47,11 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   AgentsUsageType,
+  ContentNodeType,
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
+  LightWorkspaceType,
   ModelId,
   Result,
 } from "@app/types";
@@ -60,12 +64,14 @@ import type {
 type SkillResourceConstructorOptions =
   | {
       // For global skills, there is no editor group.
+      dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
       globalSId: string;
       mcpServerViews: MCPServerViewResource[];
       version?: number;
     }
   | {
+      dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
       globalSId?: undefined;
       mcpServerViews: MCPServerViewResource[];
@@ -96,6 +102,12 @@ function isSkillResourceWithVersion(
   skill: SkillResource
 ): skill is SkillResource & { version: number } {
   return skill.version !== null;
+}
+
+export interface SkillAttachedKnowledge {
+  dataSourceView: DataSourceViewResource;
+  nodeId: string;
+  nodeType: Extract<ContentNodeType, "folder" | "document">;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -150,6 +162,7 @@ export interface SkillResource extends ReadonlyAttributesType<SkillConfiguration
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
+  readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
@@ -161,6 +174,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
+      dataSourceConfigurations,
       globalSId,
       mcpServerViews,
       editorGroup,
@@ -169,6 +183,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ) {
     super(SkillConfigurationModel, blob);
 
+    this.dataSourceConfigurations = dataSourceConfigurations;
     this.editorGroup = editorGroup ?? null;
     this.globalSId = globalSId ?? null;
     this._mcpServerViews = mcpServerViews;
@@ -199,8 +214,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
     {
       mcpServerViews,
+      attachedKnowledge = [],
     }: {
       mcpServerViews: MCPServerViewResource[];
+      attachedKnowledge?: SkillAttachedKnowledge[];
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
@@ -225,6 +242,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
+      // MCP server configurations for the skill.
+
       await SkillMCPServerConfigurationModel.bulkCreate(
         mcpServerViews.map((mcpServerView) => ({
           workspaceId: owner.id,
@@ -234,7 +253,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
+      // Compute what data source configurations to create (no existing configs for new skill).
+      const { toUpsert } = this.computeDataSourceConfigurationChanges(owner, {
+        attachedKnowledge,
+        existingConfigurations: [], // No existing configs for new skill.
+        skillConfigurationId: skill.id,
+      });
+
+      const dataSourceConfigurations =
+        await SkillDataSourceConfigurationModel.bulkCreate(toUpsert, {
+          transaction,
+        });
+
       return new this(this.model, skill.get(), {
+        dataSourceConfigurations,
         editorGroup,
         mcpServerViews,
       });
@@ -273,6 +305,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const skillMCPServerConfigsBySkillId = groupBy(
         mcpServerConfigurations,
+        "skillConfigurationId"
+      );
+
+      const dataSourceConfigurations =
+        await SkillDataSourceConfigurationModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: customSkills.map((c) => c.id),
+            },
+          },
+        });
+
+      const dataSourceConfigsBySkillId = groupBy(
+        dataSourceConfigurations,
         "skillConfigurationId"
       );
 
@@ -325,11 +372,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           customSkill.id
         ]?.map((skillConfig) => skillConfig.mcpServerViewId);
 
+        const skillDataSourceConfigs =
+          dataSourceConfigsBySkillId[customSkill.id] ?? [];
+
         return new this(this.model, customSkill.get(), {
           mcpServerViews: allMCPServerViews.filter((view) =>
             skillMCPServerViewIds?.includes(view.id)
           ),
           editorGroup: skillEditorGroupsMap.get(customSkill.id),
+          dataSourceConfigurations: skillDataSourceConfigs,
         });
       });
     }
@@ -780,7 +831,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon: def.icon,
         extendedSkillId: null,
       },
-      { globalSId: def.sId, mcpServerViews }
+      {
+        // Global skills do not have data source configurations.
+        dataSourceConfigurations: [],
+        globalSId: def.sId,
+        mcpServerViews,
+      }
     );
   }
 
@@ -879,6 +935,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             extendedSkillId: versionModel.extendedSkillId,
           },
           {
+            // We ignore data source configurations for historical versions.
+            // As when user saves we re-compute those from the nodes.
+            dataSourceConfigurations: [],
             editorGroup: this.editorGroup ?? undefined,
             mcpServerViews,
             version: versionModel.version,
@@ -976,21 +1035,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async updateSkill(
     auth: Authenticator,
     {
-      name,
       agentFacingDescription,
-      userFacingDescription,
-      instructions,
+      attachedKnowledge,
       icon,
-      requestedSpaceIds,
+      instructions,
       mcpServerViews,
+      name,
+      requestedSpaceIds,
+      userFacingDescription,
     }: {
-      name: string;
       agentFacingDescription: string;
-      userFacingDescription: string;
-      instructions: string;
+      attachedKnowledge: SkillAttachedKnowledge[];
       icon: string | null;
-      requestedSpaceIds: ModelId[];
+      instructions: string;
       mcpServerViews: MCPServerViewResource[];
+      name: string;
+      requestedSpaceIds: ModelId[];
+      userFacingDescription: string;
     }
   ): Promise<void> {
     await withTransaction(async (transaction) => {
@@ -1014,6 +1075,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
+
+      await this.setAttachedKnowledge(
+        auth,
+        {
+          attachedKnowledge,
+        },
+        { transaction }
+      );
     });
   }
 
@@ -1041,7 +1110,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const mcpServerViewIds = new Set(mcpServerViews.map((msv) => msv.id));
 
-    // Delete removed tools
+    // Delete removed tools.
     const idsToDelete = existingConfigs
       .filter((config) => !mcpServerViewIds.has(config.mcpServerViewId))
       .map((config) => config.id);
@@ -1054,7 +1123,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
     }
 
-    // Create new tools
+    // Create new tools.
     const toCreate = mcpServerViews.filter(
       (msv) => !existingMcpServerViewIds.has(msv.id)
     );
@@ -1071,6 +1140,141 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Update instance to avoid stale data.
     this.mcpServerViews = mcpServerViews;
+  }
+
+  static computeDataSourceConfigurationChanges(
+    owner: LightWorkspaceType,
+    {
+      attachedKnowledge,
+      existingConfigurations,
+      skillConfigurationId,
+    }: {
+      attachedKnowledge: SkillAttachedKnowledge[];
+      existingConfigurations: SkillDataSourceConfigurationModel[];
+      skillConfigurationId: ModelId;
+    }
+  ): {
+    toDelete: SkillDataSourceConfigurationModel[];
+    toUpsert: Array<CreationAttributes<SkillDataSourceConfigurationModel>>;
+  } {
+    // Group attached knowledge by data source view ID with all node IDs in parentsIn.
+    const desiredConfigsByDataSourceViewId = attachedKnowledge.reduce<
+      Record<
+        ModelId,
+        {
+          dataSourceId: ModelId;
+          dataSourceViewId: ModelId;
+          parentsIn: string[];
+        }
+      >
+    >((acc, k) => {
+      const key = k.dataSourceView.id;
+
+      acc[key] ??= {
+        dataSourceId: k.dataSourceView.dataSource.id,
+        dataSourceViewId: k.dataSourceView.id,
+        parentsIn: [],
+      };
+
+      // Add nodeId to parentsIn if not already present.
+      if (!acc[key].parentsIn.includes(k.nodeId)) {
+        acc[key].parentsIn.push(k.nodeId);
+      }
+
+      return acc;
+    }, {});
+
+    const toDelete: SkillDataSourceConfigurationModel[] = [];
+    const toUpsert: Array<
+      CreationAttributes<SkillDataSourceConfigurationModel>
+    > = [];
+
+    // Track which dataSourceViewIds need to be recreated.
+    const toRecreate = new Set<ModelId>();
+
+    // Process existing configurations.
+    for (const existingConfig of existingConfigurations) {
+      const desiredConfig =
+        desiredConfigsByDataSourceViewId[existingConfig.dataSourceViewId];
+
+      if (!desiredConfig) {
+        toDelete.push(existingConfig);
+      } else {
+        const desiredParentsIn = [...desiredConfig.parentsIn].sort();
+        const existingParentsInSorted = [...existingConfig.parentsIn].sort();
+
+        if (!isEqual(desiredParentsIn, existingParentsInSorted)) {
+          toDelete.push(existingConfig);
+          toRecreate.add(existingConfig.dataSourceViewId);
+        }
+      }
+    }
+
+    // Create new or changed configurations.
+    for (const desiredConfig of Object.values(
+      desiredConfigsByDataSourceViewId
+    )) {
+      const hasExisting = existingConfigurations.some(
+        (existing) =>
+          existing.dataSourceViewId === desiredConfig.dataSourceViewId
+      );
+
+      if (!hasExisting || toRecreate.has(desiredConfig.dataSourceViewId)) {
+        toUpsert.push({
+          ...desiredConfig,
+          skillConfigurationId,
+          workspaceId: owner.id,
+        });
+      }
+    }
+
+    return { toDelete, toUpsert };
+  }
+
+  private async setAttachedKnowledge(
+    auth: Authenticator,
+    {
+      attachedKnowledge,
+    }: {
+      attachedKnowledge: SkillAttachedKnowledge[];
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    assert(
+      this.canWrite(auth),
+      "User does not have permission to update this skill."
+    );
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch existing configurations for this skill.
+    const existingConfigurations =
+      await SkillDataSourceConfigurationModel.findAll({
+        where: {
+          skillConfigurationId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+
+    const { toDelete, toUpsert } =
+      SkillResource.computeDataSourceConfigurationChanges(workspace, {
+        attachedKnowledge,
+        existingConfigurations,
+        skillConfigurationId: this.id,
+      });
+
+    // Delete configurations that are no longer needed.
+    for (const config of toDelete) {
+      await config.destroy({ transaction });
+    }
+
+    // Create new configurations. The diff logic already handles deleting changed ones.
+    if (toUpsert.length > 0) {
+      await SkillDataSourceConfigurationModel.bulkCreate(toUpsert, {
+        transaction,
+      });
+    }
   }
 
   private async updateWithAuthorization(
@@ -1099,6 +1303,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     try {
       const workspace = auth.getNonNullableWorkspace();
+
+      await SkillDataSourceConfigurationModel.destroy({
+        where: {
+          skillConfigurationId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
 
       const affectedCount = await this.model.destroy({
         where: {
@@ -1231,6 +1443,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await GroupSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillDataSourceConfigurationModel.destroy({
       where: { workspaceId },
     });
 

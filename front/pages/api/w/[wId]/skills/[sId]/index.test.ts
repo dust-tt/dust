@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -31,6 +32,7 @@ async function setupTest(
     req,
     res,
     workspace,
+    globalSpace,
     user: requestUser,
   } = await createPrivateApiMockRequest({
     role: requestUserRole,
@@ -107,13 +109,14 @@ async function setupTest(
   return {
     req,
     res,
-    workspace,
-    skillOwner,
-    skillOwnerAuth,
-    skill,
     requestUser,
     requestUserAuth,
     requestUserRole,
+    skill,
+    skillOwner,
+    skillOwnerAuth,
+    globalSpace,
+    workspace,
   };
 }
 
@@ -161,6 +164,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       instructions: "Instructions",
       icon: null,
       tools: [],
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -192,6 +196,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       instructions: "Instructions",
       icon: null,
       tools: [],
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -217,6 +222,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       instructions: "Instructions",
       icon: null,
       tools: [{ mcpServerViewId: "invalid_id" }],
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -255,6 +261,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       instructions: skill.instructions,
       icon: null,
       tools: [],
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -315,6 +322,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
       ],
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -361,6 +369,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       instructions: skill.instructions,
       icon: null,
       tools: [{ mcpServerViewId: serverView.sId }],
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
@@ -383,6 +392,69 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(updatedSkill?.toJSON(requestUserAuth).tools[0].sId).toBe(
       serverView.sId
     );
+  });
+
+  it("should successfully update attached knowledge", async () => {
+    const {
+      req,
+      res,
+      skill,
+      workspace,
+      requestUserAuth,
+      requestUser,
+      globalSpace,
+    } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    const dataSourceView1 = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      requestUser
+    );
+    const dataSourceView2 = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      requestUser
+    );
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [
+        {
+          dataSourceViewId: dataSourceView1.sId,
+          nodeId: "folder1",
+          nodeType: "folder",
+          spaceId: dataSourceView1.space.sId,
+          title: "Folder 1",
+        },
+        {
+          dataSourceViewId: dataSourceView2.sId,
+          nodeId: "folder2",
+          nodeType: "folder",
+          spaceId: dataSourceView2.space.sId,
+          title: "Folder 2",
+        },
+      ],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Verify persistence by fetching the skill again.
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.dataSourceConfigurations).toHaveLength(2);
   });
 });
 
