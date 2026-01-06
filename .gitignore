@@ -19,5 +19,5 @@ front/public/robots.txt
 mprocs.log
 **/tsconfig.tsbuildinfo
 front/.npm-cache
-CLAUDE.md
-AGENTS.md
+AGENTS.local.md
+CLAUDE.local.md
